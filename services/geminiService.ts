@@ -1,0 +1,224 @@
+import { GoogleGenAI } from '@google/genai';
+import { Asset, SymbolSearchResult } from '../types';
+
+// FIX: Initialize the GoogleGenAI client according to the coding guidelines.
+// The API key must be obtained exclusively from the environment variable import.meta.env.VITE_GEMINI_API_KEY.
+const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY! });
+
+export const fetchAssetData = async (ticker: string, exchange: string): Promise<{ name: string; priceKRW: number; priceOriginal: number; currency: string; }> => {
+    const prompt = `Using Google Search, find the closing price for the most recent trading day for the asset with ticker "${ticker}" listed on the "${exchange}" exchange/market from a reliable financial source. Also, provide its official name in Korean.
+
+Return the response ONLY as a JSON object with four keys:
+1. "name": The official Korean name of the asset.
+2. "priceOriginal": The closing price in its native currency (e.g., USD for NASDAQ, JPY for TSE).
+3. "currency": The ISO 4217 currency code for the original price (e.g., "USD", "JPY", "KRW").
+4. "priceKRW": The closing price converted to Korean Won (KRW).
+
+For example, for ticker 'AAPL' on 'NASDAQ', the native currency is USD. For ticker '8001.T' on 'TSE (도쿄)', it's JPY. For '005930' on 'KRX (코스피/코스닥)', it's KRW. For 'BTC' on '주요 거래소 (종합)', find the price in USD and convert it to KRW.
+
+Ensure the prices are numbers, without any currency symbols or commas. The currency code must be a standard ISO 4217 string.
+
+Your final output must be only the JSON object, nothing else.`;
+
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: prompt,
+            config: {
+                tools: [{googleSearch: {}}],
+            }
+        });
+
+        const jsonString = response.text.trim();
+        // The model might wrap the JSON in ```json ... ```, so we clean that.
+        const cleanedJsonString = jsonString.replace(/^```json\s*|```$/g, '');
+        const data = JSON.parse(cleanedJsonString);
+
+        if (typeof data.name !== 'string' || typeof data.priceKRW !== 'number' || typeof data.priceOriginal !== 'number' || typeof data.currency !== 'string') {
+            throw new Error('Invalid data format from API.');
+        }
+
+        return {
+            name: data.name,
+            priceKRW: data.priceKRW,
+            priceOriginal: data.priceOriginal,
+            currency: data.currency,
+        };
+    } catch (error) {
+        console.error(`Error fetching data for ticker ${ticker} on ${exchange}:`, error);
+        if (error instanceof Error) {
+            console.error('Gemini response was:', (error as any).response?.text);
+        }
+        throw new Error('Failed to fetch asset data. Please check the ticker and try again.');
+    }
+};
+
+export const fetchHistoricalExchangeRate = async (date: string, fromCurrency: string, toCurrency: string): Promise<number> => {
+    if (fromCurrency === toCurrency) {
+        return 1;
+    }
+    const prompt = `Using Google Search, what was the exchange rate between ${fromCurrency} and ${toCurrency} at the end of the day on ${date}?
+Provide the answer ONLY as a single number representing how many ${toCurrency} one ${fromCurrency} was worth.
+For example, for USD to KRW, the answer should be a number like 1350.5.
+Do not include any text, symbols, or explanations. Your final output must be only the number.`;
+
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: prompt,
+            config: {
+                tools: [{ googleSearch: {} }],
+            }
+        });
+
+        const rateString = response.text.trim().replace(/,/g, '');
+        const rate = parseFloat(rateString);
+
+        if (isNaN(rate)) {
+            throw new Error('Invalid number format from API for exchange rate.');
+        }
+
+        return rate;
+    } catch (error) {
+        console.error(`Error fetching exchange rate for ${fromCurrency} to ${toCurrency} on ${date}:`, error);
+        if (error instanceof Error) {
+            console.error('Gemini response was:', (error as any).response?.text);
+        }
+        throw new Error('Failed to fetch historical exchange rate.');
+    }
+};
+
+export const fetchCurrentExchangeRate = async (fromCurrency: string, toCurrency: string): Promise<number> => {
+    if (fromCurrency === toCurrency) {
+        return 1;
+    }
+    const prompt = `Using Google Search, what was the closing exchange rate for the most recent business day between ${fromCurrency} and ${toCurrency}?
+Provide the answer ONLY as a single number representing how many ${toCurrency} one ${fromCurrency} is worth.
+For example, for USD to KRW, the answer should be a number like 1380.25.
+Do not include any text, symbols, or explanations. Your final output must be only the number.`;
+
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: prompt,
+            config: {
+                tools: [{ googleSearch: {} }],
+            }
+        });
+
+        const rateString = response.text.trim().replace(/,/g, '');
+        const rate = parseFloat(rateString);
+
+        if (isNaN(rate)) {
+            throw new Error('Invalid number format from API for exchange rate.');
+        }
+
+        return rate;
+    } catch (error) {
+        console.error(`Error fetching current exchange rate for ${fromCurrency} to ${toCurrency}:`, error);
+        if (error instanceof Error) {
+            console.error('Gemini response was:', (error as any).response?.text);
+        }
+        throw new Error('Failed to fetch current exchange rate.');
+    }
+};
+
+
+export const searchSymbols = async (query: string): Promise<SymbolSearchResult[]> => {
+    const prompt = `Search for stock or crypto symbols matching "${query}".
+Return a JSON array of up to 5 results. Each object in the array must have these exact keys: "ticker", "name" (in Korean), and "exchange" (e.g., "NASDAQ", "KRX (코스피/코스닥)", "주요 거래소 (종합)").
+
+Example for query "samsung":
+[
+  {
+    "ticker": "005930",
+    "name": "삼성전자",
+    "exchange": "KRX (코스피/코스닥)"
+  }
+]
+
+Example for query "apple":
+[
+  {
+    "ticker": "AAPL",
+    "name": "Apple Inc.",
+    "exchange": "NASDAQ"
+  }
+]
+
+If no results are found, return an empty array [].
+Your final output must be only the JSON array, with no other text or markdown formatting.`;
+
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: prompt,
+             config: {
+                tools: [{googleSearch: {}}],
+            }
+        });
+
+        const jsonString = response.text.trim();
+        const cleanedJsonString = jsonString.replace(/^```json\s*|```$/g, '');
+        const data = JSON.parse(cleanedJsonString);
+
+        if (!Array.isArray(data)) {
+            throw new Error('API did not return an array.');
+        }
+
+        return data.filter(item =>
+            typeof item.ticker === 'string' &&
+            typeof item.name === 'string' &&
+            typeof item.exchange === 'string'
+        );
+
+    } catch (error) {
+        console.error(`Error searching for symbol "${query}":`, error);
+        if (error instanceof Error) {
+            console.error('Gemini response was:', (error as any).response?.text);
+        }
+        return [];
+    }
+};
+
+export const askPortfolioQuestion = async (assets: Asset[], question: string): Promise<string> => {
+    // Simplify asset data to reduce token count and focus on key info
+    const simplifiedAssets = assets.map(asset => ({
+        name: asset.name,
+        category: asset.category,
+        quantity: asset.quantity,
+        purchase_price_original: asset.purchasePrice,
+        current_price_krw: asset.currentPrice,
+        currency: asset.currency,
+        current_value_krw: asset.currentPrice * asset.quantity,
+    }));
+
+    const portfolioJson = JSON.stringify(simplifiedAssets, null, 2);
+
+    const prompt = `당신은 사용자의 자산 포트폴리오를 분석하고 질문에 답변하는 전문 금융 어시스턴트입니다.
+    
+다음은 사용자의 현재 포트폴리오 데이터입니다 (JSON 형식):
+\`\`\`json
+${portfolioJson}
+\`\`\`
+
+위 데이터를 기반으로 다음 사용자의 질문에 대해 명확하고 간결하게 답변해주세요. 답변은 한국어로 작성하고, 마크다운 형식을 사용하여 가독성을 높여주세요. 외부 정보는 사용하지 말고, 제공된 포트폴리오 데이터만을 근거로 분석해야 합니다.
+
+사용자 질문: "${question}"`;
+
+    try {
+        const response = await ai.models.generateContent({
+            // Using a more advanced model for better analytical capabilities
+            model: 'gemini-2.5-pro',
+            contents: prompt,
+        });
+
+        return response.text.trim();
+    } catch (error) {
+        console.error(`Error asking portfolio question:`, error);
+        if (error instanceof Error) {
+            console.error('Gemini response was:', (error as any).response?.text);
+        }
+        throw new Error('포트폴리오 질문에 대한 답변 생성에 실패했습니다.');
+    }
+};
