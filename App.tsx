@@ -21,6 +21,7 @@ import PortfolioAssistant from './components/PortfolioAssistant';
 const LOCAL_STORAGE_KEY = 'quant-portfolio';
 const HISTORY_STORAGE_KEY = 'quant-portfolio-history';
 const LAST_UPDATE_KEY = 'quant-portfolio-last-update';
+const FIRST_LOAD_TODAY_KEY = 'quant-portfolio-first-load-today';
 
 type ActiveTab = 'dashboard' | 'portfolio';
 
@@ -139,6 +140,14 @@ const App: React.FC = () => {
           }
           setSuccessMessage('Google Drive에서 포트폴리오를 불러왔습니다.');
           setTimeout(() => setSuccessMessage(null), 3000);
+          
+          // lastUpdateDate 확인 (Google Drive에서 불러온 경우)
+          const lastUpdate = data.lastUpdateDate || '';
+          const today = new Date().toISOString().slice(0, 10);
+          if (lastUpdate) {
+            localStorage.setItem(LAST_UPDATE_KEY, lastUpdate);
+          }
+          // 자동 업데이트는 앱 시작 시 useEffect에서 처리
         }
       } else {
         // Google Drive에 파일이 없으면 localStorage에서 로드
@@ -206,11 +215,11 @@ const App: React.FC = () => {
   const [isAssistantOpen, setIsAssistantOpen] = useState<boolean>(false);
   const [filterAlerts, setFilterAlerts] = useState(false);
   
-  const handleRefreshAllPrices = useCallback(async (isAutoUpdate = false) => {
+  const handleRefreshAllPrices = useCallback(async (isAutoUpdate = false, isScheduled = false) => {
     if (assets.length === 0) return;
     setIsLoading(true);
     setError(null);
-    if (isAutoUpdate) {
+    if (isAutoUpdate || isScheduled) {
         setSuccessMessage('최신 종가 정보를 불러오는 중입니다...');
     } else {
         setSuccessMessage(null);
@@ -254,29 +263,134 @@ const App: React.FC = () => {
     if (failedTickers.length > 0) {
         setError(`${failedTickers.join(', ')} 가격 갱신에 실패했습니다.`);
         setTimeout(() => setError(null), 3000);
-        if (isAutoUpdate) setSuccessMessage(null);
+        if (isAutoUpdate || isScheduled) setSuccessMessage(null);
     } else {
-        const successMsg = isAutoUpdate ? '모든 자산의 가격을 최신 종가로 자동 업데이트했습니다.' : '모든 자산의 가격을 성공적으로 업데이트했습니다.';
+        const successMsg = isScheduled 
+          ? '매일 자동 업데이트: 모든 자산의 가격을 전일 종가로 업데이트했습니다.'
+          : isAutoUpdate 
+            ? '모든 자산의 가격을 최신 종가로 자동 업데이트했습니다.'
+            : '모든 자산의 가격을 성공적으로 업데이트했습니다.';
         setSuccessMessage(successMsg);
-        setTimeout(() => setSuccessMessage(null), 3000);
+        setTimeout(() => setSuccessMessage(null), 5000);
+        
         const today = new Date().toISOString().slice(0, 10);
         localStorage.setItem(LAST_UPDATE_KEY, today);
+        
+        // Google Drive에 자동 저장 (로그인 상태일 때)
+        if (isSignedIn) {
+          try {
+            const exportData = {
+              assets: updatedAssets,
+              portfolioHistory: portfolioHistory,
+              lastUpdateDate: today
+            };
+            const portfolioJSON = JSON.stringify(exportData, null, 2);
+            await googleDriveService.saveFile(portfolioJSON);
+          } catch (error) {
+            console.error('Failed to auto-save to Google Drive:', error);
+          }
+        }
     }
 
     setIsLoading(false);
-  }, [assets]);
+  }, [assets, portfolioHistory, isSignedIn]);
 
+  // 자동 저장 함수 (디바운싱 적용)
+  const autoSaveToDrive = useCallback(
+    (() => {
+      let timeoutId: NodeJS.Timeout | null = null;
+      return async (assetsToSave: Asset[], history: PortfolioSnapshot[]) => {
+        if (!isSignedIn) return;
+        
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+        }
+        
+        timeoutId = setTimeout(async () => {
+          try {
+            const exportData = {
+              assets: assetsToSave,
+              portfolioHistory: history,
+              lastUpdateDate: new Date().toISOString().slice(0, 10)
+            };
+            const portfolioJSON = JSON.stringify(exportData, null, 2);
+            await googleDriveService.saveFile(portfolioJSON);
+            console.log('Auto-saved to Google Drive');
+          } catch (error) {
+            console.error('Auto-save failed:', error);
+          }
+        }, 2000); // 2초 대기
+      };
+    })(),
+    [isSignedIn]
+  );
+
+  // 앱 시작 시 1회만 자동 업데이트
   useEffect(() => {
     const autoUpdatePrices = async () => {
+      const today = new Date().toISOString().slice(0, 10);
+      const firstLoadToday = localStorage.getItem(FIRST_LOAD_TODAY_KEY);
+      
+      // 오늘 첫 로드인지 확인
+      if (firstLoadToday !== today) {
         const lastUpdate = localStorage.getItem(LAST_UPDATE_KEY);
-        const today = new Date().toISOString().slice(0, 10);
+        
+        // 마지막 업데이트가 오늘이 아니면 업데이트
         if (lastUpdate !== today) {
-            await handleRefreshAllPrices(true);
+          await handleRefreshAllPrices(true, false);
         }
+        
+        // 오늘 첫 로드 플래그 설정
+        localStorage.setItem(FIRST_LOAD_TODAY_KEY, today);
+      }
     };
+    
     setTimeout(autoUpdatePrices, 100);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // 매일 9시 5분 자동 업데이트 스케줄러
+  useEffect(() => {
+    if (!isSignedIn || assets.length === 0) return;
+    
+    let timeoutId: NodeJS.Timeout | null = null;
+    let intervalId: NodeJS.Timeout | null = null;
+    
+    const scheduleDailyUpdate = () => {
+      const now = new Date();
+      const updateTime = new Date();
+      updateTime.setHours(9, 5, 0, 0); // 9시 5분
+      
+      // 오늘 9시 5분이 지났으면 내일 9시 5분으로 설정
+      if (now >= updateTime) {
+        updateTime.setDate(updateTime.getDate() + 1);
+      }
+      
+      const msUntilUpdate = updateTime.getTime() - now.getTime();
+      
+      timeoutId = setTimeout(async () => {
+        // 로그인 상태이고 자산이 있을 때만 실행
+        if (isSignedIn && assets.length > 0) {
+          await handleRefreshAllPrices(false, true);
+        }
+        
+        // 매일 반복되도록 재설정
+        intervalId = setInterval(async () => {
+          if (isSignedIn && assets.length > 0) {
+            await handleRefreshAllPrices(false, true);
+          }
+        }, 24 * 60 * 60 * 1000); // 24시간마다
+      }, msUntilUpdate);
+    };
+    
+    scheduleDailyUpdate();
+    
+    // 컴포넌트 언마운트 시 정리
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [isSignedIn, assets.length, handleRefreshAllPrices]);
 
   useEffect(() => {
     const updatePortfolioHistory = () => {
@@ -353,6 +467,7 @@ const App: React.FC = () => {
         const exportData = {
           assets: assets,
           portfolioHistory: portfolioHistory,
+          lastUpdateDate: new Date().toISOString().slice(0, 10)
         };
         const portfolioJSON = JSON.stringify(exportData, null, 2);
         await googleDriveService.saveFile(portfolioJSON);
@@ -381,6 +496,7 @@ const App: React.FC = () => {
     const exportData = {
       assets: assets,
       portfolioHistory: portfolioHistory,
+      lastUpdateDate: new Date().toISOString().slice(0, 10)
     };
     const portfolioJSON = JSON.stringify(exportData, null, 2);
     const blob = new Blob([portfolioJSON], { type: 'application/json' });
@@ -517,7 +633,12 @@ const App: React.FC = () => {
         ...newAsset
       };
 
-      setAssets(prevAssets => [...prevAssets, finalNewAsset]);
+      setAssets(prevAssets => {
+        const newAssets = [...prevAssets, finalNewAsset];
+        // 자동 저장
+        autoSaveToDrive(newAssets, portfolioHistory);
+        return newAssets;
+      });
       setSuccessMessage(`${finalNewAsset.name} 자산이 추가되었습니다.`);
       setTimeout(() => setSuccessMessage(null), 3000);
     } catch (e) {
@@ -527,12 +648,17 @@ const App: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [autoSaveToDrive, portfolioHistory]);
   
   const handleDeleteAsset = useCallback((assetId: string) => {
-    setAssets(prevAssets => prevAssets.filter(asset => asset.id !== assetId));
+    setAssets(prevAssets => {
+      const updated = prevAssets.filter(asset => asset.id !== assetId);
+      // 자동 저장
+      autoSaveToDrive(updated, portfolioHistory);
+      return updated;
+    });
     setEditingAsset(null);
-  }, []);
+  }, [autoSaveToDrive, portfolioHistory]);
 
   const handleEditAsset = useCallback((asset: Asset) => {
     setEditingAsset(asset);
@@ -596,9 +722,14 @@ const App: React.FC = () => {
       }
 
 
-      setAssets(prevAssets => prevAssets.map(asset => 
-        asset.id === updatedAsset.id ? finalAsset : asset
-      ));
+      setAssets(prevAssets => {
+        const updated = prevAssets.map(asset => 
+          asset.id === updatedAsset.id ? finalAsset : asset
+        );
+        // 자동 저장
+        autoSaveToDrive(updated, portfolioHistory);
+        return updated;
+      });
       setEditingAsset(null);
     } catch (e) {
       console.error(e);
@@ -607,7 +738,7 @@ const App: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [assets]);
+  }, [assets, autoSaveToDrive, portfolioHistory]);
   
   const handleCsvFileUpload = useCallback(async (file: File): Promise<BulkUploadResult> => {
     return new Promise((resolve) => {
@@ -909,7 +1040,15 @@ const App: React.FC = () => {
   // Google 로그인 핸들러
   const handleSignIn = useCallback(async () => {
     setIsLoading(true);
-    setError(null);
+    setError(null);  
+
+    // 임시: 클라이언트 ID 확인
+    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+    console.log('=== 디버깅 정보 ===');
+    console.log('Client ID:', clientId);
+    console.log('Client ID 길이:', clientId?.length);
+    console.log('==================');
+    
     try {
       const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
       if (!clientId) {

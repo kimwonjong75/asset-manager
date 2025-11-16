@@ -75,7 +75,10 @@ class GoogleDriveService {
         apiScript.onload = () => {
           window.gapi.load('client', () => {
             window.gapi.client.init({
-              discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/drive/v3/rest'],
+              discoveryDocs: [
+                'https://www.googleapis.com/discovery/v1/apis/drive/v3/rest',
+                'https://www.googleapis.com/discovery/v1/apis/oauth2/v2/rest'
+              ],
             }).then(() => {
               resolve();
             }).catch(reject);
@@ -94,18 +97,29 @@ class GoogleDriveService {
     if (!this.clientId) {
       throw new Error('Google Drive service not initialized. Please provide client ID.');
     }
-
     return new Promise((resolve, reject) => {
+      console.log('=== Google Sign In 시작 ===');
+      console.log('Client ID:', this.clientId);
+      console.log('Requested scope:', 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile openid');
+      
       this.tokenClient = window.google.accounts.oauth2.initTokenClient({
         client_id: this.clientId!,
-        scope: 'https://www.googleapis.com/auth/drive.file',
+        scope: 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile openid',
         callback: async (response: google.accounts.oauth2.TokenResponse) => {
+          console.log('=== OAuth Callback 실행됨 ===');
+          console.log('Response:', response);
+          
           if (response.error) {
+            console.error('OAuth error:', response.error);
             reject(new Error(response.error));
             return;
           }
-
+    
           this.accessToken = response.access_token;
+          console.log('Access token received');
+          console.log('Received scope:', response.scope);
+          console.log('Scope includes userinfo.email:', response.scope?.includes('userinfo.email'));
+          console.log('Scope includes userinfo.profile:', response.scope?.includes('userinfo.profile'));
           
           // 사용자 정보 가져오기
           try {
@@ -114,12 +128,17 @@ class GoogleDriveService {
             localStorage.setItem('google_drive_access_token', this.accessToken);
             localStorage.setItem('google_drive_user', JSON.stringify(userInfo));
             resolve(userInfo);
-          } catch (error) {
+          } catch (error: any) {
+            console.error('Failed to get user info:', error);
+            console.error('Error details:', error.message, error.stack);
+            // 토큰은 받았지만 사용자 정보를 가져오지 못한 경우, 토큰을 저장하지 않음
+            this.accessToken = null;
             reject(error);
           }
         },
       });
-
+    
+      console.log('Requesting access token with prompt: consent');
       this.tokenClient.requestAccessToken({ prompt: 'consent' });
     });
   }
@@ -130,22 +149,61 @@ class GoogleDriveService {
       throw new Error('Not authenticated');
     }
 
-    const response = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
-      headers: {
-        Authorization: `Bearer ${this.accessToken}`,
-      },
-    });
+    try {
+      // 방법 1: OAuth2 userinfo API 시도
+      const response = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+        headers: {
+          Authorization: `Bearer ${this.accessToken}`,
+        },
+      });
 
-    if (!response.ok) {
-      throw new Error('Failed to get user info');
+      if (response.ok) {
+        const data = await response.json();
+        
+        if (data.email) {
+          return {
+            email: data.email,
+            name: data.name || data.email.split('@')[0],
+            picture: data.picture,
+          };
+        }
+      }
+
+      // 방법 2: Google API 클라이언트 사용 (대안)
+      if (window.gapi?.client && (window.gapi.client as any).setToken) {
+        try {
+          // 토큰 설정
+          (window.gapi.client as any).setToken({ access_token: this.accessToken });
+          await (window.gapi.client as any).load('oauth2', 'v2');
+          const userInfo = await (window.gapi.client as any).oauth2.userinfo.get();
+          if (userInfo.result && userInfo.result.email) {
+            return {
+              email: userInfo.result.email,
+              name: userInfo.result.name || userInfo.result.email.split('@')[0],
+              picture: userInfo.result.picture,
+            };
+          }
+        } catch (gapiError) {
+          console.error('GAPI userinfo error:', gapiError);
+        }
+      }
+
+      // 두 방법 모두 실패한 경우
+      const errorText = await response.text().catch(() => 'Unknown error');
+      console.error('User info API error:', response.status, errorText);
+      
+      // 더 자세한 에러 메시지
+      if (response.status === 401) {
+        throw new Error('인증 실패: Google Cloud Console의 OAuth 동의 화면에서 userinfo.email과 userinfo.profile scope를 추가했는지 확인하세요.');
+      } else if (response.status === 403) {
+        throw new Error('권한 없음: 사용자 정보에 접근할 권한이 없습니다. scope 설정을 확인하세요.');
+      } else {
+        throw new Error(`사용자 정보를 가져올 수 없습니다 (${response.status}): ${errorText}`);
+      }
+    } catch (error: any) {
+      console.error('getUserInfo error:', error);
+      throw error;
     }
-
-    const data = await response.json();
-    return {
-      email: data.email,
-      name: data.name,
-      picture: data.picture,
-    };
   }
 
   // 로그아웃
@@ -318,6 +376,13 @@ declare global {
         init: (config: {
           discoveryDocs: string[];
         }) => Promise<void>;
+        setToken: (token: { access_token: string }) => void;
+        load: (apiName: string, version: string) => Promise<void>;
+        oauth2: {
+          userinfo: {
+            get: () => Promise<{ result: { email?: string; name?: string; picture?: string } }>;
+          };
+        };
       };
     };
   }

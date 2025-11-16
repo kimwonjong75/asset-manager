@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 
 interface HeaderProps {
   onSave: () => void;
@@ -25,6 +25,8 @@ const Header: React.FC<HeaderProps> = ({
   isSignedIn = false,
   userEmail,
 }) => {
+  const [showAdvancedMenu, setShowAdvancedMenu] = useState(false);
+
   return (
     <header className="mb-8">
       <div className="flex justify-between items-start sm:items-center flex-col sm:flex-row">
@@ -72,41 +74,97 @@ const Header: React.FC<HeaderProps> = ({
           >
             신규 자산 추가
           </button>
-          <button
-            onClick={onOpenBulkUploadModal}
-            className="bg-gray-700 hover:bg-gray-600 text-white font-medium py-2 px-4 rounded-md transition duration-300"
-            title="CSV 파일로 자산을 일괄 등록합니다."
-          >
-            일괄 등록
-          </button>
-           <button
-            onClick={onImport}
-            className="bg-gray-700 hover:bg-gray-600 text-white font-medium py-2 px-4 rounded-md transition duration-300"
-            title="파일에서 포트폴리오를 가져옵니다 (현재 데이터 덮어쓰기)."
-          >
-            가져오기
-          </button>
-           <button
-            onClick={onExport}
-            className="bg-gray-700 hover:bg-gray-600 text-white font-medium py-2 px-4 rounded-md transition duration-300"
-            title="현재 포트폴리오를 백업 파일로 내보냅니다."
-          >
-            내보내기
-          </button>
-           <button
-            onClick={onExportToCsv}
-            className="bg-gray-700 hover:bg-gray-600 text-white font-medium py-2 px-4 rounded-md transition duration-300"
-            title="현재 포트폴리오 현황을 CSV 파일로 내보냅니다."
-          >
-            CSV로 내보내기
-          </button>
-          <button
-            onClick={onSave}
-            className="bg-success hover:bg-green-600 text-white font-medium py-2 px-4 rounded-md transition duration-300"
-            title="현재 포트폴리오 상태를 브라우저에 저장합니다."
-          >
-            저장
-          </button>
+          
+          {/* 고급 기능 드롭다운 메뉴 */}
+          <div className="relative">
+            <button
+              onClick={() => setShowAdvancedMenu(!showAdvancedMenu)}
+              className="bg-gray-700 hover:bg-gray-600 text-white font-medium py-2 px-4 rounded-md transition duration-300 flex items-center gap-1"
+              title="오프라인 사용을 위한 고급 기능 메뉴"
+            >
+              고급 기능
+              <svg className={`w-4 h-4 transition-transform ${showAdvancedMenu ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            
+            {showAdvancedMenu && (
+              <div className="absolute right-0 mt-2 w-64 bg-gray-800 border border-gray-600 rounded-md shadow-lg z-50">
+                <div className="p-2">
+                  <p className="text-xs text-gray-400 mb-2 px-2">
+                    오프라인 사용 또는 백업을 위한 기능입니다. Google Drive 로그인 시 자동 저장되므로 일반적으로 사용할 필요가 없습니다.
+                  </p>
+                  <div className="space-y-1">
+                    <button
+                      onClick={() => {
+                        onOpenBulkUploadModal();
+                        setShowAdvancedMenu(false);
+                      }}
+                      className="w-full text-left px-3 py-2 text-sm text-gray-300 hover:bg-gray-700 rounded transition"
+                      title="CSV 파일로 여러 자산을 한 번에 등록합니다."
+                    >
+                      <div className="font-medium">일괄 등록</div>
+                      <div className="text-xs text-gray-500">CSV 파일로 여러 자산을 한 번에 등록</div>
+                    </button>
+                    <button
+                      onClick={() => {
+                        onImport();
+                        setShowAdvancedMenu(false);
+                      }}
+                      className="w-full text-left px-3 py-2 text-sm text-gray-300 hover:bg-gray-700 rounded transition"
+                      title="JSON 파일에서 포트폴리오를 불러옵니다. (현재 데이터 덮어쓰기)"
+                    >
+                      <div className="font-medium">가져오기</div>
+                      <div className="text-xs text-gray-500">JSON 파일에서 포트폴리오 불러오기</div>
+                    </button>
+                    <button
+                      onClick={() => {
+                        onExport();
+                        setShowAdvancedMenu(false);
+                      }}
+                      className="w-full text-left px-3 py-2 text-sm text-gray-300 hover:bg-gray-700 rounded transition"
+                      title="현재 포트폴리오를 JSON 파일로 백업합니다."
+                    >
+                      <div className="font-medium">내보내기</div>
+                      <div className="text-xs text-gray-500">현재 포트폴리오를 JSON 파일로 백업</div>
+                    </button>
+                    <button
+                      onClick={() => {
+                        onExportToCsv();
+                        setShowAdvancedMenu(false);
+                      }}
+                      className="w-full text-left px-3 py-2 text-sm text-gray-300 hover:bg-gray-700 rounded transition"
+                      title="현재 포트폴리오를 CSV 파일로 내보냅니다."
+                    >
+                      <div className="font-medium">CSV로 내보내기</div>
+                      <div className="text-xs text-gray-500">현재 포트폴리오를 CSV 파일로 내보내기</div>
+                    </button>
+                    {!isSignedIn && (
+                      <button
+                        onClick={() => {
+                          onSave();
+                          setShowAdvancedMenu(false);
+                        }}
+                        className="w-full text-left px-3 py-2 text-sm text-gray-300 hover:bg-gray-700 rounded transition"
+                        title="현재 포트폴리오 상태를 브라우저에 저장합니다."
+                      >
+                        <div className="font-medium">저장</div>
+                        <div className="text-xs text-gray-500">브라우저 로컬 저장소에 저장</div>
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+          
+          {/* 메뉴 외부 클릭 시 닫기 */}
+          {showAdvancedMenu && (
+            <div 
+              className="fixed inset-0 z-40" 
+              onClick={() => setShowAdvancedMenu(false)}
+            />
+          )}
         </div>
       </div>
     </header>
