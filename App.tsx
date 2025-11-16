@@ -109,7 +109,7 @@ const App: React.FC = () => {
     initGoogleDrive();
   }, []);
 
-  // localStorage에서 데이터 로드
+  // localStorage에서 데이터 로드 (실제 저장 여부 확인)
   const loadFromLocalStorage = useCallback(() => {
     try {
       const savedData = localStorage.getItem(LOCAL_STORAGE_KEY);
@@ -117,14 +117,20 @@ const App: React.FC = () => {
         let loadedAssets: any[] = JSON.parse(savedData);
         if (!Array.isArray(loadedAssets)) {
           console.warn("localStorage data is not an array, falling back to initial data.");
-          return initialAssets;
+          return { assets: initialAssets, hasData: false };
         }
-        return loadedAssets.map(mapToNewAssetStructure);
+        const mappedAssets = loadedAssets.map(mapToNewAssetStructure);
+        // localStorage에 저장된 데이터가 있고, 배열이 비어있지 않으면 실제 데이터로 간주
+        const hasData = loadedAssets.length > 0;
+        return { 
+          assets: mappedAssets, 
+          hasData
+        };
       }
     } catch (error) {
       console.error("Failed to load or parse portfolio from localStorage. Falling back to initial data.", error);
     }
-    return initialAssets;
+    return { assets: initialAssets, hasData: false };
   }, []);
 
   // 충돌 감지 함수
@@ -180,13 +186,14 @@ const App: React.FC = () => {
         const data = JSON.parse(fileContent);
         if (data.assets && Array.isArray(data.assets)) {
           const driveAssets = data.assets.map(mapToNewAssetStructure);
-          const localAssets = loadFromLocalStorage();
+          const { assets: localAssets, hasData: hasLocalData } = loadFromLocalStorage();
           
-          // 충돌 감지
-          const detectedConflicts = detectConflicts(localAssets, driveAssets);
-          
-          if (detectedConflicts.length > 0) {
-            // 충돌이 있으면 모달 표시
+          // 로컬에 실제 데이터가 있고 서버에도 데이터가 있으면 선택 모달 표시
+          if (hasLocalData && driveAssets.length > 0) {
+            // 충돌 감지
+            const detectedConflicts = detectConflicts(localAssets, driveAssets);
+            
+            // 충돌이 있거나, 양쪽에 데이터가 있으면 모달 표시
             setConflicts(detectedConflicts);
             setPendingDriveAssets(driveAssets);
             if (data.portfolioHistory && Array.isArray(data.portfolioHistory)) {
@@ -195,25 +202,26 @@ const App: React.FC = () => {
               setPendingDriveHistory([]);
             }
             setConflictModalOpen(true);
-          } else {
-            // 충돌이 없으면 바로 적용
-            setAssets(driveAssets);
-            if (data.portfolioHistory && Array.isArray(data.portfolioHistory)) {
-              setPortfolioHistory(data.portfolioHistory);
-            }
-            setSuccessMessage('Google Drive에서 포트폴리오를 불러왔습니다.');
-            setTimeout(() => setSuccessMessage(null), 3000);
-            
-            // lastUpdateDate 확인
-            const lastUpdate = data.lastUpdateDate || '';
-            if (lastUpdate) {
-              localStorage.setItem(LAST_UPDATE_KEY, lastUpdate);
-            }
+            return; // 모달이 표시되면 여기서 종료
+          }
+          
+          // 로컬에 데이터가 없거나 충돌이 없으면 바로 적용
+          setAssets(driveAssets);
+          if (data.portfolioHistory && Array.isArray(data.portfolioHistory)) {
+            setPortfolioHistory(data.portfolioHistory);
+          }
+          setSuccessMessage('Google Drive에서 포트폴리오를 불러왔습니다.');
+          setTimeout(() => setSuccessMessage(null), 3000);
+          
+          // lastUpdateDate 확인
+          const lastUpdate = data.lastUpdateDate || '';
+          if (lastUpdate) {
+            localStorage.setItem(LAST_UPDATE_KEY, lastUpdate);
           }
         }
       } else {
         // Google Drive에 파일이 없으면 localStorage에서 로드
-        const loadedAssets = loadFromLocalStorage();
+        const { assets: loadedAssets } = loadFromLocalStorage();
         if (loadedAssets.length > 0) {
           setAssets(loadedAssets);
         } else {
@@ -223,7 +231,7 @@ const App: React.FC = () => {
     } catch (error) {
       console.error('Failed to load from Google Drive:', error);
       // Google Drive에서 로드 실패 시 localStorage에서 로드
-      const loadedAssets = loadFromLocalStorage();
+      const { assets: loadedAssets } = loadFromLocalStorage();
       if (loadedAssets.length > 0) {
         setAssets(loadedAssets);
       } else {
@@ -253,7 +261,7 @@ const App: React.FC = () => {
       if (isSignedIn) {
         loadFromGoogleDrive();
       } else {
-        const loadedAssets = loadFromLocalStorage();
+        const { assets: loadedAssets } = loadFromLocalStorage();
         if (loadedAssets.length > 0) {
           setAssets(loadedAssets);
         } else {
@@ -1170,7 +1178,7 @@ const App: React.FC = () => {
     setGoogleUser(null);
     
     // localStorage에서 데이터 로드
-    const loadedAssets = loadFromLocalStorage();
+    const { assets: loadedAssets } = loadFromLocalStorage();
     if (loadedAssets.length > 0) {
       setAssets(loadedAssets);
     } else {
@@ -1183,7 +1191,7 @@ const App: React.FC = () => {
 
   // 충돌 해결: 로컬 데이터 사용
   const handleSelectLocal = useCallback(() => {
-    const loadedAssets = loadFromLocalStorage();
+    const { assets: loadedAssets } = loadFromLocalStorage();
     if (loadedAssets.length > 0) {
       setAssets(loadedAssets);
     } else {

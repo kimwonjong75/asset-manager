@@ -22,24 +22,26 @@ const DataConflictModal: React.FC<DataConflictModalProps> = ({
   onSelectLocal,
   onSelectDrive,
 }) => {
-  if (!isOpen || conflicts.length === 0) return null;
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
         <div className="p-6 border-b border-gray-700">
           <h2 className="text-2xl font-bold text-white mb-2">
-            데이터 충돌 감지
+            {conflicts.length > 0 ? '데이터 충돌 감지' : '데이터 선택'}
           </h2>
           <p className="text-gray-400 text-sm">
-            로컬 데이터와 Google Drive 데이터에 동일한 종목이 서로 다른 정보로 존재합니다.
-            사용할 데이터를 선택해주세요.
+            {conflicts.length > 0 
+              ? '로컬 데이터와 Google Drive 데이터에 동일한 종목이 서로 다른 정보로 존재합니다. 사용할 데이터를 선택해주세요.'
+              : '로컬 데이터와 Google Drive 데이터가 모두 존재합니다. 사용할 데이터를 선택해주세요.'}
           </p>
         </div>
 
         <div className="flex-1 overflow-y-auto p-6">
-          <div className="space-y-4">
-            {conflicts.map((conflict, index) => (
+          {conflicts.length > 0 ? (
+            <div className="space-y-4">
+              {conflicts.map((conflict, index) => (
               <div
                 key={index}
                 className="bg-gray-700 rounded-lg p-4 border border-gray-600"
@@ -117,6 +119,16 @@ const DataConflictModal: React.FC<DataConflictModalProps> = ({
               </div>
             ))}
           </div>
+          ) : (
+            <div className="text-center py-8">
+              <p className="text-gray-400 text-lg">
+                로컬 데이터와 Google Drive 데이터가 모두 존재합니다.
+              </p>
+              <p className="text-gray-500 text-sm mt-2">
+                사용할 데이터 소스를 선택해주세요.
+              </p>
+            </div>
+          )}
         </div>
 
         <div className="p-6 border-t border-gray-700 bg-gray-750">
