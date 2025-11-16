@@ -350,48 +350,55 @@ const App: React.FC = () => {
         const today = new Date().toISOString().slice(0, 10);
         localStorage.setItem(LAST_UPDATE_KEY, today);
         
-        // Google Drive에 자동 저장 (로그인 상태일 때)
-        if (isSignedIn) {
-          try {
-            const exportData = {
-              assets: updatedAssets,
-              portfolioHistory: portfolioHistory,
-              lastUpdateDate: today
-            };
-            const portfolioJSON = JSON.stringify(exportData, null, 2);
-            await googleDriveService.saveFile(portfolioJSON);
-          } catch (error) {
-            console.error('Failed to auto-save to Google Drive:', error);
-          }
-        }
+        // 자동 저장
+        autoSave(updatedAssets, portfolioHistory);
     }
 
     setIsLoading(false);
-  }, [assets, portfolioHistory, isSignedIn]);
+  }, [assets, portfolioHistory, autoSave]);
 
   // 자동 저장 함수 (디바운싱 적용)
-  const autoSaveToDrive = useCallback(
+  const autoSave = useCallback(
     (() => {
       let timeoutId: NodeJS.Timeout | null = null;
+      let isSaving = false;
       return async (assetsToSave: Asset[], history: PortfolioSnapshot[]) => {
-        if (!isSignedIn) return;
-        
         if (timeoutId) {
           clearTimeout(timeoutId);
         }
         
         timeoutId = setTimeout(async () => {
+          if (isSaving) return; // 이미 저장 중이면 스킵
+          isSaving = true;
+          
           try {
-            const exportData = {
-              assets: assetsToSave,
-              portfolioHistory: history,
-              lastUpdateDate: new Date().toISOString().slice(0, 10)
-            };
-            const portfolioJSON = JSON.stringify(exportData, null, 2);
-            await googleDriveService.saveFile(portfolioJSON);
-            console.log('Auto-saved to Google Drive');
+            // 저장 중 메시지 표시
+            setSuccessMessage('저장 중...');
+            
+            // localStorage에 항상 저장
+            localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(assetsToSave));
+            
+            // Google Drive 로그인 상태일 때만 Google Drive에도 저장
+            if (isSignedIn) {
+              const exportData = {
+                assets: assetsToSave,
+                portfolioHistory: history,
+                lastUpdateDate: new Date().toISOString().slice(0, 10)
+              };
+              const portfolioJSON = JSON.stringify(exportData, null, 2);
+              await googleDriveService.saveFile(portfolioJSON);
+              setSuccessMessage('Google Drive에 자동 저장되었습니다.');
+            } else {
+              setSuccessMessage('로컬 저장소에 자동 저장되었습니다.');
+            }
+            
+            setTimeout(() => setSuccessMessage(null), 2000);
           } catch (error) {
             console.error('Auto-save failed:', error);
+            setError('자동 저장에 실패했습니다.');
+            setTimeout(() => setError(null), 3000);
+          } finally {
+            isSaving = false;
           }
         }, 2000); // 2초 대기
       };
@@ -710,7 +717,7 @@ const App: React.FC = () => {
       setAssets(prevAssets => {
         const newAssets = [...prevAssets, finalNewAsset];
         // 자동 저장
-        autoSaveToDrive(newAssets, portfolioHistory);
+        autoSave(newAssets, portfolioHistory);
         return newAssets;
       });
       setSuccessMessage(`${finalNewAsset.name} 자산이 추가되었습니다.`);
@@ -722,17 +729,17 @@ const App: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [autoSaveToDrive, portfolioHistory]);
+  }, [autoSave, portfolioHistory]);
   
   const handleDeleteAsset = useCallback((assetId: string) => {
     setAssets(prevAssets => {
       const updated = prevAssets.filter(asset => asset.id !== assetId);
       // 자동 저장
-      autoSaveToDrive(updated, portfolioHistory);
+      autoSave(updated, portfolioHistory);
       return updated;
     });
     setEditingAsset(null);
-  }, [autoSaveToDrive, portfolioHistory]);
+  }, [autoSave, portfolioHistory]);
 
   const handleEditAsset = useCallback((asset: Asset) => {
     setEditingAsset(asset);
@@ -801,7 +808,7 @@ const App: React.FC = () => {
           asset.id === updatedAsset.id ? finalAsset : asset
         );
         // 자동 저장
-        autoSaveToDrive(updated, portfolioHistory);
+        autoSave(updated, portfolioHistory);
         return updated;
       });
       setEditingAsset(null);
@@ -812,7 +819,7 @@ const App: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [assets, autoSaveToDrive, portfolioHistory]);
+  }, [assets, autoSave, portfolioHistory]);
   
   const handleCsvFileUpload = useCallback(async (file: File): Promise<BulkUploadResult> => {
     return new Promise((resolve) => {
@@ -935,7 +942,12 @@ const App: React.FC = () => {
                         await new Promise(resolve => setTimeout(resolve, 300));
                     }
                     
-                    setAssets(prev => [...prev, ...newAssets]);
+                    setAssets(prev => {
+                        const updated = [...prev, ...newAssets];
+                        // 자동 저장
+                        autoSave(updated, portfolioHistory);
+                        return updated;
+                    });
                     successCount = newAssets.length;
                 }
                 
@@ -953,7 +965,7 @@ const App: React.FC = () => {
         
         reader.readAsText(file);
     });
-  }, []);
+  }, [autoSave, portfolioHistory]);
 
   const totalValue = useMemo(() => {
     return assets.reduce((acc, asset) => acc + asset.currentPrice * asset.quantity, 0);
