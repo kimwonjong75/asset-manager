@@ -17,6 +17,7 @@ import ProfitLossChart from './components/ProfitLossChart';
 import AddNewAssetModal from './components/AddNewAssetModal';
 import TopBottomAssets from './components/TopBottomAssets';
 import PortfolioAssistant from './components/PortfolioAssistant';
+import DataConflictModal from './components/DataConflictModal';
 
 const LOCAL_STORAGE_KEY = 'quant-portfolio';
 const HISTORY_STORAGE_KEY = 'quant-portfolio-history';
@@ -126,6 +127,51 @@ const App: React.FC = () => {
     return initialAssets;
   }, []);
 
+  // 충돌 감지 함수
+  const detectConflicts = useCallback((localAssets: Asset[], driveAssets: Asset[]) => {
+    const conflicts: Array<{
+      ticker: string;
+      exchange: string;
+      name: string;
+      localAsset: Asset;
+      driveAsset: Asset;
+    }> = [];
+
+    // 로컬 자산을 맵으로 변환 (ticker + exchange를 키로)
+    const localAssetMap = new Map<string, Asset>();
+    localAssets.forEach(asset => {
+      const key = `${asset.ticker.toUpperCase()}_${asset.exchange}`;
+      localAssetMap.set(key, asset);
+    });
+
+    // Google Drive 자산과 비교
+    driveAssets.forEach(driveAsset => {
+      const key = `${driveAsset.ticker.toUpperCase()}_${driveAsset.exchange}`;
+      const localAsset = localAssetMap.get(key);
+      
+      if (localAsset) {
+        // 같은 종목이지만 정보가 다른 경우 충돌로 간주
+        const isDifferent = 
+          localAsset.quantity !== driveAsset.quantity ||
+          localAsset.purchasePrice !== driveAsset.purchasePrice ||
+          localAsset.purchaseDate !== driveAsset.purchaseDate ||
+          localAsset.currentPrice !== driveAsset.currentPrice;
+
+        if (isDifferent) {
+          conflicts.push({
+            ticker: driveAsset.ticker,
+            exchange: driveAsset.exchange,
+            name: driveAsset.name,
+            localAsset,
+            driveAsset,
+          });
+        }
+      }
+    });
+
+    return conflicts;
+  }, []);
+
   // Google Drive에서 데이터 로드
   const loadFromGoogleDrive = useCallback(async () => {
     try {
@@ -133,21 +179,37 @@ const App: React.FC = () => {
       if (fileContent) {
         const data = JSON.parse(fileContent);
         if (data.assets && Array.isArray(data.assets)) {
-          const loadedAssets = data.assets.map(mapToNewAssetStructure);
-          setAssets(loadedAssets);
-          if (data.portfolioHistory && Array.isArray(data.portfolioHistory)) {
-            setPortfolioHistory(data.portfolioHistory);
-          }
-          setSuccessMessage('Google Drive에서 포트폴리오를 불러왔습니다.');
-          setTimeout(() => setSuccessMessage(null), 3000);
+          const driveAssets = data.assets.map(mapToNewAssetStructure);
+          const localAssets = loadFromLocalStorage();
           
-          // lastUpdateDate 확인 (Google Drive에서 불러온 경우)
-          const lastUpdate = data.lastUpdateDate || '';
-          const today = new Date().toISOString().slice(0, 10);
-          if (lastUpdate) {
-            localStorage.setItem(LAST_UPDATE_KEY, lastUpdate);
+          // 충돌 감지
+          const detectedConflicts = detectConflicts(localAssets, driveAssets);
+          
+          if (detectedConflicts.length > 0) {
+            // 충돌이 있으면 모달 표시
+            setConflicts(detectedConflicts);
+            setPendingDriveAssets(driveAssets);
+            if (data.portfolioHistory && Array.isArray(data.portfolioHistory)) {
+              setPendingDriveHistory(data.portfolioHistory);
+            } else {
+              setPendingDriveHistory([]);
+            }
+            setConflictModalOpen(true);
+          } else {
+            // 충돌이 없으면 바로 적용
+            setAssets(driveAssets);
+            if (data.portfolioHistory && Array.isArray(data.portfolioHistory)) {
+              setPortfolioHistory(data.portfolioHistory);
+            }
+            setSuccessMessage('Google Drive에서 포트폴리오를 불러왔습니다.');
+            setTimeout(() => setSuccessMessage(null), 3000);
+            
+            // lastUpdateDate 확인
+            const lastUpdate = data.lastUpdateDate || '';
+            if (lastUpdate) {
+              localStorage.setItem(LAST_UPDATE_KEY, lastUpdate);
+            }
           }
-          // 자동 업데이트는 앱 시작 시 useEffect에서 처리
         }
       } else {
         // Google Drive에 파일이 없으면 localStorage에서 로드
@@ -168,7 +230,7 @@ const App: React.FC = () => {
         setAssets(initialAssets);
       }
     }
-  }, [loadFromLocalStorage]);
+  }, [loadFromLocalStorage, detectConflicts]);
 
   const [assets, setAssets] = useState<Asset[]>(() => {
     // 초기화 중이면 빈 배열로 시작 (초기화 후 로드)
@@ -214,6 +276,18 @@ const App: React.FC = () => {
   const [dashboardFilterCategory, setDashboardFilterCategory] = useState<AssetCategory | 'ALL'>('ALL');
   const [isAssistantOpen, setIsAssistantOpen] = useState<boolean>(false);
   const [filterAlerts, setFilterAlerts] = useState(false);
+  
+  // 충돌 관련 state
+  const [conflictModalOpen, setConflictModalOpen] = useState<boolean>(false);
+  const [conflicts, setConflicts] = useState<Array<{
+    ticker: string;
+    exchange: string;
+    name: string;
+    localAsset: Asset;
+    driveAsset: Asset;
+  }>>([]);
+  const [pendingDriveAssets, setPendingDriveAssets] = useState<Asset[]>([]);
+  const [pendingDriveHistory, setPendingDriveHistory] = useState<PortfolioSnapshot[]>([]);
   
   const handleRefreshAllPrices = useCallback(async (isAutoUpdate = false, isScheduled = false) => {
     if (assets.length === 0) return;
@@ -1095,6 +1169,46 @@ const App: React.FC = () => {
     setTimeout(() => setSuccessMessage(null), 3000);
   }, [loadFromLocalStorage]);
 
+  // 충돌 해결: 로컬 데이터 사용
+  const handleSelectLocal = useCallback(() => {
+    const loadedAssets = loadFromLocalStorage();
+    if (loadedAssets.length > 0) {
+      setAssets(loadedAssets);
+    } else {
+      setAssets(initialAssets);
+    }
+    
+    setConflictModalOpen(false);
+    setConflicts([]);
+    setPendingDriveAssets([]);
+    setPendingDriveHistory([]);
+    
+    setSuccessMessage('로컬 데이터를 사용합니다.');
+    setTimeout(() => setSuccessMessage(null), 3000);
+  }, [loadFromLocalStorage]);
+
+  // 충돌 해결: Google Drive 데이터 사용
+  const handleSelectDrive = useCallback(() => {
+    if (pendingDriveAssets.length > 0) {
+      setAssets(pendingDriveAssets);
+      if (pendingDriveHistory.length > 0) {
+        setPortfolioHistory(pendingDriveHistory);
+      }
+      
+      // Google Drive에 저장된 lastUpdateDate 확인
+      const today = new Date().toISOString().slice(0, 10);
+      localStorage.setItem(LAST_UPDATE_KEY, today);
+      
+      setSuccessMessage('Google Drive 데이터를 사용합니다.');
+      setTimeout(() => setSuccessMessage(null), 3000);
+    }
+    
+    setConflictModalOpen(false);
+    setConflicts([]);
+    setPendingDriveAssets([]);
+    setPendingDriveHistory([]);
+  }, [pendingDriveAssets, pendingDriveHistory]);
+
   const handleTabChange = (tabId: ActiveTab) => {
     if (tabId !== 'portfolio') {
         setFilterAlerts(false);
@@ -1269,6 +1383,13 @@ const App: React.FC = () => {
         isOpen={isAssistantOpen}
         onClose={() => setIsAssistantOpen(false)}
         assets={assets}
+      />
+
+      <DataConflictModal
+        isOpen={conflictModalOpen}
+        conflicts={conflicts}
+        onSelectLocal={handleSelectLocal}
+        onSelectDrive={handleSelectDrive}
       />
     </div>
   );
