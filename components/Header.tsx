@@ -82,6 +82,13 @@ const Header: React.FC<HeaderProps> = ({
               >
                 신규 자산 추가
               </button>
+              <button
+                onClick={onSave}
+                className="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-2 px-4 rounded-md transition duration-300"
+                title="현재 포트폴리오를 Google Drive에 즉시 저장합니다."
+              >
+                즉시 저장
+              </button>
               
               {/* 고급 기능 드롭다운 메뉴 */}
               <div className="relative">

@@ -508,6 +508,7 @@ const App: React.FC = () => {
             if (loadedHistory) {
               setPortfolioHistory(loadedHistory);
             }
+            autoSave(assetsWithDefaults, loadedHistory ?? portfolioHistory);
             setFileName(file.name);
             setSuccessMessage(`'${file.name}' 파일에서 성공적으로 가져왔습니다.`);
             setTimeout(() => setSuccessMessage(null), 3000);
@@ -532,7 +533,7 @@ const App: React.FC = () => {
       setTimeout(() => setError(null), 3000);
       setIsLoading(false);
     }
-  }, [isSignedIn]);
+  }, [autoSave, portfolioHistory, isSignedIn]);
 
 
   const handleAddAsset = useCallback(async (newAssetData: NewAssetForm) => {
@@ -1099,23 +1100,33 @@ const App: React.FC = () => {
           userEmail={googleUser?.email}
         />
         
-        {successMessage && (
-          <div className="bg-success/20 border border-success text-success px-4 py-3 rounded-lg relative mb-6" role="alert">
-            <span className="block sm:inline">{successMessage}</span>
-            <span className="absolute top-0 bottom-0 right-0 px-4 py-3" onClick={() => setSuccessMessage(null)}>
-              <svg className="fill-current h-6 w-6 text-success" role="button" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><title>Close</title><path d="M14.348 14.849a1.2 1.2 0 0 1-1.697 0L10 11.819l-2.651 3.029a1.2 1.2 0 1 1-1.697-1.697l2.758-3.15-2.759-3.152a1.2 1.2 0 1 1 1.697-1.697L10 8.183l2.651-3.031a1.2 1.2 0 1 1 1.697 1.697l-2.758 3.152 2.758 3.15a1.2 1.2 0 0 1 0 1.698z"/></svg>
-            </span>
-          </div>
-        )}
-        
-        {error && (
-          <div className="bg-danger/20 border border-danger text-danger px-4 py-3 rounded-lg relative mb-6" role="alert">
-            <span className="block sm:inline">{error}</span>
-            <span className="absolute top-0 bottom-0 right-0 px-4 py-3" onClick={() => setError(null)}>
-              <svg className="fill-current h-6 w-6 text-danger" role="button" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><title>Close</title><path d="M14.348 14.849a1.2 1.2 0 0 1-1.697 0L10 11.819l-2.651 3.029a1.2 1.2 0 1 1-1.697-1.697l2.758-3.15-2.759-3.152a1.2 1.2 0 1 1 1.697-1.697L10 8.183l2.651-3.031a1.2 1.2 0 1 1 1.697 1.697l-2.758 3.152 2.758 3.15a1.2 1.2 0 0 1 0 1.698z"/></svg>
-            </span>
-          </div>
-        )}
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 w-[90%] max-w-xl space-y-3 pointer-events-none">
+          {successMessage && (
+            <div className="bg-success/90 text-white px-4 py-3 rounded-lg shadow-lg flex justify-between items-center pointer-events-auto" role="alert">
+              <span className="block sm:inline">{successMessage}</span>
+              <button
+                className="ml-4 text-white/80 hover:text-white transition"
+                onClick={() => setSuccessMessage(null)}
+                aria-label="닫기"
+              >
+                ✕
+              </button>
+            </div>
+          )}
+          
+          {error && (
+            <div className="bg-danger/90 text-white px-4 py-3 rounded-lg shadow-lg flex justify-between items-center pointer-events-auto" role="alert">
+              <span className="block sm:inline">{error}</span>
+              <button
+                className="ml-4 text-white/80 hover:text-white transition"
+                onClick={() => setError(null)}
+                aria-label="닫기"
+              >
+                ✕
+              </button>
+            </div>
+          )}
+        </div>
 
         {isSignedIn ? (
           <>
