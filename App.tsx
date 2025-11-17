@@ -8,7 +8,6 @@ import PortfolioTable from './components/PortfolioTable';
 import AllocationChart from './components/AllocationChart';
 import Header from './components/Header';
 import StatCard from './components/StatCard';
-import { initialAssets } from './initialData';
 import EditAssetModal from './components/EditAssetModal';
 import BulkUploadModal from './components/BulkUploadModal';
 import SellAlertControl from './components/SellAlertControl';
@@ -17,12 +16,6 @@ import ProfitLossChart from './components/ProfitLossChart';
 import AddNewAssetModal from './components/AddNewAssetModal';
 import TopBottomAssets from './components/TopBottomAssets';
 import PortfolioAssistant from './components/PortfolioAssistant';
-import DataConflictModal from './components/DataConflictModal';
-
-const LOCAL_STORAGE_KEY = 'quant-portfolio';
-const HISTORY_STORAGE_KEY = 'quant-portfolio-history';
-const LAST_UPDATE_KEY = 'quant-portfolio-last-update';
-const FIRST_LOAD_TODAY_KEY = 'quant-portfolio-first-load-today';
 
 type ActiveTab = 'dashboard' | 'portfolio';
 
@@ -109,167 +102,50 @@ const App: React.FC = () => {
     initGoogleDrive();
   }, []);
 
-  // localStorage에서 데이터 로드 (실제 저장 여부 확인)
-  const loadFromLocalStorage = useCallback(() => {
-    try {
-      const savedData = localStorage.getItem(LOCAL_STORAGE_KEY);
-      if (savedData) {
-        let loadedAssets: any[] = JSON.parse(savedData);
-        if (!Array.isArray(loadedAssets)) {
-          console.warn("localStorage data is not an array, falling back to initial data.");
-          return { assets: initialAssets, hasData: false };
-        }
-        const mappedAssets = loadedAssets.map(mapToNewAssetStructure);
-        // localStorage에 저장된 데이터가 있고, 배열이 비어있지 않으면 실제 데이터로 간주
-        const hasData = loadedAssets.length > 0;
-        return { 
-          assets: mappedAssets, 
-          hasData
-        };
-      }
-    } catch (error) {
-      console.error("Failed to load or parse portfolio from localStorage. Falling back to initial data.", error);
-    }
-    return { assets: initialAssets, hasData: false };
-  }, []);
-
-  // 충돌 감지 함수
-  const detectConflicts = useCallback((localAssets: Asset[], driveAssets: Asset[]) => {
-    const conflicts: Array<{
-      ticker: string;
-      exchange: string;
-      name: string;
-      localAsset: Asset;
-      driveAsset: Asset;
-    }> = [];
-
-    // 로컬 자산을 맵으로 변환 (ticker + exchange를 키로)
-    const localAssetMap = new Map<string, Asset>();
-    localAssets.forEach(asset => {
-      const key = `${asset.ticker.toUpperCase()}_${asset.exchange}`;
-      localAssetMap.set(key, asset);
-    });
-
-    // Google Drive 자산과 비교
-    driveAssets.forEach(driveAsset => {
-      const key = `${driveAsset.ticker.toUpperCase()}_${driveAsset.exchange}`;
-      const localAsset = localAssetMap.get(key);
-      
-      if (localAsset) {
-        // 같은 종목이지만 정보가 다른 경우 충돌로 간주
-        const isDifferent = 
-          localAsset.quantity !== driveAsset.quantity ||
-          localAsset.purchasePrice !== driveAsset.purchasePrice ||
-          localAsset.purchaseDate !== driveAsset.purchaseDate ||
-          localAsset.currentPrice !== driveAsset.currentPrice;
-
-        if (isDifferent) {
-          conflicts.push({
-            ticker: driveAsset.ticker,
-            exchange: driveAsset.exchange,
-            name: driveAsset.name,
-            localAsset,
-            driveAsset,
-          });
-        }
-      }
-    });
-
-    return conflicts;
-  }, []);
-
   // Google Drive에서 데이터 로드
   const loadFromGoogleDrive = useCallback(async () => {
     try {
       const fileContent = await googleDriveService.loadFile();
       if (fileContent) {
         const data = JSON.parse(fileContent);
-        if (data.assets && Array.isArray(data.assets)) {
-          const driveAssets = data.assets.map(mapToNewAssetStructure);
-          const { assets: localAssets, hasData: hasLocalData } = loadFromLocalStorage();
-          
-          // 로컬에 실제 데이터가 있고 서버에도 데이터가 있으면 선택 모달 표시
-          if (hasLocalData && driveAssets.length > 0) {
-            // 충돌 감지
-            const detectedConflicts = detectConflicts(localAssets, driveAssets);
-            
-            // 충돌이 있거나, 양쪽에 데이터가 있으면 모달 표시
-            setConflicts(detectedConflicts);
-            setPendingDriveAssets(driveAssets);
-            if (data.portfolioHistory && Array.isArray(data.portfolioHistory)) {
-              setPendingDriveHistory(data.portfolioHistory);
-            } else {
-              setPendingDriveHistory([]);
-            }
-            setConflictModalOpen(true);
-            return; // 모달이 표시되면 여기서 종료
-          }
-          
-          // 로컬에 데이터가 없거나 충돌이 없으면 바로 적용
-          setAssets(driveAssets);
-          if (data.portfolioHistory && Array.isArray(data.portfolioHistory)) {
-            setPortfolioHistory(data.portfolioHistory);
-          }
-          setSuccessMessage('Google Drive에서 포트폴리오를 불러왔습니다.');
-          setTimeout(() => setSuccessMessage(null), 3000);
-          
-          // lastUpdateDate 확인
-          const lastUpdate = data.lastUpdateDate || '';
-          if (lastUpdate) {
-            localStorage.setItem(LAST_UPDATE_KEY, lastUpdate);
-          }
-        }
-      } else {
-        // Google Drive에 파일이 없으면 localStorage에서 로드
-        const { assets: loadedAssets } = loadFromLocalStorage();
-        if (loadedAssets.length > 0) {
-          setAssets(loadedAssets);
+        const driveAssets = Array.isArray(data.assets) ? data.assets.map(mapToNewAssetStructure) : [];
+        setAssets(driveAssets);
+        if (Array.isArray(data.portfolioHistory)) {
+          setPortfolioHistory(data.portfolioHistory);
         } else {
-          setAssets(initialAssets);
+          setPortfolioHistory([]);
         }
+        setSuccessMessage('Google Drive에서 포트폴리오를 불러왔습니다.');
+        setTimeout(() => setSuccessMessage(null), 3000);
+      } else {
+        setAssets([]);
+        setPortfolioHistory([]);
+        setSuccessMessage('Google Drive에 저장된 포트폴리오가 없습니다. 자산을 추가해주세요.');
+        setTimeout(() => setSuccessMessage(null), 3000);
       }
     } catch (error) {
       console.error('Failed to load from Google Drive:', error);
-      // Google Drive에서 로드 실패 시 localStorage에서 로드
-      const { assets: loadedAssets } = loadFromLocalStorage();
-      if (loadedAssets.length > 0) {
-        setAssets(loadedAssets);
-      } else {
-        setAssets(initialAssets);
-      }
+      setError('Google Drive에서 데이터를 불러오지 못했습니다.');
+      setTimeout(() => setError(null), 3000);
     }
-  }, [loadFromLocalStorage, detectConflicts]);
+  }, []);
 
-  const [assets, setAssets] = useState<Asset[]>(() => {
-    // 초기화 중이면 빈 배열로 시작 (초기화 후 로드)
-    return [];
-  });
-
-  const [portfolioHistory, setPortfolioHistory] = useState<PortfolioSnapshot[]>(() => {
-    try {
-      const savedHistory = localStorage.getItem(HISTORY_STORAGE_KEY);
-      return savedHistory ? JSON.parse(savedHistory) : [];
-    } catch (error) {
-      console.error("Failed to load portfolio history from localStorage.", error);
-      return [];
-    }
-  });
+  const [assets, setAssets] = useState<Asset[]>([]);
+  const [portfolioHistory, setPortfolioHistory] = useState<PortfolioSnapshot[]>([]);
+  const [hasAutoUpdated, setHasAutoUpdated] = useState<boolean>(false);
 
   // 초기화 완료 후 데이터 로드
   useEffect(() => {
-    if (!isInitializing && assets.length === 0) {
-      if (isSignedIn) {
-        loadFromGoogleDrive();
-      } else {
-        const { assets: loadedAssets } = loadFromLocalStorage();
-        if (loadedAssets.length > 0) {
-          setAssets(loadedAssets);
-        } else {
-          setAssets(initialAssets);
-        }
-      }
+    if (isInitializing) return;
+    if (isSignedIn) {
+      setHasAutoUpdated(false);
+      loadFromGoogleDrive();
+    } else {
+      setAssets([]);
+      setPortfolioHistory([]);
+      setHasAutoUpdated(false);
     }
-  }, [isInitializing, isSignedIn, loadFromGoogleDrive, loadFromLocalStorage]);
+  }, [isInitializing, isSignedIn, loadFromGoogleDrive]);
 
   const [fileName, setFileName] = useState<string>('portfolio.json');
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -285,19 +161,58 @@ const App: React.FC = () => {
   const [isAssistantOpen, setIsAssistantOpen] = useState<boolean>(false);
   const [filterAlerts, setFilterAlerts] = useState(false);
   
-  // 충돌 관련 state
-  const [conflictModalOpen, setConflictModalOpen] = useState<boolean>(false);
-  const [conflicts, setConflicts] = useState<Array<{
-    ticker: string;
-    exchange: string;
-    name: string;
-    localAsset: Asset;
-    driveAsset: Asset;
-  }>>([]);
-  const [pendingDriveAssets, setPendingDriveAssets] = useState<Asset[]>([]);
-  const [pendingDriveHistory, setPendingDriveHistory] = useState<PortfolioSnapshot[]>([]);
-  
+  // 자동 저장 함수 (디바운싱 적용)
+  const autoSave = useCallback(
+    (() => {
+      let timeoutId: NodeJS.Timeout | null = null;
+      let isSaving = false;
+      return async (assetsToSave: Asset[], history: PortfolioSnapshot[]) => {
+        if (!isSignedIn) {
+          setError('Google Drive 로그인 후 저장할 수 있습니다.');
+          setTimeout(() => setError(null), 3000);
+          return;
+        }
+
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+        }
+        
+        timeoutId = setTimeout(async () => {
+          if (isSaving) return; // 이미 저장 중이면 스킵
+          isSaving = true;
+          
+          try {
+            setSuccessMessage('저장 중...');
+            
+            const exportData = {
+              assets: assetsToSave,
+              portfolioHistory: history,
+              lastUpdateDate: new Date().toISOString().slice(0, 10)
+            };
+            const portfolioJSON = JSON.stringify(exportData, null, 2);
+            await googleDriveService.saveFile(portfolioJSON);
+            setSuccessMessage('Google Drive에 자동 저장되었습니다.');
+            
+            setTimeout(() => setSuccessMessage(null), 2000);
+          } catch (error) {
+            console.error('Auto-save failed:', error);
+            setError('자동 저장에 실패했습니다.');
+            setTimeout(() => setError(null), 3000);
+          } finally {
+            isSaving = false;
+          }
+        }, 2000); // 2초 대기
+      };
+    })(),
+    [isSignedIn]
+  );
+
   const handleRefreshAllPrices = useCallback(async (isAutoUpdate = false, isScheduled = false) => {
+    if (!isSignedIn) {
+      setError('Google Drive 로그인 후 데이터를 갱신할 수 있습니다.');
+      setTimeout(() => setError(null), 3000);
+      return;
+    }
     if (assets.length === 0) return;
     setIsLoading(true);
     setError(null);
@@ -355,88 +270,25 @@ const App: React.FC = () => {
         setSuccessMessage(successMsg);
         setTimeout(() => setSuccessMessage(null), 5000);
         
-        const today = new Date().toISOString().slice(0, 10);
-        localStorage.setItem(LAST_UPDATE_KEY, today);
-        
         // 자동 저장
         autoSave(updatedAssets, portfolioHistory);
     }
 
     setIsLoading(false);
-  }, [assets, portfolioHistory, autoSave]);
+  }, [assets, portfolioHistory, autoSave, isSignedIn]);
 
-  // 자동 저장 함수 (디바운싱 적용)
-  const autoSave = useCallback(
-    (() => {
-      let timeoutId: NodeJS.Timeout | null = null;
-      let isSaving = false;
-      return async (assetsToSave: Asset[], history: PortfolioSnapshot[]) => {
-        if (timeoutId) {
-          clearTimeout(timeoutId);
-        }
-        
-        timeoutId = setTimeout(async () => {
-          if (isSaving) return; // 이미 저장 중이면 스킵
-          isSaving = true;
-          
-          try {
-            // 저장 중 메시지 표시
-            setSuccessMessage('저장 중...');
-            
-            // localStorage에 항상 저장
-            localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(assetsToSave));
-            
-            // Google Drive 로그인 상태일 때만 Google Drive에도 저장
-            if (isSignedIn) {
-              const exportData = {
-                assets: assetsToSave,
-                portfolioHistory: history,
-                lastUpdateDate: new Date().toISOString().slice(0, 10)
-              };
-              const portfolioJSON = JSON.stringify(exportData, null, 2);
-              await googleDriveService.saveFile(portfolioJSON);
-              setSuccessMessage('Google Drive에 자동 저장되었습니다.');
-            } else {
-              setSuccessMessage('로컬 저장소에 자동 저장되었습니다.');
-            }
-            
-            setTimeout(() => setSuccessMessage(null), 2000);
-          } catch (error) {
-            console.error('Auto-save failed:', error);
-            setError('자동 저장에 실패했습니다.');
-            setTimeout(() => setError(null), 3000);
-          } finally {
-            isSaving = false;
-          }
-        }, 2000); // 2초 대기
-      };
-    })(),
-    [isSignedIn]
-  );
 
-  // 앱 시작 시 1회만 자동 업데이트
+  // 로그인 후 1회 자동 업데이트
   useEffect(() => {
-    const autoUpdatePrices = async () => {
-      const today = new Date().toISOString().slice(0, 10);
-      const firstLoadToday = localStorage.getItem(FIRST_LOAD_TODAY_KEY);
-      
-      // 오늘 첫 로드인지 확인
-      if (firstLoadToday !== today) {
-        const lastUpdate = localStorage.getItem(LAST_UPDATE_KEY);
-        
-        // 마지막 업데이트가 오늘이 아니면 업데이트
-        if (lastUpdate !== today) {
-          await handleRefreshAllPrices(true, false);
-        }
-        
-        // 오늘 첫 로드 플래그 설정
-        localStorage.setItem(FIRST_LOAD_TODAY_KEY, today);
-      }
-    };
+    if (!isSignedIn || assets.length === 0 || hasAutoUpdated) return;
     
-    setTimeout(autoUpdatePrices, 100);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    const timeoutId = setTimeout(async () => {
+      await handleRefreshAllPrices(true, false);
+      setHasAutoUpdated(true);
+    }, 100);
+    
+    return () => clearTimeout(timeoutId);
+  }, [isSignedIn, assets.length, hasAutoUpdated, handleRefreshAllPrices]);
 
   // 매일 9시 5분 자동 업데이트 스케줄러
   useEffect(() => {
@@ -527,11 +379,6 @@ const App: React.FC = () => {
             updatedHistory = updatedHistory.slice(updatedHistory.length - 365);
         }
 
-        try {
-          localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(updatedHistory));
-        } catch (e) {
-          console.error("Failed to save history to localStorage", e);
-        }
         return updatedHistory;
       });
     };
@@ -547,30 +394,26 @@ const App: React.FC = () => {
   }, [assets, filterCategory]);
 
   const handleSaveAssets = useCallback(async () => {
+    if (!isSignedIn) {
+      setError('Google Drive 로그인 후 저장할 수 있습니다.');
+      setTimeout(() => setError(null), 3000);
+      return;
+    }
     setIsLoading(true);
     setError(null);
     setSuccessMessage(null);
     try {
-      if (isSignedIn) {
-        // Google Drive에 저장
-        const exportData = {
-          assets: assets,
-          portfolioHistory: portfolioHistory,
-          lastUpdateDate: new Date().toISOString().slice(0, 10)
-        };
-        const portfolioJSON = JSON.stringify(exportData, null, 2);
-        await googleDriveService.saveFile(portfolioJSON);
-        setSuccessMessage('포트폴리오가 Google Drive에 성공적으로 저장되었습니다.');
-      } else {
-        // localStorage에 저장
-        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(assets));
-        setSuccessMessage('포트폴리오가 브라우저에 성공적으로 저장되었습니다.');
-      }
+      const exportData = {
+        assets: assets,
+        portfolioHistory: portfolioHistory,
+        lastUpdateDate: new Date().toISOString().slice(0, 10)
+      };
+      const portfolioJSON = JSON.stringify(exportData, null, 2);
+      await googleDriveService.saveFile(portfolioJSON);
+      setSuccessMessage('포트폴리오가 Google Drive에 성공적으로 저장되었습니다.');
       setTimeout(() => setSuccessMessage(null), 3000);
     } catch (e: any) {
-      const errorMsg = isSignedIn 
-        ? 'Google Drive 저장에 실패했습니다. 네트워크 연결을 확인해주세요.'
-        : '브라우저 저장에 실패했습니다. 저장 공간이 부족할 수 있습니다.';
+      const errorMsg = 'Google Drive 저장에 실패했습니다. 네트워크 연결을 확인해주세요.';
       setError(errorMsg);
       setTimeout(() => setError(null), 3000);
     }
@@ -578,6 +421,11 @@ const App: React.FC = () => {
   }, [assets, portfolioHistory, isSignedIn]);
 
   const handleExportAssetsToFile = useCallback(async () => {
+    if (!isSignedIn) {
+      setError('Google Drive 로그인 후 내보내기 기능을 사용할 수 있습니다.');
+      setTimeout(() => setError(null), 3000);
+      return;
+    }
     setIsLoading(true);
     setError(null);
     setSuccessMessage(null);
@@ -609,9 +457,14 @@ const App: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [assets, portfolioHistory, fileName]);
+  }, [assets, portfolioHistory, fileName, isSignedIn]);
 
   const handleImportAssetsFromFile = useCallback(async () => {
+    if (!isSignedIn) {
+      setError('Google Drive 로그인 후 가져오기 기능을 사용할 수 있습니다.');
+      setTimeout(() => setError(null), 3000);
+      return;
+    }
     setError(null);
     setSuccessMessage(null);
     setIsLoading(true);
@@ -678,10 +531,15 @@ const App: React.FC = () => {
       setTimeout(() => setError(null), 3000);
       setIsLoading(false);
     }
-  }, []);
+  }, [isSignedIn]);
 
 
   const handleAddAsset = useCallback(async (newAssetData: NewAssetForm) => {
+    if (!isSignedIn) {
+      setError('Google Drive 로그인 후 자산을 추가할 수 있습니다.');
+      setTimeout(() => setError(null), 3000);
+      return;
+    }
     setIsAddAssetModalOpen(false);
     setIsLoading(true);
     setError(null);
@@ -737,9 +595,14 @@ const App: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [autoSave, portfolioHistory]);
+  }, [autoSave, portfolioHistory, isSignedIn]);
   
   const handleDeleteAsset = useCallback((assetId: string) => {
+    if (!isSignedIn) {
+      setError('Google Drive 로그인 후 자산을 삭제할 수 있습니다.');
+      setTimeout(() => setError(null), 3000);
+      return;
+    }
     setAssets(prevAssets => {
       const updated = prevAssets.filter(asset => asset.id !== assetId);
       // 자동 저장
@@ -747,7 +610,7 @@ const App: React.FC = () => {
       return updated;
     });
     setEditingAsset(null);
-  }, [autoSave, portfolioHistory]);
+  }, [autoSave, portfolioHistory, isSignedIn]);
 
   const handleEditAsset = useCallback((asset: Asset) => {
     setEditingAsset(asset);
@@ -758,6 +621,11 @@ const App: React.FC = () => {
   }, []);
 
   const handleUpdateAsset = useCallback(async (updatedAsset: Asset) => {
+    if (!isSignedIn) {
+      setError('Google Drive 로그인 후 자산을 수정할 수 있습니다.');
+      setTimeout(() => setError(null), 3000);
+      return;
+    }
     const originalAsset = assets.find(a => a.id === updatedAsset.id);
     if (!originalAsset) return;
 
@@ -827,9 +695,16 @@ const App: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [assets, autoSave, portfolioHistory]);
+  }, [assets, autoSave, portfolioHistory, isSignedIn]);
   
   const handleCsvFileUpload = useCallback(async (file: File): Promise<BulkUploadResult> => {
+    if (!isSignedIn) {
+      return {
+        successCount: 0,
+        failedCount: 0,
+        errors: [{ ticker: '권한 없음', reason: 'Google Drive 로그인 후 이용해주세요.' }]
+      };
+    }
     return new Promise((resolve) => {
         const reader = new FileReader();
         reader.onload = async (e) => {
@@ -973,7 +848,7 @@ const App: React.FC = () => {
         
         reader.readAsText(file);
     });
-  }, [autoSave, portfolioHistory]);
+  }, [autoSave, portfolioHistory, isSignedIn]);
 
   const totalValue = useMemo(() => {
     return assets.reduce((acc, asset) => acc + asset.currentPrice * asset.quantity, 0);
@@ -1051,6 +926,11 @@ const App: React.FC = () => {
   }, [assets, sellAlertDropRate]);
 
   const handleExportToCsv = useCallback(() => {
+    if (!isSignedIn) {
+      setError('Google Drive 로그인 후 내보내기 기능을 사용할 수 있습니다.');
+      setTimeout(() => setError(null), 3000);
+      return;
+    }
     if (assets.length === 0) {
         alert('내보낼 데이터가 없습니다.');
         return;
@@ -1129,7 +1009,7 @@ const App: React.FC = () => {
     } finally {
         setIsLoading(false);
     }
-  }, [assets]);
+  }, [assets, isSignedIn]);
   
   // Google 로그인 핸들러
   const handleSignIn = useCallback(async () => {
@@ -1157,9 +1037,6 @@ const App: React.FC = () => {
       setIsSignedIn(true);
       setGoogleUser(user);
       
-      // Google Drive에서 데이터 로드
-      await loadFromGoogleDrive();
-      
       setSuccessMessage(`${user.email} 계정으로 로그인되었습니다.`);
       setTimeout(() => setSuccessMessage(null), 3000);
     } catch (error: any) {
@@ -1169,65 +1046,20 @@ const App: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [loadFromGoogleDrive]);
+  }, []);
 
   // Google 로그아웃 핸들러
   const handleSignOut = useCallback(() => {
     googleDriveService.signOut();
     setIsSignedIn(false);
     setGoogleUser(null);
+    setAssets([]);
+    setPortfolioHistory([]);
+    setHasAutoUpdated(false);
     
-    // localStorage에서 데이터 로드
-    const { assets: loadedAssets } = loadFromLocalStorage();
-    if (loadedAssets.length > 0) {
-      setAssets(loadedAssets);
-    } else {
-      setAssets(initialAssets);
-    }
-    
-    setSuccessMessage('로그아웃되었습니다. 브라우저 로컬 저장소를 사용합니다.');
+    setSuccessMessage('로그아웃되었습니다. Google Drive 로그인 후 다시 이용해주세요.');
     setTimeout(() => setSuccessMessage(null), 3000);
-  }, [loadFromLocalStorage]);
-
-  // 충돌 해결: 로컬 데이터 사용
-  const handleSelectLocal = useCallback(() => {
-    const { assets: loadedAssets } = loadFromLocalStorage();
-    if (loadedAssets.length > 0) {
-      setAssets(loadedAssets);
-    } else {
-      setAssets(initialAssets);
-    }
-    
-    setConflictModalOpen(false);
-    setConflicts([]);
-    setPendingDriveAssets([]);
-    setPendingDriveHistory([]);
-    
-    setSuccessMessage('로컬 데이터를 사용합니다.');
-    setTimeout(() => setSuccessMessage(null), 3000);
-  }, [loadFromLocalStorage]);
-
-  // 충돌 해결: Google Drive 데이터 사용
-  const handleSelectDrive = useCallback(() => {
-    if (pendingDriveAssets.length > 0) {
-      setAssets(pendingDriveAssets);
-      if (pendingDriveHistory.length > 0) {
-        setPortfolioHistory(pendingDriveHistory);
-      }
-      
-      // Google Drive에 저장된 lastUpdateDate 확인
-      const today = new Date().toISOString().slice(0, 10);
-      localStorage.setItem(LAST_UPDATE_KEY, today);
-      
-      setSuccessMessage('Google Drive 데이터를 사용합니다.');
-      setTimeout(() => setSuccessMessage(null), 3000);
-    }
-    
-    setConflictModalOpen(false);
-    setConflicts([]);
-    setPendingDriveAssets([]);
-    setPendingDriveHistory([]);
-  }, [pendingDriveAssets, pendingDriveHistory]);
+  }, []);
 
   const handleTabChange = (tabId: ActiveTab) => {
     if (tabId !== 'portfolio') {
@@ -1284,133 +1116,138 @@ const App: React.FC = () => {
           </div>
         )}
 
-        <div className="border-b border-gray-700">
-          <nav className="-mb-px flex space-x-8" aria-label="Tabs">
-            <TabButton tabId="dashboard" onClick={() => handleTabChange('dashboard')}>대시보드</TabButton>
-            <TabButton tabId="portfolio" onClick={() => handleTabChange('portfolio')}>포트폴리오 상세</TabButton>
-          </nav>
-        </div>
+        {isSignedIn ? (
+          <>
+            <div className="border-b border-gray-700">
+              <nav className="-mb-px flex space-x-8" aria-label="Tabs">
+                <TabButton tabId="dashboard" onClick={() => handleTabChange('dashboard')}>대시보드</TabButton>
+                <TabButton tabId="portfolio" onClick={() => handleTabChange('portfolio')}>포트폴리오 상세</TabButton>
+              </nav>
+            </div>
 
-        <main className="mt-8">
-          {activeTab === 'dashboard' && (
-            <div className="space-y-6">
-              <div className="bg-gray-800 p-4 rounded-lg shadow-lg flex items-center justify-between flex-wrap gap-4">
-                  <div className="flex items-center gap-4" title="대시보드에 표시될 자산의 종류를 선택합니다.">
-                      <label htmlFor="dashboard-filter" className="text-sm font-medium text-gray-300">
-                          자산 구분 필터:
-                      </label>
-                      <div className="relative">
-                          <select
-                              id="dashboard-filter"
-                              value={dashboardFilterCategory}
-                              onChange={(e) => setDashboardFilterCategory(e.target.value as AssetCategory | 'ALL')}
-                              className="bg-gray-700 border border-gray-600 rounded-md py-2 pl-3 pr-8 text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent appearance-none"
-                          >
-                              <option value="ALL">전체 포트폴리오</option>
-                              {Object.values(AssetCategory).map((cat) => (
-                                  <option key={cat} value={cat}>{cat}</option>
-                              ))}
-                          </select>
-                          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-400">
-                              <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+            <main className="mt-8">
+              {activeTab === 'dashboard' && (
+                <div className="space-y-6">
+                  <div className="bg-gray-800 p-4 rounded-lg shadow-lg flex items-center justify-between flex-wrap gap-4">
+                      <div className="flex items-center gap-4" title="대시보드에 표시될 자산의 종류를 선택합니다.">
+                          <label htmlFor="dashboard-filter" className="text-sm font-medium text-gray-300">
+                              자산 구분 필터:
+                          </label>
+                          <div className="relative">
+                              <select
+                                  id="dashboard-filter"
+                                  value={dashboardFilterCategory}
+                                  onChange={(e) => setDashboardFilterCategory(e.target.value as AssetCategory | 'ALL')}
+                                  className="bg-gray-700 border border-gray-600 rounded-md py-2 pl-3 pr-8 text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent appearance-none"
+                              >
+                                  <option value="ALL">전체 포트폴리오</option>
+                                  {Object.values(AssetCategory).map((cat) => (
+                                      <option key={cat} value={cat}>{cat}</option>
+                                  ))}
+                              </select>
+                              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-400">
+                                  <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                              </div>
                           </div>
                       </div>
+                      <StatCard 
+                          title="매도 알림 발생" 
+                          value={`${alertCount}개`}
+                          tooltip="설정된 하락률 기준을 초과한 자산의 수입니다. 클릭하여 필터링된 목록을 확인하세요."
+                          onClick={() => {
+                              handleTabChange('portfolio');
+                              setFilterAlerts(true);
+                          }}
+                          isAlert={alertCount > 0}
+                          size="small"
+                      />
                   </div>
-                  <StatCard 
-                      title="매도 알림 발생" 
-                      value={`${alertCount}개`}
-                      tooltip="설정된 하락률 기준을 초과한 자산의 수입니다. 클릭하여 필터링된 목록을 확인하세요."
-                      onClick={() => {
-                          handleTabChange('portfolio');
-                          setFilterAlerts(true);
-                      }}
-                      isAlert={alertCount > 0}
-                      size="small"
-                  />
-              </div>
-               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                <StatCard title="총 자산 (원화)" value={formatCurrencyKRW(dashboardTotalValue)} tooltip="선택된 자산의 현재 평가금액 총합입니다." />
-                <StatCard title="투자 원금" value={formatCurrencyKRW(dashboardTotalPurchaseValue)} tooltip="선택된 자산의 총 매수금액 합계입니다." />
-                <StatCard title="총 손익 (원화)" value={formatCurrencyKRW(dashboardTotalGainLoss)} isProfit={dashboardTotalGainLoss >= 0} tooltip="총 평가금액에서 총 매수금액을 뺀 금액입니다."/>
-                <StatCard title="총 수익률" value={`${dashboardTotalReturn.toFixed(2)}%`} isProfit={dashboardTotalReturn >= 0} tooltip="총 손익을 총 매수금액으로 나눈 백분율입니다."/>
-              </div>
-              <ProfitLossChart history={portfolioHistory} assetsToDisplay={dashboardFilteredAssets} title={profitLossChartTitle} />
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div className="lg:col-span-1">
-                  <AllocationChart assets={assets} />
+                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <StatCard title="총 자산 (원화)" value={formatCurrencyKRW(dashboardTotalValue)} tooltip="선택된 자산의 현재 평가금액 총합입니다." />
+                    <StatCard title="투자 원금" value={formatCurrencyKRW(dashboardTotalPurchaseValue)} tooltip="선택된 자산의 총 매수금액 합계입니다." />
+                    <StatCard title="총 손익 (원화)" value={formatCurrencyKRW(dashboardTotalGainLoss)} isProfit={dashboardTotalGainLoss >= 0} tooltip="총 평가금액에서 총 매수금액을 뺀 금액입니다."/>
+                    <StatCard title="총 수익률" value={`${dashboardTotalReturn.toFixed(2)}%`} isProfit={dashboardTotalReturn >= 0} tooltip="총 손익을 총 매수금액으로 나눈 백분율입니다."/>
+                  </div>
+                  <ProfitLossChart history={portfolioHistory} assetsToDisplay={dashboardFilteredAssets} title={profitLossChartTitle} />
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div className="lg:col-span-1">
+                      <AllocationChart assets={assets} />
+                    </div>
+                    <div className="lg:col-span-1">
+                       <CategorySummaryTable assets={assets} totalPortfolioValue={totalValue} />
+                    </div>
+                  </div>
+                  <TopBottomAssets assets={assets} />
                 </div>
-                <div className="lg:col-span-1">
-                   <CategorySummaryTable assets={assets} totalPortfolioValue={totalValue} />
-                </div>
-              </div>
-              <TopBottomAssets assets={assets} />
-            </div>
-          )}
+              )}
 
-          {activeTab === 'portfolio' && (
-            <div className="space-y-6">
-               <SellAlertControl value={sellAlertDropRate} onChange={setSellAlertDropRate} />
-                <PortfolioTable
-                  assets={filteredAssets}
-                  history={portfolioHistory}
-                  onRefreshAll={() => handleRefreshAllPrices(false)}
-                  onEdit={handleEditAsset}
-                  isLoading={isLoading}
-                  sellAlertDropRate={sellAlertDropRate}
-                  filterCategory={filterCategory}
-                  onFilterChange={setFilterCategory}
-                  filterAlerts={filterAlerts}
-                  onFilterAlertsChange={setFilterAlerts}
-                />
-            </div>
-          )}
-        </main>
-        
-        <EditAssetModal
-          asset={editingAsset}
-          isOpen={!!editingAsset}
-          onClose={handleCloseEditModal}
-          onSave={handleUpdateAsset}
-          onDelete={handleDeleteAsset}
-          isLoading={isLoading}
-        />
-         <BulkUploadModal
-          isOpen={isBulkUploadModalOpen}
-          onClose={() => setIsBulkUploadModalOpen(false)}
-          onFileUpload={handleCsvFileUpload}
-        />
-        <AddNewAssetModal 
-          isOpen={isAddAssetModalOpen}
-          onClose={() => setIsAddAssetModalOpen(false)}
-          onAddAsset={handleAddAsset}
-          isLoading={isLoading}
-          assets={assets}
-        />
+              {activeTab === 'portfolio' && (
+                <div className="space-y-6">
+                   <SellAlertControl value={sellAlertDropRate} onChange={setSellAlertDropRate} />
+                    <PortfolioTable
+                      assets={filteredAssets}
+                      history={portfolioHistory}
+                      onRefreshAll={() => handleRefreshAllPrices(false)}
+                      onEdit={handleEditAsset}
+                      isLoading={isLoading}
+                      sellAlertDropRate={sellAlertDropRate}
+                      filterCategory={filterCategory}
+                      onFilterChange={setFilterCategory}
+                      filterAlerts={filterAlerts}
+                      onFilterAlertsChange={setFilterAlerts}
+                    />
+                </div>
+              )}
+            </main>
+            
+            <EditAssetModal
+              asset={editingAsset}
+              isOpen={!!editingAsset}
+              onClose={handleCloseEditModal}
+              onSave={handleUpdateAsset}
+              onDelete={handleDeleteAsset}
+              isLoading={isLoading}
+            />
+             <BulkUploadModal
+              isOpen={isBulkUploadModalOpen}
+              onClose={() => setIsBulkUploadModalOpen(false)}
+              onFileUpload={handleCsvFileUpload}
+            />
+            <AddNewAssetModal 
+              isOpen={isAddAssetModalOpen}
+              onClose={() => setIsAddAssetModalOpen(false)}
+              onAddAsset={handleAddAsset}
+              isLoading={isLoading}
+              assets={assets}
+            />
+
+            <button
+              onClick={() => setIsAssistantOpen(true)}
+              className="fixed bottom-8 right-8 bg-primary hover:bg-primary-dark text-white rounded-full p-4 shadow-lg transition-transform transform hover:scale-110 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 focus:ring-primary"
+              title="포트폴리오 어시스턴트 열기"
+              aria-label="Open portfolio assistant"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M14 12c0 .552-.448 1-1 1s-1-.448-1-1 .448-1 1-1 1 .448 1 1zm-1-3.5c-2.481 0-4.5 2.019-4.5 4.5s2.019 4.5 4.5 4.5 4.5-2.019 4.5-4.5-2.019-4.5-4.5-4.5zm0-3.5c-4.411 0-8 3.589-8 8s3.589 8 8 8 8-3.589 8-8-3.589-8-8-8zm-5.5 8c0-3.033 2.468-5.5 5.5-5.5s5.5 2.467 5.5 5.5-2.468 5.5-5.5 5.5-5.5-2.467-5.5-5.5zm11.5 0c0 .828-.672 1.5-1.5 1.5s-1.5-.672-1.5-1.5.672-1.5 1.5-1.5 1.5.672 1.5 1.5z"/>
+              </svg>
+            </button>
+
+            <PortfolioAssistant
+              isOpen={isAssistantOpen}
+              onClose={() => setIsAssistantOpen(false)}
+              assets={assets}
+            />
+          </>
+        ) : (
+          <div className="mt-12 bg-gray-800 border border-gray-700 rounded-lg p-8 text-center text-gray-200">
+            <h2 className="text-2xl font-semibold mb-4">Google Drive 로그인 필요</h2>
+            <p className="text-gray-400">
+              포트폴리오 데이터는 Google Drive에만 저장됩니다. 상단의 로그인 버튼을 눌러 계정에 연결한 뒤 이용해주세요.
+            </p>
+          </div>
+        )}
       </div>
 
-      <button
-        onClick={() => setIsAssistantOpen(true)}
-        className="fixed bottom-8 right-8 bg-primary hover:bg-primary-dark text-white rounded-full p-4 shadow-lg transition-transform transform hover:scale-110 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 focus:ring-primary"
-        title="포트폴리오 어시스턴트 열기"
-        aria-label="Open portfolio assistant"
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M14 12c0 .552-.448 1-1 1s-1-.448-1-1 .448-1 1-1 1 .448 1 1zm-1-3.5c-2.481 0-4.5 2.019-4.5 4.5s2.019 4.5 4.5 4.5 4.5-2.019 4.5-4.5-2.019-4.5-4.5-4.5zm0-3.5c-4.411 0-8 3.589-8 8s3.589 8 8 8 8-3.589 8-8-3.589-8-8-8zm-5.5 8c0-3.033 2.468-5.5 5.5-5.5s5.5 2.467 5.5 5.5-2.468 5.5-5.5 5.5-5.5-2.467-5.5-5.5zm11.5 0c0 .828-.672 1.5-1.5 1.5s-1.5-.672-1.5-1.5.672-1.5 1.5-1.5 1.5.672 1.5 1.5z"/>
-        </svg>
-      </button>
-
-      <PortfolioAssistant
-        isOpen={isAssistantOpen}
-        onClose={() => setIsAssistantOpen(false)}
-        assets={assets}
-      />
-
-      <DataConflictModal
-        isOpen={conflictModalOpen}
-        conflicts={conflicts}
-        onSelectLocal={handleSelectLocal}
-        onSelectDrive={handleSelectDrive}
-      />
     </div>
   );
 };
