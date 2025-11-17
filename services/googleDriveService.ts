@@ -15,12 +15,15 @@ export interface DriveFile {
   modifiedTime: string;
 }
 
+const DRIVE_FOLDER_ID = '10O5cGNd9QVoAAxR8NdojqI9AD7wj0Q_g';
+
 class GoogleDriveService {
   private accessToken: string | null = null;
   private user: GoogleUser | null = null;
   private clientId: string | null = null;
   private tokenClient: google.accounts.oauth2.TokenClient | null = null;
   private isInitialized = false;
+  private folderId: string | null = DRIVE_FOLDER_ID;
 
   // Google Identity Services 초기화
   async initialize(clientId: string): Promise<void> {
@@ -245,9 +248,14 @@ class GoogleDriveService {
     if (!this.accessToken) {
       throw new Error('Not authenticated');
     }
-    
+
+    let query = "name = 'portfolio.json' and trashed = false";
+    if (this.folderId) {
+      query += ` and '${this.folderId}' in parents`;
+    }
+
     const searchParams = new URLSearchParams({
-      q: "name = 'portfolio.json' and trashed = false",
+      q: query,
       spaces: 'drive',
       fields: 'files(id,name),nextPageToken',
       pageSize: '10',
@@ -283,7 +291,7 @@ class GoogleDriveService {
     const existingFile = files.find(f => f.name === fileName);
 
     const fileContent = new Blob([content], { type: 'application/json' });
-    const metadata = {
+    const baseMetadata = {
       name: fileName,
       mimeType: 'application/json',
     };
@@ -291,7 +299,7 @@ class GoogleDriveService {
     if (existingFile) {
       // 파일 업데이트
       const form = new FormData();
-      form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
+      form.append('metadata', new Blob([JSON.stringify(baseMetadata)], { type: 'application/json' }));
       form.append('file', fileContent);
 
       const response = await fetch(
@@ -310,6 +318,10 @@ class GoogleDriveService {
       }
     } else {
       // 새 파일 생성
+      const metadata: any = { ...baseMetadata };
+      if (this.folderId) {
+        metadata.parents = [this.folderId];
+      }
       const form = new FormData();
       form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
       form.append('file', fileContent);
