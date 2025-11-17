@@ -251,7 +251,6 @@ class GoogleDriveService {
       spaces: 'drive',
       fields: 'files(id,name),nextPageToken',
       pageSize: '10',
-      corpora: 'user',
     });
 
     const response = await fetch(
