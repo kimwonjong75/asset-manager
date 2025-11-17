@@ -123,9 +123,10 @@ const App: React.FC = () => {
         setSuccessMessage('Google Drive에 저장된 포트폴리오가 없습니다. 자산을 추가해주세요.');
         setTimeout(() => setSuccessMessage(null), 3000);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to load from Google Drive:', error);
-      setError('Google Drive에서 데이터를 불러오지 못했습니다.');
+      const message = error?.message ? error.message : '';
+      setError(`Google Drive에서 데이터를 불러오지 못했습니다.${message ? ` (${message})` : ''}`);
       setTimeout(() => setError(null), 3000);
     }
   }, []);

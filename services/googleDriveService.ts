@@ -245,9 +245,17 @@ class GoogleDriveService {
     if (!this.accessToken) {
       throw new Error('Not authenticated');
     }
+    
+    const searchParams = new URLSearchParams({
+      q: "name = 'portfolio.json' and trashed = false",
+      spaces: 'drive',
+      fields: 'files(id,name),nextPageToken',
+      pageSize: '10',
+      corpora: 'user',
+    });
 
     const response = await fetch(
-      'https://www.googleapis.com/drive/v3/files?q=name="portfolio.json" and trashed=false',
+      `https://www.googleapis.com/drive/v3/files?${searchParams.toString()}`,
       {
         headers: {
           Authorization: `Bearer ${this.accessToken}`,
@@ -256,7 +264,9 @@ class GoogleDriveService {
     );
 
     if (!response.ok) {
-      throw new Error('Failed to list files');
+      const errorText = await response.text().catch(() => 'Unknown error');
+      console.error('Drive list files error', response.status, errorText);
+      throw new Error(`Failed to list files (${response.status})`);
     }
 
     const data = await response.json();
@@ -345,7 +355,9 @@ class GoogleDriveService {
     );
 
     if (!response.ok) {
-      throw new Error('Failed to load file');
+      const errorText = await response.text().catch(() => 'Unknown error');
+      console.error('Drive load file error', response.status, errorText);
+      throw new Error(`Failed to load file (${response.status})`);
     }
 
     return await response.text();
