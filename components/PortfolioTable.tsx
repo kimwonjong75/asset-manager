@@ -254,9 +254,6 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({ assets, history, onRefr
               <th scope="col" className={`${thClasses} justify-end`} onClick={() => requestSort('allocation')} title="해당 자산의 평가금액이 전체 포트폴리오에서 차지하는 비율입니다. (개별 자산 평가금액 / 총 자산) * 100">
                 <div className={`${thContentClasses} justify-end`}><span>비중</span> <SortIcon sortKey='allocation'/></div>
               </th>
-              <th scope="col" className={`${thClasses}`} title="종목 메모">
-                <div className={thContentClasses}><span>메모</span></div>
-              </th>
               <th scope="col" className="px-4 py-3 text-center" title="자산 정보 수정">수정</th>
               <th scope="col" className="px-4 py-3 text-center" title="자산 상세 정보 보기">상세</th>
             </tr>
@@ -331,15 +328,6 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({ assets, history, onRefr
                       {isNonKRW && <div className="text-xs text-gray-500">{formatOriginalCurrency(asset.priceOriginal * asset.quantity, asset.currency)}</div>}
                     </td>
                     <td className="px-4 py-4 text-right">{allocation.toFixed(2)}%</td>
-                    <td className="px-4 py-4 text-sm text-gray-400 max-w-xs">
-                      {asset.memo ? (
-                        <div className="truncate" title={asset.memo}>
-                          {asset.memo}
-                        </div>
-                      ) : (
-                        <span className="text-gray-600">-</span>
-                      )}
-                    </td>
                     <td className="px-4 py-4 text-center">
                       <button onClick={() => onEdit(asset)} disabled={isLoading} className="p-2 text-yellow-400 hover:text-yellow-300 disabled:text-gray-600 disabled:cursor-not-allowed transition" title="선택한 자산의 정보를 수정합니다.">
                           <EditIcon />
@@ -353,7 +341,7 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({ assets, history, onRefr
                   </tr>
                   {expandedAssetId === asset.id && (
                     <tr className="bg-gray-900/50">
-                      <td colSpan={14} className="p-0 sm:p-2">
+                      <td colSpan={13} className="p-0 sm:p-2">
                         <AssetTrendChart
                           history={history}
                           assetId={asset.id}
@@ -366,7 +354,7 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({ assets, history, onRefr
               );
             }) : (
               <tr>
-                <td colSpan={14} className="text-center py-8 text-gray-500">
+                <td colSpan={13} className="text-center py-8 text-gray-500">
                   {filterAlerts 
                     ? '알림 기준을 초과한 자산이 없습니다.'
                     : filterCategory === 'ALL' 

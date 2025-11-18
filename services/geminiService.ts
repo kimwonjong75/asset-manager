@@ -30,9 +30,42 @@ Your final output must be only the JSON object, nothing else.`;
         });
 
         const jsonString = response.text.trim();
-        // The model might wrap the JSON in ```json ... ```, so we clean that.
-        const cleanedJsonString = jsonString.replace(/^```json\s*|```$/g, '');
-        const data = JSON.parse(cleanedJsonString);
+        
+        // JSON 추출: 여러 패턴 시도
+        let cleanedJsonString = jsonString;
+        
+        // 패턴 1: ```json ... ``` 제거
+        cleanedJsonString = cleanedJsonString.replace(/^```json\s*|```$/g, '');
+        
+        // 패턴 2: ``` ... ``` 제거
+        cleanedJsonString = cleanedJsonString.replace(/^```\s*|```$/g, '');
+        
+        // 패턴 3: JSON 객체만 추출 (중괄호로 시작하고 끝나는 부분)
+        const jsonMatch = cleanedJsonString.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+            cleanedJsonString = jsonMatch[0];
+        }
+        
+        // 패턴 4: 앞뒤 불필요한 텍스트 제거
+        cleanedJsonString = cleanedJsonString.trim();
+        
+        // "I am unable" 같은 오류 메시지 체크
+        if (cleanedJsonString.toLowerCase().includes('i am unable') || 
+            cleanedJsonString.toLowerCase().includes('i cannot') ||
+            cleanedJsonString.toLowerCase().startsWith('i ') ||
+            !cleanedJsonString.startsWith('{')) {
+            console.error('Invalid response from Gemini:', cleanedJsonString.substring(0, 200));
+            throw new Error('API가 유효한 JSON을 반환하지 않았습니다.');
+        }
+        
+        let data;
+        try {
+            data = JSON.parse(cleanedJsonString);
+        } catch (parseError) {
+            console.error('JSON parse error:', parseError);
+            console.error('Response text:', cleanedJsonString.substring(0, 500));
+            throw new Error('JSON 파싱에 실패했습니다.');
+        }
 
         if (typeof data.name !== 'string' || typeof data.priceKRW !== 'number' || typeof data.priceOriginal !== 'number' || typeof data.currency !== 'string') {
             throw new Error('Invalid data format from API.');
