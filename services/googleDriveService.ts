@@ -150,7 +150,7 @@ class GoogleDriveService {
           console.log('Scope includes userinfo.profile:', response.scope?.includes('userinfo.profile'));
           
           // 토큰 만료 시간 저장 (기본 1시간, expires_in이 있으면 사용)
-          const expiresIn = response.expires_in ? parseInt(response.expires_in, 10) * 1000 : 3600 * 1000;
+          const expiresIn = response.expires_in ? response.expires_in * 1000 : 3600 * 1000;
           const expiryTime = Date.now() + expiresIn;
           localStorage.setItem('google_drive_token_expiry', expiryTime.toString());
           
@@ -261,7 +261,7 @@ class GoogleDriveService {
           }
           
           this.accessToken = response.access_token;
-          const expiresIn = response.expires_in ? parseInt(response.expires_in, 10) * 1000 : 3600 * 1000;
+          const expiresIn = response.expires_in ? response.expires_in * 1000 : 3600 * 1000;
           const expiryTime = Date.now() + expiresIn;
           localStorage.setItem('google_drive_access_token', this.accessToken);
           localStorage.setItem('google_drive_token_expiry', expiryTime.toString());

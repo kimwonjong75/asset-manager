@@ -274,20 +274,20 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({ assets, history, onRefr
                     <td className="px-4 py-4 font-medium text-white break-words">
                       <div className="flex flex-col">
                         <div className="flex items-center gap-2">
-                          <div className="group relative">
+                          <div className="group relative inline-block">
                             <a 
                               href={`https://www.google.com/search?q=${encodeURIComponent(asset.ticker + ' 주가')}`}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="font-bold hover:underline text-primary-light cursor-pointer"
+                              className="font-bold hover:underline text-primary-light cursor-pointer inline-block"
                               title={asset.memo ? `${asset.memo}\n\n클릭하여 주가 정보 검색` : `${asset.ticker} 주가 정보 검색`}
                             >
                               {asset.name}
                             </a>
                             {asset.memo && (
-                              <div className="absolute left-0 top-full mt-1 w-64 p-2 bg-gray-800 text-white text-xs rounded shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 whitespace-pre-wrap break-words border border-gray-600">
-                                <div className="font-semibold mb-1 text-primary-light">메모:</div>
-                                {asset.memo}
+                              <div className="absolute left-0 top-full mt-2 w-64 p-3 bg-gray-800 text-white text-xs rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-[100] whitespace-pre-wrap break-words border border-gray-600 pointer-events-none">
+                                <div className="font-semibold mb-1.5 text-primary-light border-b border-gray-600 pb-1">메모:</div>
+                                <div className="text-gray-200">{asset.memo}</div>
                               </div>
                             )}
                           </div>
