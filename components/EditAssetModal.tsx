@@ -35,7 +35,7 @@ const EditAssetModal: React.FC<EditAssetModalProps> = ({ asset, isOpen, onClose,
 
   if (!isOpen || !formData) return null;
   
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData(prev => {
         if (!prev) return null;
@@ -136,6 +136,18 @@ const EditAssetModal: React.FC<EditAssetModalProps> = ({ asset, isOpen, onClose,
                     title="비워두면 전역 설정을 따릅니다."
                 />
             </div>
+          </div>
+          <div>
+            <label htmlFor="memo-edit" className={labelClasses}>메모</label>
+            <textarea
+              id="memo-edit"
+              name="memo"
+              value={formData.memo || ''}
+              onChange={handleChange}
+              className={inputClasses}
+              rows={3}
+              placeholder="종목에 대한 메모를 입력하세요..."
+            />
           </div>
           
           <div className="mt-8 flex justify-between items-center pt-4">

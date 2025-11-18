@@ -161,6 +161,7 @@ const App: React.FC = () => {
   const [dashboardFilterCategory, setDashboardFilterCategory] = useState<AssetCategory | 'ALL'>('ALL');
   const [isAssistantOpen, setIsAssistantOpen] = useState<boolean>(false);
   const [filterAlerts, setFilterAlerts] = useState(false);
+  const [searchQuery, setSearchQuery] = useState<string>('');
   
   // 자동 저장 함수 (디바운싱 적용)
   const autoSave = useCallback(
@@ -388,11 +389,25 @@ const App: React.FC = () => {
   }, [assets]);
 
   const filteredAssets = useMemo(() => {
-    if (filterCategory === 'ALL') {
-      return assets;
+    let filtered = assets;
+    
+    // 카테고리 필터
+    if (filterCategory !== 'ALL') {
+      filtered = filtered.filter(asset => asset.category === filterCategory);
     }
-    return assets.filter(asset => asset.category === filterCategory);
-  }, [assets, filterCategory]);
+    
+    // 검색 필터 (종목명, 티커, 메모에서 검색)
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase().trim();
+      filtered = filtered.filter(asset => 
+        asset.name.toLowerCase().includes(query) ||
+        asset.ticker.toLowerCase().includes(query) ||
+        (asset.memo && asset.memo.toLowerCase().includes(query))
+      );
+    }
+    
+    return filtered;
+  }, [assets, filterCategory, searchQuery]);
 
   const handleSaveAssets = useCallback(async () => {
     if (!isSignedIn) {
@@ -1207,6 +1222,8 @@ const App: React.FC = () => {
                       onFilterChange={setFilterCategory}
                       filterAlerts={filterAlerts}
                       onFilterAlertsChange={setFilterAlerts}
+                      searchQuery={searchQuery}
+                      onSearchChange={setSearchQuery}
                     />
                 </div>
               )}

@@ -14,12 +14,14 @@ interface PortfolioTableProps {
   onFilterChange: (category: AssetCategory | 'ALL') => void;
   filterAlerts: boolean;
   onFilterAlertsChange: (isActive: boolean) => void;
+  searchQuery?: string;
+  onSearchChange?: (query: string) => void;
 }
 
 type SortKey = 'name' | 'purchaseDate' | 'quantity' | 'purchasePrice' | 'currentPrice' | 'returnPercentage' | 'dropFromHigh' | 'purchaseValueKRW' | 'currentValue' | 'allocation';
 type SortDirection = 'ascending' | 'descending';
 
-const PortfolioTable: React.FC<PortfolioTableProps> = ({ assets, history, onRefreshAll, onEdit, isLoading, sellAlertDropRate, filterCategory, onFilterChange, filterAlerts, onFilterAlertsChange }) => {
+const PortfolioTable: React.FC<PortfolioTableProps> = ({ assets, history, onRefreshAll, onEdit, isLoading, sellAlertDropRate, filterCategory, onFilterChange, filterAlerts, onFilterAlertsChange, searchQuery = '', onSearchChange }) => {
   const [sortConfig, setSortConfig] = useState<{ key: SortKey; direction: SortDirection } | null>(null);
   const [expandedAssetId, setExpandedAssetId] = useState<string | null>(null);
 
@@ -162,6 +164,20 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({ assets, history, onRefr
        <div className="bg-gray-800 px-4 sm:px-6 pt-4 sm:pt-6 pb-4 flex justify-between items-center flex-wrap gap-4 border-b border-gray-700">
         <div className="flex items-center gap-4 flex-wrap">
           <h2 className="text-xl font-bold text-white">포트폴리오 현황</h2>
+          {onSearchChange && (
+            <div className="relative">
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => onSearchChange(e.target.value)}
+                placeholder="종목명, 티커, 메모 검색..."
+                className="bg-gray-700 border border-gray-600 rounded-md py-2 pl-10 pr-4 text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent w-64"
+              />
+              <svg className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </div>
+          )}
           <div className="relative">
             <select
                 value={filterCategory}
@@ -238,6 +254,9 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({ assets, history, onRefr
               <th scope="col" className={`${thClasses} justify-end`} onClick={() => requestSort('allocation')} title="해당 자산의 평가금액이 전체 포트폴리오에서 차지하는 비율입니다. (개별 자산 평가금액 / 총 자산) * 100">
                 <div className={`${thContentClasses} justify-end`}><span>비중</span> <SortIcon sortKey='allocation'/></div>
               </th>
+              <th scope="col" className={`${thClasses}`} title="종목 메모">
+                <div className={thContentClasses}><span>메모</span></div>
+              </th>
               <th scope="col" className="px-4 py-3 text-center" title="자산 정보 수정">수정</th>
               <th scope="col" className="px-4 py-3 text-center" title="자산 상세 정보 보기">상세</th>
             </tr>
@@ -254,15 +273,20 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({ assets, history, onRefr
                   <tr className={`border-b border-gray-700 transition-colors duration-200 ${isAlertTriggered ? 'bg-danger/10 hover:bg-danger/20' : 'hover:bg-gray-700/50'}`}>
                     <td className="px-4 py-4 font-medium text-white break-words">
                       <div className="flex flex-col">
-                        <a 
-                          href={`https://www.google.com/search?q=${encodeURIComponent(asset.ticker + ' 주가')}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="font-bold hover:underline text-primary-light"
-                          title={`${asset.ticker} 주가 정보 검색`}
-                        >
-                          {asset.name}
-                        </a>
+                        <div className="flex items-center gap-2">
+                          <a 
+                            href={`https://www.google.com/search?q=${encodeURIComponent(asset.ticker + ' 주가')}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="font-bold hover:underline text-primary-light"
+                            title={`${asset.ticker} 주가 정보 검색`}
+                          >
+                            {asset.name}
+                          </a>
+                          {asset.memo && (
+                            <span className="text-xs text-gray-500" title={asset.memo}>📝</span>
+                          )}
+                        </div>
                         <span className="text-xs text-gray-500 break-all">{asset.ticker} | {asset.exchange}</span>
                       </div>
                     </td>
@@ -302,6 +326,15 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({ assets, history, onRefr
                       {isNonKRW && <div className="text-xs text-gray-500">{formatOriginalCurrency(asset.priceOriginal * asset.quantity, asset.currency)}</div>}
                     </td>
                     <td className="px-4 py-4 text-right">{allocation.toFixed(2)}%</td>
+                    <td className="px-4 py-4 text-sm text-gray-400 max-w-xs">
+                      {asset.memo ? (
+                        <div className="truncate" title={asset.memo}>
+                          {asset.memo}
+                        </div>
+                      ) : (
+                        <span className="text-gray-600">-</span>
+                      )}
+                    </td>
                     <td className="px-4 py-4 text-center">
                       <button onClick={() => onEdit(asset)} disabled={isLoading} className="p-2 text-yellow-400 hover:text-yellow-300 disabled:text-gray-600 disabled:cursor-not-allowed transition" title="선택한 자산의 정보를 수정합니다.">
                           <EditIcon />
@@ -315,7 +348,7 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({ assets, history, onRefr
                   </tr>
                   {expandedAssetId === asset.id && (
                     <tr className="bg-gray-900/50">
-                      <td colSpan={13} className="p-0 sm:p-2">
+                      <td colSpan={14} className="p-0 sm:p-2">
                         <AssetTrendChart
                           history={history}
                           assetId={asset.id}
@@ -328,7 +361,7 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({ assets, history, onRefr
               );
             }) : (
               <tr>
-                <td colSpan={13} className="text-center py-8 text-gray-500">
+                <td colSpan={14} className="text-center py-8 text-gray-500">
                   {filterAlerts 
                     ? '알림 기준을 초과한 자산이 없습니다.'
                     : filterCategory === 'ALL' 

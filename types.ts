@@ -50,6 +50,7 @@ export interface Asset {
   priceOriginal: number; // In original currency
   highestPrice: number; // In KRW
   sellAlertDropRate?: number;
+  memo?: string; // 종목 메모
 }
 
 export type NewAssetForm = Omit<Asset, 'id' | 'name' | 'currentPrice' | 'priceOriginal' | 'highestPrice' | 'purchaseExchangeRate'>;
