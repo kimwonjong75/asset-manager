@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Asset, AssetCategory, AssetRegion, NewAssetForm, EXCHANGE_MAP, REGION_EXCHANGE_MAP, REGION_TO_CATEGORY, Currency, SymbolSearchResult } from '../types';
+import { Asset, AssetCategory, AssetRegion, NewAssetForm, EXCHANGE_MAP, REGION_EXCHANGE_MAP, REGION_TO_CATEGORY, Currency, SymbolSearchResult, ALL_EXCHANGES } from '../types';
 import { searchSymbols } from '../services/geminiService';
 
 interface AddNewAssetModalProps {
@@ -77,44 +77,14 @@ const AddNewAssetModal: React.FC<AddNewAssetModalProps> = ({ isOpen, onClose, on
     return () => { clearTimeout(handler); };
   }, [searchQuery, ticker, isCashCategory]);
 
-  // 지역 변경 시 카테고리와 거래소 자동 설정
+  // 지역 변경 시 카테고리만 자동 설정 (거래소는 독립적으로 선택)
   useEffect(() => {
     const newCategory = REGION_TO_CATEGORY[region];
     setCategory(newCategory);
     
-    const exchangesForRegion = REGION_EXCHANGE_MAP[region] || [];
-    if (!exchangesForRegion.includes(exchange)) {
-      setExchange(exchangesForRegion[0] || '');
-    }
-    
-    // 지역에 따른 통화 자동 설정
-    switch(region) {
-        case AssetRegion.KOREA:
-            setCurrency(Currency.KRW);
-            break;
-        case AssetRegion.USA:
-            setCurrency(Currency.USD);
-            break;
-        case AssetRegion.JAPAN:
-            setCurrency(Currency.JPY);
-            break;
-        case AssetRegion.CHINA:
-            setCurrency(Currency.CNY);
-            break;
-        case AssetRegion.GOLD:
-        case AssetRegion.COMMODITIES:
-            setCurrency(Currency.USD); // 기본값, 변경 가능
-            break;
-        case AssetRegion.CRYPTOCURRENCY:
-            setCurrency(Currency.USD);
-            break;
-        case AssetRegion.CASH:
-            setCurrency(Currency.KRW); // 기본값
-            break;
-        default:
-            break;
-    }
-  }, [region, exchange]);
+    // 거래소 자동 변경 제거 - 사용자가 수동으로 선택
+    // 통화는 지역에 따라 기본값만 제안 (자동 설정하지 않음)
+  }, [region]);
 
   useEffect(() => {
     const isCash = region === AssetRegion.CASH;
@@ -152,18 +122,9 @@ const AddNewAssetModal: React.FC<AddNewAssetModalProps> = ({ isOpen, onClose, on
     setSearchQuery(result.name);
     setExchange(result.exchange);
 
-    // 거래소로부터 지역 찾기
-    let foundRegion: AssetRegion | null = null;
-    for (const reg in REGION_EXCHANGE_MAP) {
-      if (REGION_EXCHANGE_MAP[reg as AssetRegion].includes(result.exchange)) {
-        foundRegion = reg as AssetRegion;
-        break;
-      }
-    }
+    // 지역 자동 설정 제거 - 사용자가 수동으로 선택
+    // 거래소와 지역은 독립적으로 선택 가능
     
-    if (foundRegion) {
-      setRegion(foundRegion);
-    }
     setSearchResults([]);
   };
 
@@ -191,7 +152,6 @@ const AddNewAssetModal: React.FC<AddNewAssetModalProps> = ({ isOpen, onClose, on
   
   const inputClasses = "w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition";
   const labelClasses = "block text-sm font-medium text-gray-300 mb-1";
-  const exchangesForRegion = REGION_EXCHANGE_MAP[region] || [];
   const showResults = isFocused && searchResults.length > 0 && !isCashCategory;
 
   if (!isOpen) return null;
@@ -218,10 +178,21 @@ const AddNewAssetModal: React.FC<AddNewAssetModalProps> = ({ isOpen, onClose, on
             </div>
             <div>
                 <label htmlFor="exchange" className={labelClasses}>거래소/시장</label>
-                <select id="exchange" value={exchange} onChange={(e) => setExchange(e.target.value)} className={inputClasses} title="자산이 거래되는 시장을 선택하세요." disabled={exchangesForRegion.length === 0 || isCashCategory}>
-                {exchangesForRegion.map((ex) => (
-                    <option key={ex} value={ex}>{ex}</option>
-                ))}
+                <select 
+                  id="exchange" 
+                  value={exchange} 
+                  onChange={(e) => setExchange(e.target.value)} 
+                  className={inputClasses} 
+                  title="자산이 거래되는 시장을 선택하세요. 지역/테마와 독립적으로 선택 가능합니다." 
+                  disabled={isCashCategory}
+                >
+                  {isCashCategory ? (
+                    <option value="현금">현금</option>
+                  ) : (
+                    ALL_EXCHANGES.map((ex) => (
+                      <option key={ex} value={ex}>{ex}</option>
+                    ))
+                  )}
                 </select>
             </div>
             

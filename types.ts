@@ -50,6 +50,26 @@ export const REGION_EXCHANGE_MAP: Record<AssetRegion, string[]> = {
     [AssetRegion.CASH]: ["현금"],
 };
 
+// 모든 거래소 통합 리스트 (지역과 독립적으로 선택 가능)
+export const ALL_EXCHANGES: string[] = [
+  "KRX (코스피/코스닥)",
+  "KONEX",
+  "NASDAQ",
+  "NYSE",
+  "AMEX",
+  "TSE (도쿄)",
+  "SSE (상하이)",
+  "SZSE (선전)",
+  "HKEX (홍콩)",
+  "KRX 금시장",
+  "COMEX",
+  "LBMA",
+  "NYMEX",
+  "CME",
+  "ICE",
+  "주요 거래소 (종합)"
+];
+
 // 기존 호환성을 위한 EXCHANGE_MAP
 export const EXCHANGE_MAP: Record<string, string[]> = {
     [AssetCategory.KOREAN_STOCK]: ["KRX (코스피/코스닥)", "KONEX"],
