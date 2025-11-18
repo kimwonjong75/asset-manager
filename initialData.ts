@@ -48,7 +48,7 @@ export const initialAssets: Asset[] = [
   },
    {
     id: '4',
-    category: AssetCategory.GOLD,
+    category: AssetCategory.PHYSICAL_ASSET,
     ticker: 'KR7079120004',
     exchange: 'KRX 금시장',
     name: 'KRX 금현물',

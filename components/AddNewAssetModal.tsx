@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Asset, AssetCategory, AssetRegion, NewAssetForm, EXCHANGE_MAP, REGION_EXCHANGE_MAP, REGION_TO_CATEGORY, Currency, SymbolSearchResult, ALL_EXCHANGES } from '../types';
+import { Asset, AssetCategory, AssetRegion, NewAssetForm, EXCHANGE_MAP, REGION_EXCHANGE_MAP, REGION_TO_CATEGORY, Currency, SymbolSearchResult, COMMON_EXCHANGES, inferCategoryFromExchange } from '../types';
 import { searchSymbols } from '../services/geminiService';
 
 interface AddNewAssetModalProps {
@@ -122,8 +122,9 @@ const AddNewAssetModal: React.FC<AddNewAssetModalProps> = ({ isOpen, onClose, on
     setSearchQuery(result.name);
     setExchange(result.exchange);
 
-    // 지역 자동 설정 제거 - 사용자가 수동으로 선택
-    // 거래소와 지역은 독립적으로 선택 가능
+    // 거래소에서 자산구분 자동 추론
+    const inferredCategory = inferCategoryFromExchange(result.exchange);
+    setCategory(inferredCategory);
     
     setSearchResults([]);
   };
@@ -169,11 +170,26 @@ const AddNewAssetModal: React.FC<AddNewAssetModalProps> = ({ isOpen, onClose, on
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-                <label htmlFor="region" className={labelClasses}>자산 구분 (지역/상품)</label>
+                <label htmlFor="category" className={labelClasses}>자산 구분</label>
+                <select 
+                  id="category" 
+                  value={category} 
+                  onChange={(e) => setCategory(e.target.value as AssetCategory)} 
+                  className={inputClasses} 
+                  title="자산의 구분을 선택하세요. 거래소 선택 시 자동으로 설정되며 수동으로 변경할 수 있습니다."
+                >
+                  {Object.values(AssetCategory).map((cat) => (
+                    <option key={cat} value={cat}>{cat}</option>
+                  ))}
+                </select>
+            </div>
+            <div>
+                <label htmlFor="region" className={labelClasses}>지역/테마 (선택사항)</label>
                 <select id="region" value={region} onChange={(e) => setRegion(e.target.value as AssetRegion)} className={inputClasses} title="퀀트 전략 분석을 위한 자산 지역/상품 구분을 선택하세요.">
-                {Object.values(AssetRegion).map((reg) => (
+                  <option value="">없음</option>
+                  {Object.values(AssetRegion).map((reg) => (
                     <option key={reg} value={reg}>{reg}</option>
-                ))}
+                  ))}
                 </select>
             </div>
             <div>
@@ -181,15 +197,20 @@ const AddNewAssetModal: React.FC<AddNewAssetModalProps> = ({ isOpen, onClose, on
                 <select 
                   id="exchange" 
                   value={exchange} 
-                  onChange={(e) => setExchange(e.target.value)} 
+                  onChange={(e) => {
+                    setExchange(e.target.value);
+                    // 거래소 변경 시 자산구분 자동 추론
+                    const inferredCategory = inferCategoryFromExchange(e.target.value);
+                    setCategory(inferredCategory);
+                  }}
                   className={inputClasses} 
-                  title="자산이 거래되는 시장을 선택하세요. 지역/테마와 독립적으로 선택 가능합니다." 
+                  title="자산이 거래되는 시장을 선택하세요. 자산구분이 자동으로 설정됩니다." 
                   disabled={isCashCategory}
                 >
                   {isCashCategory ? (
                     <option value="현금">현금</option>
                   ) : (
-                    ALL_EXCHANGES.map((ex) => (
+                    COMMON_EXCHANGES.map((ex) => (
                       <option key={ex} value={ex}>{ex}</option>
                     ))
                   )}

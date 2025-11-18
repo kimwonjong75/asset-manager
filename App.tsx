@@ -46,16 +46,16 @@ const mapToNewAssetStructure = (asset: any): Asset => {
           newAsset.category = AssetCategory.OTHER_FOREIGN_STOCK;
       }
   // FIX: Removed non-existent enum member `AssetCategory.KRX_GOLD` to resolve a compile error.
-  // The migration logic for gold assets is preserved using existing string literals and the valid `AssetCategory.GOLD` enum member.
-  } else if (['KRX금현물', '금', AssetCategory.GOLD].includes(oldCategory)) {
-      newAsset.category = AssetCategory.GOLD;
+  // The migration logic for gold assets is preserved using existing string literals and the valid `AssetCategory.PHYSICAL_ASSET` enum member.
+  } else if (['KRX금현물', '금', '실물자산'].includes(oldCategory)) {
+      newAsset.category = AssetCategory.PHYSICAL_ASSET;
   } else {
       // Handle legacy enum names
       const categoryMap: { [key: string]: AssetCategory } = {
           "국내주식": AssetCategory.KOREAN_STOCK,
           "해외주식": AssetCategory.US_STOCK, // Simplified assumption
-          "국내국채": AssetCategory.BOND,
-          "해외국채": AssetCategory.BOND,
+          "국내국채": AssetCategory.KOREAN_BOND,
+          "해외국채": AssetCategory.US_BOND,
       };
       if (categoryMap[oldCategory]) {
           newAsset.category = categoryMap[oldCategory];
@@ -75,14 +75,22 @@ const mapToNewAssetStructure = (asset: any): Asset => {
       newAsset.region = AssetRegion.KOREA;
     } else if (newAsset.category === AssetCategory.US_STOCK) {
       newAsset.region = AssetRegion.USA;
-    } else if (newAsset.category === AssetCategory.JAPAN_STOCK) {
-      newAsset.region = AssetRegion.JAPAN;
-    } else if (newAsset.category === AssetCategory.CHINA_STOCK) {
-      newAsset.region = AssetRegion.CHINA;
-    } else if (newAsset.category === AssetCategory.GOLD) {
-      newAsset.region = AssetRegion.GOLD;
-    } else if (newAsset.category === AssetCategory.COMMODITIES) {
-      newAsset.region = AssetRegion.COMMODITIES;
+    } else if (newAsset.category === AssetCategory.FOREIGN_STOCK) {
+      // 해외주식은 거래소로부터 지역 추론
+      if (newAsset.exchange?.includes('TSE') || newAsset.exchange?.includes('도쿄')) {
+        newAsset.region = AssetRegion.JAPAN;
+      } else if (newAsset.exchange?.includes('SSE') || newAsset.exchange?.includes('SZSE') || newAsset.exchange?.includes('HKEX') || newAsset.exchange?.includes('상하이') || newAsset.exchange?.includes('선전') || newAsset.exchange?.includes('홍콩')) {
+        newAsset.region = AssetRegion.CHINA;
+      } else {
+        newAsset.region = AssetRegion.USA; // 기본값
+      }
+    } else if (newAsset.category === AssetCategory.PHYSICAL_ASSET) {
+      // 실물자산은 거래소로부터 구분
+      if (newAsset.exchange?.includes('금') || newAsset.exchange?.includes('COMEX') || newAsset.exchange?.includes('LBMA')) {
+        newAsset.region = AssetRegion.GOLD;
+      } else {
+        newAsset.region = AssetRegion.COMMODITIES;
+      }
     } else if (newAsset.category === AssetCategory.CRYPTOCURRENCY) {
       newAsset.region = AssetRegion.CRYPTOCURRENCY;
     } else if (newAsset.category === AssetCategory.CASH) {

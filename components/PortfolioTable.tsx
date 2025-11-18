@@ -277,7 +277,6 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({ assets, history, onRefr
                               target="_blank"
                               rel="noopener noreferrer"
                               className="font-bold hover:underline text-primary-light cursor-pointer inline-block"
-                              title={asset.memo ? `${asset.memo}\n\n클릭하여 주가 정보 검색` : `${asset.ticker} 주가 정보 검색`}
                             >
                               {asset.name}
                             </a>

@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Asset, AssetCategory, EXCHANGE_MAP, Currency } from '../types';
+import { Asset, AssetCategory, AssetRegion, EXCHANGE_MAP, Currency, COMMON_EXCHANGES, inferCategoryFromExchange } from '../types';
 
 interface EditAssetModalProps {
   asset: Asset | null;
@@ -82,11 +82,42 @@ const EditAssetModal: React.FC<EditAssetModalProps> = ({ asset, isOpen, onClose,
               ))}
             </select>
           </div>
+          {formData.region !== undefined && (
+            <div>
+              <label htmlFor="region-edit" className={labelClasses}>지역/테마 (선택사항)</label>
+              <select 
+                id="region-edit" 
+                name="region" 
+                value={formData.region || ''} 
+                onChange={(e) => {
+                  const value = e.target.value === '' ? undefined : e.target.value;
+                  setFormData(prev => prev ? { ...prev, region: value as AssetRegion | undefined } : null);
+                }} 
+                className={inputClasses}
+              >
+                <option value="">없음</option>
+                {Object.values(AssetRegion).map((reg) => (
+                  <option key={reg} value={reg}>{reg}</option>
+                ))}
+              </select>
+            </div>
+          )}
            <div className="grid grid-cols-2 gap-4">
             <div>
               <label htmlFor="exchange-edit" className={labelClasses}>거래소/시장</label>
-              <select id="exchange-edit" name="exchange" value={formData.exchange} onChange={handleChange} className={inputClasses} disabled={exchangesForCategory.length === 0}>
-                {exchangesForCategory.map((ex) => (
+              <select 
+                id="exchange-edit" 
+                name="exchange" 
+                value={formData.exchange} 
+                onChange={(e) => {
+                  handleChange(e);
+                  // 거래소 변경 시 자산구분 자동 추론
+                  const inferredCategory = inferCategoryFromExchange(e.target.value);
+                  setFormData(prev => prev ? { ...prev, category: inferredCategory } : null);
+                }} 
+                className={inputClasses}
+              >
+                {COMMON_EXCHANGES.map((ex) => (
                   <option key={ex} value={ex}>{ex}</option>
                 ))}
               </select>
