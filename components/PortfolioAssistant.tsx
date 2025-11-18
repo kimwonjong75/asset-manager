@@ -1,8 +1,9 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Asset } from '../types';
 import { askPortfolioQuestion } from '../services/geminiService';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import rehypeRaw from 'rehype-raw';
 
 
 interface PortfolioAssistantProps {
@@ -95,6 +96,19 @@ const PortfolioAssistant: React.FC<PortfolioAssistantProps> = ({ isOpen, onClose
         }
     };
 
+    // 자산 데이터 캐싱 (속도 개선)
+    const assetsSnapshot = useMemo(() => {
+        return JSON.stringify(assets.map(asset => ({
+            name: asset.name,
+            category: asset.category,
+            quantity: asset.quantity,
+            purchase_price_original: asset.purchasePrice,
+            current_price_krw: asset.currentPrice,
+            currency: asset.currency,
+            current_value_krw: asset.currentPrice * asset.quantity,
+        })));
+    }, [assets]);
+
     const markdownComponents = {
         table: ({node, ...props}: any) => <table className="table-auto w-full my-4 text-sm border-collapse border border-gray-600" {...props} />,
         thead: ({node, ...props}: any) => <thead className="bg-gray-700/50" {...props} />,
@@ -108,7 +122,18 @@ const PortfolioAssistant: React.FC<PortfolioAssistantProps> = ({ isOpen, onClose
         strong: ({node, ...props}: any) => <strong className="font-bold text-white" {...props} />,
         code: ({node, inline, ...props}: any) => inline
           ? <code className="bg-gray-900 text-yellow-300 px-1.5 py-1 rounded text-sm font-mono" {...props} />
-          : <pre className="bg-gray-900 p-3 rounded-md overflow-x-auto my-2 text-sm"><code className="font-mono" {...props} /></pre>
+          : <pre className="bg-gray-900 p-3 rounded-md overflow-x-auto my-2 text-sm"><code className="font-mono" {...props} /></pre>,
+        img: ({node, ...props}: any) => (
+            <img 
+                {...props} 
+                className="max-w-full rounded my-2" 
+                loading="lazy"
+                alt={props.alt || '이미지'}
+                onError={(e: any) => {
+                    e.target.style.display = 'none';
+                }}
+            />
+        )
     };
 
     if (!isOpen) return null;
@@ -158,7 +183,11 @@ const PortfolioAssistant: React.FC<PortfolioAssistantProps> = ({ isOpen, onClose
                             <div key={index} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                                 <div className={`max-w-xl lg:max-w-2xl px-4 py-3 rounded-lg ${msg.role === 'user' ? 'bg-primary text-white' : 'bg-gray-700 text-gray-200'}`}>
                                      {msg.role === 'model' ? (
-                                        <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+                                        <ReactMarkdown 
+                                            remarkPlugins={[remarkGfm]} 
+                                            rehypePlugins={[rehypeRaw]}
+                                            components={markdownComponents}
+                                        >
                                             {msg.content}
                                         </ReactMarkdown>
                                     ) : (

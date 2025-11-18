@@ -274,18 +274,23 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({ assets, history, onRefr
                     <td className="px-4 py-4 font-medium text-white break-words">
                       <div className="flex flex-col">
                         <div className="flex items-center gap-2">
-                          <a 
-                            href={`https://www.google.com/search?q=${encodeURIComponent(asset.ticker + ' 주가')}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="font-bold hover:underline text-primary-light"
-                            title={`${asset.ticker} 주가 정보 검색`}
-                          >
-                            {asset.name}
-                          </a>
-                          {asset.memo && (
-                            <span className="text-xs text-gray-500" title={asset.memo}>📝</span>
-                          )}
+                          <div className="group relative">
+                            <a 
+                              href={`https://www.google.com/search?q=${encodeURIComponent(asset.ticker + ' 주가')}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="font-bold hover:underline text-primary-light cursor-pointer"
+                              title={asset.memo ? `${asset.memo}\n\n클릭하여 주가 정보 검색` : `${asset.ticker} 주가 정보 검색`}
+                            >
+                              {asset.name}
+                            </a>
+                            {asset.memo && (
+                              <div className="absolute left-0 top-full mt-1 w-64 p-2 bg-gray-800 text-white text-xs rounded shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 whitespace-pre-wrap break-words border border-gray-600">
+                                <div className="font-semibold mb-1 text-primary-light">메모:</div>
+                                {asset.memo}
+                              </div>
+                            )}
+                          </div>
                         </div>
                         <span className="text-xs text-gray-500 break-all">{asset.ticker} | {asset.exchange}</span>
                       </div>

@@ -1,7 +1,7 @@
 
 
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
-import { Asset, NewAssetForm, AssetCategory, EXCHANGE_MAP, Currency, PortfolioSnapshot, AssetSnapshot, BulkUploadResult } from './types';
+import { Asset, NewAssetForm, AssetCategory, AssetRegion, EXCHANGE_MAP, REGION_TO_CATEGORY, Currency, PortfolioSnapshot, AssetSnapshot, BulkUploadResult } from './types';
 import { fetchAssetData, fetchHistoricalExchangeRate, fetchCurrentExchangeRate } from './services/geminiService';
 import { googleDriveService, GoogleUser } from './services/googleDriveService';
 import PortfolioTable from './components/PortfolioTable';
@@ -68,7 +68,40 @@ const mapToNewAssetStructure = (asset: any): Asset => {
       newAsset.category = AssetCategory.OTHER_FOREIGN_STOCK;
   }
 
-  delete newAsset.region;
+  // 3. Set region based on category/exchange if not present
+  if (!newAsset.region) {
+    // 카테고리로부터 지역 추론
+    if (newAsset.category === AssetCategory.KOREAN_STOCK) {
+      newAsset.region = AssetRegion.KOREA;
+    } else if (newAsset.category === AssetCategory.US_STOCK) {
+      newAsset.region = AssetRegion.USA;
+    } else if (newAsset.category === AssetCategory.JAPAN_STOCK) {
+      newAsset.region = AssetRegion.JAPAN;
+    } else if (newAsset.category === AssetCategory.CHINA_STOCK) {
+      newAsset.region = AssetRegion.CHINA;
+    } else if (newAsset.category === AssetCategory.GOLD) {
+      newAsset.region = AssetRegion.GOLD;
+    } else if (newAsset.category === AssetCategory.COMMODITIES) {
+      newAsset.region = AssetRegion.COMMODITIES;
+    } else if (newAsset.category === AssetCategory.CRYPTOCURRENCY) {
+      newAsset.region = AssetRegion.CRYPTOCURRENCY;
+    } else if (newAsset.category === AssetCategory.CASH) {
+      newAsset.region = AssetRegion.CASH;
+    } else {
+      // 거래소로부터 지역 추론
+      if (newAsset.exchange?.includes('KRX') || newAsset.exchange?.includes('KONEX')) {
+        newAsset.region = AssetRegion.KOREA;
+      } else if (['NASDAQ', 'NYSE', 'AMEX'].includes(newAsset.exchange)) {
+        newAsset.region = AssetRegion.USA;
+      } else if (newAsset.exchange?.includes('TSE') || newAsset.exchange?.includes('도쿄')) {
+        newAsset.region = AssetRegion.JAPAN;
+      } else if (newAsset.exchange?.includes('SSE') || newAsset.exchange?.includes('SZSE') || newAsset.exchange?.includes('HKEX') || newAsset.exchange?.includes('상하이') || newAsset.exchange?.includes('선전') || newAsset.exchange?.includes('홍콩')) {
+        newAsset.region = AssetRegion.CHINA;
+      } else {
+        newAsset.region = AssetRegion.USA; // 기본값
+      }
+    }
+  }
 
   return newAsset as Asset;
 };
@@ -163,11 +196,12 @@ const App: React.FC = () => {
   const [filterAlerts, setFilterAlerts] = useState(false);
   const [searchQuery, setSearchQuery] = useState<string>('');
   
-  // 자동 저장 함수 (디바운싱 적용)
+  // 자동 저장 함수 (디바운싱 및 변경 감지 적용)
   const autoSave = useCallback(
     (() => {
       let timeoutId: NodeJS.Timeout | null = null;
       let isSaving = false;
+      let lastSavedData: string | null = null;
       return async (assetsToSave: Asset[], history: PortfolioSnapshot[]) => {
         if (!isSignedIn) {
           setError('Google Drive 로그인 후 저장할 수 있습니다.');
@@ -181,18 +215,27 @@ const App: React.FC = () => {
         
         timeoutId = setTimeout(async () => {
           if (isSaving) return; // 이미 저장 중이면 스킵
+          
+          // 변경 감지: 이전 저장 데이터와 비교
+          const exportData = {
+            assets: assetsToSave,
+            portfolioHistory: history,
+            lastUpdateDate: new Date().toISOString().slice(0, 10)
+          };
+          const portfolioJSON = JSON.stringify(exportData, null, 2);
+          
+          // 데이터가 변경되지 않았으면 저장 스킵
+          if (lastSavedData === portfolioJSON) {
+            return;
+          }
+          
           isSaving = true;
           
           try {
             setSuccessMessage('저장 중...');
             
-            const exportData = {
-              assets: assetsToSave,
-              portfolioHistory: history,
-              lastUpdateDate: new Date().toISOString().slice(0, 10)
-            };
-            const portfolioJSON = JSON.stringify(exportData, null, 2);
             await googleDriveService.saveFile(portfolioJSON);
+            lastSavedData = portfolioJSON; // 저장된 데이터 기록
             setSuccessMessage('Google Drive에 자동 저장되었습니다.');
             
             setTimeout(() => setSuccessMessage(null), 2000);
@@ -244,7 +287,6 @@ const App: React.FC = () => {
             const geminiData = result.value;
             return {
                 ...asset,
-                name: geminiData.name,
                 currentPrice: geminiData.priceKRW,
                 priceOriginal: geminiData.priceOriginal,
                 currency: geminiData.currency as Currency,

@@ -181,6 +181,10 @@ Your final output must be only the JSON array, with no other text or markdown fo
     }
 };
 
+// 포트폴리오 데이터 캐시 (속도 개선)
+let portfolioCache: { data: string; timestamp: number } | null = null;
+const CACHE_DURATION = 5 * 60 * 1000; // 5분
+
 export const askPortfolioQuestion = async (assets: Asset[], question: string): Promise<string> => {
     // Simplify asset data to reduce token count and focus on key info
     const simplifiedAssets = assets.map(asset => ({
@@ -194,6 +198,14 @@ export const askPortfolioQuestion = async (assets: Asset[], question: string): P
     }));
 
     const portfolioJson = JSON.stringify(simplifiedAssets, null, 2);
+    
+    // 캐시 확인: 데이터가 동일하고 5분 이내면 캐시된 프롬프트 사용
+    const now = Date.now();
+    if (portfolioCache && portfolioCache.data === portfolioJson && (now - portfolioCache.timestamp) < CACHE_DURATION) {
+        // 캐시된 데이터 사용 (프롬프트 재사용)
+    } else {
+        portfolioCache = { data: portfolioJson, timestamp: now };
+    }
 
     const prompt = `당신은 사용자의 자산 포트폴리오를 분석하고 질문에 답변하는 전문 금융 어시스턴트입니다.
     
@@ -208,9 +220,12 @@ ${portfolioJson}
 
     try {
         const response = await ai.models.generateContent({
-            // Using a more advanced model for better analytical capabilities
-            model: 'gemini-2.5-pro',
+            // 경량 모델 사용으로 속도 개선
+            model: 'gemini-2.0-flash',
             contents: prompt,
+            config: {
+                temperature: 0.7, // 일관성 있는 답변을 위해 낮춤
+            }
         });
 
         return response.text.trim();

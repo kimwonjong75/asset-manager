@@ -37,20 +37,45 @@ class GoogleDriveService {
     // 저장된 토큰 확인
     const savedToken = localStorage.getItem('google_drive_access_token');
     const savedUser = localStorage.getItem('google_drive_user');
+    const savedTokenExpiry = localStorage.getItem('google_drive_token_expiry');
     
     if (savedToken && savedUser) {
       this.accessToken = savedToken;
       this.user = JSON.parse(savedUser);
-      // 토큰 유효성 검사
-      if (await this.validateToken()) {
+      
+      // 토큰 만료 시간 확인
+      const now = Date.now();
+      const expiryTime = savedTokenExpiry ? parseInt(savedTokenExpiry, 10) : 0;
+      
+      // 토큰이 만료되지 않았고 유효한 경우
+      if (expiryTime > now && await this.validateToken()) {
         this.isInitialized = true;
+        // 만료 5분 전에 자동 갱신 스케줄
+        const timeUntilExpiry = expiryTime - now;
+        const refreshTime = Math.max(0, timeUntilExpiry - 5 * 60 * 1000); // 5분 전
+        setTimeout(() => {
+          this.refreshTokenSilently();
+        }, refreshTime);
         return;
       } else {
+        // 토큰이 만료된 경우 - 자동 갱신 시도
+        if (savedTokenExpiry && expiryTime > now - 60 * 60 * 1000) { // 1시간 이내 만료된 경우만
+          try {
+            await this.refreshTokenSilently();
+            if (this.accessToken) {
+              this.isInitialized = true;
+              return;
+            }
+          } catch (error) {
+            console.log('Silent token refresh failed, user needs to sign in again');
+          }
+        }
         // 토큰이 만료된 경우
         this.accessToken = null;
         this.user = null;
         localStorage.removeItem('google_drive_access_token');
         localStorage.removeItem('google_drive_user');
+        localStorage.removeItem('google_drive_token_expiry');
       }
     }
     
@@ -124,12 +149,24 @@ class GoogleDriveService {
           console.log('Scope includes userinfo.email:', response.scope?.includes('userinfo.email'));
           console.log('Scope includes userinfo.profile:', response.scope?.includes('userinfo.profile'));
           
+          // 토큰 만료 시간 저장 (기본 1시간, expires_in이 있으면 사용)
+          const expiresIn = response.expires_in ? parseInt(response.expires_in, 10) * 1000 : 3600 * 1000;
+          const expiryTime = Date.now() + expiresIn;
+          localStorage.setItem('google_drive_token_expiry', expiryTime.toString());
+          
           // 사용자 정보 가져오기
           try {
             const userInfo = await this.getUserInfo();
             this.user = userInfo;
             localStorage.setItem('google_drive_access_token', this.accessToken);
             localStorage.setItem('google_drive_user', JSON.stringify(userInfo));
+            
+            // 만료 5분 전에 자동 갱신 스케줄
+            const refreshTime = Math.max(0, expiresIn - 5 * 60 * 1000); // 5분 전
+            setTimeout(() => {
+              this.refreshTokenSilently();
+            }, refreshTime);
+            
             resolve(userInfo);
           } catch (error: any) {
             console.error('Failed to get user info:', error);
@@ -209,6 +246,41 @@ class GoogleDriveService {
     }
   }
 
+  // 토큰 자동 갱신 (조용히)
+  private async refreshTokenSilently(): Promise<void> {
+    if (!this.clientId || !this.user) return;
+    
+    try {
+      this.tokenClient = window.google.accounts.oauth2.initTokenClient({
+        client_id: this.clientId!,
+        scope: 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile openid',
+        callback: async (response: google.accounts.oauth2.TokenResponse) => {
+          if (response.error) {
+            console.log('Token refresh failed:', response.error);
+            return;
+          }
+          
+          this.accessToken = response.access_token;
+          const expiresIn = response.expires_in ? parseInt(response.expires_in, 10) * 1000 : 3600 * 1000;
+          const expiryTime = Date.now() + expiresIn;
+          localStorage.setItem('google_drive_access_token', this.accessToken);
+          localStorage.setItem('google_drive_token_expiry', expiryTime.toString());
+          
+          // 다음 갱신 스케줄
+          const refreshTime = Math.max(0, expiresIn - 5 * 60 * 1000);
+          setTimeout(() => {
+            this.refreshTokenSilently();
+          }, refreshTime);
+        },
+      });
+      
+      // prompt: 'none'으로 조용히 갱신 시도
+      this.tokenClient.requestAccessToken({ prompt: 'none' });
+    } catch (error) {
+      console.log('Silent token refresh error:', error);
+    }
+  }
+
   // 로그아웃
   signOut(): void {
     if (this.accessToken) {
@@ -217,6 +289,7 @@ class GoogleDriveService {
         this.user = null;
         localStorage.removeItem('google_drive_access_token');
         localStorage.removeItem('google_drive_user');
+        localStorage.removeItem('google_drive_token_expiry');
       });
     }
   }

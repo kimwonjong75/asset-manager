@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Asset, AssetCategory, NewAssetForm, EXCHANGE_MAP, Currency, SymbolSearchResult } from '../types';
+import { Asset, AssetCategory, AssetRegion, NewAssetForm, EXCHANGE_MAP, REGION_EXCHANGE_MAP, REGION_TO_CATEGORY, Currency, SymbolSearchResult } from '../types';
 import { searchSymbols } from '../services/geminiService';
 
 interface AddNewAssetModalProps {
@@ -21,8 +21,9 @@ const AddNewAssetModal: React.FC<AddNewAssetModalProps> = ({ isOpen, onClose, on
   const [quantity, setQuantity] = useState('');
   const [purchasePrice, setPurchasePrice] = useState('');
   const [purchaseDate, setPurchaseDate] = useState(new Date().toISOString().slice(0, 10));
+  const [region, setRegion] = useState<AssetRegion>(AssetRegion.USA);
   const [category, setCategory] = useState<AssetCategory>(AssetCategory.US_STOCK);
-  const [exchange, setExchange] = useState<string>(EXCHANGE_MAP[AssetCategory.US_STOCK][0] || '');
+  const [exchange, setExchange] = useState<string>(REGION_EXCHANGE_MAP[AssetRegion.USA][0] || '');
   const [currency, setCurrency] = useState<Currency>(Currency.USD);
   const [isCashCategory, setIsCashCategory] = useState(false);
 
@@ -32,6 +33,7 @@ const AddNewAssetModal: React.FC<AddNewAssetModalProps> = ({ isOpen, onClose, on
     setQuantity('');
     setPurchasePrice('');
     setSearchResults([]);
+    setRegion(AssetRegion.USA);
     setCategory(AssetCategory.US_STOCK);
     setPurchaseDate(new Date().toISOString().slice(0, 10));
     setDuplicateError(null);
@@ -75,33 +77,48 @@ const AddNewAssetModal: React.FC<AddNewAssetModalProps> = ({ isOpen, onClose, on
     return () => { clearTimeout(handler); };
   }, [searchQuery, ticker, isCashCategory]);
 
+  // 지역 변경 시 카테고리와 거래소 자동 설정
   useEffect(() => {
-    const isCash = category === AssetCategory.CASH;
-    setIsCashCategory(isCash);
-
-    const exchangesForCategory = EXCHANGE_MAP[category] || [];
-    if (!exchangesForCategory.includes(exchange)) {
-      setExchange(exchangesForCategory[0] || '');
+    const newCategory = REGION_TO_CATEGORY[region];
+    setCategory(newCategory);
+    
+    const exchangesForRegion = REGION_EXCHANGE_MAP[region] || [];
+    if (!exchangesForRegion.includes(exchange)) {
+      setExchange(exchangesForRegion[0] || '');
     }
     
-    // Automatically set currency based on category
-    switch(category) {
-        case AssetCategory.KOREAN_STOCK:
+    // 지역에 따른 통화 자동 설정
+    switch(region) {
+        case AssetRegion.KOREA:
             setCurrency(Currency.KRW);
             break;
-        case AssetCategory.US_STOCK:
+        case AssetRegion.USA:
             setCurrency(Currency.USD);
             break;
-        case AssetCategory.OTHER_FOREIGN_STOCK:
-            setCurrency(Currency.USD); // Default, can be changed
+        case AssetRegion.JAPAN:
+            setCurrency(Currency.JPY);
             break;
-        case AssetCategory.BOND:
-        case AssetCategory.GOLD:
-            setCurrency(Currency.KRW);
+        case AssetRegion.CHINA:
+            setCurrency(Currency.CNY);
+            break;
+        case AssetRegion.GOLD:
+        case AssetRegion.COMMODITIES:
+            setCurrency(Currency.USD); // 기본값, 변경 가능
+            break;
+        case AssetRegion.CRYPTOCURRENCY:
+            setCurrency(Currency.USD);
+            break;
+        case AssetRegion.CASH:
+            setCurrency(Currency.KRW); // 기본값
             break;
         default:
             break;
     }
+  }, [region, exchange]);
+
+  useEffect(() => {
+    const isCash = region === AssetRegion.CASH;
+    setIsCashCategory(isCash);
 
     if (isCash) {
       setTicker(currency);
@@ -116,7 +133,7 @@ const AddNewAssetModal: React.FC<AddNewAssetModalProps> = ({ isOpen, onClose, on
           setSearchQuery('');
       }
     }
-  }, [category, currency, exchange, ticker]);
+  }, [region, currency, ticker]);
 
   const handleSelectSymbol = (result: SymbolSearchResult) => {
      const isDuplicate = assets.some(
@@ -135,16 +152,17 @@ const AddNewAssetModal: React.FC<AddNewAssetModalProps> = ({ isOpen, onClose, on
     setSearchQuery(result.name);
     setExchange(result.exchange);
 
-    let foundCategory: AssetCategory | null = null;
-    for (const cat in EXCHANGE_MAP) {
-      if (EXCHANGE_MAP[cat as AssetCategory].includes(result.exchange)) {
-        foundCategory = cat as AssetCategory;
+    // 거래소로부터 지역 찾기
+    let foundRegion: AssetRegion | null = null;
+    for (const reg in REGION_EXCHANGE_MAP) {
+      if (REGION_EXCHANGE_MAP[reg as AssetRegion].includes(result.exchange)) {
+        foundRegion = reg as AssetRegion;
         break;
       }
     }
     
-    if (foundCategory) {
-      setCategory(foundCategory);
+    if (foundRegion) {
+      setRegion(foundRegion);
     }
     setSearchResults([]);
   };
@@ -165,6 +183,7 @@ const AddNewAssetModal: React.FC<AddNewAssetModalProps> = ({ isOpen, onClose, on
       purchasePrice: parseFloat(purchasePrice),
       purchaseDate,
       category,
+      region,
       exchange,
       currency
     });
@@ -172,7 +191,7 @@ const AddNewAssetModal: React.FC<AddNewAssetModalProps> = ({ isOpen, onClose, on
   
   const inputClasses = "w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition";
   const labelClasses = "block text-sm font-medium text-gray-300 mb-1";
-  const exchangesForCategory = EXCHANGE_MAP[category] || [];
+  const exchangesForRegion = REGION_EXCHANGE_MAP[region] || [];
   const showResults = isFocused && searchResults.length > 0 && !isCashCategory;
 
   if (!isOpen) return null;
@@ -190,17 +209,17 @@ const AddNewAssetModal: React.FC<AddNewAssetModalProps> = ({ isOpen, onClose, on
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-                <label htmlFor="category" className={labelClasses}>자산 구분</label>
-                <select id="category" value={category} onChange={(e) => setCategory(e.target.value as AssetCategory)} className={inputClasses} title="자산의 종류를 선택하세요.">
-                {Object.values(AssetCategory).map((cat) => (
-                    <option key={cat} value={cat}>{cat}</option>
+                <label htmlFor="region" className={labelClasses}>자산 구분 (지역/상품)</label>
+                <select id="region" value={region} onChange={(e) => setRegion(e.target.value as AssetRegion)} className={inputClasses} title="퀀트 전략 분석을 위한 자산 지역/상품 구분을 선택하세요.">
+                {Object.values(AssetRegion).map((reg) => (
+                    <option key={reg} value={reg}>{reg}</option>
                 ))}
                 </select>
             </div>
             <div>
                 <label htmlFor="exchange" className={labelClasses}>거래소/시장</label>
-                <select id="exchange" value={exchange} onChange={(e) => setExchange(e.target.value)} className={inputClasses} title="자산이 거래되는 시장을 선택하세요." disabled={exchangesForCategory.length === 0 || isCashCategory}>
-                {exchangesForCategory.map((ex) => (
+                <select id="exchange" value={exchange} onChange={(e) => setExchange(e.target.value)} className={inputClasses} title="자산이 거래되는 시장을 선택하세요." disabled={exchangesForRegion.length === 0 || isCashCategory}>
+                {exchangesForRegion.map((ex) => (
                     <option key={ex} value={ex}>{ex}</option>
                 ))}
                 </select>
