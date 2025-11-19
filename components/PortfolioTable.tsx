@@ -1,6 +1,6 @@
 
 import React, { useMemo, useState, Fragment } from 'react';
-import { Asset, Currency, CURRENCY_SYMBOLS, AssetCategory, PortfolioSnapshot } from '../types';
+import { Asset, Currency, CURRENCY_SYMBOLS, AssetCategory, PortfolioSnapshot, ALLOWED_CATEGORIES } from '../types';
 import AssetTrendChart from './AssetTrendChart';
 
 interface PortfolioTableProps {
@@ -31,6 +31,13 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({ assets, history, onRefr
     setExpandedAssetId(prevId => (prevId === assetId ? null : assetId));
   };
   
+  const categoryOptions = useMemo(() => {
+    const extras = Array.from(new Set(assets.map(asset => asset.category))).filter(
+      (cat) => !ALLOWED_CATEGORIES.includes(cat)
+    );
+    return [...ALLOWED_CATEGORIES, ...extras];
+  }, [assets]);
+
   const enrichedAndSortedAssets = useMemo(() => {
     let enriched = assets.map(asset => {
       const currentValue = asset.currentPrice * asset.quantity;
@@ -186,7 +193,7 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({ assets, history, onRefr
                 title="자산 구분에 따라 필터링합니다."
             >
                 <option value="ALL">모든 자산</option>
-                {Object.values(AssetCategory).map((cat) => (
+                {categoryOptions.map((cat) => (
                     <option key={cat} value={cat}>{cat}</option>
                 ))}
             </select>

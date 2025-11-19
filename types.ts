@@ -1,15 +1,3 @@
-// 지역 기반 자산 구분 (퀀트 전략 분석용)
-export enum AssetRegion {
-  KOREA = "한국",
-  USA = "미국",
-  JAPAN = "일본",
-  CHINA = "중국",
-  GOLD = "금",
-  COMMODITIES = "원자재",
-  CRYPTOCURRENCY = "암호화폐",
-  CASH = "현금",
-}
-
 // 기존 호환성을 위한 카테고리 (내부적으로 사용)
 export enum AssetCategory {
   KOREAN_STOCK = "한국주식",
@@ -35,18 +23,6 @@ export const CURRENCY_SYMBOLS: Record<Currency, string> = {
     [Currency.USD]: "$",
     [Currency.JPY]: "¥",
     [Currency.CNY]: "¥",
-};
-
-// 지역별 거래소 매핑
-export const REGION_EXCHANGE_MAP: Record<AssetRegion, string[]> = {
-    [AssetRegion.KOREA]: ["KRX (코스피/코스닥)", "KONEX"],
-    [AssetRegion.USA]: ["NASDAQ", "NYSE", "AMEX"],
-    [AssetRegion.JAPAN]: ["TSE (도쿄)"],
-    [AssetRegion.CHINA]: ["SSE (상하이)", "SZSE (선전)", "HKEX (홍콩)"],
-    [AssetRegion.GOLD]: ["KRX 금시장", "COMEX", "LBMA"],
-    [AssetRegion.COMMODITIES]: ["NYMEX", "CME", "ICE"],
-    [AssetRegion.CRYPTOCURRENCY]: ["주요 거래소 (종합)"],
-    [AssetRegion.CASH]: ["현금"],
 };
 
 // 자주 사용되는 거래소 리스트 (정리된 버전)
@@ -121,23 +97,21 @@ export const EXCHANGE_MAP: Record<string, string[]> = {
     [AssetCategory.CASH]: ["현금"],
 };
 
-// 지역과 카테고리 매핑
-export const REGION_TO_CATEGORY: Record<AssetRegion, AssetCategory> = {
-    [AssetRegion.KOREA]: AssetCategory.KOREAN_STOCK,
-    [AssetRegion.USA]: AssetCategory.US_STOCK,
-    [AssetRegion.JAPAN]: AssetCategory.FOREIGN_STOCK,
-    [AssetRegion.CHINA]: AssetCategory.FOREIGN_STOCK,
-    [AssetRegion.GOLD]: AssetCategory.PHYSICAL_ASSET,
-    [AssetRegion.COMMODITIES]: AssetCategory.PHYSICAL_ASSET,
-    [AssetRegion.CRYPTOCURRENCY]: AssetCategory.CRYPTOCURRENCY,
-    [AssetRegion.CASH]: AssetCategory.CASH,
-};
+export const ALLOWED_CATEGORIES: AssetCategory[] = [
+  AssetCategory.KOREAN_STOCK,
+  AssetCategory.US_STOCK,
+  AssetCategory.FOREIGN_STOCK,
+  AssetCategory.OTHER_FOREIGN_STOCK,
+  AssetCategory.KOREAN_BOND,
+  AssetCategory.US_BOND,
+  AssetCategory.CRYPTOCURRENCY,
+  AssetCategory.PHYSICAL_ASSET,
+];
 
 
 export interface Asset {
   id: string;
   category: AssetCategory;
-  region?: AssetRegion; // 지역 정보 (퀀트 전략 분석용)
   ticker: string;
   exchange: string;
   name: string;

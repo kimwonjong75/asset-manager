@@ -1,7 +1,7 @@
 
 
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
-import { Asset, NewAssetForm, AssetCategory, AssetRegion, EXCHANGE_MAP, REGION_TO_CATEGORY, Currency, PortfolioSnapshot, AssetSnapshot, BulkUploadResult } from './types';
+import { Asset, NewAssetForm, AssetCategory, EXCHANGE_MAP, Currency, PortfolioSnapshot, AssetSnapshot, BulkUploadResult, ALLOWED_CATEGORIES } from './types';
 import { fetchAssetData, fetchHistoricalExchangeRate, fetchCurrentExchangeRate } from './services/geminiService';
 import { googleDriveService, GoogleUser } from './services/googleDriveService';
 import PortfolioTable from './components/PortfolioTable';
@@ -38,7 +38,7 @@ const mapToNewAssetStructure = (asset: any): Asset => {
   // FIX: Removed non-existent enum member `AssetCategory.STOCK` to resolve a compile error.
   // The migration logic now relies on string literals to identify legacy stock assets.
   if (['주식', 'ETF'].includes(oldCategory)) {
-      if (newAsset.region === '국내' || newAsset.exchange.startsWith('KRX')) {
+      if (newAsset.exchange?.startsWith('KRX')) {
           newAsset.category = AssetCategory.KOREAN_STOCK;
       } else if (['NASDAQ', 'NYSE', 'AMEX'].includes(newAsset.exchange)) {
           newAsset.category = AssetCategory.US_STOCK;
@@ -68,47 +68,9 @@ const mapToNewAssetStructure = (asset: any): Asset => {
       newAsset.category = AssetCategory.OTHER_FOREIGN_STOCK;
   }
 
-  // 3. Set region based on category/exchange if not present
-  if (!newAsset.region) {
-    // 카테고리로부터 지역 추론
-    if (newAsset.category === AssetCategory.KOREAN_STOCK) {
-      newAsset.region = AssetRegion.KOREA;
-    } else if (newAsset.category === AssetCategory.US_STOCK) {
-      newAsset.region = AssetRegion.USA;
-    } else if (newAsset.category === AssetCategory.FOREIGN_STOCK) {
-      // 해외주식은 거래소로부터 지역 추론
-      if (newAsset.exchange?.includes('TSE') || newAsset.exchange?.includes('도쿄')) {
-        newAsset.region = AssetRegion.JAPAN;
-      } else if (newAsset.exchange?.includes('SSE') || newAsset.exchange?.includes('SZSE') || newAsset.exchange?.includes('HKEX') || newAsset.exchange?.includes('상하이') || newAsset.exchange?.includes('선전') || newAsset.exchange?.includes('홍콩')) {
-        newAsset.region = AssetRegion.CHINA;
-      } else {
-        newAsset.region = AssetRegion.USA; // 기본값
-      }
-    } else if (newAsset.category === AssetCategory.PHYSICAL_ASSET) {
-      // 실물자산은 거래소로부터 구분
-      if (newAsset.exchange?.includes('금') || newAsset.exchange?.includes('COMEX') || newAsset.exchange?.includes('LBMA')) {
-        newAsset.region = AssetRegion.GOLD;
-      } else {
-        newAsset.region = AssetRegion.COMMODITIES;
-      }
-    } else if (newAsset.category === AssetCategory.CRYPTOCURRENCY) {
-      newAsset.region = AssetRegion.CRYPTOCURRENCY;
-    } else if (newAsset.category === AssetCategory.CASH) {
-      newAsset.region = AssetRegion.CASH;
-    } else {
-      // 거래소로부터 지역 추론
-      if (newAsset.exchange?.includes('KRX') || newAsset.exchange?.includes('KONEX')) {
-        newAsset.region = AssetRegion.KOREA;
-      } else if (['NASDAQ', 'NYSE', 'AMEX'].includes(newAsset.exchange)) {
-        newAsset.region = AssetRegion.USA;
-      } else if (newAsset.exchange?.includes('TSE') || newAsset.exchange?.includes('도쿄')) {
-        newAsset.region = AssetRegion.JAPAN;
-      } else if (newAsset.exchange?.includes('SSE') || newAsset.exchange?.includes('SZSE') || newAsset.exchange?.includes('HKEX') || newAsset.exchange?.includes('상하이') || newAsset.exchange?.includes('선전') || newAsset.exchange?.includes('홍콩')) {
-        newAsset.region = AssetRegion.CHINA;
-      } else {
-        newAsset.region = AssetRegion.USA; // 기본값
-      }
-    }
+  // 3. Remove legacy region data
+  if ('region' in newAsset) {
+    delete newAsset.region;
   }
 
   return newAsset as Asset;
@@ -203,6 +165,12 @@ const App: React.FC = () => {
   const [isAssistantOpen, setIsAssistantOpen] = useState<boolean>(false);
   const [filterAlerts, setFilterAlerts] = useState(false);
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const categoryOptions = useMemo(() => {
+    const extras = Array.from(new Set(assets.map(asset => asset.category))).filter(
+      (cat) => !ALLOWED_CATEGORIES.includes(cat)
+    );
+    return [...ALLOWED_CATEGORIES, ...extras];
+  }, [assets]);
   
   // 자동 저장 함수 (디바운싱 및 변경 감지 적용)
   const autoSave = useCallback(
@@ -806,16 +774,16 @@ const App: React.FC = () => {
                     }
                     const [ticker, exchange, quantityStr, priceStr, dateStr, categoryStr, currencyStr, sellAlertDropRateStr] = values.map(v => v.trim());
                     
-                    if (!ticker && categoryStr as AssetCategory !== AssetCategory.CASH) return { error: '티커가 비어있습니다.', ticker: `행 ${index + 2}` };
+                    if (!ticker) return { error: '티커가 비어있습니다.', ticker: `행 ${index + 2}` };
                     if (!exchange) return { error: '거래소가 비어있습니다.', ticker: `행 ${index + 2}` };
                     if (isNaN(parseFloat(quantityStr)) || parseFloat(quantityStr) <= 0) return { error: '수량이 유효한 숫자가 아닙니다.', ticker };
                     if (isNaN(parseFloat(priceStr)) || parseFloat(priceStr) < 0) return { error: '매수가가 유효한 숫자가 아닙니다.', ticker };
                     if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return { error: '날짜 형식이 YYYY-MM-DD가 아닙니다.', ticker };
-                    if (!Object.values(AssetCategory).includes(categoryStr as AssetCategory)) return { error: '유효하지 않은 자산 구분입니다.', ticker };
+                    if (!ALLOWED_CATEGORIES.includes(categoryStr as AssetCategory)) return { error: '유효하지 않은 자산 구분입니다.', ticker };
                     if (!Object.values(Currency).includes(currencyStr as Currency)) return { error: '유효하지 않은 통화입니다.', ticker };
                     
                     const form: NewAssetForm & { sellAlertDropRate?: number } = {
-                        ticker: categoryStr as AssetCategory === AssetCategory.CASH ? currencyStr : ticker,
+                        ticker,
                         exchange,
                         quantity: parseFloat(quantityStr),
                         purchasePrice: parseFloat(priceStr),
@@ -846,20 +814,6 @@ const App: React.FC = () => {
                     for (const form of validForms) {
                         try {
                            let newAsset: Omit<Asset, 'id'>;
-                           if (form.category === AssetCategory.CASH) {
-                              const [purchaseExchangeRate, currentExchangeRate] = await Promise.all([
-                                fetchHistoricalExchangeRate(form.purchaseDate, form.currency, Currency.KRW),
-                                fetchCurrentExchangeRate(form.currency, Currency.KRW)
-                              ]);
-                              newAsset = {
-                                ...form,
-                                name: `현금 (${form.currency})`,
-                                currentPrice: currentExchangeRate * form.purchasePrice,
-                                priceOriginal: form.purchasePrice,
-                                highestPrice: currentExchangeRate * form.purchasePrice,
-                                purchaseExchangeRate,
-                              };
-                           } else {
                               const geminiData = await fetchAssetData(form.ticker, form.exchange);
                               const purchaseExchangeRate = await fetchHistoricalExchangeRate(form.purchaseDate, form.currency, Currency.KRW);
 
@@ -872,7 +826,6 @@ const App: React.FC = () => {
                                   highestPrice: geminiData.priceKRW,
                                   purchaseExchangeRate,
                               };
-                           }
                             
                             const finalNewAsset: Asset = {
                                 id: `${new Date().getTime()}-${form.ticker}`,
@@ -1218,7 +1171,7 @@ const App: React.FC = () => {
                                   className="bg-gray-700 border border-gray-600 rounded-md py-2 pl-3 pr-8 text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent appearance-none"
                               >
                                   <option value="ALL">전체 포트폴리오</option>
-                                  {Object.values(AssetCategory).map((cat) => (
+                                  {categoryOptions.map((cat) => (
                                       <option key={cat} value={cat}>{cat}</option>
                                   ))}
                               </select>

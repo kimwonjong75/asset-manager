@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Asset, AssetCategory, AssetRegion, NewAssetForm, EXCHANGE_MAP, REGION_EXCHANGE_MAP, REGION_TO_CATEGORY, Currency, SymbolSearchResult, COMMON_EXCHANGES, inferCategoryFromExchange } from '../types';
+import { Asset, AssetCategory, NewAssetForm, EXCHANGE_MAP, Currency, SymbolSearchResult, ALL_EXCHANGES, inferCategoryFromExchange, ALLOWED_CATEGORIES } from '../types';
 import { searchSymbols } from '../services/geminiService';
 
 interface AddNewAssetModalProps {
@@ -21,11 +21,10 @@ const AddNewAssetModal: React.FC<AddNewAssetModalProps> = ({ isOpen, onClose, on
   const [quantity, setQuantity] = useState('');
   const [purchasePrice, setPurchasePrice] = useState('');
   const [purchaseDate, setPurchaseDate] = useState(new Date().toISOString().slice(0, 10));
-  const [region, setRegion] = useState<AssetRegion>(AssetRegion.USA);
   const [category, setCategory] = useState<AssetCategory>(AssetCategory.US_STOCK);
-  const [exchange, setExchange] = useState<string>(REGION_EXCHANGE_MAP[AssetRegion.USA][0] || '');
+  const initialExchange = EXCHANGE_MAP[AssetCategory.US_STOCK]?.[0] || ALL_EXCHANGES[0] || '';
+  const [exchange, setExchange] = useState<string>(initialExchange);
   const [currency, setCurrency] = useState<Currency>(Currency.USD);
-  const [isCashCategory, setIsCashCategory] = useState(false);
 
   const clearForm = useCallback(() => {
     setTicker('');
@@ -33,11 +32,12 @@ const AddNewAssetModal: React.FC<AddNewAssetModalProps> = ({ isOpen, onClose, on
     setQuantity('');
     setPurchasePrice('');
     setSearchResults([]);
-    setRegion(AssetRegion.USA);
     setCategory(AssetCategory.US_STOCK);
+    setExchange(initialExchange);
     setPurchaseDate(new Date().toISOString().slice(0, 10));
+    setCurrency(Currency.USD);
     setDuplicateError(null);
-  }, []);
+  }, [initialExchange]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -56,7 +56,7 @@ const AddNewAssetModal: React.FC<AddNewAssetModalProps> = ({ isOpen, onClose, on
   }, [ticker]);
 
   useEffect(() => {
-    if (isCashCategory || searchQuery.length < 2 || searchQuery === ticker) {
+    if (searchQuery.length < 2 || searchQuery === ticker) {
       setSearchResults([]);
       return;
     }
@@ -75,35 +75,7 @@ const AddNewAssetModal: React.FC<AddNewAssetModalProps> = ({ isOpen, onClose, on
     }, 300);
 
     return () => { clearTimeout(handler); };
-  }, [searchQuery, ticker, isCashCategory]);
-
-  // 지역 변경 시 카테고리만 자동 설정 (거래소는 독립적으로 선택)
-  useEffect(() => {
-    const newCategory = REGION_TO_CATEGORY[region];
-    setCategory(newCategory);
-    
-    // 거래소 자동 변경 제거 - 사용자가 수동으로 선택
-    // 통화는 지역에 따라 기본값만 제안 (자동 설정하지 않음)
-  }, [region]);
-
-  useEffect(() => {
-    const isCash = region === AssetRegion.CASH;
-    setIsCashCategory(isCash);
-
-    if (isCash) {
-      setTicker(currency);
-      setExchange('현금');
-      setPurchasePrice('1');
-      setSearchQuery(`현금 (${currency})`);
-      setDuplicateError(null);
-    } else {
-      setPurchasePrice('');
-      if (ticker === currency) { // if switching from cash, clear ticker
-          setTicker('');
-          setSearchQuery('');
-      }
-    }
-  }, [region, currency, ticker]);
+  }, [searchQuery, ticker]);
 
   const handleSelectSymbol = (result: SymbolSearchResult) => {
      const isDuplicate = assets.some(
@@ -131,21 +103,20 @@ const AddNewAssetModal: React.FC<AddNewAssetModalProps> = ({ isOpen, onClose, on
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isCashCategory && !ticker) {
+    if (!ticker) {
       alert('종목 검색을 통해 유효한 자산을 선택해주세요.');
       return;
     }
-    if (!quantity || !purchasePrice || !purchaseDate || !exchange || !currency) {
+    if (!quantity || !purchasePrice || !purchaseDate || !exchange || !currency || !category) {
       alert('모든 필드를 입력해주세요.');
       return;
     }
     onAddAsset({
-      ticker: isCashCategory ? currency : ticker,
+      ticker,
       quantity: parseFloat(quantity),
       purchasePrice: parseFloat(purchasePrice),
       purchaseDate,
       category,
-      region,
       exchange,
       currency
     });
@@ -153,7 +124,7 @@ const AddNewAssetModal: React.FC<AddNewAssetModalProps> = ({ isOpen, onClose, on
   
   const inputClasses = "w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition";
   const labelClasses = "block text-sm font-medium text-gray-300 mb-1";
-  const showResults = isFocused && searchResults.length > 0 && !isCashCategory;
+  const showResults = isFocused && searchResults.length > 0;
 
   if (!isOpen) return null;
 
@@ -178,17 +149,8 @@ const AddNewAssetModal: React.FC<AddNewAssetModalProps> = ({ isOpen, onClose, on
                   className={inputClasses} 
                   title="자산의 구분을 선택하세요. 거래소 선택 시 자동으로 설정되며 수동으로 변경할 수 있습니다."
                 >
-                  {Object.values(AssetCategory).map((cat) => (
+                  {ALLOWED_CATEGORIES.map((cat) => (
                     <option key={cat} value={cat}>{cat}</option>
-                  ))}
-                </select>
-            </div>
-            <div>
-                <label htmlFor="region" className={labelClasses}>지역/테마 (선택사항)</label>
-                <select id="region" value={region} onChange={(e) => setRegion(e.target.value as AssetRegion)} className={inputClasses} title="퀀트 전략 분석을 위한 자산 지역/상품 구분을 선택하세요.">
-                  <option value="">없음</option>
-                  {Object.values(AssetRegion).map((reg) => (
-                    <option key={reg} value={reg}>{reg}</option>
                   ))}
                 </select>
             </div>
@@ -204,21 +166,16 @@ const AddNewAssetModal: React.FC<AddNewAssetModalProps> = ({ isOpen, onClose, on
                     setCategory(inferredCategory);
                   }}
                   className={inputClasses} 
-                  title="자산이 거래되는 시장을 선택하세요. 자산구분이 자동으로 설정됩니다." 
-                  disabled={isCashCategory}
+                  title="자산이 거래되는 시장을 선택하세요. 자산구분이 자동으로 설정됩니다."
                 >
-                  {isCashCategory ? (
-                    <option value="현금">현금</option>
-                  ) : (
-                    COMMON_EXCHANGES.map((ex) => (
-                      <option key={ex} value={ex}>{ex}</option>
-                    ))
-                  )}
+                  {ALL_EXCHANGES.map((ex) => (
+                    <option key={ex} value={ex}>{ex}</option>
+                  ))}
                 </select>
             </div>
             
             <div className="relative">
-            <label htmlFor="ticker-search" className={labelClasses}>{isCashCategory ? '자산명' : '티커 (종목 검색)'}</label>
+            <label htmlFor="ticker-search" className={labelClasses}>티커 (종목 검색)</label>
             <input 
                 id="ticker-search" 
                 type="text" 
@@ -226,12 +183,11 @@ const AddNewAssetModal: React.FC<AddNewAssetModalProps> = ({ isOpen, onClose, on
                 onChange={handleSearchChange} 
                 onFocus={() => setIsFocused(true)}
                 onBlur={() => setTimeout(() => setIsFocused(false), 150)} // Delay to allow click on results
-                placeholder={isCashCategory ? '' : "예: Apple, 삼성전자"}
-                className={`${inputClasses} ${isCashCategory ? 'bg-gray-600' : ''}`} 
+                placeholder="예: Apple, 삼성전자"
+                className={inputClasses}
                 required 
                 autoComplete="off"
-                title={isCashCategory ? '현금 자산은 통화로 이름이 자동 지정됩니다.' : "자산의 이름 또는 티커를 입력하여 검색하세요."}
-                disabled={isCashCategory}
+                title="자산의 이름 또는 티커를 입력하여 검색하세요."
             />
             {duplicateError && <p className="text-danger text-sm mt-1">{duplicateError}</p>}
             {isSearching && (
@@ -262,12 +218,12 @@ const AddNewAssetModal: React.FC<AddNewAssetModalProps> = ({ isOpen, onClose, on
 
             <div className="grid grid-cols-3 gap-4">
             <div>
-                <label htmlFor="quantity" className={labelClasses}>{isCashCategory ? '금액' : '수량'}</label>
-                <input id="quantity" type="number" value={quantity} onChange={(e) => setQuantity(e.target.value)} placeholder={isCashCategory ? '1000' : '10'} className={inputClasses} required min="0" step="any" title={isCashCategory ? '보유하고 있는 현금의 금액을 입력하세요.' : '보유하고 있는 자산의 수량을 입력하세요.'}/>
+                <label htmlFor="quantity" className={labelClasses}>수량</label>
+                <input id="quantity" type="number" value={quantity} onChange={(e) => setQuantity(e.target.value)} placeholder="10" className={inputClasses} required min="0" step="any" title="보유하고 있는 자산의 수량을 입력하세요."/>
             </div>
             <div>
-                <label htmlFor="purchasePrice" className={labelClasses}>{isCashCategory ? '단가' : '매수가'}</label>
-                <input id="purchasePrice" type="number" value={purchasePrice} onChange={(e) => setPurchasePrice(e.target.value)} placeholder="150.00" className={`${inputClasses} ${isCashCategory ? 'bg-gray-600' : ''}`} required min="0" step="any" title="자산을 매수한 평균 단가를 선택한 통화 기준으로 입력하세요." disabled={isCashCategory} />
+                <label htmlFor="purchasePrice" className={labelClasses}>매수가</label>
+                <input id="purchasePrice" type="number" value={purchasePrice} onChange={(e) => setPurchasePrice(e.target.value)} placeholder="150.00" className={inputClasses} required min="0" step="any" title="자산을 매수한 평균 단가를 선택한 통화 기준으로 입력하세요." />
             </div>
             <div>
                 <label htmlFor="currency" className={labelClasses}>통화</label>

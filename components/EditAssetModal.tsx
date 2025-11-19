@@ -1,6 +1,6 @@
 
-import React, { useState, useEffect } from 'react';
-import { Asset, AssetCategory, AssetRegion, EXCHANGE_MAP, Currency, COMMON_EXCHANGES, inferCategoryFromExchange } from '../types';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Asset, AssetCategory, Currency, ALL_EXCHANGES, inferCategoryFromExchange, ALLOWED_CATEGORIES } from '../types';
 
 interface EditAssetModalProps {
   asset: Asset | null;
@@ -13,6 +13,12 @@ interface EditAssetModalProps {
 
 const EditAssetModal: React.FC<EditAssetModalProps> = ({ asset, isOpen, onClose, onSave, onDelete, isLoading }) => {
   const [formData, setFormData] = useState<Asset | null>(null);
+  const categoryOptions = useMemo(() => {
+    if (!formData) return ALLOWED_CATEGORIES;
+    return ALLOWED_CATEGORIES.includes(formData.category)
+      ? ALLOWED_CATEGORIES
+      : [formData.category, ...ALLOWED_CATEGORIES];
+  }, [formData]);
 
   useEffect(() => {
     if (asset) {
@@ -22,16 +28,6 @@ const EditAssetModal: React.FC<EditAssetModalProps> = ({ asset, isOpen, onClose,
         });
     }
   }, [asset]);
-
-  useEffect(() => {
-    if (formData) {
-        const currentExchanges = EXCHANGE_MAP[formData.category] || [];
-        if (!currentExchanges.includes(formData.exchange)) {
-            setFormData(prev => prev ? { ...prev, exchange: currentExchanges[0] || '' } : null);
-        }
-    }
-  }, [formData?.category]);
-
 
   if (!isOpen || !formData) return null;
   
@@ -67,7 +63,6 @@ const EditAssetModal: React.FC<EditAssetModalProps> = ({ asset, isOpen, onClose,
 
   const inputClasses = "w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition";
   const labelClasses = "block text-sm font-medium text-gray-300 mb-1";
-  const exchangesForCategory = EXCHANGE_MAP[formData.category] || [];
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center z-50" onClick={onClose} role="dialog" aria-modal="true">
@@ -77,31 +72,11 @@ const EditAssetModal: React.FC<EditAssetModalProps> = ({ asset, isOpen, onClose,
           <div>
             <label htmlFor="category-edit" className={labelClasses}>자산 구분</label>
             <select id="category-edit" name="category" value={formData.category} onChange={handleChange} className={inputClasses}>
-              {Object.values(AssetCategory).map((cat) => (
+              {categoryOptions.map((cat) => (
                 <option key={cat} value={cat}>{cat}</option>
               ))}
             </select>
           </div>
-          {formData.region !== undefined && (
-            <div>
-              <label htmlFor="region-edit" className={labelClasses}>지역/테마 (선택사항)</label>
-              <select 
-                id="region-edit" 
-                name="region" 
-                value={formData.region || ''} 
-                onChange={(e) => {
-                  const value = e.target.value === '' ? undefined : e.target.value;
-                  setFormData(prev => prev ? { ...prev, region: value as AssetRegion | undefined } : null);
-                }} 
-                className={inputClasses}
-              >
-                <option value="">없음</option>
-                {Object.values(AssetRegion).map((reg) => (
-                  <option key={reg} value={reg}>{reg}</option>
-                ))}
-              </select>
-            </div>
-          )}
            <div className="grid grid-cols-2 gap-4">
             <div>
               <label htmlFor="exchange-edit" className={labelClasses}>거래소/시장</label>
@@ -117,7 +92,7 @@ const EditAssetModal: React.FC<EditAssetModalProps> = ({ asset, isOpen, onClose,
                 }} 
                 className={inputClasses}
               >
-                {COMMON_EXCHANGES.map((ex) => (
+                {ALL_EXCHANGES.map((ex) => (
                   <option key={ex} value={ex}>{ex}</option>
                 ))}
               </select>

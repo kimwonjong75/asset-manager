@@ -1,5 +1,5 @@
 import React, { useState, useRef, useCallback } from 'react';
-import { AssetCategory, Currency, EXCHANGE_MAP, BulkUploadResult } from '../types';
+import { AssetCategory, Currency, EXCHANGE_MAP, BulkUploadResult, ALLOWED_CATEGORIES } from '../types';
 
 interface BulkUploadModalProps {
   isOpen: boolean;
@@ -72,7 +72,7 @@ const BulkUploadModal: React.FC<BulkUploadModalProps> = ({ isOpen, onClose, onFi
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                 <div className="text-sm text-gray-400 space-y-2">
                     <p><strong className="text-gray-200">필수 헤더:</strong> <code>ticker, exchange, quantity, purchasePrice, purchaseDate, category, currency</code> 순서로 작성해야 합니다.</p>
-                    <p><strong className="text-gray-200">category 값:</strong> <code>{Object.values(AssetCategory).join(', ')}</code> 중 하나여야 합니다.</p>
+                    <p><strong className="text-gray-200">category 값:</strong> <code>{ALLOWED_CATEGORIES.join(', ')}</code> 중 하나여야 합니다.</p>
                     <p><strong className="text-gray-200">currency 값:</strong> <code>{Object.values(Currency).join(', ')}</code> 중 하나여야 합니다.</p>
                 </div>
                 <div className="text-sm">
