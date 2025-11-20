@@ -156,6 +156,7 @@ const App: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [editingAsset, setEditingAsset] = useState<Asset | null>(null);
+  const [sellingAsset, setSellingAsset] = useState<Asset | null>(null);
   const [isBulkUploadModalOpen, setIsBulkUploadModalOpen] = useState<boolean>(false);
   const [isAddAssetModalOpen, setIsAddAssetModalOpen] = useState<boolean>(false);
   const [sellAlertDropRate, setSellAlertDropRate] = useState<number>(15);
@@ -263,6 +264,7 @@ const App: React.FC = () => {
             const geminiData = result.value;
             return {
                 ...asset,
+                yesterdayPrice: asset.currentPrice, // 이전 가격을 어제 가격으로 저장
                 currentPrice: geminiData.priceKRW,
                 priceOriginal: geminiData.priceOriginal,
                 currency: geminiData.currency as Currency,
@@ -655,6 +657,71 @@ const App: React.FC = () => {
     setEditingAsset(null);
   }, []);
 
+  const handleSellAsset = useCallback((asset: Asset) => {
+    setSellingAsset(asset);
+  }, []);
+
+  const handleCloseSellModal = useCallback(() => {
+    setSellingAsset(null);
+  }, []);
+
+  const handleConfirmSell = useCallback(async (
+    assetId: string,
+    sellDate: string,
+    sellPrice: number,
+    sellPriceOriginal: number,
+    sellQuantity: number,
+    sellExchangeRate?: number
+  ) => {
+    if (!isSignedIn) {
+      setError('Google Drive 로그인 후 매도할 수 있습니다.');
+      setTimeout(() => setError(null), 3000);
+      return;
+    }
+
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const updatedAssets = assets.map(a => {
+        if (a.id === assetId) {
+          const sellTransaction = {
+            id: `${assetId}-${Date.now()}`,
+            sellDate,
+            sellPrice,
+            sellPriceOriginal,
+            sellQuantity,
+            sellExchangeRate,
+          };
+
+          const updatedAsset: Asset = {
+            ...a,
+            quantity: a.quantity - sellQuantity,
+            sellTransactions: [...(a.sellTransactions || []), sellTransaction],
+          };
+
+          // 수량이 0 이하가 되면 자산 제거
+          return updatedAsset.quantity <= 0 ? null : updatedAsset;
+        }
+        return a;
+      }).filter((a): a is Asset => a !== null);
+
+      setAssets(updatedAssets);
+      setSellingAsset(null);
+      setSuccessMessage('매도가 완료되었습니다.');
+      setTimeout(() => setSuccessMessage(null), 3000);
+      
+      // 자동 저장
+      autoSave(updatedAssets, portfolioHistory);
+    } catch (error) {
+      console.error('Failed to sell asset:', error);
+      setError('매도 처리 중 오류가 발생했습니다.');
+      setTimeout(() => setError(null), 3000);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [assets, autoSave, portfolioHistory, isSignedIn]);
+
   const handleUpdateAsset = useCallback(async (updatedAsset: Asset) => {
     if (!isSignedIn) {
       setError('Google Drive 로그인 후 자산을 수정할 수 있습니다.');
@@ -930,6 +997,49 @@ const App: React.FC = () => {
   const dashboardTotalGainLoss = dashboardTotalValue - dashboardTotalPurchaseValue;
   const dashboardTotalReturn = dashboardTotalPurchaseValue === 0 ? 0 : (dashboardTotalGainLoss / dashboardTotalPurchaseValue) * 100;
   
+  // 매도 통계 계산
+  const soldAssetsStats = useMemo(() => {
+    let totalSoldAmount = 0; // 총 매도금액
+    let totalSoldPurchaseValue = 0; // 매도된 종목의 매수금액
+    let totalSoldProfit = 0; // 매도 수익
+    let soldCount = 0; // 매도 횟수
+
+    assets.forEach(asset => {
+      if (asset.sellTransactions && asset.sellTransactions.length > 0) {
+        asset.sellTransactions.forEach(transaction => {
+          totalSoldAmount += transaction.sellPrice * transaction.sellQuantity;
+          soldCount += 1;
+          
+          // 매도된 수량에 대한 매수금액 계산
+          const soldRatio = transaction.sellQuantity / (asset.quantity + transaction.sellQuantity); // 매도 전 수량 기준
+          let purchaseValueForSold: number;
+          if (asset.currency === Currency.KRW) {
+            purchaseValueForSold = asset.purchasePrice * transaction.sellQuantity;
+          } else if (asset.purchaseExchangeRate) {
+            purchaseValueForSold = asset.purchasePrice * asset.purchaseExchangeRate * transaction.sellQuantity;
+          } else if (asset.priceOriginal > 0) {
+            const exchangeRate = asset.currentPrice / asset.priceOriginal;
+            purchaseValueForSold = asset.purchasePrice * exchangeRate * transaction.sellQuantity;
+          } else {
+            purchaseValueForSold = asset.purchasePrice * transaction.sellQuantity;
+          }
+          totalSoldPurchaseValue += purchaseValueForSold;
+        });
+      }
+    });
+
+    totalSoldProfit = totalSoldAmount - totalSoldPurchaseValue;
+    const soldReturn = totalSoldPurchaseValue === 0 ? 0 : (totalSoldProfit / totalSoldPurchaseValue) * 100;
+
+    return {
+      totalSoldAmount,
+      totalSoldPurchaseValue,
+      totalSoldProfit,
+      soldReturn,
+      soldCount,
+    };
+  }, [assets]);
+  
   const profitLossChartTitle = useMemo(() => (
       dashboardFilterCategory === 'ALL'
       ? '손익 추이 분석'
@@ -1192,12 +1302,23 @@ const App: React.FC = () => {
                           size="small"
                       />
                   </div>
-                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
                     <StatCard title="총 자산 (원화)" value={formatCurrencyKRW(dashboardTotalValue)} tooltip="선택된 자산의 현재 평가금액 총합입니다." />
                     <StatCard title="투자 원금" value={formatCurrencyKRW(dashboardTotalPurchaseValue)} tooltip="선택된 자산의 총 매수금액 합계입니다." />
                     <StatCard title="총 손익 (원화)" value={formatCurrencyKRW(dashboardTotalGainLoss)} isProfit={dashboardTotalGainLoss >= 0} tooltip="총 평가금액에서 총 매수금액을 뺀 금액입니다."/>
                     <StatCard title="총 수익률" value={`${dashboardTotalReturn.toFixed(2)}%`} isProfit={dashboardTotalReturn >= 0} tooltip="총 손익을 총 매수금액으로 나눈 백분율입니다."/>
                   </div>
+                  {soldAssetsStats.soldCount > 0 && (
+                    <div className="bg-gray-800 p-6 rounded-lg shadow-lg mb-6">
+                      <h3 className="text-xl font-bold text-white mb-4">매도 통계</h3>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                        <StatCard title="매도 횟수" value={soldAssetsStats.soldCount.toString()} tooltip="총 매도 거래 횟수입니다." size="small" />
+                        <StatCard title="매도 금액" value={formatCurrencyKRW(soldAssetsStats.totalSoldAmount)} tooltip="매도된 종목의 총 매도금액입니다." size="small" />
+                        <StatCard title="매도 수익" value={formatCurrencyKRW(soldAssetsStats.totalSoldProfit)} isProfit={soldAssetsStats.totalSoldProfit >= 0} tooltip="매도금액에서 매수금액을 뺀 수익입니다." size="small" />
+                        <StatCard title="매도 수익률" value={`${soldAssetsStats.soldReturn.toFixed(2)}%`} isProfit={soldAssetsStats.soldReturn >= 0} tooltip="매도 수익을 매수금액으로 나눈 백분율입니다." size="small" />
+                      </div>
+                    </div>
+                  )}
                   <ProfitLossChart history={portfolioHistory} assetsToDisplay={dashboardFilteredAssets} title={profitLossChartTitle} />
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     <div className="lg:col-span-1">
@@ -1219,6 +1340,7 @@ const App: React.FC = () => {
                       history={portfolioHistory}
                       onRefreshAll={() => handleRefreshAllPrices(false)}
                       onEdit={handleEditAsset}
+                      onSell={handleSellAsset}
                       isLoading={isLoading}
                       sellAlertDropRate={sellAlertDropRate}
                       filterCategory={filterCategory}
@@ -1238,6 +1360,13 @@ const App: React.FC = () => {
               onClose={handleCloseEditModal}
               onSave={handleUpdateAsset}
               onDelete={handleDeleteAsset}
+              isLoading={isLoading}
+            />
+            <SellAssetModal
+              asset={sellingAsset}
+              isOpen={!!sellingAsset}
+              onClose={handleCloseSellModal}
+              onSell={handleConfirmSell}
               isLoading={isLoading}
             />
              <BulkUploadModal

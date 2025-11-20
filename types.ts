@@ -100,7 +100,6 @@ export const EXCHANGE_MAP: Record<string, string[]> = {
 export const ALLOWED_CATEGORIES: AssetCategory[] = [
   AssetCategory.KOREAN_STOCK,
   AssetCategory.US_STOCK,
-  AssetCategory.FOREIGN_STOCK,
   AssetCategory.OTHER_FOREIGN_STOCK,
   AssetCategory.KOREAN_BOND,
   AssetCategory.US_BOND,
@@ -108,6 +107,15 @@ export const ALLOWED_CATEGORIES: AssetCategory[] = [
   AssetCategory.PHYSICAL_ASSET,
 ];
 
+
+export interface SellTransaction {
+  id: string;
+  sellDate: string;
+  sellPrice: number; // In KRW
+  sellPriceOriginal?: number; // In original currency
+  sellQuantity: number;
+  sellExchangeRate?: number; // Exchange rate at sellDate
+}
 
 export interface Asset {
   id: string;
@@ -123,8 +131,10 @@ export interface Asset {
   currentPrice: number; // In KRW
   priceOriginal: number; // In original currency
   highestPrice: number; // In KRW
+  yesterdayPrice?: number; // In KRW - 어제 종가
   sellAlertDropRate?: number;
   memo?: string; // 종목 메모
+  sellTransactions?: SellTransaction[]; // 매도 내역
 }
 
 export type NewAssetForm = Omit<Asset, 'id' | 'name' | 'currentPrice' | 'priceOriginal' | 'highestPrice' | 'purchaseExchangeRate'>;

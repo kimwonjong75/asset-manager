@@ -8,6 +8,7 @@ interface PortfolioTableProps {
   history: PortfolioSnapshot[];
   onRefreshAll: () => void;
   onEdit: (asset: Asset) => void;
+  onSell?: (asset: Asset) => void;
   isLoading: boolean;
   sellAlertDropRate: number;
   filterCategory: AssetCategory | 'ALL';
@@ -18,10 +19,10 @@ interface PortfolioTableProps {
   onSearchChange?: (query: string) => void;
 }
 
-type SortKey = 'name' | 'purchaseDate' | 'quantity' | 'purchasePrice' | 'currentPrice' | 'returnPercentage' | 'dropFromHigh' | 'purchaseValueKRW' | 'currentValue' | 'allocation';
+type SortKey = 'name' | 'purchaseDate' | 'quantity' | 'purchasePrice' | 'currentPrice' | 'returnPercentage' | 'dropFromHigh' | 'yesterdayChange' | 'purchaseValueKRW' | 'currentValue' | 'allocation';
 type SortDirection = 'ascending' | 'descending';
 
-const PortfolioTable: React.FC<PortfolioTableProps> = ({ assets, history, onRefreshAll, onEdit, isLoading, sellAlertDropRate, filterCategory, onFilterChange, filterAlerts, onFilterAlertsChange, searchQuery = '', onSearchChange }) => {
+const PortfolioTable: React.FC<PortfolioTableProps> = ({ assets, history, onRefreshAll, onEdit, onSell, isLoading, sellAlertDropRate, filterCategory, onFilterChange, filterAlerts, onFilterAlertsChange, searchQuery = '', onSearchChange }) => {
   const [sortConfig, setSortConfig] = useState<{ key: SortKey; direction: SortDirection } | null>(null);
   const [expandedAssetId, setExpandedAssetId] = useState<string | null>(null);
 
@@ -59,6 +60,10 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({ assets, history, onRefr
       const allocation = totalValue === 0 ? 0 : (currentValue / totalValue) * 100;
       const dropFromHigh = asset.highestPrice === 0 ? 0 : ((asset.currentPrice - asset.highestPrice) / asset.highestPrice) * 100;
       const diffFromHigh = asset.currentPrice - asset.highestPrice;
+      const yesterdayChange = asset.yesterdayPrice && asset.yesterdayPrice > 0 
+        ? ((asset.currentPrice - asset.yesterdayPrice) / asset.yesterdayPrice) * 100 
+        : 0;
+      const diffFromYesterday = asset.yesterdayPrice ? asset.currentPrice - asset.yesterdayPrice : 0;
       
       return {
         ...asset,
@@ -72,6 +77,8 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({ assets, history, onRefr
           dropFromHigh,
           profitLoss,
           diffFromHigh,
+          yesterdayChange,
+          diffFromYesterday,
         }
       };
     });
@@ -178,11 +185,22 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({ assets, history, onRefr
                 value={searchQuery}
                 onChange={(e) => onSearchChange(e.target.value)}
                 placeholder="종목명, 티커, 메모 검색..."
-                className="bg-gray-700 border border-gray-600 rounded-md py-2 pl-10 pr-4 text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent w-64"
+                className="bg-gray-700 border border-gray-600 rounded-md py-2 pl-10 pr-10 text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent w-64"
               />
               <svg className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
+              {searchQuery && (
+                <button
+                  onClick={() => onSearchChange('')}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white transition"
+                  title="검색어 지우기"
+                >
+                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              )}
             </div>
           )}
           <div className="relative">
@@ -252,6 +270,9 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({ assets, history, onRefr
               <th scope="col" className={`${thClasses} justify-end`} onClick={() => requestSort('dropFromHigh')} title="자산의 현재가가 기록된 최고가 대비 얼마나 하락했는지를 나타내는 비율입니다. ((현재가 - 최고가) / 최고가) * 100">
                 <div className={`${thContentClasses} justify-end`}><span>최고가 대비</span> <SortIcon sortKey='dropFromHigh'/></div>
               </th>
+              <th scope="col" className={`${thClasses} justify-end`} onClick={() => requestSort('yesterdayChange')} title="어제 종가 대비 현재가의 변동률입니다. ((현재가 - 어제가) / 어제가) * 100">
+                <div className={`${thContentClasses} justify-end`}><span>어제대비</span> <SortIcon sortKey='yesterdayChange'/></div>
+              </th>
               <th scope="col" className={`${thClasses} justify-end`} onClick={() => requestSort('purchaseValueKRW')} title="총 투자 원금을 원화로 환산한 값입니다. (매수 평균가 * 수량 * 매수시 환율)">
                  <div className={`${thContentClasses} justify-end`}><span>투자원금</span> <SortIcon sortKey='purchaseValueKRW'/></div>
               </th>
@@ -262,15 +283,19 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({ assets, history, onRefr
                 <div className={`${thContentClasses} justify-end`}><span>비중</span> <SortIcon sortKey='allocation'/></div>
               </th>
               <th scope="col" className="px-4 py-3 text-center" title="자산 정보 수정">수정</th>
+              {onSell && <th scope="col" className="px-4 py-3 text-center" title="자산 매도">매도</th>}
               <th scope="col" className="px-4 py-3 text-center" title="자산 상세 정보 보기">상세</th>
             </tr>
           </thead>
           <tbody>
             {enrichedAndSortedAssets.length > 0 ? enrichedAndSortedAssets.map(asset => {
-              const { purchaseValueKRW, currentValue, returnPercentage, allocation, dropFromHigh, profitLoss, diffFromHigh } = asset.metrics;
+              const { purchaseValueKRW, currentValue, returnPercentage, allocation, dropFromHigh, profitLoss, diffFromHigh, yesterdayChange, diffFromYesterday } = asset.metrics;
               const alertRate = asset.sellAlertDropRate ?? sellAlertDropRate;
               const isAlertTriggered = dropFromHigh <= -alertRate;
               const isNonKRW = asset.currency !== Currency.KRW;
+              
+              // 투자원금 색상 가져오기 (수익률과 동일한 색상 사용)
+              const investmentColor = getChangeColor(returnPercentage);
 
               return (
                 <Fragment key={asset.id}>
@@ -288,7 +313,7 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({ assets, history, onRefr
                               {asset.name}
                             </a>
                             {asset.memo && (
-                              <div className="absolute left-0 top-full mt-2 w-64 p-3 bg-gray-800 text-white text-xs rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-[100] whitespace-pre-wrap break-words border border-gray-600 pointer-events-none">
+                              <div className="absolute left-0 top-full mt-2 w-[512px] p-3 bg-gray-800 text-white text-xs rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-[100] whitespace-pre-wrap break-words border border-gray-600 pointer-events-none">
                                 <div className="font-semibold mb-1.5 text-primary-light border-b border-gray-600 pb-1">메모:</div>
                                 <div className="text-gray-200">{asset.memo}</div>
                               </div>
@@ -313,8 +338,33 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({ assets, history, onRefr
                       {isNonKRW && <div className="text-xs text-gray-500">{formatOriginalCurrency(asset.priceOriginal, asset.currency)}</div>}
                     </td>
                     <td className={`px-4 py-4 font-medium text-right ${getChangeColor(returnPercentage)}`}>
-                        <div>{returnPercentage.toFixed(2)}%</div>
-                        <div className="text-xs opacity-80">{formatKRW(profitLoss)}</div>
+                        {isNonKRW ? (
+                          <div className="group relative inline-block">
+                            <div>
+                              <div>{returnPercentage.toFixed(2)}%</div>
+                              <div className="text-xs opacity-80">{formatKRW(profitLoss)}</div>
+                            </div>
+                            <div className="absolute left-0 top-full mt-2 w-64 p-3 bg-gray-800 text-white text-xs rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-[100] whitespace-pre-wrap break-words border border-gray-600 pointer-events-none">
+                              <div className="font-semibold mb-1.5 text-primary-light border-b border-gray-600 pb-1">외화기준 수익률</div>
+                              <div className="text-gray-200 mb-2">
+                                {asset.priceOriginal > 0 && asset.purchasePrice > 0
+                                  ? (((asset.priceOriginal - asset.purchasePrice) / asset.purchasePrice) * 100).toFixed(2) + '%'
+                                  : '-'}
+                              </div>
+                              <div className="font-semibold mb-1.5 text-primary-light border-b border-gray-600 pb-1">외화기준 수익금</div>
+                              <div className="text-gray-200">
+                                {asset.priceOriginal > 0 && asset.purchasePrice > 0
+                                  ? formatOriginalCurrency((asset.priceOriginal - asset.purchasePrice) * asset.quantity, asset.currency)
+                                  : '-'}
+                              </div>
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            <div>{returnPercentage.toFixed(2)}%</div>
+                            <div className="text-xs opacity-80">{formatKRW(profitLoss)}</div>
+                          </>
+                        )}
                     </td>
                     <td className={`px-4 py-4 font-medium text-right ${getChangeColor(dropFromHigh)}`} title={`기준 최고가: ${formatKRW(asset.highestPrice)}\n알림 기준: -${alertRate}%`}>
                         <div className="flex justify-end items-center">
@@ -325,8 +375,18 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({ assets, history, onRefr
                           </div>
                         </div>
                     </td>
+                    <td className={`px-4 py-4 font-medium text-right ${investmentColor}`}>
+                        {asset.yesterdayPrice && asset.yesterdayPrice > 0 ? (
+                          <>
+                            <div>{yesterdayChange.toFixed(2)}%</div>
+                            <div className="text-xs opacity-80">{formatKRW(diffFromYesterday)}</div>
+                          </>
+                        ) : (
+                          <div className="text-gray-500">-</div>
+                        )}
+                    </td>
                     <td className="px-4 py-4 text-right">
-                      <div>{formatKRW(purchaseValueKRW)}</div>
+                      <div className={investmentColor}>{formatKRW(purchaseValueKRW)}</div>
                       {isNonKRW && <div className="text-xs text-gray-500">{formatOriginalCurrency(asset.purchasePrice * asset.quantity, asset.currency)}</div>}
                     </td>
                     <td className="px-4 py-4 text-right">
@@ -339,6 +399,20 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({ assets, history, onRefr
                           <EditIcon />
                       </button>
                     </td>
+                    {onSell && (
+                      <td className="px-4 py-4 text-center">
+                        <button 
+                          onClick={() => onSell(asset)} 
+                          disabled={isLoading || asset.quantity <= 0} 
+                          className="p-2 text-red-400 hover:text-red-300 disabled:text-gray-600 disabled:cursor-not-allowed transition" 
+                          title="선택한 자산을 매도합니다."
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </td>
+                    )}
                     <td className="px-4 py-4 text-center">
                        <button onClick={() => handleToggleExpand(asset.id)} className="p-2 text-blue-400 hover:text-blue-300 transition" title="개별 손익 추이 보기">
                           <ChartBarIcon />
@@ -347,7 +421,7 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({ assets, history, onRefr
                   </tr>
                   {expandedAssetId === asset.id && (
                     <tr className="bg-gray-900/50">
-                      <td colSpan={13} className="p-0 sm:p-2">
+                      <td colSpan={onSell ? 15 : 14} className="p-0 sm:p-2">
                         <AssetTrendChart
                           history={history}
                           assetId={asset.id}
@@ -360,7 +434,7 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({ assets, history, onRefr
               );
             }) : (
               <tr>
-                <td colSpan={13} className="text-center py-8 text-gray-500">
+                <td colSpan={onSell ? 15 : 14} className="text-center py-8 text-gray-500">
                   {filterAlerts 
                     ? '알림 기준을 초과한 자산이 없습니다.'
                     : filterCategory === 'ALL' 
