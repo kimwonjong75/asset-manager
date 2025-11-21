@@ -5,14 +5,15 @@ import { Asset, SymbolSearchResult } from '../types';
 // The API key must be obtained exclusively from the environment variable import.meta.env.VITE_GEMINI_API_KEY.
 const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY! });
 
-export const fetchAssetData = async (ticker: string, exchange: string): Promise<{ name: string; priceKRW: number; priceOriginal: number; currency: string; }> => {
-    const prompt = `Using Google Search, find the closing price for the most recent trading day for the asset with ticker "${ticker}" listed on the "${exchange}" exchange/market from a reliable financial source. Also, provide its official name in Korean.
+export const fetchAssetData = async (ticker: string, exchange: string): Promise<{ name: string; priceKRW: number; priceOriginal: number; currency: string; pricePreviousClose: number; }> => {
+    const prompt = `Using Google Search, find the closing price for the most recent trading day for the asset with ticker "${ticker}" listed on the "${exchange}" exchange/market from a reliable financial source. Also, find the closing price of the PREVIOUS trading day (yesterday's close) and its official name in Korean.
 
-Return the response ONLY as a JSON object with four keys:
+Return the response ONLY as a JSON object with five keys:
 1. "name": The official Korean name of the asset.
 2. "priceOriginal": The closing price in its native currency (e.g., USD for NASDAQ, JPY for TSE).
 3. "currency": The ISO 4217 currency code for the original price (e.g., "USD", "JPY", "KRW").
 4. "priceKRW": The closing price converted to Korean Won (KRW).
+5. "pricePreviousClose": The closing price of the PREVIOUS trading day converted to Korean Won (KRW). If not available, use the same value as priceKRW.
 
 For example, for ticker 'AAPL' on 'NASDAQ', the native currency is USD. For ticker '8001.T' on 'TSE (도쿄)', it's JPY. For '005930' on 'KRX (코스피/코스닥)', it's KRW. For 'BTC' on '주요 거래소 (종합)', find the price in USD and convert it to KRW.
 
@@ -76,6 +77,7 @@ Your final output must be only the JSON object, nothing else.`;
             priceKRW: data.priceKRW,
             priceOriginal: data.priceOriginal,
             currency: data.currency,
+            pricePreviousClose: typeof data.pricePreviousClose === 'number' ? data.pricePreviousClose : data.priceKRW,
         };
     } catch (error) {
         console.error(`Error fetching data for ticker ${ticker} on ${exchange}:`, error);

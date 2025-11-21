@@ -251,6 +251,7 @@ const App: React.FC = () => {
               priceKRW: rate * asset.priceOriginal,
               priceOriginal: asset.priceOriginal,
               currency: asset.currency,
+              pricePreviousClose: rate * asset.priceOriginal, // 현금은 전일 종가를 현재가와 동일하게 처리 (임시)
           }));
       }
       return fetchAssetData(asset.ticker, asset.exchange)
@@ -264,7 +265,7 @@ const App: React.FC = () => {
             const geminiData = result.value;
             return {
                 ...asset,
-                yesterdayPrice: asset.currentPrice, // 이전 가격을 어제 가격으로 저장
+                yesterdayPrice: geminiData.pricePreviousClose, // API에서 가져온 전일 종가 사용
                 currentPrice: geminiData.priceKRW,
                 priceOriginal: geminiData.priceOriginal,
                 currency: geminiData.currency as Currency,
