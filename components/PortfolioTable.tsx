@@ -34,7 +34,7 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({ assets, history, onRefr
   
   const categoryOptions = useMemo(() => {
     const extras = Array.from(new Set(assets.map(asset => asset.category))).filter(
-      (cat) => !ALLOWED_CATEGORIES.includes(cat)
+      (cat) => !ALLOWED_CATEGORIES.includes(cat) && cat !== AssetCategory.FOREIGN_STOCK  // FOREIGN_STOCK 명시적 제외
     );
     return [...ALLOWED_CATEGORIES, ...extras];
   }, [assets]);
@@ -315,7 +315,7 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({ assets, history, onRefr
                             {asset.memo && (
                               <div 
                                 className="absolute left-0 top-full mt-2 p-3 bg-gray-800 text-white text-xs rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-[100] whitespace-pre-wrap break-words border border-gray-600 pointer-events-none"
-                                style={{ width: '512px' }}
+                                style={{ width: '512px', maxWidth: '512px' }}
                               >
                                 <div className="font-semibold mb-1.5 text-primary-light border-b border-gray-600 pb-1">메모:</div>
                                 <div className="text-gray-200">{asset.memo}</div>
