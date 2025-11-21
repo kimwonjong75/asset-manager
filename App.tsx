@@ -9,6 +9,7 @@ import AllocationChart from './components/AllocationChart';
 import Header from './components/Header';
 import StatCard from './components/StatCard';
 import EditAssetModal from './components/EditAssetModal';
+import SellAssetModal from './components/SellAssetModal';
 import BulkUploadModal from './components/BulkUploadModal';
 import SellAlertControl from './components/SellAlertControl';
 import CategorySummaryTable from './components/CategorySummaryTable';
