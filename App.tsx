@@ -176,12 +176,33 @@ const App: React.FC = () => {
   const [isAssistantOpen, setIsAssistantOpen] = useState<boolean>(false);
   const [filterAlerts, setFilterAlerts] = useState(false);
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [updateAvailable, setUpdateAvailable] = useState<boolean>(false);
+  const [updateLastModified, setUpdateLastModified] = useState<string | null>(null);
   const categoryOptions = useMemo(() => {
     const extras = Array.from(new Set(assets.map(asset => asset.category))).filter(
       (cat) => !ALLOWED_CATEGORIES.includes(cat)
     );
     return [...ALLOWED_CATEGORIES, ...extras];
   }, [assets]);
+
+  useEffect(() => {
+    const checkForUpdate = async () => {
+      try {
+        const res = await fetch('metadata.json', { cache: 'no-store' });
+        if (!res.ok) return;
+        const lm = res.headers.get('last-modified');
+        if (lm) {
+          const prev = localStorage.getItem('app.lastModified');
+          if (prev && prev !== lm) {
+            setUpdateAvailable(true);
+            setUpdateLastModified(lm);
+          }
+          localStorage.setItem('app.lastModified', lm);
+        }
+      } catch {}
+    };
+    checkForUpdate();
+  }, []);
   
   // 자동 저장 함수 (디바운싱 및 변경 감지 적용)
   const autoSave = useCallback(
@@ -1262,6 +1283,30 @@ const App: React.FC = () => {
         />
         
         <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 w-[90%] max-w-xl space-y-3 pointer-events-none">
+          {updateAvailable && (
+            <div className="bg-blue-600 text-white px-4 py-3 rounded-lg shadow-lg flex justify-between items-center pointer-events-auto" role="alert">
+              <span className="block sm:inline">새 버전이 배포되었습니다.</span>
+              <div className="flex items-center gap-2">
+                <button
+                  className="ml-2 bg-white/20 hover:bg-white/30 text-white px-3 py-1 rounded transition"
+                  onClick={() => {
+                    const baseUrl = window.location.href.split('?')[0];
+                    window.location.replace(`${baseUrl}?_ts=${Date.now()}`);
+                  }}
+                  aria-label="업데이트 적용"
+                >
+                  업데이트 적용
+                </button>
+                <button
+                  className="ml-2 text-white/80 hover:text-white transition"
+                  onClick={() => setUpdateAvailable(false)}
+                  aria-label="닫기"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+          )}
           {successMessage && (
             <div className="bg-success/90 text-white px-4 py-3 rounded-lg shadow-lg flex justify-between items-center pointer-events-auto" role="alert">
               <span className="block sm:inline">{successMessage}</span>

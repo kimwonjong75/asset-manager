@@ -1,0 +1,36 @@
+## 관측 및 원인 후보
+- 경로 설정은 일단 맞음: 배포 URL이 `https://kimwonjong75.github.io/asset-manager/`, Vite `base`가 `vite.config.ts:6`에서 `'/asset-manager/'`로 설정됨.
+- Actions 배포 사용: `.github/workflows/deploy.yml`로 Pages 배포(artifacts → deploy-pages) 진행.
+- 지연 원인 후보:
+  - GitHub Pages CDN의 `index.html` 캐시(엣지 전파 지연)로 해시된 자산보다 HTML 갱신이 늦게 보이는 현상
+  - 이중 배포(gh-pages 브랜치 vs Actions) 설정 충돌로 소스가 번갈아 참조되어 이전 아티팩트가 노출
+  - 경로 요청의 슬래시 유무(`…/asset-manager` vs `…/asset-manager/`)로 리디렉트/중간 HTML이 캐시됨
+
+## 즉시 진단 체크리스트
+1) 브라우저 DevTools Network에서 `index.html` 응답 헤더 확인: `Cache-Control`, `Age`, `Last-Modified`가 새 아티팩트를 가리키는지
+2) URL 변형 테스트: `…/asset-manager/?_ts=<timestamp>` 로드 시 최신 반영이면 CDN 캐시 원인으로 확정
+3) 리포지토리 Settings → Pages: Source가 “GitHub Actions”로 되어 있고 `gh-pages` 브랜치 소스가 비활성인지 확인
+4) 배포 로그에서 `page_url`과 실제 접속 URL 일치 여부 확인
+
+## 개선 방안(무해·보수적)
+- 배포 방식 단일화
+  - Pages Source를 “GitHub Actions”로 고정하고 `gh-pages` 브랜치 기반 배포를 사용하지 않도록 정리
+- 캐시 우회 장치(HTML 갱신 지연 완화)
+  - 앱 시작 시 `metadata.json`(빌드 타임스탬프) fetch(`cache: 'no-store'`) 후 localStorage에 저장된 이전 빌드와 비교 → 변경 감지 시 사용자에게 ‘새 버전 감지’ 배너를 띄우고 강제 새로고침 옵션 제공(또는 즉시 `location.reload()`)
+  - 라우트 진입 URL에 `?_ts=<buildId>` 쿼리를 자동 부여하는 선택적 로직(첫 진입만 적용)으로 HTML 캐시 우회
+- 경로 일관성
+  - 모든 링크/문서에서 `…/asset-manager/`(슬래시 포함)만 사용하도록 확인
+
+## 구현 항목(승인 후 적용)
+- `App.tsx` 초기 마운트 시 `metadata.json`를 `no-store` 옵션으로 가져와 버전 체크 및 새로고침 안내 로직 추가
+- 배포 워크플로는 유지(해시된 자산 이름으로 장기 캐시 안전), 단 Pages 설정을 Actions 단일로 고정
+- 문서/README에 접근 URL 및 슬래시 규칙 안내(내부 용)
+
+## 기대 효과
+- HTML 캐시로 인한 하루 단위 지연 체감 개선(사용자 주도 혹은 자동 새로고침으로 최신 반영 보장)
+- 배포 소스 단일화로 이전 아티팩트 노출 가능성 제거
+
+## 확인 필요
+- 현재 Pages Source가 “GitHub Actions”만 사용하는지
+- 최근 지연 시점에서 `…/asset-manager/?_ts=<timestamp>` 시 최신이 즉시 반영되는지(캐시 원인 확증용)
+- 커스텀 도메인 사용 여부(없는 경우엔 github.io CDN 캐시 이슈에 집중)
