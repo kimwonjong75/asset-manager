@@ -117,6 +117,13 @@ export interface SellTransaction {
   sellExchangeRate?: number; // Exchange rate at sellDate
 }
 
+export interface SellRecord extends SellTransaction {
+  assetId: string;
+  ticker: string;
+  name: string;
+  category: AssetCategory;
+}
+
 export interface Asset {
   id: string;
   category: AssetCategory;

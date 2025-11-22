@@ -1,7 +1,7 @@
 
 
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
-import { Asset, NewAssetForm, AssetCategory, EXCHANGE_MAP, Currency, PortfolioSnapshot, AssetSnapshot, BulkUploadResult, ALLOWED_CATEGORIES } from './types';
+import { Asset, NewAssetForm, AssetCategory, EXCHANGE_MAP, Currency, PortfolioSnapshot, AssetSnapshot, BulkUploadResult, ALLOWED_CATEGORIES, SellRecord } from './types';
 import { fetchAssetData, fetchHistoricalExchangeRate, fetchCurrentExchangeRate } from './services/geminiService';
 import { googleDriveService, GoogleUser } from './services/googleDriveService';
 import PortfolioTable from './components/PortfolioTable';
@@ -17,8 +17,9 @@ import ProfitLossChart from './components/ProfitLossChart';
 import AddNewAssetModal from './components/AddNewAssetModal';
 import TopBottomAssets from './components/TopBottomAssets';
 import PortfolioAssistant from './components/PortfolioAssistant';
+import SellAnalyticsPage from './components/SellAnalyticsPage';
 
-type ActiveTab = 'dashboard' | 'portfolio';
+type ActiveTab = 'dashboard' | 'portfolio' | 'analytics';
 
 // Helper function to map old data structures to the new one
 const mapToNewAssetStructure = (asset: any): Asset => {
@@ -119,11 +120,17 @@ const App: React.FC = () => {
         } else {
           setPortfolioHistory([]);
         }
+        if (Array.isArray(data.sellHistory)) {
+          setSellHistory(data.sellHistory);
+        } else {
+          setSellHistory([]);
+        }
         setSuccessMessage('Google Drive에서 포트폴리오를 불러왔습니다.');
         setTimeout(() => setSuccessMessage(null), 3000);
       } else {
         setAssets([]);
         setPortfolioHistory([]);
+        setSellHistory([]);
         setSuccessMessage('Google Drive에 저장된 포트폴리오가 없습니다. 자산을 추가해주세요.');
         setTimeout(() => setSuccessMessage(null), 3000);
       }
@@ -137,6 +144,7 @@ const App: React.FC = () => {
 
   const [assets, setAssets] = useState<Asset[]>([]);
   const [portfolioHistory, setPortfolioHistory] = useState<PortfolioSnapshot[]>([]);
+  const [sellHistory, setSellHistory] = useState<SellRecord[]>([]);
   const [hasAutoUpdated, setHasAutoUpdated] = useState<boolean>(false);
 
   // 초기화 완료 후 데이터 로드
@@ -148,6 +156,7 @@ const App: React.FC = () => {
     } else {
       setAssets([]);
       setPortfolioHistory([]);
+      setSellHistory([]);
       setHasAutoUpdated(false);
     }
   }, [isInitializing, isSignedIn, loadFromGoogleDrive]);
@@ -180,7 +189,7 @@ const App: React.FC = () => {
       let timeoutId: NodeJS.Timeout | null = null;
       let isSaving = false;
       let lastSavedData: string | null = null;
-      return async (assetsToSave: Asset[], history: PortfolioSnapshot[]) => {
+      return async (assetsToSave: Asset[], history: PortfolioSnapshot[], sells: SellRecord[]) => {
         if (!isSignedIn) {
           setError('Google Drive 로그인 후 저장할 수 있습니다.');
           setTimeout(() => setError(null), 3000);
@@ -198,6 +207,7 @@ const App: React.FC = () => {
           const exportData = {
             assets: assetsToSave,
             portfolioHistory: history,
+            sellHistory: sells,
             lastUpdateDate: new Date().toISOString().slice(0, 10)
           };
           const portfolioJSON = JSON.stringify(exportData, null, 2);
@@ -295,7 +305,7 @@ const App: React.FC = () => {
         setTimeout(() => setSuccessMessage(null), 5000);
         
         // 자동 저장
-        autoSave(updatedAssets, portfolioHistory);
+        autoSave(updatedAssets, portfolioHistory, sellHistory);
     }
 
     setIsLoading(false);
@@ -444,6 +454,7 @@ const App: React.FC = () => {
       const exportData = {
         assets: assets,
         portfolioHistory: portfolioHistory,
+        sellHistory: sellHistory,
         lastUpdateDate: new Date().toISOString().slice(0, 10)
       };
       const portfolioJSON = JSON.stringify(exportData, null, 2);
@@ -471,6 +482,7 @@ const App: React.FC = () => {
     const exportData = {
       assets: assets,
       portfolioHistory: portfolioHistory,
+      sellHistory: sellHistory,
       lastUpdateDate: new Date().toISOString().slice(0, 10)
     };
     const portfolioJSON = JSON.stringify(exportData, null, 2);
@@ -525,6 +537,7 @@ const App: React.FC = () => {
             
             let loadedAssets: any[];
             let loadedHistory: PortfolioSnapshot[] | undefined;
+            let loadedSellHistory: SellRecord[] | undefined;
 
             if (Array.isArray(loadedData)) {
               // Old format: just the assets array
@@ -534,6 +547,9 @@ const App: React.FC = () => {
               loadedAssets = loadedData.assets;
               if (Array.isArray(loadedData.portfolioHistory)) {
                 loadedHistory = loadedData.portfolioHistory;
+              }
+              if (Array.isArray(loadedData.sellHistory)) {
+                loadedSellHistory = loadedData.sellHistory;
               }
             } else {
               throw new Error("Invalid file format.");
@@ -545,7 +561,12 @@ const App: React.FC = () => {
             if (loadedHistory) {
               setPortfolioHistory(loadedHistory);
             }
-            autoSave(assetsWithDefaults, loadedHistory ?? portfolioHistory);
+            if (loadedSellHistory) {
+              setSellHistory(loadedSellHistory);
+            } else {
+              setSellHistory([]);
+            }
+            autoSave(assetsWithDefaults, loadedHistory ?? portfolioHistory, loadedSellHistory ?? sellHistory);
             setFileName(file.name);
             setSuccessMessage(`'${file.name}' 파일에서 성공적으로 가져왔습니다.`);
             setTimeout(() => setSuccessMessage(null), 3000);
@@ -622,7 +643,7 @@ const App: React.FC = () => {
       setAssets(prevAssets => {
         const newAssets = [...prevAssets, finalNewAsset];
         // 자동 저장
-        autoSave(newAssets, portfolioHistory);
+        autoSave(newAssets, portfolioHistory, sellHistory);
         return newAssets;
       });
       setSuccessMessage(`${finalNewAsset.name} 자산이 추가되었습니다.`);
@@ -645,7 +666,7 @@ const App: React.FC = () => {
     setAssets(prevAssets => {
       const updated = prevAssets.filter(asset => asset.id !== assetId);
       // 자동 저장
-      autoSave(updated, portfolioHistory);
+      autoSave(updated, portfolioHistory, sellHistory);
       return updated;
     });
     setEditingAsset(null);
@@ -702,6 +723,15 @@ const App: React.FC = () => {
             sellTransactions: [...(a.sellTransactions || []), sellTransaction],
           };
 
+          const record: SellRecord = {
+            assetId: a.id,
+            ticker: a.ticker,
+            name: a.name,
+            category: a.category,
+            ...sellTransaction,
+          };
+          setSellHistory(prev => [...prev, record]);
+
           // 수량이 0 이하가 되면 자산 제거
           return updatedAsset.quantity <= 0 ? null : updatedAsset;
         }
@@ -714,7 +744,7 @@ const App: React.FC = () => {
       setTimeout(() => setSuccessMessage(null), 3000);
       
       // 자동 저장
-      autoSave(updatedAssets, portfolioHistory);
+      autoSave(updatedAssets, portfolioHistory, sellHistory);
     } catch (error) {
       console.error('Failed to sell asset:', error);
       setError('매도 처리 중 오류가 발생했습니다.');
@@ -788,7 +818,7 @@ const App: React.FC = () => {
           asset.id === updatedAsset.id ? finalAsset : asset
         );
         // 자동 저장
-        autoSave(updated, portfolioHistory);
+        autoSave(updated, portfolioHistory, sellHistory);
         return updated;
       });
       setEditingAsset(null);
@@ -917,7 +947,7 @@ const App: React.FC = () => {
                     setAssets(prev => {
                         const updated = [...prev, ...newAssets];
                         // 자동 저장
-                        autoSave(updated, portfolioHistory);
+                        autoSave(updated, portfolioHistory, sellHistory);
                         return updated;
                     });
                     successCount = newAssets.length;
@@ -1187,6 +1217,7 @@ const App: React.FC = () => {
     setGoogleUser(null);
     setAssets([]);
     setPortfolioHistory([]);
+    setSellHistory([]);
     setHasAutoUpdated(false);
     
     setSuccessMessage('로그아웃되었습니다. Google Drive 로그인 후 다시 이용해주세요.');
@@ -1264,6 +1295,7 @@ const App: React.FC = () => {
               <nav className="-mb-px flex space-x-8" aria-label="Tabs">
                 <TabButton tabId="dashboard" onClick={() => handleTabChange('dashboard')}>대시보드</TabButton>
                 <TabButton tabId="portfolio" onClick={() => handleTabChange('portfolio')}>포트폴리오 상세</TabButton>
+                <TabButton tabId="analytics" onClick={() => handleTabChange('analytics')}>수익 통계</TabButton>
               </nav>
             </div>
 
@@ -1353,6 +1385,10 @@ const App: React.FC = () => {
                       onSearchChange={setSearchQuery}
                     />
                 </div>
+              )}
+
+              {activeTab === 'analytics' && (
+                <SellAnalyticsPage assets={assets} sellHistory={sellHistory} />
               )}
             </main>
             
