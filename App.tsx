@@ -1,7 +1,7 @@
 
 
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
-import { Asset, NewAssetForm, AssetCategory, EXCHANGE_MAP, Currency, PortfolioSnapshot, AssetSnapshot, BulkUploadResult, ALLOWED_CATEGORIES, SellRecord } from './types';
+import { Asset, NewAssetForm, AssetCategory, EXCHANGE_MAP, Currency, PortfolioSnapshot, AssetSnapshot, BulkUploadResult, ALLOWED_CATEGORIES, SellRecord, WatchlistItem } from './types';
 import { fetchAssetData, fetchHistoricalExchangeRate, fetchCurrentExchangeRate } from './services/geminiService';
 import { googleDriveService, GoogleUser } from './services/googleDriveService';
 import PortfolioTable from './components/PortfolioTable';
@@ -18,8 +18,9 @@ import AddNewAssetModal from './components/AddNewAssetModal';
 import TopBottomAssets from './components/TopBottomAssets';
 import PortfolioAssistant from './components/PortfolioAssistant';
 import SellAnalyticsPage from './components/SellAnalyticsPage';
+import WatchlistPage from './components/WatchlistPage';
 
-type ActiveTab = 'dashboard' | 'portfolio' | 'analytics';
+type ActiveTab = 'dashboard' | 'portfolio' | 'analytics' | 'watchlist';
 
 // Helper function to map old data structures to the new one
 const mapToNewAssetStructure = (asset: any): Asset => {
@@ -125,12 +126,18 @@ const App: React.FC = () => {
         } else {
           setSellHistory([]);
         }
+        if (Array.isArray(data.watchlist)) {
+          setWatchlist(data.watchlist);
+        } else {
+          setWatchlist([]);
+        }
         setSuccessMessage('Google Drive에서 포트폴리오를 불러왔습니다.');
         setTimeout(() => setSuccessMessage(null), 3000);
       } else {
         setAssets([]);
         setPortfolioHistory([]);
         setSellHistory([]);
+        setWatchlist([]);
         setSuccessMessage('Google Drive에 저장된 포트폴리오가 없습니다. 자산을 추가해주세요.');
         setTimeout(() => setSuccessMessage(null), 3000);
       }
@@ -145,6 +152,7 @@ const App: React.FC = () => {
   const [assets, setAssets] = useState<Asset[]>([]);
   const [portfolioHistory, setPortfolioHistory] = useState<PortfolioSnapshot[]>([]);
   const [sellHistory, setSellHistory] = useState<SellRecord[]>([]);
+  const [watchlist, setWatchlist] = useState<WatchlistItem[]>([]);
   const [hasAutoUpdated, setHasAutoUpdated] = useState<boolean>(false);
 
   // 초기화 완료 후 데이터 로드
@@ -163,6 +171,7 @@ const App: React.FC = () => {
 
   const [fileName, setFileName] = useState<string>('portfolio.json');
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isWatchlistLoading, setIsWatchlistLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [editingAsset, setEditingAsset] = useState<Asset | null>(null);
@@ -229,6 +238,7 @@ const App: React.FC = () => {
             assets: assetsToSave,
             portfolioHistory: history,
             sellHistory: sells,
+            watchlist,
             lastUpdateDate: new Date().toISOString().slice(0, 10)
           };
           const portfolioJSON = JSON.stringify(exportData, null, 2);
@@ -258,7 +268,7 @@ const App: React.FC = () => {
         }, 2000); // 2초 대기
       };
     })(),
-    [isSignedIn]
+    [isSignedIn, watchlist]
   );
 
   const handleRefreshAllPrices = useCallback(async (isAutoUpdate = false, isScheduled = false) => {
@@ -559,6 +569,7 @@ const App: React.FC = () => {
             let loadedAssets: any[];
             let loadedHistory: PortfolioSnapshot[] | undefined;
             let loadedSellHistory: SellRecord[] | undefined;
+            let loadedWatchlist: WatchlistItem[] | undefined;
 
             if (Array.isArray(loadedData)) {
               // Old format: just the assets array
@@ -571,6 +582,9 @@ const App: React.FC = () => {
               }
               if (Array.isArray(loadedData.sellHistory)) {
                 loadedSellHistory = loadedData.sellHistory;
+              }
+              if (Array.isArray(loadedData.watchlist)) {
+                loadedWatchlist = loadedData.watchlist;
               }
             } else {
               throw new Error("Invalid file format.");
@@ -586,6 +600,11 @@ const App: React.FC = () => {
               setSellHistory(loadedSellHistory);
             } else {
               setSellHistory([]);
+            }
+            if (loadedWatchlist) {
+              setWatchlist(loadedWatchlist);
+            } else {
+              setWatchlist([]);
             }
             autoSave(assetsWithDefaults, loadedHistory ?? portfolioHistory, loadedSellHistory ?? sellHistory);
             setFileName(file.name);
@@ -1193,6 +1212,71 @@ const App: React.FC = () => {
         setIsLoading(false);
     }
   }, [assets, isSignedIn]);
+
+  const handleAddWatchItem = useCallback((payload: Omit<WatchlistItem, 'id' | 'currentPrice' | 'priceOriginal' | 'currency' | 'yesterdayPrice' | 'highestPrice' | 'lastSignalAt' | 'lastSignalType'>) => {
+    const id = `${Date.now()}`;
+    const item: WatchlistItem = { ...payload, id } as WatchlistItem;
+    setWatchlist(prev => {
+      const next = [...prev, item];
+      autoSave(assets, portfolioHistory, sellHistory);
+      return next;
+    });
+  }, [assets, portfolioHistory, sellHistory, autoSave]);
+
+  const handleUpdateWatchItem = useCallback((item: WatchlistItem) => {
+    setWatchlist(prev => {
+      const next = prev.map(w => (w.id === item.id ? item : w));
+      autoSave(assets, portfolioHistory, sellHistory);
+      return next;
+    });
+  }, [assets, portfolioHistory, sellHistory, autoSave]);
+
+  const handleDeleteWatchItem = useCallback((id: string) => {
+    setWatchlist(prev => {
+      const next = prev.filter(w => w.id !== id);
+      autoSave(assets, portfolioHistory, sellHistory);
+      return next;
+    });
+  }, [assets, portfolioHistory, sellHistory, autoSave]);
+
+  const handleToggleWatchMonitoring = useCallback((id: string, enabled: boolean) => {
+    setWatchlist(prev => prev.map(w => (w.id === id ? { ...w, monitoringEnabled: enabled } : w)));
+  }, []);
+
+  const handleRefreshWatchlistPrices = useCallback(async () => {
+    if (!isSignedIn) {
+      setError('Google Drive 로그인 후 데이터를 갱신할 수 있습니다.');
+      setTimeout(() => setError(null), 3000);
+      return;
+    }
+    if (watchlist.length === 0) return;
+    setIsWatchlistLoading(true);
+    setError(null);
+    const results = await Promise.allSettled(
+      watchlist.map(item => fetchAssetData(item.ticker, item.exchange))
+    );
+    const updated = watchlist.map((item, idx) => {
+      const result = results[idx];
+      if (result.status === 'fulfilled') {
+        const d = result.value;
+        const currentPrice = d.priceKRW;
+        const highestPrice = item.highestPrice ? Math.max(item.highestPrice, currentPrice) : currentPrice;
+        return {
+          ...item,
+          name: d.name || item.name,
+          currentPrice,
+          priceOriginal: d.priceOriginal,
+          currency: d.currency as Currency,
+          yesterdayPrice: d.pricePreviousClose,
+          highestPrice,
+        };
+      }
+      return item;
+    });
+    setWatchlist(updated);
+    autoSave(assets, portfolioHistory, sellHistory);
+    setIsWatchlistLoading(false);
+  }, [isSignedIn, watchlist, assets, portfolioHistory, sellHistory, autoSave]);
   
   // Google 로그인 핸들러
   const handleSignIn = useCallback(async () => {
@@ -1341,6 +1425,7 @@ const App: React.FC = () => {
                 <TabButton tabId="dashboard" onClick={() => handleTabChange('dashboard')}>대시보드</TabButton>
                 <TabButton tabId="portfolio" onClick={() => handleTabChange('portfolio')}>포트폴리오 상세</TabButton>
                 <TabButton tabId="analytics" onClick={() => handleTabChange('analytics')}>수익 통계</TabButton>
+                <TabButton tabId="watchlist" onClick={() => handleTabChange('watchlist')}>관심종목</TabButton>
               </nav>
             </div>
 
@@ -1434,6 +1519,17 @@ const App: React.FC = () => {
 
               {activeTab === 'analytics' && (
                 <SellAnalyticsPage assets={assets} sellHistory={sellHistory} />
+              )}
+              {activeTab === 'watchlist' && (
+                <WatchlistPage
+                  watchlist={watchlist}
+                  onAdd={(item) => handleAddWatchItem(item)}
+                  onUpdate={(item) => handleUpdateWatchItem(item)}
+                  onDelete={(id) => handleDeleteWatchItem(id)}
+                  onToggleMonitoring={(id, enabled) => handleToggleWatchMonitoring(id, enabled)}
+                  onRefreshAll={handleRefreshWatchlistPrices}
+                  isLoading={isWatchlistLoading}
+                />
               )}
             </main>
             

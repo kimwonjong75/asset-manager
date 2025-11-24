@@ -107,6 +107,26 @@ export const ALLOWED_CATEGORIES: AssetCategory[] = [
   AssetCategory.PHYSICAL_ASSET,
 ];
 
+export interface WatchlistItem {
+  id: string;
+  ticker: string;
+  exchange: string;
+  name: string;
+  category: AssetCategory;
+  monitoringEnabled: boolean;
+  notes?: string;
+  buyZoneMin?: number;
+  buyZoneMax?: number;
+  dropFromHighThreshold?: number;
+  currentPrice?: number;
+  priceOriginal?: number;
+  currency?: Currency;
+  yesterdayPrice?: number;
+  highestPrice?: number;
+  lastSignalAt?: string;
+  lastSignalType?: 'BUY_ZONE' | 'DROP_FROM_HIGH' | 'DAILY_DROP' | null;
+}
+
 
 export interface SellTransaction {
   id: string;
