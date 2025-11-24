@@ -25,6 +25,7 @@ type SortDirection = 'ascending' | 'descending';
 const PortfolioTable: React.FC<PortfolioTableProps> = ({ assets, history, onRefreshAll, onEdit, onSell, isLoading, sellAlertDropRate, filterCategory, onFilterChange, filterAlerts, onFilterAlertsChange, searchQuery = '', onSearchChange }) => {
   const [sortConfig, setSortConfig] = useState<{ key: SortKey; direction: SortDirection } | null>(null);
   const [expandedAssetId, setExpandedAssetId] = useState<string | null>(null);
+  const [showHiddenColumns, setShowHiddenColumns] = useState<boolean>(false);
 
   const totalValue = useMemo(() => assets.reduce((sum, asset) => sum + asset.currentPrice * asset.quantity, 0), [assets]);
 
@@ -169,6 +170,11 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({ assets, history, onRefr
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
     </svg>
   );
+  const SellIcon: React.FC = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v10m0 0l-4-4m4 4l4-4M4 20h16" />
+    </svg>
+  );
   
   const thClasses = "px-4 py-3 cursor-pointer hover:bg-gray-600 transition-colors";
   const thContentClasses = "flex items-center gap-2";
@@ -227,6 +233,14 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({ assets, history, onRefr
               </div>
               <div className="ml-3 text-sm font-medium text-gray-300">알림 종목만 보기</div>
           </label>
+          <label htmlFor="hidden-columns-toggle" className="flex items-center cursor-pointer" title="보유수량·매수일·매수평균가·비중 컬럼을 표시/숨김합니다.">
+              <div className="relative ml-2">
+                  <input type="checkbox" id="hidden-columns-toggle" className="sr-only" checked={showHiddenColumns} onChange={() => setShowHiddenColumns(!showHiddenColumns)} />
+                  <div className="block bg-gray-600 w-10 h-6 rounded-full"></div>
+                  <div className={`dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform duration-300 ease-in-out ${showHiddenColumns ? 'transform translate-x-full bg-primary' : ''}`}></div>
+              </div>
+              <div className="ml-3 text-sm font-medium text-gray-300">숨김 컬럼 표시</div>
+          </label>
         </div>
         <button
           onClick={onRefreshAll}
@@ -252,15 +266,21 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({ assets, history, onRefr
               <th scope="col" className={`${thClasses}`} onClick={() => requestSort('name')} title="자산의 공식 명칭, 티커, 거래소 정보입니다.">
                 <div className={thContentClasses}><span>종목명</span> <SortIcon sortKey='name'/></div>
               </th>
-               <th scope="col" className={`${thClasses} text-right`} onClick={() => requestSort('quantity')} title="보유하고 있는 자산의 수량입니다.">
-                <div className={`${thContentClasses} justify-end`}><span>보유수량</span> <SortIcon sortKey='quantity'/></div>
-              </th>
-              <th scope="col" className={`${thClasses} text-center`} onClick={() => requestSort('purchaseDate')} title="자산을 매수한 날짜입니다.">
-                <div className={`${thContentClasses} justify-center`}><span>매수일</span> <SortIcon sortKey='purchaseDate'/></div>
-              </th>
-              <th scope="col" className={`${thClasses} text-right`} onClick={() => requestSort('purchasePrice')} title="자산을 매수한 시점의 평균 단가입니다 (자국 통화 기준). 해외 자산의 경우, 원화 환산 가격이 함께 표시됩니다.">
-                <div className={`${thContentClasses} justify-end`}><span>매수평균가</span> <SortIcon sortKey='purchasePrice'/></div>
-              </th>
+              {showHiddenColumns && (
+                <th scope="col" className={`${thClasses} text-right`} onClick={() => requestSort('quantity')} title="보유하고 있는 자산의 수량입니다.">
+                  <div className={`${thContentClasses} justify-end`}><span>보유수량</span> <SortIcon sortKey='quantity'/></div>
+                </th>
+              )}
+              {showHiddenColumns && (
+                <th scope="col" className={`${thClasses} text-center`} onClick={() => requestSort('purchaseDate')} title="자산을 매수한 날짜입니다.">
+                  <div className={`${thContentClasses} justify-center`}><span>매수일</span> <SortIcon sortKey='purchaseDate'/></div>
+                </th>
+              )}
+              {showHiddenColumns && (
+                <th scope="col" className={`${thClasses} text-right`} onClick={() => requestSort('purchasePrice')} title="자산을 매수한 시점의 평균 단가입니다 (자국 통화 기준). 해외 자산의 경우, 원화 환산 가격이 함께 표시됩니다.">
+                  <div className={`${thContentClasses} justify-end`}><span>매수평균가</span> <SortIcon sortKey='purchasePrice'/></div>
+                </th>
+              )}
               <th scope="col" className={`${thClasses} text-right`} onClick={() => requestSort('currentPrice')} title="현재 시장가를 원화로 환산한 가격입니다.">
                 <div className={`${thContentClasses} justify-end`}><span>현재가</span> <SortIcon sortKey='currentPrice'/></div>
               </th>
@@ -279,9 +299,11 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({ assets, history, onRefr
               <th scope="col" className={`${thClasses} justify-end`} onClick={() => requestSort('currentValue')} title="현재 보유 자산의 총 가치를 원화로 환산한 값입니다. (현재가 * 수량)">
                  <div className={`${thContentClasses} justify-end`}><span>평가총액</span> <SortIcon sortKey='currentValue'/></div>
               </th>
-              <th scope="col" className={`${thClasses} justify-end`} onClick={() => requestSort('allocation')} title="해당 자산의 평가금액이 전체 포트폴리오에서 차지하는 비율입니다. (개별 자산 평가금액 / 총 자산) * 100">
-                <div className={`${thContentClasses} justify-end`}><span>비중</span> <SortIcon sortKey='allocation'/></div>
-              </th>
+              {showHiddenColumns && (
+                <th scope="col" className={`${thClasses} justify-end`} onClick={() => requestSort('allocation')} title="해당 자산의 평가금액이 전체 포트폴리오에서 차지하는 비율입니다. (개별 자산 평가금액 / 총 자산) * 100">
+                  <div className={`${thContentClasses} justify-end`}><span>비중</span> <SortIcon sortKey='allocation'/></div>
+                </th>
+              )}
               <th scope="col" className="px-4 py-3 text-center" title="자산 정보 수정">수정</th>
               {onSell && <th scope="col" className="px-4 py-3 text-center" title="자산 매도">매도</th>}
               <th scope="col" className="px-4 py-3 text-center" title="자산 상세 정보 보기">상세</th>
@@ -326,16 +348,22 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({ assets, history, onRefr
                         <span className="text-xs text-gray-500 break-all">{asset.ticker} | {asset.exchange}</span>
                       </div>
                     </td>
-                    <td className="px-4 py-4 text-right">
-                      {asset.quantity.toLocaleString()}
-                    </td>
-                    <td className="px-4 py-4 text-center">
-                      {asset.purchaseDate}
-                    </td>
-                    <td className="px-4 py-4 text-right">
-                      <div>{formatKRW(asset.purchasePrice * (asset.purchaseExchangeRate || 1))}</div>
-                      {isNonKRW && <div className="text-xs text-gray-500">{formatOriginalCurrency(asset.purchasePrice, asset.currency)}</div>}
-                    </td>
+                    {showHiddenColumns && (
+                      <td className="px-4 py-4 text-right">
+                        {asset.quantity.toLocaleString()}
+                      </td>
+                    )}
+                    {showHiddenColumns && (
+                      <td className="px-4 py-4 text-center">
+                        {asset.purchaseDate}
+                      </td>
+                    )}
+                    {showHiddenColumns && (
+                      <td className="px-4 py-4 text-right">
+                        <div>{formatKRW(asset.purchasePrice * (asset.purchaseExchangeRate || 1))}</div>
+                        {isNonKRW && <div className="text-xs text-gray-500">{formatOriginalCurrency(asset.purchasePrice, asset.currency)}</div>}
+                      </td>
+                    )}
                     <td className="px-4 py-4 text-right">
                       <div className="font-semibold text-white">{formatKRW(asset.currentPrice)}</div>
                       {isNonKRW && <div className="text-xs text-gray-500">{formatOriginalCurrency(asset.priceOriginal, asset.currency)}</div>}
@@ -396,7 +424,9 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({ assets, history, onRefr
                       <div className="font-semibold text-white">{formatKRW(currentValue)}</div>
                       {isNonKRW && <div className="text-xs text-gray-500">{formatOriginalCurrency(asset.priceOriginal * asset.quantity, asset.currency)}</div>}
                     </td>
-                    <td className="px-4 py-4 text-right">{allocation.toFixed(2)}%</td>
+                    {showHiddenColumns && (
+                      <td className="px-4 py-4 text-right">{allocation.toFixed(2)}%</td>
+                    )}
                     <td className="px-4 py-4 text-center">
                       <button onClick={() => onEdit(asset)} disabled={isLoading} className="p-2 text-yellow-400 hover:text-yellow-300 disabled:text-gray-600 disabled:cursor-not-allowed transition" title="선택한 자산의 정보를 수정합니다.">
                           <EditIcon />
@@ -410,9 +440,7 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({ assets, history, onRefr
                           className="p-2 text-red-400 hover:text-red-300 disabled:text-gray-600 disabled:cursor-not-allowed transition" 
                           title="선택한 자산을 매도합니다."
                         >
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                          </svg>
+                          <SellIcon />
                         </button>
                       </td>
                     )}
@@ -424,7 +452,41 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({ assets, history, onRefr
                   </tr>
                   {expandedAssetId === asset.id && (
                     <tr className="bg-gray-900/50">
-                      <td colSpan={onSell ? 15 : 14} className="p-0 sm:p-2">
+                      <td colSpan={(() => {
+                        let count = 1;
+                        count += showHiddenColumns ? 1 : 0;
+                        count += showHiddenColumns ? 1 : 0;
+                        count += showHiddenColumns ? 1 : 0;
+                        count += 1;
+                        count += 1;
+                        count += 1;
+                        count += 1;
+                        count += 1;
+                        count += 1;
+                        count += showHiddenColumns ? 1 : 0;
+                        count += 1;
+                        count += onSell ? 1 : 0;
+                        count += 1;
+                        return count;
+                      })()} className="p-0 sm:p-2">
+                        <div className="px-4 sm:px-6 py-4 grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
+                          <div>
+                            <div className="text-gray-400">보유수량</div>
+                            <div className="text-white font-semibold">{asset.quantity.toLocaleString()}</div>
+                          </div>
+                          <div>
+                            <div className="text-gray-400">매수일</div>
+                            <div className="text-white font-semibold">{asset.purchaseDate}</div>
+                          </div>
+                          <div>
+                            <div className="text-gray-400">매수평균가</div>
+                            <div className="text-white font-semibold">{formatKRW(asset.purchasePrice * (asset.purchaseExchangeRate || 1))}</div>
+                          </div>
+                          <div>
+                            <div className="text-gray-400">비중</div>
+                            <div className="text-white font-semibold">{allocation.toFixed(2)}%</div>
+                          </div>
+                        </div>
                         <AssetTrendChart
                           history={history}
                           assetId={asset.id}
@@ -437,7 +499,23 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({ assets, history, onRefr
               );
             }) : (
               <tr>
-                <td colSpan={onSell ? 15 : 14} className="text-center py-8 text-gray-500">
+                <td colSpan={(() => {
+                  let count = 1;
+                  count += showHiddenColumns ? 1 : 0;
+                  count += showHiddenColumns ? 1 : 0;
+                  count += showHiddenColumns ? 1 : 0;
+                  count += 1;
+                  count += 1;
+                  count += 1;
+                  count += 1;
+                  count += 1;
+                  count += 1;
+                  count += showHiddenColumns ? 1 : 0;
+                  count += 1;
+                  count += onSell ? 1 : 0;
+                  count += 1;
+                  return count;
+                })()} className="text-center py-8 text-gray-500">
                   {filterAlerts 
                     ? '알림 기준을 초과한 자산이 없습니다.'
                     : filterCategory === 'ALL' 

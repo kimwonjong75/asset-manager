@@ -95,7 +95,7 @@ const SellAssetModal: React.FC<SellAssetModalProps> = ({ asset, isOpen, onClose,
         <h2 className="text-2xl font-bold text-white mb-6">매도: {asset.name}</h2>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="bg-gray-700 p-4 rounded-md">
-            <div className="text-sm text-gray-400 mb-2">보유 정보</div>
+            <div className={labelClasses}>보유정보</div>
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
                 <div className="text-gray-400">보유 수량</div>

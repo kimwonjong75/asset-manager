@@ -1,5 +1,5 @@
-import React, { useMemo, useState } from 'react';
-import { Asset, Currency, SellRecord } from '../types';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Asset, Currency, SellRecord, AssetCategory, ALLOWED_CATEGORIES } from '../types';
 import StatCard from './StatCard';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar } from 'recharts';
 
@@ -11,10 +11,29 @@ interface SellAnalyticsPageProps {
 type Grouping = 'daily' | 'weekly' | 'monthly' | 'quarterly';
 
 const SellAnalyticsPage: React.FC<SellAnalyticsPageProps> = ({ assets, sellHistory }) => {
-  const [grouping, setGrouping] = useState<Grouping>('daily');
+  const [grouping, setGrouping] = useState<Grouping>('monthly');
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
   const [search, setSearch] = useState<string>('');
+  const [category, setCategory] = useState<AssetCategory | 'ALL'>('ALL');
+
+  const [pendingStartDate, setPendingStartDate] = useState<string>('');
+  const [pendingEndDate, setPendingEndDate] = useState<string>('');
+  const [pendingSearch, setPendingSearch] = useState<string>('');
+  const [pendingCategory, setPendingCategory] = useState<AssetCategory | 'ALL'>('ALL');
+
+  useEffect(() => {
+    const today = new Date();
+    const lastYear = new Date();
+    lastYear.setFullYear(today.getFullYear() - 1);
+    const fmt = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const s = fmt(lastYear);
+    const e = fmt(today);
+    setStartDate(s);
+    setEndDate(e);
+    setPendingStartDate(s);
+    setPendingEndDate(e);
+  }, []);
 
   const allSellRecords: SellRecord[] = useMemo(() => {
     const inlineRecords: SellRecord[] = [];
@@ -40,9 +59,10 @@ const SellAnalyticsPage: React.FC<SellAnalyticsPageProps> = ({ assets, sellHisto
       const inStart = !startDate || d >= startDate;
       const inEnd = !endDate || d <= endDate;
       const inSearch = !search || r.name.toLowerCase().includes(search.toLowerCase()) || r.ticker.toLowerCase().includes(search.toLowerCase());
-      return inStart && inEnd && inSearch;
+      const inCategory = category === 'ALL' || r.category === category;
+      return inStart && inEnd && inSearch && inCategory;
     });
-  }, [allSellRecords, startDate, endDate, search]);
+  }, [allSellRecords, startDate, endDate, search, category]);
 
   const toKRWPurchaseUnit = (a: Asset, quantity: number): number => {
     if (a.currency === Currency.KRW) return a.purchasePrice * quantity;
@@ -141,9 +161,9 @@ const SellAnalyticsPage: React.FC<SellAnalyticsPageProps> = ({ assets, sellHisto
         <div className="flex items-center gap-4 flex-wrap">
           <div className="flex items-center gap-2">
             <label className="text-sm font-medium text-gray-300">기간:</label>
-            <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
+            <input type="date" value={pendingStartDate} onChange={e => setPendingStartDate(e.target.value)} className="bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
             <span className="text-gray-400">~</span>
-            <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
+            <input type="date" value={pendingEndDate} onChange={e => setPendingEndDate(e.target.value)} className="bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
           </div>
           <div className="relative">
             <select value={grouping} onChange={e => setGrouping(e.target.value as Grouping)} className="bg-gray-700 border border-gray-600 rounded-md py-2 pl-3 pr-8 text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary appearance-none">
@@ -157,13 +177,36 @@ const SellAnalyticsPage: React.FC<SellAnalyticsPageProps> = ({ assets, sellHisto
             </div>
           </div>
           <div className="relative">
-            <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="종목명/티커 검색" className="bg-gray-700 border border-gray-600 rounded-md py-2 pl-10 pr-10 text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary w-64" />
+            <select value={pendingCategory} onChange={e => setPendingCategory(e.target.value as AssetCategory | 'ALL')} className="bg-gray-700 border border-gray-600 rounded-md py-2 pl-3 pr-8 text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary appearance-none">
+              <option value="ALL">전체 카테고리</option>
+              {ALLOWED_CATEGORIES.map(cat => (
+                <option key={cat} value={cat}>{cat}</option>
+              ))}
+            </select>
+            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-400">
+              <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+            </div>
+          </div>
+          <div className="relative">
+            <input type="text" value={pendingSearch} onChange={e => setPendingSearch(e.target.value)} placeholder="종목명/티커 검색" className="bg-gray-700 border border-gray-600 rounded-md py-2 pl-10 pr-10 text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary w-64" />
             <svg className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
           </div>
         </div>
         <div>
+          <button
+            onClick={() => {
+              setStartDate(pendingStartDate);
+              setEndDate(pendingEndDate);
+              setSearch(pendingSearch);
+              setCategory(pendingCategory);
+            }}
+            className="bg-primary hover:bg-primary-dark text-white font-medium py-2 px-4 rounded-md transition duration-300 mr-2"
+            title="선택된 조건으로 데이터를 조회합니다."
+          >
+            검색
+          </button>
           <button
             onClick={() => {
               const header = ['sellDate','name','ticker','sellQuantity','sellPriceKRW','purchaseKRW','realized','returnPct'];
