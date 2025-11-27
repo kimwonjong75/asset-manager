@@ -1,11 +1,19 @@
 import { GoogleGenAI } from '@google/genai';
-import { Asset, SymbolSearchResult } from '../types';
+import { Asset, SymbolSearchResult, AssetCategory, inferCategoryFromExchange } from '../types';
+import { fetchUpbitPrice, toUpbitPair } from './upbitService';
 
 // FIX: Initialize the GoogleGenAI client according to the coding guidelines.
 // The API key must be obtained exclusively from the environment variable import.meta.env.VITE_GEMINI_API_KEY.
 const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY! });
 
 export const fetchAssetData = async (ticker: string, exchange: string): Promise<{ name: string; priceKRW: number; priceOriginal: number; currency: string; pricePreviousClose: number; }> => {
+    const category = inferCategoryFromExchange(exchange);
+    if (category === AssetCategory.CRYPTOCURRENCY) {
+        const up = await fetchUpbitPrice(ticker);
+        const price = Number(up.trade_price || 0);
+        const prev = Number(up.prev_closing_price || price);
+        return { name: toUpbitPair(ticker), priceKRW: price, priceOriginal: price, currency: 'KRW', pricePreviousClose: prev };
+    }
     const prompt = `Using Google Search, find the closing price for the most recent trading day for the asset with ticker "${ticker}" listed on the "${exchange}" exchange/market from a reliable financial source. Also, find the closing price of the PREVIOUS trading day (yesterday's close) and its official name in Korean.
 
 Return the response ONLY as a JSON object with five keys:
