@@ -5,132 +5,160 @@ import { Asset, SymbolSearchResult } from '../types';
 const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY! });
 
 // =================================================================
-// 1. 유틸리티: 지연(Delay) 함수 및 프록시 설정
+// 1. 유틸리티: 프록시 및 배치(Batch) 처리기
 // =================================================================
 
-// 요청 사이에 시간을 두는 함수 (비동기 지연) - 업비트 차단 방지용
-const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-
-// 프록시 목록 (하나가 막히면 다른거 시도) - 야후 파이낸스 차단 방지용
 const PROXY_LIST = [
     "https://api.allorigins.win/raw?url=",
     "https://corsproxy.io/?", 
     "https://thingproxy.freeboard.io/fetch/" 
 ];
 
-// 여러 프록시를 돌면서 시도하는 함수
+// 여러 프록시를 순차적으로 시도
 async function fetchWithProxy(targetUrl: string) {
     const encodedUrl = encodeURIComponent(targetUrl);
-    
-    // 여러 프록시를 순차적으로 시도
     for (const proxyBase of PROXY_LIST) {
         try {
-            // corsproxy.io는 인코딩 없이 쓰는 경우도 있어 분기 처리
             const url = proxyBase.includes('corsproxy.io') ? `${proxyBase}${targetUrl}` : `${proxyBase}${encodedUrl}`;
-            
             const response = await fetch(url);
-            if (response.ok) {
-                return await response.json();
-            }
+            if (response.ok) return await response.json();
         } catch (e) {
             console.warn(`Proxy ${proxyBase} failed, trying next...`);
         }
     }
-    throw new Error("All proxies failed. 주가 정보를 가져올 수 없습니다.");
+    throw new Error("모든 프록시 연결 실패");
 }
 
 // =================================================================
-// 2. 암호화폐 (Upbit API) - 요청 속도 조절 적용
+// 2. 암호화폐 (Upbit) - 자동 배치 처리 (Auto-Batching)
 // =================================================================
 
-// 마지막 요청 시간을 기록하여 속도 조절
-let lastUpbitCall = 0;
-const UPBIT_DELAY = 300; // 요청 간 최소 0.3초 간격 (너무 빠르면 늘리세요)
+// 요청을 잠시 모아둘 대기열
+let upbitBuffer: { ticker: string, resolve: (val: any) => void, reject: (err: any) => void }[] = [];
+let upbitTimeout: any = null;
 
-async function fetchCryptoPrice(ticker: string): Promise<{ price: number; prevClose: number }> {
-    const now = Date.now();
-    const timeSinceLastCall = now - lastUpbitCall;
-    
-    // 너무 빨리 요청하면 강제로 기다림 (Throttling)
-    if (timeSinceLastCall < UPBIT_DELAY) {
-        await delay(UPBIT_DELAY - timeSinceLastCall);
-    }
-    lastUpbitCall = Date.now(); // 시간 갱신
+// 대기열에 있는 모든 코인을 한 번에 조회하여 분배하는 함수
+const processUpbitQueue = async () => {
+    if (upbitBuffer.length === 0) return;
 
-    // 티커 처리 (BTC -> KRW-BTC)
-    const marketCode = ticker.toUpperCase().startsWith('KRW-') ? ticker : `KRW-${ticker}`;
-    
+    // 대기열 복사 및 초기화 (다음 요청을 위해)
+    const currentBatch = [...upbitBuffer];
+    upbitBuffer = [];
+    upbitTimeout = null;
+
     try {
-        const url = `https://api.upbit.com/v1/ticker?markets=${marketCode}`;
+        // 티커들을 'KRW-BTC,KRW-ETH' 형태로 합침
+        const marketCodes = [...new Set(currentBatch.map(item => {
+            const t = item.ticker.toUpperCase();
+            return t.startsWith('KRW-') ? t : `KRW-${t}`;
+        }))].join(',');
+
+        // 단 1번의 요청으로 모든 데이터 수신
+        const url = `https://api.upbit.com/v1/ticker?markets=${marketCodes}`;
         const response = await fetch(url);
-        
-        if (response.status === 429) {
-            throw new Error("Too Many Requests (Upbit) - 잠시 후 다시 시도됩니다.");
-        }
+        const data = await response.json(); // 업비트는 배열로 반환됨
 
-        const data = await response.json();
-        if (!data || data.length === 0) throw new Error('Coin not found');
+        // 결과를 기다리던 각 요청에게 배달
+        currentBatch.forEach(({ ticker, resolve, reject }) => {
+            const code = ticker.toUpperCase().startsWith('KRW-') ? ticker.toUpperCase() : `KRW-${ticker.toUpperCase()}`;
+            const match = data.find((d: any) => d.market === code);
+            
+            if (match) {
+                resolve({
+                    price: match.trade_price,
+                    prevClose: match.prev_closing_price
+                });
+            } else {
+                reject(new Error(`Coin not found: ${ticker}`));
+            }
+        });
 
-        const item = data[0];
-        return {
-            price: item.trade_price,
-            prevClose: item.prev_closing_price
-        };
-    } catch (e) {
-        console.error(`Upbit error: ${ticker}`, e);
-        throw e;
+    } catch (error) {
+        // 배치 요청 실패 시, 기다리던 모든 요청에 에러 전파
+        currentBatch.forEach(({ reject }) => reject(error));
     }
+};
+
+// 개별 요청을 받아서 대기열에 넣는 함수
+function fetchCryptoPriceBatched(ticker: string): Promise<{ price: number; prevClose: number }> {
+    return new Promise((resolve, reject) => {
+        upbitBuffer.push({ ticker, resolve, reject });
+        
+        // 50ms 동안 추가 요청이 없으면 배치 처리 실행 (Debounce)
+        if (upbitTimeout) clearTimeout(upbitTimeout);
+        upbitTimeout = setTimeout(processUpbitQueue, 50);
+    });
 }
 
 // =================================================================
-// 3. 주식 (Yahoo Finance)
+// 3. 주식 (Yahoo Finance) - 자동 배치 처리 (Auto-Batching)
 // =================================================================
 
-// 한국 주식 티커 정규화 (005930 -> 005930.KS)
+let yahooBuffer: { ticker: string, resolve: (val: any) => void, reject: (err: any) => void }[] = [];
+let yahooTimeout: any = null;
+
+const processYahooQueue = async () => {
+    if (yahooBuffer.length === 0) return;
+
+    const currentBatch = [...yahooBuffer];
+    yahooBuffer = [];
+    yahooTimeout = null;
+
+    try {
+        const symbols = [...new Set(currentBatch.map(i => i.ticker))].join(',');
+        
+        // 야후의 'quote' API는 여러 심볼을 한 번에 조회 가능 (chart API보다 가볍고 빠름)
+        const url = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${symbols}`;
+        const data = await fetchWithProxy(url);
+        
+        const results = data.quoteResponse?.result || [];
+
+        currentBatch.forEach(({ ticker, resolve, reject }) => {
+            const match = results.find((r: any) => r.symbol === ticker);
+            if (match) {
+                resolve({
+                    price: match.regularMarketPrice,
+                    prevClose: match.regularMarketPreviousClose,
+                    currency: match.currency,
+                    name: match.shortName || match.longName || ticker // 야후 이름 데이터 활용
+                });
+            } else {
+                // 데이터가 없으면 에러 대신 0 반환 (앱이 죽지 않게)
+                resolve({ price: 0, prevClose: 0, currency: 'KRW', name: ticker });
+            }
+        });
+
+    } catch (error) {
+        currentBatch.forEach(({ reject }) => reject(error));
+    }
+};
+
 function normalizeStockTicker(ticker: string, exchange: string): string {
     const t = ticker.toUpperCase().trim();
-    if (t.includes('.')) return t; // 이미 확장자가 있으면 패스
-    
-    // 숫자 6자리인 경우 한국 주식으로 간주
-    if (/^\d{6}$/.test(t)) {
-        return exchange.includes('코스닥') ? `${t}.KQ` : `${t}.KS`;
-    }
+    if (t.includes('.')) return t;
+    if (/^\d{6}$/.test(t)) return exchange.includes('코스닥') ? `${t}.KQ` : `${t}.KS`;
     return t;
 }
 
-async function fetchStockPrice(ticker: string) {
-    try {
-        // 야후 파이낸스 차트 API 사용
-        const url = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=5d`;
-        const data = await fetchWithProxy(url);
-
-        if (!data.chart || !data.chart.result || data.chart.result.length === 0) {
-            throw new Error("Invalid Yahoo Finance Data");
-        }
-
-        const result = data.chart.result[0];
-        const meta = result.meta;
-        return {
-            price: meta.regularMarketPrice,
-            prevClose: meta.previousClose,
-            currency: meta.currency
-        };
-    } catch (e) {
-        console.error(`Yahoo Finance error: ${ticker}`, e);
-        throw e;
-    }
+function fetchStockPriceBatched(ticker: string): Promise<any> {
+    return new Promise((resolve, reject) => {
+        yahooBuffer.push({ ticker, resolve, reject });
+        if (yahooTimeout) clearTimeout(yahooTimeout);
+        yahooTimeout = setTimeout(processYahooQueue, 50);
+    });
 }
 
 // =================================================================
-// 4. 메인 Export 함수 (기존 로직 대체)
+// 4. 메인 Export 함수 (수정됨)
 // =================================================================
 
 export const fetchAssetData = async (ticker: string, exchange: string) => {
-    // 암호화폐 여부 확인 (거래소 이름이나 티커로 판단)
-    const isCrypto = exchange.includes('종합') || exchange.includes('업비트') || ['BTC', 'ETH', 'XRP', 'SOL', 'USDC', 'TRX', 'APE'].includes(ticker.toUpperCase());
+    // 암호화폐 여부
+    const isCrypto = exchange.includes('종합') || exchange.includes('업비트') || ['BTC', 'ETH', 'XRP', 'SOL', 'USDC', 'TRX', 'APE', 'DOGE', 'ADA', 'SUI'].includes(ticker.toUpperCase());
 
     if (isCrypto) {
-        const data = await fetchCryptoPrice(ticker);
+        // [변경] 배치 함수 호출
+        const data = await fetchCryptoPriceBatched(ticker);
         return {
             name: ticker,
             priceKRW: data.price,
@@ -139,18 +167,17 @@ export const fetchAssetData = async (ticker: string, exchange: string) => {
             pricePreviousClose: data.prevClose
         };
     } else {
-        // 주식 처리
+        // [변경] 배치 함수 호출
         const yahooTicker = normalizeStockTicker(ticker, exchange);
-        const data = await fetchStockPrice(yahooTicker);
+        const data = await fetchStockPriceBatched(yahooTicker);
         
-        // 환율 처리 (간단화: USD면 1430원 가정, 필요 시 API 연동)
-        // 실제 운영 시에는 환율 API도 프록시를 통해 가져와야 정확함
+        // 환율 처리
         let rate = 1;
-        if (data.currency === 'USD') rate = 1430; // 임시 고정 환율
+        if (data.currency === 'USD') rate = 1435; // 고정 환율 (속도/안정성 최우선)
         else if (data.currency === 'JPY') rate = 9.2;
 
         return {
-            name: ticker, // 야후에서 이름을 따로 주지 않을 경우 티커 사용
+            name: data.name || ticker,
             priceOriginal: data.price,
             currency: data.currency,
             priceKRW: data.price * rate,
@@ -160,11 +187,10 @@ export const fetchAssetData = async (ticker: string, exchange: string) => {
 };
 
 // =================================================================
-// 5. 기타 필수 함수들 (앱이 깨지지 않도록 유지)
+// 5. 기타 함수들 (검색, 질문 등)
 // =================================================================
 
 export const searchSymbols = async (query: string): Promise<SymbolSearchResult[]> => {
-    // 야후 검색 API 사용 (프록시 경유)
     const url = `https://query2.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(query)}&lang=ko-KR&region=KR&quotesCount=5`;
     try {
         const data = await fetchWithProxy(url);
@@ -179,17 +205,13 @@ export const searchSymbols = async (query: string): Promise<SymbolSearchResult[]
 };
 
 export const fetchCurrentExchangeRate = async (from: string, to: string) => {
-    if (from === to) return 1;
-    if (from === 'USD' && to === 'KRW') return 1430; // 에러 방지용 고정값
+    if (from === 'USD' && to === 'KRW') return 1435;
     return 1; 
 };
 
-export const fetchHistoricalExchangeRate = async (date: string, from: string, to: string) => {
-    if (from === 'USD' && to === 'KRW') return 1430;
-    return 1;
-};
+export const fetchHistoricalExchangeRate = async () => 1435;
 
-// 포트폴리오 질문 기능 (Gemini 사용 유지)
+// 포트폴리오 질문 (Gemini)
 let portfolioCache: { data: string; timestamp: number } | null = null;
 const CACHE_DURATION = 5 * 60 * 1000;
 
@@ -197,7 +219,6 @@ export const askPortfolioQuestion = async (assets: Asset[], question: string): P
     try {
         const simplifiedAssets = assets.map(asset => ({
             name: asset.name,
-            category: asset.category,
             quantity: asset.quantity,
             current_value_krw: asset.currentPrice * asset.quantity,
         }));
@@ -205,4 +226,18 @@ export const askPortfolioQuestion = async (assets: Asset[], question: string): P
         
         const now = Date.now();
         if (portfolioCache && portfolioCache.data === portfolioJson && (now - portfolioCache.timestamp) < CACHE_DURATION) {
-            // 캐시 활용
+            // 캐시 사용
+        } else {
+            portfolioCache = { data: portfolioJson, timestamp: now };
+        }
+
+        const prompt = `투자 전문가로서 답변해줘. 자산 데이터:\n${portfolioJson}\n\n질문: "${question}"`;
+        const response = await ai.models.generateContent({
+            model: 'gemini-1.5-flash',
+            contents: prompt,
+        });
+        return response.text.trim();
+    } catch (error) {
+        return "AI 서버 연결 상태가 좋지 않아 답변할 수 없습니다.";
+    }
+};
