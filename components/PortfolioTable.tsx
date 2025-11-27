@@ -4,9 +4,10 @@ import { Asset, Currency, CURRENCY_SYMBOLS, AssetCategory, PortfolioSnapshot, AL
 import AssetTrendChart from './AssetTrendChart';
 
 interface PortfolioTableProps {
+  assets: Asset[];
   history: PortfolioSnapshot[];
   onRefreshAll: () => void;
-  onRefreshOne?: (asset: Asset) => void; 
+  onRefreshOne?: (id: string) => void | Promise<void>;
   onEdit: (asset: Asset) => void;
   onSell?: (asset: Asset) => void;
   isLoading: boolean;
