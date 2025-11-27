@@ -4,10 +4,9 @@ import { Asset, Currency, CURRENCY_SYMBOLS, AssetCategory, PortfolioSnapshot, AL
 import AssetTrendChart from './AssetTrendChart';
 
 interface PortfolioTableProps {
-  assets: Asset[];
   history: PortfolioSnapshot[];
   onRefreshAll: () => void;
-  onRefreshOne?: (id: string) => void;
+  onRefreshOne?: (asset: Asset) => void; 
   onEdit: (asset: Asset) => void;
   onSell?: (asset: Asset) => void;
   isLoading: boolean;
@@ -23,7 +22,7 @@ interface PortfolioTableProps {
 type SortKey = 'name' | 'purchaseDate' | 'quantity' | 'purchasePrice' | 'currentPrice' | 'returnPercentage' | 'dropFromHigh' | 'yesterdayChange' | 'purchaseValueKRW' | 'currentValue' | 'allocation';
 type SortDirection = 'ascending' | 'descending';
 
-const PortfolioTable: React.FC<PortfolioTableProps> = ({ assets, history, onRefreshAll, onEdit, onSell, isLoading, sellAlertDropRate, filterCategory, onFilterChange, filterAlerts, onFilterAlertsChange, searchQuery = '', onSearchChange }) => {
+const PortfolioTable: React.FC<PortfolioTableProps> = ({ assets, history, onRefreshAll, onRefreshOne, onEdit, onSell, isLoading, sellAlertDropRate, filterCategory, onFilterChange, filterAlerts, onFilterAlertsChange, searchQuery = '', onSearchChange }) => {
   const [sortConfig, setSortConfig] = useState<{ key: SortKey; direction: SortDirection } | null>(null);
   const [expandedAssetId, setExpandedAssetId] = useState<string | null>(null);
   const [showHiddenColumns, setShowHiddenColumns] = useState<boolean>(false);
