@@ -107,7 +107,7 @@ const processYahooQueue = async () => {
     try {
         const symbols = [...new Set(currentBatch.map(i => i.ticker))].join(',');
         
-        // 야후의 'quote' API는 여러 심볼을 한 번에 조회 가능 (chart API보다 가볍고 빠름)
+        // 야후의 'quote' API는 여러 심볼을 한 번에 조회 가능
         const url = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${symbols}`;
         const data = await fetchWithProxy(url);
         
@@ -120,10 +120,9 @@ const processYahooQueue = async () => {
                     price: match.regularMarketPrice,
                     prevClose: match.regularMarketPreviousClose,
                     currency: match.currency,
-                    name: match.shortName || match.longName || ticker // 야후 이름 데이터 활용
+                    name: match.shortName || match.longName || ticker 
                 });
             } else {
-                // 데이터가 없으면 에러 대신 0 반환 (앱이 죽지 않게)
                 resolve({ price: 0, prevClose: 0, currency: 'KRW', name: ticker });
             }
         });
@@ -149,15 +148,13 @@ function fetchStockPriceBatched(ticker: string): Promise<any> {
 }
 
 // =================================================================
-// 4. 메인 Export 함수 (수정됨)
+// 4. 메인 Export 함수 
 // =================================================================
 
 export const fetchAssetData = async (ticker: string, exchange: string) => {
-    // 암호화폐 여부
     const isCrypto = exchange.includes('종합') || exchange.includes('업비트') || ['BTC', 'ETH', 'XRP', 'SOL', 'USDC', 'TRX', 'APE', 'DOGE', 'ADA', 'SUI'].includes(ticker.toUpperCase());
 
     if (isCrypto) {
-        // [변경] 배치 함수 호출
         const data = await fetchCryptoPriceBatched(ticker);
         return {
             name: ticker,
@@ -167,13 +164,11 @@ export const fetchAssetData = async (ticker: string, exchange: string) => {
             pricePreviousClose: data.prevClose
         };
     } else {
-        // [변경] 배치 함수 호출
         const yahooTicker = normalizeStockTicker(ticker, exchange);
         const data = await fetchStockPriceBatched(yahooTicker);
         
-        // 환율 처리
         let rate = 1;
-        if (data.currency === 'USD') rate = 1435; // 고정 환율 (속도/안정성 최우선)
+        if (data.currency === 'USD') rate = 1435; 
         else if (data.currency === 'JPY') rate = 9.2;
 
         return {
@@ -187,7 +182,7 @@ export const fetchAssetData = async (ticker: string, exchange: string) => {
 };
 
 // =================================================================
-// 5. 기타 함수들 (검색, 질문 등)
+// 5. 기타 필수 함수들 (에러 수정됨)
 // =================================================================
 
 export const searchSymbols = async (query: string): Promise<SymbolSearchResult[]> => {
@@ -209,7 +204,11 @@ export const fetchCurrentExchangeRate = async (from: string, to: string) => {
     return 1; 
 };
 
-export const fetchHistoricalExchangeRate = async () => 1435;
+// [수정됨] 매개변수(date, from, to)를 받도록 수정하여 빌드 에러 해결
+export const fetchHistoricalExchangeRate = async (date: string, from: string, to: string) => {
+    if (from === 'USD' && to === 'KRW') return 1435;
+    return 1;
+};
 
 // 포트폴리오 질문 (Gemini)
 let portfolioCache: { data: string; timestamp: number } | null = null;
