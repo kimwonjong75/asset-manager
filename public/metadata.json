@@ -1,5 +1,4 @@
 {
-  "name": "자산 관리 시트",
-  "description": "포트폴리오 추적, 자산 배분 시각화, 정량적 투자 전략 성과 모니터링을 위한 지능형 자산 관리 대시보드.",
-  "requestFramePermissions": []
+  "commit": "DEV-LOCAL",
+  "buildTime": "2025-11-27T00:00:00Z"
 }
