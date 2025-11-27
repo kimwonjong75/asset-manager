@@ -7,6 +7,7 @@ interface PortfolioTableProps {
   assets: Asset[];
   history: PortfolioSnapshot[];
   onRefreshAll: () => void;
+  onRefreshOne?: (id: string) => void;
   onEdit: (asset: Asset) => void;
   onSell?: (asset: Asset) => void;
   isLoading: boolean;
@@ -304,6 +305,7 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({ assets, history, onRefr
                   <div className={`${thContentClasses} justify-end`}><span>비중</span> <SortIcon sortKey='allocation'/></div>
                 </th>
               )}
+              <th scope="col" className="px-4 py-3 text-center" title="자산 가격 갱신">업데이트</th>
               <th scope="col" className="px-4 py-3 text-center" title="자산 정보 수정">수정</th>
               {onSell && <th scope="col" className="px-4 py-3 text-center" title="자산 매도">매도</th>}
               <th scope="col" className="px-4 py-3 text-center" title="자산 상세 정보 보기">상세</th>
@@ -427,6 +429,11 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({ assets, history, onRefr
                     {showHiddenColumns && (
                       <td className="px-4 py-4 text-right">{allocation.toFixed(2)}%</td>
                     )}
+                    <td className="px-4 py-4 text-center">
+                      <button onClick={() => onRefreshOne && onRefreshOne(asset.id)} disabled={isLoading} className="p-2 text-primary hover:text-primary-light disabled:text-gray-600 disabled:cursor-not-allowed transition" title="이 자산만 현재가를 갱신합니다.">
+                        <RefreshIcon className="h-4 w-4" />
+                      </button>
+                    </td>
                     <td className="px-4 py-4 text-center">
                       <button onClick={() => onEdit(asset)} disabled={isLoading} className="p-2 text-yellow-400 hover:text-yellow-300 disabled:text-gray-600 disabled:cursor-not-allowed transition" title="선택한 자산의 정보를 수정합니다.">
                           <EditIcon />

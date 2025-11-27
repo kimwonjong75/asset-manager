@@ -349,61 +349,32 @@ const App: React.FC = () => {
     setIsLoading(false);
   }, [assets, portfolioHistory, autoSave, isSignedIn]);
 
+  const handleRefreshOnePrice = useCallback(async (assetId: string) => {
+    const target = assets.find(a => a.id === assetId);
+    if (!target) return;
+    setIsLoading(true);
+    setError(null);
+    try {
+      const d = await fetchAssetData(target.ticker, target.exchange);
+      const updated = assets.map(a => a.id === assetId ? {
+        ...a,
+        yesterdayPrice: d.pricePreviousClose,
+        currentPrice: d.priceKRW,
+        priceOriginal: d.priceOriginal,
+        currency: d.currency as Currency,
+        highestPrice: Math.max(a.highestPrice, d.priceKRW),
+      } : a);
+      setAssets(updated);
+      autoSave(updated, portfolioHistory, sellHistory);
+    } catch (e) {
+      setError('해당 종목 가격 갱신에 실패했습니다.');
+      setTimeout(() => setError(null), 3000);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [assets, autoSave, portfolioHistory, sellHistory]);
 
-  // 로그인 후 1회 자동 업데이트
-  useEffect(() => {
-    if (!isSignedIn || assets.length === 0 || hasAutoUpdated) return;
-    
-    const timeoutId = setTimeout(async () => {
-      await handleRefreshAllPrices(true, false);
-      setHasAutoUpdated(true);
-    }, 100);
-    
-    return () => clearTimeout(timeoutId);
-  }, [isSignedIn, assets.length, hasAutoUpdated, handleRefreshAllPrices]);
 
-  // 매일 9시 5분 자동 업데이트 스케줄러
-  useEffect(() => {
-    if (!isSignedIn || assets.length === 0) return;
-    
-    let timeoutId: NodeJS.Timeout | null = null;
-    let intervalId: NodeJS.Timeout | null = null;
-    
-    const scheduleDailyUpdate = () => {
-      const now = new Date();
-      const updateTime = new Date();
-      updateTime.setHours(9, 5, 0, 0); // 9시 5분
-      
-      // 오늘 9시 5분이 지났으면 내일 9시 5분으로 설정
-      if (now >= updateTime) {
-        updateTime.setDate(updateTime.getDate() + 1);
-      }
-      
-      const msUntilUpdate = updateTime.getTime() - now.getTime();
-      
-      timeoutId = setTimeout(async () => {
-        // 로그인 상태이고 자산이 있을 때만 실행
-        if (isSignedIn && assets.length > 0) {
-          await handleRefreshAllPrices(false, true);
-        }
-        
-        // 매일 반복되도록 재설정
-        intervalId = setInterval(async () => {
-          if (isSignedIn && assets.length > 0) {
-            await handleRefreshAllPrices(false, true);
-          }
-        }, 24 * 60 * 60 * 1000); // 24시간마다
-      }, msUntilUpdate);
-    };
-    
-    scheduleDailyUpdate();
-    
-    // 컴포넌트 언마운트 시 정리
-    return () => {
-      if (timeoutId) clearTimeout(timeoutId);
-      if (intervalId) clearInterval(intervalId);
-    };
-  }, [isSignedIn, assets.length, handleRefreshAllPrices]);
 
   useEffect(() => {
     const updatePortfolioHistory = () => {
@@ -1519,6 +1490,7 @@ const App: React.FC = () => {
                       assets={filteredAssets}
                       history={portfolioHistory}
                       onRefreshAll={() => handleRefreshAllPrices(false)}
+                      onRefreshOne={handleRefreshOnePrice}
                       onEdit={handleEditAsset}
                       onSell={handleSellAsset}
                       isLoading={isLoading}
