@@ -1,4 +1,4 @@
-// services/geminiService.ts
+// services/geminiService.ts (Trae의 요구사항 반영)
 
 import { GoogleGenAI } from '@google/genai';
 import { Asset, SymbolSearchResult } from '../types';
@@ -7,39 +7,90 @@ import { Asset, SymbolSearchResult } from '../types';
 const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY! });
 
 // =================================================================
-// 1. 유틸리티: Worker 프록시 설정 및 배치(Batch) 처리기
+// 1. 유틸리티: 프록시 설정 및 배치(Batch) 처리기
 // =================================================================
 
-// [사용자 입력 필수] 
-// 1단계에서 복사한 Worker URL을 여기에 붙여넣으세요.
-const WORKER_PROXY_URL = "https://yahoo-proxy.sseng0520.workers.dev"; // 👈 예시 주소, 본인의 주소로 변경하세요!
+// [Trae 변경사항 1: 프록시 후보 목록 및 환경변수 지원]
+const PROXY_CANDIDATES = [
+    // 환경 변수가 설정되어 있으면 최우선 순위로 사용됨
+    import.meta.env.VITE_YAHOO_PROXY_URL, 
+    // 공용 프록시 후보들 (Worker 실패 시 폴백용)
+    "https://api.allorigins.win/raw?url=",
+    "https://corsproxy.io/?", 
+];
 
-// 요청을 잠시 모아둘 대기열
+// 로컬 스토리지에 캐시된 성공 프록시 주소
+const CACHED_PROXY_KEY = 'yahoo_proxy_url';
+
+// 요청을 잠시 모아둘 대기열 및 배치 처리 변수
 let upbitBuffer: { ticker: string, resolve: (val: any) => void, reject: (err: any) => void }[] = [];
 let upbitTimeout: any = null;
 let yahooBuffer: { ticker: string, resolve: (val: any) => void, reject: (err: any) => void }[] = [];
 let yahooTimeout: any = null;
 let callQueuePromise: Promise<void> = Promise.resolve(); // 요청 줄세우기 Promise
 
-// Worker를 통해 요청을 보내는 함수 (나만의 프록시 사용)
-async function fetchWithProxy(targetUrl: string) {
-    const url = `${WORKER_PROXY_URL}/?url=${encodeURIComponent(targetUrl)}`;
+// [Trae 변경사항 2: 프록시 폴백 로직]
+async function findAndUseProxy(targetUrl: string) {
+    const successUrl = localStorage.getItem(CACHED_PROXY_KEY);
     
+    // 1. 캐시된 성공 주소가 있다면 먼저 시도
+    if (successUrl) {
+        try {
+            return await attemptFetch(successUrl, targetUrl, true);
+        } catch (e) {
+            console.warn(`Cached proxy ${successUrl} failed. Trying candidates...`);
+            localStorage.removeItem(CACHED_PROXY_KEY); // 실패 시 캐시 제거
+        }
+    }
+
+    // 2. 후보 목록을 순차적으로 시도
+    for (const base of PROXY_CANDIDATES) {
+        if (!base) continue; // 환경변수가 없는 경우 스킵
+        try {
+            const data = await attemptFetch(base, targetUrl, false);
+            // 성공 시 캐시
+            localStorage.setItem(CACHED_PROXY_KEY, base);
+            return data;
+        } catch (e) {
+            console.warn(`Candidate proxy ${base} failed.`);
+        }
+    }
+
+    throw new Error("모든 프록시 연결 실패. 환경 변수 VITE_YAHOO_PROXY_URL을 확인하세요.");
+}
+
+async function attemptFetch(proxyBase: string, targetUrl: string, isCached: boolean): Promise<any> {
+    // Worker URL (사용자 정의) 또는 공용 프록시 URL (일반 인코딩 방식) 구분
+    const isWorker = proxyBase.includes('workers.dev');
+    
+    let url;
+    if (isWorker) {
+        url = `${proxyBase}/?url=${encodeURIComponent(targetUrl)}`;
+    } else if (proxyBase.includes('corsproxy.io')) {
+        url = `${proxyBase}${targetUrl}`; // CorsProxy는 보통 인코딩 없이 사용
+    } else {
+        url = `${proxyBase}${encodeURIComponent(targetUrl)}`;
+    }
+
     const response = await fetch(url);
+    
+    if (response.status === 401) {
+        // [주요 확인 포인트] Worker의 401 Unauthorized 오류
+        throw new Error(`Proxy returned 401 Unauthorized. Check Worker/App configuration.`);
+    }
 
     if (!response.ok) {
-        throw new Error(`Worker Proxy Failed (${response.status}): ${await response.text()}`);
+        throw new Error(`Proxy request failed with status: ${response.status}`);
     }
     return response.json();
 }
 
 // =================================================================
-// 2. 암호화폐 (Upbit) - 자동 배치 처리 (Auto-Batching)
+// 3. 암호화폐 (Upbit) - 자동 배치 처리 (Auto-Batching)
 // =================================================================
 
-const UPBIT_DELAY = 50; // 요청 간격 0.05초 (Worker 사용시 더 짧게 설정)
+const UPBIT_DELAY = 50; 
 
-// 이전 요청이 끝난 시점부터 ms만큼 대기하는 Promise를 체이닝
 const throttle = (ms: number) => {
     const nextCall = callQueuePromise.then(() => new Promise<void>(resolve => setTimeout(resolve, ms)));
     callQueuePromise = nextCall;
@@ -49,7 +100,6 @@ const throttle = (ms: number) => {
 const processUpbitQueue = async () => {
     if (upbitBuffer.length === 0) return;
 
-    // 배치 처리 전, 429 방지를 위해 대기열 진입
     await throttle(UPBIT_DELAY);
 
     const currentBatch = [...upbitBuffer];
@@ -94,13 +144,12 @@ function fetchCryptoPriceBatched(ticker: string): Promise<{ price: number; prevC
 }
 
 // =================================================================
-// 3. 주식 (Yahoo Finance) - 자동 배치 처리 (Auto-Batching)
+// 4. 주식 (Yahoo Finance) - 자동 배치 처리 (Auto-Batching)
 // =================================================================
 
 const processYahooQueue = async () => {
     if (yahooBuffer.length === 0) return;
 
-    // Yahoo는 Rate Limit이 불분명하므로, 안전하게 0.1초 딜레이
     await throttle(100); 
 
     const currentBatch = [...yahooBuffer];
@@ -110,9 +159,9 @@ const processYahooQueue = async () => {
     try {
         const symbols = [...new Set(currentBatch.map(i => i.ticker))].join(',');
         
-        // 야후 quote API 사용 (Worker를 통해 프록시 처리)
         const url = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${symbols}`;
-        const data = await fetchWithProxy(url);
+        // [변경] findAndUseProxy 함수를 통해 프록시를 찾아서 사용
+        const data = await findAndUseProxy(url);
         
         const results = data.quoteResponse?.result || [];
 
@@ -151,7 +200,7 @@ function fetchStockPriceBatched(ticker: string): Promise<any> {
 }
 
 // =================================================================
-// 4. 메인 Export 함수 
+// 5. 메인 Export 함수 
 // =================================================================
 
 export const fetchAssetData = async (ticker: string, exchange: string) => {
@@ -185,13 +234,13 @@ export const fetchAssetData = async (ticker: string, exchange: string) => {
 };
 
 // =================================================================
-// 5. 기타 필수 함수들
+// 6. 기타 필수 함수들
 // =================================================================
 
 export const searchSymbols = async (query: string): Promise<SymbolSearchResult[]> => {
     const url = `https://query2.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(query)}&lang=ko-KR&region=KR&quotesCount=5`;
     try {
-        const data = await fetchWithProxy(url);
+        const data = await findAndUseProxy(url);
         return (data.quotes || []).map((item: any) => ({
             ticker: item.symbol,
             name: item.shortname || item.longname || item.symbol,
@@ -212,7 +261,6 @@ export const fetchHistoricalExchangeRate = async (date: string, from: string, to
     return 1;
 };
 
-// 포트폴리오 질문 (Gemini)
 let portfolioCache: { data: string; timestamp: number } | null = null;
 const CACHE_DURATION = 5 * 60 * 1000;
 
