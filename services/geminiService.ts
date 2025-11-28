@@ -1,6 +1,15 @@
-import { GoogleGenerativeAI } from '@google/genai';
+import { GoogleGenAI } from '@google/genai';
 import { Asset, Currency, SymbolSearchResult, AssetCategory } from '../types';
-import { formatAssetsForAI } from '../utils';
+
+// =================================================================
+// 유틸리티 함수 (내부 정의) - utils 파일 의존성 제거됨
+// =================================================================
+function formatAssetsForAI(assets: Asset[]): string {
+  return assets.map(asset => {
+    const value = asset.quantity * asset.currentPrice;
+    return `- ${asset.name} (${asset.ticker}): ${asset.quantity}주, 현재가 ${asset.currentPrice.toLocaleString()}원, 평가액 ${value.toLocaleString()}원`;
+  }).join('\n');
+}
 
 // =================================================================
 // Gemini API 설정
@@ -9,15 +18,17 @@ const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
 if (!apiKey) {
   throw new Error("VITE_GEMINI_API_KEY is not set in environment variables");
 }
-const ai = new GoogleGenerativeAI(apiKey);
 
-// 모델 초기화
-const model = ai.getGenerativeModel({ model: "gemini-2.5-flash" });
+// [수정] 패키지 이름에 맞는 클래스명(GoogleGenAI) 사용
+const ai = new GoogleGenAI({ apiKey: apiKey });
+
+// 모델 초기화 (안정적인 1.5 Flash 모델 사용)
+const model = ai.getGenerativeModel({ model: "gemini-1.5-flash" });
+
 
 // =================================================================
 // [복구] 환율 함수 (App.tsx 호환용)
 // =================================================================
-// App.tsx에서 이 함수들을 찾고 있어서 다시 추가했습니다.
 let exchangeRateCache: Map<Currency, { rate: number, timestamp: number }> = new Map();
 const EXCHANGE_CACHE_DURATION = 3600000; // 1시간
 
@@ -28,7 +39,7 @@ export const fetchCurrentExchangeRate = async (from: string, to: string): Promis
       return cached.rate;
     }
     // 임시 환율 (실제 API 연동 시 교체 권장)
-    const mockRate = 1400; 
+    const mockRate = 1450; 
     exchangeRateCache.set(Currency.USD, { rate: mockRate, timestamp: Date.now() });
     return mockRate;
   }
@@ -67,7 +78,7 @@ export async function searchSymbols(query: string): Promise<SymbolSearchResult[]
             config: { responseMimeType: "application/json" }
         });
         
-        const jsonText = response.text.trim();
+        const jsonText = response.text?.trim() || "[]";
         const results = JSON.parse(jsonText) as SymbolSearchResult[];
         searchCache.set(cacheKey, results);
         return results;
@@ -95,6 +106,7 @@ const chatHistory: ChatMessage[] = [];
 export async function analyzePortfolio(assets: Asset[], message: string): Promise<string> {
     if (assets.length === 0) return "현재 포트폴리오에 자산이 없습니다.";
     
+    // 여기서 위에 정의한 내부 함수를 사용
     const portfolioData = formatAssetsForAI(assets);
     const systemInstruction = `당신은 금융 AI 어시스턴트입니다. 아래 포트폴리오 데이터를 기반으로 질문에 답하세요.\n포트폴리오 데이터:\n${portfolioData}`;
 
@@ -105,13 +117,13 @@ export async function analyzePortfolio(assets: Asset[], message: string): Promis
 
     try {
         const response = await ai.getGenerativeModel({ 
-            model: "gemini-2.5-flash", 
+            model: "gemini-1.5-flash", 
             config: { systemInstruction } 
         }).generateContent({
             contents: [...contents, { role: 'user', parts: [{ text: message }] }],
         });
 
-        const modelResponse = response.text;
+        const modelResponse = response.text || "답변을 생성할 수 없습니다.";
         chatHistory.push({ role: 'user', text: message });
         chatHistory.push({ role: 'model', text: modelResponse });
 
@@ -207,7 +219,10 @@ async function fetchStockPrice(ticker: string, exchange: string): Promise<{ pric
         contents: prompt,
         config: { responseMimeType: "application/json" }
     });
-    const result = JSON.parse(response.text.trim());
+    
+    const text = response.text?.trim() || "{}";
+    const result = JSON.parse(text);
+    
     if (result.price !== undefined) {
       stockCache.set(cacheKey, { ...result, timestamp: Date.now() });
       return result;
@@ -224,11 +239,11 @@ async function fetchStockPrice(ticker: string, exchange: string): Promise<{ pric
 
 // App.tsx가 기대하는 인터페이스 (에러 로그 기반 역설계)
 export interface AssetDataResult {
-  name: string;               // 에러 수정: name 속성 추가
+  name: string;               
   priceOriginal: number;
-  priceKRW: number;           // 에러 수정: currentPrice -> priceKRW
-  currency: string;           // 에러 수정: currency 속성 추가
-  pricePreviousClose: number; // 에러 수정: yesterdayClose -> pricePreviousClose
+  priceKRW: number;           
+  currency: string;           
+  pricePreviousClose: number; 
   highestPrice?: number;
   isMocked: boolean;
 }
@@ -280,11 +295,11 @@ export const fetchAssetData = async (ticker: string, exchange: string, currencyI
 
   // App.tsx가 원하는 키값(name, priceKRW, pricePreviousClose 등)으로 매핑해서 리턴
   return {
-    name: ticker, // 실제 이름을 가져오는 로직이 없다면 ticker라도 반환
+    name: ticker, 
     priceOriginal: priceData.price,
-    priceKRW: currentPriceKRW,       // 중요: App.tsx는 priceKRW를 찾음
-    currency: currency,              // 중요: App.tsx는 currency를 찾음
-    pricePreviousClose: prevCloseKRW,// 중요: App.tsx는 pricePreviousClose를 찾음
+    priceKRW: currentPriceKRW,       
+    currency: currency,              
+    pricePreviousClose: prevCloseKRW,
     highestPrice: highestPriceKRW,
     isMocked: isMocked,
   };
