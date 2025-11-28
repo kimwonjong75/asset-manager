@@ -22,8 +22,8 @@ if (!apiKey) {
 // [수정] 패키지 이름에 맞는 클래스명(GoogleGenAI) 사용
 const ai = new GoogleGenAI({ apiKey: apiKey });
 
-// 모델 초기화 (안정적인 1.5 Flash 모델 사용)
-const model = ai.getGenerativeModel({ model: "gemini-1.5-flash" });
+// [수정] models 속성을 통해 모델에 접근
+const model = ai.models.getGenerativeModel({ model: "gemini-1.5-flash" });
 
 
 // =================================================================
@@ -38,7 +38,7 @@ export const fetchCurrentExchangeRate = async (from: string, to: string): Promis
     if (cached && Date.now() - cached.timestamp < EXCHANGE_CACHE_DURATION) {
       return cached.rate;
     }
-    // 임시 환율 (실제 API 연동 시 교체 권장)
+    // 임시 환율 
     const mockRate = 1450; 
     exchangeRateCache.set(Currency.USD, { rate: mockRate, timestamp: Date.now() });
     return mockRate;
@@ -73,7 +73,8 @@ export async function searchSymbols(query: string): Promise<SymbolSearchResult[]
     "exchange": "거래소/시장. 예: NASDAQ, KRX (코스피/코스닥), 주요 거래소 (종합), KRX 금시장"
   }
 ]`;
-        const response = await model.generateContent({
+        // [수정] ai.models.getGenerativeModel 사용
+        const response = await ai.models.getGenerativeModel({ model: "gemini-1.5-flash" }).generateContent({
             contents: prompt,
             config: { responseMimeType: "application/json" }
         });
@@ -106,7 +107,6 @@ const chatHistory: ChatMessage[] = [];
 export async function analyzePortfolio(assets: Asset[], message: string): Promise<string> {
     if (assets.length === 0) return "현재 포트폴리오에 자산이 없습니다.";
     
-    // 여기서 위에 정의한 내부 함수를 사용
     const portfolioData = formatAssetsForAI(assets);
     const systemInstruction = `당신은 금융 AI 어시스턴트입니다. 아래 포트폴리오 데이터를 기반으로 질문에 답하세요.\n포트폴리오 데이터:\n${portfolioData}`;
 
@@ -116,7 +116,8 @@ export async function analyzePortfolio(assets: Asset[], message: string): Promis
     ];
 
     try {
-        const response = await ai.getGenerativeModel({ 
+        // [수정] ai.models.getGenerativeModel 사용
+        const response = await ai.models.getGenerativeModel({ 
             model: "gemini-1.5-flash", 
             config: { systemInstruction } 
         }).generateContent({
@@ -215,7 +216,8 @@ async function fetchStockPrice(ticker: string, exchange: string): Promise<{ pric
 
   try {
     const prompt = `"${exchange}" 시장의 "${ticker}" 종목의 현재가와 전일 종가를 예측하여 JSON으로 주세요. {"price": 100, "prevClose": 90} 형식 준수.`;
-    const response = await model.generateContent({
+    // [수정] ai.models.getGenerativeModel 사용
+    const response = await ai.models.getGenerativeModel({ model: "gemini-1.5-flash" }).generateContent({
         contents: prompt,
         config: { responseMimeType: "application/json" }
     });
