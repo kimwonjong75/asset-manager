@@ -41,32 +41,67 @@ async function getUSDKRWRate(): Promise<number> {
 }
 
 // =================================================================
-// 3. 암호화폐 (Upbit) - 속도 제한 적용
+// 3. 암호화폐 (Upbit) - 배치 요청
 // =================================================================
-async function fetchCryptoPrice(ticker: string): Promise<{ price: number; prevClose: number }> {
-  // 속도 제한
+let cryptoCache: Map<string, { price: number; prevClose: number; time: number }> = new Map();
+const CRYPTO_CACHE_DURATION = 30000; // 30초 캐시
+let lastBatchFetch = 0;
+
+async function fetchAllCryptoPrices(): Promise<void> {
   const now = Date.now();
-  const waitTime = UPBIT_DELAY - (now - lastUpbitCall);
-  if (waitTime > 0) {
-    await delay(waitTime);
-  }
-  lastUpbitCall = Date.now();
   
-  const t = ticker.toUpperCase().replace('KRW-', '');
-  const code = `KRW-${t}`;
+  // 마지막 요청 후 5초 이내면 스킵
+  if (now - lastBatchFetch < 5000) {
+    return;
+  }
+  lastBatchFetch = now;
+  
+  // 주요 암호화폐 목록
+  const coins = ['BTC', 'ETH', 'XRP', 'SOL', 'USDC', 'TRX', 'APE', 'DOGE', 'ADA', 'SUI', 'USDT', 'MATIC', 'AVAX', 'SHIB', 'LINK'];
+  const markets = coins.map(c => `KRW-${c}`).join(',');
   
   try {
-    const res = await fetch(`https://api.upbit.com/v1/ticker?markets=${code}`);
+    const res = await fetch(`https://api.upbit.com/v1/ticker?markets=${markets}`);
     
-    if (res.status === 429) {
-      // 너무 많은 요청 - 1초 대기 후 재시도
-      await delay(1000);
-      const retry = await fetch(`https://api.upbit.com/v1/ticker?markets=${code}`);
-      if (retry.ok) {
-        const data = await retry.json();
-        return { price: data[0]?.trade_price || 0, prevClose: data[0]?.prev_closing_price || 0 };
-      }
+    if (res.ok) {
+      const data = await res.json();
+      
+      data.forEach((item: any) => {
+        const ticker = item.market.replace('KRW-', '');
+        cryptoCache.set(ticker, {
+          price: item.trade_price,
+          prevClose: item.prev_closing_price,
+          time: now
+        });
+      });
     }
+  } catch (e) {
+    console.warn('Batch crypto fetch failed:', e);
+  }
+}
+
+async function fetchCryptoPrice(ticker: string): Promise<{ price: number; prevClose: number }> {
+  const t = ticker.toUpperCase().replace('KRW-', '');
+  
+  // 캐시 확인
+  const cached = cryptoCache.get(t);
+  if (cached && Date.now() - cached.time < CRYPTO_CACHE_DURATION) {
+    return { price: cached.price, prevClose: cached.prevClose };
+  }
+  
+  // 캐시가 없거나 오래됐으면 전체 갱신
+  await fetchAllCryptoPrices();
+  
+  // 다시 캐시 확인
+  const updated = cryptoCache.get(t);
+  if (updated) {
+    return { price: updated.price, prevClose: updated.prevClose };
+  }
+  
+  // 그래도 없으면 개별 요청
+  try {
+    await delay(500); // 0.5초 대기
+    const res = await fetch(`https://api.upbit.com/v1/ticker?markets=KRW-${t}`);
     
     if (res.ok) {
       const data = await res.json();
@@ -75,7 +110,7 @@ async function fetchCryptoPrice(ticker: string): Promise<{ price: number; prevCl
       }
     }
   } catch (e) {
-    console.warn('Upbit error:', ticker, e);
+    console.warn('Individual crypto fetch failed:', t);
   }
   
   return { price: 0, prevClose: 0 };
