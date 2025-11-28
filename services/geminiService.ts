@@ -27,55 +27,78 @@ async function getUSDKRWRate(): Promise<number> {
 }
 
 // =================================================================
-// 암호화폐 - Upbit 직접 호출 (프록시 사용 안함!)
+// 암호화폐 - Upbit 직접 호출
 // =================================================================
 let cryptoCache: Map<string, { price: number; prevClose: number }> = new Map();
 let lastCryptoFetch = 0;
+
+// Upbit에서 실제 거래되는 주요 코인만
+const UPBIT_COINS = [
+  'BTC', 'ETH', 'XRP', 'SOL', 'DOGE', 'ADA', 'TRX', 
+  'SHIB', 'LINK', 'EOS', 'SAND', 'MANA', 'APE'
+];
 
 async function refreshCryptoCache(): Promise<void> {
   const now = Date.now();
   if (now - lastCryptoFetch < 10000) return;
   lastCryptoFetch = now;
 
-  const coins = ['BTC','ETH','XRP','SOL','USDC','TRX','APE','DOGE','ADA','SUI','USDT','MATIC','AVAX','SHIB','LINK','EOS','SAND','MANA'];
-  const markets = coins.map(c => `KRW-${c}`).join(',');
+  const markets = UPBIT_COINS.map(c => `KRW-${c}`).join(',');
 
   try {
-    // 직접 Upbit API 호출 (CORS 허용됨)
     const res = await fetch(`https://api.upbit.com/v1/ticker?markets=${markets}`);
     if (res.ok) {
       const data = await res.json();
-      data.forEach((item: any) => {
-        const ticker = item.market.replace('KRW-', '');
-        cryptoCache.set(ticker, {
-          price: item.trade_price,
-          prevClose: item.prev_closing_price
+      if (Array.isArray(data)) {
+        data.forEach((item: any) => {
+          const ticker = item.market.replace('KRW-', '');
+          cryptoCache.set(ticker, {
+            price: item.trade_price,
+            prevClose: item.prev_closing_price
+          });
         });
-      });
-      console.log('Crypto cache updated:', cryptoCache.size, 'coins');
+      }
     }
   } catch (e) {
-    console.warn('Crypto batch fetch failed:', e);
+    console.warn('Crypto fetch failed:', e);
   }
 }
 
 async function fetchCryptoPrice(ticker: string): Promise<{ price: number; prevClose: number }> {
   const t = ticker.toUpperCase().replace('KRW-', '');
   
-  if (!cryptoCache.has(t) || cryptoCache.size === 0) {
+  // 캐시가 비었으면 갱신
+  if (cryptoCache.size === 0) {
     await refreshCryptoCache();
   }
   
+  // 캐시에서 찾기
   const cached = cryptoCache.get(t);
   if (cached) {
     return cached;
+  }
+  
+  // 캐시에 없으면 개별 요청
+  try {
+    const res = await fetch(`https://api.upbit.com/v1/ticker?markets=KRW-${t}`);
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data) && data.length > 0) {
+        const item = data[0];
+        const result = { price: item.trade_price, prevClose: item.prev_closing_price };
+        cryptoCache.set(t, result);
+        return result;
+      }
+    }
+  } catch (e) {
+    console.warn('Individual crypto fetch failed:', t);
   }
   
   return { price: 0, prevClose: 0 };
 }
 
 // =================================================================
-// 한국 주식 - 프록시 사용
+// 한국 주식
 // =================================================================
 async function fetchKoreanStockPrice(ticker: string): Promise<{ price: number; prevClose: number; name: string }> {
   const code = ticker.replace(/\.(KS|KQ)$/i, '').padStart(6, '0');
@@ -118,7 +141,7 @@ async function fetchKoreanStockPrice(ticker: string): Promise<{ price: number; p
 }
 
 // =================================================================
-// 미국 주식 - 프록시 사용
+// 미국 주식
 // =================================================================
 async function fetchUSStockPrice(ticker: string): Promise<{ price: number; prevClose: number; name: string }> {
   const proxyUrl = import.meta.env.VITE_YAHOO_PROXY_URL;
@@ -154,18 +177,24 @@ async function fetchUSStockPrice(ticker: string): Promise<{ price: number; prevC
 // 메인 함수
 // =================================================================
 export const fetchAssetData = async (ticker: string, exchange: string) => {
-  const upperTicker = ticker.toUpperCase();
+  const upperTicker = ticker.toUpperCase().replace('KRW-', '');
   
-  const cryptoKeywords = ['업비트', '종합', '거래소', 'CRYPTO'];
-  const cryptoList = ['BTC','ETH','XRP','SOL','USDC','TRX','APE','DOGE','ADA','SUI','USDT','MATIC','AVAX','SHIB','LINK'];
-  const isCrypto = cryptoKeywords.some(k => exchange.includes(k)) || cryptoList.includes(upperTicker.replace('KRW-', ''));
+  // 암호화폐 판별
+  const cryptoKeywords = ['업비트', '종합', '거래소', 'CRYPTO', 'COIN'];
+  const cryptoTickers = ['BTC','ETH','XRP','SOL','DOGE','ADA','TRX','SHIB','LINK','EOS','SAND','MANA','APE','USDT','USDC','MATIC','AVAX'];
+  const isCrypto = cryptoKeywords.some(k => exchange.toUpperCase().includes(k.toUpperCase())) || 
+                   cryptoTickers.includes(upperTicker);
 
-  const isKoreanStock = exchange.includes('KRX') || exchange.includes('코스피') || exchange.includes('코스닥') || /^\d{6}$/.test(ticker);
+  // 한국 주식 판별
+  const isKoreanStock = exchange.includes('KRX') || 
+                        exchange.includes('코스피') || 
+                        exchange.includes('코스닥') || 
+                        /^\d{6}$/.test(ticker);
 
   if (isCrypto) {
-    const data = await fetchCryptoPrice(ticker);
+    const data = await fetchCryptoPrice(upperTicker);
     return {
-      name: upperTicker.replace('KRW-', ''),
+      name: upperTicker,
       priceKRW: data.price,
       priceOriginal: data.price,
       currency: 'KRW',
@@ -198,18 +227,22 @@ export const fetchAssetData = async (ticker: string, exchange: string) => {
 // =================================================================
 export const searchSymbols = async (query: string): Promise<SymbolSearchResult[]> => {
   const results: SymbolSearchResult[] = [];
+  const q = query.toUpperCase();
   
-  if (/^[A-Za-z]+$/.test(query)) {
-    results.push({ ticker: query.toUpperCase(), name: query.toUpperCase(), exchange: 'NASDAQ' });
+  // 암호화폐
+  const cryptoList = ['BTC', 'ETH', 'XRP', 'SOL', 'DOGE', 'ADA', 'TRX', 'SHIB', 'LINK'];
+  if (cryptoList.includes(q)) {
+    results.push({ ticker: q, name: q, exchange: '주요 거래소 (종합)' });
   }
   
+  // 영문 = 미국주식
+  if (/^[A-Za-z]+$/.test(query) && !cryptoList.includes(q)) {
+    results.push({ ticker: q, name: q, exchange: 'NASDAQ' });
+  }
+  
+  // 숫자 = 한국주식
   if (/^\d+$/.test(query)) {
     results.push({ ticker: query.padStart(6, '0'), name: query, exchange: 'KRX (코스피/코스닥)' });
-  }
-  
-  const cryptoList = ['BTC', 'ETH', 'XRP', 'SOL', 'DOGE', 'ADA'];
-  if (cryptoList.includes(query.toUpperCase())) {
-    results.push({ ticker: query.toUpperCase(), name: query.toUpperCase(), exchange: '주요 거래소 (종합)' });
   }
   
   return results;
