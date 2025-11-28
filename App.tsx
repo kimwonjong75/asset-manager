@@ -279,11 +279,6 @@ const App: React.FC = () => {
   );
 
   const handleRefreshAllPrices = useCallback(async (isAutoUpdate = false, isScheduled = false) => {
-    if (!isSignedIn) {
-      setError('Google Drive 로그인 후 데이터를 갱신할 수 있습니다.');
-      setTimeout(() => setError(null), 3000);
-      return;
-    }
     if (assets.length === 0) return;
     setIsLoading(true);
     setError(null);
@@ -342,8 +337,9 @@ const App: React.FC = () => {
         setSuccessMessage(successMsg);
         setTimeout(() => setSuccessMessage(null), 5000);
         
-        // 자동 저장
-        autoSave(updatedAssets, portfolioHistory, sellHistory);
+        if (isSignedIn) {
+          autoSave(updatedAssets, portfolioHistory, sellHistory);
+        }
     }
 
     setIsLoading(false);
@@ -365,7 +361,9 @@ const App: React.FC = () => {
         highestPrice: Math.max(a.highestPrice, d.priceKRW),
       } : a);
       setAssets(updated);
-      autoSave(updated, portfolioHistory, sellHistory);
+      if (isSignedIn) {
+        autoSave(updated, portfolioHistory, sellHistory);
+      }
     } catch (e) {
       setError('해당 종목 가격 갱신에 실패했습니다.');
       setTimeout(() => setError(null), 3000);
