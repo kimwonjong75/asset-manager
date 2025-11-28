@@ -1,14 +1,7 @@
-// services/geminiService.ts
-
 import { GoogleGenAI } from '@google/genai';
 import { Asset, SymbolSearchResult } from '../types';
 
 const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY! });
-
-// =================================================================
-// 유틸리티
-// =================================================================
-const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 // =================================================================
 // 환율
@@ -34,20 +27,21 @@ async function getUSDKRWRate(): Promise<number> {
 }
 
 // =================================================================
-// 암호화폐 - 캐시 기반
+// 암호화폐 - Upbit 직접 호출 (프록시 사용 안함!)
 // =================================================================
 let cryptoCache: Map<string, { price: number; prevClose: number }> = new Map();
 let lastCryptoFetch = 0;
 
 async function refreshCryptoCache(): Promise<void> {
   const now = Date.now();
-  if (now - lastCryptoFetch < 10000) return; // 10초 내 재요청 방지
+  if (now - lastCryptoFetch < 10000) return;
   lastCryptoFetch = now;
 
   const coins = ['BTC','ETH','XRP','SOL','USDC','TRX','APE','DOGE','ADA','SUI','USDT','MATIC','AVAX','SHIB','LINK','EOS','SAND','MANA'];
   const markets = coins.map(c => `KRW-${c}`).join(',');
 
   try {
+    // 직접 Upbit API 호출 (CORS 허용됨)
     const res = await fetch(`https://api.upbit.com/v1/ticker?markets=${markets}`);
     if (res.ok) {
       const data = await res.json();
@@ -58,17 +52,17 @@ async function refreshCryptoCache(): Promise<void> {
           prevClose: item.prev_closing_price
         });
       });
+      console.log('Crypto cache updated:', cryptoCache.size, 'coins');
     }
   } catch (e) {
-    console.warn('Crypto batch fetch failed');
+    console.warn('Crypto batch fetch failed:', e);
   }
 }
 
 async function fetchCryptoPrice(ticker: string): Promise<{ price: number; prevClose: number }> {
   const t = ticker.toUpperCase().replace('KRW-', '');
   
-  // 캐시에 없으면 전체 갱신
-  if (!cryptoCache.has(t)) {
+  if (!cryptoCache.has(t) || cryptoCache.size === 0) {
     await refreshCryptoCache();
   }
   
@@ -81,7 +75,7 @@ async function fetchCryptoPrice(ticker: string): Promise<{ price: number; prevCl
 }
 
 // =================================================================
-// 한국 주식
+// 한국 주식 - 프록시 사용
 // =================================================================
 async function fetchKoreanStockPrice(ticker: string): Promise<{ price: number; prevClose: number; name: string }> {
   const code = ticker.replace(/\.(KS|KQ)$/i, '').padStart(6, '0');
@@ -124,7 +118,7 @@ async function fetchKoreanStockPrice(ticker: string): Promise<{ price: number; p
 }
 
 // =================================================================
-// 미국 주식
+// 미국 주식 - 프록시 사용
 // =================================================================
 async function fetchUSStockPrice(ticker: string): Promise<{ price: number; prevClose: number; name: string }> {
   const proxyUrl = import.meta.env.VITE_YAHOO_PROXY_URL;
