@@ -1,3 +1,5 @@
+// services/geminiService.ts
+
 import { GoogleGenAI } from '@google/genai';
 import { Asset, SymbolSearchResult } from '../types';
 
@@ -5,60 +7,65 @@ import { Asset, SymbolSearchResult } from '../types';
 const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY! });
 
 // =================================================================
-// 1. 유틸리티: 프록시 및 배치(Batch) 처리기
+// 1. 유틸리티: Worker 프록시 설정 및 배치(Batch) 처리기
 // =================================================================
 
-const PROXY_LIST = [
-    "https://api.allorigins.win/raw?url=",
-    "https://corsproxy.io/?", 
-    "https://thingproxy.freeboard.io/fetch/" 
-];
+// [사용자 입력 필수] 
+// 1단계에서 복사한 Worker URL을 여기에 붙여넣으세요.
+const WORKER_PROXY_URL = "https://yahoo-proxy.sseng0520.workers.dev"; // 👈 예시 주소, 본인의 주소로 변경하세요!
 
-// 여러 프록시를 순차적으로 시도
+// 요청을 잠시 모아둘 대기열
+let upbitBuffer: { ticker: string, resolve: (val: any) => void, reject: (err: any) => void }[] = [];
+let upbitTimeout: any = null;
+let yahooBuffer: { ticker: string, resolve: (val: any) => void, reject: (err: any) => void }[] = [];
+let yahooTimeout: any = null;
+let callQueuePromise: Promise<void> = Promise.resolve(); // 요청 줄세우기 Promise
+
+// Worker를 통해 요청을 보내는 함수 (나만의 프록시 사용)
 async function fetchWithProxy(targetUrl: string) {
-    const encodedUrl = encodeURIComponent(targetUrl);
-    for (const proxyBase of PROXY_LIST) {
-        try {
-            const url = proxyBase.includes('corsproxy.io') ? `${proxyBase}${targetUrl}` : `${proxyBase}${encodedUrl}`;
-            const response = await fetch(url);
-            if (response.ok) return await response.json();
-        } catch (e) {
-            console.warn(`Proxy ${proxyBase} failed, trying next...`);
-        }
+    const url = `${WORKER_PROXY_URL}/?url=${encodeURIComponent(targetUrl)}`;
+    
+    const response = await fetch(url);
+
+    if (!response.ok) {
+        throw new Error(`Worker Proxy Failed (${response.status}): ${await response.text()}`);
     }
-    throw new Error("모든 프록시 연결 실패");
+    return response.json();
 }
 
 // =================================================================
 // 2. 암호화폐 (Upbit) - 자동 배치 처리 (Auto-Batching)
 // =================================================================
 
-// 요청을 잠시 모아둘 대기열
-let upbitBuffer: { ticker: string, resolve: (val: any) => void, reject: (err: any) => void }[] = [];
-let upbitTimeout: any = null;
+const UPBIT_DELAY = 50; // 요청 간격 0.05초 (Worker 사용시 더 짧게 설정)
 
-// 대기열에 있는 모든 코인을 한 번에 조회하여 분배하는 함수
+// 이전 요청이 끝난 시점부터 ms만큼 대기하는 Promise를 체이닝
+const throttle = (ms: number) => {
+    const nextCall = callQueuePromise.then(() => new Promise<void>(resolve => setTimeout(resolve, ms)));
+    callQueuePromise = nextCall;
+    return nextCall;
+};
+
 const processUpbitQueue = async () => {
     if (upbitBuffer.length === 0) return;
 
-    // 대기열 복사 및 초기화 (다음 요청을 위해)
+    // 배치 처리 전, 429 방지를 위해 대기열 진입
+    await throttle(UPBIT_DELAY);
+
     const currentBatch = [...upbitBuffer];
     upbitBuffer = [];
     upbitTimeout = null;
 
     try {
-        // 티커들을 'KRW-BTC,KRW-ETH' 형태로 합침
         const marketCodes = [...new Set(currentBatch.map(item => {
             const t = item.ticker.toUpperCase();
             return t.startsWith('KRW-') ? t : `KRW-${t}`;
         }))].join(',');
 
-        // 단 1번의 요청으로 모든 데이터 수신
         const url = `https://api.upbit.com/v1/ticker?markets=${marketCodes}`;
         const response = await fetch(url);
-        const data = await response.json(); // 업비트는 배열로 반환됨
+        const data = await response.json();
 
-        // 결과를 기다리던 각 요청에게 배달
         currentBatch.forEach(({ ticker, resolve, reject }) => {
             const code = ticker.toUpperCase().startsWith('KRW-') ? ticker.toUpperCase() : `KRW-${ticker.toUpperCase()}`;
             const match = data.find((d: any) => d.market === code);
@@ -74,17 +81,13 @@ const processUpbitQueue = async () => {
         });
 
     } catch (error) {
-        // 배치 요청 실패 시, 기다리던 모든 요청에 에러 전파
         currentBatch.forEach(({ reject }) => reject(error));
     }
 };
 
-// 개별 요청을 받아서 대기열에 넣는 함수
 function fetchCryptoPriceBatched(ticker: string): Promise<{ price: number; prevClose: number }> {
     return new Promise((resolve, reject) => {
         upbitBuffer.push({ ticker, resolve, reject });
-        
-        // 50ms 동안 추가 요청이 없으면 배치 처리 실행 (Debounce)
         if (upbitTimeout) clearTimeout(upbitTimeout);
         upbitTimeout = setTimeout(processUpbitQueue, 50);
     });
@@ -94,11 +97,11 @@ function fetchCryptoPriceBatched(ticker: string): Promise<{ price: number; prevC
 // 3. 주식 (Yahoo Finance) - 자동 배치 처리 (Auto-Batching)
 // =================================================================
 
-let yahooBuffer: { ticker: string, resolve: (val: any) => void, reject: (err: any) => void }[] = [];
-let yahooTimeout: any = null;
-
 const processYahooQueue = async () => {
     if (yahooBuffer.length === 0) return;
+
+    // Yahoo는 Rate Limit이 불분명하므로, 안전하게 0.1초 딜레이
+    await throttle(100); 
 
     const currentBatch = [...yahooBuffer];
     yahooBuffer = [];
@@ -107,7 +110,7 @@ const processYahooQueue = async () => {
     try {
         const symbols = [...new Set(currentBatch.map(i => i.ticker))].join(',');
         
-        // 야후의 'quote' API는 여러 심볼을 한 번에 조회 가능
+        // 야후 quote API 사용 (Worker를 통해 프록시 처리)
         const url = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${symbols}`;
         const data = await fetchWithProxy(url);
         
@@ -135,7 +138,7 @@ const processYahooQueue = async () => {
 function normalizeStockTicker(ticker: string, exchange: string): string {
     const t = ticker.toUpperCase().trim();
     if (t.includes('.')) return t;
-    if (/^\d{6}$/.test(t)) return exchange.includes('코스닥') ? `${t}.KQ` : `${t}.KS`;
+    if (/^\d{6}$/i.test(t)) return exchange.includes('코스닥') ? `${t}.KQ` : `${t}.KS`;
     return t;
 }
 
@@ -182,7 +185,7 @@ export const fetchAssetData = async (ticker: string, exchange: string) => {
 };
 
 // =================================================================
-// 5. 기타 필수 함수들 (에러 수정됨)
+// 5. 기타 필수 함수들
 // =================================================================
 
 export const searchSymbols = async (query: string): Promise<SymbolSearchResult[]> => {
@@ -204,7 +207,6 @@ export const fetchCurrentExchangeRate = async (from: string, to: string) => {
     return 1; 
 };
 
-// [수정됨] 매개변수(date, from, to)를 받도록 수정하여 빌드 에러 해결
 export const fetchHistoricalExchangeRate = async (date: string, from: string, to: string) => {
     if (from === 'USD' && to === 'KRW') return 1435;
     return 1;
