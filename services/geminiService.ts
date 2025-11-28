@@ -160,7 +160,7 @@ let lastCryptoFetch = 0;
 const UPBIT_COINS = [
   'BTC', 'ETH', 'XRP', 'SOL', 'DOGE', 'ADA', 'TRX', 
   'SHIB', 'LINK', 'EOS', 'SAND', 'MANA', 'APE', 
-  'USDT', 'USDC', 'AVAX', 'MATIC', 'ETC', 'BCH' // 에러가 났던 코인들 포함, 목록 확장
+  'USDT', 'USDC', 'AVAX', 'MATIC', 'ETC', 'BCH' 
 ];
 
 async function refreshCryptoCache(): Promise<void> {
@@ -249,7 +249,7 @@ async function fetchCryptoPrice(ticker: string): Promise<{ price: number; prevCl
 // =================================================================
 
 // 모의 데이터 캐시
-let stockCache: Map<string, { price: number; prevClose: number }> = new Map();
+let stockCache: Map<string, { price: number; prevClose: number } | { price: number; prevClose: number, timestamp: number }> = new Map();
 const STOCK_CACHE_DURATION = 600000; // 10분
 
 // 모의 데이터 프롬프트
@@ -265,13 +265,13 @@ const STOCK_PRICE_PROMPT = (ticker: string, exchange: string) => `
 }
 `;
 
-
-async function fetchStockPrice(ticker: string, exchange: string): Promise<{ price: number; prevClose: number }> {
+// fetchStockPrice 함수: 실패 시 null을 반환하도록 수정하여 fetchAssetData의 오류 방지
+async function fetchStockPrice(ticker: string, exchange: string): Promise<{ price: number; prevClose: number } | null> {
   const cacheKey = `${ticker}-${exchange}`.toLowerCase();
   
-  const cached = stockCache.get(cacheKey);
+  const cached = stockCache.get(cacheKey) as { price: number; prevClose: number, timestamp: number } | undefined;
   if (cached && Date.now() - cached.timestamp < STOCK_CACHE_DURATION) {
-    return cached;
+    return { price: cached.price, prevClose: cached.prevClose };
   }
 
   try {
@@ -296,8 +296,8 @@ async function fetchStockPrice(ticker: string, exchange: string): Promise<{ pric
 
   } catch (error) {
     console.error(`Gemini mock price fetch failed for ${ticker} (${exchange}):`, error);
-    // 실패 시 임시 값 반환
-    return { price: 0, prevClose: 0 };
+    // 실패 시 null 반환 (핵심 수정)
+    return null; 
   }
 }
 
@@ -317,6 +317,7 @@ export interface AssetDataResult {
 export const fetchAssetData = async (ticker: string, exchange: string, currency: Currency): Promise<AssetDataResult> => {
   const upperTicker = ticker.toUpperCase().replace('KRW-', '');
 
+  // fetchStockPrice 함수의 반환 타입 변경에 맞춰 수정
   let priceData: { price: number; prevClose: number } | null = null;
   let isMocked = false;
 
@@ -331,19 +332,20 @@ export const fetchAssetData = async (ticker: string, exchange: string, currency:
       isMocked = false;
     } catch (e) {
       console.error(`Failed to fetch crypto price for ${upperTicker}:`, e);
-      // 실패하면 다음으로 넘어가지 않고 0으로 처리
-      return { priceOriginal: 0, currentPrice: 0, highestPrice: 0, yesterdayClose: 0, isMocked: false };
+      priceData = null; // 안전을 위해 추가
     }
   } else {
     // 2. 주식 및 기타 자산 (Gemini 모의 데이터)
     try {
-      priceData = await fetchStockPrice(upperTicker, exchange);
+      priceData = await fetchStockPrice(upperTicker, exchange); 
       isMocked = true;
     } catch (e) {
       console.error(`Failed to fetch mock price for ${upperTicker}:`, e);
+      priceData = null; // 안전을 위해 추가
     }
   }
 
+  // priceData가 null인 경우 바로 리턴하여 'price' 속성 참조를 방지 (핵심 수정)
   if (!priceData || priceData.price === 0) {
     return { priceOriginal: 0, currentPrice: 0, highestPrice: 0, yesterdayClose: 0, isMocked };
   }
