@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Asset, AssetCategory, Currency, ALL_EXCHANGES, inferCategoryFromExchange, ALLOWED_CATEGORIES } from '../types';
+import { Asset, AssetCategory, Currency, ALL_EXCHANGES, inferCategoryFromExchange, ALLOWED_CATEGORIES, normalizeExchange } from '../types';
+import { searchSymbols } from '../services/geminiService';
 
 interface EditAssetModalProps {
   asset: Asset | null;
@@ -13,6 +14,9 @@ interface EditAssetModalProps {
 
 const EditAssetModal: React.FC<EditAssetModalProps> = ({ asset, isOpen, onClose, onSave, onDelete, isLoading }) => {
   const [formData, setFormData] = useState<Asset | null>(null);
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [searchResults, setSearchResults] = useState<{ ticker: string; name: string; exchange: string }[]>([]);
+  const [isSearching, setIsSearching] = useState<boolean>(false);
   const categoryOptions = useMemo(() => {
     if (!formData) return ALLOWED_CATEGORIES;
     return ALLOWED_CATEGORIES.includes(formData.category)
@@ -26,6 +30,9 @@ const EditAssetModal: React.FC<EditAssetModalProps> = ({ asset, isOpen, onClose,
             ...asset,
             purchaseDate: new Date(asset.purchaseDate).toISOString().slice(0, 10)
         });
+        setSearchQuery('');
+        setSearchResults([]);
+        setIsSearching(false);
     }
   }, [asset]);
 
@@ -55,6 +62,32 @@ const EditAssetModal: React.FC<EditAssetModalProps> = ({ asset, isOpen, onClose,
     }
   };
 
+  const handleSearchChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const q = e.target.value;
+    setSearchQuery(q);
+    if (!q || q.length < 2) {
+      setSearchResults([]);
+      return;
+    }
+    setIsSearching(true);
+    try {
+      const results = await searchSymbols(q);
+      setSearchResults(results);
+    } catch {
+      setSearchResults([]);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const applySymbol = (r: { ticker: string; name: string; exchange: string }) => {
+    const ex = normalizeExchange(r.exchange);
+    const cat = inferCategoryFromExchange(ex);
+    setFormData(prev => prev ? { ...prev, ticker: r.ticker, name: r.name, exchange: ex, category: cat } : null);
+    setSearchQuery('');
+    setSearchResults([]);
+  };
+
   const handleDelete = () => {
     if (asset && window.confirm(`'${asset.name}' 자산을 정말 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.`)) {
       onDelete(asset.id);
@@ -77,7 +110,7 @@ const EditAssetModal: React.FC<EditAssetModalProps> = ({ asset, isOpen, onClose,
               ))}
             </select>
           </div>
-           <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-4">
             <div>
               <label htmlFor="exchange-edit" className={labelClasses}>거래소/시장</label>
               <select 
@@ -100,6 +133,21 @@ const EditAssetModal: React.FC<EditAssetModalProps> = ({ asset, isOpen, onClose,
             <div>
               <label htmlFor="ticker-edit" className={labelClasses}>티커 (종목코드)</label>
               <input id="ticker-edit" name="ticker" type="text" value={formData.ticker} onChange={handleChange} className={inputClasses} required />
+              <div className="mt-2">
+                <label htmlFor="ticker-search" className={labelClasses}>티커/종목 검색</label>
+                <input id="ticker-search" type="text" value={searchQuery} onChange={handleSearchChange} placeholder="예: BMNR 또는 회사명" className={inputClasses} />
+                {isSearching && <p className="text-xs text-gray-400 mt-1">검색 중...</p>}
+                {searchResults.length > 0 && (
+                  <ul className="mt-1 bg-gray-700 border border-gray-600 rounded-md max-h-40 overflow-y-auto">
+                    {searchResults.map((r) => (
+                      <li key={`${r.ticker}-${r.exchange}`} className="px-3 py-2 cursor-pointer hover:bg-gray-600" onMouseDown={() => applySymbol(r)}>
+                        <div className="text-white font-semibold">{r.name} ({r.ticker})</div>
+                        <div className="text-xs text-gray-300">{r.exchange}</div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
             </div>
           </div>
           <div className="grid grid-cols-3 gap-4">

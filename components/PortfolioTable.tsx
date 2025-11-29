@@ -8,9 +8,6 @@ interface PortfolioTableProps {
   history: PortfolioSnapshot[];
   onRefreshAll: () => void;
   onRefreshOne?: (id: string) => void | Promise<void>;
-  onStopRefresh?: () => void;
-  onRetryFailed?: () => void;
-  failedCount?: number;
   onEdit: (asset: Asset) => void;
   onSell?: (asset: Asset) => void;
   isLoading: boolean;
@@ -26,7 +23,7 @@ interface PortfolioTableProps {
 type SortKey = 'name' | 'purchaseDate' | 'quantity' | 'purchasePrice' | 'currentPrice' | 'returnPercentage' | 'dropFromHigh' | 'yesterdayChange' | 'purchaseValueKRW' | 'currentValue' | 'allocation';
 type SortDirection = 'ascending' | 'descending';
 
-const PortfolioTable: React.FC<PortfolioTableProps> = ({ assets, history, onRefreshAll, onRefreshOne, onStopRefresh, onRetryFailed, failedCount = 0, onEdit, onSell, isLoading, sellAlertDropRate, filterCategory, onFilterChange, filterAlerts, onFilterAlertsChange, searchQuery = '', onSearchChange }) => {
+const PortfolioTable: React.FC<PortfolioTableProps> = ({ assets, history, onRefreshAll, onRefreshOne, onEdit, onSell, isLoading, sellAlertDropRate, filterCategory, onFilterChange, filterAlerts, onFilterAlertsChange, searchQuery = '', onSearchChange }) => {
   const [sortConfig, setSortConfig] = useState<{ key: SortKey; direction: SortDirection } | null>(null);
   const [expandedAssetId, setExpandedAssetId] = useState<string | null>(null);
   const [showHiddenColumns, setShowHiddenColumns] = useState<boolean>(false);
@@ -261,22 +258,6 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({ assets, history, onRefr
              <RefreshIcon className="-ml-1 mr-2 h-4 w-4"/>
           )}
           <span>{isLoading ? '업데이트 중...' : '업데이트'}</span>
-        </button>
-        <button
-          onClick={onStopRefresh}
-          disabled={!isLoading}
-          className="ml-2 bg-gray-700 hover:bg-gray-600 text-white font-medium py-2 px-4 rounded-md transition duration-300 disabled:bg-gray-700 disabled:text-gray-400 disabled:cursor-not-allowed"
-          title="현재 진행 중인 업데이트를 중지합니다."
-        >
-          중지
-        </button>
-        <button
-          onClick={onRetryFailed}
-          disabled={isLoading || failedCount === 0}
-          className="ml-2 bg-blue-700 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded-md transition duration-300 disabled:bg-gray-700 disabled:text-gray-400 disabled:cursor-not-allowed"
-          title="업데이트에 실패한 항목들을 다시 시도합니다."
-        >
-          실패 재시도{failedCount > 0 ? ` (${failedCount})` : ''}
         </button>
       </div>
       <div className="w-full px-4 sm:px-6 pb-4 sm:pb-6 pt-4">

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Asset, AssetCategory, NewAssetForm, EXCHANGE_MAP, Currency, SymbolSearchResult, ALL_EXCHANGES, inferCategoryFromExchange, ALLOWED_CATEGORIES } from '../types';
+import { Asset, AssetCategory, NewAssetForm, EXCHANGE_MAP, Currency, SymbolSearchResult, ALL_EXCHANGES, inferCategoryFromExchange, ALLOWED_CATEGORIES, normalizeExchange } from '../types';
 import { searchSymbols } from '../services/geminiService';
 
 interface AddNewAssetModalProps {
@@ -92,10 +92,10 @@ const AddNewAssetModal: React.FC<AddNewAssetModalProps> = ({ isOpen, onClose, on
     setDuplicateError(null);
     setTicker(result.ticker);
     setSearchQuery(result.name);
-    setExchange(result.exchange);
+    setExchange(normalizeExchange(result.exchange));
 
     // 거래소에서 자산구분 자동 추론
-    const inferredCategory = inferCategoryFromExchange(result.exchange);
+    const inferredCategory = inferCategoryFromExchange(normalizeExchange(result.exchange));
     setCategory(inferredCategory);
     
     setSearchResults([]);

@@ -1,5 +1,5 @@
 import { GoogleGenAI } from '@google/genai';
-import { Asset, Currency, SymbolSearchResult } from '../types';
+import { Asset, Currency, SymbolSearchResult, normalizeExchange } from '../types';
 
 // =================================================================
 // 1. 설정 및 초기화
@@ -176,6 +176,7 @@ export const fetchAssetData = async (
   exchange: string, 
   currencyInput?: Currency
 ): Promise<AssetDataResult> => {
+  const normalizedExchange = normalizeExchange(exchange);
   const cacheKey = `${ticker}-${exchange}`;
   const cached = getCached(priceCache, cacheKey);
   if (cached) {
@@ -187,7 +188,10 @@ export const fetchAssetData = async (
     return createMockResult(ticker);
   }
 
-  const prompt = `Using Google Search, find the following data for the asset with ticker "${ticker}" listed on the "${exchange}" exchange:
+  const prompt = `Using Google Search, find the following data for the asset with ticker "${ticker}" listed on the "${normalizedExchange}" exchange.
+Use EXACT ticker match ("${ticker}"). If the exchange is NYSE American/AMEX, treat them as synonyms.
+Do NOT return data for similarly named tickers:
+1. The closing price for the MOST RECENT trading day.
 1. The closing price for the MOST RECENT trading day.
 2. The closing price for the PREVIOUS trading day (the day before the most recent one).
 3. Its official name in Korean.
@@ -313,7 +317,7 @@ async function fetchBatchInternal(
   const resultMap = new Map<string, AssetDataResult>();
 
   const assetsListString = assets
-    .map(a => `{"ticker": "${a.ticker}", "exchange": "${a.exchange}", "id": "${a.id}"}`)
+    .map(a => `{"ticker": "${a.ticker}", "exchange": "${normalizeExchange(a.exchange)}", "id": "${a.id}"}`)
     .join(',\n');
 
   const prompt = `I have a list of assets. Using Google Search, find the following for EACH asset:
@@ -325,6 +329,7 @@ Assets List:
 ${assetsListString}
 ]
 
+Use EXACT ticker matches. If the exchange is NYSE American/AMEX, treat them as synonyms.
 Return the response ONLY as a JSON ARRAY of objects. Each object must strictly follow this structure:
 {
   "id": "The exact id provided in the input",

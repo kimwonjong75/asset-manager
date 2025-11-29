@@ -47,6 +47,7 @@ export const ALL_EXCHANGES: string[] = [
   "NASDAQ",
   "NYSE",
   "AMEX",
+  "NYSE American",
   "TSE (도쿄)",
   "SSE (상하이)",
   "SZSE (선전)",
@@ -64,7 +65,7 @@ export const ALL_EXCHANGES: string[] = [
 export const inferCategoryFromExchange = (exchange: string): AssetCategory => {
   if (exchange.includes('KRX') || exchange.includes('KONEX')) {
     return AssetCategory.KOREAN_STOCK;
-  } else if (['NASDAQ', 'NYSE', 'AMEX'].includes(exchange)) {
+  } else if (['NASDAQ', 'NYSE', 'AMEX', 'NYSE American'].includes(exchange)) {
     return AssetCategory.US_STOCK;
   } else if (exchange.includes('TSE') || exchange.includes('도쿄')) {
     return AssetCategory.FOREIGN_STOCK;
@@ -87,7 +88,7 @@ export const inferCategoryFromExchange = (exchange: string): AssetCategory => {
 // 기존 호환성을 위한 EXCHANGE_MAP
 export const EXCHANGE_MAP: Record<string, string[]> = {
     [AssetCategory.KOREAN_STOCK]: ["KRX (코스피/코스닥)", "KONEX"],
-    [AssetCategory.US_STOCK]: ["NASDAQ", "NYSE", "AMEX"],
+    [AssetCategory.US_STOCK]: ["NASDAQ", "NYSE", "AMEX", "NYSE American"],
     [AssetCategory.FOREIGN_STOCK]: ["TSE (도쿄)", "SSE (상하이)", "SZSE (선전)", "HKEX (홍콩)"],
     [AssetCategory.OTHER_FOREIGN_STOCK]: ["TSE (도쿄)", "SSE (상하이)", "SZSE (선전)", "HKEX (홍콩)"],
     [AssetCategory.KOREAN_BOND]: ["대한민국 국채"],
@@ -188,3 +189,10 @@ export interface PortfolioSnapshot {
   date: string;
   assets: AssetSnapshot[];
 }
+// 거래소 표준화 함수 (동의어/구표기를 통합)
+export const normalizeExchange = (exchange: string): string => {
+  const e = exchange.trim();
+  if (e.toUpperCase() === 'AMEX' || e.toUpperCase() === 'NYSE MKT') return 'NYSE American';
+  if (e.toUpperCase() === 'NYSE AMERICAN') return 'NYSE American';
+  return e;
+};

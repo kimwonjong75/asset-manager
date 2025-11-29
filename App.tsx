@@ -1,6 +1,6 @@
 
 
-import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { Asset, NewAssetForm, AssetCategory, EXCHANGE_MAP, Currency, PortfolioSnapshot, AssetSnapshot, BulkUploadResult, ALLOWED_CATEGORIES, SellRecord, WatchlistItem } from './types';
 import { fetchAssetData, fetchBatchAssetPrices, fetchHistoricalExchangeRate, fetchCurrentExchangeRate } from './services/geminiService';
 import { googleDriveService, GoogleUser } from './services/googleDriveService';
@@ -154,8 +154,6 @@ const App: React.FC = () => {
   const [sellHistory, setSellHistory] = useState<SellRecord[]>([]);
   const [watchlist, setWatchlist] = useState<WatchlistItem[]>([]);
   const [hasAutoUpdated, setHasAutoUpdated] = useState<boolean>(false);
-  const stopRefreshRef = useRef<boolean>(false);
-  const [failedAssetIds, setFailedAssetIds] = useState<string[]>([]);
 
   // 초기화 완료 후 데이터 로드
   useEffect(() => {
@@ -282,7 +280,6 @@ const App: React.FC = () => {
 // ✅ 배치 처리로 전체 가격 새로고침 (속도 10배 향상)
   const handleRefreshAllPrices = useCallback(async (isAutoUpdate = false, isScheduled = false) => {
     if (assets.length === 0) return;
-    stopRefreshRef.current = false;
     setIsLoading(true);
     setError(null);
     if (isAutoUpdate || isScheduled) {
@@ -321,13 +318,7 @@ const App: React.FC = () => {
         fetchBatchAssetPrices(assetsToFetch)
       ]);
 
-      if (stopRefreshRef.current) {
-        setIsLoading(false);
-        return;
-      }
-
       const failedTickers: string[] = [];
-      const failedIds: string[] = [];
 
       const updatedAssets = assets.map((asset) => {
         // 현금 자산 처리
@@ -364,12 +355,9 @@ const App: React.FC = () => {
         } else {
           console.error(`Failed to refresh price for ${asset.ticker}`);
           failedTickers.push(asset.ticker);
-          failedIds.push(asset.id);
           return asset;
         }
       });
-
-      setFailedAssetIds(failedIds);
 
       setAssets(updatedAssets);
 
@@ -402,15 +390,10 @@ const App: React.FC = () => {
   const handleRefreshOnePrice = useCallback(async (assetId: string) => {
     const target = assets.find(a => a.id === assetId);
     if (!target) return;
-    stopRefreshRef.current = false;
     setIsLoading(true);
     setError(null);
     try {
       const d = await fetchAssetData(target.ticker, target.exchange);
-      if (stopRefreshRef.current) {
-        setIsLoading(false);
-        return;
-      }
       const updated = assets.map(a => a.id === assetId ? {
         ...a,
         yesterdayPrice: d.pricePreviousClose,
@@ -430,43 +413,6 @@ const App: React.FC = () => {
       setIsLoading(false);
     }
   }, [assets, autoSave, portfolioHistory, sellHistory]);
-
-  const handleStopRefresh = useCallback(() => {
-    stopRefreshRef.current = true;
-    setIsLoading(false);
-    setSuccessMessage(null);
-  }, []);
-
-  const handleRetryFailedAssets = useCallback(async () => {
-    if (failedAssetIds.length === 0) return;
-    setIsLoading(true);
-    setError(null);
-    const targets = assets
-      .filter(a => failedAssetIds.includes(a.id))
-      .map(a => ({ ticker: a.ticker, exchange: a.exchange, id: a.id }));
-    try {
-      const batchMap = await fetchBatchAssetPrices(targets);
-      const updated = assets.map(a => {
-        const d = batchMap.get(a.id);
-        if (d && !d.isMocked) {
-          return {
-            ...a,
-            name: d.name || a.name,
-            yesterdayPrice: d.pricePreviousClose,
-            currentPrice: d.priceKRW,
-            priceOriginal: d.priceOriginal,
-            currency: d.currency as Currency,
-            highestPrice: Math.max(a.highestPrice, d.priceKRW),
-          };
-        }
-        return a;
-      });
-      setAssets(updated);
-      setFailedAssetIds([]);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [failedAssetIds, assets]);
 
 
 
@@ -1498,7 +1444,14 @@ const handleRefreshWatchlistPrices = useCallback(async () => {
           )}
         </div>
 
-        
+        {versionInfo && (
+          <div className="fixed top-4 left-4 z-50 pointer-events-none">
+            <div className="bg-gray-700 text-white/90 px-3 py-2 rounded-md shadow pointer-events-auto text-xs">
+              <span>버전: {versionInfo.commit || 'unknown'}</span>
+              {versionInfo.buildTime ? <span className="ml-2">빌드: {new Date(versionInfo.buildTime).toLocaleString('ko-KR')}</span> : null}
+            </div>
+          </div>
+        )}
 
         {isSignedIn ? (
           <>
@@ -1586,9 +1539,6 @@ const handleRefreshWatchlistPrices = useCallback(async () => {
                       history={portfolioHistory}
                       onRefreshAll={() => handleRefreshAllPrices(false)}
                       onRefreshOne={handleRefreshOnePrice}
-                      onStopRefresh={handleStopRefresh}
-                      onRetryFailed={handleRetryFailedAssets}
-                      failedCount={failedAssetIds.length}
                       onEdit={handleEditAsset}
                       onSell={handleSellAsset}
                       isLoading={isLoading}
