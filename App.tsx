@@ -345,7 +345,6 @@ const App: React.FC = () => {
         if (priceData && !priceData.isMocked) {
           return {
             ...asset,
-            name: priceData.name || asset.name,
             yesterdayPrice: priceData.pricePreviousClose,
             currentPrice: priceData.priceKRW,
             priceOriginal: priceData.priceOriginal,
@@ -1287,7 +1286,6 @@ const handleRefreshWatchlistPrices = useCallback(async () => {
         const highestPrice = item.highestPrice ? Math.max(item.highestPrice, currentPrice) : currentPrice;
         return {
           ...item,
-          name: d.name || item.name,
           currentPrice,
           priceOriginal: d.priceOriginal,
           currency: d.currency as Currency,
