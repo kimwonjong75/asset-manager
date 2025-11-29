@@ -2,7 +2,7 @@ import { GoogleGenAI } from '@google/genai';
 import { Asset, Currency, SymbolSearchResult, AssetCategory } from '../types';
 
 // =================================================================
-// 유틸리티 함수 (내부 정의)
+// 유틸리티 함수
 // =================================================================
 function formatAssetsForAI(assets: Asset[]): string {
   return assets.map(asset => {
@@ -12,28 +12,18 @@ function formatAssetsForAI(assets: Asset[]): string {
 }
 
 // =================================================================
-// Gemini API 설정 (강제 초기화 및 null 체크 추가)
+// Gemini API 설정 (안전한 초기화)
 // =================================================================
 const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
 
-// 404 에러 방지를 위해 apiKey가 없으면 빈 객체를 반환하는 헬퍼 함수 정의
-const getGeminiApi = () => {
-    if (!apiKey) {
-        console.error("GEMINI_API_KEY is missing. AI features disabled.");
-        // API 키가 없는 경우, 임시로 기능을 정지시키는 더미 객체를 반환합니다.
-        // 이 경우 404가 아닌, 명확한 에러를 발생시켜 디버깅을 돕습니다.
-        return {
-            models: {
-                generateContent: async () => ({ text: 'API 키가 설정되지 않아 AI 기능을 사용할 수 없습니다.' })
-            }
-        } as unknown as GoogleGenAI; // 타입 안정성을 위해 unknown as GoogleGenAI 사용
-    }
-    return new GoogleGenAI({ apiKey: apiKey });
-};
+// API 키 상태 확인용 플래그
+const isAiEnabled = !!apiKey && apiKey.length > 0;
 
-const ai = getGeminiApi();
+// 키가 있을 때만 인스턴스 생성 (없으면 null)
+const ai = isAiEnabled ? new GoogleGenAI({ apiKey: apiKey }) : null;
+
 // =================================================================
-// [복구] 환율 함수 (App.tsx 호환용)
+// 환율 함수
 // =================================================================
 let exchangeRateCache: Map<Currency, { rate: number, timestamp: number }> = new Map();
 const EXCHANGE_CACHE_DURATION = 3600000; // 1시간
@@ -44,7 +34,6 @@ export const fetchCurrentExchangeRate = async (from: string, to: string): Promis
     if (cached && Date.now() - cached.timestamp < EXCHANGE_CACHE_DURATION) {
       return cached.rate;
     }
-    // 임시 환율 
     const mockRate = 1450; 
     exchangeRateCache.set(Currency.USD, { rate: mockRate, timestamp: Date.now() });
     return mockRate;
@@ -56,29 +45,25 @@ export const fetchHistoricalExchangeRate = async (date: string, from: string, to
   return await fetchCurrentExchangeRate(from, to);
 };
 
-
 // =================================================================
 // 종목 검색
 // =================================================================
 let searchCache: Map<string, SymbolSearchResult[]> = new Map();
 
 export async function searchSymbols(query: string): Promise<SymbolSearchResult[]> {
-    if (!apiKey) return []; // 키 없으면 AI 기능 비활성화
+    if (!isAiEnabled || !ai) {
+        console.warn("API Key missing: Search disabled");
+        return [];
+    }
+    
     const cacheKey = query.toLowerCase();
     if (searchCache.has(cacheKey)) {
         return searchCache.get(cacheKey)!;
     }
 
     try {
-        const prompt = `사용자가 자산의 티커(Ticker)나 이름으로 검색하고 있습니다. 검색어는 "${query}"입니다. 자산 관리 앱에서 사용할 수 있도록 가장 관련성이 높은 주식, ETF, 암호화폐, 금현물 종목 5개를 추천해주세요.
-결과는 반드시 아래 JSON 형식으로만 응답해야 하며, 다른 텍스트는 포함하지 마세요. 추천 자산이 없다면 빈 배열 \`[]\`을 반환합니다.
-[
-  {
-    "ticker": "종목의 티커(코드). 예: AAPL, 005930, BTC, GLD",
-    "name": "종목의 공식 명칭 (한국어 가능)",
-    "exchange": "거래소/시장. 예: NASDAQ, KRX (코스피/코스닥), 주요 거래소 (종합), KRX 금시장"
-  }
-]`;
+        const prompt = `사용자가 자산의 티커(Ticker)나 이름으로 검색하고 있습니다. 검색어는 "${query}"입니다. 가장 관련성이 높은 주식, ETF, 암호화폐, 금현물 종목 5개를 추천해주세요. 결과는 오직 JSON 배열로만 응답하세요. 예: [{"ticker":"AAPL","name":"Apple Inc.","exchange":"NASDAQ"}]`;
+        
         const response = await ai.models.generateContent({
             model: "gemini-1.5-flash",
             contents: prompt,
@@ -110,7 +95,7 @@ export interface ChatMessage {
 const chatHistory: ChatMessage[] = [];
 
 export async function analyzePortfolio(assets: Asset[], message: string): Promise<string> {
-    if (!apiKey) return "API 키가 설정되지 않아 AI 기능을 사용할 수 없습니다."; // 키 없으면 AI 기능 비활성화
+    if (!isAiEnabled || !ai) return "API 키가 설정되지 않아 AI 기능을 사용할 수 없습니다. (Settings > Secrets 확인 필요)";
     if (assets.length === 0) return "현재 포트폴리오에 자산이 없습니다.";
     
     const portfolioData = formatAssetsForAI(assets);
@@ -139,12 +124,13 @@ export async function analyzePortfolio(assets: Asset[], message: string): Promis
 }
 
 // =================================================================
-// 암호화폐 - Upbit 직접 호출 (429 에러 방지 로직 유지)
+// 암호화폐 - Upbit (안전 모드: 재요청 차단)
 // =================================================================
 let cryptoCache: Map<string, { price: number; prevClose: number }> = new Map();
 let cryptoFetchPromise: Promise<void> | null = null;
 let lastCryptoFetch = 0;
 
+// 조회할 코인 목록 고정
 const UPBIT_COINS = [
   'BTC', 'ETH', 'XRP', 'SOL', 'DOGE', 'ADA', 'TRX', 
   'SHIB', 'LINK', 'EOS', 'SAND', 'MANA', 'APE', 
@@ -154,12 +140,14 @@ const UPBIT_COINS = [
 async function refreshCryptoCache(): Promise<void> {
   const now = Date.now();
   if (cryptoFetchPromise) return cryptoFetchPromise; 
+  // 10초 쿨타임
   if (now - lastCryptoFetch < 10000 && cryptoCache.size > 0) return;
 
   cryptoFetchPromise = (async () => {
     try {
       const markets = UPBIT_COINS.map(c => `KRW-${c}`).join(',');
       const res = await fetch(`https://api.upbit.com/v1/ticker?markets=${markets}`);
+      
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data)) {
@@ -173,7 +161,7 @@ async function refreshCryptoCache(): Promise<void> {
           lastCryptoFetch = Date.now();
         }
       } else {
-        console.warn('Upbit Bulk Fetch Failed:', res.status);
+        console.warn(`Upbit Bulk Fetch Failed: ${res.status} - 재요청을 중단합니다.`);
       }
     } catch (e) {
       console.warn('Crypto fetch failed:', e);
@@ -186,35 +174,27 @@ async function refreshCryptoCache(): Promise<void> {
 
 async function fetchCryptoPrice(ticker: string): Promise<{ price: number; prevClose: number }> {
   const t = ticker.toUpperCase().replace('KRW-', '');
+  
+  // 1. 전체 시세 갱신 시도
   await refreshCryptoCache();
   
+  // 2. 캐시 확인
   const cached = cryptoCache.get(t);
   if (cached) return cached;
-  
-  await new Promise(resolve => setTimeout(resolve, Math.random() * 1000 + 500));
-  try {
-    const res = await fetch(`https://api.upbit.com/v1/ticker?markets=KRW-${t}`);
-    if (res.ok) {
-      const data = await res.json();
-      if (Array.isArray(data) && data.length > 0) {
-        const item = data[0];
-        const result = { price: item.trade_price, prevClose: item.prev_closing_price };
-        cryptoCache.set(t, result);
-        return result;
-      }
-    }
-  } catch (e) { /* ignore */ }
+
+  // [중요 수정] 캐시에 없다고 해서 개별 요청을 마구 보내지 않음 (429 에러 방지)
+  // Upbit는 전체 조회에 실패하면 개별 조회도 실패할 확률이 높음. 0 리턴하고 종료.
   return { price: 0, prevClose: 0 };
 }
 
 // =================================================================
-// 모의 데이터 (주식 등)
+// 주식 모의 데이터
 // =================================================================
 let stockCache: Map<string, { price: number; prevClose: number, timestamp: number }> = new Map();
 const STOCK_CACHE_DURATION = 600000; 
 
 async function fetchStockPrice(ticker: string, exchange: string): Promise<{ price: number; prevClose: number } | null> {
-    if (!apiKey) return null; // 키 없으면 AI 기능 비활성화
+    if (!isAiEnabled || !ai) return null; // 키 없으면 중단
 
     const cacheKey = `${ticker}-${exchange}`.toLowerCase();
     const cached = stockCache.get(cacheKey);
@@ -237,14 +217,14 @@ async function fetchStockPrice(ticker: string, exchange: string): Promise<{ pric
             stockCache.set(cacheKey, { ...result, timestamp: Date.now() });
             return result;
         }
-        throw new Error('Invalid data');
+        return null;
     } catch (error) {
         return null; 
     }
 }
 
 // =================================================================
-// [핵심 수정] 메인 함수 (App.tsx가 원하는 반환 타입으로 변경)
+// 메인 함수
 // =================================================================
 
 export interface AssetDataResult {
