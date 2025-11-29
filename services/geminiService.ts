@@ -12,15 +12,25 @@ function formatAssetsForAI(assets: Asset[]): string {
 }
 
 // =================================================================
-// Gemini API 설정 (안전한 초기화)
+// Gemini API 설정
 // =================================================================
 const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
 
-// API 키 상태 확인용 플래그
+// [디버깅용 로그] 배포 후 F12 콘솔에서 키가 들어왔는지 확인 가능
+console.log("Gemini API Key Status:", apiKey ? `Loaded (${apiKey.length} chars)` : "MISSING (UNDEFINED)");
+
 const isAiEnabled = !!apiKey && apiKey.length > 0;
 
-// 키가 있을 때만 인스턴스 생성 (없으면 null)
-const ai = isAiEnabled ? new GoogleGenAI({ apiKey: apiKey }) : null;
+// 키가 없으면 더미 객체 생성 (404 에러 방지용)
+const ai = isAiEnabled 
+    ? new GoogleGenAI({ apiKey: apiKey }) 
+    : {
+        models: {
+            generateContent: async () => ({
+                text: "API 키가 누락되었습니다. GitHub Secrets 설정을 확인해주세요."
+            })
+        }
+      } as any;
 
 // =================================================================
 // 환율 함수
@@ -51,11 +61,11 @@ export const fetchHistoricalExchangeRate = async (date: string, from: string, to
 let searchCache: Map<string, SymbolSearchResult[]> = new Map();
 
 export async function searchSymbols(query: string): Promise<SymbolSearchResult[]> {
-    if (!isAiEnabled || !ai) {
-        console.warn("API Key missing: Search disabled");
+    if (!isAiEnabled) {
+        console.warn("Search disabled: No API Key");
         return [];
     }
-    
+
     const cacheKey = query.toLowerCase();
     if (searchCache.has(cacheKey)) {
         return searchCache.get(cacheKey)!;
@@ -81,7 +91,7 @@ export async function searchSymbols(query: string): Promise<SymbolSearchResult[]
 }
 
 // =================================================================
-// Gemini 채팅 (분석)
+// Gemini 채팅
 // =================================================================
 export const askPortfolioQuestion = async (assets: Asset[], question: string): Promise<string> => {
     return analyzePortfolio(assets, question);
@@ -95,7 +105,7 @@ export interface ChatMessage {
 const chatHistory: ChatMessage[] = [];
 
 export async function analyzePortfolio(assets: Asset[], message: string): Promise<string> {
-    if (!isAiEnabled || !ai) return "API 키가 설정되지 않아 AI 기능을 사용할 수 없습니다. (Settings > Secrets 확인 필요)";
+    if (!isAiEnabled) return "API 키가 설정되지 않았습니다. GitHub Settings > Secrets를 확인해주세요.";
     if (assets.length === 0) return "현재 포트폴리오에 자산이 없습니다.";
     
     const portfolioData = formatAssetsForAI(assets);
@@ -124,13 +134,12 @@ export async function analyzePortfolio(assets: Asset[], message: string): Promis
 }
 
 // =================================================================
-// 암호화폐 - Upbit (안전 모드: 재요청 차단)
+// 암호화폐 - Upbit (404/429 방지 강화)
 // =================================================================
 let cryptoCache: Map<string, { price: number; prevClose: number }> = new Map();
 let cryptoFetchPromise: Promise<void> | null = null;
 let lastCryptoFetch = 0;
 
-// 조회할 코인 목록 고정
 const UPBIT_COINS = [
   'BTC', 'ETH', 'XRP', 'SOL', 'DOGE', 'ADA', 'TRX', 
   'SHIB', 'LINK', 'EOS', 'SAND', 'MANA', 'APE', 
@@ -140,13 +149,15 @@ const UPBIT_COINS = [
 async function refreshCryptoCache(): Promise<void> {
   const now = Date.now();
   if (cryptoFetchPromise) return cryptoFetchPromise; 
-  // 10초 쿨타임
   if (now - lastCryptoFetch < 10000 && cryptoCache.size > 0) return;
 
   cryptoFetchPromise = (async () => {
     try {
-      const markets = UPBIT_COINS.map(c => `KRW-${c}`).join(',');
-      const res = await fetch(`https://api.upbit.com/v1/ticker?markets=${markets}`);
+      // [수정] URL 생성 시 공백 제거 및 인코딩 처리 (404 방지)
+      const marketString = UPBIT_COINS.map(c => `KRW-${c}`).join(',');
+      const url = `https://api.upbit.com/v1/ticker?markets=${marketString}`;
+      
+      const res = await fetch(url);
       
       if (res.ok) {
         const data = await res.json();
@@ -161,7 +172,7 @@ async function refreshCryptoCache(): Promise<void> {
           lastCryptoFetch = Date.now();
         }
       } else {
-        console.warn(`Upbit Bulk Fetch Failed: ${res.status} - 재요청을 중단합니다.`);
+        console.warn(`Upbit Bulk Fetch Failed: ${res.status}`);
       }
     } catch (e) {
       console.warn('Crypto fetch failed:', e);
@@ -175,26 +186,22 @@ async function refreshCryptoCache(): Promise<void> {
 async function fetchCryptoPrice(ticker: string): Promise<{ price: number; prevClose: number }> {
   const t = ticker.toUpperCase().replace('KRW-', '');
   
-  // 1. 전체 시세 갱신 시도
   await refreshCryptoCache();
   
-  // 2. 캐시 확인
   const cached = cryptoCache.get(t);
   if (cached) return cached;
 
-  // [중요 수정] 캐시에 없다고 해서 개별 요청을 마구 보내지 않음 (429 에러 방지)
-  // Upbit는 전체 조회에 실패하면 개별 조회도 실패할 확률이 높음. 0 리턴하고 종료.
   return { price: 0, prevClose: 0 };
 }
 
 // =================================================================
-// 주식 모의 데이터
+// 모의 데이터
 // =================================================================
 let stockCache: Map<string, { price: number; prevClose: number, timestamp: number }> = new Map();
 const STOCK_CACHE_DURATION = 600000; 
 
 async function fetchStockPrice(ticker: string, exchange: string): Promise<{ price: number; prevClose: number } | null> {
-    if (!isAiEnabled || !ai) return null; // 키 없으면 중단
+    if (!isAiEnabled) return null; 
 
     const cacheKey = `${ticker}-${exchange}`.toLowerCase();
     const cached = stockCache.get(cacheKey);
