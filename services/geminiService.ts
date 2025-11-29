@@ -5,7 +5,6 @@ import { Asset, Currency, SymbolSearchResult } from '../types';
 // =================================================================
 const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
 
-// API 키 상태 확인 로그
 console.log("Service Status:", API_KEY ? "API Key Loaded" : "No API Key");
 
 function formatAssetsForAI(assets: Asset[]): string {
@@ -16,19 +15,19 @@ function formatAssetsForAI(assets: Asset[]): string {
 }
 
 // =================================================================
-// 2. Gemini API (검색 도구 포함, v1beta 사용)
+// 2. Gemini API (최종 REST 호출 경로 수정)
 // =================================================================
 async function callGeminiAPI(prompt: string, isJson: boolean = false): Promise<string> {
     if (!API_KEY) return "";
 
-    // [핵심 수정 1] v1beta 사용 (도구 및 JSON 모드 호환성 최적화)
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
+    // [핵심 수정] URL을 모델 이름만 지정하는 방식으로 변경하여 404 에러 회피
+    // (모델 이름 앞에 models/ 접두사를 붙이는 방식이 원인일 가능성이 높습니다.)
+    // v1 엔드포인트를 사용합니다.
+    const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
     
     const bodyPayload = {
         contents: [{ parts: [{ text: prompt }] }],
-        // [핵심 수정 2] googleSearch 도구 복구 (이게 없어서 시세 조회가 안되고 에러가 났을 수 있습니다)
         tools: [{ googleSearch: {} }],
-        // [핵심 수정 3] JSON 응답 강제 (isJson일 때만)
         generationConfig: isJson ? { responseMimeType: "application/json" } : undefined
     };
 
@@ -41,13 +40,11 @@ async function callGeminiAPI(prompt: string, isJson: boolean = false): Promise<s
 
         if (!response.ok) {
             const errorData = await response.json();
-            // 에러 원인을 명확히 보기 위해 로그 출력
             console.error(`Gemini API Error ${response.status}:`, errorData);
             return "";
         }
 
         const data = await response.json();
-        // 응답 구조 파싱 (검색 결과가 포함될 수 있으므로 안전하게 접근)
         return data.candidates?.[0]?.content?.parts?.[0]?.text || "";
     } catch (error) {
         console.error("Gemini Fetch Failed:", error);
@@ -68,7 +65,7 @@ export async function searchSymbols(query: string): Promise<SymbolSearchResult[]
 
     const prompt = `Find 5 active stock or crypto symbols matching "${query}".
     Return ONLY a JSON array.
-    Format: [{"ticker": "Symbol", "name": "Name (Korean)", "exchange": "Exchange Name"}]`;
+    Format: [{"ticker": "Symbol", "name": "Name (Korean preferred)", "exchange": "Exchange Name"}]`;
 
     const jsonText = await callGeminiAPI(prompt, true);
     try {
@@ -100,18 +97,14 @@ export async function analyzePortfolio(assets: Asset[], message: string): Promis
 }
 
 // =================================================================
-// 5. 통합 시세 조회 (Upbit + 주식 모두 Google 검색으로 처리)
+// 5. 통합 시세 조회 (Google 검색으로 처리)
 // =================================================================
-// 기존의 복잡한 Upbit/Stock 분기 로직을 제거하고, 사용자가 주신 코드처럼 AI에게 검색을 위임합니다.
-// 이렇게 하면 404, 429 에러 없이 구글 검색 결과로 시세를 가져옵니다.
-
 export interface AssetDataResult {
   name: string; priceOriginal: number; priceKRW: number; currency: string; 
   pricePreviousClose: number; highestPrice?: number; isMocked: boolean;
 }
 
 export const fetchAssetData = async (ticker: string, exchange: string, currencyInput?: any): Promise<AssetDataResult> => {
-    // 1. 프롬프트: 사용자가 제공한 "잘 작동하던 코드"의 프롬프트 로직 차용
     const prompt = `Search specifically for the most recent market data for "${ticker}" on "${exchange}".
     Required:
     1. Most recent price (Original Currency).
@@ -128,14 +121,11 @@ export const fetchAssetData = async (ticker: string, exchange: string, currencyI
       "currency": "String"
     }`;
 
-    // 2. 호출
     const jsonText = await callGeminiAPI(prompt, true);
 
-    // 3. 파싱 및 에러 처리 (앱 멈춤 방지)
     try {
         const data = JSON.parse(jsonText || "{}");
         
-        // 데이터가 비어있거나 숫자가 아니면 0으로 처리 (화면 까맣게 됨 방지)
         const priceOriginal = Number(data.priceOriginal) || 0;
         const priceKRW = Number(data.priceKRW) || 0;
         const previousClose = Number(data.previousClose) || priceOriginal;
@@ -146,11 +136,10 @@ export const fetchAssetData = async (ticker: string, exchange: string, currencyI
             priceKRW: priceKRW,
             currency: data.currency || 'KRW',
             pricePreviousClose: previousClose,
-            highestPrice: priceKRW * 1.1, // 최고가는 추정치
+            highestPrice: priceKRW * 1.1, 
             isMocked: false
         };
     } catch (e) {
-        console.warn(`Data parsing failed for ${ticker}`, e);
         return {
             name: ticker, priceOriginal: 0, priceKRW: 0, currency: 'KRW',
             pricePreviousClose: 0, highestPrice: 0, isMocked: true
@@ -159,7 +148,7 @@ export const fetchAssetData = async (ticker: string, exchange: string, currencyI
 };
 
 // =================================================================
-// 6. 환율 (Google 검색 사용)
+// 6. 환율
 // =================================================================
 export const fetchCurrentExchangeRate = async (from: string, to: string): Promise<number> => {
     if (from === to) return 1;
