@@ -1442,14 +1442,7 @@ const handleRefreshWatchlistPrices = useCallback(async () => {
           )}
         </div>
 
-        {versionInfo && (
-          <div className="fixed top-4 left-4 z-50 pointer-events-none">
-            <div className="bg-gray-700 text-white/90 px-3 py-2 rounded-md shadow pointer-events-auto text-xs">
-              <span>버전: {versionInfo.commit || 'unknown'}</span>
-              {versionInfo.buildTime ? <span className="ml-2">빌드: {new Date(versionInfo.buildTime).toLocaleString('ko-KR')}</span> : null}
-            </div>
-          </div>
-        )}
+        
 
         {isSignedIn ? (
           <>
