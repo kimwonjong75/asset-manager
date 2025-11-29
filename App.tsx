@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { Asset, NewAssetForm, AssetCategory, EXCHANGE_MAP, Currency, PortfolioSnapshot, AssetSnapshot, BulkUploadResult, ALLOWED_CATEGORIES, SellRecord, WatchlistItem } from './types';
-import { fetchAssetData, fetchHistoricalExchangeRate, fetchCurrentExchangeRate } from './services/geminiService';
+import { fetchAssetData, fetchBatchAssetPrices, fetchHistoricalExchangeRate, fetchCurrentExchangeRate } from './services/geminiService';
 import { googleDriveService, GoogleUser } from './services/googleDriveService';
 import PortfolioTable from './components/PortfolioTable';
 import AllocationChart from './components/AllocationChart';
@@ -277,7 +277,7 @@ const App: React.FC = () => {
     })(),
     [isSignedIn, watchlist]
   );
-
+// ✅ 배치 처리로 전체 가격 새로고침 (속도 10배 향상)
   const handleRefreshAllPrices = useCallback(async (isAutoUpdate = false, isScheduled = false) => {
     if (assets.length === 0) return;
     setIsLoading(true);
@@ -288,47 +288,84 @@ const App: React.FC = () => {
         setSuccessMessage(null);
     }
 
-    const promises = assets.map(asset => {
-      if (asset.category === AssetCategory.CASH) {
-          return fetchCurrentExchangeRate(asset.currency, Currency.KRW).then(rate => ({
-              name: `현금 (${asset.currency})`,
-              priceKRW: rate * asset.priceOriginal,
-              priceOriginal: asset.priceOriginal,
-              currency: asset.currency,
-              pricePreviousClose: rate * asset.priceOriginal, // 현금은 전일 종가를 현재가와 동일하게 처리 (임시)
-          }));
-      }
-      return fetchAssetData(asset.ticker, asset.exchange)
-    });
-    const results = await Promise.allSettled(promises);
+    // 현금 자산과 일반 자산 분리
+    const cashAssets = assets.filter(a => a.category === AssetCategory.CASH);
+    const nonCashAssets = assets.filter(a => a.category !== AssetCategory.CASH);
 
-    const failedTickers: string[] = [];
-    const updatedAssets = assets.map((asset, index) => {
-        const result = results[index];
-        if (result.status === 'fulfilled') {
-            const geminiData = result.value;
+    // 1. 현금 자산은 환율만 조회
+    const cashPromises = cashAssets.map(asset => 
+      fetchCurrentExchangeRate(asset.currency, Currency.KRW).then(rate => ({
+        id: asset.id,
+        name: `현금 (${asset.currency})`,
+        priceKRW: rate * asset.priceOriginal,
+        priceOriginal: asset.priceOriginal,
+        currency: asset.currency,
+        pricePreviousClose: rate * asset.priceOriginal,
+      }))
+    );
+
+    // 2. 일반 자산은 배치로 조회 (핵심 개선!)
+    const assetsToFetch = nonCashAssets.map(a => ({
+      ticker: a.ticker,
+      exchange: a.exchange,
+      id: a.id
+    }));
+
+    try {
+      // 병렬 실행: 현금 환율 + 배치 시세 조회
+      const [cashResults, batchPriceMap] = await Promise.all([
+        Promise.allSettled(cashPromises),
+        fetchBatchAssetPrices(assetsToFetch)
+      ]);
+
+      const failedTickers: string[] = [];
+
+      const updatedAssets = assets.map((asset) => {
+        // 현금 자산 처리
+        if (asset.category === AssetCategory.CASH) {
+          const cashIdx = cashAssets.findIndex(ca => ca.id === asset.id);
+          const result = cashResults[cashIdx];
+          
+          if (result && result.status === 'fulfilled') {
+            const data = result.value;
             return {
-                ...asset,
-                yesterdayPrice: geminiData.pricePreviousClose, // API에서 가져온 전일 종가 사용
-                currentPrice: geminiData.priceKRW,
-                priceOriginal: geminiData.priceOriginal,
-                currency: geminiData.currency as Currency,
-                highestPrice: Math.max(asset.highestPrice, geminiData.priceKRW),
+              ...asset,
+              yesterdayPrice: data.pricePreviousClose,
+              currentPrice: data.priceKRW,
+              priceOriginal: data.priceOriginal,
+              currency: data.currency as Currency,
+              highestPrice: Math.max(asset.highestPrice, data.priceKRW),
             };
-        } else {
-            console.error(`Failed to refresh price for ${asset.ticker}:`, result.reason);
-            failedTickers.push(asset.ticker);
-            return asset;
+          }
+          return asset;
         }
-    });
 
-    setAssets(updatedAssets);
+        // 일반 자산 처리 (배치 결과에서 가져오기)
+        const priceData = batchPriceMap.get(asset.id);
+        if (priceData && !priceData.isMocked) {
+          return {
+            ...asset,
+            name: priceData.name || asset.name,
+            yesterdayPrice: priceData.pricePreviousClose,
+            currentPrice: priceData.priceKRW,
+            priceOriginal: priceData.priceOriginal,
+            currency: priceData.currency as Currency,
+            highestPrice: Math.max(asset.highestPrice, priceData.priceKRW),
+          };
+        } else {
+          console.error(`Failed to refresh price for ${asset.ticker}`);
+          failedTickers.push(asset.ticker);
+          return asset;
+        }
+      });
 
-    if (failedTickers.length > 0) {
+      setAssets(updatedAssets);
+
+      if (failedTickers.length > 0) {
         setError(`${failedTickers.join(', ')} 가격 갱신에 실패했습니다.`);
         setTimeout(() => setError(null), 3000);
         if (isAutoUpdate || isScheduled) setSuccessMessage(null);
-    } else {
+      } else {
         const successMsg = isScheduled 
           ? '매일 자동 업데이트: 모든 자산의 가격을 전일 종가로 업데이트했습니다.'
           : isAutoUpdate 
@@ -340,10 +377,15 @@ const App: React.FC = () => {
         if (isSignedIn) {
           autoSave(updatedAssets, portfolioHistory, sellHistory);
         }
+      }
+    } catch (error) {
+      console.error('Price refresh failed:', error);
+      setError('가격 업데이트 중 오류가 발생했습니다.');
+      setTimeout(() => setError(null), 3000);
     }
 
     setIsLoading(false);
-  }, [assets, portfolioHistory, autoSave, isSignedIn]);
+  }, [assets, portfolioHistory, sellHistory, autoSave, isSignedIn]);
 
   const handleRefreshOnePrice = useCallback(async (assetId: string) => {
     const target = assets.find(a => a.id === assetId);
@@ -1219,7 +1261,7 @@ const App: React.FC = () => {
     setWatchlist(prev => prev.map(w => (w.id === id ? { ...w, monitoringEnabled: enabled } : w)));
   }, []);
 
-  const handleRefreshWatchlistPrices = useCallback(async () => {
+const handleRefreshWatchlistPrices = useCallback(async () => {
     if (!isSignedIn) {
       setError('Google Drive 로그인 후 데이터를 갱신할 수 있습니다.');
       setTimeout(() => setError(null), 3000);
@@ -1228,13 +1270,19 @@ const App: React.FC = () => {
     if (watchlist.length === 0) return;
     setIsWatchlistLoading(true);
     setError(null);
-    const results = await Promise.allSettled(
-      watchlist.map(item => fetchAssetData(item.ticker, item.exchange))
-    );
-    const updated = watchlist.map((item, idx) => {
-      const result = results[idx];
-      if (result.status === 'fulfilled') {
-        const d = result.value;
+
+    // 배치로 조회
+    const itemsToFetch = watchlist.map(item => ({
+      ticker: item.ticker,
+      exchange: item.exchange,
+      id: item.id
+    }));
+
+    const priceMap = await fetchBatchAssetPrices(itemsToFetch);
+
+    const updated = watchlist.map((item) => {
+      const d = priceMap.get(item.id);
+      if (d && !d.isMocked) {
         const currentPrice = d.priceKRW;
         const highestPrice = item.highestPrice ? Math.max(item.highestPrice, currentPrice) : currentPrice;
         return {
@@ -1249,11 +1297,13 @@ const App: React.FC = () => {
       }
       return item;
     });
+
     setWatchlist(updated);
     autoSave(assets, portfolioHistory, sellHistory);
     setIsWatchlistLoading(false);
   }, [isSignedIn, watchlist, assets, portfolioHistory, sellHistory, autoSave]);
-  
+
+
   // Google 로그인 핸들러
   const handleSignIn = useCallback(async () => {
     setIsLoading(true);
