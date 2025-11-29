@@ -2,7 +2,7 @@ import { GoogleGenAI } from '@google/genai';
 import { Asset, Currency, SymbolSearchResult, AssetCategory } from '../types';
 
 // =================================================================
-// 유틸리티 함수 (내부 정의) - utils 파일 의존성 제거됨
+// 유틸리티 함수 (내부 정의)
 // =================================================================
 function formatAssetsForAI(assets: Asset[]): string {
   return assets.map(asset => {
@@ -21,10 +21,7 @@ if (!apiKey) {
 
 const ai = new GoogleGenAI({ apiKey: apiKey });
 
-// [수정] 빌드 오류 우회를 위해 @ts-ignore 사용
-// @ts-ignore
-const model = ai.models.getGenerativeModel({ model: "gemini-1.5-flash" });
-
+// [수정] 모델을 파일 맨 앞에서 초기화하지 않고, 필요할 때마다 직접 호출 (ai.models.generateContent 사용)
 
 // =================================================================
 // [복구] 환율 함수 (App.tsx 호환용)
@@ -73,9 +70,9 @@ export async function searchSymbols(query: string): Promise<SymbolSearchResult[]
     "exchange": "거래소/시장. 예: NASDAQ, KRX (코스피/코스닥), 주요 거래소 (종합), KRX 금시장"
   }
 ]`;
-        // [수정] 빌드 오류 우회를 위해 @ts-ignore 사용
-        // @ts-ignore
-        const response = await ai.models.getGenerativeModel({ model: "gemini-1.5-flash" }).generateContent({
+        // [수정] ai.models.generateContent 직접 호출
+        const response = await ai.models.generateContent({
+            model: "gemini-1.5-flash", // 모델명 직접 지정
             contents: prompt,
             config: { responseMimeType: "application/json" }
         });
@@ -117,13 +114,11 @@ export async function analyzePortfolio(assets: Asset[], message: string): Promis
     ];
 
     try {
-        // [수정] 빌드 오류 우회를 위해 @ts-ignore 사용
-        // @ts-ignore
-        const response = await ai.models.getGenerativeModel({ 
+        // [수정] ai.models.generateContent 직접 호출
+        const response = await ai.models.generateContent({ 
             model: "gemini-1.5-flash", 
-            config: { systemInstruction } 
-        }).generateContent({
             contents: [...contents, { role: 'user', parts: [{ text: message }] }],
+            config: { systemInstruction }
         });
 
         const modelResponse = response.text || "답변을 생성할 수 없습니다.";
@@ -218,9 +213,9 @@ async function fetchStockPrice(ticker: string, exchange: string): Promise<{ pric
 
   try {
     const prompt = `"${exchange}" 시장의 "${ticker}" 종목의 현재가와 전일 종가를 예측하여 JSON으로 주세요. {"price": 100, "prevClose": 90} 형식 준수.`;
-    // [수정] 빌드 오류 우회를 위해 @ts-ignore 사용
-    // @ts-ignore
-    const response = await ai.models.getGenerativeModel({ model: "gemini-1.5-flash" }).generateContent({
+    // [수정] ai.models.generateContent 직접 호출
+    const response = await ai.models.generateContent({
+        model: "gemini-1.5-flash",
         contents: prompt,
         config: { responseMimeType: "application/json" }
     });
