@@ -62,10 +62,15 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({ assets, history, onRefr
       const allocation = totalValue === 0 ? 0 : (currentValue / totalValue) * 100;
       const dropFromHigh = asset.highestPrice === 0 ? 0 : ((asset.currentPrice - asset.highestPrice) / asset.highestPrice) * 100;
       const diffFromHigh = asset.currentPrice - asset.highestPrice;
-      const yesterdayChange = asset.yesterdayPrice && asset.yesterdayPrice > 0 
-        ? ((asset.currentPrice - asset.yesterdayPrice) / asset.yesterdayPrice) * 100 
+      let yesterdayPriceKRW = asset.yesterdayPrice || 0;
+      if (asset.currency !== Currency.KRW && asset.priceOriginal > 0 && asset.currentPrice > 0 && asset.yesterdayPrice && asset.yesterdayPrice > 0) {
+        const impliedRate = asset.currentPrice / asset.priceOriginal;
+        yesterdayPriceKRW = asset.yesterdayPrice * impliedRate;
+      }
+      const yesterdayChange = yesterdayPriceKRW > 0 
+        ? ((asset.currentPrice - yesterdayPriceKRW) / yesterdayPriceKRW) * 100 
         : 0;
-      const diffFromYesterday = asset.yesterdayPrice ? asset.currentPrice - asset.yesterdayPrice : 0;
+      const diffFromYesterday = yesterdayPriceKRW > 0 ? asset.currentPrice - yesterdayPriceKRW : 0;
       
       return {
         ...asset,
