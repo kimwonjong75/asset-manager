@@ -70,6 +70,10 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({ assets, history, onRefr
       const yesterdayChange = yesterdayPriceKRW > 0 
         ? ((asset.currentPrice - yesterdayPriceKRW) / yesterdayPriceKRW) * 100 
         : 0;
+      let originalChange = 0;
+      if (asset.currency !== Currency.KRW && asset.priceOriginal > 0 && asset.yesterdayPrice && asset.yesterdayPrice > 0) {
+        originalChange = ((asset.priceOriginal - asset.yesterdayPrice) / asset.yesterdayPrice) * 100;
+      }
       const diffFromYesterday = yesterdayPriceKRW > 0 ? asset.currentPrice - yesterdayPriceKRW : 0;
       
       return {
@@ -85,6 +89,7 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({ assets, history, onRefr
           profitLoss,
           diffFromHigh,
           yesterdayChange,
+          originalChange,
           diffFromYesterday,
         }
       };
@@ -424,11 +429,17 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({ assets, history, onRefr
                           </div>
                         </div>
                     </td>
-                    <td className={`px-4 py-4 font-medium text-right ${investmentColor}`}>
+                    <td
+                      className={`px-4 py-4 font-medium text-right ${investmentColor}`}
+                      title={`환율 변동 포함(원화 기준): ${yesterdayChange.toFixed(2)}%\n순수 주가 변동(외화 기준): ${isNonKRW && asset.metrics.originalChange !== undefined ? asset.metrics.originalChange.toFixed(2) + '%' : '-'}`}
+                    >
                         {asset.yesterdayPrice && asset.yesterdayPrice > 0 ? (
                           <>
                             <div>{yesterdayChange.toFixed(2)}%</div>
                             <div className="text-xs opacity-80">{formatKRW(diffFromYesterday)}</div>
+                            {isNonKRW && asset.metrics.originalChange !== undefined ? (
+                              <div className="text-xs text-gray-500">{`$ ${asset.metrics.originalChange >= 0 ? '+' : ''}${asset.metrics.originalChange.toFixed(2)}%`}</div>
+                            ) : null}
                           </>
                         ) : (
                           <div className="text-gray-500">-</div>
