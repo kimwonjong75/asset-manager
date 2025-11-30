@@ -278,11 +278,6 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({ assets, history, onRefr
                 </th>
               )}
               {showHiddenColumns && (
-                <th scope="col" className={`${thClasses} text-center`} onClick={() => requestSort('purchaseDate')} title="자산을 매수한 날짜입니다.">
-                  <div className={`${thContentClasses} justify-center`}><span>매수일</span> <SortIcon sortKey='purchaseDate'/></div>
-                </th>
-              )}
-              {showHiddenColumns && (
                 <th scope="col" className={`${thClasses} text-right`} onClick={() => requestSort('purchasePrice')} title="자산을 매수한 시점의 평균 단가입니다 (자국 통화 기준). 해외 자산의 경우, 원화 환산 가격이 함께 표시됩니다.">
                   <div className={`${thContentClasses} justify-end`}><span>매수평균가</span> <SortIcon sortKey='purchasePrice'/></div>
                 </th>
@@ -293,12 +288,6 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({ assets, history, onRefr
               <th scope="col" className={`${thClasses} justify-end`} onClick={() => requestSort('returnPercentage')} title="총 손익을 총 매수금액(원화)으로 나눈 백분율입니다. ((현재 평가금액 - 총 매수금액) / 총 매수금액) * 100">
                 <div className={`${thContentClasses} justify-end`}><span>수익률</span> <SortIcon sortKey='returnPercentage'/></div>
               </th>
-              <th scope="col" className={`${thClasses} justify-end`} onClick={() => requestSort('dropFromHigh')} title="자산의 현재가가 기록된 최고가 대비 얼마나 하락했는지를 나타내는 비율입니다. ((현재가 - 최고가) / 최고가) * 100">
-                <div className={`${thContentClasses} justify-end`}><span>최고가 대비</span> <SortIcon sortKey='dropFromHigh'/></div>
-              </th>
-              <th scope="col" className={`${thClasses} justify-end`} onClick={() => requestSort('yesterdayChange')} title="어제 종가 대비 현재가의 변동률입니다. ((현재가 - 어제가) / 어제가) * 100">
-                <div className={`${thContentClasses} justify-end`}><span>어제대비</span> <SortIcon sortKey='yesterdayChange'/></div>
-              </th>
               <th scope="col" className={`${thClasses} justify-end`} onClick={() => requestSort('purchaseValueKRW')} title="총 투자 원금을 원화로 환산한 값입니다. (매수 평균가 * 수량 * 매수시 환율)">
                  <div className={`${thContentClasses} justify-end`}><span>투자원금</span> <SortIcon sortKey='purchaseValueKRW'/></div>
               </th>
@@ -306,10 +295,21 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({ assets, history, onRefr
                  <div className={`${thContentClasses} justify-end`}><span>평가총액</span> <SortIcon sortKey='currentValue'/></div>
               </th>
               {showHiddenColumns && (
+                <th scope="col" className={`${thClasses} text-center`} onClick={() => requestSort('purchaseDate')} title="자산을 매수한 날짜입니다.">
+                  <div className={`${thContentClasses} justify-center`}><span>매수일</span> <SortIcon sortKey='purchaseDate'/></div>
+                </th>
+              )}
+              {showHiddenColumns && (
                 <th scope="col" className={`${thClasses} justify-end`} onClick={() => requestSort('allocation')} title="해당 자산의 평가금액이 전체 포트폴리오에서 차지하는 비율입니다. (개별 자산 평가금액 / 총 자산) * 100">
                   <div className={`${thContentClasses} justify-end`}><span>비중</span> <SortIcon sortKey='allocation'/></div>
                 </th>
               )}
+              <th scope="col" className={`${thClasses} justify-end`} onClick={() => requestSort('dropFromHigh')} title="자산의 현재가가 기록된 최고가 대비 얼마나 하락했는지를 나타내는 비율입니다. ((현재가 - 최고가) / 최고가) * 100">
+                <div className={`${thContentClasses} justify-end`}><span>최고가 대비</span> <SortIcon sortKey='dropFromHigh'/></div>
+              </th>
+              <th scope="col" className={`${thClasses} justify-end`} onClick={() => requestSort('yesterdayChange')} title="어제 종가 대비 현재가의 변동률입니다. ((현재가 - 어제가) / 어제가) * 100">
+                <div className={`${thContentClasses} justify-end`}><span>어제대비</span> <SortIcon sortKey='yesterdayChange'/></div>
+              </th>
               <th scope="col" className="px-4 py-3 text-center" title="자산 가격 갱신">업데이트</th>
               <th scope="col" className="px-4 py-3 text-center" title="자산 정보 수정">수정</th>
               {onSell && <th scope="col" className="px-4 py-3 text-center" title="자산 매도">매도</th>}
@@ -361,11 +361,6 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({ assets, history, onRefr
                       </td>
                     )}
                     {showHiddenColumns && (
-                      <td className="px-4 py-4 text-center">
-                        {asset.purchaseDate}
-                      </td>
-                    )}
-                    {showHiddenColumns && (
                       <td className="px-4 py-4 text-right">
                         <div>{formatKRW(asset.purchasePrice * (asset.purchaseExchangeRate || 1))}</div>
                         {isNonKRW && <div className="text-xs text-gray-500">{formatOriginalCurrency(asset.purchasePrice, asset.currency)}</div>}
@@ -404,6 +399,22 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({ assets, history, onRefr
                           </>
                         )}
                     </td>
+                    <td className="px-4 py-4 text-right">
+                      <div className={investmentColor}>{formatKRW(purchaseValueKRW)}</div>
+                      {isNonKRW && <div className="text-xs text-gray-500">{formatOriginalCurrency(asset.purchasePrice * asset.quantity, asset.currency)}</div>}
+                    </td>
+                    <td className="px-4 py-4 text-right">
+                      <div className="font-semibold text-white">{formatKRW(currentValue)}</div>
+                      {isNonKRW && <div className="text-xs text-gray-500">{formatOriginalCurrency(asset.priceOriginal * asset.quantity, asset.currency)}</div>}
+                    </td>
+                    {showHiddenColumns && (
+                      <td className="px-4 py-4 text-center">
+                        {asset.purchaseDate}
+                      </td>
+                    )}
+                    {showHiddenColumns && (
+                      <td className="px-4 py-4 text-right">{allocation.toFixed(2)}%</td>
+                    )}
                     <td className={`px-4 py-4 font-medium text-right ${getChangeColor(dropFromHigh)}`} title={`기준 최고가: ${formatKRW(asset.highestPrice)}\n알림 기준: -${alertRate}%`}>
                         <div className="flex justify-end items-center">
                           {isAlertTriggered && <span className="mr-1 text-base" aria-label="경고">⚠️</span>}
@@ -423,17 +434,6 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({ assets, history, onRefr
                           <div className="text-gray-500">-</div>
                         )}
                     </td>
-                    <td className="px-4 py-4 text-right">
-                      <div className={investmentColor}>{formatKRW(purchaseValueKRW)}</div>
-                      {isNonKRW && <div className="text-xs text-gray-500">{formatOriginalCurrency(asset.purchasePrice * asset.quantity, asset.currency)}</div>}
-                    </td>
-                    <td className="px-4 py-4 text-right">
-                      <div className="font-semibold text-white">{formatKRW(currentValue)}</div>
-                      {isNonKRW && <div className="text-xs text-gray-500">{formatOriginalCurrency(asset.priceOriginal * asset.quantity, asset.currency)}</div>}
-                    </td>
-                    {showHiddenColumns && (
-                      <td className="px-4 py-4 text-right">{allocation.toFixed(2)}%</td>
-                    )}
                     <td className="px-4 py-4 text-center">
                       <button onClick={() => onRefreshOne && onRefreshOne(asset.id)} disabled={isLoading} className="p-2 text-primary hover:text-primary-light disabled:text-gray-600 disabled:cursor-not-allowed transition" title="이 자산만 현재가를 갱신합니다.">
                         <RefreshIcon className="h-4 w-4" />
