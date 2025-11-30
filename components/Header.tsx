@@ -38,7 +38,7 @@ const Header: React.FC<HeaderProps> = ({
       <div className="flex justify-between items-start sm:items-center flex-col sm:flex-row">
         <div>
           <h1 className="text-4xl font-bold text-white tracking-tight" title="나의 자산 포트폴리오를 관리하는 대시보드입니다.">
-            자산 관리 시트
+            KIM'S 퀸트자산관리
           </h1>
           <p className="text-gray-400 mt-2" title="계량적 투자 전략을 기반으로 자산을 분석하고 추적합니다.">
             퀀트 투자를 위한 포트폴리오 대시보드
