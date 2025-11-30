@@ -110,25 +110,10 @@ const EditAssetModal: React.FC<EditAssetModalProps> = ({ asset, isOpen, onClose,
               ))}
             </select>
           </div>
-          <div className="grid grid-cols-2 gap-4">
+           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label htmlFor="exchange-edit" className={labelClasses}>거래소/시장</label>
-              <select 
-                id="exchange-edit" 
-                name="exchange" 
-                value={formData.exchange} 
-                onChange={(e) => {
-                  handleChange(e);
-                  // 거래소 변경 시 자산구분 자동 추론
-                  const inferredCategory = inferCategoryFromExchange(e.target.value);
-                  setFormData(prev => prev ? { ...prev, category: inferredCategory } : null);
-                }} 
-                className={inputClasses}
-              >
-                {ALL_EXCHANGES.map((ex) => (
-                  <option key={ex} value={ex}>{ex}</option>
-                ))}
-              </select>
+              <label className={labelClasses}>거래소/시장</label>
+              <input value={formData.exchange} readOnly className="w-full bg-gray-600 border border-gray-500 rounded-md py-2 px-3 text-gray-300 cursor-not-allowed" />
             </div>
             <div>
               <label htmlFor="ticker-edit" className={labelClasses}>티커 (종목코드)</label>

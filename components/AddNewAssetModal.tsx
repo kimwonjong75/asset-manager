@@ -101,6 +101,16 @@ const AddNewAssetModal: React.FC<AddNewAssetModalProps> = ({ isOpen, onClose, on
     setSearchResults([]);
   };
 
+  useEffect(() => {
+    if (category === AssetCategory.KOREAN_STOCK) {
+      setExchange('KRX (코스피/코스닥)');
+    } else if (category === AssetCategory.US_STOCK) {
+      setExchange('NASDAQ');
+    } else if (category === AssetCategory.CRYPTOCURRENCY) {
+      setExchange('주요 거래소 (종합)');
+    }
+  }, [category]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!ticker) {
@@ -155,23 +165,8 @@ const AddNewAssetModal: React.FC<AddNewAssetModalProps> = ({ isOpen, onClose, on
                 </select>
             </div>
             <div>
-                <label htmlFor="exchange" className={labelClasses}>거래소/시장</label>
-                <select 
-                  id="exchange" 
-                  value={exchange} 
-                  onChange={(e) => {
-                    setExchange(e.target.value);
-                    // 거래소 변경 시 자산구분 자동 추론
-                    const inferredCategory = inferCategoryFromExchange(e.target.value);
-                    setCategory(inferredCategory);
-                  }}
-                  className={inputClasses} 
-                  title="자산이 거래되는 시장을 선택하세요. 자산구분이 자동으로 설정됩니다."
-                >
-                  {ALL_EXCHANGES.map((ex) => (
-                    <option key={ex} value={ex}>{ex}</option>
-                  ))}
-                </select>
+                <label className={labelClasses}>거래소/시장</label>
+                <input value={exchange} readOnly className="w-full bg-gray-600 border border-gray-500 rounded-md py-2 px-3 text-gray-300 cursor-not-allowed" title="자산구분 또는 종목 검색에 따라 자동으로 결정됩니다." />
             </div>
             
             <div className="relative">
