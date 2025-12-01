@@ -80,16 +80,15 @@ const AddNewAssetModal: React.FC<AddNewAssetModalProps> = ({ isOpen, onClose, on
   const handleSelectSymbol = (result: SymbolSearchResult) => {
      const isDuplicate = assets.some(
       asset => asset.ticker.toUpperCase() === result.ticker.toUpperCase() &&
-               asset.exchange === result.exchange
+               normalizeExchange(asset.exchange) === normalizeExchange(result.exchange)
     );
 
     if (isDuplicate) {
       setDuplicateError('이미 포트폴리오에 존재하는 자산입니다.');
-      setSearchResults([]);
-      return;
+    } else {
+      setDuplicateError(null);
     }
-
-    setDuplicateError(null);
+    setSearchResults([]);
     const current = (ticker || '').trim();
     const isKRXCode = /^\d{6}$/.test(current);
     let nextTicker = current;
@@ -128,6 +127,14 @@ const AddNewAssetModal: React.FC<AddNewAssetModalProps> = ({ isOpen, onClose, on
     }
     if (!quantity || !purchasePrice || !purchaseDate || !exchange || !currency || !category) {
       alert('모든 필드를 입력해주세요.');
+      return;
+    }
+    const isDuplicateSubmit = assets.some(
+      asset => asset.ticker.toUpperCase() === ticker.toUpperCase() &&
+               normalizeExchange(asset.exchange) === normalizeExchange(exchange)
+    );
+    if (isDuplicateSubmit) {
+      alert('이미 포트폴리오에 존재하는 자산입니다.');
       return;
     }
     onAddAsset({
@@ -243,7 +250,7 @@ const AddNewAssetModal: React.FC<AddNewAssetModalProps> = ({ isOpen, onClose, on
             <input id="purchaseDate" type="date" value={purchaseDate} onChange={(e) => setPurchaseDate(e.target.value)} className={inputClasses} required title="자산을 매수했거나 보유하기 시작한 날짜를 선택하세요."/>
             </div>
             <div className="pt-4 flex justify-end">
-                <button type="submit" disabled={isLoading} className="w-full bg-primary hover:bg-primary-dark text-white font-bold py-2.5 px-4 rounded-md disabled:bg-gray-600 disabled:cursor-not-allowed transition duration-300 flex items-center justify-center" title="입력한 정보로 새 자산을 포트폴리오에 추가합니다.">
+                <button type="submit" disabled={isLoading || !!duplicateError} className="w-full bg-primary hover:bg-primary-dark text-white font-bold py-2.5 px-4 rounded-md disabled:bg-gray-600 disabled:cursor-not-allowed transition duration-300 flex items-center justify-center" title="입력한 정보로 새 자산을 포트폴리오에 추가합니다.">
                 {isLoading ? (
                     <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
