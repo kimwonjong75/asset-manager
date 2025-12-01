@@ -96,7 +96,7 @@ const EditAssetModal: React.FC<EditAssetModalProps> = ({ asset, isOpen, onClose,
   };
 
   const handleDelete = () => {
-    if (asset && window.confirm(`'${asset.name}' 자산을 정말 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.`)) {
+    if (asset && window.confirm(`'${(asset.customName?.trim() || asset.name)}' 자산을 정말 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.`)) {
       onDelete(asset.id);
     }
   };
@@ -107,7 +107,7 @@ const EditAssetModal: React.FC<EditAssetModalProps> = ({ asset, isOpen, onClose,
   return (
     <div className="fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center z-50" onClick={onClose} role="dialog" aria-modal="true">
       <div className="bg-gray-800 p-6 rounded-lg shadow-xl w-full max-w-lg" onClick={(e) => e.stopPropagation()}>
-        <h2 className="text-2xl font-bold text-white mb-6">자산 수정: {asset?.name}</h2>
+        <h2 className="text-2xl font-bold text-white mb-6">자산 수정: {(asset?.customName?.trim() || asset?.name)}</h2>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label htmlFor="category-edit" className={labelClasses}>자산 구분</label>
@@ -116,6 +116,19 @@ const EditAssetModal: React.FC<EditAssetModalProps> = ({ asset, isOpen, onClose,
                 <option key={cat} value={cat}>{cat}</option>
               ))}
             </select>
+          </div>
+          <div>
+            <label htmlFor="customName-edit" className={labelClasses}>표시용 종목명 (사용자 지정)</label>
+            <input
+              id="customName-edit"
+              name="customName"
+              type="text"
+              value={formData.customName || ''}
+              onChange={handleChange}
+              className={inputClasses}
+              placeholder="비워두면 공식 종목명을 사용합니다"
+            />
+            <p className="text-xs text-gray-400 mt-1">티커/거래소·가격 계산에는 영향이 없고 화면 표시 및 내보내기에만 적용됩니다.</p>
           </div>
            <div className="grid grid-cols-2 gap-4">
             <div>

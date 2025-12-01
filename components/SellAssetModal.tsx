@@ -92,7 +92,7 @@ const SellAssetModal: React.FC<SellAssetModalProps> = ({ asset, isOpen, onClose,
   return (
     <div className="fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center z-50" onClick={onClose} role="dialog" aria-modal="true">
       <div className="bg-gray-800 p-6 rounded-lg shadow-xl w-full max-w-lg" onClick={(e) => e.stopPropagation()}>
-        <h2 className="text-2xl font-bold text-white mb-6">매도: {asset.name}</h2>
+        <h2 className="text-2xl font-bold text-white mb-6">매도: {(asset.customName?.trim() || asset.name)}</h2>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="bg-gray-700 p-4 rounded-md">
             <div className={labelClasses}>보유정보</div>

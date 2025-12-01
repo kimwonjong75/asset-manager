@@ -99,7 +99,7 @@ const PortfolioAssistant: React.FC<PortfolioAssistantProps> = ({ isOpen, onClose
     // 자산 데이터 캐싱 (속도 개선)
     const assetsSnapshot = useMemo(() => {
         return JSON.stringify(assets.map(asset => ({
-            name: asset.name,
+            name: asset.customName ?? asset.name,
             category: asset.category,
             quantity: asset.quantity,
             purchase_price_original: asset.purchasePrice,

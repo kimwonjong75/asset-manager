@@ -63,7 +63,7 @@ const TopBottomAssets: React.FC<TopBottomAssetsProps> = ({ assets }) => {
     const AssetListItem: React.FC<{asset: EnrichedAsset}> = ({ asset }) => (
         <li className="flex justify-between items-center py-2 border-b border-gray-700/50 last:border-b-0">
             <div className="flex-1 overflow-hidden">
-                <p className="text-white font-medium truncate" title={asset.name}>{asset.name}</p>
+                <p className="text-white font-medium truncate" title={(asset.customName?.trim() || asset.name)}>{(asset.customName?.trim() || asset.name)}</p>
                 <p className="text-xs text-gray-500">{formatKRW(asset.metrics.profitLoss)}</p>
             </div>
             <div className={`text-right font-bold ml-4 ${getChangeColor(asset.metrics.returnPercentage)}`}>

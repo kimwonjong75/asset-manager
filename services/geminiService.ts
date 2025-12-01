@@ -490,7 +490,8 @@ function getDefaultExchangeRate(from: string, to: string): number {
 function formatAssetsForAI(assets: Asset[]): string {
   return assets.map(asset => {
     const value = asset.quantity * asset.currentPrice;
-    return `- ${asset.name} (${asset.ticker}): ${asset.quantity}주, 현재가 ${asset.currentPrice.toLocaleString()}원, 평가액 ${value.toLocaleString()}원, 카테고리: ${asset.category}`;
+    const displayName = asset.customName ?? asset.name;
+    return `- ${displayName} (${asset.ticker}): ${asset.quantity}주, 현재가 ${asset.currentPrice.toLocaleString()}원, 평가액 ${value.toLocaleString()}원, 카테고리: ${asset.category}`;
   }).join('\n');
 }
 
@@ -501,7 +502,7 @@ export const askPortfolioQuestion = async (
   if (!ai) return "API 키가 설정되지 않았습니다.";
 
   const simplifiedAssets = assets.map(asset => ({
-    name: asset.name,
+    name: asset.customName ?? asset.name,
     category: asset.category,
     quantity: asset.quantity,
     purchase_price_original: asset.purchasePrice,

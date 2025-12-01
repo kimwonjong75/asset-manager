@@ -436,7 +436,7 @@ const App: React.FC = () => {
         }
         return {
           id: asset.id,
-          name: asset.name,
+          name: (asset.customName?.trim() || asset.name),
           currentValue,
           purchaseValue: purchaseValueKRW,
         };
@@ -480,7 +480,7 @@ const App: React.FC = () => {
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase().trim();
       filtered = filtered.filter(asset => 
-        asset.name.toLowerCase().includes(query) ||
+        ((asset.customName?.toLowerCase() || asset.name.toLowerCase()).includes(query)) ||
         asset.ticker.toLowerCase().includes(query) ||
         (asset.memo && asset.memo.toLowerCase().includes(query))
       );
@@ -1192,7 +1192,7 @@ const App: React.FC = () => {
             };
 
             return [
-                escapeCsvCell(asset.name),
+                escapeCsvCell(asset.customName ?? asset.name),
                 escapeCsvCell(asset.ticker),
                 escapeCsvCell(asset.exchange),
                 escapeCsvCell(asset.category),

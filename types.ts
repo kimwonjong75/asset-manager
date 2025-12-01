@@ -151,6 +151,7 @@ export interface Asset {
   ticker: string;
   exchange: string;
   name: string;
+  customName?: string;
   quantity: number;
   purchasePrice: number; // In original currency
   purchaseDate: string;

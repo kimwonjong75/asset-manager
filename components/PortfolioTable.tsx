@@ -109,8 +109,8 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({ assets, history, onRefr
         let bValue: string | number;
 
         if (key === 'name') {
-          aValue = a.name.toLowerCase();
-          bValue = b.name.toLowerCase();
+          aValue = (a.customName?.toLowerCase() || a.name.toLowerCase());
+          bValue = (b.customName?.toLowerCase() || b.name.toLowerCase());
         } else if (key === 'purchaseDate') {
           aValue = a.purchaseDate;
           bValue = b.purchaseDate;
@@ -344,7 +344,7 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({ assets, history, onRefr
                               rel="noopener noreferrer"
                               className="font-bold hover:underline text-primary-light cursor-pointer inline-block"
                             >
-                              {asset.name}
+                              {(asset.customName?.trim() || asset.name)}
                             </a>
                             {asset.memo && (
                               <div 
@@ -513,7 +513,7 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({ assets, history, onRefr
                         <AssetTrendChart
                           history={history}
                           assetId={asset.id}
-                          assetName={asset.name}
+                          assetName={(asset.customName?.trim() || asset.name)}
                         />
                       </td>
                     </tr>
