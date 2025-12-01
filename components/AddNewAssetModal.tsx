@@ -90,11 +90,10 @@ const AddNewAssetModal: React.FC<AddNewAssetModalProps> = ({ isOpen, onClose, on
     }
     setSearchResults([]);
     const current = (ticker || '').trim();
-    const isKRXCode = /^\d{6}$/.test(current);
     let nextTicker = current;
     if (!current) {
       nextTicker = result.ticker;
-    } else if (!isKRXCode) {
+    } else {
       const ok = window.confirm(`티커를 '${current}'에서 '${result.ticker}'로 변경하시겠습니까?`);
       if (ok) nextTicker = result.ticker;
     }

@@ -86,12 +86,9 @@ const EditAssetModal: React.FC<EditAssetModalProps> = ({ asset, isOpen, onClose,
     setFormData(prev => {
       if (!prev) return null;
       const current = (prev.ticker || '').trim();
-      const isKRXCode = /^\d{6}$/.test(current);
       let nextTicker = current;
-      if (!isKRXCode) {
-        const ok = window.confirm(`티커를 '${current || '(비어있음)'}'에서 '${r.ticker}'로 변경하시겠습니까?`);
-        if (ok) nextTicker = r.ticker;
-      }
+      const ok = window.confirm(`티커를 '${current || '(비어있음)'}'에서 '${r.ticker}'로 변경하시겠습니까?`);
+      if (ok) nextTicker = r.ticker;
       return { ...prev, ticker: nextTicker, name: r.name, exchange: ex, category: cat };
     });
     setSearchQuery('');
