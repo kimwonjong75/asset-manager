@@ -1,5 +1,5 @@
 
-import React, { useMemo, useState, Fragment, useRef } from 'react';
+import React, { useMemo, useState, Fragment, useRef, useEffect } from 'react';
  
 import { Asset, Currency, CURRENCY_SYMBOLS, AssetCategory, PortfolioSnapshot, ALLOWED_CATEGORIES } from '../types';
 import AssetTrendChart from './AssetTrendChart';
@@ -37,6 +37,8 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({ assets, history, onRefr
   const [showFailedOnly, setShowFailedOnly] = useState<boolean>(false);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
+  const prevLoadingRef = useRef<boolean>(false);
+  const [lastRunWasFullUpdate, setLastRunWasFullUpdate] = useState<boolean>(false);
 
   useOnClickOutside(menuRef, () => setOpenMenuId(null), !!openMenuId);
 
@@ -149,7 +151,7 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({ assets, history, onRefr
     }
 
     return enriched;
-  }, [assets, sortConfig, totalValue, filterAlerts, sellAlertDropRate]);
+  }, [assets, sortConfig, totalValue, filterAlerts, sellAlertDropRate, showFailedOnly, failedIds]);
 
   const allSelected = enrichedAndSortedAssets.length > 0 && enrichedAndSortedAssets.every(a => selectedIds.has(a.id));
   const selectedAssets = useMemo(() => assets.filter(a => selectedIds.has(a.id)), [assets, selectedIds]);
@@ -209,6 +211,16 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({ assets, history, onRefr
   const thClasses = "px-4 py-3 cursor-pointer hover:bg-gray-600 transition-colors";
   const thContentClasses = "flex items-center gap-2";
 
+  useEffect(() => {
+    if (!isLoading && prevLoadingRef.current && lastRunWasFullUpdate && failedIds && failedIds.size > 0) {
+      const ok = window.confirm('업데이트에 실패한 항목이 있습니다. 실패한 리스트만 보시겠습니까?');
+      if (ok) {
+        setShowFailedOnly(true);
+      }
+    }
+    prevLoadingRef.current = isLoading;
+  }, [isLoading, lastRunWasFullUpdate, failedIds]);
+
   return (
     <div className="bg-gray-800 rounded-lg shadow-lg">
       <div className="bg-gray-800 px-4 sm:px-6 pt-4 sm:pt-6 pb-4 flex justify-between items-center gap-4 border-b border-gray-700">
@@ -242,10 +254,22 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({ assets, history, onRefr
         </div>
         <div className="flex items-center gap-2">
           <button
-            onClick={onRefreshAll}
+            onClick={() => {
+              const ids = Array.from(selectedIds);
+              if (ids.length > 0) {
+                setLastRunWasFullUpdate(false);
+                onRefreshSelected ? onRefreshSelected(ids) : onRefreshAll();
+              } else {
+                const ok = window.confirm('전체 종목을 업데이트 하시겠습니까?');
+                if (ok) {
+                  setLastRunWasFullUpdate(true);
+                  onRefreshAll();
+                }
+              }
+            }}
             disabled={isLoading}
             className="bg-primary hover:bg-primary-dark text-white font-medium py-2 px-4 rounded-md transition duration-300 flex items-center disabled:bg-gray-600 disabled:cursor-not-allowed"
-            title="모든 자산의 현재가를 새로고침합니다."
+            title="선택 항목이 있으면 선택만, 없으면 전체를 업데이트합니다."
           >
             {isLoading ? (
               <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -495,13 +519,7 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({ assets, history, onRefr
                       </div>
                       {openMenuId === asset.id && (
                         <div ref={menuRef} className="absolute right-0 mt-2 w-44 bg-gray-800 border border-gray-700 rounded-md shadow-lg z-20 text-sm">
-                          <button
-                            onClick={() => { setOpenMenuId(null); onRefreshOne && onRefreshOne(asset.id); }}
-                            disabled={isLoading}
-                            className="block w-full text-left px-3 py-2 text-gray-200 hover:bg-gray-700 disabled:text-gray-500 disabled:cursor-not-allowed"
-                          >
-                            개별 업데이트
-                          </button>
+                          
                           <button
                             onClick={() => { setOpenMenuId(null); onEdit(asset); }}
                             disabled={isLoading}
