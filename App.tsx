@@ -188,6 +188,7 @@ const App: React.FC = () => {
   const [updateAvailable, setUpdateAvailable] = useState<boolean>(false);
   const [updateLastModified, setUpdateLastModified] = useState<string | null>(null);
   const [versionInfo, setVersionInfo] = useState<{ commit?: string; buildTime?: string } | null>(null);
+  const [failedAssetIds, setFailedAssetIds] = useState<Set<string>>(new Set());
   const categoryOptions = useMemo(() => {
     const extras = Array.from(new Set(assets.map(asset => asset.category))).filter(
       (cat) => !ALLOWED_CATEGORIES.includes(cat)
@@ -282,6 +283,7 @@ const App: React.FC = () => {
     if (assets.length === 0) return;
     setIsLoading(true);
     setError(null);
+    setFailedAssetIds(new Set());
     if (isAutoUpdate || isScheduled) {
         setSuccessMessage('최신 종가 정보를 불러오는 중입니다...');
     } else {
@@ -319,6 +321,7 @@ const App: React.FC = () => {
       ]);
 
       const failedTickers: string[] = [];
+      const failedIds: string[] = [];
 
       const updatedAssets = assets.map((asset) => {
         // 현금 자산 처리
@@ -337,6 +340,8 @@ const App: React.FC = () => {
               highestPrice: Math.max(asset.highestPrice, data.priceKRW),
             };
           }
+          failedTickers.push(asset.ticker);
+          failedIds.push(asset.id);
           return asset;
         }
 
@@ -354,11 +359,13 @@ const App: React.FC = () => {
         } else {
           console.error(`Failed to refresh price for ${asset.ticker}`);
           failedTickers.push(asset.ticker);
+          failedIds.push(asset.id);
           return asset;
         }
       });
 
       setAssets(updatedAssets);
+      setFailedAssetIds(new Set(failedIds));
 
       if (failedTickers.length > 0) {
         setError(`${failedTickers.join(', ')} 가격 갱신에 실패했습니다.`);
@@ -385,6 +392,104 @@ const App: React.FC = () => {
 
     setIsLoading(false);
   }, [assets, portfolioHistory, sellHistory, autoSave, isSignedIn]);
+
+  const handleRefreshSelectedPrices = useCallback(async (ids: string[]) => {
+    if (ids.length === 0) {
+      return;
+    }
+    setIsLoading(true);
+    setError(null);
+
+    const idSet = new Set(ids);
+    const targetAssets = assets.filter(a => idSet.has(a.id));
+    const cashAssets = targetAssets.filter(a => a.category === AssetCategory.CASH);
+    const nonCashAssets = targetAssets.filter(a => a.category !== AssetCategory.CASH);
+
+    const cashPromises = cashAssets.map(asset => 
+      fetchCurrentExchangeRate(asset.currency, Currency.KRW).then(rate => ({
+        id: asset.id,
+        name: `현금 (${asset.currency})`,
+        priceKRW: rate * asset.priceOriginal,
+        priceOriginal: asset.priceOriginal,
+        currency: asset.currency,
+        pricePreviousClose: rate * asset.priceOriginal,
+      }))
+    );
+
+    const itemsToFetch = nonCashAssets.map(a => ({ ticker: a.ticker, exchange: a.exchange, id: a.id }));
+
+    try {
+      const [cashResults, batchPriceMap] = await Promise.all([
+        Promise.allSettled(cashPromises),
+        fetchBatchAssetPrices(itemsToFetch)
+      ]);
+
+      const failedTickers: string[] = [];
+      const failedIds: string[] = [];
+
+      const updatedAssets = assets.map((asset) => {
+        if (!idSet.has(asset.id)) return asset;
+        if (asset.category === AssetCategory.CASH) {
+          const cashIdx = cashAssets.findIndex(ca => ca.id === asset.id);
+          const result = cashResults[cashIdx];
+          if (result && result.status === 'fulfilled') {
+            const data = result.value;
+            return {
+              ...asset,
+              yesterdayPrice: data.pricePreviousClose,
+              currentPrice: data.priceKRW,
+              priceOriginal: data.priceOriginal,
+              currency: data.currency as Currency,
+              highestPrice: Math.max(asset.highestPrice, data.priceKRW),
+            };
+          }
+          failedTickers.push(asset.ticker);
+          failedIds.push(asset.id);
+          return asset;
+        }
+        const priceData = batchPriceMap.get(asset.id);
+        if (priceData && !priceData.isMocked) {
+          return {
+            ...asset,
+            yesterdayPrice: priceData.pricePreviousClose,
+            currentPrice: priceData.priceKRW,
+            priceOriginal: priceData.priceOriginal,
+            currency: priceData.currency as Currency,
+            highestPrice: Math.max(asset.highestPrice, priceData.priceKRW),
+          };
+        } else {
+          console.error(`Failed to refresh price for ${asset.ticker}`);
+          failedTickers.push(asset.ticker);
+          failedIds.push(asset.id);
+          return asset;
+        }
+      });
+
+      setAssets(updatedAssets);
+      setFailedAssetIds(prev => {
+        const next = new Set(prev);
+        failedIds.forEach(id => next.add(id));
+        return next;
+      });
+
+      if (failedTickers.length > 0) {
+        setError(`${failedTickers.join(', ')} 가격 갱신에 실패했습니다.`);
+        setTimeout(() => setError(null), 3000);
+      } else {
+        setSuccessMessage('선택한 자산의 가격을 성공적으로 업데이트했습니다.');
+        setTimeout(() => setSuccessMessage(null), 5000);
+        if (isSignedIn) {
+          autoSave(updatedAssets, portfolioHistory, sellHistory);
+        }
+      }
+    } catch (error) {
+      console.error('Selected price refresh failed:', error);
+      setError('선택 자산 업데이트 중 오류가 발생했습니다.');
+      setTimeout(() => setError(null), 3000);
+    }
+
+    setIsLoading(false);
+  }, [assets, autoSave, portfolioHistory, sellHistory, isSignedIn]);
 
   const handleRefreshOnePrice = useCallback(async (assetId: string) => {
     const target = assets.find(a => a.id === assetId);
@@ -1565,6 +1670,7 @@ const handleRefreshWatchlistPrices = useCallback(async () => {
                       assets={filteredAssets}
                       history={portfolioHistory}
                       onRefreshAll={() => handleRefreshAllPrices(false)}
+                      onRefreshSelected={handleRefreshSelectedPrices}
                       onRefreshOne={handleRefreshOnePrice}
                       onEdit={handleEditAsset}
                       onSell={handleSellAsset}
@@ -1577,6 +1683,7 @@ const handleRefreshWatchlistPrices = useCallback(async () => {
                       searchQuery={searchQuery}
                       onSearchChange={setSearchQuery}
                       onAddSelectedToWatchlist={handleAddAssetsToWatchlist}
+                      failedIds={failedAssetIds}
                     />
                 </div>
               )}

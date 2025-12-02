@@ -7,6 +7,7 @@ interface PortfolioTableProps {
   assets: Asset[];
   history: PortfolioSnapshot[];
   onRefreshAll: () => void;
+  onRefreshSelected?: (ids: string[]) => void | Promise<void>;
   onRefreshOne?: (id: string) => void | Promise<void>;
   onEdit: (asset: Asset) => void;
   onSell?: (asset: Asset) => void;
@@ -19,16 +20,18 @@ interface PortfolioTableProps {
   searchQuery?: string;
   onSearchChange?: (query: string) => void;
   onAddSelectedToWatchlist?: (assets: Asset[]) => void;
+  failedIds?: Set<string>;
 }
 
 type SortKey = 'name' | 'purchaseDate' | 'quantity' | 'purchasePrice' | 'currentPrice' | 'returnPercentage' | 'dropFromHigh' | 'yesterdayChange' | 'purchaseValueKRW' | 'currentValue' | 'allocation';
 type SortDirection = 'ascending' | 'descending';
 
-const PortfolioTable: React.FC<PortfolioTableProps> = ({ assets, history, onRefreshAll, onRefreshOne, onEdit, onSell, isLoading, sellAlertDropRate, filterCategory, onFilterChange, filterAlerts, onFilterAlertsChange, searchQuery = '', onSearchChange, onAddSelectedToWatchlist }) => {
+const PortfolioTable: React.FC<PortfolioTableProps> = ({ assets, history, onRefreshAll, onRefreshSelected, onRefreshOne, onEdit, onSell, isLoading, sellAlertDropRate, filterCategory, onFilterChange, filterAlerts, onFilterAlertsChange, searchQuery = '', onSearchChange, onAddSelectedToWatchlist, failedIds }) => {
   const [sortConfig, setSortConfig] = useState<{ key: SortKey; direction: SortDirection } | null>(null);
   const [expandedAssetId, setExpandedAssetId] = useState<string | null>(null);
   const [showHiddenColumns, setShowHiddenColumns] = useState<boolean>(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [showFailedOnly, setShowFailedOnly] = useState<boolean>(false);
 
   const totalValue = useMemo(() => assets.reduce((sum, asset) => sum + asset.currentPrice * asset.quantity, 0), [assets]);
 
@@ -102,6 +105,10 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({ assets, history, onRefr
             const alertRate = asset.sellAlertDropRate ?? sellAlertDropRate;
             return asset.metrics.dropFromHigh <= -alertRate;
         });
+    }
+
+    if (showFailedOnly && failedIds && failedIds.size > 0) {
+      enriched = enriched.filter(asset => failedIds.has(asset.id));
     }
 
     if (sortConfig !== null) {
@@ -257,6 +264,14 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({ assets, history, onRefr
               </div>
               <div className="ml-3 text-sm font-medium text-gray-300">숨김 컬럼 표시</div>
           </label>
+          <label htmlFor="failed-only-toggle" className="flex items-center cursor-pointer" title="최근 업데이트에 실패한 자산만 표시합니다.">
+              <div className="relative ml-2">
+                  <input type="checkbox" id="failed-only-toggle" className="sr-only" checked={showFailedOnly} onChange={() => setShowFailedOnly(!showFailedOnly)} />
+                  <div className="block bg-gray-600 w-10 h-6 rounded-full"></div>
+                  <div className={`dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform duration-300 ease-in-out ${showFailedOnly ? 'transform translate-x-full bg-danger' : ''}`}></div>
+              </div>
+              <div className="ml-3 text-sm font-medium text-gray-300">업데이트 실패만 보기</div>
+          </label>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -275,6 +290,23 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({ assets, history, onRefr
             )}
             <span>{isLoading ? '업데이트 중...' : '업데이트'}</span>
           </button>
+          <button
+            onClick={() => {
+              if (!onRefreshSelected) { onRefreshAll(); return; }
+              if (selectedIds.size === 0) {
+                if (confirm('선택된 항목이 없습니다. 전체 업데이트를 진행하시겠습니까?')) {
+                  onRefreshAll();
+                }
+                return;
+              }
+              onRefreshSelected(Array.from(selectedIds));
+            }}
+            disabled={isLoading}
+            className="bg-blue-600 hover:bg-blue-500 text-white font-medium py-2 px-4 rounded-md transition duration-300 disabled:bg-gray-600 disabled:cursor-not-allowed"
+            title="체크한 자산만 선택적으로 가격을 갱신합니다."
+          >
+            선택 항목 재시도
+          </button>
           {onAddSelectedToWatchlist && (
             <button
               onClick={() => onAddSelectedToWatchlist(selectedAssets)}
@@ -285,6 +317,19 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({ assets, history, onRefr
               관심종목에 추가
             </button>
           )}
+          <button
+            onClick={() => {
+              if (!failedIds || failedIds.size === 0) return;
+              const next = new Set<string>(selectedIds);
+              failedIds.forEach(id => next.add(id));
+              setSelectedIds(next);
+            }}
+            disabled={!failedIds || failedIds.size === 0}
+            className="bg-gray-700 hover:bg-gray-600 text-white font-medium py-2 px-3 rounded-md transition duration-300 disabled:bg-gray-600 disabled:cursor-not-allowed"
+            title="최근 업데이트 실패한 자산을 모두 선택합니다."
+          >
+            실패 항목 모두 선택
+          </button>
         </div>
       </div>
       <div className="w-full px-4 sm:px-6 pb-4 sm:pb-6 pt-4">
