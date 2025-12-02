@@ -1,7 +1,7 @@
 
 
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
-import { Asset, NewAssetForm, AssetCategory, EXCHANGE_MAP, Currency, PortfolioSnapshot, AssetSnapshot, BulkUploadResult, ALLOWED_CATEGORIES, SellRecord, WatchlistItem } from './types';
+import { Asset, NewAssetForm, AssetCategory, EXCHANGE_MAP, Currency, PortfolioSnapshot, AssetSnapshot, BulkUploadResult, ALLOWED_CATEGORIES, SellRecord, WatchlistItem, normalizeExchange } from './types';
 import { fetchAssetData, fetchBatchAssetPrices, fetchHistoricalExchangeRate, fetchCurrentExchangeRate } from './services/geminiService';
 import { googleDriveService, GoogleUser } from './services/googleDriveService';
 import PortfolioTable from './components/PortfolioTable';
@@ -1238,7 +1238,8 @@ const App: React.FC = () => {
     const id = `${Date.now()}`;
     const item: WatchlistItem = { ...payload, id } as WatchlistItem;
     setWatchlist(prev => {
-      const next = [...prev, item];
+      const exists = prev.some(w => w.ticker.toUpperCase() === item.ticker.toUpperCase() && normalizeExchange(w.exchange) === normalizeExchange(item.exchange));
+      const next = exists ? prev : [...prev, item];
       autoSave(assets, portfolioHistory, sellHistory);
       return next;
     });
@@ -1255,6 +1256,37 @@ const App: React.FC = () => {
   const handleDeleteWatchItem = useCallback((id: string) => {
     setWatchlist(prev => {
       const next = prev.filter(w => w.id !== id);
+      autoSave(assets, portfolioHistory, sellHistory);
+      return next;
+    });
+  }, [assets, portfolioHistory, sellHistory, autoSave]);
+
+  const handleBulkDeleteWatchItems = useCallback((ids: string[]) => {
+    setWatchlist(prev => {
+      const remove = new Set(ids);
+      const next = prev.filter(w => !remove.has(w.id));
+      autoSave(assets, portfolioHistory, sellHistory);
+      return next;
+    });
+  }, [assets, portfolioHistory, sellHistory, autoSave]);
+
+  const handleAddAssetsToWatchlist = useCallback((selectedAssets: Asset[]) => {
+    if (selectedAssets.length === 0) return;
+    setWatchlist(prev => {
+      const next = [...prev];
+      selectedAssets.forEach(a => {
+        const exists = next.some(w => w.ticker.toUpperCase() === a.ticker.toUpperCase() && normalizeExchange(w.exchange) === normalizeExchange(a.exchange));
+        if (!exists) {
+          next.push({
+            id: `${Date.now()}-${a.id}`,
+            ticker: a.ticker,
+            exchange: a.exchange,
+            name: a.customName?.trim() || a.name,
+            category: a.category,
+            monitoringEnabled: true,
+          });
+        }
+      });
       autoSave(assets, portfolioHistory, sellHistory);
       return next;
     });
@@ -1544,6 +1576,7 @@ const handleRefreshWatchlistPrices = useCallback(async () => {
                       onFilterAlertsChange={setFilterAlerts}
                       searchQuery={searchQuery}
                       onSearchChange={setSearchQuery}
+                      onAddSelectedToWatchlist={handleAddAssetsToWatchlist}
                     />
                 </div>
               )}
@@ -1560,6 +1593,7 @@ const handleRefreshWatchlistPrices = useCallback(async () => {
                   onToggleMonitoring={(id, enabled) => handleToggleWatchMonitoring(id, enabled)}
                   onRefreshAll={handleRefreshWatchlistPrices}
                   isLoading={isWatchlistLoading}
+                  onBulkDelete={handleBulkDeleteWatchItems}
                 />
               )}
             </main>

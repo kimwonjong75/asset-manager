@@ -18,15 +18,17 @@ interface PortfolioTableProps {
   onFilterAlertsChange: (isActive: boolean) => void;
   searchQuery?: string;
   onSearchChange?: (query: string) => void;
+  onAddSelectedToWatchlist?: (assets: Asset[]) => void;
 }
 
 type SortKey = 'name' | 'purchaseDate' | 'quantity' | 'purchasePrice' | 'currentPrice' | 'returnPercentage' | 'dropFromHigh' | 'yesterdayChange' | 'purchaseValueKRW' | 'currentValue' | 'allocation';
 type SortDirection = 'ascending' | 'descending';
 
-const PortfolioTable: React.FC<PortfolioTableProps> = ({ assets, history, onRefreshAll, onRefreshOne, onEdit, onSell, isLoading, sellAlertDropRate, filterCategory, onFilterChange, filterAlerts, onFilterAlertsChange, searchQuery = '', onSearchChange }) => {
+const PortfolioTable: React.FC<PortfolioTableProps> = ({ assets, history, onRefreshAll, onRefreshOne, onEdit, onSell, isLoading, sellAlertDropRate, filterCategory, onFilterChange, filterAlerts, onFilterAlertsChange, searchQuery = '', onSearchChange, onAddSelectedToWatchlist }) => {
   const [sortConfig, setSortConfig] = useState<{ key: SortKey; direction: SortDirection } | null>(null);
   const [expandedAssetId, setExpandedAssetId] = useState<string | null>(null);
   const [showHiddenColumns, setShowHiddenColumns] = useState<boolean>(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const totalValue = useMemo(() => assets.reduce((sum, asset) => sum + asset.currentPrice * asset.quantity, 0), [assets]);
 
@@ -134,6 +136,9 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({ assets, history, onRefr
 
     return enriched;
   }, [assets, sortConfig, totalValue, filterAlerts, sellAlertDropRate]);
+
+  const allSelected = enrichedAndSortedAssets.length > 0 && enrichedAndSortedAssets.every(a => selectedIds.has(a.id));
+  const selectedAssets = useMemo(() => assets.filter(a => selectedIds.has(a.id)), [assets, selectedIds]);
 
   const requestSort = (key: SortKey) => {
     let direction: SortDirection = 'ascending';
@@ -253,27 +258,48 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({ assets, history, onRefr
               <div className="ml-3 text-sm font-medium text-gray-300">숨김 컬럼 표시</div>
           </label>
         </div>
-        <button
-          onClick={onRefreshAll}
-          disabled={isLoading}
-          className="bg-primary hover:bg-primary-dark text-white font-medium py-2 px-4 rounded-md transition duration-300 flex items-center disabled:bg-gray-600 disabled:cursor-not-allowed"
-          title="모든 자산의 현재가를 새로고침합니다."
-        >
-          {isLoading ? (
-            <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-          ) : (
-             <RefreshIcon className="-ml-1 mr-2 h-4 w-4"/>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={onRefreshAll}
+            disabled={isLoading}
+            className="bg-primary hover:bg-primary-dark text-white font-medium py-2 px-4 rounded-md transition duration-300 flex items-center disabled:bg-gray-600 disabled:cursor-not-allowed"
+            title="모든 자산의 현재가를 새로고침합니다."
+          >
+            {isLoading ? (
+              <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+            ) : (
+               <RefreshIcon className="-ml-1 mr-2 h-4 w-4"/>
+            )}
+            <span>{isLoading ? '업데이트 중...' : '업데이트'}</span>
+          </button>
+          {onAddSelectedToWatchlist && (
+            <button
+              onClick={() => onAddSelectedToWatchlist(selectedAssets)}
+              disabled={selectedIds.size === 0}
+              className="bg-blue-600 hover:bg-blue-500 text-white font-medium py-2 px-4 rounded-md transition duration-300 disabled:bg-gray-600 disabled:cursor-not-allowed"
+              title="선택한 자산을 관심종목에 추가합니다."
+            >
+              관심종목에 추가
+            </button>
           )}
-          <span>{isLoading ? '업데이트 중...' : '업데이트'}</span>
-        </button>
+        </div>
       </div>
       <div className="w-full px-4 sm:px-6 pb-4 sm:pb-6 pt-4">
         <table className="w-full text-sm text-left text-gray-400 table-auto">
           <thead className="text-xs text-gray-300 uppercase bg-gray-700 select-none sticky top-0 z-10">
             <tr>
+              <th scope="col" className="px-4 py-3 text-center">
+                <input type="checkbox" checked={allSelected} onChange={() => {
+                  const ids = enrichedAndSortedAssets.map(a => a.id);
+                  const next = new Set<string>(selectedIds);
+                  const selectAll = !(enrichedAndSortedAssets.every(a => selectedIds.has(a.id)));
+                  if (selectAll) ids.forEach(id => next.add(id)); else ids.forEach(id => next.delete(id));
+                  setSelectedIds(next);
+                }} />
+              </th>
               <th scope="col" className={`${thClasses}`} onClick={() => requestSort('name')} title="자산의 공식 명칭, 티커, 거래소 정보입니다.">
                 <div className={thContentClasses}><span>종목명</span> <SortIcon sortKey='name'/></div>
               </th>
@@ -334,6 +360,13 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({ assets, history, onRefr
               return (
                 <Fragment key={asset.id}>
                   <tr className={`border-b border-gray-700 transition-colors duration-200 ${isAlertTriggered ? 'bg-danger/10 hover:bg-danger/20' : 'hover:bg-gray-700/50'}`}>
+                    <td className="px-4 py-4 text-center">
+                      <input type="checkbox" checked={selectedIds.has(asset.id)} onChange={(e) => {
+                        const next = new Set<string>(selectedIds);
+                        if (e.target.checked) next.add(asset.id); else next.delete(asset.id);
+                        setSelectedIds(next);
+                      }} />
+                    </td>
                     <td className="px-4 py-4 font-medium text-white break-words">
                       <div className="flex flex-col">
                         <div className="flex items-center gap-2">

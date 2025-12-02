@@ -1,5 +1,6 @@
-import React, { useMemo, useState } from 'react';
-import { AssetCategory, Currency, CURRENCY_SYMBOLS, ALLOWED_CATEGORIES, WatchlistItem } from '../types';
+import React, { useMemo, useState, useEffect } from 'react';
+import { AssetCategory, Currency, CURRENCY_SYMBOLS, ALLOWED_CATEGORIES, WatchlistItem, inferCategoryFromExchange, normalizeExchange, SymbolSearchResult } from '../types';
+import { searchSymbols } from '../services/geminiService';
 
 interface WatchlistPageProps {
   watchlist: WatchlistItem[];
@@ -9,12 +10,14 @@ interface WatchlistPageProps {
   onToggleMonitoring: (id: string, enabled: boolean) => void;
   onRefreshAll: () => void;
   isLoading: boolean;
+  onBulkDelete?: (ids: string[]) => void;
 }
 
-const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, onAdd, onUpdate, onDelete, onToggleMonitoring, onRefreshAll, isLoading }) => {
+const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, onAdd, onUpdate, onDelete, onToggleMonitoring, onRefreshAll, isLoading, onBulkDelete }) => {
   const [filterCategory, setFilterCategory] = useState<AssetCategory | 'ALL'>('ALL');
   const [search, setSearch] = useState('');
   const [monitoringOnly, setMonitoringOnly] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const [form, setForm] = useState<{ ticker: string; exchange: string; name: string; category: AssetCategory; buyZoneMin?: string; buyZoneMax?: string; dropFromHighThreshold?: string; notes?: string }>({
     ticker: '',
@@ -22,6 +25,10 @@ const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, onAdd, onUpdat
     name: '',
     category: AssetCategory.KOREAN_STOCK,
   });
+  const [symbolQuery, setSymbolQuery] = useState('');
+  const [symbolResults, setSymbolResults] = useState<SymbolSearchResult[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [isFocused, setIsFocused] = useState(false);
 
   const categoryOptions = useMemo(() => {
     const extras = Array.from(new Set(watchlist.map(w => w.category))).filter(cat => !ALLOWED_CATEGORIES.includes(cat));
@@ -47,9 +54,39 @@ const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, onAdd, onUpdat
       }));
   }, [watchlist, filterCategory, monitoringOnly, search]);
 
+  useEffect(() => {
+    if (symbolQuery.length < 2) {
+      setSymbolResults([]);
+      return;
+    }
+    const handler = setTimeout(async () => {
+      setIsSearching(true);
+      try {
+        const results = await searchSymbols(symbolQuery);
+        setSymbolResults(results);
+      } catch {
+        setSymbolResults([]);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 300);
+    return () => { clearTimeout(handler); };
+  }, [symbolQuery]);
+
+  useEffect(() => {
+    setSelectedIds(prev => {
+      const next = new Set<string>();
+      filtered.forEach(w => {
+        if (prev.has(w.id)) next.add(w.id);
+      });
+      return next;
+    });
+  }, [filtered]);
+
   const formatKRW = (num: number) => new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW', maximumFractionDigits: 0 }).format(num);
   const formatOriginalCurrency = (num: number, currency: Currency) => `${CURRENCY_SYMBOLS[currency]}${new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 }).format(num)}`;
   const getChangeColor = (value: number) => (value > 0 ? 'text-success' : value < 0 ? 'text-danger' : 'text-gray-400');
+  const allSelected = filtered.length > 0 && filtered.every(w => selectedIds.has(w.id));
 
   return (
     <div className="space-y-6">
@@ -81,7 +118,26 @@ const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, onAdd, onUpdat
             </svg>
           </div>
         </div>
-        <button onClick={onRefreshAll} disabled={isLoading} className="bg-primary hover:bg-primary-dark text-white font-medium py-2 px-4 rounded-md transition duration-300 flex items-center disabled:bg-gray-600 disabled:cursor-not-allowed">
+        <div className="flex items-center gap-2">
+          <button onClick={() => {
+            if (filtered.length === 0) return;
+            const ids = filtered.map(w => w.id);
+            const next = new Set<string>(selectedIds);
+            const selectAll = !(filtered.every(w => selectedIds.has(w.id)));
+            if (selectAll) ids.forEach(id => next.add(id)); else ids.forEach(id => next.delete(id));
+            setSelectedIds(next);
+          }} className="bg-gray-700 hover:bg-gray-600 text-white font-medium py-2 px-3 rounded-md transition duration-300">
+            {allSelected ? '전체 해제' : '전체 선택'}
+          </button>
+          <button onClick={() => {
+            const ids = Array.from(selectedIds);
+            if (ids.length === 0) return;
+            if (onBulkDelete) onBulkDelete(ids); else ids.forEach(id => onDelete(id));
+            setSelectedIds(new Set());
+          }} disabled={selectedIds.size === 0} className="bg-danger hover:bg-red-600 text-white font-medium py-2 px-4 rounded-md transition duration-300 disabled:bg-gray-600 disabled:cursor-not-allowed">
+            선택 삭제
+          </button>
+          <button onClick={onRefreshAll} disabled={isLoading} className="bg-primary hover:bg-primary-dark text-white font-medium py-2 px-4 rounded-md transition duration-300 flex items-center disabled:bg-gray-600 disabled:cursor-not-allowed">
           {isLoading ? (
             <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
@@ -89,11 +145,55 @@ const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, onAdd, onUpdat
             </svg>
           ) : null}
           <span>{isLoading ? '업데이트 중...' : '가격 새로고침'}</span>
-        </button>
+          </button>
+        </div>
       </div>
 
       <div className="bg-gray-800 p-4 rounded-lg shadow-lg">
         <h3 className="text-lg font-semibold text-white mb-3">종목 추가</h3>
+        <div className="mb-3">
+          <div className="relative">
+            <input 
+              id="watchlist-symbol-search" 
+              type="text" 
+              value={symbolQuery} 
+              onChange={(e) => setSymbolQuery(e.target.value)} 
+              onFocus={() => setIsFocused(true)}
+              onBlur={() => setTimeout(() => setIsFocused(false), 150)}
+              placeholder="티커/종목 검색"
+              className="bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white text-sm w-full"
+              autoComplete="off"
+            />
+            {isSearching && (
+              <div className="absolute top-2 right-3">
+                <svg className="animate-spin h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+              </div>
+            )}
+            {isFocused && symbolResults.length > 0 && (
+              <ul className="absolute z-10 w-full bg-gray-700 border border-gray-600 rounded-md mt-1 max-h-60 overflow-y-auto shadow-lg">
+                {symbolResults.map((result) => (
+                  <li 
+                    key={`${result.ticker}-${result.exchange}`} 
+                    onMouseDown={() => {
+                      const ex = normalizeExchange(result.exchange);
+                      const cat = inferCategoryFromExchange(ex);
+                      setForm(prev => ({ ...prev, ticker: result.ticker, exchange: ex, name: result.name, category: cat }));
+                      setSymbolQuery(`${result.name}`);
+                      setSymbolResults([]);
+                    }} 
+                    className="px-3 py-2 cursor-pointer hover:bg-primary-dark transition-colors"
+                  >
+                    <div className="font-bold text-white">{result.name} ({result.ticker})</div>
+                    <div className="text-sm text-gray-400">{result.exchange}</div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <input className="bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white text-sm" placeholder="티커" value={form.ticker} onChange={e => setForm({ ...form, ticker: e.target.value })} />
           <input className="bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white text-sm" placeholder="거래소" value={form.exchange} onChange={e => setForm({ ...form, exchange: e.target.value })} />
@@ -127,6 +227,7 @@ const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, onAdd, onUpdat
                   dropFromHighThreshold: form.dropFromHighThreshold ? parseFloat(form.dropFromHighThreshold) : undefined,
                 } as any);
                 setForm({ ticker: '', exchange: 'KRX (코스피/코스닥)', name: '', category: AssetCategory.KOREAN_STOCK });
+                setSymbolQuery('');
               }}
               className="bg-primary hover:bg-primary-dark text-white font-medium py-2 px-4 rounded-md transition duration-300"
             >
@@ -140,6 +241,15 @@ const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, onAdd, onUpdat
         <table className="w-full text-sm text-left text-gray-400 table-auto">
           <thead className="text-xs text-gray-300 uppercase bg-gray-700 select-none sticky top-0 z-10">
             <tr>
+              <th className="px-4 py-3 text-center">
+                <input type="checkbox" checked={allSelected} onChange={() => {
+                  const ids = filtered.map(w => w.id);
+                  const next = new Set<string>(selectedIds);
+                  const selectAll = !(filtered.every(w => selectedIds.has(w.id)));
+                  if (selectAll) ids.forEach(id => next.add(id)); else ids.forEach(id => next.delete(id));
+                  setSelectedIds(next);
+                }} />
+              </th>
               <th className="px-4 py-3">종목명</th>
               <th className="px-4 py-3 text-right">현재가</th>
               <th className="px-4 py-3 text-right">어제대비</th>
@@ -160,6 +270,13 @@ const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, onAdd, onUpdat
               const hasSignal = signalBuyZone || signalDrop || signalDailyDrop;
               return (
                 <tr key={w.id} className={`border-b border-gray-700 ${hasSignal ? 'bg-primary/10' : ''}`}>
+                  <td className="px-4 py-3 text-center">
+                    <input type="checkbox" checked={selectedIds.has(w.id)} onChange={(e) => {
+                      const next = new Set<string>(selectedIds);
+                      if (e.target.checked) next.add(w.id); else next.delete(w.id);
+                      setSelectedIds(next);
+                    }} />
+                  </td>
                   <td className="px-4 py-3">
                     <div className="flex flex-col">
                       <div className="font-bold text-white">{w.name}</div>
@@ -211,7 +328,7 @@ const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, onAdd, onUpdat
               );
             }) : (
               <tr>
-                <td colSpan={9} className="text-center py-8 text-gray-500">관심 종목을 추가해주세요.</td>
+                <td colSpan={10} className="text-center py-8 text-gray-500">관심 종목을 추가해주세요.</td>
               </tr>
             )}
           </tbody>
