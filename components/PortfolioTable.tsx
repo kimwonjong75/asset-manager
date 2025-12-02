@@ -3,6 +3,7 @@ import React, { useMemo, useState, Fragment } from 'react';
 import Toggle from './common/Toggle';
 import { Asset, Currency, CURRENCY_SYMBOLS, AssetCategory, PortfolioSnapshot, ALLOWED_CATEGORIES } from '../types';
 import AssetTrendChart from './AssetTrendChart';
+import { MoreHorizontal } from 'lucide-react';
 
 interface PortfolioTableProps {
   assets: Asset[];
@@ -33,6 +34,7 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({ assets, history, onRefr
   const [showHiddenColumns, setShowHiddenColumns] = useState<boolean>(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [showFailedOnly, setShowFailedOnly] = useState<boolean>(false);
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 
   const totalValue = useMemo(() => assets.reduce((sum, asset) => sum + asset.currentPrice * asset.quantity, 0), [assets]);
 
@@ -383,10 +385,7 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({ assets, history, onRefr
               <th scope="col" className={`${thClasses} justify-end`} onClick={() => requestSort('yesterdayChange')} title="어제 종가 대비 현재가의 변동률입니다. ((현재가 - 어제가) / 어제가) * 100">
                 <div className={`${thContentClasses} justify-end`}><span>어제대비</span> <SortIcon sortKey='yesterdayChange'/></div>
               </th>
-              <th scope="col" className="px-4 py-3 text-center" title="자산 가격 갱신">업데이트</th>
-              <th scope="col" className="px-4 py-3 text-center" title="자산 정보 수정">수정</th>
-              {onSell && <th scope="col" className="px-4 py-3 text-center" title="자산 매도">매도</th>}
-              <th scope="col" className="px-4 py-3 text-center" title="자산 상세 정보 보기">상세</th>
+              <th scope="col" className="px-4 py-3 text-center" title="자산 관리">관리</th>
             </tr>
           </thead>
           <tbody>
@@ -520,51 +519,54 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({ assets, history, onRefr
                           <div className="text-gray-500">-</div>
                         )}
                     </td>
-                    <td className="px-4 py-4 text-center">
-                      <button onClick={() => onRefreshOne && onRefreshOne(asset.id)} disabled={isLoading} className="p-2 text-primary hover:text-primary-light disabled:text-gray-600 disabled:cursor-not-allowed transition" title="이 자산만 현재가를 갱신합니다.">
-                        <RefreshIcon className="h-4 w-4" />
+                    <td className="px-4 py-4 text-center relative">
+                      <button
+                        onClick={() => setOpenMenuId(prev => (prev === asset.id ? null : asset.id))}
+                        className="p-2 text-gray-300 hover:text-white transition"
+                        title="관리"
+                      >
+                        <MoreHorizontal className="h-5 w-5" />
                       </button>
-                    </td>
-                    <td className="px-4 py-4 text-center">
-                      <button onClick={() => onEdit(asset)} disabled={isLoading} className="p-2 text-yellow-400 hover:text-yellow-300 disabled:text-gray-600 disabled:cursor-not-allowed transition" title="선택한 자산의 정보를 수정합니다.">
-                          <EditIcon />
-                      </button>
-                    </td>
-                    {onSell && (
-                      <td className="px-4 py-4 text-center">
-                        <button 
-                          onClick={() => onSell(asset)} 
-                          disabled={isLoading || asset.quantity <= 0} 
-                          className="p-2 text-red-400 hover:text-red-300 disabled:text-gray-600 disabled:cursor-not-allowed transition" 
-                          title="선택한 자산을 매도합니다."
-                        >
-                          <SellIcon />
-                        </button>
-                      </td>
-                    )}
-                    <td className="px-4 py-4 text-center">
-                       <button onClick={() => handleToggleExpand(asset.id)} className="p-2 text-blue-400 hover:text-blue-300 transition" title="개별 손익 추이 보기">
-                          <ChartBarIcon />
-                        </button>
+                      {openMenuId === asset.id && (
+                        <div className="absolute right-0 mt-2 w-44 bg-gray-800 border border-gray-700 rounded-md shadow-lg z-20 text-sm">
+                          <button
+                            onClick={() => { setOpenMenuId(null); onRefreshOne && onRefreshOne(asset.id); }}
+                            disabled={isLoading}
+                            className="block w-full text-left px-3 py-2 text-gray-200 hover:bg-gray-700 disabled:text-gray-500 disabled:cursor-not-allowed"
+                          >
+                            개별 업데이트
+                          </button>
+                          <button
+                            onClick={() => { setOpenMenuId(null); onEdit(asset); }}
+                            disabled={isLoading}
+                            className="block w-full text-left px-3 py-2 text-gray-200 hover:bg-gray-700 disabled:text-gray-500 disabled:cursor-not-allowed"
+                          >
+                            수정
+                          </button>
+                          {onSell && (
+                            <button
+                              onClick={() => { setOpenMenuId(null); onSell(asset); }}
+                              disabled={isLoading || asset.quantity <= 0}
+                              className="block w-full text-left px-3 py-2 text-red-400 hover:bg-gray-700 disabled:text-gray-500 disabled:cursor-not-allowed"
+                            >
+                              매도
+                            </button>
+                          )}
+                          <button
+                            onClick={() => { setOpenMenuId(null); handleToggleExpand(asset.id); }}
+                            className="block w-full text-left px-3 py-2 text-gray-200 hover:bg-gray-700"
+                          >
+                            차트 보기(상세)
+                          </button>
+                        </div>
+                      )}
                     </td>
                   </tr>
                   {expandedAssetId === asset.id && (
                     <tr className="bg-gray-900/50">
                       <td colSpan={(() => {
-                        let count = 1;
-                        count += showHiddenColumns ? 1 : 0;
-                        count += showHiddenColumns ? 1 : 0;
-                        count += showHiddenColumns ? 1 : 0;
-                        count += 1;
-                        count += 1;
-                        count += 1;
-                        count += 1;
-                        count += 1;
-                        count += 1;
-                        count += showHiddenColumns ? 1 : 0;
-                        count += 1;
-                        count += onSell ? 1 : 0;
-                        count += 1;
+                        let count = 9;
+                        count += showHiddenColumns ? 4 : 0;
                         return count;
                       })()} className="p-0 sm:p-2">
                         <div className="px-4 sm:px-6 py-4 grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
@@ -598,20 +600,8 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({ assets, history, onRefr
             }) : (
               <tr>
                 <td colSpan={(() => {
-                  let count = 1;
-                  count += showHiddenColumns ? 1 : 0;
-                  count += showHiddenColumns ? 1 : 0;
-                  count += showHiddenColumns ? 1 : 0;
-                  count += 1;
-                  count += 1;
-                  count += 1;
-                  count += 1;
-                  count += 1;
-                  count += 1;
-                  count += showHiddenColumns ? 1 : 0;
-                  count += 1;
-                  count += onSell ? 1 : 0;
-                  count += 1;
+                  let count = 9;
+                  count += showHiddenColumns ? 4 : 0;
                   return count;
                 })()} className="text-center py-8 text-gray-500">
                   {filterAlerts 
