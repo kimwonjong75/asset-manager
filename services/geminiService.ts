@@ -503,19 +503,25 @@ export const askPortfolioQuestion = async (
 
   const simplifiedAssets = assets.map(asset => ({
     name: asset.customName ?? asset.name,
+    ticker: asset.ticker,
+    exchange: asset.exchange,
     category: asset.category,
     quantity: asset.quantity,
     purchase_price_original: asset.purchasePrice,
+    purchase_date: asset.purchaseDate,
     current_price_krw: asset.currentPrice,
+    price_original: asset.priceOriginal,
     currency: asset.currency,
     current_value_krw: asset.currentPrice * asset.quantity,
+    highest_price_krw: asset.highestPrice,
+    yesterday_price_krw: asset.yesterdayPrice ?? null,
   }));
 
   const portfolioJson = JSON.stringify(simplifiedAssets, null, 2);
 
   const prompt = `당신은 사용자의 자산 포트폴리오를 분석하고 질문에 답변하는 전문 금융 어시스턴트입니다.
     
-다음은 사용자의 현재 포트폴리오 데이터입니다 (JSON 형식):
+다음은 사용자의 현재 포트폴리오 데이터입니다 (JSON 형식). 각 항목에는 현재가와 함께 어제 종가가 포함될 수 있으므로, "어제 대비" 변동을 계산할 때는 \`yesterday_price_krw\`를 사용하세요. 날짜 메타가 없으면 제공된 값만으로 판단하세요:
 \`\`\`json
 ${portfolioJson}
 \`\`\`

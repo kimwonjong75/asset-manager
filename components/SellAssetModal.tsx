@@ -7,7 +7,7 @@ interface SellAssetModalProps {
   asset: Asset | null;
   isOpen: boolean;
   onClose: () => void;
-  onSell: (assetId: string, sellDate: string, sellPrice: number, sellPriceOriginal: number, sellQuantity: number, sellExchangeRate?: number) => void;
+  onSell: (assetId: string, sellDate: string, sellPrice: number, sellPriceOriginal: number, sellQuantity: number, sellExchangeRate?: number, settlementCurrency?: Currency, sellPriceSettlement?: number) => void;
   isLoading: boolean;
 }
 
@@ -16,6 +16,7 @@ const SellAssetModal: React.FC<SellAssetModalProps> = ({ asset, isOpen, onClose,
   const [sellPrice, setSellPrice] = useState<string>('');
   const [sellQuantity, setSellQuantity] = useState<string>('');
   const [isFetchingRate, setIsFetchingRate] = useState<boolean>(false);
+  const [settlementCurrency, setSettlementCurrency] = useState<Currency>(Currency.KRW);
 
   useEffect(() => {
     if (asset && isOpen) {
@@ -47,33 +48,37 @@ const SellAssetModal: React.FC<SellAssetModalProps> = ({ asset, isOpen, onClose,
       return;
     }
 
-    // 외화 자산인 경우 환율 가져오기
-    let sellExchangeRate: number | undefined;
-    let sellPriceOriginal: number = price;
+    // 환산 로직: 사용자가 입력한 금액은 선택한 정산 통화 기준
+    // KRW 환산, 원화 외 자산의 원화가 계산, 매도 시점 환율 기록
+    setIsFetchingRate(true);
+    try {
+      const [rateSettleToKRW, rateAssetToKRW, rateSettleToAsset] = await Promise.all([
+        settlementCurrency !== Currency.KRW ? fetchHistoricalExchangeRate(sellDate, settlementCurrency, Currency.KRW) : Promise.resolve(1),
+        asset.currency !== Currency.KRW ? fetchHistoricalExchangeRate(sellDate, asset.currency, Currency.KRW) : Promise.resolve(1),
+        settlementCurrency !== asset.currency ? fetchHistoricalExchangeRate(sellDate, settlementCurrency, asset.currency) : Promise.resolve(1),
+      ]);
 
-    if (asset.currency !== Currency.KRW) {
-      setIsFetchingRate(true);
-      try {
-        sellExchangeRate = await fetchHistoricalExchangeRate(sellDate, asset.currency, Currency.KRW);
-        sellPriceOriginal = price / sellExchangeRate;
-      } catch (error) {
-        console.error('Failed to fetch exchange rate:', error);
-        // 환율 가져오기 실패 시 현재 환율 사용
-        if (asset.priceOriginal > 0 && asset.currentPrice > 0) {
-          const currentRate = asset.currentPrice / asset.priceOriginal;
-          sellExchangeRate = currentRate;
-          sellPriceOriginal = price / currentRate;
-        } else {
-          alert('환율 정보를 가져오지 못했습니다. 다시 시도해주세요.');
-          setIsFetchingRate(false);
-          return;
-        }
-      } finally {
-        setIsFetchingRate(false);
-      }
+      const sellPriceKRW = price * rateSettleToKRW;
+      const sellExchangeRate = asset.currency !== Currency.KRW ? rateAssetToKRW : undefined;
+      const sellPriceOriginal = asset.currency === Currency.KRW ? sellPriceKRW : price * rateSettleToAsset;
+
+      onSell(
+        asset.id,
+        sellDate,
+        sellPriceKRW,
+        sellPriceOriginal,
+        quantity,
+        sellExchangeRate,
+        settlementCurrency,
+        price
+      );
+    } catch (error) {
+      console.error('Failed to compute settlement/FX:', error);
+      alert('환율 정보를 가져오지 못했습니다. 다시 시도해주세요.');
+      return;
+    } finally {
+      setIsFetchingRate(false);
     }
-
-    onSell(asset.id, sellDate, price, sellPriceOriginal, quantity, sellExchangeRate);
   };
 
   const inputClasses = "w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition";
@@ -124,7 +129,7 @@ const SellAssetModal: React.FC<SellAssetModalProps> = ({ asset, isOpen, onClose,
           </div>
 
           <div>
-            <label htmlFor="sellPrice" className={labelClasses}>매도가 (원화)</label>
+            <label htmlFor="sellPrice" className={labelClasses}>매도가 (정산 통화)</label>
             <input
               id="sellPrice"
               type="number"
@@ -136,11 +141,22 @@ const SellAssetModal: React.FC<SellAssetModalProps> = ({ asset, isOpen, onClose,
               step="any"
               placeholder="매도가를 입력하세요"
             />
-            {isNonKRW && sellPrice && !isNaN(parseFloat(sellPrice)) && (
+            <div className="mt-2">
+              <label htmlFor="settlementCurrency" className={labelClasses}>정산 통화 선택</label>
+              <select
+                id="settlementCurrency"
+                value={settlementCurrency}
+                onChange={(e) => setSettlementCurrency(e.target.value as Currency)}
+                className={inputClasses}
+              >
+                {Object.values(Currency).map((c) => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
               <div className="text-xs text-gray-500 mt-1">
-                환율 정보는 매도 시 자동으로 가져옵니다.
+                입력 금액은 선택한 통화({settlementCurrency}) 기준입니다.
               </div>
-            )}
+            </div>
           </div>
 
           <div>

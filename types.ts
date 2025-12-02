@@ -136,6 +136,8 @@ export interface SellTransaction {
   sellPriceOriginal?: number; // In original currency
   sellQuantity: number;
   sellExchangeRate?: number; // Exchange rate at sellDate
+  settlementCurrency?: Currency; // Chosen settlement currency
+  sellPriceSettlement?: number; // Price in settlement currency
 }
 
 export interface SellRecord extends SellTransaction {

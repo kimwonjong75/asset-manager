@@ -751,7 +751,9 @@ const App: React.FC = () => {
     sellPrice: number,
     sellPriceOriginal: number,
     sellQuantity: number,
-    sellExchangeRate?: number
+    sellExchangeRate?: number,
+    settlementCurrency?: Currency,
+    sellPriceSettlement?: number
   ) => {
     if (!isSignedIn) {
       setError('Google Drive 로그인 후 매도할 수 있습니다.');
@@ -772,6 +774,8 @@ const App: React.FC = () => {
             sellPriceOriginal,
             sellQuantity,
             sellExchangeRate,
+            settlementCurrency,
+            sellPriceSettlement,
           };
 
           const updatedAsset: Asset = {
