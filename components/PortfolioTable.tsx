@@ -1,9 +1,10 @@
 
-import React, { useMemo, useState, Fragment } from 'react';
+import React, { useMemo, useState, Fragment, useRef } from 'react';
  
 import { Asset, Currency, CURRENCY_SYMBOLS, AssetCategory, PortfolioSnapshot, ALLOWED_CATEGORIES } from '../types';
 import AssetTrendChart from './AssetTrendChart';
 import { MoreHorizontal } from 'lucide-react';
+import { useOnClickOutside } from '../hooks/useOnClickOutside';
 
 interface PortfolioTableProps {
   assets: Asset[];
@@ -35,6 +36,9 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({ assets, history, onRefr
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [showFailedOnly, setShowFailedOnly] = useState<boolean>(false);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+
+  useOnClickOutside(menuRef, () => setOpenMenuId(null), !!openMenuId);
 
   const totalValue = useMemo(() => assets.reduce((sum, asset) => sum + asset.currentPrice * asset.quantity, 0), [assets]);
 
@@ -490,7 +494,7 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({ assets, history, onRefr
                         </button>
                       </div>
                       {openMenuId === asset.id && (
-                        <div className="absolute right-0 mt-2 w-44 bg-gray-800 border border-gray-700 rounded-md shadow-lg z-20 text-sm">
+                        <div ref={menuRef} className="absolute right-0 mt-2 w-44 bg-gray-800 border border-gray-700 rounded-md shadow-lg z-20 text-sm">
                           <button
                             onClick={() => { setOpenMenuId(null); onRefreshOne && onRefreshOne(asset.id); }}
                             disabled={isLoading}
