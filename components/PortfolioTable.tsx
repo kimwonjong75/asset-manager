@@ -1,9 +1,9 @@
 
 import React, { useMemo, useState, Fragment } from 'react';
-import Toggle from './common/Toggle';
+ 
 import { Asset, Currency, CURRENCY_SYMBOLS, AssetCategory, PortfolioSnapshot, ALLOWED_CATEGORIES } from '../types';
 import AssetTrendChart from './AssetTrendChart';
-import { MoreHorizontal, SlidersHorizontal } from 'lucide-react';
+import { MoreHorizontal } from 'lucide-react';
 
 interface PortfolioTableProps {
   assets: Asset[];
@@ -35,7 +35,6 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({ assets, history, onRefr
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [showFailedOnly, setShowFailedOnly] = useState<boolean>(false);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
-  const [openViewOptions, setOpenViewOptions] = useState<boolean>(false);
 
   const totalValue = useMemo(() => assets.reduce((sum, asset) => sum + asset.currentPrice * asset.quantity, 0), [assets]);
 
@@ -254,58 +253,34 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({ assets, history, onRefr
             )}
             <span>{isLoading ? '업데이트 중...' : '업데이트'}</span>
           </button>
-          <div className="relative">
+          <div className="flex items-center gap-2">
+            <div className="relative">
+              <select
+                value={filterCategory}
+                onChange={(e) => onFilterChange(e.target.value as AssetCategory | 'ALL')}
+                className="bg-gray-700 border border-gray-600 rounded-md py-2 pl-3 pr-8 text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent appearance-none w-40"
+                title="자산 구분에 따라 필터링합니다."
+              >
+                <option value="ALL">모든 자산</option>
+                {categoryOptions.map((cat) => (
+                  <option key={cat} value={cat}>{cat}</option>
+                ))}
+              </select>
+            </div>
             <button
-              onClick={() => setOpenViewOptions(prev => !prev)}
-              className="border border-gray-600 text-gray-300 hover:bg-gray-700 hover:text-white font-medium py-2 px-3 rounded-md transition duration-300 flex items-center gap-2"
-              title="보기 설정"
+              onClick={() => setShowHiddenColumns(prev => !prev)}
+              className={`text-gray-300 hover:bg-gray-700 hover:text-white font-medium py-2 px-3 rounded-md transition duration-300 ${showHiddenColumns ? 'bg-gray-700 text-white' : ''}`}
+              title="숨김 컬럼 표시"
             >
-              <SlidersHorizontal className="h-4 w-4" />
-              <span className="hidden sm:inline">보기 설정</span>
+              숨김 컬럼 표시
             </button>
-            {openViewOptions && (
-              <div className="absolute right-0 mt-2 w-72 bg-gray-800 border border-gray-700 rounded-md shadow-lg z-20 p-3">
-                <div className="space-y-3">
-                  <div>
-                    <div className="text-xs text-gray-400 mb-1">카테고리</div>
-                    <div className="relative">
-                      <select
-                        value={filterCategory}
-                        onChange={(e) => onFilterChange(e.target.value as AssetCategory | 'ALL')}
-                        className="bg-gray-700 border border-gray-600 rounded-md py-2 pl-3 pr-8 text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent appearance-none w-full"
-                        title="자산 구분에 따라 필터링합니다."
-                      >
-                        <option value="ALL">모든 자산</option>
-                        {categoryOptions.map((cat) => (
-                          <option key={cat} value={cat}>{cat}</option>
-                        ))}
-                      </select>
-                      <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-400">
-                        <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
-                      </div>
-                    </div>
-                  </div>
-                  <Toggle
-                    label="알림 종목만 보기"
-                    checked={filterAlerts}
-                    onChange={(next) => { setOpenViewOptions(true); onFilterAlertsChange(next); }}
-                    title="매도 알림 기준을 초과한 자산만 표시합니다."
-                  />
-                  <Toggle
-                    label="숨김 컬럼 표시"
-                    checked={showHiddenColumns}
-                    onChange={(next) => setShowHiddenColumns(next)}
-                    title="보유수량·매수일·매수평균가·비중 컬럼을 표시/숨김합니다."
-                  />
-                  <Toggle
-                    label="업데이트 실패만 보기"
-                    checked={showFailedOnly}
-                    onChange={(next) => setShowFailedOnly(next)}
-                    title="최근 업데이트에 실패한 자산만 표시합니다."
-                  />
-                </div>
-              </div>
-            )}
+            <button
+              onClick={() => setShowFailedOnly(prev => !prev)}
+              className={`text-gray-300 hover:bg-gray-700 hover:text-white font-medium py-2 px-3 rounded-md transition duration-300 ${showFailedOnly ? 'bg-gray-700 text-white' : ''}`}
+              title="업데이트 실패만 보기"
+            >
+              업데이트 실패만 보기
+            </button>
           </div>
         </div>
       </div>
@@ -378,7 +353,7 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({ assets, history, onRefr
 
               return (
                 <Fragment key={asset.id}>
-                  <tr className={`border-b border-gray-700 transition-colors duration-200 ${isAlertTriggered ? 'bg-danger/10 hover:bg-danger/20' : 'hover:bg-gray-700/50'}`}>
+                  <tr className={`border-b border-gray-700 transition-colors duration-200 hover:bg-gray-700/50`}>
                     <td className="px-4 py-4 text-center">
                       <input type="checkbox" checked={selectedIds.has(asset.id)} onChange={(e) => {
                         const next = new Set<string>(selectedIds);
@@ -498,13 +473,22 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({ assets, history, onRefr
                         )}
                     </td>
                     <td className="px-4 py-4 text-center relative">
-                      <button
-                        onClick={() => setOpenMenuId(prev => (prev === asset.id ? null : asset.id))}
-                        className="p-2 text-gray-300 hover:text-white transition"
-                        title="관리"
-                      >
-                        <MoreHorizontal className="h-5 w-5" />
-                      </button>
+                      <div className="flex items-center justify-center gap-1">
+                        <button
+                          onClick={() => handleToggleExpand(asset.id)}
+                          className="p-2 text-gray-300 hover:text-white transition"
+                          title="차트"
+                        >
+                          <ChartBarIcon />
+                        </button>
+                        <button
+                          onClick={() => setOpenMenuId(prev => (prev === asset.id ? null : asset.id))}
+                          className="p-2 text-gray-300 hover:text-white transition"
+                          title="관리"
+                        >
+                          <MoreHorizontal className="h-5 w-5" />
+                        </button>
+                      </div>
                       {openMenuId === asset.id && (
                         <div className="absolute right-0 mt-2 w-44 bg-gray-800 border border-gray-700 rounded-md shadow-lg z-20 text-sm">
                           <button
