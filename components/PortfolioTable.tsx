@@ -1,5 +1,6 @@
 
 import React, { useMemo, useState, Fragment } from 'react';
+import Toggle from './common/Toggle';
 import { Asset, Currency, CURRENCY_SYMBOLS, AssetCategory, PortfolioSnapshot, ALLOWED_CATEGORIES } from '../types';
 import AssetTrendChart from './AssetTrendChart';
 
@@ -248,30 +249,26 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({ assets, history, onRefr
                 <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
             </div>
           </div>
-          <label htmlFor="alert-filter-toggle" className="flex items-center cursor-pointer" title="매도 알림 기준을 초과한 자산만 표시합니다.">
-              <div className="relative">
-                  <input type="checkbox" id="alert-filter-toggle" className="sr-only" checked={filterAlerts} onChange={() => onFilterAlertsChange(!filterAlerts)} />
-                  <div className="block bg-gray-600 w-10 h-6 rounded-full"></div>
-                  <div className={`dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform duration-300 ease-in-out ${filterAlerts ? 'transform translate-x-full bg-primary' : ''}`}></div>
-              </div>
-              <div className="ml-3 text-sm font-medium text-gray-300">알림 종목만 보기</div>
-          </label>
-          <label htmlFor="hidden-columns-toggle" className="flex items-center cursor-pointer" title="보유수량·매수일·매수평균가·비중 컬럼을 표시/숨김합니다.">
-              <div className="relative ml-2">
-                  <input type="checkbox" id="hidden-columns-toggle" className="sr-only" checked={showHiddenColumns} onChange={() => setShowHiddenColumns(!showHiddenColumns)} />
-                  <div className="block bg-gray-600 w-10 h-6 rounded-full"></div>
-                  <div className={`dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform duration-300 ease-in-out ${showHiddenColumns ? 'transform translate-x-full bg-primary' : ''}`}></div>
-              </div>
-              <div className="ml-3 text-sm font-medium text-gray-300">숨김 컬럼 표시</div>
-          </label>
-          <label htmlFor="failed-only-toggle" className="flex items-center cursor-pointer" title="최근 업데이트에 실패한 자산만 표시합니다.">
-              <div className="relative ml-2">
-                  <input type="checkbox" id="failed-only-toggle" className="sr-only" checked={showFailedOnly} onChange={() => setShowFailedOnly(!showFailedOnly)} />
-                  <div className="block bg-gray-600 w-10 h-6 rounded-full"></div>
-                  <div className={`dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform duration-300 ease-in-out ${showFailedOnly ? 'transform translate-x-full bg-danger' : ''}`}></div>
-              </div>
-              <div className="ml-3 text-sm font-medium text-gray-300">업데이트 실패만 보기</div>
-          </label>
+          <Toggle
+            label="알림 종목만 보기"
+            checked={filterAlerts}
+            onChange={onFilterAlertsChange}
+            title="매도 알림 기준을 초과한 자산만 표시합니다."
+          />
+          <Toggle
+            className="ml-2"
+            label="숨김 컬럼 표시"
+            checked={showHiddenColumns}
+            onChange={(next) => setShowHiddenColumns(next)}
+            title="보유수량·매수일·매수평균가·비중 컬럼을 표시/숨김합니다."
+          />
+          <Toggle
+            className="ml-2"
+            label="업데이트 실패만 보기"
+            checked={showFailedOnly}
+            onChange={(next) => setShowFailedOnly(next)}
+            title="최근 업데이트에 실패한 자산만 표시합니다."
+          />
         </div>
         <div className="flex items-center gap-2">
           <button

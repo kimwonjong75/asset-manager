@@ -1,4 +1,5 @@
 import React, { useMemo, useState, useEffect } from 'react';
+import Toggle from './common/Toggle';
 import { AssetCategory, Currency, CURRENCY_SYMBOLS, ALLOWED_CATEGORIES, WatchlistItem, inferCategoryFromExchange, normalizeExchange, SymbolSearchResult } from '../types';
 import { searchSymbols } from '../services/geminiService';
 
@@ -143,14 +144,11 @@ const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, onAdd, onUpdat
               <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
             </div>
           </div>
-          <label htmlFor="monitoring-toggle" className="flex items-center cursor-pointer">
-            <div className="relative">
-              <input type="checkbox" id="monitoring-toggle" className="sr-only" checked={monitoringOnly} onChange={() => setMonitoringOnly(!monitoringOnly)} />
-              <div className={`block ${monitoringOnly ? 'bg-green-600' : 'bg-gray-600'} w-10 h-6 rounded-full`}></div>
-              <div className={`dot absolute left-1 top-1 w-4 h-4 rounded-full transition-transform duration-300 ease-in-out ${monitoringOnly ? 'transform translate-x-full bg-green-500' : 'bg-white'}`}></div>
-            </div>
-            <div className="ml-3 text-sm font-medium text-gray-300">모니터링 ON만</div>
-          </label>
+          <Toggle
+            label="모니터링 ON만"
+            checked={monitoringOnly}
+            onChange={(next) => setMonitoringOnly(next)}
+          />
           <div className="relative">
             <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="이름/티커/메모 검색" className="bg-gray-700 border border-gray-600 rounded-md py-2 pl-10 pr-10 text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary w-64" />
             <svg className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
