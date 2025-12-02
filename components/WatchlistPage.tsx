@@ -1,5 +1,6 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import Toggle from './common/Toggle';
+import { Filter, Trash2 } from 'lucide-react';
 import { AssetCategory, Currency, CURRENCY_SYMBOLS, ALLOWED_CATEGORIES, WatchlistItem, inferCategoryFromExchange, normalizeExchange, SymbolSearchResult } from '../types';
 import { searchSymbols } from '../services/geminiService';
 
@@ -19,6 +20,7 @@ const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, onAdd, onUpdat
   const [search, setSearch] = useState('');
   const [monitoringOnly, setMonitoringOnly] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [openFilterOptions, setOpenFilterOptions] = useState<boolean>(false);
 
   const [form, setForm] = useState<{ ticker: string; exchange: string; name: string; category: AssetCategory; buyZoneMin?: string; buyZoneMax?: string; dropFromHighThreshold?: string; notes?: string }>({
     ticker: '',
@@ -131,24 +133,8 @@ const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, onAdd, onUpdat
 
   return (
     <div className="space-y-6">
-      <div className="bg-gray-800 p-4 rounded-lg shadow-lg flex items-center justify-between flex-wrap gap-4">
-        <div className="flex items-center gap-4 flex-wrap">
-          <div className="relative">
-            <select value={filterCategory} onChange={e => setFilterCategory(e.target.value as AssetCategory | 'ALL')} className="bg-gray-700 border border-gray-600 rounded-md py-2 pl-3 pr-8 text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary appearance-none">
-              <option value="ALL">전체</option>
-              {categoryOptions.map(cat => (
-                <option key={cat} value={cat}>{cat}</option>
-              ))}
-            </select>
-            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-400">
-              <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
-            </div>
-          </div>
-          <Toggle
-            label="모니터링 ON만"
-            checked={monitoringOnly}
-            onChange={(next) => setMonitoringOnly(next)}
-          />
+      <div className="bg-gray-800 p-4 rounded-lg shadow-lg flex items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
           <div className="relative">
             <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="이름/티커/메모 검색" className="bg-gray-700 border border-gray-600 rounded-md py-2 pl-10 pr-10 text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary w-64" />
             <svg className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -164,7 +150,7 @@ const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, onAdd, onUpdat
             const selectAll = !(filtered.every(w => selectedIds.has(w.id)));
             if (selectAll) ids.forEach(id => next.add(id)); else ids.forEach(id => next.delete(id));
             setSelectedIds(next);
-          }} className="bg-gray-700 hover:bg-gray-600 text-white font-medium py-2 px-3 rounded-md transition duration-300">
+          }} className="border border-gray-600 text-gray-300 hover:bg-gray-700 hover:text-white font-medium py-2 px-3 rounded-md transition duration-300">
             {allSelected ? '전체 해제' : '전체 선택'}
           </button>
           <button onClick={() => {
@@ -172,7 +158,7 @@ const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, onAdd, onUpdat
             if (ids.length === 0) return;
             if (onBulkDelete) onBulkDelete(ids); else ids.forEach(id => onDelete(id));
             setSelectedIds(new Set());
-          }} disabled={selectedIds.size === 0} className="bg-danger hover:bg-red-600 text-white font-medium py-2 px-4 rounded-md transition duration-300 disabled:bg-gray-600 disabled:cursor-not-allowed">
+          }} disabled={selectedIds.size === 0} className="border border-gray-600 text-red-400 hover:bg-gray-700 font-medium py-2 px-4 rounded-md transition duration-300 disabled:text-gray-500 disabled:border-gray-700 disabled:cursor-not-allowed">
             선택 삭제
           </button>
           <button onClick={onRefreshAll} disabled={isLoading} className="bg-primary hover:bg-primary-dark text-white font-medium py-2 px-4 rounded-md transition duration-300 flex items-center disabled:bg-gray-600 disabled:cursor-not-allowed">
@@ -184,6 +170,41 @@ const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, onAdd, onUpdat
           ) : null}
           <span>{isLoading ? '업데이트 중...' : '가격 새로고침'}</span>
           </button>
+          <div className="relative">
+            <button
+              onClick={() => setOpenFilterOptions(prev => !prev)}
+              className="border border-gray-600 text-gray-300 hover:bg-gray-700 hover:text-white font-medium py-2 px-3 rounded-md transition duration-300 flex items-center gap-2"
+              title="필터"
+            >
+              <Filter className="h-4 w-4" />
+              <span className="hidden sm:inline">필터</span>
+            </button>
+            {openFilterOptions && (
+              <div className="absolute right-0 mt-2 w-72 bg-gray-800 border border-gray-700 rounded-md shadow-lg z-20 p-3">
+                <div className="space-y-3">
+                  <div>
+                    <div className="text-xs text-gray-400 mb-1">카테고리</div>
+                    <div className="relative">
+                      <select value={filterCategory} onChange={e => setFilterCategory(e.target.value as AssetCategory | 'ALL')} className="bg-gray-700 border border-gray-600 rounded-md py-2 pl-3 pr-8 text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary appearance-none w-full">
+                        <option value="ALL">전체</option>
+                        {categoryOptions.map(cat => (
+                          <option key={cat} value={cat}>{cat}</option>
+                        ))}
+                      </select>
+                      <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-400">
+                        <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                      </div>
+                    </div>
+                  </div>
+                  <Toggle
+                    label="모니터링 ON만"
+                    checked={monitoringOnly}
+                    onChange={(next) => setMonitoringOnly(next)}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -379,7 +400,9 @@ const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, onAdd, onUpdat
                     />
                   </td>
                   <td className="px-4 py-3 text-center">
-                    <button onClick={() => onDelete(w.id)} className="p-2 text-red-400 hover:text-red-300">삭제</button>
+                    <button onClick={() => onDelete(w.id)} className="p-2 text-red-400 hover:text-red-300" title="삭제">
+                      <Trash2 className="h-5 w-5" />
+                    </button>
                   </td>
                 </tr>
               );
