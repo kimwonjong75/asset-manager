@@ -30,6 +30,19 @@ const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, onAdd, onUpdat
   const [isSearching, setIsSearching] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
 
+  const DEFAULT_SYMBOLS: SymbolSearchResult[] = [
+    { ticker: '005930', name: '삼성전자', exchange: 'KRX (코스피/코스닥)' },
+    { ticker: '005380', name: '현대자동차', exchange: 'KRX (코스피/코스닥)' },
+    { ticker: '035420', name: 'NAVER', exchange: 'KRX (코스피/코스닥)' },
+    { ticker: '035720', name: '카카오', exchange: 'KRX (코스피/코스닥)' },
+    { ticker: 'AAPL', name: 'Apple Inc.', exchange: 'NASDAQ' },
+    { ticker: 'TSLA', name: 'Tesla, Inc.', exchange: 'NASDAQ' },
+    { ticker: 'GOOGL', name: 'Alphabet Inc.', exchange: 'NASDAQ' },
+    { ticker: 'MSFT', name: 'Microsoft Corporation', exchange: 'NASDAQ' },
+    { ticker: 'BTC', name: '비트코인', exchange: '주요 거래소 (종합)' },
+    { ticker: 'ETH', name: '이더리움', exchange: '주요 거래소 (종합)' },
+  ];
+
   const categoryOptions = useMemo(() => {
     const extras = Array.from(new Set(watchlist.map(w => w.category))).filter(cat => !ALLOWED_CATEGORIES.includes(cat));
     return [...ALLOWED_CATEGORIES, ...extras];
@@ -63,9 +76,17 @@ const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, onAdd, onUpdat
       setIsSearching(true);
       try {
         const results = await searchSymbols(symbolQuery);
-        setSymbolResults(results);
+        if (Array.isArray(results) && results.length > 0) {
+          setSymbolResults(results);
+        } else {
+          const q = symbolQuery.toLowerCase();
+          const local = DEFAULT_SYMBOLS.filter(r => r.name.toLowerCase().includes(q) || r.ticker.toLowerCase().includes(q)).slice(0, 10);
+          setSymbolResults(local);
+        }
       } catch {
-        setSymbolResults([]);
+        const q = symbolQuery.toLowerCase();
+        const local = DEFAULT_SYMBOLS.filter(r => r.name.toLowerCase().includes(q) || r.ticker.toLowerCase().includes(q)).slice(0, 10);
+        setSymbolResults(local);
       } finally {
         setIsSearching(false);
       }
@@ -87,6 +108,25 @@ const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, onAdd, onUpdat
   const formatOriginalCurrency = (num: number, currency: Currency) => `${CURRENCY_SYMBOLS[currency]}${new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 }).format(num)}`;
   const getChangeColor = (value: number) => (value > 0 ? 'text-success' : value < 0 ? 'text-danger' : 'text-gray-400');
   const allSelected = filtered.length > 0 && filtered.every(w => selectedIds.has(w.id));
+  const isEditMode = selectedIds.size === 1;
+
+  useEffect(() => {
+    if (!isEditMode) return;
+    const selectedId = Array.from(selectedIds)[0];
+    const selected = watchlist.find(w => w.id === selectedId);
+    if (!selected) return;
+    setForm({
+      ticker: selected.ticker,
+      exchange: selected.exchange,
+      name: selected.name,
+      category: selected.category,
+      buyZoneMin: selected.buyZoneMin !== undefined ? String(selected.buyZoneMin) : undefined,
+      buyZoneMax: selected.buyZoneMax !== undefined ? String(selected.buyZoneMax) : undefined,
+      dropFromHighThreshold: selected.dropFromHighThreshold !== undefined ? String(selected.dropFromHighThreshold) : undefined,
+      notes: selected.notes,
+    });
+    setSymbolQuery(selected.name);
+  }, [isEditMode, selectedIds, watchlist]);
 
   return (
     <div className="space-y-6">
@@ -106,8 +146,8 @@ const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, onAdd, onUpdat
           <label htmlFor="monitoring-toggle" className="flex items-center cursor-pointer">
             <div className="relative">
               <input type="checkbox" id="monitoring-toggle" className="sr-only" checked={monitoringOnly} onChange={() => setMonitoringOnly(!monitoringOnly)} />
-              <div className="block bg-gray-600 w-10 h-6 rounded-full"></div>
-              <div className={`dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform duration-300 ease-in-out ${monitoringOnly ? 'transform translate-x-full bg-primary' : ''}`}></div>
+              <div className={`block ${monitoringOnly ? 'bg-green-600' : 'bg-gray-600'} w-10 h-6 rounded-full`}></div>
+              <div className={`dot absolute left-1 top-1 w-4 h-4 rounded-full transition-transform duration-300 ease-in-out ${monitoringOnly ? 'transform translate-x-full bg-green-500' : 'bg-white'}`}></div>
             </div>
             <div className="ml-3 text-sm font-medium text-gray-300">모니터링 ON만</div>
           </label>
@@ -150,7 +190,7 @@ const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, onAdd, onUpdat
       </div>
 
       <div className="bg-gray-800 p-4 rounded-lg shadow-lg">
-        <h3 className="text-lg font-semibold text-white mb-3">종목 추가</h3>
+        <h3 className="text-lg font-semibold text-white mb-3">{isEditMode ? '종목 수정' : '종목 추가'}</h3>
         <div className="mb-3">
           <div className="relative">
             <input 
@@ -214,24 +254,43 @@ const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, onAdd, onUpdat
             <button
               onClick={() => {
                 if (!form.ticker || !form.exchange || !form.name) return;
-                onAdd({
-                  id: '',
-                  ticker: form.ticker,
-                  exchange: form.exchange,
-                  name: form.name,
-                  category: form.category,
-                  monitoringEnabled: true,
-                  notes: form.notes,
-                  buyZoneMin: form.buyZoneMin ? parseFloat(form.buyZoneMin) : undefined,
-                  buyZoneMax: form.buyZoneMax ? parseFloat(form.buyZoneMax) : undefined,
-                  dropFromHighThreshold: form.dropFromHighThreshold ? parseFloat(form.dropFromHighThreshold) : undefined,
-                } as any);
+                if (selectedIds.size === 1) {
+                  const selectedId = Array.from(selectedIds)[0];
+                  const original = watchlist.find(w => w.id === selectedId);
+                  if (!original) return;
+                  const updated: WatchlistItem = {
+                    ...original,
+                    ticker: form.ticker,
+                    exchange: form.exchange,
+                    name: form.name,
+                    category: form.category,
+                    notes: form.notes,
+                    buyZoneMin: form.buyZoneMin ? parseFloat(form.buyZoneMin) : undefined,
+                    buyZoneMax: form.buyZoneMax ? parseFloat(form.buyZoneMax) : undefined,
+                    dropFromHighThreshold: form.dropFromHighThreshold ? parseFloat(form.dropFromHighThreshold) : undefined,
+                  };
+                  onUpdate(updated);
+                } else {
+                  onAdd({
+                    id: '',
+                    ticker: form.ticker,
+                    exchange: form.exchange,
+                    name: form.name,
+                    category: form.category,
+                    monitoringEnabled: true,
+                    notes: form.notes,
+                    buyZoneMin: form.buyZoneMin ? parseFloat(form.buyZoneMin) : undefined,
+                    buyZoneMax: form.buyZoneMax ? parseFloat(form.buyZoneMax) : undefined,
+                    dropFromHighThreshold: form.dropFromHighThreshold ? parseFloat(form.dropFromHighThreshold) : undefined,
+                  } as any);
+                }
                 setForm({ ticker: '', exchange: 'KRX (코스피/코스닥)', name: '', category: AssetCategory.KOREAN_STOCK });
                 setSymbolQuery('');
+                setSelectedIds(new Set());
               }}
               className="bg-primary hover:bg-primary-dark text-white font-medium py-2 px-4 rounded-md transition duration-300"
             >
-              추가
+              {selectedIds.size === 1 ? '수정' : '추가'}
             </button>
           </div>
         </div>
@@ -269,7 +328,7 @@ const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, onAdd, onUpdat
               const signalDailyDrop = (w.yesterdayChange || 0) < -2;
               const hasSignal = signalBuyZone || signalDrop || signalDailyDrop;
               return (
-                <tr key={w.id} className={`border-b border-gray-700 ${hasSignal ? 'bg-primary/10' : ''}`}>
+                <tr key={w.id} className={`border-b border-gray-700`}>
                   <td className="px-4 py-3 text-center">
                     <input type="checkbox" checked={selectedIds.has(w.id)} onChange={(e) => {
                       const next = new Set<string>(selectedIds);
@@ -308,8 +367,8 @@ const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, onAdd, onUpdat
                   <td className="px-4 py-3 text-center">
                     <label className="inline-flex items-center cursor-pointer">
                       <input type="checkbox" className="sr-only" checked={w.monitoringEnabled} onChange={() => onToggleMonitoring(w.id, !w.monitoringEnabled)} />
-                      <span className={`w-10 h-6 bg-gray-600 rounded-full relative inline-block`}>
-                        <span className={`absolute left-1 top-1 w-4 h-4 rounded-full bg-white transition-transform duration-300 ${w.monitoringEnabled ? 'translate-x-full bg-primary' : ''}`}></span>
+                      <span className={`w-10 h-6 ${w.monitoringEnabled ? 'bg-green-600' : 'bg-gray-600'} rounded-full relative inline-block`}>
+                        <span className={`absolute left-1 top-1 w-4 h-4 rounded-full ${w.monitoringEnabled ? 'bg-green-500 translate-x-full' : 'bg-white'} transition-transform duration-300`}></span>
                       </span>
                     </label>
                   </td>
