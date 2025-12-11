@@ -40,7 +40,6 @@ function setCache<T>(cache: Map<string, CacheEntry<T>>, key: string, data: T): v
 // =================================================================
 const requestQueue: Array<() => Promise<void>> = [];
 let isProcessing = false;
-let stopRequested = false;
 const MIN_REQUEST_INTERVAL = 500; // 0.5초 간격
 
 async function processQueue(): Promise<void> {
@@ -51,7 +50,6 @@ async function processQueue(): Promise<void> {
     const request = requestQueue.shift();
     if (request) {
       await request();
-      if (stopRequested) break;
       await delay(MIN_REQUEST_INTERVAL);
     }
   }
@@ -66,7 +64,6 @@ function delay(ms: number): Promise<void> {
 // 4. Gemini API 호출 (SDK 방식 - 안정적)
 // =================================================================
 async function callGeminiWithSearch(prompt: string): Promise<string> {
-  if (stopRequested) throw new Error('STOP_REQUESTED');
   if (!ai) {
     console.error("Gemini AI not initialized");
     return "";
@@ -91,7 +88,6 @@ async function callGeminiWithSearch(prompt: string): Promise<string> {
 }
 
 async function callGeminiBasic(prompt: string): Promise<string> {
-  if (stopRequested) throw new Error('STOP_REQUESTED');
   if (!ai) {
     console.error("Gemini AI not initialized");
     return "";
@@ -301,17 +297,12 @@ export const fetchBatchAssetPrices = async (
   }
 
   for (const batch of batches) {
-    if (stopRequested) break;
-    try {
-      const batchResults = await fetchBatchInternal(batch);
-      batchResults.forEach((value, key) => {
-        resultMap.set(key, value);
-      });
-    } catch (e: any) {
-      if (stopRequested || e?.message === 'STOP_REQUESTED') break;
-      throw e;
-    }
+    const batchResults = await fetchBatchInternal(batch);
+    batchResults.forEach((value, key) => {
+      resultMap.set(key, value);
+    });
     
+    // 배치 간 딜레이
     if (batches.length > 1) {
       await delay(1000);
     }
@@ -324,7 +315,6 @@ async function fetchBatchInternal(
   assets: { ticker: string; exchange: string; id: string }[]
 ): Promise<Map<string, AssetDataResult>> {
   const resultMap = new Map<string, AssetDataResult>();
-  if (stopRequested) throw new Error('STOP_REQUESTED');
 
   const assetsListString = assets
     .map(a => `{"ticker": "${a.ticker}", "exchange": "${normalizeExchange(a.exchange)}", "id": "${a.id}"}`)
@@ -395,12 +385,9 @@ Ensure all prices are numbers. Do not miss any assets. Return ONLY the JSON arra
 
     return resultMap;
   } catch (error) {
-    if (stopRequested || (error as any)?.message === 'STOP_REQUESTED') {
-      return resultMap;
-    }
     console.error('❌ Batch fetch failed:', error);
+    // 전체 실패 시 개별 조회로 폴백
     for (const asset of assets) {
-      if (stopRequested) break;
       try {
         const singleResult = await fetchAssetData(asset.ticker, asset.exchange);
         resultMap.set(asset.id, singleResult);
@@ -420,7 +407,6 @@ export const fetchCurrentExchangeRate = async (
   fromCurrency: string, 
   toCurrency: string
 ): Promise<number> => {
-  if (stopRequested) throw new Error('STOP_REQUESTED');
   if (fromCurrency === toCurrency) return 1;
 
   const cacheKey = `${fromCurrency}-${toCurrency}`;
@@ -460,7 +446,6 @@ export const fetchHistoricalExchangeRate = async (
   fromCurrency: string, 
   toCurrency: string
 ): Promise<number> => {
-  if (stopRequested) throw new Error('STOP_REQUESTED');
   if (fromCurrency === toCurrency) return 1;
   if (!ai) return getDefaultExchangeRate(fromCurrency, toCurrency);
 
@@ -578,13 +563,4 @@ export function getCacheStats(): { prices: number; searches: number; rates: numb
     searches: searchCache.size,
     rates: exchangeRateCache.size
   };
-}
-
-export function clearQueue(): void {
-  requestQueue.length = 0;
-}
-
-export function stopProcessing(): void {
-  stopRequested = true;
-  requestQueue.length = 0;
 }
