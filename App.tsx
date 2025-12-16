@@ -207,12 +207,7 @@ const App: React.FC = () => {
     const hasJPY = assets.some(a => a.currency === Currency.JPY);
     return (hasUSD && !exchangeRates.USD) || (hasJPY && !exchangeRates.JPY);
   }, [assets, exchangeRates]);
-  const handleExchangeRatesChange = useCallback((newRates: ExchangeRates) => {
-    setExchangeRates(newRates);
-    if (isSignedIn) {
-      autoSave(assets, portfolioHistory, sellHistory);
-    }
-  }, [assets, portfolioHistory, sellHistory, isSignedIn, autoSave]);
+  
 
   useEffect(() => {
     const checkForUpdate = async () => {
@@ -297,6 +292,12 @@ const App: React.FC = () => {
     })(),
     [isSignedIn, watchlist, exchangeRates]
   );
+  const handleExchangeRatesChange = useCallback((newRates: ExchangeRates) => {
+    setExchangeRates(newRates);
+    if (isSignedIn) {
+      autoSave(assets, portfolioHistory, sellHistory);
+    }
+  }, [assets, portfolioHistory, sellHistory, isSignedIn, autoSave]);
 // ✅ 배치 처리로 전체 가격 새로고침 (속도 10배 향상)
   const handleRefreshAllPrices = useCallback(async (isAutoUpdate = false, isScheduled = false) => {
     if (assets.length === 0) return;
