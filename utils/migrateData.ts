@@ -7,8 +7,8 @@ import { Currency, AssetCategory } from '../types';
  * 마이그레이션 실행
  * 
  * 핵심 변경:
- * 1. USD/JPY 자산의 currentPrice를 priceOriginal 값으로 교체
- * 2. 암호화폐 중 purchasePrice가 비정상적으로 큰 경우 KRW로 복구
+ * 1. 암호화폐: purchasePrice가 원화로 입력된 경우 currency를 KRW로 복구
+ * 2. USD/JPY 자산: currentPrice가 원화로 저장된 경우 priceOriginal로 교체
  */
 export const runMigrationIfNeeded = (data: any) => {
   if (!data || typeof data !== 'object') return data;
@@ -21,97 +21,79 @@ export const runMigrationIfNeeded = (data: any) => {
   // 자산 마이그레이션
   if (Array.isArray(data.assets)) {
     console.log('[Migration] 데이터 마이그레이션 시작...');
+    let fixedCount = 0;
     
-    data.assets = data.assets.map((asset: any, index: number) => {
+    data.assets = data.assets.map((asset: any) => {
+      const ticker = asset.ticker || '?';
+      const category = asset.category || '';
+      const currency = asset.currency || 'KRW';
+      const purchasePrice = asset.purchasePrice || 0;
+      const currentPrice = asset.currentPrice || 0;
+      const priceOriginal = asset.priceOriginal || 0;
       
-      // ✅ 암호화폐 특별 처리: purchasePrice가 1000 이상이면 KRW로 입력된 것
-      if (asset.category === '암호화폐' || asset.category === AssetCategory.CRYPTOCURRENCY) {
-        // purchasePrice가 크고, currentPrice가 작으면 통화 불일치
-        if (asset.purchasePrice > 1000 && asset.currentPrice < 1000) {
-          console.log(`[Migration] ${asset.ticker}: 암호화폐 KRW 복구`);
-          console.log(`  - purchasePrice: ${asset.purchasePrice} (KRW)`);
-          console.log(`  - currentPrice: ${asset.currentPrice} → priceKRW 필요`);
+      // ✅ 암호화폐 특별 처리
+      if (category === '암호화폐' || category === AssetCategory.CRYPTOCURRENCY) {
+        // USD로 설정되어 있지만 purchasePrice가 원화 수준인 경우
+        if (currency === 'USD' || currency === Currency.USD) {
+          // BTC: purchasePrice가 1억 이상이면 원화
+          // ETH: purchasePrice가 100만 이상이면 원화
+          // 기타: purchasePrice가 1000 이상이고 currentPrice가 1000 미만이면 원화
+          const isKRWPurchase = 
+            (purchasePrice > 100000000) ||  // 1억 이상 (BTC급)
+            (purchasePrice > 1000000 && currentPrice < 10000) ||  // 100만 이상, 현재가 1만 미만 (ETH급)
+            (purchasePrice > 1000 && currentPrice < 1000);  // 1000 이상, 현재가 1000 미만 (일반)
           
-          return {
-            ...asset,
-            currency: Currency.KRW,  // ✅ KRW로 복구
-            // currentPrice는 다음 업데이트 시 priceKRW로 갱신됨
-          };
+          if (isKRWPurchase) {
+            console.log(`[Migration] ${ticker}: 암호화폐 KRW 복구`);
+            console.log(`  - purchasePrice: ${purchasePrice.toLocaleString()} (KRW)`);
+            console.log(`  - currency: USD → KRW`);
+            fixedCount++;
+            
+            return {
+              ...asset,
+              currency: Currency.KRW,
+            };
+          }
         }
       }
       
-      // KRW 자산은 그대로
-      if (asset.currency === 'KRW' || asset.currency === Currency.KRW) {
-        return asset;
-      }
-      
-      // USD/JPY 자산: priceOriginal이 있으면 그 값을 currentPrice로 사용
-      if (asset.priceOriginal && asset.priceOriginal > 0) {
-        // currentPrice가 priceOriginal보다 100배 이상 크면 원화로 저장된 것
-        const ratio = asset.currentPrice / asset.priceOriginal;
-        if (ratio > 100) {
-          const oldCurrentPrice = asset.currentPrice;
-          const newCurrentPrice = asset.priceOriginal;
+      // ✅ USD/JPY 자산: currentPrice가 원화로 저장된 경우 복구
+      if (currency === 'USD' || currency === 'JPY' || 
+          currency === Currency.USD || currency === Currency.JPY) {
+        
+        if (priceOriginal > 0 && currentPrice > 0) {
+          const ratio = currentPrice / priceOriginal;
           
-          // 최고가도 원래 통화 기준으로 재계산
-          let newHighestPrice = asset.priceOriginal;
-          if (asset.highestPrice > 0 && oldCurrentPrice > 0) {
-            const impliedRate = oldCurrentPrice / asset.priceOriginal;
-            if (impliedRate > 1) {
-              newHighestPrice = asset.highestPrice / impliedRate;
+          // currentPrice가 priceOriginal보다 100배 이상 크면 원화로 저장된 것
+          if (ratio > 100) {
+            console.log(`[Migration] ${ticker}: 가격 복구 (원화→원래통화)`);
+            console.log(`  - currentPrice: ${currentPrice.toLocaleString()} → ${priceOriginal}`);
+            fixedCount++;
+            
+            // 최고가도 복구
+            let newHighestPrice = priceOriginal;
+            if (asset.highestPrice > 0) {
+              newHighestPrice = asset.highestPrice / ratio;
+              if (newHighestPrice < priceOriginal) {
+                newHighestPrice = priceOriginal;
+              }
             }
+            
+            return {
+              ...asset,
+              currentPrice: priceOriginal,
+              highestPrice: newHighestPrice,
+            };
           }
-          
-          // 비정상 최고가 보정
-          if (newHighestPrice > newCurrentPrice * 10) {
-            newHighestPrice = newCurrentPrice;
-          }
-          if (newHighestPrice < newCurrentPrice) {
-            newHighestPrice = newCurrentPrice;
-          }
-          
-          console.log(`[Migration] ${index + 1}. ${asset.ticker} (${asset.currency})`);
-          console.log(`  - currentPrice: ${oldCurrentPrice.toLocaleString()} → ${newCurrentPrice.toFixed(2)}`);
-          console.log(`  - highestPrice: ${asset.highestPrice?.toLocaleString()} → ${newHighestPrice.toFixed(2)}`);
-          
-          return {
-            ...asset,
-            currentPrice: newCurrentPrice,
-            highestPrice: newHighestPrice,
-          };
         }
       }
       
       return asset;
     });
     
-    console.log('[Migration] 마이그레이션 완료!');
+    console.log(`[Migration] 완료! ${fixedCount}개 자산 수정됨`);
   }
   
   return data;
 };
 
-/**
- * 마이그레이션 필요 여부 확인
- */
-export const needsMigration = (data: any): boolean => {
-  if (!data || !data.assets || data.assets.length === 0) return false;
-  
-  return data.assets.some((asset: any) => {
-    // 암호화폐 통화 불일치 확인
-    if (asset.category === '암호화폐' || asset.category === 'CRYPTOCURRENCY') {
-      if (asset.purchasePrice > 1000 && asset.currentPrice < 1000) {
-        return true;
-      }
-    }
-    
-    // USD/JPY 자산 중 currentPrice가 원화인지 확인
-    if (asset.currency !== 'KRW') {
-      if (!asset.priceOriginal || asset.priceOriginal === 0) return false;
-      const ratio = asset.currentPrice / asset.priceOriginal;
-      if (ratio > 100) return true;
-    }
-    
-    return false;
-  });
-};
