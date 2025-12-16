@@ -368,12 +368,21 @@ const App: React.FC = () => {
         // 일반 자산 처리 (배치 결과에서 가져오기)
         const priceData = batchPriceMap.get(asset.id);
         if (priceData && !priceData.isMocked) {
+          // ✅ 암호화폐는 원래 통화 유지, 그 외는 API 응답 통화 사용
+          const shouldKeepOriginalCurrency = asset.category === AssetCategory.CRYPTOCURRENCY;
+          const newCurrency = shouldKeepOriginalCurrency ? asset.currency : (priceData.currency as Currency);
+          
+          // ✅ KRW 자산은 priceKRW 사용, 그 외는 priceOriginal 사용
+          const newCurrentPrice = asset.currency === Currency.KRW 
+            ? priceData.priceKRW 
+            : priceData.priceOriginal;
+          
           return {
             ...asset,
             yesterdayPrice: priceData.pricePreviousClose,
-            currentPrice: priceData.priceOriginal,
-            currency: priceData.currency as Currency,
-            highestPrice: Math.max(asset.highestPrice, priceData.priceOriginal),
+            currentPrice: newCurrentPrice,
+            currency: newCurrency,
+            highestPrice: Math.max(asset.highestPrice, newCurrentPrice),
           };
         } else {
           console.error(`Failed to refresh price for ${asset.ticker}`);
@@ -468,12 +477,21 @@ const App: React.FC = () => {
         }
         const priceData = batchPriceMap.get(asset.id);
         if (priceData && !priceData.isMocked) {
+          // ✅ 암호화폐는 원래 통화 유지
+          const shouldKeepOriginalCurrency = asset.category === AssetCategory.CRYPTOCURRENCY;
+          const newCurrency = shouldKeepOriginalCurrency ? asset.currency : (priceData.currency as Currency);
+          
+          // ✅ KRW 자산은 priceKRW 사용
+          const newCurrentPrice = asset.currency === Currency.KRW 
+            ? priceData.priceKRW 
+            : priceData.priceOriginal;
+          
           return {
             ...asset,
             yesterdayPrice: priceData.pricePreviousClose,
-            currentPrice: priceData.priceOriginal,
-            currency: priceData.currency as Currency,
-            highestPrice: Math.max(asset.highestPrice, priceData.priceOriginal),
+            currentPrice: newCurrentPrice,
+            currency: newCurrency,
+            highestPrice: Math.max(asset.highestPrice, newCurrentPrice),
           };
         } else {
           console.error(`Failed to refresh price for ${asset.ticker}`);
@@ -516,12 +534,22 @@ const App: React.FC = () => {
     setError(null);
     try {
       const d = await fetchAssetData(target.ticker, target.exchange);
+      
+      // ✅ 암호화폐는 원래 통화 유지
+      const shouldKeepOriginalCurrency = target.category === AssetCategory.CRYPTOCURRENCY;
+      const newCurrency = shouldKeepOriginalCurrency ? target.currency : (d.currency as Currency);
+      
+      // ✅ KRW 자산은 priceKRW 사용
+      const newCurrentPrice = target.currency === Currency.KRW 
+        ? d.priceKRW 
+        : d.priceOriginal;
+      
       const updated = assets.map(a => a.id === assetId ? {
         ...a,
         yesterdayPrice: d.pricePreviousClose,
-        currentPrice: d.priceOriginal,
-        currency: d.currency as Currency,
-        highestPrice: Math.max(a.highestPrice, d.priceOriginal),
+        currentPrice: newCurrentPrice,
+        currency: newCurrency,
+        highestPrice: Math.max(a.highestPrice, newCurrentPrice),
       } : a);
       setAssets(updated);
       if (isSignedIn) {
@@ -1435,13 +1463,17 @@ const handleRefreshWatchlistPrices = useCallback(async () => {
     const updated = watchlist.map((item) => {
       const d = priceMap.get(item.id);
       if (d && !d.isMocked) {
-        const currentPrice = d.priceOriginal;  // ✅ 수정: 원래 통화 기준
-        const highestPrice = item.highestPrice ? Math.max(item.highestPrice, currentPrice) : currentPrice;
+        // ✅ 기존 통화가 있으면 유지, 없으면 API 응답 사용
+        const newCurrency = item.currency || (d.currency as Currency);
+        const newCurrentPrice = item.currency === Currency.KRW 
+          ? d.priceKRW 
+          : d.priceOriginal;
+        const highestPrice = item.highestPrice ? Math.max(item.highestPrice, newCurrentPrice) : newCurrentPrice;
         return {
           ...item,
-          currentPrice,
+          currentPrice: newCurrentPrice,
           priceOriginal: d.priceOriginal,
-          currency: d.currency as Currency,
+          currency: newCurrency,
           yesterdayPrice: d.pricePreviousClose,
           highestPrice,
         };
