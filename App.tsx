@@ -1,7 +1,7 @@
 
 
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
-import { Asset, NewAssetForm, AssetCategory, EXCHANGE_MAP, Currency, PortfolioSnapshot, AssetSnapshot, BulkUploadResult, ALLOWED_CATEGORIES, SellRecord, WatchlistItem, normalizeExchange } from './types';
+import { Asset, NewAssetForm, AssetCategory, EXCHANGE_MAP, Currency, PortfolioSnapshot, AssetSnapshot, BulkUploadResult, ALLOWED_CATEGORIES, SellRecord, WatchlistItem, normalizeExchange, ExchangeRates } from './types';
 import { fetchAssetData, fetchBatchAssetPrices, fetchHistoricalExchangeRate, fetchCurrentExchangeRate } from './services/geminiService';
 import { googleDriveService, GoogleUser } from './services/googleDriveService';
 import PortfolioTable from './components/PortfolioTable';
@@ -19,6 +19,8 @@ import TopBottomAssets from './components/TopBottomAssets';
 import PortfolioAssistant from './components/PortfolioAssistant';
 import SellAnalyticsPage from './components/SellAnalyticsPage';
 import WatchlistPage from './components/WatchlistPage';
+import ExchangeRateInput from './components/ExchangeRateInput';
+import { runMigrationIfNeeded } from './utils/migrateData';
 
 type ActiveTab = 'dashboard' | 'portfolio' | 'analytics' | 'watchlist';
 
@@ -113,7 +115,8 @@ const App: React.FC = () => {
     try {
       const fileContent = await googleDriveService.loadFile();
       if (fileContent) {
-        const data = JSON.parse(fileContent);
+        const rawData = JSON.parse(fileContent);
+        const data = runMigrationIfNeeded(rawData);
         const driveAssets = Array.isArray(data.assets) ? data.assets.map(mapToNewAssetStructure) : [];
         setAssets(driveAssets);
         if (Array.isArray(data.portfolioHistory)) {
@@ -130,6 +133,9 @@ const App: React.FC = () => {
           setWatchlist(data.watchlist);
         } else {
           setWatchlist([]);
+        }
+        if (data.exchangeRates) {
+          setExchangeRates(data.exchangeRates);
         }
         setSuccessMessage('Google Drive에서 포트폴리오를 불러왔습니다.');
         setTimeout(() => setSuccessMessage(null), 3000);
@@ -153,6 +159,7 @@ const App: React.FC = () => {
   const [portfolioHistory, setPortfolioHistory] = useState<PortfolioSnapshot[]>([]);
   const [sellHistory, setSellHistory] = useState<SellRecord[]>([]);
   const [watchlist, setWatchlist] = useState<WatchlistItem[]>([]);
+  const [exchangeRates, setExchangeRates] = useState<ExchangeRates>({ USD: 0, JPY: 0 });
   const [hasAutoUpdated, setHasAutoUpdated] = useState<boolean>(false);
 
   // 초기화 완료 후 데이터 로드
@@ -195,6 +202,17 @@ const App: React.FC = () => {
     );
     return [...ALLOWED_CATEGORIES, ...extras];
   }, [assets]);
+  const showExchangeRateWarning = useMemo(() => {
+    const hasUSD = assets.some(a => a.currency === Currency.USD);
+    const hasJPY = assets.some(a => a.currency === Currency.JPY);
+    return (hasUSD && !exchangeRates.USD) || (hasJPY && !exchangeRates.JPY);
+  }, [assets, exchangeRates]);
+  const handleExchangeRatesChange = useCallback((newRates: ExchangeRates) => {
+    setExchangeRates(newRates);
+    if (isSignedIn) {
+      autoSave(assets, portfolioHistory, sellHistory);
+    }
+  }, [assets, portfolioHistory, sellHistory, isSignedIn, autoSave]);
 
   useEffect(() => {
     const checkForUpdate = async () => {
@@ -247,6 +265,7 @@ const App: React.FC = () => {
             portfolioHistory: history,
             sellHistory: sells,
             watchlist,
+            exchangeRates,
             lastUpdateDate: new Date().toISOString().slice(0, 10)
           };
           const portfolioJSON = JSON.stringify(exportData, null, 2);
@@ -276,7 +295,7 @@ const App: React.FC = () => {
         }, 2000); // 2초 대기
       };
     })(),
-    [isSignedIn, watchlist]
+    [isSignedIn, watchlist, exchangeRates]
   );
 // ✅ 배치 처리로 전체 가격 새로고침 (속도 10배 향상)
   const handleRefreshAllPrices = useCallback(async (isAutoUpdate = false, isScheduled = false) => {
@@ -351,8 +370,7 @@ const App: React.FC = () => {
           return {
             ...asset,
             yesterdayPrice: priceData.pricePreviousClose,
-            currentPrice: priceData.priceKRW,
-            priceOriginal: priceData.priceOriginal,
+            currentPrice: priceData.priceOriginal,
             currency: priceData.currency as Currency,
             highestPrice: Math.max(asset.highestPrice, priceData.priceKRW),
           };
@@ -452,8 +470,7 @@ const App: React.FC = () => {
           return {
             ...asset,
             yesterdayPrice: priceData.pricePreviousClose,
-            currentPrice: priceData.priceKRW,
-            priceOriginal: priceData.priceOriginal,
+            currentPrice: priceData.priceOriginal,
             currency: priceData.currency as Currency,
             highestPrice: Math.max(asset.highestPrice, priceData.priceKRW),
           };
@@ -501,8 +518,7 @@ const App: React.FC = () => {
       const updated = assets.map(a => a.id === assetId ? {
         ...a,
         yesterdayPrice: d.pricePreviousClose,
-        currentPrice: d.priceKRW,
-        priceOriginal: d.priceOriginal,
+        currentPrice: d.priceOriginal,
         currency: d.currency as Currency,
         highestPrice: Math.max(a.highestPrice, d.priceKRW),
       } : a);
@@ -608,6 +624,7 @@ const App: React.FC = () => {
         assets: assets,
         portfolioHistory: portfolioHistory,
         sellHistory: sellHistory,
+        exchangeRates,
         lastUpdateDate: new Date().toISOString().slice(0, 10)
       };
       const portfolioJSON = JSON.stringify(exportData, null, 2);
@@ -636,6 +653,7 @@ const App: React.FC = () => {
       assets: assets,
       portfolioHistory: portfolioHistory,
       sellHistory: sellHistory,
+      exchangeRates,
       lastUpdateDate: new Date().toISOString().slice(0, 10)
     };
     const portfolioJSON = JSON.stringify(exportData, null, 2);
@@ -1135,25 +1153,30 @@ const App: React.FC = () => {
     });
   }, [autoSave, portfolioHistory, isSignedIn]);
 
+  const getValueInKRW = useCallback((value: number, currency: Currency): number => {
+    switch (currency) {
+      case Currency.USD:
+        return value * (exchangeRates.USD || 0);
+      case Currency.JPY:
+        return value * (exchangeRates.JPY || 0);
+      case Currency.KRW:
+      default:
+        return value;
+    }
+  }, [exchangeRates]);
   const totalValue = useMemo(() => {
-    return assets.reduce((acc, asset) => acc + asset.currentPrice * asset.quantity, 0);
-  }, [assets]);
+    return assets.reduce((acc, asset) => {
+      const v = asset.currentPrice * asset.quantity;
+      return acc + getValueInKRW(v, asset.currency);
+    }, 0);
+  }, [assets, getValueInKRW]);
 
   const totalPurchaseValue = useMemo(() => {
     return assets.reduce((acc, asset) => {
-        if (asset.currency === Currency.KRW) {
-            return acc + asset.purchasePrice * asset.quantity;
-        }
-        if (asset.purchaseExchangeRate) {
-            return acc + (asset.purchasePrice * asset.purchaseExchangeRate * asset.quantity);
-        }
-        if (asset.priceOriginal > 0) {
-            const exchangeRate = asset.currentPrice / asset.priceOriginal;
-            return acc + (asset.purchasePrice * exchangeRate * asset.quantity);
-        }
-        return acc + asset.purchasePrice * asset.quantity;
+      const v = asset.purchasePrice * asset.quantity;
+      return acc + getValueInKRW(v, asset.currency);
     }, 0);
-  }, [assets]);
+  }, [assets, getValueInKRW]);
   
   const formatCurrencyKRW = (value: number) => {
     return value.toLocaleString('ko-KR', { 
@@ -1173,24 +1196,18 @@ const App: React.FC = () => {
 
   // Calculations for the dashboard based on the filter
   const dashboardTotalValue = useMemo(() => {
-      return dashboardFilteredAssets.reduce((acc, asset) => acc + asset.currentPrice * asset.quantity, 0);
-  }, [dashboardFilteredAssets]);
+      return dashboardFilteredAssets.reduce((acc, asset) => {
+        const v = asset.currentPrice * asset.quantity;
+        return acc + getValueInKRW(v, asset.currency);
+      }, 0);
+  }, [dashboardFilteredAssets, getValueInKRW]);
 
   const dashboardTotalPurchaseValue = useMemo(() => {
       return dashboardFilteredAssets.reduce((acc, asset) => {
-          if (asset.currency === Currency.KRW) {
-              return acc + asset.purchasePrice * asset.quantity;
-          }
-          if (asset.purchaseExchangeRate) {
-              return acc + (asset.purchasePrice * asset.purchaseExchangeRate * asset.quantity);
-          }
-          if (asset.priceOriginal > 0) {
-              const exchangeRate = asset.currentPrice / asset.priceOriginal;
-              return acc + (asset.purchasePrice * exchangeRate * asset.quantity);
-          }
-          return acc + asset.purchasePrice * asset.quantity;
+        const v = asset.purchasePrice * asset.quantity;
+        return acc + getValueInKRW(v, asset.currency);
       }, 0);
-  }, [dashboardFilteredAssets]);
+  }, [dashboardFilteredAssets, getValueInKRW]);
 
   const dashboardTotalGainLoss = dashboardTotalValue - dashboardTotalPurchaseValue;
   const dashboardTotalReturn = dashboardTotalPurchaseValue === 0 ? 0 : (dashboardTotalGainLoss / dashboardTotalPurchaseValue) * 100;
@@ -1633,6 +1650,11 @@ const handleRefreshWatchlistPrices = useCallback(async () => {
                           size="small"
                       />
                   </div>
+                  <ExchangeRateInput 
+                    rates={exchangeRates} 
+                    onRatesChange={handleExchangeRatesChange} 
+                    showWarning={showExchangeRateWarning} 
+                  />
                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
                     <StatCard title="총 자산 (원화)" value={formatCurrencyKRW(dashboardTotalValue)} tooltip="선택된 자산의 현재 평가금액 총합입니다." />
                     <StatCard title="투자 원금" value={formatCurrencyKRW(dashboardTotalPurchaseValue)} tooltip="선택된 자산의 총 매수금액 합계입니다." />
@@ -1684,6 +1706,7 @@ const handleRefreshWatchlistPrices = useCallback(async () => {
                       onSearchChange={setSearchQuery}
                       onAddSelectedToWatchlist={handleAddAssetsToWatchlist}
                       failedIds={failedAssetIds}
+                      exchangeRates={exchangeRates}
                     />
                 </div>
               )}
