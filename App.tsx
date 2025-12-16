@@ -357,7 +357,7 @@ const App: React.FC = () => {
               currentPrice: data.priceKRW,
               priceOriginal: data.priceOriginal,
               currency: data.currency as Currency,
-              highestPrice: Math.max(asset.highestPrice, data.priceKRW),
+              highestPrice: Math.max(asset.highestPrice, data.priceOriginal),
             };
           }
           failedTickers.push(asset.ticker);
@@ -373,7 +373,7 @@ const App: React.FC = () => {
             yesterdayPrice: priceData.pricePreviousClose,
             currentPrice: priceData.priceOriginal,
             currency: priceData.currency as Currency,
-            highestPrice: Math.max(asset.highestPrice, priceData.priceKRW),
+            highestPrice: Math.max(asset.highestPrice, priceData.priceOriginal),
           };
         } else {
           console.error(`Failed to refresh price for ${asset.ticker}`);
@@ -459,7 +459,7 @@ const App: React.FC = () => {
               currentPrice: data.priceKRW,
               priceOriginal: data.priceOriginal,
               currency: data.currency as Currency,
-              highestPrice: Math.max(asset.highestPrice, data.priceKRW),
+              highestPrice: Math.max(asset.highestPrice, data.priceOriginal),
             };
           }
           failedTickers.push(asset.ticker);
@@ -473,7 +473,7 @@ const App: React.FC = () => {
             yesterdayPrice: priceData.pricePreviousClose,
             currentPrice: priceData.priceOriginal,
             currency: priceData.currency as Currency,
-            highestPrice: Math.max(asset.highestPrice, priceData.priceKRW),
+            highestPrice: Math.max(asset.highestPrice, priceData.priceOriginal),
           };
         } else {
           console.error(`Failed to refresh price for ${asset.ticker}`);
@@ -521,7 +521,7 @@ const App: React.FC = () => {
         yesterdayPrice: d.pricePreviousClose,
         currentPrice: d.priceOriginal,
         currency: d.currency as Currency,
-        highestPrice: Math.max(a.highestPrice, d.priceKRW),
+        highestPrice: Math.max(a.highestPrice, d.priceOriginal),
       } : a);
       setAssets(updated);
       if (isSignedIn) {
@@ -808,9 +808,9 @@ const App: React.FC = () => {
         newAsset = {
           ...newAssetData,
           name: geminiData.name,
-          currentPrice: geminiData.priceKRW,
+          currentPrice: geminiData.priceOriginal,  // ✅ 수정: 원래 통화 기준
           priceOriginal: geminiData.priceOriginal,
-          highestPrice: geminiData.priceKRW,
+          highestPrice: geminiData.priceOriginal,  // ✅ 수정: 원래 통화 기준
           purchaseExchangeRate,
           currency: geminiData.currency as Currency || newAssetData.currency,
         };
@@ -978,10 +978,10 @@ const App: React.FC = () => {
             finalAsset = {
               ...finalAsset,
               name: geminiData.name,
-              currentPrice: geminiData.priceKRW,
+              currentPrice: geminiData.priceOriginal,  // ✅ 수정
               priceOriginal: geminiData.priceOriginal,
               currency: geminiData.currency as Currency,
-              highestPrice: geminiData.priceKRW,
+              highestPrice: geminiData.priceOriginal,  // ✅ 수정
             };
           }
           
@@ -1098,10 +1098,10 @@ const App: React.FC = () => {
                               newAsset = {
                                   ...form,
                                   name: geminiData.name,
-                                  currentPrice: geminiData.priceKRW,
+                                  currentPrice: geminiData.priceOriginal,  // ✅ 수정
                                   priceOriginal: geminiData.priceOriginal,
                                   currency: geminiData.currency as Currency,
-                                  highestPrice: geminiData.priceKRW,
+                                  highestPrice: geminiData.priceOriginal,  // ✅ 수정
                                   purchaseExchangeRate,
                               };
                             
@@ -1435,7 +1435,7 @@ const handleRefreshWatchlistPrices = useCallback(async () => {
     const updated = watchlist.map((item) => {
       const d = priceMap.get(item.id);
       if (d && !d.isMocked) {
-        const currentPrice = d.priceKRW;
+        const currentPrice = d.priceOriginal;  // ✅ 수정: 원래 통화 기준
         const highestPrice = item.highestPrice ? Math.max(item.highestPrice, currentPrice) : currentPrice;
         return {
           ...item,
