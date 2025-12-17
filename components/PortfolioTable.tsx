@@ -97,7 +97,7 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
     return [...ALLOWED_CATEGORIES, ...extras];
   }, [assets]);
 
-  // ✅ 핵심 변경: 수익률 계산 로직
+  // 수익률 계산 로직
   const enrichedAndSortedAssets = useMemo(() => {
     let enriched = assets.map(asset => {
       // 같은 통화 기준으로 계산
@@ -508,7 +508,7 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
                       <div>{returnPercentage.toFixed(2)}%</div>
                       <div className="text-xs opacity-80">{formatProfitLoss(profitLoss, asset.currency)}</div>
                       {isNonKRW && exchangeRates[asset.currency] > 0 && (
-                        <div className="text-xs text-gray-500">≈ {formatProfitLoss(profitLossKRW, Currency.KRW)}</div>
+                        <div className="text-xs text-gray-500">{formatProfitLoss(profitLossKRW, Currency.KRW)} (원화)</div>
                       )}
                     </td>
                     <td className="px-4 py-4 text-right">

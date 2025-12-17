@@ -1,5 +1,3 @@
-
-
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { Asset, NewAssetForm, AssetCategory, EXCHANGE_MAP, Currency, PortfolioSnapshot, AssetSnapshot, BulkUploadResult, ALLOWED_CATEGORIES, SellRecord, WatchlistItem, normalizeExchange, ExchangeRates } from './types';
 import { fetchAssetData, fetchBatchAssetPrices, fetchHistoricalExchangeRate, fetchCurrentExchangeRate } from './services/geminiService';
@@ -40,8 +38,6 @@ const mapToNewAssetStructure = (asset: any): Asset => {
 
   // 2. Remap categories and remove region
   const oldCategory = newAsset.category;
-  // FIX: Removed non-existent enum member `AssetCategory.STOCK` to resolve a compile error.
-  // The migration logic now relies on string literals to identify legacy stock assets.
   if (['주식', 'ETF'].includes(oldCategory)) {
       if (newAsset.exchange?.startsWith('KRX')) {
           newAsset.category = AssetCategory.KOREAN_STOCK;
@@ -50,15 +46,12 @@ const mapToNewAssetStructure = (asset: any): Asset => {
       } else {
           newAsset.category = AssetCategory.OTHER_FOREIGN_STOCK;
       }
-  // FIX: Removed non-existent enum member `AssetCategory.KRX_GOLD` to resolve a compile error.
-  // The migration logic for gold assets is preserved using existing string literals and the valid `AssetCategory.PHYSICAL_ASSET` enum member.
   } else if (['KRX금현물', '금', '실물자산'].includes(oldCategory)) {
       newAsset.category = AssetCategory.PHYSICAL_ASSET;
   } else {
-      // Handle legacy enum names
       const categoryMap: { [key: string]: AssetCategory } = {
           "국내주식": AssetCategory.KOREAN_STOCK,
-          "해외주식": AssetCategory.US_STOCK, // Simplified assumption
+          "해외주식": AssetCategory.US_STOCK,
           "국내국채": AssetCategory.KOREAN_BOND,
           "해외국채": AssetCategory.US_BOND,
       };
@@ -67,9 +60,7 @@ const mapToNewAssetStructure = (asset: any): Asset => {
       }
   }
   
-  // Ensure category exists in the enum
   if (!Object.values(AssetCategory).includes(newAsset.category)) {
-      // Fallback for unknown categories
       newAsset.category = AssetCategory.OTHER_FOREIGN_STOCK;
   }
 
@@ -97,7 +88,6 @@ const App: React.FC = () => {
           if (googleDriveService.isSignedIn()) {
             setIsSignedIn(true);
             setGoogleUser(googleDriveService.getCurrentUser());
-            // Google Drive에서 데이터 로드 시도
             await loadFromGoogleDrive();
           }
         }
@@ -162,7 +152,6 @@ const App: React.FC = () => {
   const [exchangeRates, setExchangeRates] = useState<ExchangeRates>({ USD: 0, JPY: 0 });
   const [hasAutoUpdated, setHasAutoUpdated] = useState<boolean>(false);
 
-  // 초기화 완료 후 데이터 로드
   useEffect(() => {
     if (isInitializing) return;
     if (isSignedIn) {
@@ -234,7 +223,6 @@ const App: React.FC = () => {
     checkForUpdate();
   }, []);
   
-  // 자동 저장 함수 (디바운싱 및 변경 감지 적용)
   const autoSave = useCallback(
     (() => {
       let timeoutId: NodeJS.Timeout | null = null;
@@ -252,9 +240,8 @@ const App: React.FC = () => {
         }
         
         timeoutId = setTimeout(async () => {
-          if (isSaving) return; // 이미 저장 중이면 스킵
+          if (isSaving) return;
           
-          // 변경 감지: 이전 저장 데이터와 비교
           const exportData = {
             assets: assetsToSave,
             portfolioHistory: history,
@@ -265,7 +252,6 @@ const App: React.FC = () => {
           };
           const portfolioJSON = JSON.stringify(exportData, null, 2);
           
-          // 데이터가 변경되지 않았으면 저장 스킵
           if (lastSavedData === portfolioJSON) {
             return;
           }
@@ -276,7 +262,7 @@ const App: React.FC = () => {
             setSuccessMessage('저장 중...');
             
             await googleDriveService.saveFile(portfolioJSON);
-            lastSavedData = portfolioJSON; // 저장된 데이터 기록
+            lastSavedData = portfolioJSON;
             setSuccessMessage('Google Drive에 자동 저장되었습니다.');
             
             setTimeout(() => setSuccessMessage(null), 2000);
@@ -287,7 +273,7 @@ const App: React.FC = () => {
           } finally {
             isSaving = false;
           }
-        }, 2000); // 2초 대기
+        }, 2000);
       };
     })(),
     [isSignedIn, watchlist, exchangeRates]
@@ -298,7 +284,7 @@ const App: React.FC = () => {
       autoSave(assets, portfolioHistory, sellHistory);
     }
   }, [assets, portfolioHistory, sellHistory, isSignedIn, autoSave]);
-// ✅ 배치 처리로 전체 가격 새로고침 (속도 10배 향상)
+
   const handleRefreshAllPrices = useCallback(async (isAutoUpdate = false, isScheduled = false) => {
     if (assets.length === 0) return;
     setIsLoading(true);
@@ -310,11 +296,9 @@ const App: React.FC = () => {
         setSuccessMessage(null);
     }
 
-    // 현금 자산과 일반 자산 분리
     const cashAssets = assets.filter(a => a.category === AssetCategory.CASH);
     const nonCashAssets = assets.filter(a => a.category !== AssetCategory.CASH);
 
-    // 1. 현금 자산은 환율만 조회
     const cashPromises = cashAssets.map(asset => 
       fetchCurrentExchangeRate(asset.currency, Currency.KRW).then(rate => ({
         id: asset.id,
@@ -326,7 +310,6 @@ const App: React.FC = () => {
       }))
     );
 
-    // 2. 일반 자산은 배치로 조회 (핵심 개선!)
     const assetsToFetch = nonCashAssets.map(a => ({
       ticker: a.ticker,
       exchange: a.exchange,
@@ -334,7 +317,6 @@ const App: React.FC = () => {
     }));
 
     try {
-      // 병렬 실행: 현금 환율 + 배치 시세 조회
       const [cashResults, batchPriceMap] = await Promise.all([
         Promise.allSettled(cashPromises),
         fetchBatchAssetPrices(assetsToFetch)
@@ -344,7 +326,6 @@ const App: React.FC = () => {
       const failedIds: string[] = [];
 
       const updatedAssets = assets.map((asset) => {
-        // 현금 자산 처리
         if (asset.category === AssetCategory.CASH) {
           const cashIdx = cashAssets.findIndex(ca => ca.id === asset.id);
           const result = cashResults[cashIdx];
@@ -365,21 +346,27 @@ const App: React.FC = () => {
           return asset;
         }
 
-        // 일반 자산 처리 (배치 결과에서 가져오기)
         const priceData = batchPriceMap.get(asset.id);
         if (priceData && !priceData.isMocked) {
-          // ✅ 암호화폐는 원래 통화 유지, 그 외는 API 응답 통화 사용
           const shouldKeepOriginalCurrency = asset.category === AssetCategory.CRYPTOCURRENCY;
           const newCurrency = shouldKeepOriginalCurrency ? asset.currency : (priceData.currency as Currency);
           
-          // ✅ KRW 자산은 priceKRW 사용, 그 외는 priceOriginal 사용
           const newCurrentPrice = asset.currency === Currency.KRW 
             ? priceData.priceKRW 
             : priceData.priceOriginal;
           
+          // [수정] 비트코인 등 어제 가격 단위 불일치 자동 보정 로직
+          let newYesterdayPrice = priceData.pricePreviousClose;
+          
+          // 현재가는 KRW(억 단위)인데 어제 가격이 USD(만 단위) 수준으로 작다면 환율 보정
+          if (asset.currency === Currency.KRW && newCurrentPrice > 1000000 && newYesterdayPrice < 200000) {
+             const impliedRate = priceData.priceOriginal > 0 ? (priceData.priceKRW / priceData.priceOriginal) : 1450;
+             newYesterdayPrice = newYesterdayPrice * impliedRate;
+          }
+
           return {
             ...asset,
-            yesterdayPrice: priceData.pricePreviousClose,
+            yesterdayPrice: newYesterdayPrice,
             currentPrice: newCurrentPrice,
             currency: newCurrency,
             highestPrice: Math.max(asset.highestPrice, newCurrentPrice),
@@ -477,11 +464,9 @@ const App: React.FC = () => {
         }
         const priceData = batchPriceMap.get(asset.id);
         if (priceData && !priceData.isMocked) {
-          // ✅ 암호화폐는 원래 통화 유지
           const shouldKeepOriginalCurrency = asset.category === AssetCategory.CRYPTOCURRENCY;
           const newCurrency = shouldKeepOriginalCurrency ? asset.currency : (priceData.currency as Currency);
           
-          // ✅ KRW 자산은 priceKRW 사용
           const newCurrentPrice = asset.currency === Currency.KRW 
             ? priceData.priceKRW 
             : priceData.priceOriginal;
@@ -535,11 +520,9 @@ const App: React.FC = () => {
     try {
       const d = await fetchAssetData(target.ticker, target.exchange);
       
-      // ✅ 암호화폐는 원래 통화 유지
       const shouldKeepOriginalCurrency = target.category === AssetCategory.CRYPTOCURRENCY;
       const newCurrency = shouldKeepOriginalCurrency ? target.currency : (d.currency as Currency);
       
-      // ✅ KRW 자산은 priceKRW 사용
       const newCurrentPrice = target.currency === Currency.KRW 
         ? d.priceKRW 
         : d.priceOriginal;
@@ -620,13 +603,9 @@ const App: React.FC = () => {
 
   const filteredAssets = useMemo(() => {
     let filtered = assets;
-    
-    // 카테고리 필터
     if (filterCategory !== 'ALL') {
       filtered = filtered.filter(asset => asset.category === filterCategory);
     }
-    
-    // 검색 필터 (종목명, 티커, 메모에서 검색)
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase().trim();
       filtered = filtered.filter(asset => 
@@ -635,7 +614,6 @@ const App: React.FC = () => {
         (asset.memo && asset.memo.toLowerCase().includes(query))
       );
     }
-    
     return filtered;
   }, [assets, filterCategory, searchQuery]);
 
@@ -741,10 +719,8 @@ const App: React.FC = () => {
             let loadedWatchlist: WatchlistItem[] | undefined;
 
             if (Array.isArray(loadedData)) {
-              // Old format: just the assets array
               loadedAssets = loadedData;
             } else if (loadedData && typeof loadedData === 'object' && Array.isArray(loadedData.assets)) {
-              // New format: object with assets and portfolioHistory
               loadedAssets = loadedData.assets;
               if (Array.isArray(loadedData.portfolioHistory)) {
                 loadedHistory = loadedData.portfolioHistory;
@@ -836,9 +812,9 @@ const App: React.FC = () => {
         newAsset = {
           ...newAssetData,
           name: geminiData.name,
-          currentPrice: geminiData.priceOriginal,  // ✅ 수정: 원래 통화 기준
+          currentPrice: geminiData.priceOriginal,
           priceOriginal: geminiData.priceOriginal,
-          highestPrice: geminiData.priceOriginal,  // ✅ 수정: 원래 통화 기준
+          highestPrice: geminiData.priceOriginal,
           purchaseExchangeRate,
           currency: geminiData.currency as Currency || newAssetData.currency,
         };
@@ -851,7 +827,6 @@ const App: React.FC = () => {
 
       setAssets(prevAssets => {
         const newAssets = [...prevAssets, finalNewAsset];
-        // 자동 저장
         autoSave(newAssets, portfolioHistory, sellHistory);
         return newAssets;
       });
@@ -874,7 +849,6 @@ const App: React.FC = () => {
     }
     setAssets(prevAssets => {
       const updated = prevAssets.filter(asset => asset.id !== assetId);
-      // 자동 저장
       autoSave(updated, portfolioHistory, sellHistory);
       return updated;
     });
@@ -939,7 +913,6 @@ const App: React.FC = () => {
           };
           setSellHistory(prev => [...prev, record]);
 
-          // 수량이 0 이하가 되면 자산 제거
           return updatedAsset.quantity <= 0 ? null : updatedAsset;
         }
         return a;
@@ -950,7 +923,6 @@ const App: React.FC = () => {
       setSuccessMessage('매도가 완료되었습니다.');
       setTimeout(() => setSuccessMessage(null), 3000);
       
-      // 자동 저장
       autoSave(updatedAssets, portfolioHistory, sellHistory);
     } catch (error) {
       console.error('Failed to sell asset:', error);
@@ -1006,10 +978,10 @@ const App: React.FC = () => {
             finalAsset = {
               ...finalAsset,
               name: geminiData.name,
-              currentPrice: geminiData.priceOriginal,  // ✅ 수정
+              currentPrice: geminiData.priceOriginal,
               priceOriginal: geminiData.priceOriginal,
               currency: geminiData.currency as Currency,
-              highestPrice: geminiData.priceOriginal,  // ✅ 수정
+              highestPrice: geminiData.priceOriginal,
             };
           }
           
@@ -1024,7 +996,6 @@ const App: React.FC = () => {
         const updated = prevAssets.map(asset => 
           asset.id === updatedAsset.id ? finalAsset : asset
         );
-        // 자동 저장
         autoSave(updated, portfolioHistory, sellHistory);
         return updated;
       });
@@ -1126,10 +1097,10 @@ const App: React.FC = () => {
                               newAsset = {
                                   ...form,
                                   name: geminiData.name,
-                                  currentPrice: geminiData.priceOriginal,  // ✅ 수정
+                                  currentPrice: geminiData.priceOriginal,
                                   priceOriginal: geminiData.priceOriginal,
                                   currency: geminiData.currency as Currency,
-                                  highestPrice: geminiData.priceOriginal,  // ✅ 수정
+                                  highestPrice: geminiData.priceOriginal,
                                   purchaseExchangeRate,
                               };
                             
@@ -1153,7 +1124,6 @@ const App: React.FC = () => {
                     
                     setAssets(prev => {
                         const updated = [...prev, ...newAssets];
-                        // 자동 저장
                         autoSave(updated, portfolioHistory, sellHistory);
                         return updated;
                     });
@@ -1209,7 +1179,6 @@ const App: React.FC = () => {
     });
   };
 
-  // Filtered assets for dashboard
   const dashboardFilteredAssets = useMemo(() => {
       if (dashboardFilterCategory === 'ALL') {
           return assets;
@@ -1217,7 +1186,6 @@ const App: React.FC = () => {
       return assets.filter(asset => asset.category === dashboardFilterCategory);
   }, [assets, dashboardFilterCategory]);
 
-  // Calculations for the dashboard based on the filter
   const dashboardTotalValue = useMemo(() => {
       return dashboardFilteredAssets.reduce((acc, asset) => {
         const v = asset.currentPrice * asset.quantity;
@@ -1235,12 +1203,11 @@ const App: React.FC = () => {
   const dashboardTotalGainLoss = dashboardTotalValue - dashboardTotalPurchaseValue;
   const dashboardTotalReturn = dashboardTotalPurchaseValue === 0 ? 0 : (dashboardTotalGainLoss / dashboardTotalPurchaseValue) * 100;
   
-  // 매도 통계 계산
   const soldAssetsStats = useMemo(() => {
-    let totalSoldAmount = 0; // 총 매도금액
-    let totalSoldPurchaseValue = 0; // 매도된 종목의 매수금액
-    let totalSoldProfit = 0; // 매도 수익
-    let soldCount = 0; // 매도 횟수
+    let totalSoldAmount = 0;
+    let totalSoldPurchaseValue = 0;
+    let totalSoldProfit = 0;
+    let soldCount = 0;
 
     assets.forEach(asset => {
       if (asset.sellTransactions && asset.sellTransactions.length > 0) {
@@ -1248,8 +1215,6 @@ const App: React.FC = () => {
           totalSoldAmount += transaction.sellPrice * transaction.sellQuantity;
           soldCount += 1;
           
-          // 매도된 수량에 대한 매수금액 계산
-          const soldRatio = transaction.sellQuantity / (asset.quantity + transaction.sellQuantity); // 매도 전 수량 기준
           let purchaseValueForSold: number;
           if (asset.currency === Currency.KRW) {
             purchaseValueForSold = asset.purchasePrice * transaction.sellQuantity;
@@ -1315,7 +1280,14 @@ const App: React.FC = () => {
         ];
 
         const rows = assets.map(asset => {
-            const currentValue = asset.currentPrice * asset.quantity;
+            // [수정] CSV 내보내기 시 환율 적용 로직 추가
+            let currentValueKRW = 0;
+            if (asset.currency === Currency.KRW) {
+                currentValueKRW = asset.currentPrice * asset.quantity;
+            } else {
+                const rate = exchangeRates[asset.currency] || 0;
+                currentValueKRW = asset.currentPrice * asset.quantity * rate;
+            }
             
             let purchaseValueKRW;
             if (asset.currency === Currency.KRW) {
@@ -1329,7 +1301,7 @@ const App: React.FC = () => {
                 purchaseValueKRW = asset.purchasePrice * asset.quantity;
             }
             
-            const profitLoss = currentValue - purchaseValueKRW;
+            const profitLoss = currentValueKRW - purchaseValueKRW;
             const returnPercentage = purchaseValueKRW === 0 ? 0 : (profitLoss / purchaseValueKRW) * 100;
             
             const escapeCsvCell = (cell: any) => {
@@ -1349,8 +1321,8 @@ const App: React.FC = () => {
                 asset.purchasePrice,
                 asset.purchaseExchangeRate || 1,
                 Math.round(purchaseValueKRW),
-                Math.round(asset.currentPrice),
-                Math.round(currentValue),
+                Math.round(asset.currentPrice), // 현재 단가는 원래 통화 유지
+                Math.round(currentValueKRW),    // 원화 환산된 총액 사용
                 Math.round(profitLoss),
                 returnPercentage.toFixed(2),
             ].join(',');
@@ -1377,7 +1349,7 @@ const App: React.FC = () => {
     } finally {
         setIsLoading(false);
     }
-  }, [assets, isSignedIn]);
+  }, [assets, isSignedIn, exchangeRates]);
 
   const handleAddWatchItem = useCallback((payload: Omit<WatchlistItem, 'id' | 'currentPrice' | 'priceOriginal' | 'currency' | 'yesterdayPrice' | 'highestPrice' | 'lastSignalAt' | 'lastSignalType'>) => {
     const id = `${Date.now()}`;
@@ -1451,7 +1423,6 @@ const handleRefreshWatchlistPrices = useCallback(async () => {
     setIsWatchlistLoading(true);
     setError(null);
 
-    // 배치로 조회
     const itemsToFetch = watchlist.map(item => ({
       ticker: item.ticker,
       exchange: item.exchange,
@@ -1463,7 +1434,6 @@ const handleRefreshWatchlistPrices = useCallback(async () => {
     const updated = watchlist.map((item) => {
       const d = priceMap.get(item.id);
       if (d && !d.isMocked) {
-        // ✅ 기존 통화가 있으면 유지, 없으면 API 응답 사용
         const newCurrency = item.currency || (d.currency as Currency);
         const newCurrentPrice = item.currency === Currency.KRW 
           ? d.priceKRW 
@@ -1487,12 +1457,10 @@ const handleRefreshWatchlistPrices = useCallback(async () => {
   }, [isSignedIn, watchlist, assets, portfolioHistory, sellHistory, autoSave]);
 
 
-  // Google 로그인 핸들러
   const handleSignIn = useCallback(async () => {
     setIsLoading(true);
     setError(null);  
 
-    // 임시: 클라이언트 ID 확인
     const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
     console.log('=== 디버깅 정보 ===');
     console.log('Client ID:', clientId);
@@ -1524,7 +1492,6 @@ const handleRefreshWatchlistPrices = useCallback(async () => {
     }
   }, []);
 
-  // Google 로그아웃 핸들러
   const handleSignOut = useCallback(() => {
     googleDriveService.signOut();
     setIsSignedIn(false);
@@ -1626,8 +1593,6 @@ const handleRefreshWatchlistPrices = useCallback(async () => {
             </div>
           )}
         </div>
-
-        
 
         {isSignedIn ? (
           <>
