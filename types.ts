@@ -186,7 +186,9 @@ export interface AssetSnapshot {
   name: string;
   currentValue: number;
   purchaseValue: number;
+  unitPrice?: number; // [추가] 1주당 단가 (원화 환산 기준 권장)
 }
+
 export interface PortfolioSnapshot {
   date: string;
   assets: AssetSnapshot[];

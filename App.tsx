@@ -22,7 +22,6 @@ import { runMigrationIfNeeded } from './utils/migrateData';
 
 type ActiveTab = 'dashboard' | 'portfolio' | 'analytics' | 'watchlist';
 
-// Helper function to map old data structures to the new one
 const mapToNewAssetStructure = (asset: any): Asset => {
   let newAsset = { ...asset };
 
@@ -289,35 +288,40 @@ const App: React.FC = () => {
 
   const handleRefreshAllPrices = useCallback(async (isAutoUpdate = false, isScheduled = false) => {
     if (assets.length === 0) return;
+    
     setIsLoading(true);
     setError(null);
     setFailedAssetIds(new Set());
+    
     if (isAutoUpdate || isScheduled) {
         setSuccessMessage('최신 종가 정보를 불러오는 중입니다...');
     } else {
         setSuccessMessage(null);
     }
 
-    // 1. 최신 환율 먼저 가져오기
+    // [중요 변경점 1] 최신 환율을 먼저 가져와서 상태를 업데이트합니다.
+    // 환율 정보가 정확해야 이후 자산 가치 계산(원화 환산 정렬 등)이 맞습니다.
     try {
         const [usdRate, jpyRate] = await Promise.all([
             fetchCurrentExchangeRate(Currency.USD, Currency.KRW),
             fetchCurrentExchangeRate(Currency.JPY, Currency.KRW)
         ]);
-        // 유효한 환율이면 업데이트
-        if (usdRate > 1000) {
-            setExchangeRates(prev => ({ ...prev, USD: usdRate }));
-        }
-        if (jpyRate > 5) {
-            setExchangeRates(prev => ({ ...prev, JPY: jpyRate }));
-        }
+        
+        // 유효한 환율이면 업데이트 (기존보다 안전한 조건 추가)
+        setExchangeRates(prev => ({
+            ...prev,
+            USD: usdRate > 1000 ? usdRate : prev.USD,
+            JPY: jpyRate > 5 ? jpyRate : prev.JPY
+        }));
     } catch (e) {
         console.warn("환율 업데이트 실패, 기존 값 사용", e);
     }
 
+    // 자산 분류 (현금 vs 비현금)
     const cashAssets = assets.filter(a => a.category === AssetCategory.CASH);
     const nonCashAssets = assets.filter(a => a.category !== AssetCategory.CASH);
 
+    // 현금 자산 업데이트 로직
     const cashPromises = cashAssets.map(asset => 
       fetchCurrentExchangeRate(asset.currency, Currency.KRW).then(rate => ({
         id: asset.id,
@@ -329,6 +333,7 @@ const App: React.FC = () => {
       }))
     );
 
+    // 일반 자산 업데이트 로직
     const assetsToFetch = nonCashAssets.map(a => ({
       ticker: a.ticker,
       exchange: a.exchange,
@@ -345,6 +350,7 @@ const App: React.FC = () => {
       const failedIds: string[] = [];
 
       const updatedAssets = assets.map((asset) => {
+        // 1. 현금 자산 처리
         if (asset.category === AssetCategory.CASH) {
           const cashIdx = cashAssets.findIndex(ca => ca.id === asset.id);
           const result = cashResults[cashIdx];
@@ -365,6 +371,7 @@ const App: React.FC = () => {
           return asset;
         }
 
+        // 2. 일반 자산 처리
         const priceData = batchPriceMap.get(asset.id);
         if (priceData && !priceData.isMocked) {
           const shouldKeepOriginalCurrency = asset.category === AssetCategory.CRYPTOCURRENCY;
@@ -374,16 +381,14 @@ const App: React.FC = () => {
             ? priceData.priceKRW 
             : priceData.priceOriginal;
           
-          // [수정] 모든 KRW 자산(특히 암호화폐)에 대해 어제 가격 단위 불일치 자동 보정
-          // 논리: 현재가와 어제가격의 비율이 50배 이상 차이나면 단위 오류로 간주 (예: 1400원 vs 1달러)
+          // [중요 변경점 2] KRW 자산 단위 오류 자동 보정 로직
           let newYesterdayPrice = priceData.pricePreviousClose;
           
           if (asset.currency === Currency.KRW && newYesterdayPrice > 0) {
              const ratio = newCurrentPrice / newYesterdayPrice;
-             // 50배 이상 차이나거나, 0.02배 이하로 작으면 (역방향) 환율 문제일 가능성 높음
+             // 가격 차이가 50배 이상 나거나 0.02배 이하일 때 (단위 오류 의심 시) 보정
              if (ratio > 50 || ratio < 0.02) {
                  const impliedRate = priceData.priceOriginal > 0 ? (priceData.priceKRW / priceData.priceOriginal) : 1450;
-                 // 현재가가 훨씬 크면 어제가격에 환율을 곱해줌
                  if (ratio > 50) {
                     newYesterdayPrice = newYesterdayPrice * impliedRate;
                  }
@@ -398,6 +403,7 @@ const App: React.FC = () => {
             highestPrice: Math.max(asset.highestPrice, newCurrentPrice),
           };
         } else {
+          // 실패 시
           console.error(`Failed to refresh price for ${asset.ticker}`);
           failedTickers.push(asset.ticker);
           failedIds.push(asset.id);
@@ -434,30 +440,36 @@ const App: React.FC = () => {
     setIsLoading(false);
   }, [assets, portfolioHistory, sellHistory, autoSave, isSignedIn]);
 
-  const handleRefreshSelectedPrices = useCallback(async (ids: string[]) => {
-    if (ids.length === 0) {
-      return;
-    }
+ const handleRefreshSelectedPrices = useCallback(async (ids: string[]) => {
+    if (ids.length === 0) return;
+    
     setIsLoading(true);
     setError(null);
 
     const idSet = new Set(ids);
     const targetAssets = assets.filter(a => idSet.has(a.id));
+    
+    // 현금과 비현금 자산 분리
     const cashAssets = targetAssets.filter(a => a.category === AssetCategory.CASH);
     const nonCashAssets = targetAssets.filter(a => a.category !== AssetCategory.CASH);
-
+    
+    // 현금 자산 환율 업데이트 준비
     const cashPromises = cashAssets.map(asset => 
       fetchCurrentExchangeRate(asset.currency, Currency.KRW).then(rate => ({
-        id: asset.id,
-        name: `현금 (${asset.currency})`,
-        priceKRW: rate * asset.priceOriginal,
-        priceOriginal: asset.priceOriginal,
-        currency: asset.currency,
-        pricePreviousClose: rate * asset.priceOriginal,
+        id: asset.id, 
+        priceKRW: rate * asset.priceOriginal, 
+        priceOriginal: asset.priceOriginal, 
+        currency: asset.currency, 
+        pricePreviousClose: rate * asset.priceOriginal
       }))
     );
 
-    const itemsToFetch = nonCashAssets.map(a => ({ ticker: a.ticker, exchange: a.exchange, id: a.id }));
+    // 일반 자산 가격 업데이트 준비
+    const itemsToFetch = nonCashAssets.map(a => ({ 
+      ticker: a.ticker, 
+      exchange: a.exchange, 
+      id: a.id 
+    }));
 
     try {
       const [cashResults, batchPriceMap] = await Promise.all([
@@ -465,89 +477,72 @@ const App: React.FC = () => {
         fetchBatchAssetPrices(itemsToFetch)
       ]);
 
-      const failedTickers: string[] = [];
-      const failedIds: string[] = [];
-
       const updatedAssets = assets.map((asset) => {
-        if (!idSet.has(asset.id)) return asset;
-        if (asset.category === AssetCategory.CASH) {
-          const cashIdx = cashAssets.findIndex(ca => ca.id === asset.id);
-          const result = cashResults[cashIdx];
-          if (result && result.status === 'fulfilled') {
-            const data = result.value;
-            return {
-              ...asset,
-              yesterdayPrice: data.pricePreviousClose,
-              currentPrice: data.priceKRW,
-              priceOriginal: data.priceOriginal,
-              currency: data.currency as Currency,
-              highestPrice: Math.max(asset.highestPrice, data.priceOriginal),
+          // 선택되지 않은 자산은 그대로 유지
+          if (!idSet.has(asset.id)) return asset;
+
+          // 1. 현금 자산 업데이트
+          if (asset.category === AssetCategory.CASH) {
+            const cashIdx = cashAssets.findIndex(ca => ca.id === asset.id);
+            const result = cashResults[cashIdx];
+            if (result && result.status === 'fulfilled') {
+                const data = result.value;
+                return { 
+                  ...asset, 
+                  yesterdayPrice: data.pricePreviousClose, 
+                  currentPrice: data.priceKRW, 
+                  priceOriginal: data.priceOriginal, 
+                  currency: data.currency as Currency, 
+                  highestPrice: Math.max(asset.highestPrice, data.priceOriginal) 
+                };
+            }
+            return asset;
+          }
+
+          // 2. 일반 자산 업데이트
+          const priceData = batchPriceMap.get(asset.id);
+          if (priceData && !priceData.isMocked) {
+            const shouldKeepOriginalCurrency = asset.category === AssetCategory.CRYPTOCURRENCY;
+            const newCurrency = shouldKeepOriginalCurrency ? asset.currency : (priceData.currency as Currency);
+            
+            const newCurrentPrice = asset.currency === Currency.KRW ? priceData.priceKRW : priceData.priceOriginal;
+            
+            // KRW 단위 오류 보정 로직 (handleRefreshAllPrices와 동일)
+            let newYesterdayPrice = priceData.pricePreviousClose;
+            if (asset.currency === Currency.KRW && newYesterdayPrice > 0) {
+                  const ratio = newCurrentPrice / newYesterdayPrice;
+                  if (ratio > 50 || ratio < 0.02) {
+                      const impliedRate = priceData.priceOriginal > 0 ? (priceData.priceKRW / priceData.priceOriginal) : 1450;
+                      if (ratio > 50) newYesterdayPrice = newYesterdayPrice * impliedRate;
+                  }
+            }
+
+            return { 
+              ...asset, 
+              yesterdayPrice: newYesterdayPrice, 
+              currentPrice: newCurrentPrice, 
+              currency: newCurrency, 
+              highestPrice: Math.max(asset.highestPrice, newCurrentPrice) 
             };
           }
-          failedTickers.push(asset.ticker);
-          failedIds.push(asset.id);
-          return asset;
-        }
-        const priceData = batchPriceMap.get(asset.id);
-        if (priceData && !priceData.isMocked) {
-          const shouldKeepOriginalCurrency = asset.category === AssetCategory.CRYPTOCURRENCY;
-          const newCurrency = shouldKeepOriginalCurrency ? asset.currency : (priceData.currency as Currency);
           
-          const newCurrentPrice = asset.currency === Currency.KRW 
-            ? priceData.priceKRW 
-            : priceData.priceOriginal;
-          
-          let newYesterdayPrice = priceData.pricePreviousClose;
-          // [수정] 부분 업데이트 시에도 동일한 보정 로직 적용
-          if (asset.currency === Currency.KRW && newYesterdayPrice > 0) {
-             const ratio = newCurrentPrice / newYesterdayPrice;
-             if (ratio > 50 || ratio < 0.02) {
-                 const impliedRate = priceData.priceOriginal > 0 ? (priceData.priceKRW / priceData.priceOriginal) : 1450;
-                 if (ratio > 50) {
-                    newYesterdayPrice = newYesterdayPrice * impliedRate;
-                 }
-             }
-          }
-
-          return {
-            ...asset,
-            yesterdayPrice: newYesterdayPrice,
-            currentPrice: newCurrentPrice,
-            currency: newCurrency,
-            highestPrice: Math.max(asset.highestPrice, newCurrentPrice),
-          };
-        } else {
-          console.error(`Failed to refresh price for ${asset.ticker}`);
-          failedTickers.push(asset.ticker);
-          failedIds.push(asset.id);
           return asset;
-        }
       });
 
       setAssets(updatedAssets);
-      setFailedAssetIds(prev => {
-        const next = new Set(prev);
-        failedIds.forEach(id => next.add(id));
-        return next;
-      });
-
-      if (failedTickers.length > 0) {
-        setError(`${failedTickers.join(', ')} 가격 갱신에 실패했습니다.`);
-        setTimeout(() => setError(null), 3000);
-      } else {
-        setSuccessMessage('선택한 자산의 가격을 성공적으로 업데이트했습니다.');
-        setTimeout(() => setSuccessMessage(null), 5000);
-        if (isSignedIn) {
-          autoSave(updatedAssets, portfolioHistory, sellHistory);
-        }
+      setSuccessMessage('선택한 자산 업데이트 완료'); 
+      setTimeout(() => setSuccessMessage(null), 3000);
+      
+      if (isSignedIn) {
+        autoSave(updatedAssets, portfolioHistory, sellHistory);
       }
-    } catch (error) {
-      console.error('Selected price refresh failed:', error);
-      setError('선택 자산 업데이트 중 오류가 발생했습니다.');
-      setTimeout(() => setError(null), 3000);
+    } catch (error) { 
+      console.error('Selected update failed:', error);
+      setError('선택한 항목 업데이트 중 오류가 발생했습니다.'); 
+      setTimeout(() => setError(null), 3000); 
+    } finally {
+      setIsLoading(false);
     }
-
-    setIsLoading(false);
   }, [assets, autoSave, portfolioHistory, sellHistory, isSignedIn]);
 
   const handleRefreshOnePrice = useCallback(async (assetId: string) => {
@@ -585,23 +580,21 @@ const App: React.FC = () => {
   }, [assets, autoSave, portfolioHistory, sellHistory]);
 
 
-
-  useEffect(() => {
+useEffect(() => {
     const updatePortfolioHistory = () => {
       if (assets.length === 0) return;
 
       const today = new Date().toISOString().slice(0, 10);
       
-const newAssetSnapshots: AssetSnapshot[] = assets.map(asset => {
-        // [수정] 히스토리 저장 시에도 대시보드 환율값 사용 (하드코딩 제거)
+      const newAssetSnapshots: AssetSnapshot[] = assets.map(asset => {
         let currentValueKRW = 0;
-        if (asset.currency === Currency.KRW) {
-            currentValueKRW = asset.currentPrice * asset.quantity;
-        } else {
-            // [변경] exchangeRates에 있는 값을 그대로 사용
-            const rate = exchangeRates[asset.currency] || 0;
-            currentValueKRW = asset.currentPrice * asset.quantity * rate;
-        }
+        // [중요] 원화 환산 단가 계산 (차트용)
+        let unitPriceKRW = 0;
+        
+        const rate = (asset.currency !== Currency.KRW) ? (exchangeRates[asset.currency] || 0) : 1;
+        
+        currentValueKRW = asset.currentPrice * asset.quantity * rate;
+        unitPriceKRW = asset.currentPrice * rate; // 1주당 현재가(원화)
 
         let purchaseValueKRW;
          if (asset.currency === Currency.KRW) {
@@ -614,11 +607,13 @@ const newAssetSnapshots: AssetSnapshot[] = assets.map(asset => {
         } else {
             purchaseValueKRW = asset.purchasePrice * asset.quantity;
         }
+        
         return {
           id: asset.id,
           name: (asset.customName?.trim() || asset.name),
-          currentValue: currentValueKRW, // 원화 환산 값 저장
+          currentValue: currentValueKRW,
           purchaseValue: purchaseValueKRW,
+          unitPrice: unitPriceKRW, // [추가] 중요: 단가 기록 (이 값이 있어야 차트가 정확히 나옵니다)
         };
       });
 
@@ -631,12 +626,15 @@ const newAssetSnapshots: AssetSnapshot[] = assets.map(asset => {
         const todayIndex = prevHistory.findIndex(snap => snap.date === today);
         let updatedHistory;
         if (todayIndex > -1) {
+          // 오늘 데이터가 이미 있으면 갱신
           updatedHistory = [...prevHistory];
           updatedHistory[todayIndex] = newSnapshot;
         } else {
+          // 없으면 추가
           updatedHistory = [...prevHistory, newSnapshot];
         }
         
+        // 최근 365일 데이터만 유지
         if (updatedHistory.length > 365) {
             updatedHistory = updatedHistory.slice(updatedHistory.length - 365);
         }
@@ -645,8 +643,9 @@ const newAssetSnapshots: AssetSnapshot[] = assets.map(asset => {
       });
     };
     
+    // 자산 정보나 환율이 변경될 때마다 히스토리(오늘자 데이터)를 갱신
     updatePortfolioHistory();
-  }, [assets, exchangeRates]); // exchangeRates 변경 시에도 히스토리 업데이트
+  }, [assets, exchangeRates]);
 
   const filteredAssets = useMemo(() => {
     let filtered = assets;
