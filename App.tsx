@@ -26,7 +26,6 @@ type ActiveTab = 'dashboard' | 'portfolio' | 'analytics' | 'watchlist';
 const mapToNewAssetStructure = (asset: any): Asset => {
   let newAsset = { ...asset };
 
-  // 1. Add missing properties from older versions
   if (!newAsset.exchange) newAsset.exchange = EXCHANGE_MAP[newAsset.category]?.[0] || '';
   if (!newAsset.currency) {
       newAsset.currency = Currency.KRW;
@@ -36,7 +35,6 @@ const mapToNewAssetStructure = (asset: any): Asset => {
       newAsset.purchaseExchangeRate = newAsset.currency === Currency.KRW ? 1 : undefined;
   }
 
-  // 2. Remap categories and remove region
   const oldCategory = newAsset.category;
   if (['주식', 'ETF'].includes(oldCategory)) {
       if (newAsset.exchange?.startsWith('KRX')) {
@@ -64,7 +62,6 @@ const mapToNewAssetStructure = (asset: any): Asset => {
       newAsset.category = AssetCategory.OTHER_FOREIGN_STOCK;
   }
 
-  // 3. Remove legacy region data
   if ('region' in newAsset) {
     delete newAsset.region;
   }
@@ -100,7 +97,6 @@ const App: React.FC = () => {
     initGoogleDrive();
   }, []);
 
-  // Google Drive에서 데이터 로드
   const loadFromGoogleDrive = useCallback(async () => {
     try {
       const fileContent = await googleDriveService.loadFile();
@@ -125,7 +121,13 @@ const App: React.FC = () => {
           setWatchlist([]);
         }
         if (data.exchangeRates) {
-          setExchangeRates(data.exchangeRates);
+          // 환율 정보가 유효한지 확인하고 기본값 설정
+          const rates = data.exchangeRates;
+          if (!rates.USD || rates.USD < 100) rates.USD = 1450;
+          if (!rates.JPY || rates.JPY < 1) rates.JPY = 9.5;
+          setExchangeRates(rates);
+        } else {
+           setExchangeRates({ USD: 1450, JPY: 9.5 });
         }
         setSuccessMessage('Google Drive에서 포트폴리오를 불러왔습니다.');
         setTimeout(() => setSuccessMessage(null), 3000);
@@ -149,7 +151,7 @@ const App: React.FC = () => {
   const [portfolioHistory, setPortfolioHistory] = useState<PortfolioSnapshot[]>([]);
   const [sellHistory, setSellHistory] = useState<SellRecord[]>([]);
   const [watchlist, setWatchlist] = useState<WatchlistItem[]>([]);
-  const [exchangeRates, setExchangeRates] = useState<ExchangeRates>({ USD: 0, JPY: 0 });
+  const [exchangeRates, setExchangeRates] = useState<ExchangeRates>({ USD: 1450, JPY: 9.5 }); // 기본값 설정
   const [hasAutoUpdated, setHasAutoUpdated] = useState<boolean>(false);
 
   useEffect(() => {
@@ -194,7 +196,7 @@ const App: React.FC = () => {
   const showExchangeRateWarning = useMemo(() => {
     const hasUSD = assets.some(a => a.currency === Currency.USD);
     const hasJPY = assets.some(a => a.currency === Currency.JPY);
-    return (hasUSD && !exchangeRates.USD) || (hasJPY && !exchangeRates.JPY);
+    return (hasUSD && (!exchangeRates.USD || exchangeRates.USD < 100)) || (hasJPY && (!exchangeRates.JPY || exchangeRates.JPY < 1));
   }, [assets, exchangeRates]);
   
 
@@ -296,6 +298,23 @@ const App: React.FC = () => {
         setSuccessMessage(null);
     }
 
+    // 1. 최신 환율 먼저 가져오기
+    try {
+        const [usdRate, jpyRate] = await Promise.all([
+            fetchCurrentExchangeRate(Currency.USD, Currency.KRW),
+            fetchCurrentExchangeRate(Currency.JPY, Currency.KRW)
+        ]);
+        // 유효한 환율이면 업데이트
+        if (usdRate > 1000) {
+            setExchangeRates(prev => ({ ...prev, USD: usdRate }));
+        }
+        if (jpyRate > 5) {
+            setExchangeRates(prev => ({ ...prev, JPY: jpyRate }));
+        }
+    } catch (e) {
+        console.warn("환율 업데이트 실패, 기존 값 사용", e);
+    }
+
     const cashAssets = assets.filter(a => a.category === AssetCategory.CASH);
     const nonCashAssets = assets.filter(a => a.category !== AssetCategory.CASH);
 
@@ -355,13 +374,20 @@ const App: React.FC = () => {
             ? priceData.priceKRW 
             : priceData.priceOriginal;
           
-          // [수정] 비트코인 등 어제 가격 단위 불일치 자동 보정 로직
+          // [수정] 모든 KRW 자산(특히 암호화폐)에 대해 어제 가격 단위 불일치 자동 보정
+          // 논리: 현재가와 어제가격의 비율이 50배 이상 차이나면 단위 오류로 간주 (예: 1400원 vs 1달러)
           let newYesterdayPrice = priceData.pricePreviousClose;
           
-          // 현재가는 KRW(억 단위)인데 어제 가격이 USD(만 단위) 수준으로 작다면 환율 보정
-          if (asset.currency === Currency.KRW && newCurrentPrice > 1000000 && newYesterdayPrice < 200000) {
-             const impliedRate = priceData.priceOriginal > 0 ? (priceData.priceKRW / priceData.priceOriginal) : 1450;
-             newYesterdayPrice = newYesterdayPrice * impliedRate;
+          if (asset.currency === Currency.KRW && newYesterdayPrice > 0) {
+             const ratio = newCurrentPrice / newYesterdayPrice;
+             // 50배 이상 차이나거나, 0.02배 이하로 작으면 (역방향) 환율 문제일 가능성 높음
+             if (ratio > 50 || ratio < 0.02) {
+                 const impliedRate = priceData.priceOriginal > 0 ? (priceData.priceKRW / priceData.priceOriginal) : 1450;
+                 // 현재가가 훨씬 크면 어제가격에 환율을 곱해줌
+                 if (ratio > 50) {
+                    newYesterdayPrice = newYesterdayPrice * impliedRate;
+                 }
+             }
           }
 
           return {
@@ -471,9 +497,21 @@ const App: React.FC = () => {
             ? priceData.priceKRW 
             : priceData.priceOriginal;
           
+          let newYesterdayPrice = priceData.pricePreviousClose;
+          // [수정] 부분 업데이트 시에도 동일한 보정 로직 적용
+          if (asset.currency === Currency.KRW && newYesterdayPrice > 0) {
+             const ratio = newCurrentPrice / newYesterdayPrice;
+             if (ratio > 50 || ratio < 0.02) {
+                 const impliedRate = priceData.priceOriginal > 0 ? (priceData.priceKRW / priceData.priceOriginal) : 1450;
+                 if (ratio > 50) {
+                    newYesterdayPrice = newYesterdayPrice * impliedRate;
+                 }
+             }
+          }
+
           return {
             ...asset,
-            yesterdayPrice: priceData.pricePreviousClose,
+            yesterdayPrice: newYesterdayPrice,
             currentPrice: newCurrentPrice,
             currency: newCurrency,
             highestPrice: Math.max(asset.highestPrice, newCurrentPrice),
@@ -554,8 +592,17 @@ const App: React.FC = () => {
 
       const today = new Date().toISOString().slice(0, 10);
       
-      const newAssetSnapshots: AssetSnapshot[] = assets.map(asset => {
-        const currentValue = asset.currentPrice * asset.quantity;
+const newAssetSnapshots: AssetSnapshot[] = assets.map(asset => {
+        // [수정] 히스토리 저장 시에도 대시보드 환율값 사용 (하드코딩 제거)
+        let currentValueKRW = 0;
+        if (asset.currency === Currency.KRW) {
+            currentValueKRW = asset.currentPrice * asset.quantity;
+        } else {
+            // [변경] exchangeRates에 있는 값을 그대로 사용
+            const rate = exchangeRates[asset.currency] || 0;
+            currentValueKRW = asset.currentPrice * asset.quantity * rate;
+        }
+
         let purchaseValueKRW;
          if (asset.currency === Currency.KRW) {
             purchaseValueKRW = asset.purchasePrice * asset.quantity;
@@ -570,7 +617,7 @@ const App: React.FC = () => {
         return {
           id: asset.id,
           name: (asset.customName?.trim() || asset.name),
-          currentValue,
+          currentValue: currentValueKRW, // 원화 환산 값 저장
           purchaseValue: purchaseValueKRW,
         };
       });
@@ -599,7 +646,7 @@ const App: React.FC = () => {
     };
     
     updatePortfolioHistory();
-  }, [assets]);
+  }, [assets, exchangeRates]); // exchangeRates 변경 시에도 히스토리 업데이트
 
   const filteredAssets = useMemo(() => {
     let filtered = assets;
@@ -644,7 +691,7 @@ const App: React.FC = () => {
       setTimeout(() => setError(null), 3000);
     }
     setIsLoading(false);
-  }, [assets, portfolioHistory, isSignedIn]);
+  }, [assets, portfolioHistory, isSignedIn, exchangeRates]);
 
   const handleExportAssetsToFile = useCallback(async () => {
     if (!isSignedIn) {
@@ -685,7 +732,7 @@ const App: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [assets, portfolioHistory, fileName, isSignedIn]);
+  }, [assets, portfolioHistory, fileName, isSignedIn, exchangeRates]);
 
   const handleImportAssetsFromFile = useCallback(async () => {
     if (!isSignedIn) {
@@ -730,6 +777,9 @@ const App: React.FC = () => {
               }
               if (Array.isArray(loadedData.watchlist)) {
                 loadedWatchlist = loadedData.watchlist;
+              }
+              if (loadedData.exchangeRates) {
+                  setExchangeRates(loadedData.exchangeRates);
               }
             } else {
               throw new Error("Invalid file format.");
@@ -1147,15 +1197,11 @@ const App: React.FC = () => {
   }, [autoSave, portfolioHistory, isSignedIn]);
 
   const getValueInKRW = useCallback((value: number, currency: Currency): number => {
-    switch (currency) {
-      case Currency.USD:
-        return value * (exchangeRates.USD || 0);
-      case Currency.JPY:
-        return value * (exchangeRates.JPY || 0);
-      case Currency.KRW:
-      default:
-        return value;
-    }
+    if (currency === Currency.KRW) return value;
+    
+    // 환율 정보가 있으면 쓰고, 없으면 0으로 처리 (대시보드 입력값 우선)
+    const rate = exchangeRates[currency] || 0;
+    return value * rate;
   }, [exchangeRates]);
   const totalValue = useMemo(() => {
     return assets.reduce((acc, asset) => {
@@ -1279,13 +1325,22 @@ const App: React.FC = () => {
             '현재단가(원화)', '현재평가금액(원화)', '총손익(원화)', '수익률(%)'
         ];
 
-        const rows = assets.map(asset => {
-            // [수정] CSV 내보내기 시 환율 적용 로직 추가
+const rows = assets.map(asset => {
+            // [수정] CSV 내보내기 시 하드코딩된 환율 제거 및 대시보드 값 적용
+            let currentPriceKRW = 0;
             let currentValueKRW = 0;
+            
+            // [변경] exchangeRates 상태값 그대로 사용 (없으면 0)
+            let rate = 1;
+            if (asset.currency !== Currency.KRW) {
+                rate = exchangeRates[asset.currency] || 0;
+            }
+
             if (asset.currency === Currency.KRW) {
+                currentPriceKRW = asset.currentPrice;
                 currentValueKRW = asset.currentPrice * asset.quantity;
             } else {
-                const rate = exchangeRates[asset.currency] || 0;
+                currentPriceKRW = asset.currentPrice * rate;
                 currentValueKRW = asset.currentPrice * asset.quantity * rate;
             }
             
@@ -1321,8 +1376,8 @@ const App: React.FC = () => {
                 asset.purchasePrice,
                 asset.purchaseExchangeRate || 1,
                 Math.round(purchaseValueKRW),
-                Math.round(asset.currentPrice), // 현재 단가는 원래 통화 유지
-                Math.round(currentValueKRW),    // 원화 환산된 총액 사용
+                Math.round(currentPriceKRW),    // [수정] 환율 적용된 원화 단가 사용
+                Math.round(currentValueKRW),    // [수정] 환율 적용된 총액 사용
                 Math.round(profitLoss),
                 returnPercentage.toFixed(2),
             ].join(',');
@@ -1351,6 +1406,7 @@ const App: React.FC = () => {
     }
   }, [assets, isSignedIn, exchangeRates]);
 
+  // (이하 나머지 코드는 동일하게 유지...)
   const handleAddWatchItem = useCallback((payload: Omit<WatchlistItem, 'id' | 'currentPrice' | 'priceOriginal' | 'currency' | 'yesterdayPrice' | 'highestPrice' | 'lastSignalAt' | 'lastSignalType'>) => {
     const id = `${Date.now()}`;
     const item: WatchlistItem = { ...payload, id } as WatchlistItem;
@@ -1461,12 +1517,6 @@ const handleRefreshWatchlistPrices = useCallback(async () => {
     setIsLoading(true);
     setError(null);  
 
-    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-    console.log('=== 디버깅 정보 ===');
-    console.log('Client ID:', clientId);
-    console.log('Client ID 길이:', clientId?.length);
-    console.log('==================');
-    
     try {
       const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
       if (!clientId) {
