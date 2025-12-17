@@ -1,9 +1,10 @@
 import React, { useMemo } from 'react';
-import { Asset, AssetCategory, Currency } from '../types';
+import { Asset, AssetCategory, Currency, ExchangeRates } from '../types';
 
 interface CategorySummaryTableProps {
     assets: Asset[];
     totalPortfolioValue: number;
+    exchangeRates: ExchangeRates;
 }
 
 interface SummaryData {
@@ -14,7 +15,7 @@ interface SummaryData {
     allocation: number;
 }
 
-const CategorySummaryTable: React.FC<CategorySummaryTableProps> = ({ assets, totalPortfolioValue }) => {
+const CategorySummaryTable: React.FC<CategorySummaryTableProps> = ({ assets, totalPortfolioValue, exchangeRates }) => {
     const summaryData = useMemo((): SummaryData[] => {
         const categoryMap = new Map<AssetCategory, { totalValue: number; totalPurchaseValue: number }>();
 
@@ -24,19 +25,23 @@ const CategorySummaryTable: React.FC<CategorySummaryTableProps> = ({ assets, tot
             }
             const data = categoryMap.get(asset.category)!;
 
-            const currentValue = asset.currentPrice * asset.quantity;
-            data.totalValue += currentValue;
+            // [수정] 현재가 환율 적용
+            const rate = asset.currency === Currency.KRW ? 1 : (exchangeRates[asset.currency] || 0);
+            const currentValueKRW = asset.currentPrice * asset.quantity * rate;
+            
+            data.totalValue += currentValueKRW;
 
+            // [수정] 매수가 계산 로직 (기존 로직 유지하되 안전장치 추가)
             let purchaseValueKRW;
             if (asset.currency === Currency.KRW) {
                 purchaseValueKRW = asset.purchasePrice * asset.quantity;
             } else if (asset.purchaseExchangeRate) {
                 purchaseValueKRW = asset.purchasePrice * asset.purchaseExchangeRate * asset.quantity;
             } else if (asset.priceOriginal > 0) {
-                const exchangeRate = asset.currentPrice / asset.priceOriginal;
-                purchaseValueKRW = asset.purchasePrice * exchangeRate * asset.quantity;
+                const impliedRate = asset.currentPrice / asset.priceOriginal;
+                purchaseValueKRW = asset.purchasePrice * impliedRate * asset.quantity;
             } else {
-                purchaseValueKRW = asset.purchasePrice * asset.quantity;
+                purchaseValueKRW = asset.purchasePrice * asset.quantity * rate;
             }
             data.totalPurchaseValue += purchaseValueKRW;
         });
@@ -57,7 +62,7 @@ const CategorySummaryTable: React.FC<CategorySummaryTableProps> = ({ assets, tot
         
         return result.sort((a, b) => b.totalValue - a.totalValue);
 
-    }, [assets, totalPortfolioValue]);
+    }, [assets, totalPortfolioValue, exchangeRates]);
 
     const formatKRW = (num: number) => {
         return new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW', maximumFractionDigits: 0 }).format(num);
@@ -69,9 +74,7 @@ const CategorySummaryTable: React.FC<CategorySummaryTableProps> = ({ assets, tot
         return 'text-gray-400';
     };
 
-    if (summaryData.length === 0) {
-        return null; 
-    }
+    if (summaryData.length === 0) return null;
 
     return (
         <div className="bg-gray-800 p-6 rounded-lg shadow-lg" title="자산 종류별 요약 정보입니다.">

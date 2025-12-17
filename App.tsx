@@ -1717,10 +1717,14 @@ const handleRefreshWatchlistPrices = useCallback(async () => {
                   <ProfitLossChart history={portfolioHistory} assetsToDisplay={dashboardFilteredAssets} title={profitLossChartTitle} />
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     <div className="lg:col-span-1">
-                      <AllocationChart assets={assets} />
+                      <AllocationChart assets={assets} exchangeRates={exchangeRates} />
                     </div>
                     <div className="lg:col-span-1">
-                       <CategorySummaryTable assets={assets} totalPortfolioValue={totalValue} />
+                       <CategorySummaryTable 
+                        assets={assets} 
+                        totalPortfolioValue={totalValue} 
+                        exchangeRates={exchangeRates} 
+                       />
                     </div>
                   </div>
                   <TopBottomAssets assets={assets} />
