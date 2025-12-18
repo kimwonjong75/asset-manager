@@ -1,71 +1,168 @@
-// src/services/priceService.ts
-import { Asset, AssetCategory } from '../types';
-import { fetchUpbitPricesBatch, toUpbitPair } from './upbitService';
+import { AssetCategory, Currency, AssetDataResult, normalizeExchange } from '../types';
 
-// [중요] 아까 구글 클라우드 콘솔에서 복사한 URL을 아래 따옴표 안에 넣으세요!
-const GOOGLE_FUNCTION_URL = 'https://asset-manager-887842923289.asia-northeast3.run.app'; 
+const STOCK_API_URL = 'https://asset-manager-887842923289.asia-northeast3.run.app';
 
-export interface PriceData {
-  price: number;
-  prevClose: number;
+function toNumber(v: any, fallback = 0): number {
+  const n = Number(v);
+  return isFinite(n) ? n : fallback;
 }
 
-export const updateAssetPrices = async (assets: Asset[]): Promise<Map<string, PriceData>> => {
-  const resultMap = new Map<string, PriceData>();
-  
-  const cryptoSymbols: string[] = [];
-  const stockSymbols: string[] = [];
+function createMockResult(ticker: string): AssetDataResult {
+  return {
+    name: ticker,
+    priceOriginal: 0,
+    priceKRW: 0,
+    currency: 'KRW',
+    pricePreviousClose: 0,
+    highestPrice: 0,
+    isMocked: true,
+  };
+}
 
-  // 1. 자산 분류
-  assets.forEach(asset => {
-    if (asset.category === AssetCategory.CRYPTOCURRENCY) {
-      cryptoSymbols.push(asset.ticker);
-    } else {
-      stockSymbols.push(asset.ticker);
-    }
+async function fetchUpbitTicker(markets: string[]): Promise<any[]> {
+  if (markets.length === 0) return [];
+  const url = `https://api.upbit.com/v1/ticker?markets=${encodeURIComponent(markets.join(','))}`;
+  const res = await fetch(url, { headers: { Accept: 'application/json' } });
+  if (!res.ok) throw new Error(`Upbit API failed: ${res.status}`);
+  return await res.json();
+}
+
+async function fetchStocksBatch(payload: Array<{ ticker: string; exchange?: string }>): Promise<any> {
+  const res = await fetch(STOCK_API_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ tickers: payload }),
   });
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(`Stock API failed: ${res.status} ${text}`);
+  }
+  try {
+    return await res.json();
+  } catch {
+    const text = await res.text().catch(() => '');
+    throw new Error(`Stock API returned non-JSON: ${text}`);
+  }
+}
 
-  // 2. 암호화폐 조회 (브라우저 -> 업비트 직접 요청)
-  if (cryptoSymbols.length > 0) {
-    const upbitResults = await fetchUpbitPricesBatch(cryptoSymbols);
-    upbitResults.forEach((data, key) => {
-      resultMap.set(key, {
-          price: data.trade_price,
-          prevClose: data.prev_closing_price
-      });
+export async function fetchBatchAssetPrices(
+  assets: { ticker: string; exchange: string; id: string; category?: AssetCategory; currency?: Currency }[],
+): Promise<Map<string, AssetDataResult>> {
+  const resultMap = new Map<string, AssetDataResult>();
+  if (assets.length === 0) return resultMap;
+
+  const cryptoItems = assets.filter(a => (a.category === AssetCategory.CRYPTOCURRENCY) || normalizeExchange(a.exchange) === '주요 거래소 (종합)');
+  const stockItems = assets.filter(a => !cryptoItems.includes(a));
+
+  // Crypto (Upbit KRW market)
+  try {
+    const markets = cryptoItems.map(a => `KRW-${a.ticker.toUpperCase()}`);
+    const upbitData = await fetchUpbitTicker(markets);
+    upbitData.forEach((item: any) => {
+      const market: string = item.market || '';
+      const ticker = market.replace(/^KRW-/, '');
+      const matched = cryptoItems.find(a => a.ticker.toUpperCase() === ticker.toUpperCase());
+      if (!matched) return;
+      const price = toNumber(item.trade_price, 0);
+      const prev = toNumber(item.prev_closing_price, price);
+      const result: AssetDataResult = {
+        name: matched.ticker,
+        priceOriginal: price,
+        priceKRW: price,
+        currency: 'KRW',
+        pricePreviousClose: prev,
+        highestPrice: price * 1.1,
+        isMocked: false,
+      };
+      resultMap.set(matched.id, result);
     });
+  } catch (e) {
+    cryptoItems.forEach(a => resultMap.set(a.id, createMockResult(a.ticker)));
   }
 
-  // 3. 주식/기타 조회 (브라우저 -> 구글 클라우드 함수 요청)
-  if (stockSymbols.length > 0) {
-    try {
-      const response = await fetch(GOOGLE_FUNCTION_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ tickers: stockSymbols }),
+  // Stocks (Cloud Run)
+  try {
+    if (stockItems.length > 0) {
+      const payload = stockItems.map(s => ({ ticker: s.ticker, exchange: normalizeExchange(s.exchange) }));
+      const data = await fetchStocksBatch(payload);
+      const arr: any[] = Array.isArray(data?.results) ? data.results : (Array.isArray(data) ? data : []);
+      arr.forEach((item: any) => {
+        const ticker = String(item.ticker ?? item.symbol ?? '').toUpperCase();
+        const matched = stockItems.find(a => a.ticker.toUpperCase() === ticker);
+        if (!matched) return;
+        const priceOrig = toNumber(item.priceOriginal ?? item.price ?? item.close, 0);
+        const prev = toNumber(item.previousClose ?? item.prev_close ?? item.yesterdayPrice, priceOrig);
+        const currency = String(item.currency ?? matched.currency ?? Currency.USD);
+        const priceKRW = typeof item.priceKRW === 'number'
+          ? item.priceKRW
+          : (currency === Currency.KRW ? priceOrig : priceOrig);
+        const name = String(item.name ?? matched.ticker);
+        const result: AssetDataResult = {
+          name,
+          priceOriginal: priceOrig,
+          priceKRW,
+          currency,
+          pricePreviousClose: prev,
+          highestPrice: (currency === Currency.KRW ? priceKRW : priceOrig) * 1.1,
+          isMocked: false,
+        };
+        resultMap.set(matched.id, result);
       });
-
-      if (response.ok) {
-        const data = await response.json();
-        // data 형식: { "005930": { "price": 70000, "prev_close": ... }, ... }
-        
-        Object.entries(data).forEach(([ticker, val]: [string, any]) => {
-            if (val && val.price) {
-                resultMap.set(ticker, {
-                    price: val.price,
-                    prevClose: val.prev_close
-                });
-            }
-        });
-      } else {
-        console.error("GCF Error:", response.status);
-      }
-    } catch (e) {
-      console.error("Stock update failed:", e);
+      // fill missing
+      stockItems.forEach(s => {
+        if (!resultMap.has(s.id)) resultMap.set(s.id, createMockResult(s.ticker));
+      });
     }
+  } catch (e) {
+    stockItems.forEach(s => resultMap.set(s.id, createMockResult(s.ticker)));
   }
 
   return resultMap;
-};
+}
+
+export async function fetchAssetData(asset: { ticker: string; exchange: string; category?: AssetCategory; currency?: Currency }): Promise<AssetDataResult> {
+  const normalizedExchange = normalizeExchange(asset.exchange);
+  if (asset.category === AssetCategory.CRYPTOCURRENCY || normalizedExchange === '주요 거래소 (종합)') {
+    try {
+      const market = `KRW-${asset.ticker.toUpperCase()}`;
+      const [data] = await fetchUpbitTicker([market]);
+      const price = toNumber(data?.trade_price, 0);
+      const prev = toNumber(data?.prev_closing_price, price);
+      return {
+        name: asset.ticker,
+        priceOriginal: price,
+        priceKRW: price,
+        currency: 'KRW',
+        pricePreviousClose: prev,
+        highestPrice: price * 1.1,
+        isMocked: false,
+      };
+    } catch {
+      return createMockResult(asset.ticker);
+    }
+  }
+  // stock single
+  try {
+    const data = await fetchStocksBatch([{ ticker: asset.ticker, exchange: normalizedExchange }]);
+    const obj: any = Array.isArray(data?.results) ? data.results?.[0] : (Array.isArray(data) ? data[0] : data);
+    const priceOrig = toNumber(obj?.priceOriginal ?? obj?.price ?? obj?.close, 0);
+    const prev = toNumber(obj?.previousClose ?? obj?.prev_close ?? obj?.yesterdayPrice, priceOrig);
+    const currency = String(obj?.currency ?? asset.currency ?? Currency.USD);
+    const priceKRW = typeof obj?.priceKRW === 'number'
+      ? obj.priceKRW
+      : (currency === Currency.KRW ? priceOrig : priceOrig);
+    const name = String(obj?.name ?? asset.ticker);
+    return {
+      name,
+      priceOriginal: priceOrig,
+      priceKRW,
+      currency,
+      pricePreviousClose: prev,
+      highestPrice: (currency === Currency.KRW ? priceKRW : priceOrig) * 1.1,
+      isMocked: false,
+    };
+  } catch {
+    return createMockResult(asset.ticker);
+  }
+}
+

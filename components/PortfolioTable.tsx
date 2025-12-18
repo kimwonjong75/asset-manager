@@ -25,7 +25,7 @@ interface PortfolioTableProps {
   exchangeRates: ExchangeRates;
 }
 
-type SortKey = 'name' | 'purchaseDate' | 'quantity' | 'purchasePrice' | 'currentPrice' | 'returnPercentage' | 'dropFromHigh' | 'yesterdayChange' | 'purchaseValue' | 'currentValue' | 'allocation';
+type SortKey = 'name' | 'purchaseDate' | 'quantity' | 'purchasePrice' | 'currentPrice' | 'returnPercentage' | 'dropFromHigh' | 'yesterdayChange' | 'purchaseValue' | 'currentValue' | 'allocation' | 'profitLoss' | 'profitLossKRW';
 type SortDirection = 'ascending' | 'descending';
 
 // [헬퍼] 원화 환산 함수
@@ -196,6 +196,34 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
     setSortConfig({ key, direction });
   };
   
+  const toggleReturnSort = () => {
+    const s = sortConfig;
+    if (!s || (s.key !== 'returnPercentage' && s.key !== 'profitLossKRW')) {
+      setSortConfig({ key: 'returnPercentage', direction: 'descending' });
+      return;
+    }
+    if (s.key === 'returnPercentage' && s.direction === 'descending') {
+      setSortConfig({ key: 'returnPercentage', direction: 'ascending' });
+      return;
+    }
+    if (s.key === 'returnPercentage' && s.direction === 'ascending') {
+      setSortConfig({ key: 'profitLossKRW', direction: 'descending' });
+      return;
+    }
+    if (s.key === 'profitLossKRW' && s.direction === 'descending') {
+      setSortConfig({ key: 'profitLossKRW', direction: 'ascending' });
+      return;
+    }
+    setSortConfig(null);
+  };
+  
+  const getReturnHeaderLabel = () => {
+    if (!sortConfig) return '수익률';
+    if (sortConfig.key === 'returnPercentage') return `수익률 ${sortConfig.direction === 'descending' ? '▼' : '▲'}`;
+    if (sortConfig.key === 'profitLossKRW') return `평가손익 ${sortConfig.direction === 'descending' ? '▼' : '▲'}`;
+    return '수익률';
+  };
+  
   // [수정] 포맷팅 함수들 (소수점 제거)
   const formatNumber = (num: number) => new Intl.NumberFormat('ko-KR', { maximumFractionDigits: 0 }).format(num);
   const formatKRW = (num: number) => new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW', maximumFractionDigits: 0 }).format(num);
@@ -352,7 +380,7 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
               {showHiddenColumns && <th scope="col" className={`${thClasses} text-right`} onClick={() => requestSort('quantity')}><div className={`${thContentClasses} justify-end`}><span>보유수량</span> <SortIcon sortKey='quantity'/></div></th>}
               {showHiddenColumns && <th scope="col" className={`${thClasses} text-right`} onClick={() => requestSort('purchasePrice')}><div className={`${thContentClasses} justify-end`}><span>매수평균가</span> <SortIcon sortKey='purchasePrice'/></div></th>}
               <th scope="col" className={`${thClasses} text-right`} onClick={() => requestSort('currentPrice')}><div className={`${thContentClasses} justify-end`}><span>현재가</span> <SortIcon sortKey='currentPrice'/></div></th>
-              <th scope="col" className={`${thClasses} justify-end`} onClick={() => requestSort('returnPercentage')}><div className={`${thContentClasses} justify-end`}><span>수익률</span> <SortIcon sortKey='returnPercentage'/></div></th>
+              <th scope="col" className={`${thClasses} justify-end`} onClick={toggleReturnSort}><div className={`${thContentClasses} justify-end`}><span>{getReturnHeaderLabel()}</span></div></th>
               <th scope="col" className={`${thClasses} justify-end`} onClick={() => requestSort('purchaseValue')}><div className={`${thContentClasses} justify-end`}><span>투자원금</span> <SortIcon sortKey='purchaseValue'/></div></th>
               <th scope="col" className={`${thClasses} justify-end`} onClick={() => requestSort('currentValue')}><div className={`${thContentClasses} justify-end`}><span>평가총액</span> <SortIcon sortKey='currentValue'/></div></th>
               {showHiddenColumns && <th scope="col" className={`${thClasses} text-center`} onClick={() => requestSort('purchaseDate')}><div className={`${thContentClasses} justify-center`}><span>매수일</span> <SortIcon sortKey='purchaseDate'/></div></th>}

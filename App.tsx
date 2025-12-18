@@ -1,7 +1,9 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { Asset, NewAssetForm, AssetCategory, EXCHANGE_MAP, Currency, PortfolioSnapshot, AssetSnapshot, BulkUploadResult, ALLOWED_CATEGORIES, SellRecord, WatchlistItem, normalizeExchange, ExchangeRates } from './types';
-import { fetchAssetData, fetchBatchAssetPrices, fetchHistoricalExchangeRate, fetchCurrentExchangeRate } from './services/geminiService';
+import { fetchHistoricalExchangeRate, fetchCurrentExchangeRate } from './services/geminiService';
+import { fetchAssetData as fetchAssetDataNew, fetchBatchAssetPrices as fetchBatchAssetPricesNew } from './services/priceService';
 import { googleDriveService, GoogleUser } from './services/googleDriveService';
+import { useGoogleDriveSync } from './hooks/useGoogleDriveSync';
 import PortfolioTable from './components/PortfolioTable';
 import AllocationChart from './components/AllocationChart';
 import Header from './components/Header';
@@ -70,38 +72,17 @@ const mapToNewAssetStructure = (asset: any): Asset => {
 
 
 const App: React.FC = () => {
-  const [isSignedIn, setIsSignedIn] = useState<boolean>(false);
-  const [googleUser, setGoogleUser] = useState<GoogleUser | null>(null);
-  const [isInitializing, setIsInitializing] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const { isSignedIn, googleUser, isInitializing, handleSignIn: hookSignIn, handleSignOut: hookSignOut, loadFromGoogleDrive: hookLoadFromGoogleDrive, autoSave: hookAutoSave } = useGoogleDriveSync({ onError: setError, onSuccessMessage: setSuccessMessage });
 
-  // Google Drive 초기화
-  useEffect(() => {
-    const initGoogleDrive = async () => {
-      try {
-        const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-        if (clientId) {
-          await googleDriveService.initialize(clientId);
-          if (googleDriveService.isSignedIn()) {
-            setIsSignedIn(true);
-            setGoogleUser(googleDriveService.getCurrentUser());
-            await loadFromGoogleDrive();
-          }
-        }
-      } catch (error) {
-        console.error('Failed to initialize Google Drive:', error);
-      } finally {
-        setIsInitializing(false);
-      }
-    };
-    initGoogleDrive();
-  }, []);
+  useEffect(() => {}, []);
 
   const loadFromGoogleDrive = useCallback(async () => {
     try {
-      const fileContent = await googleDriveService.loadFile();
-      if (fileContent) {
-        const rawData = JSON.parse(fileContent);
-        const data = runMigrationIfNeeded(rawData);
+      const loaded = await hookLoadFromGoogleDrive();
+      if (loaded) {
+        const data = runMigrationIfNeeded(loaded);
         const driveAssets = Array.isArray(data.assets) ? data.assets.map(mapToNewAssetStructure) : [];
         setAssets(driveAssets);
         if (Array.isArray(data.portfolioHistory)) {
@@ -169,8 +150,7 @@ const App: React.FC = () => {
   const [fileName, setFileName] = useState<string>('portfolio.json');
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isWatchlistLoading, setIsWatchlistLoading] = useState<boolean>(false);
-  const [error, setError] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  
   const [editingAsset, setEditingAsset] = useState<Asset | null>(null);
   const [sellingAsset, setSellingAsset] = useState<Asset | null>(null);
   const [isBulkUploadModalOpen, setIsBulkUploadModalOpen] = useState<boolean>(false);
@@ -224,67 +204,12 @@ const App: React.FC = () => {
     checkForUpdate();
   }, []);
   
-  const autoSave = useCallback(
-    (() => {
-      let timeoutId: NodeJS.Timeout | null = null;
-      let isSaving = false;
-      let lastSavedData: string | null = null;
-      return async (assetsToSave: Asset[], history: PortfolioSnapshot[], sells: SellRecord[]) => {
-        if (!isSignedIn) {
-          setError('Google Drive 로그인 후 저장할 수 있습니다.');
-          setTimeout(() => setError(null), 3000);
-          return;
-        }
-
-        if (timeoutId) {
-          clearTimeout(timeoutId);
-        }
-        
-        timeoutId = setTimeout(async () => {
-          if (isSaving) return;
-          
-          const exportData = {
-            assets: assetsToSave,
-            portfolioHistory: history,
-            sellHistory: sells,
-            watchlist,
-            exchangeRates,
-            lastUpdateDate: new Date().toISOString().slice(0, 10)
-          };
-          const portfolioJSON = JSON.stringify(exportData, null, 2);
-          
-          if (lastSavedData === portfolioJSON) {
-            return;
-          }
-          
-          isSaving = true;
-          
-          try {
-            setSuccessMessage('저장 중...');
-            
-            await googleDriveService.saveFile(portfolioJSON);
-            lastSavedData = portfolioJSON;
-            setSuccessMessage('Google Drive에 자동 저장되었습니다.');
-            
-            setTimeout(() => setSuccessMessage(null), 2000);
-          } catch (error) {
-            console.error('Auto-save failed:', error);
-            setError('자동 저장에 실패했습니다.');
-            setTimeout(() => setError(null), 3000);
-          } finally {
-            isSaving = false;
-          }
-        }, 2000);
-      };
-    })(),
-    [isSignedIn, watchlist, exchangeRates]
-  );
   const handleExchangeRatesChange = useCallback((newRates: ExchangeRates) => {
     setExchangeRates(newRates);
     if (isSignedIn) {
-      autoSave(assets, portfolioHistory, sellHistory);
+      hookAutoSave(assets, portfolioHistory, sellHistory, watchlist, newRates);
     }
-  }, [assets, portfolioHistory, sellHistory, isSignedIn, autoSave]);
+  }, [assets, portfolioHistory, sellHistory, isSignedIn, hookAutoSave, watchlist]);
 
   const handleRefreshAllPrices = useCallback(async (isAutoUpdate = false, isScheduled = false) => {
     if (assets.length === 0) return;
@@ -337,13 +262,15 @@ const App: React.FC = () => {
     const assetsToFetch = nonCashAssets.map(a => ({
       ticker: a.ticker,
       exchange: a.exchange,
-      id: a.id
+      id: a.id,
+      category: a.category,
+      currency: a.currency,
     }));
 
     try {
       const [cashResults, batchPriceMap] = await Promise.all([
         Promise.allSettled(cashPromises),
-        fetchBatchAssetPrices(assetsToFetch)
+        fetchBatchAssetPricesNew(assetsToFetch)
       ]);
 
       const failedTickers: string[] = [];
@@ -428,7 +355,7 @@ const App: React.FC = () => {
         setTimeout(() => setSuccessMessage(null), 5000);
         
         if (isSignedIn) {
-          autoSave(updatedAssets, portfolioHistory, sellHistory);
+          hookAutoSave(updatedAssets, portfolioHistory, sellHistory, watchlist, exchangeRates);
         }
       }
     } catch (error) {
@@ -468,13 +395,15 @@ const App: React.FC = () => {
     const itemsToFetch = nonCashAssets.map(a => ({ 
       ticker: a.ticker, 
       exchange: a.exchange, 
-      id: a.id 
+      id: a.id,
+      category: a.category,
+      currency: a.currency,
     }));
 
     try {
       const [cashResults, batchPriceMap] = await Promise.all([
         Promise.allSettled(cashPromises),
-        fetchBatchAssetPrices(itemsToFetch)
+        fetchBatchAssetPricesNew(itemsToFetch)
       ]);
 
       const updatedAssets = assets.map((asset) => {
@@ -534,7 +463,7 @@ const App: React.FC = () => {
       setTimeout(() => setSuccessMessage(null), 3000);
       
       if (isSignedIn) {
-        autoSave(updatedAssets, portfolioHistory, sellHistory);
+        hookAutoSave(updatedAssets, portfolioHistory, sellHistory, watchlist, exchangeRates);
       }
     } catch (error) { 
       console.error('Selected update failed:', error);
@@ -551,7 +480,7 @@ const App: React.FC = () => {
     setIsLoading(true);
     setError(null);
     try {
-      const d = await fetchAssetData(target.ticker, target.exchange);
+      const d = await fetchAssetDataNew({ ticker: target.ticker, exchange: target.exchange, category: target.category, currency: target.currency });
       
       const shouldKeepOriginalCurrency = target.category === AssetCategory.CRYPTOCURRENCY;
       const newCurrency = shouldKeepOriginalCurrency ? target.currency : (d.currency as Currency);
@@ -569,7 +498,7 @@ const App: React.FC = () => {
       } : a);
       setAssets(updated);
       if (isSignedIn) {
-        autoSave(updated, portfolioHistory, sellHistory);
+        hookAutoSave(updated, portfolioHistory, sellHistory, watchlist, exchangeRates);
       }
     } catch (e) {
       setError('해당 종목 가격 갱신에 실패했습니다.');
@@ -800,7 +729,7 @@ useEffect(() => {
             } else {
               setWatchlist([]);
             }
-            autoSave(assetsWithDefaults, loadedHistory ?? portfolioHistory, loadedSellHistory ?? sellHistory);
+            hookAutoSave(assetsWithDefaults, loadedHistory ?? portfolioHistory, loadedSellHistory ?? sellHistory, watchlist, exchangeRates);
             setFileName(file.name);
             setSuccessMessage(`'${file.name}' 파일에서 성공적으로 가져왔습니다.`);
             setTimeout(() => setSuccessMessage(null), 3000);
@@ -876,7 +805,7 @@ useEffect(() => {
 
       setAssets(prevAssets => {
         const newAssets = [...prevAssets, finalNewAsset];
-        autoSave(newAssets, portfolioHistory, sellHistory);
+        hookAutoSave(newAssets, portfolioHistory, sellHistory, watchlist, exchangeRates);
         return newAssets;
       });
       setSuccessMessage(`${finalNewAsset.name} 자산이 추가되었습니다.`);
@@ -898,7 +827,7 @@ useEffect(() => {
     }
     setAssets(prevAssets => {
       const updated = prevAssets.filter(asset => asset.id !== assetId);
-      autoSave(updated, portfolioHistory, sellHistory);
+      hookAutoSave(updated, portfolioHistory, sellHistory, watchlist, exchangeRates);
       return updated;
     });
     setEditingAsset(null);
@@ -972,7 +901,7 @@ useEffect(() => {
       setSuccessMessage('매도가 완료되었습니다.');
       setTimeout(() => setSuccessMessage(null), 3000);
       
-      autoSave(updatedAssets, portfolioHistory, sellHistory);
+      hookAutoSave(updatedAssets, portfolioHistory, sellHistory, watchlist, exchangeRates);
     } catch (error) {
       console.error('Failed to sell asset:', error);
       setError('매도 처리 중 오류가 발생했습니다.');
@@ -1045,7 +974,7 @@ useEffect(() => {
         const updated = prevAssets.map(asset => 
           asset.id === updatedAsset.id ? finalAsset : asset
         );
-        autoSave(updated, portfolioHistory, sellHistory);
+          hookAutoSave(updated, portfolioHistory, sellHistory, watchlist, exchangeRates);
         return updated;
       });
       setEditingAsset(null);
@@ -1173,7 +1102,7 @@ useEffect(() => {
                     
                     setAssets(prev => {
                         const updated = [...prev, ...newAssets];
-                        autoSave(updated, portfolioHistory, sellHistory);
+                        hookAutoSave(updated, portfolioHistory, sellHistory, watchlist, exchangeRates);
                         return updated;
                     });
                     successCount = newAssets.length;
@@ -1412,7 +1341,7 @@ const rows = assets.map(asset => {
     setWatchlist(prev => {
       const exists = prev.some(w => w.ticker.toUpperCase() === item.ticker.toUpperCase() && normalizeExchange(w.exchange) === normalizeExchange(item.exchange));
       const next = exists ? prev : [...prev, item];
-      autoSave(assets, portfolioHistory, sellHistory);
+      hookAutoSave(assets, portfolioHistory, sellHistory, watchlist, exchangeRates);
       return next;
     });
   }, [assets, portfolioHistory, sellHistory, autoSave]);
@@ -1420,7 +1349,7 @@ const rows = assets.map(asset => {
   const handleUpdateWatchItem = useCallback((item: WatchlistItem) => {
     setWatchlist(prev => {
       const next = prev.map(w => (w.id === item.id ? item : w));
-      autoSave(assets, portfolioHistory, sellHistory);
+      hookAutoSave(assets, portfolioHistory, sellHistory, watchlist, exchangeRates);
       return next;
     });
   }, [assets, portfolioHistory, sellHistory, autoSave]);
@@ -1428,7 +1357,7 @@ const rows = assets.map(asset => {
   const handleDeleteWatchItem = useCallback((id: string) => {
     setWatchlist(prev => {
       const next = prev.filter(w => w.id !== id);
-      autoSave(assets, portfolioHistory, sellHistory);
+      hookAutoSave(assets, portfolioHistory, sellHistory, watchlist, exchangeRates);
       return next;
     });
   }, [assets, portfolioHistory, sellHistory, autoSave]);
@@ -1437,7 +1366,7 @@ const rows = assets.map(asset => {
     setWatchlist(prev => {
       const remove = new Set(ids);
       const next = prev.filter(w => !remove.has(w.id));
-      autoSave(assets, portfolioHistory, sellHistory);
+      hookAutoSave(assets, portfolioHistory, sellHistory, watchlist, exchangeRates);
       return next;
     });
   }, [assets, portfolioHistory, sellHistory, autoSave]);
@@ -1459,7 +1388,7 @@ const rows = assets.map(asset => {
           });
         }
       });
-      autoSave(assets, portfolioHistory, sellHistory);
+      hookAutoSave(assets, portfolioHistory, sellHistory, watchlist, exchangeRates);
       return next;
     });
   }, [assets, portfolioHistory, sellHistory, autoSave]);
@@ -1481,10 +1410,12 @@ const handleRefreshWatchlistPrices = useCallback(async () => {
     const itemsToFetch = watchlist.map(item => ({
       ticker: item.ticker,
       exchange: item.exchange,
-      id: item.id
+      id: item.id,
+      category: item.category,
+      currency: item.currency,
     }));
 
-    const priceMap = await fetchBatchAssetPrices(itemsToFetch);
+    const priceMap = await fetchBatchAssetPricesNew(itemsToFetch);
 
     const updated = watchlist.map((item) => {
       const d = priceMap.get(item.id);
@@ -1507,7 +1438,7 @@ const handleRefreshWatchlistPrices = useCallback(async () => {
     });
 
     setWatchlist(updated);
-    autoSave(assets, portfolioHistory, sellHistory);
+    hookAutoSave(assets, portfolioHistory, sellHistory, watchlist, exchangeRates);
     setIsWatchlistLoading(false);
   }, [isSignedIn, watchlist, assets, portfolioHistory, sellHistory, autoSave]);
 
@@ -1517,21 +1448,7 @@ const handleRefreshWatchlistPrices = useCallback(async () => {
     setError(null);  
 
     try {
-      const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-      if (!clientId) {
-        setError('Google Client ID가 설정되지 않았습니다. .env 파일에 VITE_GOOGLE_CLIENT_ID를 추가해주세요.');
-        setTimeout(() => setError(null), 5000);
-        setIsLoading(false);
-        return;
-      }
-
-      await googleDriveService.initialize(clientId);
-      const user = await googleDriveService.signIn();
-      setIsSignedIn(true);
-      setGoogleUser(user);
-      
-      setSuccessMessage(`${user.email} 계정으로 로그인되었습니다.`);
-      setTimeout(() => setSuccessMessage(null), 3000);
+      await hookSignIn();
     } catch (error: any) {
       console.error('Sign in error:', error);
       setError('로그인에 실패했습니다: ' + (error.message || '알 수 없는 오류'));
@@ -1539,20 +1456,16 @@ const handleRefreshWatchlistPrices = useCallback(async () => {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [hookSignIn]);
 
   const handleSignOut = useCallback(() => {
-    googleDriveService.signOut();
-    setIsSignedIn(false);
-    setGoogleUser(null);
+    hookSignOut();
     setAssets([]);
     setPortfolioHistory([]);
     setSellHistory([]);
     setHasAutoUpdated(false);
     
-    setSuccessMessage('로그아웃되었습니다. Google Drive 로그인 후 다시 이용해주세요.');
-    setTimeout(() => setSuccessMessage(null), 3000);
-  }, []);
+  }, [hookSignOut]);
 
   const handleTabChange = (tabId: ActiveTab) => {
     if (tabId !== 'portfolio') {
