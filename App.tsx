@@ -365,7 +365,7 @@ const App: React.FC = () => {
     }
 
     setIsLoading(false);
-  }, [assets, portfolioHistory, sellHistory, autoSave, isSignedIn]);
+  }, [assets, portfolioHistory, sellHistory, hookAutoSave, isSignedIn, watchlist, exchangeRates]);
 
  const handleRefreshSelectedPrices = useCallback(async (ids: string[]) => {
     if (ids.length === 0) return;
@@ -472,7 +472,7 @@ const App: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [assets, autoSave, portfolioHistory, sellHistory, isSignedIn]);
+  }, [assets, hookAutoSave, portfolioHistory, sellHistory, isSignedIn, watchlist, exchangeRates]);
 
   const handleRefreshOnePrice = useCallback(async (assetId: string) => {
     const target = assets.find(a => a.id === assetId);
@@ -506,7 +506,7 @@ const App: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [assets, autoSave, portfolioHistory, sellHistory]);
+  }, [assets, hookAutoSave, portfolioHistory, sellHistory, watchlist, exchangeRates]);
 
 
 useEffect(() => {
@@ -784,17 +784,17 @@ useEffect(() => {
           purchaseExchangeRate,
         };
       } else {
-        const geminiData = await fetchAssetData(newAssetData.ticker, newAssetData.exchange);
+        const d = await fetchAssetDataNew({ ticker: newAssetData.ticker, exchange: newAssetData.exchange, category: newAssetData.category, currency: newAssetData.currency });
         const purchaseExchangeRate = await fetchHistoricalExchangeRate(newAssetData.purchaseDate, newAssetData.currency, Currency.KRW);
-
+        const currentPrice = newAssetData.currency === Currency.KRW ? d.priceKRW : d.priceOriginal;
         newAsset = {
           ...newAssetData,
-          name: geminiData.name,
-          currentPrice: geminiData.priceOriginal,
-          priceOriginal: geminiData.priceOriginal,
-          highestPrice: geminiData.priceOriginal,
+          name: d.name,
+          currentPrice,
+          priceOriginal: d.priceOriginal,
+          highestPrice: currentPrice,
           purchaseExchangeRate,
-          currency: geminiData.currency as Currency || newAssetData.currency,
+          currency: (d.currency as Currency) || newAssetData.currency,
         };
       }
       
@@ -817,7 +817,7 @@ useEffect(() => {
     } finally {
       setIsLoading(false);
     }
-  }, [autoSave, portfolioHistory, isSignedIn]);
+  }, [hookAutoSave, portfolioHistory, sellHistory, watchlist, exchangeRates, isSignedIn]);
   
   const handleDeleteAsset = useCallback((assetId: string) => {
     if (!isSignedIn) {
@@ -831,7 +831,7 @@ useEffect(() => {
       return updated;
     });
     setEditingAsset(null);
-  }, [autoSave, portfolioHistory, isSignedIn]);
+  }, [hookAutoSave, portfolioHistory, sellHistory, watchlist, exchangeRates, isSignedIn]);
 
   const handleEditAsset = useCallback((asset: Asset) => {
     setEditingAsset(asset);
@@ -909,7 +909,7 @@ useEffect(() => {
     } finally {
       setIsLoading(false);
     }
-  }, [assets, autoSave, portfolioHistory, isSignedIn]);
+  }, [assets, hookAutoSave, portfolioHistory, sellHistory, watchlist, exchangeRates, isSignedIn]);
 
   const handleUpdateAsset = useCallback(async (updatedAsset: Asset) => {
     if (!isSignedIn) {
@@ -952,14 +952,15 @@ useEffect(() => {
                                         originalAsset.currency !== updatedAsset.currency;
 
           if (infoChanged) {
-            const geminiData = await fetchAssetData(updatedAsset.ticker, updatedAsset.exchange);
+            const d = await fetchAssetDataNew({ ticker: updatedAsset.ticker, exchange: updatedAsset.exchange, category: updatedAsset.category, currency: updatedAsset.currency });
+            const newCurrentPrice = finalAsset.currency === Currency.KRW ? d.priceKRW : d.priceOriginal;
             finalAsset = {
               ...finalAsset,
-              name: geminiData.name,
-              currentPrice: geminiData.priceOriginal,
-              priceOriginal: geminiData.priceOriginal,
-              currency: geminiData.currency as Currency,
-              highestPrice: geminiData.priceOriginal,
+              name: d.name,
+              currentPrice: newCurrentPrice,
+              priceOriginal: d.priceOriginal,
+              currency: (d.currency as Currency) || finalAsset.currency,
+              highestPrice: Math.max(finalAsset.highestPrice, newCurrentPrice),
             };
           }
           
@@ -985,7 +986,7 @@ useEffect(() => {
     } finally {
       setIsLoading(false);
     }
-  }, [assets, autoSave, portfolioHistory, isSignedIn]);
+  }, [assets, hookAutoSave, portfolioHistory, sellHistory, watchlist, exchangeRates, isSignedIn]);
   
   const handleCsvFileUpload = useCallback(async (file: File): Promise<BulkUploadResult> => {
     if (!isSignedIn) {
@@ -1069,18 +1070,20 @@ useEffect(() => {
                     for (const form of validForms) {
                         try {
                            let newAsset: Omit<Asset, 'id'>;
-                              const geminiData = await fetchAssetData(form.ticker, form.exchange);
+                              const d = await fetchAssetDataNew({ ticker: form.ticker, exchange: form.exchange, category: form.category, currency: form.currency });
                               const purchaseExchangeRate = await fetchHistoricalExchangeRate(form.purchaseDate, form.currency, Currency.KRW);
-
-                              newAsset = {
-                                  ...form,
-                                  name: geminiData.name,
-                                  currentPrice: geminiData.priceOriginal,
-                                  priceOriginal: geminiData.priceOriginal,
-                                  currency: geminiData.currency as Currency,
-                                  highestPrice: geminiData.priceOriginal,
-                                  purchaseExchangeRate,
-                              };
+                              {
+                                  const currentPrice = form.currency === Currency.KRW ? d.priceKRW : d.priceOriginal;
+                                  newAsset = {
+                                      ...form,
+                                      name: d.name,
+                                      currentPrice,
+                                      priceOriginal: d.priceOriginal,
+                                      currency: (d.currency as Currency) || form.currency,
+                                      highestPrice: currentPrice,
+                                      purchaseExchangeRate,
+                                  };
+                              }
                             
                             const finalNewAsset: Asset = {
                                 id: `${new Date().getTime()}-${form.ticker}`,
@@ -1122,7 +1125,7 @@ useEffect(() => {
         
         reader.readAsText(file);
     });
-  }, [autoSave, portfolioHistory, isSignedIn]);
+  }, [hookAutoSave, portfolioHistory, sellHistory, watchlist, exchangeRates, isSignedIn]);
 
   const getValueInKRW = useCallback((value: number, currency: Currency): number => {
     if (currency === Currency.KRW) return value;
@@ -1344,7 +1347,7 @@ const rows = assets.map(asset => {
       hookAutoSave(assets, portfolioHistory, sellHistory, watchlist, exchangeRates);
       return next;
     });
-  }, [assets, portfolioHistory, sellHistory, autoSave]);
+  }, [assets, portfolioHistory, sellHistory, hookAutoSave, watchlist, exchangeRates]);
 
   const handleUpdateWatchItem = useCallback((item: WatchlistItem) => {
     setWatchlist(prev => {
@@ -1352,7 +1355,7 @@ const rows = assets.map(asset => {
       hookAutoSave(assets, portfolioHistory, sellHistory, watchlist, exchangeRates);
       return next;
     });
-  }, [assets, portfolioHistory, sellHistory, autoSave]);
+  }, [assets, portfolioHistory, sellHistory, hookAutoSave, watchlist, exchangeRates]);
 
   const handleDeleteWatchItem = useCallback((id: string) => {
     setWatchlist(prev => {
@@ -1360,7 +1363,7 @@ const rows = assets.map(asset => {
       hookAutoSave(assets, portfolioHistory, sellHistory, watchlist, exchangeRates);
       return next;
     });
-  }, [assets, portfolioHistory, sellHistory, autoSave]);
+  }, [assets, portfolioHistory, sellHistory, hookAutoSave, watchlist, exchangeRates]);
 
   const handleBulkDeleteWatchItems = useCallback((ids: string[]) => {
     setWatchlist(prev => {
@@ -1369,7 +1372,7 @@ const rows = assets.map(asset => {
       hookAutoSave(assets, portfolioHistory, sellHistory, watchlist, exchangeRates);
       return next;
     });
-  }, [assets, portfolioHistory, sellHistory, autoSave]);
+  }, [assets, portfolioHistory, sellHistory, hookAutoSave, watchlist, exchangeRates]);
 
   const handleAddAssetsToWatchlist = useCallback((selectedAssets: Asset[]) => {
     if (selectedAssets.length === 0) return;
@@ -1391,7 +1394,7 @@ const rows = assets.map(asset => {
       hookAutoSave(assets, portfolioHistory, sellHistory, watchlist, exchangeRates);
       return next;
     });
-  }, [assets, portfolioHistory, sellHistory, autoSave]);
+  }, [assets, portfolioHistory, sellHistory, hookAutoSave, watchlist, exchangeRates]);
 
   const handleToggleWatchMonitoring = useCallback((id: string, enabled: boolean) => {
     setWatchlist(prev => prev.map(w => (w.id === id ? { ...w, monitoringEnabled: enabled } : w)));
