@@ -754,7 +754,7 @@ useEffect(() => {
       setTimeout(() => setError(null), 3000);
       setIsLoading(false);
     }
-  }, [autoSave, portfolioHistory, isSignedIn]);
+  }, [hookAutoSave, portfolioHistory, sellHistory, watchlist, exchangeRates, isSignedIn]);
 
 
   const handleAddAsset = useCallback(async (newAssetData: NewAssetForm) => {
@@ -1443,7 +1443,7 @@ const handleRefreshWatchlistPrices = useCallback(async () => {
     setWatchlist(updated);
     hookAutoSave(assets, portfolioHistory, sellHistory, watchlist, exchangeRates);
     setIsWatchlistLoading(false);
-  }, [isSignedIn, watchlist, assets, portfolioHistory, sellHistory, autoSave]);
+  }, [isSignedIn, watchlist, assets, portfolioHistory, sellHistory, hookAutoSave, exchangeRates]);
 
 
   const handleSignIn = useCallback(async () => {
