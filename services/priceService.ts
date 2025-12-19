@@ -45,13 +45,40 @@ async function fetchStocksBatch(payload: Array<{ ticker: string; exchange?: stri
   }
 }
 
+export async function fetchExchangeRate(): Promise<number> {
+  try {
+    const data = await fetchStocksBatch([{ ticker: 'USD/KRW', exchange: 'KRX' }]);
+    const obj: any = Array.isArray(data?.results) ? data.results?.[0] : (Array.isArray(data) ? data[0] : data);
+    const rate = toNumber(obj?.priceOriginal ?? obj?.price ?? obj?.close, 0);
+    if (rate > 0) return rate;
+    throw new Error('Invalid exchange rate data');
+  } catch (e) {
+    throw e;
+  }
+}
+
+export async function fetchExchangeRateJPY(): Promise<number> {
+  try {
+    const data = await fetchStocksBatch([{ ticker: 'JPY/KRW', exchange: 'KRX' }]);
+    const obj: any = Array.isArray(data?.results) ? data.results?.[0] : (Array.isArray(data) ? data[0] : data);
+    const rate = toNumber(obj?.priceOriginal ?? obj?.price ?? obj?.close, 0);
+    if (rate > 0) return rate;
+    throw new Error('Invalid exchange rate data');
+  } catch (e) {
+    throw e;
+  }
+}
+
 export async function fetchBatchAssetPrices(
   assets: { ticker: string; exchange: string; id: string; category?: AssetCategory; currency?: Currency }[],
 ): Promise<Map<string, AssetDataResult>> {
   const resultMap = new Map<string, AssetDataResult>();
   if (assets.length === 0) return resultMap;
 
-  const cryptoItems = assets.filter(a => (a.category === AssetCategory.CRYPTOCURRENCY) || normalizeExchange(a.exchange) === '주요 거래소 (종합)');
+  const cryptoItems = assets.filter(a => {
+    const ex = (a.exchange || '').toLowerCase();
+    return ex.includes('upbit') || ex.includes('bithumb') || ex.includes('coin') || ex.includes('주요 거래소');
+  });
   const stockItems = assets.filter(a => !cryptoItems.includes(a));
 
   // Crypto (Upbit KRW market)
@@ -76,8 +103,61 @@ export async function fetchBatchAssetPrices(
       };
       resultMap.set(matched.id, result);
     });
-  } catch (e) {
-    cryptoItems.forEach(a => resultMap.set(a.id, createMockResult(a.ticker)));
+    // 폴백: 배치 누락된 항목은 개별 요청 시도
+    const missing = cryptoItems.filter(a => !resultMap.has(a.id));
+    for (const m of missing) {
+      try {
+        const single = await fetchUpbitTicker([`KRW-${m.ticker.toUpperCase()}`]);
+        const item = Array.isArray(single) ? single[0] : null;
+        if (item && item.trade_price !== undefined) {
+          const price = toNumber(item.trade_price, 0);
+          const prev = toNumber(item.prev_closing_price, price);
+          resultMap.set(m.id, {
+            name: m.ticker,
+            priceOriginal: price,
+            priceKRW: price,
+            currency: Currency.KRW,
+            pricePreviousClose: prev,
+            highestPrice: price * 1.1,
+            isMocked: false,
+          });
+        } else {
+          resultMap.set(m.id, createMockResult(m.ticker));
+        }
+      } catch {
+        resultMap.set(m.id, createMockResult(m.ticker));
+      }
+    }
+  } catch (e: any) {
+    // 404 등 배치 실패 시 개별 요청으로 폴백
+    const is404 = typeof e?.status === 'number' ? e.status === 404 : String(e?.message || '').includes('404');
+    if (is404) {
+      for (const a of cryptoItems) {
+        try {
+          const single = await fetchUpbitTicker([`KRW-${a.ticker.toUpperCase()}`]);
+          const item = Array.isArray(single) ? single[0] : null;
+          if (item && item.trade_price !== undefined) {
+            const price = toNumber(item.trade_price, 0);
+            const prev = toNumber(item.prev_closing_price, price);
+            resultMap.set(a.id, {
+              name: a.ticker,
+              priceOriginal: price,
+              priceKRW: price,
+              currency: Currency.KRW,
+              pricePreviousClose: prev,
+              highestPrice: price * 1.1,
+              isMocked: false,
+            });
+          } else {
+            resultMap.set(a.id, createMockResult(a.ticker));
+          }
+        } catch {
+          resultMap.set(a.id, createMockResult(a.ticker));
+        }
+      }
+    } else {
+      cryptoItems.forEach(a => resultMap.set(a.id, createMockResult(a.ticker)));
+    }
   }
 
   // Stocks (Cloud Run)
@@ -122,7 +202,11 @@ export async function fetchBatchAssetPrices(
 
 export async function fetchAssetData(asset: { ticker: string; exchange: string; category?: AssetCategory; currency?: Currency }): Promise<AssetDataResult> {
   const normalizedExchange = normalizeExchange(asset.exchange);
-  if (asset.category === AssetCategory.CRYPTOCURRENCY || normalizedExchange === '주요 거래소 (종합)') {
+  const isCrypto = (() => {
+    const ex = (asset.exchange || '').toLowerCase();
+    return ex.includes('upbit') || ex.includes('bithumb') || ex.includes('coin') || ex.includes('주요 거래소');
+  })();
+  if (isCrypto) {
     try {
       const market = `KRW-${asset.ticker.toUpperCase()}`;
       const [data] = await fetchUpbitTicker([market]);

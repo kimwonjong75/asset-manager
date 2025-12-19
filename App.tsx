@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { Asset, NewAssetForm, AssetCategory, EXCHANGE_MAP, Currency, PortfolioSnapshot, AssetSnapshot, BulkUploadResult, ALLOWED_CATEGORIES, SellRecord, WatchlistItem, normalizeExchange, ExchangeRates } from './types';
 import { fetchHistoricalExchangeRate, fetchCurrentExchangeRate } from './services/geminiService';
-import { fetchAssetData as fetchAssetDataNew, fetchBatchAssetPrices as fetchBatchAssetPricesNew } from './services/priceService';
+import { fetchAssetData as fetchAssetDataNew, fetchBatchAssetPrices as fetchBatchAssetPricesNew, fetchExchangeRate, fetchExchangeRateJPY } from './services/priceService';
 import { googleDriveService, GoogleUser } from './services/googleDriveService';
 import { useGoogleDriveSync } from './hooks/useGoogleDriveSync';
 import PortfolioTable from './components/PortfolioTable';
@@ -228,11 +228,9 @@ const App: React.FC = () => {
     // 환율 정보가 정확해야 이후 자산 가치 계산(원화 환산 정렬 등)이 맞습니다.
     try {
         const [usdRate, jpyRate] = await Promise.all([
-            fetchCurrentExchangeRate(Currency.USD, Currency.KRW),
-            fetchCurrentExchangeRate(Currency.JPY, Currency.KRW)
+            fetchExchangeRate(),
+            fetchExchangeRateJPY()
         ]);
-        
-        // 유효한 환율이면 업데이트 (기존보다 안전한 조건 추가)
         setExchangeRates(prev => ({
             ...prev,
             USD: usdRate > 1000 ? usdRate : prev.USD,
@@ -248,7 +246,12 @@ const App: React.FC = () => {
 
     // 현금 자산 업데이트 로직
     const cashPromises = cashAssets.map(asset => 
-      fetchCurrentExchangeRate(asset.currency, Currency.KRW).then(rate => ({
+      (asset.currency === Currency.USD 
+        ? fetchExchangeRate() 
+        : asset.currency === Currency.JPY 
+          ? fetchExchangeRateJPY() 
+          : fetchCurrentExchangeRate(asset.currency, Currency.KRW)
+      ).then(rate => ({
         id: asset.id,
         name: `현금 (${asset.currency})`,
         priceKRW: rate * asset.priceOriginal,
@@ -382,7 +385,12 @@ const App: React.FC = () => {
     
     // 현금 자산 환율 업데이트 준비
     const cashPromises = cashAssets.map(asset => 
-      fetchCurrentExchangeRate(asset.currency, Currency.KRW).then(rate => ({
+      (asset.currency === Currency.USD 
+        ? fetchExchangeRate() 
+        : asset.currency === Currency.JPY 
+          ? fetchExchangeRateJPY() 
+          : fetchCurrentExchangeRate(asset.currency, Currency.KRW)
+      ).then(rate => ({
         id: asset.id, 
         priceKRW: rate * asset.priceOriginal, 
         priceOriginal: asset.priceOriginal, 
@@ -771,7 +779,11 @@ useEffect(() => {
       if (newAssetData.category === AssetCategory.CASH) {
         const [purchaseExchangeRate, currentExchangeRate] = await Promise.all([
           fetchHistoricalExchangeRate(newAssetData.purchaseDate, newAssetData.currency, Currency.KRW),
-          fetchCurrentExchangeRate(newAssetData.currency, Currency.KRW)
+          (newAssetData.currency === Currency.USD 
+            ? fetchExchangeRate() 
+            : newAssetData.currency === Currency.JPY 
+              ? fetchExchangeRateJPY() 
+              : fetchCurrentExchangeRate(newAssetData.currency, Currency.KRW))
         ]);
 
         newAsset = {
@@ -933,7 +945,11 @@ useEffect(() => {
           if (dateOrCurrencyChanged) {
                 const [purchaseExchangeRate, currentExchangeRate] = await Promise.all([
                   fetchHistoricalExchangeRate(updatedAsset.purchaseDate, updatedAsset.currency, Currency.KRW),
-                  fetchCurrentExchangeRate(updatedAsset.currency, Currency.KRW)
+                  (updatedAsset.currency === Currency.USD 
+                    ? fetchExchangeRate() 
+                    : updatedAsset.currency === Currency.JPY 
+                      ? fetchExchangeRateJPY() 
+                      : fetchCurrentExchangeRate(updatedAsset.currency, Currency.KRW))
                 ]);
                 finalAsset = {
                     ...finalAsset,

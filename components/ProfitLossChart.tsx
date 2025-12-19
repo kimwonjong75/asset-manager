@@ -60,7 +60,7 @@ const ProfitLossChart: React.FC<ProfitLossChartProps> = ({ history, assetsToDisp
         <div style={{ color: '#E2E8F0', marginBottom: 4 }}>{label}</div>
         <div style={{ color: '#A0AEC0' }}>투자 원금: <span style={{ color: '#E2E8F0', fontWeight: 700 }}>{formatCurrency(principal)} 원</span></div>
         <div style={{ color: '#A0AEC0' }}>총 평가액: <span style={{ color: '#E2E8F0', fontWeight: 700 }}>{formatCurrency(total)} 원</span></div>
-        <div style={{ color: '#A0AEC0' }}>수익률: <span style={{ color: '#E2E8F0', fontWeight: 700 }}>{formatPercent(returnPct)}</span></div>
+        <div style={{ color: '#A0AEC0' }}>총 수익률 (합산 평균): <span style={{ color: '#E2E8F0', fontWeight: 700 }}>{formatPercent(returnPct)}</span></div>
       </div>
     );
   };
