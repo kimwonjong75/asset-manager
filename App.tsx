@@ -217,6 +217,7 @@ const App: React.FC = () => {
     setIsLoading(true);
     setError(null);
     setFailedAssetIds(new Set());
+    console.log('handleRefreshAllPrices start', { totalAssets: assets.length, isAutoUpdate, isScheduled });
     
     if (isAutoUpdate || isScheduled) {
         setSuccessMessage('최신 종가 정보를 불러오는 중입니다...');
@@ -269,12 +270,15 @@ const App: React.FC = () => {
       category: a.category,
       currency: a.currency,
     }));
+    console.log('handleRefreshAllPrices batch payload', assetsToFetch);
 
     try {
       const [cashResults, batchPriceMap] = await Promise.all([
         Promise.allSettled(cashPromises),
         fetchBatchAssetPricesNew(assetsToFetch)
       ]);
+      console.log('handleRefreshAllPrices cashResults', cashResults);
+      console.log('handleRefreshAllPrices batchPriceMap size', batchPriceMap.size);
 
       const failedTickers: string[] = [];
       const failedIds: string[] = [];
@@ -346,13 +350,14 @@ const App: React.FC = () => {
 
       const successCount = assets.length - failedIds.length;
       const failedCount = failedIds.length;
+      console.log('handleRefreshAllPrices done', { successCount, failedCount, failedTickers });
 
       if (failedTickers.length > 0) {
-        setError(`업데이트 실패: ${failedTickers.join(', ')}`);
+        setError(`실패 종목: ${failedTickers.join(', ')}`);
         setTimeout(() => setError(null), 5000);
       }
 
-      const msg = `업데이트 완료: ${successCount}건 성공, ${failedCount}건 실패`;
+      const msg = `${successCount}건 성공, ${failedCount}건 실패`;
       setSuccessMessage(msg);
       setTimeout(() => setSuccessMessage(null), 5000);
       

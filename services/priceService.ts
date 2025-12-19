@@ -19,12 +19,30 @@ function createMockResult(ticker: string): AssetDataResult {
   };
 }
 
-async function fetchUpbitTicker(markets: string[]): Promise<any[]> {
-  if (markets.length === 0) return [];
-  const url = `https://api.upbit.com/v1/ticker?markets=${encodeURIComponent(markets.join(','))}`;
-  const res = await fetch(url, { headers: { Accept: 'application/json' } });
-  if (!res.ok) throw new Error(`Upbit API failed: ${res.status}`);
-  return await res.json();
+function extractByTickerKey(data: any, key?: string): any {
+  if (!data) return undefined;
+  if (Array.isArray(data?.results)) {
+    if (!key) return data.results?.[0];
+    const k = String(key).toUpperCase();
+    return data.results.find((x: any) => String(x?.ticker ?? x?.symbol ?? '').toUpperCase() === k);
+  }
+  if (Array.isArray(data)) {
+    if (!key) return data[0];
+    const k = String(key).toUpperCase();
+    return data.find((x: any) => String(x?.ticker ?? x?.symbol ?? '').toUpperCase() === k);
+  }
+  if (typeof data === 'object') {
+    if (!key) {
+      const firstKey = Object.keys(data)[0];
+      return data[firstKey];
+    }
+    const k = String(key).toUpperCase();
+    const direct = Object.prototype.hasOwnProperty.call(data, k) ? data[k] : undefined;
+    if (direct) return direct;
+    const alt = Object.keys(data).find((kk) => String(kk).toUpperCase() === k);
+    return alt ? data[alt] : undefined;
+  }
+  return undefined;
 }
 
 async function fetchStocksBatch(payload: Array<{ ticker: string; exchange?: string }>): Promise<any> {
@@ -36,7 +54,7 @@ async function fetchStocksBatch(payload: Array<{ ticker: string; exchange?: stri
   });
   if (!res.ok) {
     const text = await res.text().catch(() => '');
-    throw new Error(`Stock API failed: ${res.status} ${text}`);
+    throw new Error(`시세 서버 호출 실패: ${res.status} ${text}`);
   }
   try {
     const json = await res.json();
@@ -44,17 +62,18 @@ async function fetchStocksBatch(payload: Array<{ ticker: string; exchange?: stri
     return json;
   } catch {
     const text = await res.text().catch(() => '');
-    throw new Error(`Stock API returned non-JSON: ${text}`);
+    throw new Error(`시세 서버 응답 처리 실패: ${text}`);
   }
 }
 
 export async function fetchExchangeRate(): Promise<number> {
   try {
     const data = await fetchStocksBatch([{ ticker: 'USD/KRW', exchange: 'KRX' }]);
-    const obj: any = Array.isArray(data?.results) ? data.results?.[0] : (Array.isArray(data) ? data[0] : data);
+    const obj: any = extractByTickerKey(data, 'USD/KRW');
+    console.log('fetchExchangeRate parsed', obj);
     const rate = toNumber(obj?.priceOriginal ?? obj?.price ?? obj?.close, 0);
     if (rate > 0) return rate;
-    throw new Error('Invalid exchange rate data');
+    throw new Error('환율 데이터가 올바르지 않습니다');
   } catch (e) {
     throw e;
   }
@@ -63,10 +82,11 @@ export async function fetchExchangeRate(): Promise<number> {
 export async function fetchExchangeRateJPY(): Promise<number> {
   try {
     const data = await fetchStocksBatch([{ ticker: 'JPY/KRW', exchange: 'KRX' }]);
-    const obj: any = Array.isArray(data?.results) ? data.results?.[0] : (Array.isArray(data) ? data[0] : data);
+    const obj: any = extractByTickerKey(data, 'JPY/KRW');
+    console.log('fetchExchangeRateJPY parsed', obj);
     const rate = toNumber(obj?.priceOriginal ?? obj?.price ?? obj?.close, 0);
     if (rate > 0) return rate;
-    throw new Error('Invalid exchange rate data');
+    throw new Error('엔화 환율 데이터가 올바르지 않습니다');
   } catch (e) {
     throw e;
   }
@@ -78,107 +98,65 @@ export async function fetchBatchAssetPrices(
   const resultMap = new Map<string, AssetDataResult>();
   if (assets.length === 0) return resultMap;
 
-  const cryptoItems = assets.filter(a => {
-    const ex = (a.exchange || '').toLowerCase();
-    return ex.includes('upbit') || ex.includes('bithumb') || ex.includes('coin') || ex.includes('주요 거래소');
-  });
-  const stockItems = assets.filter(a => !cryptoItems.includes(a));
+  console.log('fetchBatchAssetPrices input assets', assets);
 
-  // Crypto (Upbit KRW market)
   try {
-    for (const a of cryptoItems) {
-      try {
-        const [item] = await fetchUpbitTicker([`KRW-${a.ticker.toUpperCase()}`]);
-        if (item && item.trade_price !== undefined) {
-          const price = toNumber(item.trade_price, 0);
-          const prev = toNumber(item.prev_closing_price, price);
-          resultMap.set(a.id, {
-            name: a.ticker,
-            priceOriginal: price,
-            priceKRW: price,
-            currency: Currency.KRW,
-            pricePreviousClose: prev,
-            highestPrice: price * 1.1,
-            isMocked: false,
-          });
-        } else {
-          resultMap.set(a.id, {
-            name: a.ticker,
-            priceOriginal: 0,
-            priceKRW: 0,
-            currency: Currency.KRW,
-            pricePreviousClose: 0,
-            highestPrice: 0,
-            isMocked: true,
-          });
-        }
-      } catch {
-        resultMap.set(a.id, {
-          name: a.ticker,
-          priceOriginal: 0,
-          priceKRW: 0,
-          currency: Currency.KRW,
-          pricePreviousClose: 0,
-          highestPrice: 0,
-          isMocked: true,
-        });
-      }
-      await new Promise(r => setTimeout(r, 500));
-    }
-  } catch (e: any) {
-    cryptoItems.forEach(a => resultMap.set(a.id, {
-      name: a.ticker,
-      priceOriginal: 0,
-      priceKRW: 0,
-      currency: Currency.KRW,
-      pricePreviousClose: 0,
-      highestPrice: 0,
-      isMocked: true,
-    }));
-  }
+    const payload = assets.map(s => ({ ticker: s.ticker, exchange: normalizeExchange(s.exchange) }));
+    console.log('fetchBatchAssetPrices payload', payload);
+    const data = await fetchStocksBatch(payload);
+    console.log('fetchBatchAssetPrices raw response', data);
 
-  // Stocks (Cloud Run)
-  try {
-    if (stockItems.length > 0) {
-      const payload = stockItems.map(s => ({ ticker: s.ticker, exchange: normalizeExchange(s.exchange) }));
-      const data = await fetchStocksBatch(payload);
-      const arr: any[] = Array.isArray(data?.results) ? data.results : (Array.isArray(data) ? data : []);
-      arr.forEach((item: any) => {
-        const ticker = String(item.ticker ?? item.symbol ?? '').toUpperCase();
-        const matched = stockItems.find(a => a.ticker.toUpperCase() === ticker);
-        if (!matched) return;
-        const priceOrig = toNumber(item.priceOriginal ?? item.price ?? item.close, 0);
-        const prev = toNumber(item.previousClose ?? item.prev_close ?? item.yesterdayPrice, priceOrig);
-        const currency = String(item.currency ?? matched.currency ?? Currency.USD);
-        const priceKRW = typeof item.priceKRW === 'number'
-          ? item.priceKRW
-          : (currency === Currency.KRW ? priceOrig : priceOrig);
-        const name = String(item.name ?? matched.ticker);
-        const result: AssetDataResult = {
-          name,
-          priceOriginal: priceOrig,
-          priceKRW,
-          currency,
-          pricePreviousClose: prev,
-          highestPrice: (currency === Currency.KRW ? priceKRW : priceOrig) * 1.1,
-          isMocked: false,
-        };
-        resultMap.set(matched.id, result);
-      });
-      stockItems.forEach(s => {
-        if (!resultMap.has(s.id)) resultMap.set(s.id, {
-          name: s.ticker,
-          priceOriginal: 0,
-          priceKRW: 0,
-          currency: String(s.currency ?? Currency.USD),
-          pricePreviousClose: 0,
-          highestPrice: 0,
-          isMocked: true,
-        });
+    const items: any[] = [];
+    if (Array.isArray(data?.results)) {
+      items.push(...data.results);
+    } else if (Array.isArray(data)) {
+      items.push(...data);
+    } else if (typeof data === 'object' && data) {
+      Object.keys(data).forEach(k => {
+        const v = data[k];
+        if (v && typeof v === 'object') items.push({ ...v, ticker: k });
       });
     }
+
+    items.forEach((item: any) => {
+      const ticker = String(item.ticker ?? item.symbol ?? '').toUpperCase();
+      const matched = assets.find(a => a.ticker.toUpperCase() === ticker);
+      if (!matched) return;
+      const priceOrig = toNumber(item.priceOriginal ?? item.price ?? item.close, 0);
+      const prev = toNumber(item.previousClose ?? item.prev_close ?? item.yesterdayPrice, priceOrig);
+      const currencyFromServer = String(item.currency ?? matched.currency ?? Currency.USD);
+      const keepOriginalCurrency = matched.category === AssetCategory.CRYPTOCURRENCY;
+      const currency = keepOriginalCurrency ? String(matched.currency ?? currencyFromServer) : currencyFromServer;
+      const priceKRW = typeof item.priceKRW === 'number'
+        ? item.priceKRW
+        : (currency === Currency.KRW ? priceOrig : priceOrig);
+      const name = String(item.name ?? matched.ticker);
+      const isMocked = !(priceOrig > 0);
+      const result: AssetDataResult = {
+        name,
+        priceOriginal: priceOrig,
+        priceKRW,
+        currency,
+        pricePreviousClose: prev,
+        highestPrice: (currency === Currency.KRW ? priceKRW : priceOrig) * 1.1,
+        isMocked,
+      };
+      resultMap.set(matched.id, result);
+    });
+
+    assets.forEach(s => {
+      if (!resultMap.has(s.id)) resultMap.set(s.id, {
+        name: s.ticker,
+        priceOriginal: 0,
+        priceKRW: 0,
+        currency: String(s.currency ?? Currency.USD),
+        pricePreviousClose: 0,
+        highestPrice: 0,
+        isMocked: true,
+      });
+    });
   } catch (e) {
-    stockItems.forEach(s => resultMap.set(s.id, {
+    assets.forEach(s => resultMap.set(s.id, {
       name: s.ticker,
       priceOriginal: 0,
       priceKRW: 0,
@@ -194,33 +172,10 @@ export async function fetchBatchAssetPrices(
 
 export async function fetchAssetData(asset: { ticker: string; exchange: string; category?: AssetCategory; currency?: Currency }): Promise<AssetDataResult> {
   const normalizedExchange = normalizeExchange(asset.exchange);
-  const isCrypto = (() => {
-    const ex = (asset.exchange || '').toLowerCase();
-    return ex.includes('upbit') || ex.includes('bithumb') || ex.includes('coin') || ex.includes('주요 거래소');
-  })();
-  if (isCrypto) {
-    try {
-      const market = `KRW-${asset.ticker.toUpperCase()}`;
-      const [data] = await fetchUpbitTicker([market]);
-      const price = toNumber(data?.trade_price, 0);
-      const prev = toNumber(data?.prev_closing_price, price);
-      return {
-        name: asset.ticker,
-        priceOriginal: price,
-        priceKRW: price,
-        currency: 'KRW',
-        pricePreviousClose: prev,
-        highestPrice: price * 1.1,
-        isMocked: false,
-      };
-    } catch {
-      throw new Error('Crypto price fetch failed');
-    }
-  }
-  // stock single
   try {
     const data = await fetchStocksBatch([{ ticker: asset.ticker, exchange: normalizedExchange }]);
-    const obj: any = Array.isArray(data?.results) ? data.results?.[0] : (Array.isArray(data) ? data[0] : data);
+    const obj: any = extractByTickerKey(data, asset.ticker);
+    console.log('fetchAssetData parsed', obj);
     const priceOrig = toNumber(obj?.priceOriginal ?? obj?.price ?? obj?.close, 0);
     const prev = toNumber(obj?.previousClose ?? obj?.prev_close ?? obj?.yesterdayPrice, priceOrig);
     const currency = String(obj?.currency ?? asset.currency ?? Currency.USD);
@@ -238,7 +193,7 @@ export async function fetchAssetData(asset: { ticker: string; exchange: string; 
       isMocked: false,
     };
   } catch {
-    throw new Error('Stock price fetch failed');
+    throw new Error('시세 데이터를 가져오지 못했습니다. 잠시 후 다시 시도해주세요.');
   }
 }
 
