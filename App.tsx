@@ -344,22 +344,20 @@ const App: React.FC = () => {
       setAssets(updatedAssets);
       setFailedAssetIds(new Set(failedIds));
 
+      const successCount = assets.length - failedIds.length;
+      const failedCount = failedIds.length;
+
       if (failedTickers.length > 0) {
-        setError(`${failedTickers.join(', ')} 가격 갱신에 실패했습니다.`);
-        setTimeout(() => setError(null), 3000);
-        if (isAutoUpdate || isScheduled) setSuccessMessage(null);
-      } else {
-        const successMsg = isScheduled 
-          ? '매일 자동 업데이트: 모든 자산의 가격을 전일 종가로 업데이트했습니다.'
-          : isAutoUpdate 
-            ? '모든 자산의 가격을 최신 종가로 자동 업데이트했습니다.'
-            : '모든 자산의 가격을 성공적으로 업데이트했습니다.';
-        setSuccessMessage(successMsg);
-        setTimeout(() => setSuccessMessage(null), 5000);
-        
-        if (isSignedIn) {
-          hookAutoSave(updatedAssets, portfolioHistory, sellHistory, watchlist, exchangeRates);
-        }
+        setError(`업데이트 실패: ${failedTickers.join(', ')}`);
+        setTimeout(() => setError(null), 5000);
+      }
+
+      const msg = `업데이트 완료: ${successCount}건 성공, ${failedCount}건 실패`;
+      setSuccessMessage(msg);
+      setTimeout(() => setSuccessMessage(null), 5000);
+      
+      if (isSignedIn) {
+        hookAutoSave(updatedAssets, portfolioHistory, sellHistory, watchlist, exchangeRates);
       }
     } catch (error) {
       console.error('Price refresh failed:', error);

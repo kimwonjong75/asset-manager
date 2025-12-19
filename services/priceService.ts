@@ -28,6 +28,7 @@ async function fetchUpbitTicker(markets: string[]): Promise<any[]> {
 }
 
 async function fetchStocksBatch(payload: Array<{ ticker: string; exchange?: string }>): Promise<any> {
+  console.log('fetchStocksBatch request', payload);
   const res = await fetch(STOCK_API_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -38,7 +39,9 @@ async function fetchStocksBatch(payload: Array<{ ticker: string; exchange?: stri
     throw new Error(`Stock API failed: ${res.status} ${text}`);
   }
   try {
-    return await res.json();
+    const json = await res.json();
+    console.log('fetchStocksBatch response', json);
+    return json;
   } catch {
     const text = await res.text().catch(() => '');
     throw new Error(`Stock API returned non-JSON: ${text}`);
@@ -83,37 +86,14 @@ export async function fetchBatchAssetPrices(
 
   // Crypto (Upbit KRW market)
   try {
-    const markets = cryptoItems.map(a => `KRW-${a.ticker.toUpperCase()}`);
-    const upbitData = await fetchUpbitTicker(markets);
-    upbitData.forEach((item: any) => {
-      const market: string = item.market || '';
-      const ticker = market.replace(/^KRW-/, '');
-      const matched = cryptoItems.find(a => a.ticker.toUpperCase() === ticker.toUpperCase());
-      if (!matched) return;
-      const price = toNumber(item.trade_price, 0);
-      const prev = toNumber(item.prev_closing_price, price);
-      const result: AssetDataResult = {
-        name: matched.ticker,
-        priceOriginal: price,
-        priceKRW: price,
-        currency: 'KRW',
-        pricePreviousClose: prev,
-        highestPrice: price * 1.1,
-        isMocked: false,
-      };
-      resultMap.set(matched.id, result);
-    });
-    // 폴백: 배치 누락된 항목은 개별 요청 시도
-    const missing = cryptoItems.filter(a => !resultMap.has(a.id));
-    for (const m of missing) {
+    for (const a of cryptoItems) {
       try {
-        const single = await fetchUpbitTicker([`KRW-${m.ticker.toUpperCase()}`]);
-        const item = Array.isArray(single) ? single[0] : null;
+        const [item] = await fetchUpbitTicker([`KRW-${a.ticker.toUpperCase()}`]);
         if (item && item.trade_price !== undefined) {
           const price = toNumber(item.trade_price, 0);
           const prev = toNumber(item.prev_closing_price, price);
-          resultMap.set(m.id, {
-            name: m.ticker,
+          resultMap.set(a.id, {
+            name: a.ticker,
             priceOriginal: price,
             priceKRW: price,
             currency: Currency.KRW,
@@ -122,42 +102,39 @@ export async function fetchBatchAssetPrices(
             isMocked: false,
           });
         } else {
-          resultMap.set(m.id, createMockResult(m.ticker));
+          resultMap.set(a.id, {
+            name: a.ticker,
+            priceOriginal: 0,
+            priceKRW: 0,
+            currency: Currency.KRW,
+            pricePreviousClose: 0,
+            highestPrice: 0,
+            isMocked: true,
+          });
         }
       } catch {
-        resultMap.set(m.id, createMockResult(m.ticker));
+        resultMap.set(a.id, {
+          name: a.ticker,
+          priceOriginal: 0,
+          priceKRW: 0,
+          currency: Currency.KRW,
+          pricePreviousClose: 0,
+          highestPrice: 0,
+          isMocked: true,
+        });
       }
+      await new Promise(r => setTimeout(r, 500));
     }
   } catch (e: any) {
-    // 404 등 배치 실패 시 개별 요청으로 폴백
-    const is404 = typeof e?.status === 'number' ? e.status === 404 : String(e?.message || '').includes('404');
-    if (is404) {
-      for (const a of cryptoItems) {
-        try {
-          const single = await fetchUpbitTicker([`KRW-${a.ticker.toUpperCase()}`]);
-          const item = Array.isArray(single) ? single[0] : null;
-          if (item && item.trade_price !== undefined) {
-            const price = toNumber(item.trade_price, 0);
-            const prev = toNumber(item.prev_closing_price, price);
-            resultMap.set(a.id, {
-              name: a.ticker,
-              priceOriginal: price,
-              priceKRW: price,
-              currency: Currency.KRW,
-              pricePreviousClose: prev,
-              highestPrice: price * 1.1,
-              isMocked: false,
-            });
-          } else {
-            resultMap.set(a.id, createMockResult(a.ticker));
-          }
-        } catch {
-          resultMap.set(a.id, createMockResult(a.ticker));
-        }
-      }
-    } else {
-      cryptoItems.forEach(a => resultMap.set(a.id, createMockResult(a.ticker)));
-    }
+    cryptoItems.forEach(a => resultMap.set(a.id, {
+      name: a.ticker,
+      priceOriginal: 0,
+      priceKRW: 0,
+      currency: Currency.KRW,
+      pricePreviousClose: 0,
+      highestPrice: 0,
+      isMocked: true,
+    }));
   }
 
   // Stocks (Cloud Run)
@@ -188,13 +165,28 @@ export async function fetchBatchAssetPrices(
         };
         resultMap.set(matched.id, result);
       });
-      // fill missing
       stockItems.forEach(s => {
-        if (!resultMap.has(s.id)) resultMap.set(s.id, createMockResult(s.ticker));
+        if (!resultMap.has(s.id)) resultMap.set(s.id, {
+          name: s.ticker,
+          priceOriginal: 0,
+          priceKRW: 0,
+          currency: String(s.currency ?? Currency.USD),
+          pricePreviousClose: 0,
+          highestPrice: 0,
+          isMocked: true,
+        });
       });
     }
   } catch (e) {
-    stockItems.forEach(s => resultMap.set(s.id, createMockResult(s.ticker)));
+    stockItems.forEach(s => resultMap.set(s.id, {
+      name: s.ticker,
+      priceOriginal: 0,
+      priceKRW: 0,
+      currency: String(s.currency ?? Currency.USD),
+      pricePreviousClose: 0,
+      highestPrice: 0,
+      isMocked: true,
+    }));
   }
 
   return resultMap;
@@ -222,7 +214,7 @@ export async function fetchAssetData(asset: { ticker: string; exchange: string; 
         isMocked: false,
       };
     } catch {
-      return createMockResult(asset.ticker);
+      throw new Error('Crypto price fetch failed');
     }
   }
   // stock single
@@ -246,7 +238,7 @@ export async function fetchAssetData(asset: { ticker: string; exchange: string; 
       isMocked: false,
     };
   } catch {
-    return createMockResult(asset.ticker);
+    throw new Error('Stock price fetch failed');
   }
 }
 
