@@ -101,7 +101,11 @@ export async function fetchBatchAssetPrices(
   console.log('fetchBatchAssetPrices input assets', assets);
 
   try {
-    const payload = assets.map(s => ({ ticker: s.ticker, exchange: normalizeExchange(s.exchange) }));
+    const payload = assets.map(s => {
+      const isCrypto = s.category === AssetCategory.CRYPTOCURRENCY;
+      const reqTicker = isCrypto ? `${String(s.ticker).toUpperCase()}-USD` : String(s.ticker).toUpperCase();
+      return { ticker: reqTicker, exchange: normalizeExchange(s.exchange) };
+    });
     console.log('fetchBatchAssetPrices payload', payload);
     const data = await fetchStocksBatch(payload);
     console.log('fetchBatchAssetPrices raw response', data);
@@ -120,7 +124,8 @@ export async function fetchBatchAssetPrices(
 
     items.forEach((item: any) => {
       const ticker = String(item.ticker ?? item.symbol ?? '').toUpperCase();
-      const matched = assets.find(a => a.ticker.toUpperCase() === ticker);
+      const normalizedTicker = ticker.endsWith('-USD') ? ticker.replace(/-USD$/i, '') : ticker;
+      const matched = assets.find(a => a.ticker.toUpperCase() === normalizedTicker);
       if (!matched) return;
       const priceOrig = toNumber(item.priceOriginal ?? item.price ?? item.close, 0);
       const prev = toNumber(item.previousClose ?? item.prev_close ?? item.yesterdayPrice, priceOrig);
@@ -173,8 +178,10 @@ export async function fetchBatchAssetPrices(
 export async function fetchAssetData(asset: { ticker: string; exchange: string; category?: AssetCategory; currency?: Currency }): Promise<AssetDataResult> {
   const normalizedExchange = normalizeExchange(asset.exchange);
   try {
-    const data = await fetchStocksBatch([{ ticker: asset.ticker, exchange: normalizedExchange }]);
-    const obj: any = extractByTickerKey(data, asset.ticker);
+    const isCrypto = asset.category === AssetCategory.CRYPTOCURRENCY;
+    const reqTicker = isCrypto ? `${String(asset.ticker).toUpperCase()}-USD` : String(asset.ticker).toUpperCase();
+    const data = await fetchStocksBatch([{ ticker: reqTicker, exchange: normalizedExchange }]);
+    const obj: any = extractByTickerKey(data, reqTicker);
     console.log('fetchAssetData parsed', obj);
     const priceOrig = toNumber(obj?.priceOriginal ?? obj?.price ?? obj?.close, 0);
     const prev = toNumber(obj?.previousClose ?? obj?.prev_close ?? obj?.yesterdayPrice, priceOrig);

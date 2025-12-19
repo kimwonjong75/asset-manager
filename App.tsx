@@ -311,9 +311,15 @@ const App: React.FC = () => {
           const shouldKeepOriginalCurrency = asset.category === AssetCategory.CRYPTOCURRENCY;
           const newCurrency = shouldKeepOriginalCurrency ? asset.currency : (priceData.currency as Currency);
           
-          const newCurrentPrice = asset.currency === Currency.KRW 
+          let newCurrentPrice = asset.currency === Currency.KRW 
             ? priceData.priceKRW 
             : priceData.priceOriginal;
+          if (asset.category === AssetCategory.CRYPTOCURRENCY && asset.currency === Currency.KRW) {
+            const usdRate = exchangeRates.USD || 0;
+            if (usdRate > 0) {
+              newCurrentPrice = priceData.priceOriginal * usdRate;
+            }
+          }
           
           // [중요 변경점 2] KRW 자산 단위 오류 자동 보정 로직
           let newYesterdayPrice = priceData.pricePreviousClose;
@@ -445,7 +451,13 @@ const App: React.FC = () => {
             const shouldKeepOriginalCurrency = asset.category === AssetCategory.CRYPTOCURRENCY;
             const newCurrency = shouldKeepOriginalCurrency ? asset.currency : (priceData.currency as Currency);
             
-            const newCurrentPrice = asset.currency === Currency.KRW ? priceData.priceKRW : priceData.priceOriginal;
+            let newCurrentPrice = asset.currency === Currency.KRW ? priceData.priceKRW : priceData.priceOriginal;
+            if (asset.category === AssetCategory.CRYPTOCURRENCY && asset.currency === Currency.KRW) {
+              const usdRate = exchangeRates.USD || 0;
+              if (usdRate > 0) {
+                newCurrentPrice = priceData.priceOriginal * usdRate;
+              }
+            }
             
             // KRW 단위 오류 보정 로직 (handleRefreshAllPrices와 동일)
             let newYesterdayPrice = priceData.pricePreviousClose;
@@ -496,9 +508,15 @@ const App: React.FC = () => {
       const shouldKeepOriginalCurrency = target.category === AssetCategory.CRYPTOCURRENCY;
       const newCurrency = shouldKeepOriginalCurrency ? target.currency : (d.currency as Currency);
       
-      const newCurrentPrice = target.currency === Currency.KRW 
+      let newCurrentPrice = target.currency === Currency.KRW 
         ? d.priceKRW 
         : d.priceOriginal;
+      if (target.category === AssetCategory.CRYPTOCURRENCY && target.currency === Currency.KRW) {
+        const usdRate = exchangeRates.USD || 0;
+        if (usdRate > 0) {
+          newCurrentPrice = d.priceOriginal * usdRate;
+        }
+      }
       
       const updated = assets.map(a => a.id === assetId ? {
         ...a,
