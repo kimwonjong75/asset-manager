@@ -181,7 +181,16 @@ export async function fetchBatchAssetPrices(
           const prev = toNumber(item.previousClose ?? item.prev_close ?? item.yesterdayPrice, priceOrig);
           const currencyFromServer = String(item.currency ?? matched.currency ?? Currency.USD);
           const keepOriginalCurrency = matched.category === AssetCategory.CRYPTOCURRENCY;
-          const currency = keepOriginalCurrency ? String(matched.currency ?? currencyFromServer) : currencyFromServer;
+          let currency = keepOriginalCurrency ? String(matched.currency ?? currencyFromServer) : currencyFromServer;
+
+          // [Data Consistency Fix]
+          // Upbit and Bithumb API always return KRW prices regardless of the requested currency.
+          // We enforce KRW currency for these exchanges to ensure data consistency.
+          // This allows usePortfolioData.ts to correctly handle price calculations without unnecessary conversions.
+          if (matched.exchange === 'Upbit' || matched.exchange === 'Bithumb') {
+            currency = Currency.KRW;
+          }
+
           const priceKRW = typeof item.priceKRW === 'number'
             ? item.priceKRW
             : (currency === Currency.KRW ? priceOrig : priceOrig);

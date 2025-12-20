@@ -288,6 +288,7 @@ npm run deploy
 
 ### 1. 시세 API 관련
 - **청크 크기 제한**: 20개씩 요청 (API 제한 사항)
+- **Upbit/Bithumb 예외 처리**: Upbit/Bithumb API는 항상 KRW 가격을 반환하므로, `currency` 설정과 무관하게 강제로 KRW로 처리하여 데이터 정합성 보장.
 - **재시도**: 실패 시 1회 재시도, 1초 대기
 - **모킹 데이터**: API 실패 시 기본값 제공 (isMocked: true)
 
