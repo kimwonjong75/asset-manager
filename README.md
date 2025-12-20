@@ -178,20 +178,16 @@ App.tsx
 - **useMarketData**: 외부 API를 통한 시세 업데이트, 환율 갱신 로직 담당
 - **useAssetActions**: 자산 추가/수정/삭제, 매도, CSV 업로드 등 사용자 인터랙션 처리
 
-### 3. PortfolioTable.tsx (포트폴리오 테이블)
+### 6. PortfolioTable.tsx (포트폴리오 테이블)
 **역할**: 자산 목록 표시 및 관리 (Wrapper 컴포넌트)
 **구조**:
 - `components/portfolio-table/` 디렉토리로 로직 분리
 - `usePortfolioData`: 데이터 가공, 정렬, 필터링 로직 담당
-- `PortfolioTableRow`: 개별 행 렌더링 담당
-**책임**:
-- 자산 데이터 테이블 렌더링 (View)
-- 정렬 및 필터링 (Logic 위임)
-- 개별/전체 시세 업데이트
-- 자산 편집/삭제/매도
-- 매도 알림 표시
+**주요 변경사항**:
+- **수익률 계산 오류 수정**: 어제 대비 수익률(`yesterdayChange`) 계산 시, 환율을 적용하여 KRW 기준으로 통일. 단위 불일치로 인한 비정상적인 수익률(예: 100,000%) 표시 문제 해결.
+- **변동액 표시 개선**: 전일 대비 변동액(`diffFromYesterday`) 또한 KRW 기준으로 계산 및 표시.
 
-### 3. priceService.ts (시세 서비스)
+## ⚙️ 핵심 로직 및 알고리즘
 **역할**: 외부 API를 통한 시세 정보 관리
 **책임**:
 - 배치 단위 시세 조회 (20개씩 청크 처리)

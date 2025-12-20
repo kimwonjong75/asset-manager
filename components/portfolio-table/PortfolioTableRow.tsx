@@ -103,8 +103,8 @@ const PortfolioTableRow: React.FC<PortfolioTableRowProps> = ({
             <div className="text-xs opacity-80">{formatProfitLoss(diffFromHigh, asset.currency)}</div>
         </td>
         <td className={`px-4 py-4 font-medium text-right ${getChangeColor(yesterdayChange)}`}>
-            <div>{yesterdayChange.toFixed(2)}%</div>
-            <div className="text-xs opacity-80">{formatProfitLoss(diffFromYesterday, asset.currency)}</div>
+          <div>{yesterdayChange.toFixed(2)}%</div>
+          <div className="text-xs opacity-80">{formatProfitLoss(diffFromYesterday, Currency.KRW)}</div>
         </td>
         <td className="px-4 py-4 text-center relative">
           <div className="flex items-center justify-center gap-1">

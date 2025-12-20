@@ -56,8 +56,15 @@ export const usePortfolioData = ({
       const diffFromHigh = asset.currentPrice - asset.highestPrice;
       
       const yesterdayPrice = asset.yesterdayPrice || 0;
-      const yesterdayChange = yesterdayPrice > 0 ? ((asset.currentPrice - yesterdayPrice) / yesterdayPrice) * 100 : 0;
-      const diffFromYesterday = yesterdayPrice > 0 ? asset.currentPrice - yesterdayPrice : 0;
+      const yesterdayPriceKRW = getValueInKRW(yesterdayPrice, asset.currency, exchangeRates);
+      
+      const yesterdayChange = yesterdayPriceKRW > 0 
+        ? ((currentPriceKRW - yesterdayPriceKRW) / yesterdayPriceKRW) * 100 
+        : 0;
+        
+      const diffFromYesterday = yesterdayPriceKRW > 0 
+        ? currentPriceKRW - yesterdayPriceKRW 
+        : 0;
       
       return {
         ...asset,
