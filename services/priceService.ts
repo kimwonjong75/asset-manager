@@ -65,6 +65,11 @@ async function fetchStocksBatch(payload: Array<{ ticker: string; exchange?: stri
     return json;
   } catch {
     const text = await res.text().catch(() => '');
+    console.error('fetchStocksBatch parse failed', {
+      status: res.status,
+      contentType: res.headers.get('Content-Type') ?? res.headers.get('content-type') ?? '',
+      preview: typeof text === 'string' ? text.slice(0, 512) : '',
+    });
     throw new Error(`시세 서버 응답 처리 실패: ${text}`);
   }
 }
@@ -151,6 +156,51 @@ export async function fetchBatchAssetPrices(
       });
     } catch (e) {
       console.error('API Error Details:', e);
+      console.error('Chunk meta', { index: Math.floor(i / CHUNK_SIZE), size: chunk.length });
+      await sleep(1000);
+      try {
+        const data = await fetchStocksBatch(payload);
+        console.log('fetchBatchAssetPrices raw response (retry)', data);
+        const items: any[] = [];
+        if (Array.isArray(data?.results)) {
+          items.push(...data.results);
+        } else if (Array.isArray(data)) {
+          items.push(...data);
+        } else if (typeof data === 'object' && data) {
+          Object.keys(data).forEach(k => {
+            const v = data[k];
+            if (v && typeof v === 'object') items.push({ ...v, ticker: k });
+          });
+        }
+        items.forEach((item: any) => {
+          const ticker = String(item.ticker ?? item.symbol ?? '').toUpperCase();
+          const normalizedTicker = ticker.endsWith('-USD') ? ticker.replace(/-USD$/i, '') : ticker;
+          const matched = assets.find(a => a.ticker.toUpperCase() === normalizedTicker);
+          if (!matched) return;
+          const priceOrig = toNumber(item.priceOriginal ?? item.price ?? item.close, 0);
+          const prev = toNumber(item.previousClose ?? item.prev_close ?? item.yesterdayPrice, priceOrig);
+          const currencyFromServer = String(item.currency ?? matched.currency ?? Currency.USD);
+          const keepOriginalCurrency = matched.category === AssetCategory.CRYPTOCURRENCY;
+          const currency = keepOriginalCurrency ? String(matched.currency ?? currencyFromServer) : currencyFromServer;
+          const priceKRW = typeof item.priceKRW === 'number'
+            ? item.priceKRW
+            : (currency === Currency.KRW ? priceOrig : priceOrig);
+          const name = String(item.name ?? matched.ticker);
+          const isMocked = !(priceOrig > 0);
+          const result: AssetDataResult = {
+            name,
+            priceOriginal: priceOrig,
+            priceKRW,
+            currency,
+            pricePreviousClose: prev,
+            highestPrice: (currency === Currency.KRW ? priceKRW : priceOrig) * 1.1,
+            isMocked,
+          };
+          resultMap.set(matched.id, result);
+        });
+      } catch (e2) {
+        console.error('API Error Details (retry failed):', e2);
+      }
     }
     await sleep(CHUNK_DELAY_MS);
   }
