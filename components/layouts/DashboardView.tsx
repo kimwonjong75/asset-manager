@@ -199,6 +199,7 @@ const DashboardView: React.FC<DashboardViewProps> = ({
            />
         </div>
       </div>
+      <RebalancingTable assets={assets} exchangeRates={exchangeRates} />
       <TopBottomAssets assets={assets} />
     </div>
   );
