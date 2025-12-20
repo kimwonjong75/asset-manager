@@ -22,6 +22,12 @@ export function useGoogleDriveSync(options: UseGoogleDriveSyncOptions = {}) {
   const timeoutIdRef = useRef<NodeJS.Timeout | null>(null);
   const isSavingRef = useRef<boolean>(false);
   const lastSavedDataRef = useRef<string | null>(null);
+  
+  // options를 ref로 관리하여 의존성 제거
+  const optionsRef = useRef(options);
+  useEffect(() => {
+    optionsRef.current = options;
+  });
 
   useEffect(() => {
     const init = async () => {
@@ -45,28 +51,28 @@ export function useGoogleDriveSync(options: UseGoogleDriveSyncOptions = {}) {
   const handleSignIn = useCallback(async (): Promise<GoogleUser> => {
     const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
     if (!clientId) {
-      options.onError?.('Google Client ID가 설정되지 않았습니다. .env 파일에 VITE_GOOGLE_CLIENT_ID를 추가해주세요.');
+      optionsRef.current.onError?.('Google Client ID가 설정되지 않았습니다. .env 파일에 VITE_GOOGLE_CLIENT_ID를 추가해주세요.');
       throw new Error('Missing Google Client ID');
     }
     await googleDriveService.initialize(clientId);
     const user = await googleDriveService.signIn();
     setIsSignedIn(true);
     setGoogleUser(user);
-    options.onSuccessMessage?.(`${user.email} 계정으로 로그인되었습니다.`);
+    optionsRef.current.onSuccessMessage?.(`${user.email} 계정으로 로그인되었습니다.`);
     return user;
-  }, [options]);
+  }, []);
 
   const handleSignOut = useCallback(() => {
     googleDriveService.signOut();
     setIsSignedIn(false);
     setGoogleUser(null);
-    options.onSuccessMessage?.('로그아웃되었습니다. Google Drive 로그인 후 다시 이용해주세요.');
-  }, [options]);
+    optionsRef.current.onSuccessMessage?.('로그아웃되었습니다. Google Drive 로그인 후 다시 이용해주세요.');
+  }, []);
 
   const loadFromGoogleDrive = useCallback(async (): Promise<LoadedData | null> => {
     const fileContent = await googleDriveService.loadFile();
     if (!fileContent) {
-      options.onSuccessMessage?.('Google Drive에 저장된 포트폴리오가 없습니다. 자산을 추가해주세요.');
+      optionsRef.current.onSuccessMessage?.('Google Drive에 저장된 포트폴리오가 없습니다. 자산을 추가해주세요.');
       return {
         assets: [],
         portfolioHistory: [],
@@ -80,13 +86,13 @@ export function useGoogleDriveSync(options: UseGoogleDriveSyncOptions = {}) {
     const sellHistory = Array.isArray(data.sellHistory) ? data.sellHistory as SellRecord[] : [];
     const watchlist = Array.isArray(data.watchlist) ? data.watchlist as WatchlistItem[] : [];
     const exchangeRates = data.exchangeRates as ExchangeRates | undefined;
-    options.onSuccessMessage?.('Google Drive에서 포트폴리오를 불러왔습니다.');
+    optionsRef.current.onSuccessMessage?.('Google Drive에서 포트폴리오를 불러왔습니다.');
     return { assets, portfolioHistory, sellHistory, watchlist, exchangeRates };
-  }, [options]);
+  }, []);
 
   const autoSave = useCallback(async (assetsToSave: Asset[], history: PortfolioSnapshot[], sells: SellRecord[], watchlist: WatchlistItem[], exchangeRates?: ExchangeRates) => {
     if (!isSignedIn) {
-      options.onError?.('Google Drive 로그인 후 저장할 수 있습니다.');
+      optionsRef.current.onError?.('Google Drive 로그인 후 저장할 수 있습니다.');
       return;
     }
     if (timeoutIdRef.current) {
@@ -108,17 +114,17 @@ export function useGoogleDriveSync(options: UseGoogleDriveSyncOptions = {}) {
       }
       isSavingRef.current = true;
       try {
-        options.onSuccessMessage?.('저장 중...');
+        optionsRef.current.onSuccessMessage?.('저장 중...');
         await googleDriveService.saveFile(portfolioJSON);
         lastSavedDataRef.current = portfolioJSON;
-        options.onSuccessMessage?.('Google Drive에 자동 저장되었습니다.');
+        optionsRef.current.onSuccessMessage?.('Google Drive에 자동 저장되었습니다.');
       } catch (error) {
-        options.onError?.('자동 저장에 실패했습니다.');
+        optionsRef.current.onError?.('자동 저장에 실패했습니다.');
       } finally {
         isSavingRef.current = false;
       }
     }, 2000);
-  }, [isSignedIn, options]);
+  }, [isSignedIn]);
 
   return {
     isSignedIn,

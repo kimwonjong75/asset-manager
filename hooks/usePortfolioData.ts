@@ -122,6 +122,9 @@ export const usePortfolioData = () => {
   // 초기 로드 Effect
   useEffect(() => {
     if (isInitializing) return;
+    
+    // isSignedIn이 true로 변경되었을 때만 로드하도록 의존성 관리
+    // loadFromGoogleDrive를 의존성에서 제거하여 무한 루프 방지
     if (isSignedIn) {
       setHasAutoUpdated(false);
       loadFromGoogleDrive();
@@ -129,9 +132,11 @@ export const usePortfolioData = () => {
       setAssets([]);
       setPortfolioHistory([]);
       setSellHistory([]);
+      setWatchlist([]); // watchlist 초기화 추가
       setHasAutoUpdated(false);
     }
-  }, [isInitializing, isSignedIn, loadFromGoogleDrive]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isInitializing, isSignedIn]); // loadFromGoogleDrive 제거
 
   // 자동 저장 래퍼
   const triggerAutoSave = useCallback((
