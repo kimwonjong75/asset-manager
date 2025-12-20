@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Asset, ExchangeRates, ALLOWED_CATEGORIES, AssetCategory } from '../../types';
+import { Currency } from '../../types';
 import { getValueInKRW } from './utils';
 import { EnrichedAsset, SortKey, SortDirection } from './types';
 
@@ -38,8 +39,8 @@ export const usePortfolioData = ({
 
   const enrichedAndSortedAssets = useMemo(() => {
     let enriched: EnrichedAsset[] = assets.map(asset => {
-      // 1. isKRWExchange: Check if platform is Upbit or Bithumb
-      const isKRWExchange = asset.platform === 'Upbit' || asset.platform === 'Bithumb';
+      // 1. isKRWExchange: Check if exchange is Upbit or Bithumb
+      const isKRWExchange = asset.exchange === 'Upbit' || asset.exchange === 'Bithumb';
 
       // 2. Calculate Current Price in KRW
       let currentPriceKRW: number;
