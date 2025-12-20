@@ -155,6 +155,11 @@ const DashboardView: React.FC<DashboardViewProps> = ({
                   </div>
               </div>
           </div>
+          <ExchangeRateInput 
+            rates={exchangeRates} 
+            onRatesChange={onRatesChange} 
+            showWarning={showExchangeRateWarning} 
+          />
           <StatCard 
               title="매도 알림 발생" 
               value={`${alertCount}개`}
@@ -164,11 +169,6 @@ const DashboardView: React.FC<DashboardViewProps> = ({
               size="small"
           />
       </div>
-      <ExchangeRateInput 
-        rates={exchangeRates} 
-        onRatesChange={onRatesChange} 
-        showWarning={showExchangeRateWarning} 
-      />
        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
         <StatCard title="총 자산 (원화)" value={formatCurrencyKRW(dashboardTotalValue)} tooltip="선택된 자산의 현재 평가금액 총합입니다." />
         <StatCard title="투자 원금" value={formatCurrencyKRW(dashboardTotalPurchaseValue)} tooltip="선택된 자산의 총 매수금액 합계입니다." />

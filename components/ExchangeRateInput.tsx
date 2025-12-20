@@ -5,11 +5,12 @@ interface Props {
   rates: ExchangeRates;
   onRatesChange: (rates: ExchangeRates) => void;
   showWarning?: boolean;
+  className?: string;
 }
 
-const ExchangeRateInput: React.FC<Props> = ({ rates, onRatesChange, showWarning }) => {
+const ExchangeRateInput: React.FC<Props> = ({ rates, onRatesChange, showWarning, className = '' }) => {
   return (
-    <div className="bg-gray-800 p-4 rounded-lg shadow-lg">
+    <div className={className}>
       <div className="flex items-center gap-6 flex-wrap">
         <div className="flex items-center gap-2">
           <label className="text-sm text-gray-300">USD→KRW</label>
