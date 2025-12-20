@@ -54,13 +54,15 @@ const ProfitLossChart: React.FC<ProfitLossChartProps> = ({ history, assetsToDisp
     }, {});
     const principal = datum['투자 원금'];
     const total = datum['총 평가액'];
+    const profit = datum['손익'];
     const returnPct = datum['수익률'];
     return (
       <div style={{ backgroundColor: '#2D3748', border: '1px solid #4A5568', borderRadius: '0.5rem', padding: '0.5rem 0.75rem' }}>
         <div style={{ color: '#E2E8F0', marginBottom: 4 }}>{label}</div>
         <div style={{ color: '#A0AEC0' }}>투자 원금: <span style={{ color: '#E2E8F0', fontWeight: 700 }}>{formatCurrency(principal)} 원</span></div>
         <div style={{ color: '#A0AEC0' }}>총 평가액: <span style={{ color: '#E2E8F0', fontWeight: 700 }}>{formatCurrency(total)} 원</span></div>
-        <div style={{ color: '#A0AEC0' }}>총 수익률 (합산 평균): <span style={{ color: '#E2E8F0', fontWeight: 700 }}>{formatPercent(returnPct)}</span></div>
+        <div style={{ color: '#A0AEC0' }}>손익: <span style={{ color: '#E2E8F0', fontWeight: 700 }}>{formatCurrency(profit)} 원</span></div>
+        <div style={{ color: '#D69E2E' }}>수익률: <span style={{ color: '#F6E05E', fontWeight: 700 }}>{formatPercent(returnPct)}</span></div>
       </div>
     );
   };
@@ -70,15 +72,17 @@ const ProfitLossChart: React.FC<ProfitLossChartProps> = ({ history, assetsToDisp
       <h2 className="text-xl font-bold text-white mb-4">{title}</h2>
       {chartData.length > 1 ? (
         <ResponsiveContainer width="100%" height="90%">
-          <LineChart data={chartData} margin={{ top: 5, right: 20, left: 20, bottom: 5 }}>
+          <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#4A5568" />
             <XAxis dataKey="date" stroke="#A0AEC0" fontSize={12} />
-            <YAxis stroke="#A0AEC0" fontSize={12} tickFormatter={formatCurrency} width={80} />
+            <YAxis yAxisId="left" stroke="#A0AEC0" fontSize={12} tickFormatter={formatCurrency} width={80} />
+            <YAxis yAxisId="right" orientation="right" stroke="#D69E2E" fontSize={12} tickFormatter={formatPercent} width={60} />
             <Tooltip content={<CustomTooltip />} />
             <Legend wrapperStyle={{fontSize: "12px", bottom: -10}}/>
-            <Line type="monotone" dataKey="투자 원금" name="투자 원금" stroke="#63B3ED" strokeWidth={3} dot={false} />
-            <Line type="monotone" dataKey="총 평가액" name="총 평가액" stroke="#48BB78" strokeWidth={3} dot={false} />
-            <Line type="monotone" dataKey="손익" name="손익" stroke="#FFFFFF" strokeWidth={2} dot={{ r: 3 }} activeDot={{ r: 6 }} />
+            <Line yAxisId="left" type="monotone" dataKey="투자 원금" name="투자 원금" stroke="#63B3ED" strokeWidth={3} dot={false} />
+            <Line yAxisId="left" type="monotone" dataKey="총 평가액" name="총 평가액" stroke="#48BB78" strokeWidth={3} dot={false} />
+            <Line yAxisId="left" type="monotone" dataKey="손익" name="손익" stroke="#FFFFFF" strokeWidth={2} dot={{ r: 3 }} activeDot={{ r: 6 }} />
+            <Line yAxisId="right" type="monotone" dataKey="수익률" name="수익률(%)" stroke="#F6E05E" strokeWidth={2} dot={false} />
           </LineChart>
         </ResponsiveContainer>
       ) : (
