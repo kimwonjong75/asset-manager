@@ -1,6 +1,9 @@
 import { AssetCategory, Currency, AssetDataResult, normalizeExchange } from '../types';
 
 const STOCK_API_URL = 'https://asset-manager-887842923289.asia-northeast3.run.app';
+const CHUNK_SIZE = 20;
+const CHUNK_DELAY_MS = 500;
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 function toNumber(v: any, fallback = 0): number {
   const n = Number(v);
@@ -98,70 +101,62 @@ export async function fetchBatchAssetPrices(
   const resultMap = new Map<string, AssetDataResult>();
   if (assets.length === 0) return resultMap;
 
-  console.log('fetchBatchAssetPrices input assets', assets);
-
-  try {
-    const payload = assets.map(s => {
+  for (let i = 0; i < assets.length; i += CHUNK_SIZE) {
+    const chunk = assets.slice(i, i + CHUNK_SIZE);
+    const payload = chunk.map(s => {
       const isCrypto = s.category === AssetCategory.CRYPTOCURRENCY;
       const reqTicker = isCrypto ? `${String(s.ticker).toUpperCase()}-USD` : String(s.ticker).toUpperCase();
       return { ticker: reqTicker, exchange: normalizeExchange(s.exchange) };
     });
     console.log('fetchBatchAssetPrices payload', payload);
-    const data = await fetchStocksBatch(payload);
-    console.log('fetchBatchAssetPrices raw response', data);
-
-    const items: any[] = [];
-    if (Array.isArray(data?.results)) {
-      items.push(...data.results);
-    } else if (Array.isArray(data)) {
-      items.push(...data);
-    } else if (typeof data === 'object' && data) {
-      Object.keys(data).forEach(k => {
-        const v = data[k];
-        if (v && typeof v === 'object') items.push({ ...v, ticker: k });
+    try {
+      const data = await fetchStocksBatch(payload);
+      console.log('fetchBatchAssetPrices raw response', data);
+      const items: any[] = [];
+      if (Array.isArray(data?.results)) {
+        items.push(...data.results);
+      } else if (Array.isArray(data)) {
+        items.push(...data);
+      } else if (typeof data === 'object' && data) {
+        Object.keys(data).forEach(k => {
+          const v = data[k];
+          if (v && typeof v === 'object') items.push({ ...v, ticker: k });
+        });
+      }
+      items.forEach((item: any) => {
+        const ticker = String(item.ticker ?? item.symbol ?? '').toUpperCase();
+        const normalizedTicker = ticker.endsWith('-USD') ? ticker.replace(/-USD$/i, '') : ticker;
+        const matched = assets.find(a => a.ticker.toUpperCase() === normalizedTicker);
+        if (!matched) return;
+        const priceOrig = toNumber(item.priceOriginal ?? item.price ?? item.close, 0);
+        const prev = toNumber(item.previousClose ?? item.prev_close ?? item.yesterdayPrice, priceOrig);
+        const currencyFromServer = String(item.currency ?? matched.currency ?? Currency.USD);
+        const keepOriginalCurrency = matched.category === AssetCategory.CRYPTOCURRENCY;
+        const currency = keepOriginalCurrency ? String(matched.currency ?? currencyFromServer) : currencyFromServer;
+        const priceKRW = typeof item.priceKRW === 'number'
+          ? item.priceKRW
+          : (currency === Currency.KRW ? priceOrig : priceOrig);
+        const name = String(item.name ?? matched.ticker);
+        const isMocked = !(priceOrig > 0);
+        const result: AssetDataResult = {
+          name,
+          priceOriginal: priceOrig,
+          priceKRW,
+          currency,
+          pricePreviousClose: prev,
+          highestPrice: (currency === Currency.KRW ? priceKRW : priceOrig) * 1.1,
+          isMocked,
+        };
+        resultMap.set(matched.id, result);
       });
+    } catch (e) {
+      console.error('API Error Details:', e);
     }
+    await sleep(CHUNK_DELAY_MS);
+  }
 
-    items.forEach((item: any) => {
-      const ticker = String(item.ticker ?? item.symbol ?? '').toUpperCase();
-      const normalizedTicker = ticker.endsWith('-USD') ? ticker.replace(/-USD$/i, '') : ticker;
-      const matched = assets.find(a => a.ticker.toUpperCase() === normalizedTicker);
-      if (!matched) return;
-      const priceOrig = toNumber(item.priceOriginal ?? item.price ?? item.close, 0);
-      const prev = toNumber(item.previousClose ?? item.prev_close ?? item.yesterdayPrice, priceOrig);
-      const currencyFromServer = String(item.currency ?? matched.currency ?? Currency.USD);
-      const keepOriginalCurrency = matched.category === AssetCategory.CRYPTOCURRENCY;
-      const currency = keepOriginalCurrency ? String(matched.currency ?? currencyFromServer) : currencyFromServer;
-      const priceKRW = typeof item.priceKRW === 'number'
-        ? item.priceKRW
-        : (currency === Currency.KRW ? priceOrig : priceOrig);
-      const name = String(item.name ?? matched.ticker);
-      const isMocked = !(priceOrig > 0);
-      const result: AssetDataResult = {
-        name,
-        priceOriginal: priceOrig,
-        priceKRW,
-        currency,
-        pricePreviousClose: prev,
-        highestPrice: (currency === Currency.KRW ? priceKRW : priceOrig) * 1.1,
-        isMocked,
-      };
-      resultMap.set(matched.id, result);
-    });
-
-    assets.forEach(s => {
-      if (!resultMap.has(s.id)) resultMap.set(s.id, {
-        name: s.ticker,
-        priceOriginal: 0,
-        priceKRW: 0,
-        currency: String(s.currency ?? Currency.USD),
-        pricePreviousClose: 0,
-        highestPrice: 0,
-        isMocked: true,
-      });
-    });
-  } catch (e) {
-    assets.forEach(s => resultMap.set(s.id, {
+  assets.forEach(s => {
+    if (!resultMap.has(s.id)) resultMap.set(s.id, {
       name: s.ticker,
       priceOriginal: 0,
       priceKRW: 0,
@@ -169,8 +164,8 @@ export async function fetchBatchAssetPrices(
       pricePreviousClose: 0,
       highestPrice: 0,
       isMocked: true,
-    }));
-  }
+    });
+  });
 
   return resultMap;
 }
