@@ -184,7 +184,7 @@ App.tsx
 - `components/portfolio-table/` 디렉토리로 로직 분리
 - `usePortfolioData`: 데이터 가공, 정렬, 필터링 로직 담당
 **주요 변경사항**:
-- **수익률 계산 오류 수정**: 어제 대비 수익률(`yesterdayChange`) 계산 시, 환율을 적용하여 KRW 기준으로 통일. 단위 불일치로 인한 비정상적인 수익률(예: 100,000%) 표시 문제 해결.
+- **수익률 계산 로직 개선 (Upbit/Bithumb 예외 처리)**: Upbit/Bithumb 자산의 경우, 설정된 통화(`currency`)와 무관하게 API가 반환하는 원화(`KRW`) 가격을 기준으로 수익률을 계산하도록 로직 수정. `currency`가 'USD'로 설정되어 있어도 `currentPrice`는 KRW(API 값), `yesterdayPrice`는 USD(데이터 불일치)인 경우를 감지하여 환율을 자동 적용해 올바른 등락률(`yesterdayChange`)을 계산하고 비정상적인 수익률(예: 147,000%) 표시 문제를 해결함.
 - **변동액 표시 개선**: 전일 대비 변동액(`diffFromYesterday`) 또한 KRW 기준으로 계산 및 표시.
 
 ## ⚙️ 핵심 로직 및 알고리즘

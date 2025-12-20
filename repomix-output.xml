@@ -555,6 +555,511 @@ export default {
 };
 </file>
 
+<file path="services/googleDriveService.ts">
+// Google Drive API 서비스
+// Google Identity Services를 사용한 OAuth 인증 및 Drive API 연동
+
+export interface GoogleUser {
+  email: string;
+  name: string;
+  picture?: string;
+}
+
+export interface DriveFile {
+  id: string;
+  name: string;
+  mimeType: string;
+  createdTime: string;
+  modifiedTime: string;
+}
+
+const DRIVE_FOLDER_ID = '10O5cGNd9QVoAAxR8NdojqI9AD7wj0Q_g';
+
+class GoogleDriveService {
+  private accessToken: string | null = null;
+  private user: GoogleUser | null = null;
+  private clientId: string | null = null;
+  private tokenClient: google.accounts.oauth2.TokenClient | null = null;
+  private isInitialized = false;
+  private folderId: string | null = DRIVE_FOLDER_ID;
+
+  // Google Identity Services 초기화
+  async initialize(clientId: string): Promise<void> {
+    if (this.isInitialized) return;
+    
+    this.clientId = clientId;
+    
+    // Google API 스크립트 로드
+    await this.loadGoogleScripts();
+    
+    // 저장된 토큰 확인
+    const savedToken = localStorage.getItem('google_drive_access_token');
+    const savedUser = localStorage.getItem('google_drive_user');
+    const savedTokenExpiry = localStorage.getItem('google_drive_token_expiry');
+    
+    if (savedToken && savedUser) {
+      this.accessToken = savedToken;
+      this.user = JSON.parse(savedUser);
+      
+      // 토큰 만료 시간 확인
+      const now = Date.now();
+      const expiryTime = savedTokenExpiry ? parseInt(savedTokenExpiry, 10) : 0;
+      
+      // 토큰이 만료되지 않았고 유효한 경우
+      if (expiryTime > now && await this.validateToken()) {
+        this.isInitialized = true;
+        // 만료 5분 전에 자동 갱신 스케줄
+        const timeUntilExpiry = expiryTime - now;
+        const refreshTime = Math.max(0, timeUntilExpiry - 5 * 60 * 1000); // 5분 전
+        setTimeout(() => {
+          this.refreshTokenSilently();
+        }, refreshTime);
+        return;
+      } else {
+        // 토큰이 만료된 경우 - 자동 갱신 시도
+        if (savedTokenExpiry && expiryTime > now - 60 * 60 * 1000) { // 1시간 이내 만료된 경우만
+          try {
+            await this.refreshTokenSilently();
+            if (this.accessToken) {
+              this.isInitialized = true;
+              return;
+            }
+          } catch (error) {
+            console.log('Silent token refresh failed, user needs to sign in again');
+          }
+        }
+        // 토큰이 만료된 경우
+        this.accessToken = null;
+        this.user = null;
+        localStorage.removeItem('google_drive_access_token');
+        localStorage.removeItem('google_drive_user');
+        localStorage.removeItem('google_drive_token_expiry');
+      }
+    }
+    
+    this.isInitialized = true;
+  }
+
+  private loadGoogleScripts(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      // Google Identity Services 스크립트 로드
+      if (window.google?.accounts) {
+        resolve();
+        return;
+      }
+
+      const script = document.createElement('script');
+      script.src = 'https://accounts.google.com/gsi/client';
+      script.async = true;
+      script.defer = true;
+      script.onload = () => {
+        // Google API 클라이언트 라이브러리 로드
+        const apiScript = document.createElement('script');
+        apiScript.src = 'https://apis.google.com/js/api.js';
+        apiScript.async = true;
+        apiScript.defer = true;
+        apiScript.onload = () => {
+          window.gapi.load('client', () => {
+            window.gapi.client.init({
+              discoveryDocs: [
+                'https://www.googleapis.com/discovery/v1/apis/drive/v3/rest',
+                'https://www.googleapis.com/discovery/v1/apis/oauth2/v2/rest'
+              ],
+            }).then(() => {
+              resolve();
+            }).catch(reject);
+          });
+        };
+        apiScript.onerror = reject;
+        document.head.appendChild(apiScript);
+      };
+      script.onerror = reject;
+      document.head.appendChild(script);
+    });
+  }
+
+  // Google 로그인
+  async signIn(): Promise<GoogleUser> {
+    if (!this.clientId) {
+      throw new Error('Google Drive service not initialized. Please provide client ID.');
+    }
+    return new Promise((resolve, reject) => {
+      console.log('=== Google Sign In 시작 ===');
+      console.log('Client ID:', this.clientId);
+      console.log('Requested scope:', 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile openid');
+      
+      this.tokenClient = window.google.accounts.oauth2.initTokenClient({
+        client_id: this.clientId!,
+        scope: 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile openid',
+        callback: async (response: google.accounts.oauth2.TokenResponse) => {
+          console.log('=== OAuth Callback 실행됨 ===');
+          console.log('Response:', response);
+          
+          if (response.error) {
+            console.error('OAuth error:', response.error);
+            reject(new Error(response.error));
+            return;
+          }
+    
+          this.accessToken = response.access_token;
+          console.log('Access token received');
+          console.log('Received scope:', response.scope);
+          console.log('Scope includes userinfo.email:', response.scope?.includes('userinfo.email'));
+          console.log('Scope includes userinfo.profile:', response.scope?.includes('userinfo.profile'));
+          
+          // 토큰 만료 시간 저장 (기본 1시간, expires_in이 있으면 사용)
+          const expiresIn = response.expires_in ? response.expires_in * 1000 : 3600 * 1000;
+          const expiryTime = Date.now() + expiresIn;
+          localStorage.setItem('google_drive_token_expiry', expiryTime.toString());
+          
+          // 사용자 정보 가져오기
+          try {
+            const userInfo = await this.getUserInfo();
+            this.user = userInfo;
+            localStorage.setItem('google_drive_access_token', this.accessToken);
+            localStorage.setItem('google_drive_user', JSON.stringify(userInfo));
+            
+            // 만료 5분 전에 자동 갱신 스케줄
+            const refreshTime = Math.max(0, expiresIn - 5 * 60 * 1000); // 5분 전
+            setTimeout(() => {
+              this.refreshTokenSilently();
+            }, refreshTime);
+            
+            resolve(userInfo);
+          } catch (error: any) {
+            console.error('Failed to get user info:', error);
+            console.error('Error details:', error.message, error.stack);
+            // 토큰은 받았지만 사용자 정보를 가져오지 못한 경우, 토큰을 저장하지 않음
+            this.accessToken = null;
+            reject(error);
+          }
+        },
+      });
+    
+      console.log('Requesting access token with prompt: consent');
+      this.tokenClient.requestAccessToken({ prompt: 'consent' });
+    });
+  }
+
+  // 사용자 정보 가져오기
+  private async getUserInfo(): Promise<GoogleUser> {
+    if (!this.accessToken) {
+      throw new Error('Not authenticated');
+    }
+
+    try {
+      // 방법 1: OAuth2 userinfo API 시도
+      const response = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+        headers: {
+          Authorization: `Bearer ${this.accessToken}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        
+        if (data.email) {
+          return {
+            email: data.email,
+            name: data.name || data.email.split('@')[0],
+            picture: data.picture,
+          };
+        }
+      }
+
+      // 방법 2: Google API 클라이언트 사용 (대안)
+      if (window.gapi?.client && (window.gapi.client as any).setToken) {
+        try {
+          // 토큰 설정
+          (window.gapi.client as any).setToken({ access_token: this.accessToken });
+          await (window.gapi.client as any).load('oauth2', 'v2');
+          const userInfo = await (window.gapi.client as any).oauth2.userinfo.get();
+          if (userInfo.result && userInfo.result.email) {
+            return {
+              email: userInfo.result.email,
+              name: userInfo.result.name || userInfo.result.email.split('@')[0],
+              picture: userInfo.result.picture,
+            };
+          }
+        } catch (gapiError) {
+          console.error('GAPI userinfo error:', gapiError);
+        }
+      }
+
+      // 두 방법 모두 실패한 경우
+      const errorText = await response.text().catch(() => 'Unknown error');
+      console.error('User info API error:', response.status, errorText);
+      
+      // 더 자세한 에러 메시지
+      if (response.status === 401) {
+        throw new Error('인증 실패: Google Cloud Console의 OAuth 동의 화면에서 userinfo.email과 userinfo.profile scope를 추가했는지 확인하세요.');
+      } else if (response.status === 403) {
+        throw new Error('권한 없음: 사용자 정보에 접근할 권한이 없습니다. scope 설정을 확인하세요.');
+      } else {
+        throw new Error(`사용자 정보를 가져올 수 없습니다 (${response.status}): ${errorText}`);
+      }
+    } catch (error: any) {
+      console.error('getUserInfo error:', error);
+      throw error;
+    }
+  }
+
+  // 토큰 자동 갱신 (조용히)
+  private async refreshTokenSilently(): Promise<void> {
+    if (!this.clientId || !this.user) return;
+    
+    try {
+      this.tokenClient = window.google.accounts.oauth2.initTokenClient({
+        client_id: this.clientId!,
+        scope: 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile openid',
+        callback: async (response: google.accounts.oauth2.TokenResponse) => {
+          if (response.error) {
+            console.log('Token refresh failed:', response.error);
+            return;
+          }
+          
+          this.accessToken = response.access_token;
+          const expiresIn = response.expires_in ? response.expires_in * 1000 : 3600 * 1000;
+          const expiryTime = Date.now() + expiresIn;
+          localStorage.setItem('google_drive_access_token', this.accessToken);
+          localStorage.setItem('google_drive_token_expiry', expiryTime.toString());
+          
+          // 다음 갱신 스케줄
+          const refreshTime = Math.max(0, expiresIn - 5 * 60 * 1000);
+          setTimeout(() => {
+            this.refreshTokenSilently();
+          }, refreshTime);
+        },
+      });
+      
+      // prompt: 'none'으로 조용히 갱신 시도
+      this.tokenClient.requestAccessToken({ prompt: 'none' });
+    } catch (error) {
+      console.log('Silent token refresh error:', error);
+    }
+  }
+
+  // 로그아웃
+  signOut(): void {
+    if (this.accessToken) {
+      window.google.accounts.oauth2.revoke(this.accessToken, () => {
+        this.accessToken = null;
+        this.user = null;
+        localStorage.removeItem('google_drive_access_token');
+        localStorage.removeItem('google_drive_user');
+        localStorage.removeItem('google_drive_token_expiry');
+      });
+    }
+  }
+
+  // 로그인 상태 확인
+  isSignedIn(): boolean {
+    return this.accessToken !== null && this.user !== null;
+  }
+
+  // 현재 사용자 정보
+  getCurrentUser(): GoogleUser | null {
+    return this.user;
+  }
+
+  // 토큰 유효성 검사
+  private async validateToken(): Promise<boolean> {
+    if (!this.accessToken) return false;
+
+    try {
+      const response = await fetch('https://www.googleapis.com/oauth2/v1/tokeninfo?access_token=' + this.accessToken);
+      return response.ok;
+    } catch {
+      return false;
+    }
+  }
+
+  // 파일 목록 가져오기
+  async listFiles(): Promise<DriveFile[]> {
+    if (!this.accessToken) {
+      throw new Error('Not authenticated');
+    }
+
+    let query = "name = 'portfolio.json' and trashed = false";
+    if (this.folderId) {
+      query += ` and '${this.folderId}' in parents`;
+    }
+
+    const searchParams = new URLSearchParams({
+      q: query,
+      spaces: 'drive',
+      fields: 'files(id,name),nextPageToken',
+      pageSize: '10',
+    });
+
+    const response = await fetch(
+      `https://www.googleapis.com/drive/v3/files?${searchParams.toString()}`,
+      {
+        headers: {
+          Authorization: `Bearer ${this.accessToken}`,
+        },
+      }
+    );
+
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => 'Unknown error');
+      console.error('Drive list files error', response.status, errorText);
+      throw new Error(`Failed to list files (${response.status})`);
+    }
+
+    const data = await response.json();
+    return data.files || [];
+  }
+
+  // 파일 저장 (생성 또는 업데이트)
+  async saveFile(content: string, fileName: string = 'portfolio.json'): Promise<void> {
+    if (!this.accessToken) {
+      throw new Error('Not authenticated');
+    }
+
+    // 기존 파일 확인
+    const files = await this.listFiles();
+    const existingFile = files.find(f => f.name === fileName);
+
+    const fileContent = new Blob([content], { type: 'application/json' });
+    const baseMetadata = {
+      name: fileName,
+      mimeType: 'application/json',
+    };
+
+    if (existingFile) {
+      // 파일 업데이트
+      const form = new FormData();
+      form.append('metadata', new Blob([JSON.stringify(baseMetadata)], { type: 'application/json' }));
+      form.append('file', fileContent);
+
+      const response = await fetch(
+        `https://www.googleapis.com/upload/drive/v3/files/${existingFile.id}?uploadType=multipart`,
+        {
+          method: 'PATCH',
+          headers: {
+            Authorization: `Bearer ${this.accessToken}`,
+          },
+          body: form,
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error('Failed to update file');
+      }
+    } else {
+      // 새 파일 생성
+      const metadata: any = { ...baseMetadata };
+      if (this.folderId) {
+        metadata.parents = [this.folderId];
+      }
+      const form = new FormData();
+      form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
+      form.append('file', fileContent);
+
+      const response = await fetch(
+        'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${this.accessToken}`,
+          },
+          body: form,
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error('Failed to create file');
+      }
+    }
+  }
+
+  // 파일 불러오기
+  async loadFile(fileName: string = 'portfolio.json'): Promise<string | null> {
+    if (!this.accessToken) {
+      throw new Error('Not authenticated');
+    }
+
+    const files = await this.listFiles();
+    const file = files.find(f => f.name === fileName);
+
+    if (!file) {
+      return null;
+    }
+
+    const response = await fetch(
+      `https://www.googleapis.com/drive/v3/files/${file.id}?alt=media`,
+      {
+        headers: {
+          Authorization: `Bearer ${this.accessToken}`,
+        },
+      }
+    );
+
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => 'Unknown error');
+      console.error('Drive load file error', response.status, errorText);
+      throw new Error(`Failed to load file (${response.status})`);
+    }
+
+    return await response.text();
+  }
+}
+
+// 싱글톤 인스턴스
+export const googleDriveService = new GoogleDriveService();
+
+// 타입 선언
+declare global {
+  interface Window {
+    google: {
+      accounts: {
+        oauth2: {
+          initTokenClient: (config: {
+            client_id: string;
+            scope: string;
+            callback: (response: google.accounts.oauth2.TokenResponse) => void;
+          }) => google.accounts.oauth2.TokenClient;
+          revoke: (token: string, callback: () => void) => void;
+        };
+      };
+    };
+    gapi: {
+      load: (api: string, callback: () => void) => void;
+      client: {
+        init: (config: {
+          discoveryDocs: string[];
+        }) => Promise<void>;
+        setToken: (token: { access_token: string }) => void;
+        load: (apiName: string, version: string) => Promise<void>;
+        oauth2: {
+          userinfo: {
+            get: () => Promise<{ result: { email?: string; name?: string; picture?: string } }>;
+          };
+        };
+      };
+    };
+  }
+
+  namespace google {
+    namespace accounts {
+      namespace oauth2 {
+        interface TokenClient {
+          requestAccessToken: (options?: { prompt?: string }) => void;
+        }
+        interface TokenResponse {
+          access_token: string;
+          expires_in: number;
+          scope: string;
+          token_type: string;
+          error?: string;
+        }
+      }
+    }
+  }
+}
+</file>
+
 <file path="tailwind.config.ts">
 import type { Config } from 'tailwindcss';
 
@@ -1248,55 +1753,6 @@ const Toggle: React.FC<ToggleProps> = ({ label, checked, onChange, className = '
 export default Toggle;
 </file>
 
-<file path="components/ExchangeRateInput.tsx">
-import React from 'react';
-import { ExchangeRates } from '../types';
-
-interface Props {
-  rates: ExchangeRates;
-  onRatesChange: (rates: ExchangeRates) => void;
-  showWarning?: boolean;
-}
-
-const ExchangeRateInput: React.FC<Props> = ({ rates, onRatesChange, showWarning }) => {
-  return (
-    <div className="bg-gray-800 p-4 rounded-lg shadow-lg">
-      <div className="flex items-center gap-6 flex-wrap">
-        <div className="flex items-center gap-2">
-          <label className="text-sm text-gray-300">USD→KRW</label>
-          <input
-            type="number"
-            step="0.01"
-            value={rates.USD || 0}
-            onChange={(e) => onRatesChange({ ...rates, USD: parseFloat(e.target.value) || 0 })}
-            className="bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white text-sm w-28"
-            placeholder="예: 1400"
-          />
-        </div>
-        <div className="flex items-center gap-2">
-          <label className="text-sm text-gray-300">JPY→KRW</label>
-          <input
-            type="number"
-            step="0.01"
-            value={rates.JPY || 0}
-            onChange={(e) => onRatesChange({ ...rates, JPY: parseFloat(e.target.value) || 0 })}
-            className="bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white text-sm w-28"
-            placeholder="예: 9.5"
-          />
-        </div>
-        {showWarning && (
-          <div className="text-yellow-400 text-sm">
-            환율을 입력하세요. 미입력 시 원화 환산 값이 0으로 표시됩니다.
-          </div>
-        )}
-      </div>
-    </div>
-  );
-};
-
-export default ExchangeRateInput;
-</file>
-
 <file path="components/Header.tsx">
 import React, { useEffect, useState } from 'react';
 
@@ -1508,216 +1964,6 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ assets, sellHistory }) =>
 export default AnalyticsView;
 </file>
 
-<file path="components/layouts/DashboardView.tsx">
-import React, { useMemo, useCallback } from 'react';
-import { Asset, AssetCategory, ExchangeRates, PortfolioSnapshot, Currency, ALLOWED_CATEGORIES } from '../../types';
-import StatCard from '../StatCard';
-import ExchangeRateInput from '../ExchangeRateInput';
-import ProfitLossChart from '../ProfitLossChart';
-import AllocationChart from '../AllocationChart';
-import CategorySummaryTable from '../CategorySummaryTable';
-import TopBottomAssets from '../TopBottomAssets';
-
-interface DashboardViewProps {
-  assets: Asset[];
-  portfolioHistory: PortfolioSnapshot[];
-  exchangeRates: ExchangeRates;
-  dashboardFilterCategory: AssetCategory | 'ALL';
-  setDashboardFilterCategory: (cat: AssetCategory | 'ALL') => void;
-  alertCount: number;
-  onAlertClick: () => void;
-  onRatesChange: (rates: ExchangeRates) => void;
-  showExchangeRateWarning: boolean;
-  totalValue: number; // 부모에서 계산해서 내려줌 (혹은 여기서 계산)
-}
-
-const DashboardView: React.FC<DashboardViewProps> = ({
-  assets,
-  portfolioHistory,
-  exchangeRates,
-  dashboardFilterCategory,
-  setDashboardFilterCategory,
-  alertCount,
-  onAlertClick,
-  onRatesChange,
-  showExchangeRateWarning,
-  // totalValue -> 내부 계산으로 변경
-}) => {
-
-  const getValueInKRW = useCallback((value: number, currency: Currency): number => {
-    if (currency === Currency.KRW) return value;
-    const rate = exchangeRates[currency] || 0;
-    return value * rate;
-  }, [exchangeRates]);
-
-  const totalValue = useMemo(() => {
-    return assets.reduce((acc, asset) => {
-      const v = asset.currentPrice * asset.quantity;
-      return acc + getValueInKRW(v, asset.currency);
-    }, 0);
-  }, [assets, getValueInKRW]);
-
-  const categoryOptions = useMemo(() => {
-    const extras = Array.from(new Set(assets.map(asset => asset.category))).filter(
-      (cat) => !ALLOWED_CATEGORIES.includes(cat)
-    );
-    return [...ALLOWED_CATEGORIES, ...extras];
-  }, [assets]);
-
-  const dashboardFilteredAssets = useMemo(() => {
-      if (dashboardFilterCategory === 'ALL') {
-          return assets;
-      }
-      return assets.filter(asset => asset.category === dashboardFilterCategory);
-  }, [assets, dashboardFilterCategory]);
-
-  const dashboardTotalValue = useMemo(() => {
-      return dashboardFilteredAssets.reduce((acc, asset) => {
-        const v = asset.currentPrice * asset.quantity;
-        return acc + getValueInKRW(v, asset.currency);
-      }, 0);
-  }, [dashboardFilteredAssets, getValueInKRW]);
-
-  const dashboardTotalPurchaseValue = useMemo(() => {
-      return dashboardFilteredAssets.reduce((acc, asset) => {
-        const v = asset.purchasePrice * asset.quantity;
-        return acc + getValueInKRW(v, asset.currency);
-      }, 0);
-  }, [dashboardFilteredAssets, getValueInKRW]);
-
-  const dashboardTotalGainLoss = dashboardTotalValue - dashboardTotalPurchaseValue;
-  const dashboardTotalReturn = dashboardTotalPurchaseValue === 0 ? 0 : (dashboardTotalGainLoss / dashboardTotalPurchaseValue) * 100;
-
-  const soldAssetsStats = useMemo(() => {
-    let totalSoldAmount = 0;
-    let totalSoldPurchaseValue = 0;
-    let totalSoldProfit = 0;
-    let soldCount = 0;
-
-    assets.forEach(asset => {
-      if (asset.sellTransactions && asset.sellTransactions.length > 0) {
-        asset.sellTransactions.forEach(transaction => {
-          totalSoldAmount += transaction.sellPrice * transaction.sellQuantity;
-          soldCount += 1;
-          
-          let purchaseValueForSold: number;
-          if (asset.currency === Currency.KRW) {
-            purchaseValueForSold = asset.purchasePrice * transaction.sellQuantity;
-          } else if (asset.purchaseExchangeRate) {
-            purchaseValueForSold = asset.purchasePrice * asset.purchaseExchangeRate * transaction.sellQuantity;
-          } else if (asset.priceOriginal > 0) {
-            const exchangeRate = asset.currentPrice / asset.priceOriginal;
-            purchaseValueForSold = asset.purchasePrice * exchangeRate * transaction.sellQuantity;
-          } else {
-            purchaseValueForSold = asset.purchasePrice * transaction.sellQuantity;
-          }
-          totalSoldPurchaseValue += purchaseValueForSold;
-        });
-      }
-    });
-
-    totalSoldProfit = totalSoldAmount - totalSoldPurchaseValue;
-    const soldReturn = totalSoldPurchaseValue === 0 ? 0 : (totalSoldProfit / totalSoldPurchaseValue) * 100;
-
-    return {
-      totalSoldAmount,
-      totalSoldPurchaseValue,
-      totalSoldProfit,
-      soldReturn,
-      soldCount,
-    };
-  }, [assets]);
-
-  const profitLossChartTitle = useMemo(() => (
-      dashboardFilterCategory === 'ALL'
-      ? '손익 추이 분석'
-      : `${dashboardFilterCategory} 손익 추이 분석`
-  ), [dashboardFilterCategory]);
-
-  const formatCurrencyKRW = (value: number) => {
-    return value.toLocaleString('ko-KR', { 
-        style: 'currency', 
-        currency: 'KRW', 
-        maximumFractionDigits: 0 
-    });
-  };
-
-  return (
-    <div className="space-y-6">
-      <div className="bg-gray-800 p-4 rounded-lg shadow-lg flex items-center justify-between flex-wrap gap-4">
-          <div className="flex items-center gap-4" title="대시보드에 표시될 자산의 종류를 선택합니다.">
-              <label htmlFor="dashboard-filter" className="text-sm font-medium text-gray-300">
-                  자산 구분 필터:
-              </label>
-              <div className="relative">
-                  <select
-                      id="dashboard-filter"
-                      value={dashboardFilterCategory}
-                      onChange={(e) => setDashboardFilterCategory(e.target.value as AssetCategory | 'ALL')}
-                      className="bg-gray-700 border border-gray-600 rounded-md py-2 pl-3 pr-8 text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent appearance-none"
-                  >
-                      <option value="ALL">전체 포트폴리오</option>
-                      {categoryOptions.map((cat) => (
-                          <option key={cat} value={cat}>{cat}</option>
-                      ))}
-                  </select>
-                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-400">
-                      <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
-                  </div>
-              </div>
-          </div>
-          <StatCard 
-              title="매도 알림 발생" 
-              value={`${alertCount}개`}
-              tooltip="설정된 하락률 기준을 초과한 자산의 수입니다. 클릭하여 필터링된 목록을 확인하세요."
-              onClick={onAlertClick}
-              isAlert={alertCount > 0}
-              size="small"
-          />
-      </div>
-      <ExchangeRateInput 
-        rates={exchangeRates} 
-        onRatesChange={onRatesChange} 
-        showWarning={showExchangeRateWarning} 
-      />
-       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-        <StatCard title="총 자산 (원화)" value={formatCurrencyKRW(dashboardTotalValue)} tooltip="선택된 자산의 현재 평가금액 총합입니다." />
-        <StatCard title="투자 원금" value={formatCurrencyKRW(dashboardTotalPurchaseValue)} tooltip="선택된 자산의 총 매수금액 합계입니다." />
-        <StatCard title="총 손익 (원화)" value={formatCurrencyKRW(dashboardTotalGainLoss)} isProfit={dashboardTotalGainLoss >= 0} tooltip="총 평가금액에서 총 매수금액을 뺀 금액입니다."/>
-        <StatCard title="총 수익률" value={`${dashboardTotalReturn.toFixed(2)}%`} isProfit={dashboardTotalReturn >= 0} tooltip="총 손익을 총 매수금액으로 나눈 백분율입니다."/>
-      </div>
-      {soldAssetsStats.soldCount > 0 && (
-        <div className="bg-gray-800 p-6 rounded-lg shadow-lg mb-6">
-          <h3 className="text-xl font-bold text-white mb-4">매도 통계</h3>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            <StatCard title="매도 횟수" value={soldAssetsStats.soldCount.toString()} tooltip="총 매도 거래 횟수입니다." size="small" />
-            <StatCard title="매도 금액" value={formatCurrencyKRW(soldAssetsStats.totalSoldAmount)} tooltip="매도된 종목의 총 매도금액입니다." size="small" />
-            <StatCard title="매도 수익" value={formatCurrencyKRW(soldAssetsStats.totalSoldProfit)} isProfit={soldAssetsStats.totalSoldProfit >= 0} tooltip="매도금액에서 매수금액을 뺀 수익입니다." size="small" />
-            <StatCard title="매도 수익률" value={`${soldAssetsStats.soldReturn.toFixed(2)}%`} isProfit={soldAssetsStats.soldReturn >= 0} tooltip="매도 수익을 매수금액으로 나눈 백분율입니다." size="small" />
-          </div>
-        </div>
-      )}
-      <ProfitLossChart history={portfolioHistory} assetsToDisplay={dashboardFilteredAssets} title={profitLossChartTitle} />
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="lg:col-span-1">
-          <AllocationChart assets={assets} exchangeRates={exchangeRates} />
-        </div>
-        <div className="lg:col-span-1">
-           <CategorySummaryTable 
-            assets={assets} 
-            totalPortfolioValue={totalValue} 
-            exchangeRates={exchangeRates} 
-           />
-        </div>
-      </div>
-      <TopBottomAssets assets={assets} />
-    </div>
-  );
-};
-
-export default DashboardView;
-</file>
-
 <file path="components/layouts/PortfolioView.tsx">
 import React, { useMemo } from 'react';
 import { Asset, AssetCategory, ExchangeRates, PortfolioSnapshot } from '../../types';
@@ -1858,153 +2104,6 @@ const WatchlistView: React.FC<WatchlistViewProps> = ({
 export default WatchlistView;
 </file>
 
-<file path="components/portfolio-table/PortfolioTableRow.tsx">
-import React, { Fragment, useRef, useState } from 'react';
-import { Asset, Currency, PortfolioSnapshot } from '../../types';
-import { EnrichedAsset } from './types';
-import AssetTrendChart from '../AssetTrendChart';
-import { MoreHorizontal } from 'lucide-react';
-import { useOnClickOutside } from '../../hooks/useOnClickOutside';
-import { formatNumber, formatOriginalCurrency, formatKRW, formatProfitLoss, getChangeColor } from './utils';
-
-interface PortfolioTableRowProps {
-  asset: EnrichedAsset;
-  history: PortfolioSnapshot[];
-  selectedIds: Set<string>;
-  onSelect: (id: string, checked: boolean) => void;
-  showHiddenColumns: boolean;
-  sellAlertDropRate: number;
-  onEdit: (asset: Asset) => void;
-  onSell?: (asset: Asset) => void;
-  filterAlerts: boolean;
-}
-
-const ChartBarIcon: React.FC = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-  </svg>
-);
-
-const PortfolioTableRow: React.FC<PortfolioTableRowProps> = ({
-  asset,
-  history,
-  selectedIds,
-  onSelect,
-  showHiddenColumns,
-  sellAlertDropRate,
-  onEdit,
-  onSell,
-  filterAlerts
-}) => {
-  const [expandedAssetId, setExpandedAssetId] = useState<string | null>(null);
-  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
-  const menuRef = useRef<HTMLDivElement | null>(null);
-
-  useOnClickOutside(menuRef, () => setOpenMenuId(null), !!openMenuId);
-
-  const handleToggleExpand = (assetId: string) => {
-    setExpandedAssetId(prevId => (prevId === assetId ? null : assetId));
-  };
-
-  const { purchaseValue, currentValue, purchaseValueKRW, currentValueKRW, returnPercentage, allocation, dropFromHigh, profitLoss, profitLossKRW, diffFromHigh, yesterdayChange, diffFromYesterday } = asset.metrics;
-  const alertRate = asset.sellAlertDropRate ?? sellAlertDropRate;
-  const isAlertTriggered = dropFromHigh <= -alertRate;
-  const isNonKRW = asset.currency !== Currency.KRW;
-  const investmentColor = getChangeColor(returnPercentage);
-
-  return (
-    <Fragment>
-      <tr className={`border-b border-gray-700 transition-colors duration-200 hover:bg-gray-700/50`}>
-        <td className="px-4 py-4 text-center">
-          <input type="checkbox" checked={selectedIds.has(asset.id)} onChange={(e) => onSelect(asset.id, e.target.checked)} />
-        </td>
-        <td className="px-4 py-4 font-medium text-white break-words">
-          <div className="flex flex-col">
-             <div className="flex items-center gap-2">
-               <a 
-                 href={`https://www.google.com/search?q=${encodeURIComponent(asset.ticker + ' 주가')}`}
-                 target="_blank" 
-                 rel="noopener noreferrer"
-                 className="font-bold hover:underline text-primary-light cursor-pointer"
-               >
-                 {(asset.customName?.trim() || asset.name)}
-               </a>
-               {isAlertTriggered && <span className="text-xs" title="알림 조건 도달">⚠️</span>}
-             </div>
-            <span className="text-xs text-gray-500 break-all">{asset.ticker} | {asset.exchange}</span>
-          </div>
-        </td>
-        {showHiddenColumns && <td className="px-4 py-4 text-right">{formatNumber(asset.quantity)}</td>}
-        {showHiddenColumns && (
-          <td className="px-4 py-4 text-right">
-            <div>{formatOriginalCurrency(asset.purchasePrice, asset.currency)}</div>
-            {isNonKRW && <div className="text-xs text-gray-500">≈ {formatKRW(asset.metrics.purchasePriceKRW)}</div>}
-          </td>
-        )}
-        <td className="px-4 py-4 text-right">
-          <div className="font-semibold text-white">{formatOriginalCurrency(asset.currentPrice, asset.currency)}</div>
-          {isNonKRW && <div className="text-xs text-gray-500">≈ {formatKRW(asset.metrics.currentPriceKRW)}</div>}
-        </td>
-        <td className={`px-4 py-4 font-medium text-right ${getChangeColor(returnPercentage)}`}>
-          <div>{returnPercentage.toFixed(2)}%</div>
-          <div className="text-xs opacity-80">{formatProfitLoss(profitLoss, asset.currency)}</div>
-        </td>
-        <td className="px-4 py-4 text-right">
-          <div className={investmentColor}>{formatOriginalCurrency(purchaseValue, asset.currency)}</div>
-          {isNonKRW && <div className="text-xs text-gray-500">≈ {formatKRW(purchaseValueKRW)}</div>}
-        </td>
-        <td className="px-4 py-4 text-right">
-          <div className="font-semibold text-white">{formatOriginalCurrency(currentValue, asset.currency)}</div>
-          {isNonKRW && <div className="text-xs text-gray-500">≈ {formatKRW(currentValueKRW)}</div>}
-        </td>
-        {showHiddenColumns && <td className="px-4 py-4 text-center">{asset.purchaseDate}</td>}
-        {showHiddenColumns && <td className="px-4 py-4 text-right">{allocation.toFixed(2)}%</td>}
-        <td className={`px-4 py-4 font-medium text-right ${getChangeColor(dropFromHigh)}`}>
-            <div>{dropFromHigh.toFixed(2)}%</div>
-            <div className="text-xs opacity-80">{formatProfitLoss(diffFromHigh, asset.currency)}</div>
-        </td>
-        <td className={`px-4 py-4 font-medium text-right ${getChangeColor(yesterdayChange)}`}>
-            <div>{yesterdayChange.toFixed(2)}%</div>
-            <div className="text-xs opacity-80">{formatProfitLoss(diffFromYesterday, asset.currency)}</div>
-        </td>
-        <td className="px-4 py-4 text-center relative">
-          <div className="flex items-center justify-center gap-1">
-            <button onClick={() => handleToggleExpand(asset.id)} className="p-2 text-gray-300 hover:text-white" title="차트">
-                <ChartBarIcon />
-            </button>
-            <button onClick={() => setOpenMenuId(openMenuId === asset.id ? null : asset.id)} className="p-2 text-gray-300 hover:text-white">
-                <MoreHorizontal className="h-5 w-5" />
-            </button>
-          </div>
-          {openMenuId === asset.id && (
-            <div ref={menuRef} className="absolute right-0 mt-2 w-44 bg-gray-800 border border-gray-700 rounded-md shadow-lg z-30 text-sm">
-               <button onClick={() => { setOpenMenuId(null); onEdit(asset); }} className="block w-full text-left px-3 py-2 hover:bg-gray-700 text-white">수정</button>
-               {onSell && <button onClick={() => { setOpenMenuId(null); onSell(asset); }} className="block w-full text-left px-3 py-2 text-red-400 hover:bg-gray-700">매도</button>}
-               <button onClick={() => { setOpenMenuId(null); handleToggleExpand(asset.id); }} className="block w-full text-left px-3 py-2 text-gray-200 hover:bg-gray-700">차트 보기</button>
-            </div>
-          )}
-        </td>
-      </tr>
-      {expandedAssetId === asset.id && (
-        <tr className="bg-gray-900/50">
-          <td colSpan={showHiddenColumns ? 13 : 9} className="p-0 sm:p-2">
-            <AssetTrendChart
-              history={history}
-              assetId={asset.id}
-              assetName={(asset.customName?.trim() || asset.name)}
-              // @ts-ignore: AssetTrendChart가 currentQuantity를 prop으로 받도록 수정되었는지 확인 필요
-              currentQuantity={asset.quantity} 
-            />
-          </td>
-        </tr>
-      )}
-    </Fragment>
-  );
-};
-
-export default PortfolioTableRow;
-</file>
-
 <file path="components/portfolio-table/types.ts">
 import { Asset, AssetCategory, PortfolioSnapshot, ExchangeRates, Currency } from '../../types';
 
@@ -2054,171 +2153,6 @@ export interface AssetMetrics {
 export interface EnrichedAsset extends Asset {
   metrics: AssetMetrics;
 }
-</file>
-
-<file path="components/portfolio-table/usePortfolioData.ts">
-import { useMemo, useState } from 'react';
-import { Asset, ExchangeRates, ALLOWED_CATEGORIES, AssetCategory } from '../../types';
-import { getValueInKRW } from './utils';
-import { EnrichedAsset, SortKey, SortDirection } from './types';
-
-interface UsePortfolioDataProps {
-  assets: Asset[];
-  exchangeRates: ExchangeRates;
-  filterAlerts: boolean;
-  sellAlertDropRate: number;
-  showFailedOnly: boolean;
-  failedIds?: Set<string>;
-}
-
-export const usePortfolioData = ({
-  assets,
-  exchangeRates,
-  filterAlerts,
-  sellAlertDropRate,
-  showFailedOnly,
-  failedIds
-}: UsePortfolioDataProps) => {
-  const [sortConfig, setSortConfig] = useState<{ key: SortKey; direction: SortDirection } | null>(null);
-
-  const totalValueKRW = useMemo(() => {
-    return assets.reduce((sum, asset) => {
-      const valueInOriginalCurrency = asset.currentPrice * asset.quantity;
-      return sum + getValueInKRW(valueInOriginalCurrency, asset.currency, exchangeRates);
-    }, 0);
-  }, [assets, exchangeRates]);
-
-  const categoryOptions = useMemo(() => {
-    const extras = Array.from(new Set(assets.map(asset => asset.category))).filter(
-      (cat) => !ALLOWED_CATEGORIES.includes(cat) && cat !== AssetCategory.FOREIGN_STOCK
-    );
-    return [...ALLOWED_CATEGORIES, ...extras];
-  }, [assets]);
-
-  const enrichedAndSortedAssets = useMemo(() => {
-    let enriched: EnrichedAsset[] = assets.map(asset => {
-      const currentValue = asset.currentPrice * asset.quantity;
-      const purchaseValue = asset.purchasePrice * asset.quantity;
-      
-      const profitLoss = currentValue - purchaseValue;
-      const returnPercentage = purchaseValue === 0 ? 0 : (profitLoss / purchaseValue) * 100;
-      
-      const currentValueKRW = getValueInKRW(currentValue, asset.currency, exchangeRates);
-      const purchaseValueKRW = getValueInKRW(purchaseValue, asset.currency, exchangeRates);
-      const profitLossKRW = currentValueKRW - purchaseValueKRW;
-      
-      const currentPriceKRW = getValueInKRW(asset.currentPrice, asset.currency, exchangeRates);
-      const purchasePriceKRW = getValueInKRW(asset.purchasePrice, asset.currency, exchangeRates);
-
-      const allocation = totalValueKRW === 0 ? 0 : (currentValueKRW / totalValueKRW) * 100;
-      const dropFromHigh = asset.highestPrice === 0 ? 0 : ((asset.currentPrice - asset.highestPrice) / asset.highestPrice) * 100;
-      const diffFromHigh = asset.currentPrice - asset.highestPrice;
-      
-      const yesterdayPrice = asset.yesterdayPrice || 0;
-      const yesterdayChange = yesterdayPrice > 0 ? ((asset.currentPrice - yesterdayPrice) / yesterdayPrice) * 100 : 0;
-      const diffFromYesterday = yesterdayPrice > 0 ? asset.currentPrice - yesterdayPrice : 0;
-      
-      return {
-        ...asset,
-        metrics: {
-          purchasePrice: asset.purchasePrice,
-          currentPrice: asset.currentPrice,
-          currentPriceKRW,
-          purchasePriceKRW,
-          purchaseValue, currentValue, purchaseValueKRW, currentValueKRW,
-          returnPercentage, allocation, dropFromHigh, profitLoss, profitLossKRW,
-          diffFromHigh, yesterdayChange, diffFromYesterday,
-        }
-      };
-    });
-
-    if (filterAlerts) {
-      enriched = enriched.filter(asset => {
-        const alertRate = asset.sellAlertDropRate ?? sellAlertDropRate;
-        return asset.metrics.dropFromHigh <= -alertRate;
-      });
-    }
-
-    if (showFailedOnly && failedIds && failedIds.size > 0) {
-      enriched = enriched.filter(asset => failedIds.has(asset.id));
-    }
-
-    if (sortConfig !== null) {
-      enriched.sort((a, b) => {
-        const { key, direction } = sortConfig;
-        let aValue: any, bValue: any;
-
-        if (key === 'name') {
-          aValue = (a.customName?.toLowerCase() || a.name.toLowerCase());
-          bValue = (b.customName?.toLowerCase() || b.name.toLowerCase());
-        } else if (key === 'purchaseDate') {
-          aValue = a.purchaseDate; bValue = b.purchaseDate;
-        } else if (key === 'quantity') {
-          aValue = a.quantity; bValue = b.quantity;
-        } else if (key === 'currentPrice') {
-          aValue = a.metrics.currentPriceKRW;
-          bValue = b.metrics.currentPriceKRW;
-        } else if (key === 'purchasePrice') {
-          aValue = a.metrics.purchasePriceKRW;
-          bValue = b.metrics.purchasePriceKRW;
-        } else if (key === 'currentValue') {
-           aValue = a.metrics.currentValueKRW;
-           bValue = b.metrics.currentValueKRW;
-        } else if (key === 'purchaseValue') {
-           aValue = a.metrics.purchaseValueKRW;
-           bValue = b.metrics.purchaseValueKRW;
-        } else {
-          aValue = a.metrics[key as keyof typeof a.metrics];
-          bValue = b.metrics[key as keyof typeof b.metrics];
-        }
-
-        if (aValue < bValue) return direction === 'ascending' ? -1 : 1;
-        if (aValue > bValue) return direction === 'ascending' ? 1 : -1;
-        return 0;
-      });
-    }
-
-    return enriched;
-  }, [assets, sortConfig, totalValueKRW, exchangeRates, filterAlerts, sellAlertDropRate, showFailedOnly, failedIds]);
-
-  const requestSort = (key: SortKey) => {
-    let direction: SortDirection = 'ascending';
-    if (sortConfig && sortConfig.key === key && sortConfig.direction === 'ascending') {
-      direction = 'descending';
-    }
-    setSortConfig({ key, direction });
-  };
-  
-  const toggleReturnSort = () => {
-    const s = sortConfig;
-    if (!s || (s.key !== 'returnPercentage' && s.key !== 'profitLossKRW')) {
-      setSortConfig({ key: 'returnPercentage', direction: 'descending' });
-      return;
-    }
-    if (s.key === 'returnPercentage' && s.direction === 'descending') {
-      setSortConfig({ key: 'returnPercentage', direction: 'ascending' });
-      return;
-    }
-    if (s.key === 'returnPercentage' && s.direction === 'ascending') {
-      setSortConfig({ key: 'profitLossKRW', direction: 'descending' });
-      return;
-    }
-    if (s.key === 'profitLossKRW' && s.direction === 'descending') {
-      setSortConfig({ key: 'profitLossKRW', direction: 'ascending' });
-      return;
-    }
-    setSortConfig(null);
-  };
-
-  return {
-    enrichedAndSortedAssets,
-    sortConfig,
-    requestSort,
-    toggleReturnSort,
-    categoryOptions,
-    totalValueKRW
-  };
-};
 </file>
 
 <file path="components/portfolio-table/utils.ts">
@@ -3649,511 +3583,6 @@ export const initialAssets: Asset[] = [
 }
 </file>
 
-<file path="services/googleDriveService.ts">
-// Google Drive API 서비스
-// Google Identity Services를 사용한 OAuth 인증 및 Drive API 연동
-
-export interface GoogleUser {
-  email: string;
-  name: string;
-  picture?: string;
-}
-
-export interface DriveFile {
-  id: string;
-  name: string;
-  mimeType: string;
-  createdTime: string;
-  modifiedTime: string;
-}
-
-const DRIVE_FOLDER_ID = '10O5cGNd9QVoAAxR8NdojqI9AD7wj0Q_g';
-
-class GoogleDriveService {
-  private accessToken: string | null = null;
-  private user: GoogleUser | null = null;
-  private clientId: string | null = null;
-  private tokenClient: google.accounts.oauth2.TokenClient | null = null;
-  private isInitialized = false;
-  private folderId: string | null = DRIVE_FOLDER_ID;
-
-  // Google Identity Services 초기화
-  async initialize(clientId: string): Promise<void> {
-    if (this.isInitialized) return;
-    
-    this.clientId = clientId;
-    
-    // Google API 스크립트 로드
-    await this.loadGoogleScripts();
-    
-    // 저장된 토큰 확인
-    const savedToken = localStorage.getItem('google_drive_access_token');
-    const savedUser = localStorage.getItem('google_drive_user');
-    const savedTokenExpiry = localStorage.getItem('google_drive_token_expiry');
-    
-    if (savedToken && savedUser) {
-      this.accessToken = savedToken;
-      this.user = JSON.parse(savedUser);
-      
-      // 토큰 만료 시간 확인
-      const now = Date.now();
-      const expiryTime = savedTokenExpiry ? parseInt(savedTokenExpiry, 10) : 0;
-      
-      // 토큰이 만료되지 않았고 유효한 경우
-      if (expiryTime > now && await this.validateToken()) {
-        this.isInitialized = true;
-        // 만료 5분 전에 자동 갱신 스케줄
-        const timeUntilExpiry = expiryTime - now;
-        const refreshTime = Math.max(0, timeUntilExpiry - 5 * 60 * 1000); // 5분 전
-        setTimeout(() => {
-          this.refreshTokenSilently();
-        }, refreshTime);
-        return;
-      } else {
-        // 토큰이 만료된 경우 - 자동 갱신 시도
-        if (savedTokenExpiry && expiryTime > now - 60 * 60 * 1000) { // 1시간 이내 만료된 경우만
-          try {
-            await this.refreshTokenSilently();
-            if (this.accessToken) {
-              this.isInitialized = true;
-              return;
-            }
-          } catch (error) {
-            console.log('Silent token refresh failed, user needs to sign in again');
-          }
-        }
-        // 토큰이 만료된 경우
-        this.accessToken = null;
-        this.user = null;
-        localStorage.removeItem('google_drive_access_token');
-        localStorage.removeItem('google_drive_user');
-        localStorage.removeItem('google_drive_token_expiry');
-      }
-    }
-    
-    this.isInitialized = true;
-  }
-
-  private loadGoogleScripts(): Promise<void> {
-    return new Promise((resolve, reject) => {
-      // Google Identity Services 스크립트 로드
-      if (window.google?.accounts) {
-        resolve();
-        return;
-      }
-
-      const script = document.createElement('script');
-      script.src = 'https://accounts.google.com/gsi/client';
-      script.async = true;
-      script.defer = true;
-      script.onload = () => {
-        // Google API 클라이언트 라이브러리 로드
-        const apiScript = document.createElement('script');
-        apiScript.src = 'https://apis.google.com/js/api.js';
-        apiScript.async = true;
-        apiScript.defer = true;
-        apiScript.onload = () => {
-          window.gapi.load('client', () => {
-            window.gapi.client.init({
-              discoveryDocs: [
-                'https://www.googleapis.com/discovery/v1/apis/drive/v3/rest',
-                'https://www.googleapis.com/discovery/v1/apis/oauth2/v2/rest'
-              ],
-            }).then(() => {
-              resolve();
-            }).catch(reject);
-          });
-        };
-        apiScript.onerror = reject;
-        document.head.appendChild(apiScript);
-      };
-      script.onerror = reject;
-      document.head.appendChild(script);
-    });
-  }
-
-  // Google 로그인
-  async signIn(): Promise<GoogleUser> {
-    if (!this.clientId) {
-      throw new Error('Google Drive service not initialized. Please provide client ID.');
-    }
-    return new Promise((resolve, reject) => {
-      console.log('=== Google Sign In 시작 ===');
-      console.log('Client ID:', this.clientId);
-      console.log('Requested scope:', 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile openid');
-      
-      this.tokenClient = window.google.accounts.oauth2.initTokenClient({
-        client_id: this.clientId!,
-        scope: 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile openid',
-        callback: async (response: google.accounts.oauth2.TokenResponse) => {
-          console.log('=== OAuth Callback 실행됨 ===');
-          console.log('Response:', response);
-          
-          if (response.error) {
-            console.error('OAuth error:', response.error);
-            reject(new Error(response.error));
-            return;
-          }
-    
-          this.accessToken = response.access_token;
-          console.log('Access token received');
-          console.log('Received scope:', response.scope);
-          console.log('Scope includes userinfo.email:', response.scope?.includes('userinfo.email'));
-          console.log('Scope includes userinfo.profile:', response.scope?.includes('userinfo.profile'));
-          
-          // 토큰 만료 시간 저장 (기본 1시간, expires_in이 있으면 사용)
-          const expiresIn = response.expires_in ? response.expires_in * 1000 : 3600 * 1000;
-          const expiryTime = Date.now() + expiresIn;
-          localStorage.setItem('google_drive_token_expiry', expiryTime.toString());
-          
-          // 사용자 정보 가져오기
-          try {
-            const userInfo = await this.getUserInfo();
-            this.user = userInfo;
-            localStorage.setItem('google_drive_access_token', this.accessToken);
-            localStorage.setItem('google_drive_user', JSON.stringify(userInfo));
-            
-            // 만료 5분 전에 자동 갱신 스케줄
-            const refreshTime = Math.max(0, expiresIn - 5 * 60 * 1000); // 5분 전
-            setTimeout(() => {
-              this.refreshTokenSilently();
-            }, refreshTime);
-            
-            resolve(userInfo);
-          } catch (error: any) {
-            console.error('Failed to get user info:', error);
-            console.error('Error details:', error.message, error.stack);
-            // 토큰은 받았지만 사용자 정보를 가져오지 못한 경우, 토큰을 저장하지 않음
-            this.accessToken = null;
-            reject(error);
-          }
-        },
-      });
-    
-      console.log('Requesting access token with prompt: consent');
-      this.tokenClient.requestAccessToken({ prompt: 'consent' });
-    });
-  }
-
-  // 사용자 정보 가져오기
-  private async getUserInfo(): Promise<GoogleUser> {
-    if (!this.accessToken) {
-      throw new Error('Not authenticated');
-    }
-
-    try {
-      // 방법 1: OAuth2 userinfo API 시도
-      const response = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
-        headers: {
-          Authorization: `Bearer ${this.accessToken}`,
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        
-        if (data.email) {
-          return {
-            email: data.email,
-            name: data.name || data.email.split('@')[0],
-            picture: data.picture,
-          };
-        }
-      }
-
-      // 방법 2: Google API 클라이언트 사용 (대안)
-      if (window.gapi?.client && (window.gapi.client as any).setToken) {
-        try {
-          // 토큰 설정
-          (window.gapi.client as any).setToken({ access_token: this.accessToken });
-          await (window.gapi.client as any).load('oauth2', 'v2');
-          const userInfo = await (window.gapi.client as any).oauth2.userinfo.get();
-          if (userInfo.result && userInfo.result.email) {
-            return {
-              email: userInfo.result.email,
-              name: userInfo.result.name || userInfo.result.email.split('@')[0],
-              picture: userInfo.result.picture,
-            };
-          }
-        } catch (gapiError) {
-          console.error('GAPI userinfo error:', gapiError);
-        }
-      }
-
-      // 두 방법 모두 실패한 경우
-      const errorText = await response.text().catch(() => 'Unknown error');
-      console.error('User info API error:', response.status, errorText);
-      
-      // 더 자세한 에러 메시지
-      if (response.status === 401) {
-        throw new Error('인증 실패: Google Cloud Console의 OAuth 동의 화면에서 userinfo.email과 userinfo.profile scope를 추가했는지 확인하세요.');
-      } else if (response.status === 403) {
-        throw new Error('권한 없음: 사용자 정보에 접근할 권한이 없습니다. scope 설정을 확인하세요.');
-      } else {
-        throw new Error(`사용자 정보를 가져올 수 없습니다 (${response.status}): ${errorText}`);
-      }
-    } catch (error: any) {
-      console.error('getUserInfo error:', error);
-      throw error;
-    }
-  }
-
-  // 토큰 자동 갱신 (조용히)
-  private async refreshTokenSilently(): Promise<void> {
-    if (!this.clientId || !this.user) return;
-    
-    try {
-      this.tokenClient = window.google.accounts.oauth2.initTokenClient({
-        client_id: this.clientId!,
-        scope: 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile openid',
-        callback: async (response: google.accounts.oauth2.TokenResponse) => {
-          if (response.error) {
-            console.log('Token refresh failed:', response.error);
-            return;
-          }
-          
-          this.accessToken = response.access_token;
-          const expiresIn = response.expires_in ? response.expires_in * 1000 : 3600 * 1000;
-          const expiryTime = Date.now() + expiresIn;
-          localStorage.setItem('google_drive_access_token', this.accessToken);
-          localStorage.setItem('google_drive_token_expiry', expiryTime.toString());
-          
-          // 다음 갱신 스케줄
-          const refreshTime = Math.max(0, expiresIn - 5 * 60 * 1000);
-          setTimeout(() => {
-            this.refreshTokenSilently();
-          }, refreshTime);
-        },
-      });
-      
-      // prompt: 'none'으로 조용히 갱신 시도
-      this.tokenClient.requestAccessToken({ prompt: 'none' });
-    } catch (error) {
-      console.log('Silent token refresh error:', error);
-    }
-  }
-
-  // 로그아웃
-  signOut(): void {
-    if (this.accessToken) {
-      window.google.accounts.oauth2.revoke(this.accessToken, () => {
-        this.accessToken = null;
-        this.user = null;
-        localStorage.removeItem('google_drive_access_token');
-        localStorage.removeItem('google_drive_user');
-        localStorage.removeItem('google_drive_token_expiry');
-      });
-    }
-  }
-
-  // 로그인 상태 확인
-  isSignedIn(): boolean {
-    return this.accessToken !== null && this.user !== null;
-  }
-
-  // 현재 사용자 정보
-  getCurrentUser(): GoogleUser | null {
-    return this.user;
-  }
-
-  // 토큰 유효성 검사
-  private async validateToken(): Promise<boolean> {
-    if (!this.accessToken) return false;
-
-    try {
-      const response = await fetch('https://www.googleapis.com/oauth2/v1/tokeninfo?access_token=' + this.accessToken);
-      return response.ok;
-    } catch {
-      return false;
-    }
-  }
-
-  // 파일 목록 가져오기
-  async listFiles(): Promise<DriveFile[]> {
-    if (!this.accessToken) {
-      throw new Error('Not authenticated');
-    }
-
-    let query = "name = 'portfolio.json' and trashed = false";
-    if (this.folderId) {
-      query += ` and '${this.folderId}' in parents`;
-    }
-
-    const searchParams = new URLSearchParams({
-      q: query,
-      spaces: 'drive',
-      fields: 'files(id,name),nextPageToken',
-      pageSize: '10',
-    });
-
-    const response = await fetch(
-      `https://www.googleapis.com/drive/v3/files?${searchParams.toString()}`,
-      {
-        headers: {
-          Authorization: `Bearer ${this.accessToken}`,
-        },
-      }
-    );
-
-    if (!response.ok) {
-      const errorText = await response.text().catch(() => 'Unknown error');
-      console.error('Drive list files error', response.status, errorText);
-      throw new Error(`Failed to list files (${response.status})`);
-    }
-
-    const data = await response.json();
-    return data.files || [];
-  }
-
-  // 파일 저장 (생성 또는 업데이트)
-  async saveFile(content: string, fileName: string = 'portfolio.json'): Promise<void> {
-    if (!this.accessToken) {
-      throw new Error('Not authenticated');
-    }
-
-    // 기존 파일 확인
-    const files = await this.listFiles();
-    const existingFile = files.find(f => f.name === fileName);
-
-    const fileContent = new Blob([content], { type: 'application/json' });
-    const baseMetadata = {
-      name: fileName,
-      mimeType: 'application/json',
-    };
-
-    if (existingFile) {
-      // 파일 업데이트
-      const form = new FormData();
-      form.append('metadata', new Blob([JSON.stringify(baseMetadata)], { type: 'application/json' }));
-      form.append('file', fileContent);
-
-      const response = await fetch(
-        `https://www.googleapis.com/upload/drive/v3/files/${existingFile.id}?uploadType=multipart`,
-        {
-          method: 'PATCH',
-          headers: {
-            Authorization: `Bearer ${this.accessToken}`,
-          },
-          body: form,
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error('Failed to update file');
-      }
-    } else {
-      // 새 파일 생성
-      const metadata: any = { ...baseMetadata };
-      if (this.folderId) {
-        metadata.parents = [this.folderId];
-      }
-      const form = new FormData();
-      form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
-      form.append('file', fileContent);
-
-      const response = await fetch(
-        'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',
-        {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${this.accessToken}`,
-          },
-          body: form,
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error('Failed to create file');
-      }
-    }
-  }
-
-  // 파일 불러오기
-  async loadFile(fileName: string = 'portfolio.json'): Promise<string | null> {
-    if (!this.accessToken) {
-      throw new Error('Not authenticated');
-    }
-
-    const files = await this.listFiles();
-    const file = files.find(f => f.name === fileName);
-
-    if (!file) {
-      return null;
-    }
-
-    const response = await fetch(
-      `https://www.googleapis.com/drive/v3/files/${file.id}?alt=media`,
-      {
-        headers: {
-          Authorization: `Bearer ${this.accessToken}`,
-        },
-      }
-    );
-
-    if (!response.ok) {
-      const errorText = await response.text().catch(() => 'Unknown error');
-      console.error('Drive load file error', response.status, errorText);
-      throw new Error(`Failed to load file (${response.status})`);
-    }
-
-    return await response.text();
-  }
-}
-
-// 싱글톤 인스턴스
-export const googleDriveService = new GoogleDriveService();
-
-// 타입 선언
-declare global {
-  interface Window {
-    google: {
-      accounts: {
-        oauth2: {
-          initTokenClient: (config: {
-            client_id: string;
-            scope: string;
-            callback: (response: google.accounts.oauth2.TokenResponse) => void;
-          }) => google.accounts.oauth2.TokenClient;
-          revoke: (token: string, callback: () => void) => void;
-        };
-      };
-    };
-    gapi: {
-      load: (api: string, callback: () => void) => void;
-      client: {
-        init: (config: {
-          discoveryDocs: string[];
-        }) => Promise<void>;
-        setToken: (token: { access_token: string }) => void;
-        load: (apiName: string, version: string) => Promise<void>;
-        oauth2: {
-          userinfo: {
-            get: () => Promise<{ result: { email?: string; name?: string; picture?: string } }>;
-          };
-        };
-      };
-    };
-  }
-
-  namespace google {
-    namespace accounts {
-      namespace oauth2 {
-        interface TokenClient {
-          requestAccessToken: (options?: { prompt?: string }) => void;
-        }
-        interface TokenResponse {
-          access_token: string;
-          expires_in: number;
-          scope: string;
-          token_type: string;
-          error?: string;
-        }
-      }
-    }
-  }
-}
-</file>
-
 <file path=".github/workflows/deploy.yml">
 name: Deploy to GitHub Pages
 
@@ -4215,6 +3644,585 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+</file>
+
+<file path="components/ExchangeRateInput.tsx">
+import React from 'react';
+import { ExchangeRates } from '../types';
+
+interface Props {
+  rates: ExchangeRates;
+  onRatesChange: (rates: ExchangeRates) => void;
+  showWarning?: boolean;
+  className?: string;
+}
+
+const ExchangeRateInput: React.FC<Props> = ({ rates, onRatesChange, showWarning, className = '' }) => {
+  return (
+    <div className={className}>
+      <div className="flex items-center gap-6 flex-wrap">
+        <div className="flex items-center gap-2">
+          <label className="text-sm text-gray-300">USD→KRW</label>
+          <input
+            type="number"
+            step="0.01"
+            value={rates.USD || 0}
+            onChange={(e) => onRatesChange({ ...rates, USD: parseFloat(e.target.value) || 0 })}
+            className="bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white text-sm w-28"
+            placeholder="예: 1400"
+          />
+        </div>
+        <div className="flex items-center gap-2">
+          <label className="text-sm text-gray-300">JPY→KRW</label>
+          <input
+            type="number"
+            step="0.01"
+            value={rates.JPY || 0}
+            onChange={(e) => onRatesChange({ ...rates, JPY: parseFloat(e.target.value) || 0 })}
+            className="bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white text-sm w-28"
+            placeholder="예: 9.5"
+          />
+        </div>
+        {showWarning && (
+          <div className="text-yellow-400 text-sm">
+            환율을 입력하세요. 미입력 시 원화 환산 값이 0으로 표시됩니다.
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default ExchangeRateInput;
+</file>
+
+<file path="components/layouts/DashboardView.tsx">
+import React, { useMemo, useCallback } from 'react';
+import { Asset, AssetCategory, ExchangeRates, PortfolioSnapshot, Currency, ALLOWED_CATEGORIES } from '../../types';
+import StatCard from '../StatCard';
+import ExchangeRateInput from '../ExchangeRateInput';
+import ProfitLossChart from '../ProfitLossChart';
+import AllocationChart from '../AllocationChart';
+import CategorySummaryTable from '../CategorySummaryTable';
+import TopBottomAssets from '../TopBottomAssets';
+
+interface DashboardViewProps {
+  assets: Asset[];
+  portfolioHistory: PortfolioSnapshot[];
+  exchangeRates: ExchangeRates;
+  dashboardFilterCategory: AssetCategory | 'ALL';
+  setDashboardFilterCategory: (cat: AssetCategory | 'ALL') => void;
+  alertCount: number;
+  onAlertClick: () => void;
+  onRatesChange: (rates: ExchangeRates) => void;
+  showExchangeRateWarning: boolean;
+  totalValue: number; // 부모에서 계산해서 내려줌 (혹은 여기서 계산)
+}
+
+const DashboardView: React.FC<DashboardViewProps> = ({
+  assets,
+  portfolioHistory,
+  exchangeRates,
+  dashboardFilterCategory,
+  setDashboardFilterCategory,
+  alertCount,
+  onAlertClick,
+  onRatesChange,
+  showExchangeRateWarning,
+  // totalValue -> 내부 계산으로 변경
+}) => {
+
+  const getValueInKRW = useCallback((value: number, currency: Currency): number => {
+    if (currency === Currency.KRW) return value;
+    const rate = exchangeRates[currency] || 0;
+    return value * rate;
+  }, [exchangeRates]);
+
+  const totalValue = useMemo(() => {
+    return assets.reduce((acc, asset) => {
+      const v = asset.currentPrice * asset.quantity;
+      return acc + getValueInKRW(v, asset.currency);
+    }, 0);
+  }, [assets, getValueInKRW]);
+
+  const categoryOptions = useMemo(() => {
+    const extras = Array.from(new Set(assets.map(asset => asset.category))).filter(
+      (cat) => !ALLOWED_CATEGORIES.includes(cat)
+    );
+    return [...ALLOWED_CATEGORIES, ...extras];
+  }, [assets]);
+
+  const dashboardFilteredAssets = useMemo(() => {
+      if (dashboardFilterCategory === 'ALL') {
+          return assets;
+      }
+      return assets.filter(asset => asset.category === dashboardFilterCategory);
+  }, [assets, dashboardFilterCategory]);
+
+  const dashboardTotalValue = useMemo(() => {
+      return dashboardFilteredAssets.reduce((acc, asset) => {
+        const v = asset.currentPrice * asset.quantity;
+        return acc + getValueInKRW(v, asset.currency);
+      }, 0);
+  }, [dashboardFilteredAssets, getValueInKRW]);
+
+  const dashboardTotalPurchaseValue = useMemo(() => {
+      return dashboardFilteredAssets.reduce((acc, asset) => {
+        const v = asset.purchasePrice * asset.quantity;
+        return acc + getValueInKRW(v, asset.currency);
+      }, 0);
+  }, [dashboardFilteredAssets, getValueInKRW]);
+
+  const dashboardTotalGainLoss = dashboardTotalValue - dashboardTotalPurchaseValue;
+  const dashboardTotalReturn = dashboardTotalPurchaseValue === 0 ? 0 : (dashboardTotalGainLoss / dashboardTotalPurchaseValue) * 100;
+
+  const soldAssetsStats = useMemo(() => {
+    let totalSoldAmount = 0;
+    let totalSoldPurchaseValue = 0;
+    let totalSoldProfit = 0;
+    let soldCount = 0;
+
+    assets.forEach(asset => {
+      if (asset.sellTransactions && asset.sellTransactions.length > 0) {
+        asset.sellTransactions.forEach(transaction => {
+          totalSoldAmount += transaction.sellPrice * transaction.sellQuantity;
+          soldCount += 1;
+          
+          let purchaseValueForSold: number;
+          if (asset.currency === Currency.KRW) {
+            purchaseValueForSold = asset.purchasePrice * transaction.sellQuantity;
+          } else if (asset.purchaseExchangeRate) {
+            purchaseValueForSold = asset.purchasePrice * asset.purchaseExchangeRate * transaction.sellQuantity;
+          } else if (asset.priceOriginal > 0) {
+            const exchangeRate = asset.currentPrice / asset.priceOriginal;
+            purchaseValueForSold = asset.purchasePrice * exchangeRate * transaction.sellQuantity;
+          } else {
+            purchaseValueForSold = asset.purchasePrice * transaction.sellQuantity;
+          }
+          totalSoldPurchaseValue += purchaseValueForSold;
+        });
+      }
+    });
+
+    totalSoldProfit = totalSoldAmount - totalSoldPurchaseValue;
+    const soldReturn = totalSoldPurchaseValue === 0 ? 0 : (totalSoldProfit / totalSoldPurchaseValue) * 100;
+
+    return {
+      totalSoldAmount,
+      totalSoldPurchaseValue,
+      totalSoldProfit,
+      soldReturn,
+      soldCount,
+    };
+  }, [assets]);
+
+  const profitLossChartTitle = useMemo(() => (
+      dashboardFilterCategory === 'ALL'
+      ? '손익 추이 분석'
+      : `${dashboardFilterCategory} 손익 추이 분석`
+  ), [dashboardFilterCategory]);
+
+  const formatCurrencyKRW = (value: number) => {
+    return value.toLocaleString('ko-KR', { 
+        style: 'currency', 
+        currency: 'KRW', 
+        maximumFractionDigits: 0 
+    });
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="bg-gray-800 p-4 rounded-lg shadow-lg flex items-center justify-between flex-wrap gap-4">
+          <div className="flex items-center gap-4" title="대시보드에 표시될 자산의 종류를 선택합니다.">
+              <label htmlFor="dashboard-filter" className="text-sm font-medium text-gray-300">
+                  자산 구분 필터:
+              </label>
+              <div className="relative">
+                  <select
+                      id="dashboard-filter"
+                      value={dashboardFilterCategory}
+                      onChange={(e) => setDashboardFilterCategory(e.target.value as AssetCategory | 'ALL')}
+                      className="bg-gray-700 border border-gray-600 rounded-md py-2 pl-3 pr-8 text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent appearance-none"
+                  >
+                      <option value="ALL">전체 포트폴리오</option>
+                      {categoryOptions.map((cat) => (
+                          <option key={cat} value={cat}>{cat}</option>
+                      ))}
+                  </select>
+                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-400">
+                      <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                  </div>
+              </div>
+          </div>
+          <ExchangeRateInput 
+            rates={exchangeRates} 
+            onRatesChange={onRatesChange} 
+            showWarning={showExchangeRateWarning} 
+          />
+          <StatCard 
+              title="매도 알림 발생" 
+              value={`${alertCount}개`}
+              tooltip="설정된 하락률 기준을 초과한 자산의 수입니다. 클릭하여 필터링된 목록을 확인하세요."
+              onClick={onAlertClick}
+              isAlert={alertCount > 0}
+              size="small"
+          />
+      </div>
+       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+        <StatCard title="총 자산 (원화)" value={formatCurrencyKRW(dashboardTotalValue)} tooltip="선택된 자산의 현재 평가금액 총합입니다." />
+        <StatCard title="투자 원금" value={formatCurrencyKRW(dashboardTotalPurchaseValue)} tooltip="선택된 자산의 총 매수금액 합계입니다." />
+        <StatCard title="총 손익 (원화)" value={formatCurrencyKRW(dashboardTotalGainLoss)} isProfit={dashboardTotalGainLoss >= 0} tooltip="총 평가금액에서 총 매수금액을 뺀 금액입니다."/>
+        <StatCard title="총 수익률" value={`${dashboardTotalReturn.toFixed(2)}%`} isProfit={dashboardTotalReturn >= 0} tooltip="총 손익을 총 매수금액으로 나눈 백분율입니다."/>
+      </div>
+      {soldAssetsStats.soldCount > 0 && (
+        <div className="bg-gray-800 p-6 rounded-lg shadow-lg mb-6">
+          <h3 className="text-xl font-bold text-white mb-4">매도 통계</h3>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <StatCard title="매도 횟수" value={soldAssetsStats.soldCount.toString()} tooltip="총 매도 거래 횟수입니다." size="small" />
+            <StatCard title="매도 금액" value={formatCurrencyKRW(soldAssetsStats.totalSoldAmount)} tooltip="매도된 종목의 총 매도금액입니다." size="small" />
+            <StatCard title="매도 수익" value={formatCurrencyKRW(soldAssetsStats.totalSoldProfit)} isProfit={soldAssetsStats.totalSoldProfit >= 0} tooltip="매도금액에서 매수금액을 뺀 수익입니다." size="small" />
+            <StatCard title="매도 수익률" value={`${soldAssetsStats.soldReturn.toFixed(2)}%`} isProfit={soldAssetsStats.soldReturn >= 0} tooltip="매도 수익을 매수금액으로 나눈 백분율입니다." size="small" />
+          </div>
+        </div>
+      )}
+      <ProfitLossChart history={portfolioHistory} assetsToDisplay={dashboardFilteredAssets} title={profitLossChartTitle} />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="lg:col-span-1">
+          <AllocationChart assets={assets} exchangeRates={exchangeRates} />
+        </div>
+        <div className="lg:col-span-1">
+           <CategorySummaryTable 
+            assets={assets} 
+            totalPortfolioValue={totalValue} 
+            exchangeRates={exchangeRates} 
+           />
+        </div>
+      </div>
+      <TopBottomAssets assets={assets} />
+    </div>
+  );
+};
+
+export default DashboardView;
+</file>
+
+<file path="components/portfolio-table/PortfolioTableRow.tsx">
+import React, { Fragment, useRef, useState } from 'react';
+import { Asset, Currency, PortfolioSnapshot } from '../../types';
+import { EnrichedAsset } from './types';
+import AssetTrendChart from '../AssetTrendChart';
+import { MoreHorizontal } from 'lucide-react';
+import { useOnClickOutside } from '../../hooks/useOnClickOutside';
+import { formatNumber, formatOriginalCurrency, formatKRW, formatProfitLoss, getChangeColor } from './utils';
+
+interface PortfolioTableRowProps {
+  asset: EnrichedAsset;
+  history: PortfolioSnapshot[];
+  selectedIds: Set<string>;
+  onSelect: (id: string, checked: boolean) => void;
+  showHiddenColumns: boolean;
+  sellAlertDropRate: number;
+  onEdit: (asset: Asset) => void;
+  onSell?: (asset: Asset) => void;
+  filterAlerts: boolean;
+}
+
+const ChartBarIcon: React.FC = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+  </svg>
+);
+
+const PortfolioTableRow: React.FC<PortfolioTableRowProps> = ({
+  asset,
+  history,
+  selectedIds,
+  onSelect,
+  showHiddenColumns,
+  sellAlertDropRate,
+  onEdit,
+  onSell,
+  filterAlerts
+}) => {
+  const [expandedAssetId, setExpandedAssetId] = useState<string | null>(null);
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+
+  useOnClickOutside(menuRef, () => setOpenMenuId(null), !!openMenuId);
+
+  const handleToggleExpand = (assetId: string) => {
+    setExpandedAssetId(prevId => (prevId === assetId ? null : assetId));
+  };
+
+  const { purchaseValue, currentValue, purchaseValueKRW, currentValueKRW, returnPercentage, allocation, dropFromHigh, profitLoss, profitLossKRW, diffFromHigh, yesterdayChange, diffFromYesterday } = asset.metrics;
+  const alertRate = asset.sellAlertDropRate ?? sellAlertDropRate;
+  const isAlertTriggered = dropFromHigh <= -alertRate;
+  const isNonKRW = asset.currency !== Currency.KRW;
+  const investmentColor = getChangeColor(returnPercentage);
+
+  return (
+    <Fragment>
+      <tr className={`border-b border-gray-700 transition-colors duration-200 hover:bg-gray-700/50`}>
+        <td className="px-4 py-4 text-center">
+          <input type="checkbox" checked={selectedIds.has(asset.id)} onChange={(e) => onSelect(asset.id, e.target.checked)} />
+        </td>
+        <td className="px-4 py-4 font-medium text-white break-words">
+          <div className="flex flex-col">
+             <div className="flex items-center gap-2">
+               <a 
+                 href={`https://www.google.com/search?q=${encodeURIComponent(asset.ticker + ' 주가')}`}
+                 target="_blank" 
+                 rel="noopener noreferrer"
+                 className="font-bold hover:underline text-primary-light cursor-pointer"
+               >
+                 {(asset.customName?.trim() || asset.name)}
+               </a>
+               {isAlertTriggered && <span className="text-xs" title="알림 조건 도달">⚠️</span>}
+             </div>
+            <span className="text-xs text-gray-500 break-all">{asset.ticker} | {asset.exchange}</span>
+          </div>
+        </td>
+        {showHiddenColumns && <td className="px-4 py-4 text-right">{formatNumber(asset.quantity)}</td>}
+        {showHiddenColumns && (
+          <td className="px-4 py-4 text-right">
+            <div>{formatOriginalCurrency(asset.purchasePrice, asset.currency)}</div>
+            {isNonKRW && <div className="text-xs text-gray-500">≈ {formatKRW(asset.metrics.purchasePriceKRW)}</div>}
+          </td>
+        )}
+        <td className="px-4 py-4 text-right">
+          <div className="font-semibold text-white">{formatOriginalCurrency(asset.currentPrice, asset.currency)}</div>
+          {isNonKRW && <div className="text-xs text-gray-500">≈ {formatKRW(asset.metrics.currentPriceKRW)}</div>}
+        </td>
+        <td className={`px-4 py-4 font-medium text-right ${getChangeColor(returnPercentage)}`}>
+          <div>{returnPercentage.toFixed(2)}%</div>
+          <div className="text-xs opacity-80">{formatProfitLoss(profitLoss, asset.currency)}</div>
+        </td>
+        <td className="px-4 py-4 text-right">
+          <div className={investmentColor}>{formatOriginalCurrency(purchaseValue, asset.currency)}</div>
+          {isNonKRW && <div className="text-xs text-gray-500">≈ {formatKRW(purchaseValueKRW)}</div>}
+        </td>
+        <td className="px-4 py-4 text-right">
+          <div className="font-semibold text-white">{formatOriginalCurrency(currentValue, asset.currency)}</div>
+          {isNonKRW && <div className="text-xs text-gray-500">≈ {formatKRW(currentValueKRW)}</div>}
+        </td>
+        {showHiddenColumns && <td className="px-4 py-4 text-center">{asset.purchaseDate}</td>}
+        {showHiddenColumns && <td className="px-4 py-4 text-right">{allocation.toFixed(2)}%</td>}
+        <td className={`px-4 py-4 font-medium text-right ${getChangeColor(dropFromHigh)}`}>
+            <div>{dropFromHigh.toFixed(2)}%</div>
+            <div className="text-xs opacity-80">{formatProfitLoss(diffFromHigh, asset.currency)}</div>
+        </td>
+        <td className={`px-4 py-4 font-medium text-right ${getChangeColor(yesterdayChange)}`}>
+          <div>{yesterdayChange.toFixed(2)}%</div>
+          <div className="text-xs opacity-80">{formatProfitLoss(diffFromYesterday, Currency.KRW)}</div>
+        </td>
+        <td className="px-4 py-4 text-center relative">
+          <div className="flex items-center justify-center gap-1">
+            <button onClick={() => handleToggleExpand(asset.id)} className="p-2 text-gray-300 hover:text-white" title="차트">
+                <ChartBarIcon />
+            </button>
+            <button onClick={() => setOpenMenuId(openMenuId === asset.id ? null : asset.id)} className="p-2 text-gray-300 hover:text-white">
+                <MoreHorizontal className="h-5 w-5" />
+            </button>
+          </div>
+          {openMenuId === asset.id && (
+            <div ref={menuRef} className="absolute right-0 mt-2 w-44 bg-gray-800 border border-gray-700 rounded-md shadow-lg z-30 text-sm">
+               <button onClick={() => { setOpenMenuId(null); onEdit(asset); }} className="block w-full text-left px-3 py-2 hover:bg-gray-700 text-white">수정</button>
+               {onSell && <button onClick={() => { setOpenMenuId(null); onSell(asset); }} className="block w-full text-left px-3 py-2 text-red-400 hover:bg-gray-700">매도</button>}
+               <button onClick={() => { setOpenMenuId(null); handleToggleExpand(asset.id); }} className="block w-full text-left px-3 py-2 text-gray-200 hover:bg-gray-700">차트 보기</button>
+            </div>
+          )}
+        </td>
+      </tr>
+      {expandedAssetId === asset.id && (
+        <tr className="bg-gray-900/50">
+          <td colSpan={showHiddenColumns ? 13 : 9} className="p-0 sm:p-2">
+            <AssetTrendChart
+              history={history}
+              assetId={asset.id}
+              assetName={(asset.customName?.trim() || asset.name)}
+              // @ts-ignore: AssetTrendChart가 currentQuantity를 prop으로 받도록 수정되었는지 확인 필요
+              currentQuantity={asset.quantity} 
+            />
+          </td>
+        </tr>
+      )}
+    </Fragment>
+  );
+};
+
+export default PortfolioTableRow;
+</file>
+
+<file path="components/portfolio-table/usePortfolioData.ts">
+import { useMemo, useState } from 'react';
+import { Asset, ExchangeRates, ALLOWED_CATEGORIES, AssetCategory } from '../../types';
+import { getValueInKRW } from './utils';
+import { EnrichedAsset, SortKey, SortDirection } from './types';
+
+interface UsePortfolioDataProps {
+  assets: Asset[];
+  exchangeRates: ExchangeRates;
+  filterAlerts: boolean;
+  sellAlertDropRate: number;
+  showFailedOnly: boolean;
+  failedIds?: Set<string>;
+}
+
+export const usePortfolioData = ({
+  assets,
+  exchangeRates,
+  filterAlerts,
+  sellAlertDropRate,
+  showFailedOnly,
+  failedIds
+}: UsePortfolioDataProps) => {
+  const [sortConfig, setSortConfig] = useState<{ key: SortKey; direction: SortDirection } | null>(null);
+
+  const totalValueKRW = useMemo(() => {
+    return assets.reduce((sum, asset) => {
+      const valueInOriginalCurrency = asset.currentPrice * asset.quantity;
+      return sum + getValueInKRW(valueInOriginalCurrency, asset.currency, exchangeRates);
+    }, 0);
+  }, [assets, exchangeRates]);
+
+  const categoryOptions = useMemo(() => {
+    const extras = Array.from(new Set(assets.map(asset => asset.category))).filter(
+      (cat) => !ALLOWED_CATEGORIES.includes(cat) && cat !== AssetCategory.FOREIGN_STOCK
+    );
+    return [...ALLOWED_CATEGORIES, ...extras];
+  }, [assets]);
+
+  const enrichedAndSortedAssets = useMemo(() => {
+    let enriched: EnrichedAsset[] = assets.map(asset => {
+      const currentValue = asset.currentPrice * asset.quantity;
+      const purchaseValue = asset.purchasePrice * asset.quantity;
+      
+      const profitLoss = currentValue - purchaseValue;
+      const returnPercentage = purchaseValue === 0 ? 0 : (profitLoss / purchaseValue) * 100;
+      
+      const currentValueKRW = getValueInKRW(currentValue, asset.currency, exchangeRates);
+      const purchaseValueKRW = getValueInKRW(purchaseValue, asset.currency, exchangeRates);
+      const profitLossKRW = currentValueKRW - purchaseValueKRW;
+      
+      const currentPriceKRW = getValueInKRW(asset.currentPrice, asset.currency, exchangeRates);
+      const purchasePriceKRW = getValueInKRW(asset.purchasePrice, asset.currency, exchangeRates);
+
+      const allocation = totalValueKRW === 0 ? 0 : (currentValueKRW / totalValueKRW) * 100;
+      const dropFromHigh = asset.highestPrice === 0 ? 0 : ((asset.currentPrice - asset.highestPrice) / asset.highestPrice) * 100;
+      const diffFromHigh = asset.currentPrice - asset.highestPrice;
+      
+      const yesterdayPrice = asset.yesterdayPrice || 0;
+      const yesterdayPriceKRW = getValueInKRW(yesterdayPrice, asset.currency, exchangeRates);
+      
+      const yesterdayChange = yesterdayPriceKRW > 0 
+        ? ((currentPriceKRW - yesterdayPriceKRW) / yesterdayPriceKRW) * 100 
+        : 0;
+        
+      const diffFromYesterday = yesterdayPriceKRW > 0 
+        ? currentPriceKRW - yesterdayPriceKRW 
+        : 0;
+      
+      return {
+        ...asset,
+        metrics: {
+          purchasePrice: asset.purchasePrice,
+          currentPrice: asset.currentPrice,
+          currentPriceKRW,
+          purchasePriceKRW,
+          purchaseValue, currentValue, purchaseValueKRW, currentValueKRW,
+          returnPercentage, allocation, dropFromHigh, profitLoss, profitLossKRW,
+          diffFromHigh, yesterdayChange, diffFromYesterday,
+        }
+      };
+    });
+
+    if (filterAlerts) {
+      enriched = enriched.filter(asset => {
+        const alertRate = asset.sellAlertDropRate ?? sellAlertDropRate;
+        return asset.metrics.dropFromHigh <= -alertRate;
+      });
+    }
+
+    if (showFailedOnly && failedIds && failedIds.size > 0) {
+      enriched = enriched.filter(asset => failedIds.has(asset.id));
+    }
+
+    if (sortConfig !== null) {
+      enriched.sort((a, b) => {
+        const { key, direction } = sortConfig;
+        let aValue: any, bValue: any;
+
+        if (key === 'name') {
+          aValue = (a.customName?.toLowerCase() || a.name.toLowerCase());
+          bValue = (b.customName?.toLowerCase() || b.name.toLowerCase());
+        } else if (key === 'purchaseDate') {
+          aValue = a.purchaseDate; bValue = b.purchaseDate;
+        } else if (key === 'quantity') {
+          aValue = a.quantity; bValue = b.quantity;
+        } else if (key === 'currentPrice') {
+          aValue = a.metrics.currentPriceKRW;
+          bValue = b.metrics.currentPriceKRW;
+        } else if (key === 'purchasePrice') {
+          aValue = a.metrics.purchasePriceKRW;
+          bValue = b.metrics.purchasePriceKRW;
+        } else if (key === 'currentValue') {
+           aValue = a.metrics.currentValueKRW;
+           bValue = b.metrics.currentValueKRW;
+        } else if (key === 'purchaseValue') {
+           aValue = a.metrics.purchaseValueKRW;
+           bValue = b.metrics.purchaseValueKRW;
+        } else {
+          aValue = a.metrics[key as keyof typeof a.metrics];
+          bValue = b.metrics[key as keyof typeof b.metrics];
+        }
+
+        if (aValue < bValue) return direction === 'ascending' ? -1 : 1;
+        if (aValue > bValue) return direction === 'ascending' ? 1 : -1;
+        return 0;
+      });
+    }
+
+    return enriched;
+  }, [assets, sortConfig, totalValueKRW, exchangeRates, filterAlerts, sellAlertDropRate, showFailedOnly, failedIds]);
+
+  const requestSort = (key: SortKey) => {
+    let direction: SortDirection = 'ascending';
+    if (sortConfig && sortConfig.key === key && sortConfig.direction === 'ascending') {
+      direction = 'descending';
+    }
+    setSortConfig({ key, direction });
+  };
+  
+  const toggleReturnSort = () => {
+    const s = sortConfig;
+    if (!s || (s.key !== 'returnPercentage' && s.key !== 'profitLossKRW')) {
+      setSortConfig({ key: 'returnPercentage', direction: 'descending' });
+      return;
+    }
+    if (s.key === 'returnPercentage' && s.direction === 'descending') {
+      setSortConfig({ key: 'returnPercentage', direction: 'ascending' });
+      return;
+    }
+    if (s.key === 'returnPercentage' && s.direction === 'ascending') {
+      setSortConfig({ key: 'profitLossKRW', direction: 'descending' });
+      return;
+    }
+    if (s.key === 'profitLossKRW' && s.direction === 'descending') {
+      setSortConfig({ key: 'profitLossKRW', direction: 'ascending' });
+      return;
+    }
+    setSortConfig(null);
+  };
+
+  return {
+    enrichedAndSortedAssets,
+    sortConfig,
+    requestSort,
+    toggleReturnSort,
+    categoryOptions,
+    totalValueKRW
+  };
+};
 </file>
 
 <file path="components/SellAnalyticsPage.tsx">
@@ -4971,360 +4979,6 @@ const ProfitLossChart: React.FC<ProfitLossChartProps> = ({ history, assetsToDisp
 };
 
 export default ProfitLossChart;
-</file>
-
-<file path="README.md">
-# KIM'S 퀸트자산관리 - 포트폴리오 관리 시스템
-
-## 📋 프로젝트 개요
-
-KIM'S 퀸트자산관리는 계량적 투자 전략을 기반으로 한 종합 자산 관리 시스템입니다. Google Drive 연동을 통해 데이터를 안전하게 저장하고, 실시간 시세 정보를 제공하며, 다양한 자산 종류를 지원하는 포트폴리오 관리 도구입니다.
-
-### 핵심 기능
-- **멀티 자산 지원**: 한국주식, 미국주식, 해외주식, 채권, 암호화폐, 실물자산, 현금
-- **실시간 시세 업데이트**: 외부 API를 통한 실시간 가격 정보
-- **환율 자동 반영**: USD, JPY 등 주요 통화 환율 자동 적용
-- **Google Drive 동기화**: 안전한 클라우드 저장소 연동
-- **포트폴리오 분석**: 자산 배분, 수익률, 손익 추이 분석
-- **매도 알림**: 설정한 하락률 기준 알림 기능
-- **관심종목 관리**: 별도의 워치리스트 기능
-- **CSV 대량 등록**: 대량의 자산 일괄 등록
-
-## 🏗️ 시스템 아키텍처
-
-### 기술 스택
-- **프론트엔드**: React 19.2.0, TypeScript
-- **스타일링**: Tailwind CSS
-- **빌드 도구**: Vite
-- **차트 라이브러리**: Recharts
-- **아이콘**: Lucide React
-- **배포**: GitHub Pages
-
-### 프로젝트 구조
-
-```
-자산-관리-시트/
-├── components/                 # React 컴포넌트
-│   ├── common/               # 공통 컴포넌트
-│   │   └── Toggle.tsx       # 토글 스위치 컴포넌트
-│   ├── AddAssetForm.tsx     # 자산 추가 폼
-│   ├── AddNewAssetModal.tsx # 새 자산 추가 모달
-│   ├── AllocationChart.tsx  # 자산 배분 차트
-│   ├── AssetTrendChart.tsx  # 자산 추이 차트
-│   ├── BulkUploadModal.tsx  # CSV 대량 업로드 모달
-│   ├── CategorySummaryTable.tsx # 카테고리 요약 테이블
-│   ├── DataConflictModal.tsx # 데이터 충돌 모달
-│   ├── EditAssetModal.tsx   # 자산 수정 모달
-│   ├── ExchangeRateInput.tsx # 환율 입력 컴포넌트
-│   ├── Header.tsx           # 헤더 컴포넌트
-│   ├── layouts/             # 레이아웃 컴포넌트 (탭별 화면)
-│   │   ├── DashboardView.tsx    # 대시보드 탭
-│   │   ├── PortfolioView.tsx    # 포트폴리오 탭
-│   │   ├── AnalyticsView.tsx    # 통계 탭
-│   │   └── WatchlistView.tsx    # 관심종목 탭
-│   ├── PortfolioAssistant.tsx # 포트폴리오 AI 어시스턴트
-│   ├── PortfolioModal.tsx   # 포트폴리오 모달
-│   ├── PortfolioTable.tsx   # 포트폴리오 테이블 (메인 Wrapper)
-│   ├── portfolio-table/     # 포트폴리오 테이블 내부 컴포넌트
-│   │   ├── PortfolioTableRow.tsx # 테이블 행 컴포넌트
-│   │   ├── usePortfolioData.ts   # 데이터 로직 훅
-│   │   ├── types.ts              # 타입 정의
-│   │   └── utils.ts              # 유틸리티 함수
-│   ├── ProfitLossChart.tsx  # 손익 추이 차트
-│   ├── RegionAllocationChart.tsx # 지역 배분 차트
-│   ├── SellAlertControl.tsx # 매도 알림 설정
-│   ├── SellAnalyticsPage.tsx # 매도 분석 페이지
-│   ├── SellAssetModal.tsx   # 자산 매도 모달
-│   ├── StatCard.tsx         # 통계 카드
-│   ├── TopBottomAssets.tsx  # 상위/하위 자산
-│   └── WatchlistPage.tsx    # 관심종목 페이지
-├── hooks/                    # 커스텀 훅
-│   ├── usePortfolioData.ts   # 핵심 데이터 및 동기화 관리
-│   ├── useMarketData.ts      # 시세 및 환율 관리
-│   ├── useAssetActions.ts    # 자산 CRUD 및 액션 관리
-│   ├── useGoogleDriveSync.ts # Google Drive API 래퍼
-│   └── useOnClickOutside.ts  # 외부 클릭 감지 훅
-├── services/                 # 외부 서비스 연동
-│   ├── geminiService.ts   # Gemini AI 서비스
-│   ├── googleDriveService.ts # Google Drive API
-│   ├── priceService.ts    # 시세 정보 서비스
-│   └── upbitService.ts    # 업비트 API 서비스
-├── utils/                    # 유틸리티 함수
-│   └── migrateData.ts     # 데이터 마이그레이션
-├── types.ts                # TypeScript 타입 정의
-├── App.tsx                 # 메인 애플리케이션
-├── index.tsx              # 애플리케이션 진입점
-└── initialData.ts         # 초기 데이터
-```
-
-## 📊 데이터 흐름 및 의존성
-
-### 핵심 데이터 구조
-
-#### 1. 자산 (Asset) 데이터
-```typescript
-interface Asset {
-  id: string;                    // 고유 식별자
-  category: AssetCategory;       // 자산 카테고리
-  ticker: string;                // 티커 심볼
-  exchange: string;              // 거래소
-  name: string;                  // 자산명
-  customName?: string;           // 사용자 지정명
-  quantity: number;               // 보유 수량
-  purchasePrice: number;        // 매수 단가
-  purchaseDate: string;         // 매수일
-  currency: Currency;           // 통화
-  purchaseExchangeRate?: number; // 매수 시 환율
-  currentPrice: number;        // 현재가
-  priceOriginal: number;       // 원화 이외 통화의 원가
-  highestPrice: number;        // 최고가
-  yesterdayPrice?: number;     // 전일 종가
-  sellAlertDropRate?: number;  // 매도 알림 하락률
-  memo?: string;               // 메모
-  sellTransactions?: SellTransaction[]; // 매도 이력
-}
-```
-
-#### 2. 포트폴리오 스냅샷
-```typescript
-interface PortfolioSnapshot {
-  date: string;                 // 날짜
-  assets: AssetSnapshot[];     // 자산 스냅샷
-}
-
-interface AssetSnapshot {
-  id: string;                  // 자산 ID
-  name: string;               // 자산명
-  currentValue: number;       // 현재가치
-  purchaseValue: number;      // 매수가치
-  unitPrice?: number;        // 1주당 단가
-}
-```
-
-### 데이터 흐름도
-
-```
-사용자 입력 → 컴포넌트 → 상태 관리 → Google Drive 저장
-     ↓
-외부 API (시세/환율) → priceService → 데이터 가공 → UI 반영
-     ↓
-포트폴리오 분석 → 차트/통계 → 시각화
-```
-
-### 주요 의존성
-
-#### 1. 외부 API 의존성
-- **시세 API**: `https://asset-manager-887842923289.asia-northeast3.run.app`
-  - 한국주식, 미국주식, 해외주식 시세
-  - 암호화폐 가격 (USD 기준)
-  - 환율 정보 (USD/KRW, JPY/KRW)
-
-#### 2. Google Drive API
-- **인증**: OAuth 2.0
-- **스코프**: 
-  - `https://www.googleapis.com/auth/drive.file`
-  - `https://www.googleapis.com/auth/userinfo.email`
-  - `https://www.googleapis.com/auth/userinfo.profile`
-  - `openid`
-
-#### 3. 내부 모듈 의존성
-```
-App.tsx
-├── services/
-│   ├── priceService.ts      (시세 정보)
-│   ├── googleDriveService.ts (클라우드 저장)
-│   └── geminiService.ts    (AI 분석)
-├── hooks/
-│   └── useGoogleDriveSync.ts (동기화 관리)
-└── components/             (UI 컴포넌트들)
-```
-
-## 🎯 주요 컴포넌트 상세
-
-### 1. App.tsx (메인 컴포넌트)
-**역할**: 애플리케이션 진입점 및 레이아웃 구성
-**책임**:
-- 주요 Hooks(`usePortfolioData`, `useMarketData`, `useAssetActions`) 초기화 및 연결
-- 탭 네비게이션 상태 관리 및 라우팅
-- 전역 모달(설정, 파일 업로드 등) 관리
-- 로그인 상태에 따른 화면 분기 처리
-
-### 2. 핵심 Hooks (상태 및 로직 분리)
-- **usePortfolioData**: 자산, 히스토리, 환율 등 핵심 데이터 상태 관리 및 Google Drive 동기화 담당
-- **useMarketData**: 외부 API를 통한 시세 업데이트, 환율 갱신 로직 담당
-- **useAssetActions**: 자산 추가/수정/삭제, 매도, CSV 업로드 등 사용자 인터랙션 처리
-
-### 3. PortfolioTable.tsx (포트폴리오 테이블)
-**역할**: 자산 목록 표시 및 관리 (Wrapper 컴포넌트)
-**구조**:
-- `components/portfolio-table/` 디렉토리로 로직 분리
-- `usePortfolioData`: 데이터 가공, 정렬, 필터링 로직 담당
-- `PortfolioTableRow`: 개별 행 렌더링 담당
-**책임**:
-- 자산 데이터 테이블 렌더링 (View)
-- 정렬 및 필터링 (Logic 위임)
-- 개별/전체 시세 업데이트
-- 자산 편집/삭제/매도
-- 매도 알림 표시
-
-### 3. priceService.ts (시세 서비스)
-**역할**: 외부 API를 통한 시세 정보 관리
-**책임**:
-- 배치 단위 시세 조회 (20개씩 청크 처리)
-- 환율 정보 조회
-- 재시도 로직 (1회)
-- 에러 처리 및 모킹 데이터 제공
-
-### 4. googleDriveService.ts (Google Drive 서비스)
-**역할**: 클라우드 저장소 관리
-**책임**:
-- OAuth 2.0 인증
-- 토큰 자동 갱신 (만료 5분 전)
-- 파일 저장/불러오기
-- 사용자 정보 관리
-
-## ⚙️ 핵심 로직 및 알고리즘
-
-### 1. 시세 업데이트 로직
-```typescript
-// 청크 단위 처리 (20개씩)
-const CHUNK_SIZE = 20;
-const CHUNK_DELAY_MS = 500;
-
-// 환율 우선 업데이트 → 자산 가격 업데이트
-// KRW 단위 오류 자동 보정
-// 비현금/현금 자산 분리 처리
-```
-
-### 2. 환율 적용 로직
-```typescript
-// 대시보드 환율 값 우선 적용
-// 기본값: USD: 1450, JPY: 9.5
-// 실시간 API 실패 시 기존 값 유지
-```
-
-### 3. 자산 카테고리 추론
-```typescript
-// 거래소 정보를 통한 카테고리 자동 판단
-KRX/KONEX → 한국주식
-NASDAQ/NYSE → 미국주식
-TSE → 해외주식
-금 관련 거래소 → 실물자산
-```
-
-### 4. 데이터 마이그레이션
-```typescript
-// 이전 버전 데이터 구조 변환
-// region 필드 제거
-// category 매핑 (한국어 → enum)
-// exchange 기본값 설정
-```
-
-## 🔧 설정 및 환경 변수
-
-### 필수 환경 변수
-```env
-VITE_GOOGLE_CLIENT_ID=your_google_client_id
-```
-
-### Google Cloud Console 설정
-1. OAuth 2.0 클라이언트 ID 생성
-2. 승인된 리디렉션 URI 설정
-3. 필요한 API 활성화:
-   - Google Drive API
-   - Google OAuth2.0
-
-### 빌드 설정
-```typescript
-// vite.config.ts
-base: '/asset-manager/'  // GitHub Pages 경로
-```
-
-## 🚀 배포 및 빌드
-
-### 개발 서버 실행
-```bash
-npm run dev
-```
-
-### 프로덕션 빌드
-```bash
-npm run build
-```
-
-### GitHub Pages 배포
-```bash
-npm run deploy
-```
-
-## 📋 주의사항 및 오류 방지 가이드
-
-### 1. 시세 API 관련
-- **청크 크기 제한**: 20개씩 요청 (API 제한 사항)
-- **재시도**: 실패 시 1회 재시도, 1초 대기
-- **모킹 데이터**: API 실패 시 기본값 제공 (isMocked: true)
-
-### 2. 환율 처리
-- **기본값 설정**: USD 1450, JPY 9.5
-- **유효성 검사**: USD > 100, JPY > 1
-- **실시간 반영**: 자산 가치 계산 전 환율 우선 업데이트
-
-### 3. Google Drive 동기화
-- **자동 저장**: 2초 디바운스 적용
-- **토큰 갱신**: 만료 5분 전 자동 갱신
-- **오류 처리**: 네트워크 오류 시 재시도 로직
-
-### 4. 데이터 무결성
-- **마이그레이션**: 이전 버전 데이터 자동 변환
-- **구조 검증**: 필수 필드 존재 여부 확인
-- **백업**: Google Drive에 자동 저장
-
-### 5. 성능 최적화
-- **useMemo 활용**: 무거운 계산 결과 캐싱
-- **청크 처리**: 대량 데이터分批 처리
-- **지연 로딩**: 컴포넌트 지연 로딩 적용
-
-## 🔍 디버깅 및 모니터링
-
-### 로그 레벨
-- `console.log`: API 요청/응답 데이터
-- `console.error`: 오류 상세 정보
-- `console.warn`: 경고 메시지
-
-### 에러 처리
-- **사용자 친화적 메시지**: 기술적 오류를 이해하기 쉽게 변환
-- **자동 복구**: 가능한 경우 자동 복구 시도
-- **상태 복원**: 오류 발생 시 이전 상태로 복원
-
-### 모니터링 포인트
-- API 응답 시간
-- 환율 업데이트 성공률
-- Google Drive 동기화 성공률
-- 메모리 사용량
-
-## 📚 확장 가이드
-
-### 새로운 자산 카테고리 추가
-1. `AssetCategory` enum에 추가
-2. `EXCHANGE_MAP`에 거래소 매핑
-3. `inferCategoryFromExchange` 로직 업데이트
-4. 관련 컴포넌트 UI 업데이트
-
-### 새로운 거래소 추가
-1. `COMMON_EXCHANGES` 또는 `ALL_EXCHANGES`에 추가
-2. 카테고리 추론 로직 업데이트
-3. 시세 API 지원 확인
-
-### 통화 추가
-1. `Currency` enum에 추가
-2. `CURRENCY_SYMBOLS`에 심볼 추가
-3. 환율 API 엔드포인트 확인
-4. 환율 입력 UI 업데이트
-
----
-
-**문의사항**: 프로젝트 이슈 트래커를 통해 문의해 주세요.
-**라이선스**: 이 프로젝트는 개인 용도로 사용 가능합니다.
 </file>
 
 <file path="services/upbitService.ts">
@@ -6174,6 +5828,363 @@ const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, onAdd, onUpdat
 };
 
 export default WatchlistPage;
+</file>
+
+<file path="README.md">
+# KIM'S 퀸트자산관리 - 포트폴리오 관리 시스템
+
+## 📋 프로젝트 개요
+
+KIM'S 퀸트자산관리는 계량적 투자 전략을 기반으로 한 종합 자산 관리 시스템입니다. Google Drive 연동을 통해 데이터를 안전하게 저장하고, 실시간 시세 정보를 제공하며, 다양한 자산 종류를 지원하는 포트폴리오 관리 도구입니다.
+
+### 핵심 기능
+- **멀티 자산 지원**: 한국주식, 미국주식, 해외주식, 채권, 암호화폐, 실물자산, 현금
+- **실시간 시세 업데이트**: 외부 API를 통한 실시간 가격 정보
+- **환율 자동 반영**: USD, JPY 등 주요 통화 환율 자동 적용
+- **Google Drive 동기화**: 안전한 클라우드 저장소 연동
+- **포트폴리오 분석**: 자산 배분, 수익률, 손익 추이 분석
+- **매도 알림**: 설정한 하락률 기준 알림 기능
+- **관심종목 관리**: 별도의 워치리스트 기능
+- **CSV 대량 등록**: 대량의 자산 일괄 등록
+
+## 🏗️ 시스템 아키텍처
+
+### 기술 스택
+- **프론트엔드**: React 19.2.0, TypeScript
+- **스타일링**: Tailwind CSS
+- **빌드 도구**: Vite
+- **차트 라이브러리**: Recharts
+- **아이콘**: Lucide React
+- **배포**: GitHub Pages
+
+### 프로젝트 구조
+
+```
+자산-관리-시트/
+├── components/                 # React 컴포넌트
+│   ├── common/               # 공통 컴포넌트
+│   │   └── Toggle.tsx       # 토글 스위치 컴포넌트
+│   ├── AddAssetForm.tsx     # 자산 추가 폼
+│   ├── AddNewAssetModal.tsx # 새 자산 추가 모달
+│   ├── AllocationChart.tsx  # 자산 배분 차트
+│   ├── AssetTrendChart.tsx  # 자산 추이 차트
+│   ├── BulkUploadModal.tsx  # CSV 대량 업로드 모달
+│   ├── CategorySummaryTable.tsx # 카테고리 요약 테이블
+│   ├── DataConflictModal.tsx # 데이터 충돌 모달
+│   ├── EditAssetModal.tsx   # 자산 수정 모달
+│   ├── ExchangeRateInput.tsx # 환율 입력 컴포넌트
+│   ├── Header.tsx           # 헤더 컴포넌트
+│   ├── layouts/             # 레이아웃 컴포넌트 (탭별 화면)
+│   │   ├── DashboardView.tsx    # 대시보드 탭
+│   │   ├── PortfolioView.tsx    # 포트폴리오 탭
+│   │   ├── AnalyticsView.tsx    # 통계 탭
+│   │   └── WatchlistView.tsx    # 관심종목 탭
+│   ├── PortfolioAssistant.tsx # 포트폴리오 AI 어시스턴트
+│   ├── PortfolioModal.tsx   # 포트폴리오 모달
+│   ├── PortfolioTable.tsx   # 포트폴리오 테이블 (메인 Wrapper)
+│   ├── portfolio-table/     # 포트폴리오 테이블 내부 컴포넌트
+│   │   ├── PortfolioTableRow.tsx # 테이블 행 컴포넌트
+│   │   ├── usePortfolioData.ts   # 데이터 로직 훅
+│   │   ├── types.ts              # 타입 정의
+│   │   └── utils.ts              # 유틸리티 함수
+│   ├── ProfitLossChart.tsx  # 손익 추이 차트
+│   ├── RegionAllocationChart.tsx # 지역 배분 차트
+│   ├── SellAlertControl.tsx # 매도 알림 설정
+│   ├── SellAnalyticsPage.tsx # 매도 분석 페이지
+│   ├── SellAssetModal.tsx   # 자산 매도 모달
+│   ├── StatCard.tsx         # 통계 카드
+│   ├── TopBottomAssets.tsx  # 상위/하위 자산
+│   └── WatchlistPage.tsx    # 관심종목 페이지
+├── hooks/                    # 커스텀 훅
+│   ├── usePortfolioData.ts   # 핵심 데이터 및 동기화 관리
+│   ├── useMarketData.ts      # 시세 및 환율 관리
+│   ├── useAssetActions.ts    # 자산 CRUD 및 액션 관리
+│   ├── useGoogleDriveSync.ts # Google Drive API 래퍼
+│   └── useOnClickOutside.ts  # 외부 클릭 감지 훅
+├── services/                 # 외부 서비스 연동
+│   ├── geminiService.ts   # Gemini AI 서비스
+│   ├── googleDriveService.ts # Google Drive API
+│   ├── priceService.ts    # 시세 정보 서비스
+│   └── upbitService.ts    # 업비트 API 서비스
+├── utils/                    # 유틸리티 함수
+│   └── migrateData.ts     # 데이터 마이그레이션
+├── types.ts                # TypeScript 타입 정의
+├── App.tsx                 # 메인 애플리케이션
+├── index.tsx              # 애플리케이션 진입점
+└── initialData.ts         # 초기 데이터
+```
+
+## 📊 데이터 흐름 및 의존성
+
+### 핵심 데이터 구조
+
+#### 1. 자산 (Asset) 데이터
+```typescript
+interface Asset {
+  id: string;                    // 고유 식별자
+  category: AssetCategory;       // 자산 카테고리
+  ticker: string;                // 티커 심볼
+  exchange: string;              // 거래소
+  name: string;                  // 자산명
+  customName?: string;           // 사용자 지정명
+  quantity: number;               // 보유 수량
+  purchasePrice: number;        // 매수 단가
+  purchaseDate: string;         // 매수일
+  currency: Currency;           // 통화
+  purchaseExchangeRate?: number; // 매수 시 환율
+  currentPrice: number;        // 현재가
+  priceOriginal: number;       // 원화 이외 통화의 원가
+  highestPrice: number;        // 최고가
+  yesterdayPrice?: number;     // 전일 종가
+  sellAlertDropRate?: number;  // 매도 알림 하락률
+  memo?: string;               // 메모
+  sellTransactions?: SellTransaction[]; // 매도 이력
+}
+```
+
+#### 2. 포트폴리오 스냅샷
+```typescript
+interface PortfolioSnapshot {
+  date: string;                 // 날짜
+  assets: AssetSnapshot[];     // 자산 스냅샷
+}
+
+interface AssetSnapshot {
+  id: string;                  // 자산 ID
+  name: string;               // 자산명
+  currentValue: number;       // 현재가치
+  purchaseValue: number;      // 매수가치
+  unitPrice?: number;        // 1주당 단가
+}
+```
+
+### 데이터 흐름도
+
+```
+사용자 입력 → 컴포넌트 → 상태 관리 → Google Drive 저장
+     ↓
+외부 API (시세/환율) → priceService → 데이터 가공 → UI 반영
+     ↓
+포트폴리오 분석 → 차트/통계 → 시각화
+```
+
+### 주요 의존성
+
+#### 1. 외부 API 의존성
+- **시세 API**: `https://asset-manager-887842923289.asia-northeast3.run.app`
+  - 한국주식, 미국주식, 해외주식 시세
+  - 암호화폐 가격 (USD 기준)
+  - 환율 정보 (USD/KRW, JPY/KRW)
+
+#### 2. Google Drive API
+- **인증**: OAuth 2.0
+- **스코프**: 
+  - `https://www.googleapis.com/auth/drive.file`
+  - `https://www.googleapis.com/auth/userinfo.email`
+  - `https://www.googleapis.com/auth/userinfo.profile`
+  - `openid`
+
+#### 3. 내부 모듈 의존성
+```
+App.tsx
+├── services/
+│   ├── priceService.ts      (시세 정보)
+│   ├── googleDriveService.ts (클라우드 저장)
+│   └── geminiService.ts    (AI 분석)
+├── hooks/
+│   └── useGoogleDriveSync.ts (동기화 관리)
+└── components/             (UI 컴포넌트들)
+```
+
+## 🎯 주요 컴포넌트 상세
+
+### 1. App.tsx (메인 컴포넌트)
+**역할**: 애플리케이션 진입점 및 레이아웃 구성
+**책임**:
+- 주요 Hooks(`usePortfolioData`, `useMarketData`, `useAssetActions`) 초기화 및 연결
+- 탭 네비게이션 상태 관리 및 라우팅
+- 전역 모달(설정, 파일 업로드 등) 관리
+- 로그인 상태에 따른 화면 분기 처리
+
+### 2. 핵심 Hooks (상태 및 로직 분리)
+- **usePortfolioData**: 자산, 히스토리, 환율 등 핵심 데이터 상태 관리 및 Google Drive 동기화 담당
+- **useMarketData**: 외부 API를 통한 시세 업데이트, 환율 갱신 로직 담당
+- **useAssetActions**: 자산 추가/수정/삭제, 매도, CSV 업로드 등 사용자 인터랙션 처리
+
+### 6. PortfolioTable.tsx (포트폴리오 테이블)
+**역할**: 자산 목록 표시 및 관리 (Wrapper 컴포넌트)
+**구조**:
+- `components/portfolio-table/` 디렉토리로 로직 분리
+- `usePortfolioData`: 데이터 가공, 정렬, 필터링 로직 담당
+**주요 변경사항**:
+- **수익률 계산 오류 수정**: 어제 대비 수익률(`yesterdayChange`) 계산 시, 환율을 적용하여 KRW 기준으로 통일. 단위 불일치로 인한 비정상적인 수익률(예: 100,000%) 표시 문제 해결.
+- **변동액 표시 개선**: 전일 대비 변동액(`diffFromYesterday`) 또한 KRW 기준으로 계산 및 표시.
+
+## ⚙️ 핵심 로직 및 알고리즘
+**역할**: 외부 API를 통한 시세 정보 관리
+**책임**:
+- 배치 단위 시세 조회 (20개씩 청크 처리)
+- 환율 정보 조회
+- 재시도 로직 (1회)
+- 에러 처리 및 모킹 데이터 제공
+
+### 4. googleDriveService.ts (Google Drive 서비스)
+**역할**: 클라우드 저장소 관리
+**책임**:
+- OAuth 2.0 인증
+- 토큰 자동 갱신 (만료 5분 전)
+- 파일 저장/불러오기
+- 사용자 정보 관리
+
+### 5. DashboardView.tsx (대시보드)
+**역할**: 전체 자산 현황 요약 및 환율/필터 제어
+**주요 변경사항**:
+- **UI 레이아웃 개선**: 자산 필터, 환율 입력, 매도 알림을 상단 한 줄에 배치하여 공간 효율성 최적화
+- **ExchangeRateInput 연동**: 외부 스타일 주입(`className`)을 통해 유연한 배치 적용
+- **반응형 디자인**: 화면 크기에 따른 자동 줄바꿈(`flex-wrap`) 지원
+
+## ⚙️ 핵심 로직 및 알고리즘
+
+### 1. 시세 업데이트 로직
+```typescript
+// 청크 단위 처리 (20개씩)
+const CHUNK_SIZE = 20;
+const CHUNK_DELAY_MS = 500;
+
+// 환율 우선 업데이트 → 자산 가격 업데이트
+// KRW 단위 오류 자동 보정
+// 비현금/현금 자산 분리 처리
+```
+
+### 2. 환율 적용 로직
+```typescript
+// 대시보드 환율 값 우선 적용
+// 기본값: USD: 1450, JPY: 9.5
+// 실시간 API 실패 시 기존 값 유지
+```
+
+### 3. 자산 카테고리 추론
+```typescript
+// 거래소 정보를 통한 카테고리 자동 판단
+KRX/KONEX → 한국주식
+NASDAQ/NYSE → 미국주식
+TSE → 해외주식
+금 관련 거래소 → 실물자산
+```
+
+### 4. 데이터 마이그레이션
+```typescript
+// 이전 버전 데이터 구조 변환
+// region 필드 제거
+// category 매핑 (한국어 → enum)
+// exchange 기본값 설정
+```
+
+## 🔧 설정 및 환경 변수
+
+### 필수 환경 변수
+```env
+VITE_GOOGLE_CLIENT_ID=your_google_client_id
+```
+
+### Google Cloud Console 설정
+1. OAuth 2.0 클라이언트 ID 생성
+2. 승인된 리디렉션 URI 설정
+3. 필요한 API 활성화:
+   - Google Drive API
+   - Google OAuth2.0
+
+### 빌드 설정
+```typescript
+// vite.config.ts
+base: '/asset-manager/'  // GitHub Pages 경로
+```
+
+## 🚀 배포 및 빌드
+
+### 개발 서버 실행
+```bash
+npm run dev
+```
+
+### 프로덕션 빌드
+```bash
+npm run build
+```
+
+### GitHub Pages 배포
+```bash
+npm run deploy
+```
+
+## 📋 주의사항 및 오류 방지 가이드
+
+### 1. 시세 API 관련
+- **청크 크기 제한**: 20개씩 요청 (API 제한 사항)
+- **재시도**: 실패 시 1회 재시도, 1초 대기
+- **모킹 데이터**: API 실패 시 기본값 제공 (isMocked: true)
+
+### 2. 환율 처리
+- **기본값 설정**: USD 1450, JPY 9.5
+- **유효성 검사**: USD > 100, JPY > 1
+- **실시간 반영**: 자산 가치 계산 전 환율 우선 업데이트
+
+### 3. Google Drive 동기화
+- **자동 저장**: 2초 디바운스 적용
+- **토큰 갱신**: 만료 5분 전 자동 갱신
+- **오류 처리**: 네트워크 오류 시 재시도 로직
+
+### 4. 데이터 무결성
+- **마이그레이션**: 이전 버전 데이터 자동 변환
+- **구조 검증**: 필수 필드 존재 여부 확인
+- **백업**: Google Drive에 자동 저장
+
+### 5. 성능 최적화
+- **useMemo 활용**: 무거운 계산 결과 캐싱
+- **청크 처리**: 대량 데이터分批 처리
+- **지연 로딩**: 컴포넌트 지연 로딩 적용
+
+## 🔍 디버깅 및 모니터링
+
+### 로그 레벨
+- `console.log`: API 요청/응답 데이터
+- `console.error`: 오류 상세 정보
+- `console.warn`: 경고 메시지
+
+### 에러 처리
+- **사용자 친화적 메시지**: 기술적 오류를 이해하기 쉽게 변환
+- **자동 복구**: 가능한 경우 자동 복구 시도
+- **상태 복원**: 오류 발생 시 이전 상태로 복원
+
+### 모니터링 포인트
+- API 응답 시간
+- 환율 업데이트 성공률
+- Google Drive 동기화 성공률
+- 메모리 사용량
+
+## 📚 확장 가이드
+
+### 새로운 자산 카테고리 추가
+1. `AssetCategory` enum에 추가
+2. `EXCHANGE_MAP`에 거래소 매핑
+3. `inferCategoryFromExchange` 로직 업데이트
+4. 관련 컴포넌트 UI 업데이트
+
+### 새로운 거래소 추가
+1. `COMMON_EXCHANGES` 또는 `ALL_EXCHANGES`에 추가
+2. 카테고리 추론 로직 업데이트
+3. 시세 API 지원 확인
+
+### 통화 추가
+1. `Currency` enum에 추가
+2. `CURRENCY_SYMBOLS`에 심볼 추가
+3. 환율 API 엔드포인트 확인
+4. 환율 입력 UI 업데이트
+
+---
+
+**문의사항**: 프로젝트 이슈 트래커를 통해 문의해 주세요.
+**라이선스**: 이 프로젝트는 개인 용도로 사용 가능합니다.
 </file>
 
 <file path="components/EditAssetModal.tsx">
