@@ -18,10 +18,26 @@ interface UseMarketDataProps {
   setSuccessMessage: (msg: string | null) => void;
 }
 
-// 업비트/빗썸 거래소 여부 확인 헬퍼 함수
-const isUpbitExchange = (exchange: string): boolean => {
+/**
+ * 업비트 API로 조회해야 하는 자산인지 확인
+ * - exchange가 'Upbit', 'Bithumb'인 경우
+ * - exchange가 '주요 거래소', '종합' 등 한글이 포함되어 있고, 카테고리가 암호화폐인 경우
+ */
+const shouldUseUpbitAPI = (exchange: string, category?: AssetCategory): boolean => {
   const normalized = (exchange || '').toLowerCase();
-  return normalized === 'upbit' || normalized === 'bithumb';
+  
+  // 명확하게 Upbit/Bithumb인 경우
+  if (normalized === 'upbit' || normalized === 'bithumb') {
+    return true;
+  }
+  
+  // 한글이 포함된 거래소명이고 암호화폐인 경우 (예: '주요 거래소 (종합)')
+  const hasKorean = /[ㄱ-ㅎ|ㅏ-ㅣ|가-힣]/.test(exchange);
+  if (hasKorean && category === AssetCategory.CRYPTOCURRENCY) {
+    return true;
+  }
+  
+  return false;
 };
 
 export const useMarketData = ({
@@ -77,13 +93,17 @@ export const useMarketData = ({
 
     // 2. 자산 분류 (현금 / 업비트 / 일반)
     const cashAssets = assets.filter(a => a.category === AssetCategory.CASH);
-    const upbitAssets = assets.filter(a => a.category !== AssetCategory.CASH && isUpbitExchange(a.exchange));
-    const generalAssets = assets.filter(a => a.category !== AssetCategory.CASH && !isUpbitExchange(a.exchange));
+    const upbitAssets = assets.filter(a => 
+      a.category !== AssetCategory.CASH && shouldUseUpbitAPI(a.exchange, a.category)
+    );
+    const generalAssets = assets.filter(a => 
+      a.category !== AssetCategory.CASH && !shouldUseUpbitAPI(a.exchange, a.category)
+    );
 
     console.log('[useMarketData] 자산 분류:', {
       cash: cashAssets.length,
-      upbit: upbitAssets.length,
-      general: generalAssets.length
+      upbit: upbitAssets.map(a => a.ticker),
+      general: generalAssets.map(a => a.ticker)
     });
 
     // 3. 현금 자산 업데이트 로직
@@ -116,10 +136,13 @@ export const useMarketData = ({
     const upbitSymbols = upbitAssets.map(a => a.ticker);
 
     try {
+      console.log('[useMarketData] 업비트 조회 심볼:', upbitSymbols);
+      console.log('[useMarketData] Cloud Run 조회:', assetsToFetch.map(a => a.ticker));
+
       const [cashResults, batchPriceMap, upbitPriceMap] = await Promise.all([
         Promise.allSettled(cashPromises),
-        fetchBatchAssetPricesNew(assetsToFetch),
-        fetchUpbitPricesBatch(upbitSymbols)
+        assetsToFetch.length > 0 ? fetchBatchAssetPricesNew(assetsToFetch) : Promise.resolve(new Map()),
+        upbitSymbols.length > 0 ? fetchUpbitPricesBatch(upbitSymbols) : Promise.resolve(new Map())
       ]);
 
       console.log('[useMarketData] 업비트 응답:', upbitPriceMap);
@@ -149,16 +172,17 @@ export const useMarketData = ({
           return asset;
         }
 
-        // 업비트/빗썸 자산 처리 (업비트 API 직접 호출 결과 사용)
-        if (isUpbitExchange(asset.exchange)) {
-          const upbitData = upbitPriceMap.get(asset.ticker.toUpperCase()) || 
-                           upbitPriceMap.get(`KRW-${asset.ticker.toUpperCase()}`);
+        // 업비트 자산 처리 (업비트 API 직접 호출 결과 사용)
+        if (shouldUseUpbitAPI(asset.exchange, asset.category)) {
+          const tickerUpper = asset.ticker.toUpperCase();
+          const upbitData = upbitPriceMap.get(tickerUpper) || 
+                           upbitPriceMap.get(`KRW-${tickerUpper}`);
           
           if (upbitData) {
             const newCurrentPrice = upbitData.trade_price;
             const newYesterdayPrice = upbitData.prev_closing_price;
             
-            console.log(`[Upbit] ${asset.ticker}: 현재가=${newCurrentPrice}, 전일종가=${newYesterdayPrice}`);
+            console.log(`[Upbit] ${asset.ticker}: 현재가=${newCurrentPrice?.toLocaleString()}, 전일종가=${newYesterdayPrice?.toLocaleString()}`);
             
             return {
               ...asset,
@@ -254,8 +278,12 @@ export const useMarketData = ({
     const targetAssets = assets.filter(a => idSet.has(a.id));
     
     const cashAssets = targetAssets.filter(a => a.category === AssetCategory.CASH);
-    const upbitAssets = targetAssets.filter(a => a.category !== AssetCategory.CASH && isUpbitExchange(a.exchange));
-    const generalAssets = targetAssets.filter(a => a.category !== AssetCategory.CASH && !isUpbitExchange(a.exchange));
+    const upbitAssets = targetAssets.filter(a => 
+      a.category !== AssetCategory.CASH && shouldUseUpbitAPI(a.exchange, a.category)
+    );
+    const generalAssets = targetAssets.filter(a => 
+      a.category !== AssetCategory.CASH && !shouldUseUpbitAPI(a.exchange, a.category)
+    );
     
     const cashPromises = cashAssets.map(asset => 
       (asset.currency === Currency.USD 
@@ -285,8 +313,8 @@ export const useMarketData = ({
     try {
       const [cashResults, batchPriceMap, upbitPriceMap] = await Promise.all([
         Promise.allSettled(cashPromises),
-        fetchBatchAssetPricesNew(itemsToFetch),
-        fetchUpbitPricesBatch(upbitSymbols)
+        itemsToFetch.length > 0 ? fetchBatchAssetPricesNew(itemsToFetch) : Promise.resolve(new Map()),
+        upbitSymbols.length > 0 ? fetchUpbitPricesBatch(upbitSymbols) : Promise.resolve(new Map())
       ]);
 
       const updatedAssets = assets.map((asset) => {
@@ -309,10 +337,11 @@ export const useMarketData = ({
             return asset;
           }
 
-          // 업비트/빗썸 자산 처리
-          if (isUpbitExchange(asset.exchange)) {
-            const upbitData = upbitPriceMap.get(asset.ticker.toUpperCase()) || 
-                             upbitPriceMap.get(`KRW-${asset.ticker.toUpperCase()}`);
+          // 업비트 자산 처리
+          if (shouldUseUpbitAPI(asset.exchange, asset.category)) {
+            const tickerUpper = asset.ticker.toUpperCase();
+            const upbitData = upbitPriceMap.get(tickerUpper) || 
+                             upbitPriceMap.get(`KRW-${tickerUpper}`);
             
             if (upbitData) {
               return {
@@ -382,11 +411,13 @@ export const useMarketData = ({
     setError(null);
 
     try {
-      // 업비트/빗썸 자산인 경우 업비트 API 직접 호출
-      if (isUpbitExchange(target.exchange)) {
+      // 업비트 자산인 경우 업비트 API 직접 호출
+      if (shouldUseUpbitAPI(target.exchange, target.category)) {
+        console.log(`[useMarketData] 단일 조회 (업비트): ${target.ticker}`);
         const upbitPriceMap = await fetchUpbitPricesBatch([target.ticker]);
-        const upbitData = upbitPriceMap.get(target.ticker.toUpperCase()) || 
-                         upbitPriceMap.get(`KRW-${target.ticker.toUpperCase()}`);
+        const tickerUpper = target.ticker.toUpperCase();
+        const upbitData = upbitPriceMap.get(tickerUpper) || 
+                         upbitPriceMap.get(`KRW-${tickerUpper}`);
         
         if (upbitData) {
           const updated = assets.map(a => a.id === assetId ? {
@@ -399,11 +430,14 @@ export const useMarketData = ({
           } : a);
           setAssets(updated);
           triggerAutoSave(updated, portfolioHistory, sellHistory, watchlist, exchangeRates);
+          setSuccessMessage('가격 업데이트 완료');
+          setTimeout(() => setSuccessMessage(null), 2000);
         } else {
           throw new Error('업비트 가격 조회 실패');
         }
       } else {
         // 일반 자산은 기존 로직 사용
+        console.log(`[useMarketData] 단일 조회 (Cloud Run): ${target.ticker}`);
         const d = await fetchAssetDataNew({ ticker: target.ticker, exchange: target.exchange, category: target.category, currency: target.currency });
         
         const shouldKeepOriginalCurrency = target.category === AssetCategory.CRYPTOCURRENCY;
@@ -428,6 +462,8 @@ export const useMarketData = ({
         } : a);
         setAssets(updated);
         triggerAutoSave(updated, portfolioHistory, sellHistory, watchlist, exchangeRates);
+        setSuccessMessage('가격 업데이트 완료');
+        setTimeout(() => setSuccessMessage(null), 2000);
       }
     } catch (e) {
       console.error('Single asset refresh failed:', e);
@@ -436,7 +472,7 @@ export const useMarketData = ({
     } finally {
       setIsLoading(false);
     }
-  }, [assets, portfolioHistory, sellHistory, watchlist, exchangeRates, triggerAutoSave, setAssets, setError]);
+  }, [assets, portfolioHistory, sellHistory, watchlist, exchangeRates, triggerAutoSave, setAssets, setError, setSuccessMessage]);
 
   // 관심종목 가격 갱신
   const handleRefreshWatchlistPrices = useCallback(async () => {
@@ -445,8 +481,8 @@ export const useMarketData = ({
     setError(null);
 
     // 업비트 자산과 일반 자산 분리
-    const upbitItems = watchlist.filter(item => isUpbitExchange(item.exchange));
-    const generalItems = watchlist.filter(item => !isUpbitExchange(item.exchange));
+    const upbitItems = watchlist.filter(item => shouldUseUpbitAPI(item.exchange, item.category));
+    const generalItems = watchlist.filter(item => !shouldUseUpbitAPI(item.exchange, item.category));
 
     const itemsToFetch = generalItems.map(item => ({
       ticker: item.ticker,
@@ -460,15 +496,16 @@ export const useMarketData = ({
 
     try {
       const [priceMap, upbitPriceMap] = await Promise.all([
-        fetchBatchAssetPricesNew(itemsToFetch),
-        fetchUpbitPricesBatch(upbitSymbols)
+        itemsToFetch.length > 0 ? fetchBatchAssetPricesNew(itemsToFetch) : Promise.resolve(new Map()),
+        upbitSymbols.length > 0 ? fetchUpbitPricesBatch(upbitSymbols) : Promise.resolve(new Map())
       ]);
 
       const updated = watchlist.map((item) => {
-        // 업비트/빗썸 자산 처리
-        if (isUpbitExchange(item.exchange)) {
-          const upbitData = upbitPriceMap.get(item.ticker.toUpperCase()) || 
-                           upbitPriceMap.get(`KRW-${item.ticker.toUpperCase()}`);
+        // 업비트 자산 처리
+        if (shouldUseUpbitAPI(item.exchange, item.category)) {
+          const tickerUpper = item.ticker.toUpperCase();
+          const upbitData = upbitPriceMap.get(tickerUpper) || 
+                           upbitPriceMap.get(`KRW-${tickerUpper}`);
           
           if (upbitData) {
             const highestPrice = item.highestPrice ? Math.max(item.highestPrice, upbitData.trade_price) : upbitData.trade_price;
@@ -506,6 +543,8 @@ export const useMarketData = ({
 
       setWatchlist(updated);
       triggerAutoSave(assets, portfolioHistory, sellHistory, updated, exchangeRates);
+      setSuccessMessage('관심종목 업데이트 완료');
+      setTimeout(() => setSuccessMessage(null), 2000);
     } catch (error) {
       console.error('Watchlist refresh failed:', error);
       setError('관심종목 업데이트 중 오류가 발생했습니다.');
@@ -513,7 +552,7 @@ export const useMarketData = ({
     } finally {
       setIsLoading(false);
     }
-  }, [watchlist, assets, portfolioHistory, sellHistory, exchangeRates, triggerAutoSave, setWatchlist, setError]);
+  }, [watchlist, assets, portfolioHistory, sellHistory, exchangeRates, triggerAutoSave, setWatchlist, setError, setSuccessMessage]);
 
   return {
     isLoading,
