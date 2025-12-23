@@ -6,6 +6,7 @@ import ProfitLossChart from '../ProfitLossChart';
 import AllocationChart from '../AllocationChart';
 import CategorySummaryTable from '../CategorySummaryTable';
 import TopBottomAssets from '../TopBottomAssets';
+import RebalancingTable from '../RebalancingTable';
 
 interface DashboardViewProps {
   assets: Asset[];
