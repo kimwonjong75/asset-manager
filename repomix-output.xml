@@ -71,6 +71,7 @@ components/PortfolioAssistant.tsx
 components/PortfolioModal.tsx
 components/PortfolioTable.tsx
 components/ProfitLossChart.tsx
+components/RebalancingTable.tsx
 components/RegionAllocationChart.tsx
 components/SellAlertControl.tsx
 components/SellAnalyticsPage.tsx
@@ -248,6 +249,158 @@ dist-ssr
 
 <file path="components/AddAssetForm.tsx">
 
+</file>
+
+<file path="components/BulkUploadModal.tsx">
+import React, { useState, useRef, useCallback } from 'react';
+import { AssetCategory, Currency, EXCHANGE_MAP, BulkUploadResult, ALLOWED_CATEGORIES } from '../types';
+
+interface BulkUploadModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onFileUpload: (file: File) => Promise<BulkUploadResult>;
+}
+
+const BulkUploadModal: React.FC<BulkUploadModalProps> = ({ isOpen, onClose, onFileUpload }) => {
+  const [view, setView] = useState<'instructions' | 'loading' | 'results'>('instructions');
+  const [result, setResult] = useState<BulkUploadResult | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const resetModal = useCallback(() => {
+    setView('instructions');
+    setResult(null);
+    onClose();
+  }, [onClose]);
+
+  const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setView('loading');
+    try {
+      const uploadResult = await onFileUpload(file);
+      setResult(uploadResult);
+      setView('results');
+    } catch (e: any) {
+       setResult({ successCount: 0, failedCount: 0, errors: [{ ticker: '파일 처리 오류', reason: e.message }] });
+       setView('results');
+    }
+    
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const handleUploadClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleDownloadTemplate = () => {
+    const csvHeader = "ticker,exchange,quantity,purchasePrice,purchaseDate,category,currency\n";
+    const csvExample = `AAPL,NASDAQ,10,150,2023-01-15,${AssetCategory.US_STOCK},${Currency.USD}\n005930,"KRX (코스피/코스닥)",20,70000,2023-03-22,${AssetCategory.KOREAN_STOCK},${Currency.KRW}\n`;
+    const csvContent = csvHeader + csvExample;
+    const blob = new Blob([`\uFEFF${csvContent}`], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'portfolio_template.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+  
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center z-50" onClick={resetModal} role="dialog" aria-modal="true">
+      <div className="bg-gray-800 p-6 rounded-lg shadow-xl w-full max-w-3xl" onClick={(e) => e.stopPropagation()}>
+        {view === 'instructions' && (
+          <div>
+            <h2 className="text-2xl font-bold text-white mb-4">CSV 일괄 등록</h2>
+            <p className="text-gray-400 mb-4">CSV 파일을 사용하여 여러 자산을 한 번에 등록할 수 있습니다. 아래 형식을 준수해주세요.</p>
+            <div className="bg-gray-900 p-4 rounded-md mb-4">
+              <p className="text-sm text-gray-300 font-mono">ticker,exchange,quantity,purchasePrice,purchaseDate,category,currency</p>
+              <p className="text-sm text-gray-500 font-mono mt-2">AAPL,NASDAQ,10,150.00,2023-01-15,미국주식,USD</p>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                <div className="text-sm text-gray-400 space-y-2">
+                    <p><strong className="text-gray-200">필수 헤더:</strong> <code>ticker, exchange, quantity, purchasePrice, purchaseDate, category, currency</code> 순서로 작성해야 합니다.</p>
+                    <p><strong className="text-gray-200">category 값:</strong> <code>{ALLOWED_CATEGORIES.join(', ')}</code> 중 하나여야 합니다.</p>
+                    <p><strong className="text-gray-200">currency 값:</strong> <code>{Object.values(Currency).join(', ')}</code> 중 하나여야 합니다.</p>
+                </div>
+                <div className="text-sm">
+                    <strong className="text-gray-200">사용 가능한 Exchange 값:</strong>
+                    <div className="max-h-32 overflow-y-auto bg-gray-900 p-2 mt-1 rounded-md text-gray-400 text-xs">
+                        {Object.entries(EXCHANGE_MAP).map(([category, exchanges]) => (
+                            <div key={category} className="mb-1">
+                                <span className="font-semibold text-gray-300">{category}:</span>
+                                <span className="font-mono ml-2">{exchanges.join(', ')}</span>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </div>
+
+            <input type="file" ref={fileInputRef} onChange={handleFileSelect} accept=".csv,text/csv" className="hidden" />
+            <div className="flex justify-between items-center mt-8">
+              <button onClick={handleDownloadTemplate} className="text-primary hover:text-primary-light transition font-medium">양식 다운로드</button>
+              <div className="flex gap-4">
+                 <button onClick={resetModal} className="bg-gray-600 hover:bg-gray-500 text-white font-medium py-2 px-4 rounded-md transition duration-300">취소</button>
+                 <button onClick={handleUploadClick} className="bg-primary hover:bg-primary-dark text-white font-bold py-2 px-4 rounded-md transition duration-300">파일 선택하여 업로드</button>
+              </div>
+            </div>
+          </div>
+        )}
+        {view === 'loading' && (
+          <div className="flex flex-col items-center justify-center p-8 h-64">
+            <svg className="animate-spin h-10 w-10 text-white mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <p className="text-xl text-white">자산 정보를 처리 중입니다...</p>
+            <p className="text-gray-400 mt-2">등록할 자산 수에 따라 몇 분 정도 소요될 수 있습니다.</p>
+          </div>
+        )}
+        {view === 'results' && result && (
+          <div>
+            <h2 className="text-2xl font-bold text-white mb-4">일괄 등록 결과</h2>
+            <div className="flex gap-4 mb-4 text-center">
+               <div className="bg-success/20 text-success p-4 rounded-lg flex-1">
+                    <p className="text-sm">성공</p>
+                    <p className="text-3xl font-bold">{result.successCount}</p>
+               </div>
+               <div className="bg-danger/20 text-danger p-4 rounded-lg flex-1">
+                    <p className="text-sm">실패</p>
+                    <p className="text-3xl font-bold">{result.failedCount}</p>
+               </div>
+            </div>
+            {result.errors.length > 0 && (
+                <div className="mt-4">
+                    <h3 className="text-lg font-semibold text-white mb-2">실패 내역</h3>
+                    <div className="max-h-48 overflow-y-auto bg-gray-900 p-3 rounded-md">
+                        <ul className="space-y-2 text-sm">
+                            {result.errors.map((err, index) => (
+                                <li key={index} className="flex justify-between items-center p-2 rounded bg-gray-700">
+                                    <span className="font-mono text-red-400 font-semibold">{err.ticker}</span>
+                                    <span className="text-gray-300 text-right">{err.reason}</span>
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+                </div>
+            )}
+            <div className="mt-8 flex justify-end">
+                 <button onClick={resetModal} className="bg-primary hover:bg-primary-dark text-white font-bold py-2 px-4 rounded-md transition duration-300">확인</button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default BulkUploadModal;
 </file>
 
 <file path="components/DataConflictModal.tsx">
@@ -544,6 +697,73 @@ root.render(
     <App />
   </React.StrictMode>
 );
+</file>
+
+<file path="initialData.ts">
+import { Asset, AssetCategory, Currency } from './types';
+
+export const initialAssets: Asset[] = [
+  {
+    id: '1',
+    category: AssetCategory.US_STOCK,
+    ticker: 'AAPL',
+    exchange: 'NASDAQ',
+    name: 'Apple Inc.',
+    quantity: 10,
+    purchasePrice: 150,
+    purchaseDate: '2023-01-15',
+    currency: Currency.USD,
+    purchaseExchangeRate: 1240.0,
+    currentPrice: 295000,
+    priceOriginal: 215.50,
+    highestPrice: 300000,
+  },
+  {
+    id: '2',
+    category: AssetCategory.KOREAN_STOCK,
+    ticker: '005930',
+    exchange: 'KRX (코스피/코스닥)',
+    name: '삼성전자',
+    quantity: 20,
+    purchasePrice: 70000,
+    purchaseDate: '2023-03-22',
+    currency: Currency.KRW,
+    purchaseExchangeRate: 1,
+    currentPrice: 78000,
+    priceOriginal: 78000,
+    highestPrice: 81000,
+  },
+  {
+    id: '3',
+    category: AssetCategory.CRYPTOCURRENCY,
+    ticker: 'BTC',
+    exchange: '주요 거래소 (종합)',
+    name: '비트코인',
+    quantity: 0.5,
+    purchasePrice: 30000,
+    purchaseDate: '2023-11-01',
+    currency: Currency.USD,
+    purchaseExchangeRate: 1350.0,
+    currentPrice: 95000000,
+    priceOriginal: 68000,
+    highestPrice: 100000000,
+  },
+   {
+    id: '4',
+    category: AssetCategory.PHYSICAL_ASSET,
+    ticker: 'KR7079120004',
+    exchange: 'KRX 금시장',
+    name: 'KRX 금현물',
+    quantity: 10,
+    purchasePrice: 85000,
+    purchaseDate: '2024-01-10',
+    currency: Currency.KRW,
+    purchaseExchangeRate: 1,
+    currentPrice: 110000,
+    priceOriginal: 110000,
+    highestPrice: 115000,
+  },
+];
 </file>
 
 <file path="postcss.config.js">
@@ -1454,158 +1674,6 @@ const AssetTrendChart: React.FC<AssetTrendChartProps> = ({ history, assetId, ass
 export default AssetTrendChart;
 </file>
 
-<file path="components/BulkUploadModal.tsx">
-import React, { useState, useRef, useCallback } from 'react';
-import { AssetCategory, Currency, EXCHANGE_MAP, BulkUploadResult, ALLOWED_CATEGORIES } from '../types';
-
-interface BulkUploadModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onFileUpload: (file: File) => Promise<BulkUploadResult>;
-}
-
-const BulkUploadModal: React.FC<BulkUploadModalProps> = ({ isOpen, onClose, onFileUpload }) => {
-  const [view, setView] = useState<'instructions' | 'loading' | 'results'>('instructions');
-  const [result, setResult] = useState<BulkUploadResult | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const resetModal = useCallback(() => {
-    setView('instructions');
-    setResult(null);
-    onClose();
-  }, [onClose]);
-
-  const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    setView('loading');
-    try {
-      const uploadResult = await onFileUpload(file);
-      setResult(uploadResult);
-      setView('results');
-    } catch (e: any) {
-       setResult({ successCount: 0, failedCount: 0, errors: [{ ticker: '파일 처리 오류', reason: e.message }] });
-       setView('results');
-    }
-    
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
-  };
-
-  const handleUploadClick = () => {
-    fileInputRef.current?.click();
-  };
-
-  const handleDownloadTemplate = () => {
-    const csvHeader = "ticker,exchange,quantity,purchasePrice,purchaseDate,category,currency\n";
-    const csvExample = `AAPL,NASDAQ,10,150,2023-01-15,${AssetCategory.US_STOCK},${Currency.USD}\n005930,"KRX (코스피/코스닥)",20,70000,2023-03-22,${AssetCategory.KOREAN_STOCK},${Currency.KRW}\n`;
-    const csvContent = csvHeader + csvExample;
-    const blob = new Blob([`\uFEFF${csvContent}`], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'portfolio_template.csv';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  };
-  
-  if (!isOpen) return null;
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center z-50" onClick={resetModal} role="dialog" aria-modal="true">
-      <div className="bg-gray-800 p-6 rounded-lg shadow-xl w-full max-w-3xl" onClick={(e) => e.stopPropagation()}>
-        {view === 'instructions' && (
-          <div>
-            <h2 className="text-2xl font-bold text-white mb-4">CSV 일괄 등록</h2>
-            <p className="text-gray-400 mb-4">CSV 파일을 사용하여 여러 자산을 한 번에 등록할 수 있습니다. 아래 형식을 준수해주세요.</p>
-            <div className="bg-gray-900 p-4 rounded-md mb-4">
-              <p className="text-sm text-gray-300 font-mono">ticker,exchange,quantity,purchasePrice,purchaseDate,category,currency</p>
-              <p className="text-sm text-gray-500 font-mono mt-2">AAPL,NASDAQ,10,150.00,2023-01-15,미국주식,USD</p>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                <div className="text-sm text-gray-400 space-y-2">
-                    <p><strong className="text-gray-200">필수 헤더:</strong> <code>ticker, exchange, quantity, purchasePrice, purchaseDate, category, currency</code> 순서로 작성해야 합니다.</p>
-                    <p><strong className="text-gray-200">category 값:</strong> <code>{ALLOWED_CATEGORIES.join(', ')}</code> 중 하나여야 합니다.</p>
-                    <p><strong className="text-gray-200">currency 값:</strong> <code>{Object.values(Currency).join(', ')}</code> 중 하나여야 합니다.</p>
-                </div>
-                <div className="text-sm">
-                    <strong className="text-gray-200">사용 가능한 Exchange 값:</strong>
-                    <div className="max-h-32 overflow-y-auto bg-gray-900 p-2 mt-1 rounded-md text-gray-400 text-xs">
-                        {Object.entries(EXCHANGE_MAP).map(([category, exchanges]) => (
-                            <div key={category} className="mb-1">
-                                <span className="font-semibold text-gray-300">{category}:</span>
-                                <span className="font-mono ml-2">{exchanges.join(', ')}</span>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            </div>
-
-            <input type="file" ref={fileInputRef} onChange={handleFileSelect} accept=".csv,text/csv" className="hidden" />
-            <div className="flex justify-between items-center mt-8">
-              <button onClick={handleDownloadTemplate} className="text-primary hover:text-primary-light transition font-medium">양식 다운로드</button>
-              <div className="flex gap-4">
-                 <button onClick={resetModal} className="bg-gray-600 hover:bg-gray-500 text-white font-medium py-2 px-4 rounded-md transition duration-300">취소</button>
-                 <button onClick={handleUploadClick} className="bg-primary hover:bg-primary-dark text-white font-bold py-2 px-4 rounded-md transition duration-300">파일 선택하여 업로드</button>
-              </div>
-            </div>
-          </div>
-        )}
-        {view === 'loading' && (
-          <div className="flex flex-col items-center justify-center p-8 h-64">
-            <svg className="animate-spin h-10 w-10 text-white mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-            <p className="text-xl text-white">자산 정보를 처리 중입니다...</p>
-            <p className="text-gray-400 mt-2">등록할 자산 수에 따라 몇 분 정도 소요될 수 있습니다.</p>
-          </div>
-        )}
-        {view === 'results' && result && (
-          <div>
-            <h2 className="text-2xl font-bold text-white mb-4">일괄 등록 결과</h2>
-            <div className="flex gap-4 mb-4 text-center">
-               <div className="bg-success/20 text-success p-4 rounded-lg flex-1">
-                    <p className="text-sm">성공</p>
-                    <p className="text-3xl font-bold">{result.successCount}</p>
-               </div>
-               <div className="bg-danger/20 text-danger p-4 rounded-lg flex-1">
-                    <p className="text-sm">실패</p>
-                    <p className="text-3xl font-bold">{result.failedCount}</p>
-               </div>
-            </div>
-            {result.errors.length > 0 && (
-                <div className="mt-4">
-                    <h3 className="text-lg font-semibold text-white mb-2">실패 내역</h3>
-                    <div className="max-h-48 overflow-y-auto bg-gray-900 p-3 rounded-md">
-                        <ul className="space-y-2 text-sm">
-                            {result.errors.map((err, index) => (
-                                <li key={index} className="flex justify-between items-center p-2 rounded bg-gray-700">
-                                    <span className="font-mono text-red-400 font-semibold">{err.ticker}</span>
-                                    <span className="text-gray-300 text-right">{err.reason}</span>
-                                </li>
-                            ))}
-                        </ul>
-                    </div>
-                </div>
-            )}
-            <div className="mt-8 flex justify-end">
-                 <button onClick={resetModal} className="bg-primary hover:bg-primary-dark text-white font-bold py-2 px-4 rounded-md transition duration-300">확인</button>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-};
-
-export default BulkUploadModal;
-</file>
-
 <file path="components/CategorySummaryTable.tsx">
 import React, { useMemo } from 'react';
 import { Asset, AssetCategory, Currency, ExchangeRates } from '../types';
@@ -2431,6 +2499,223 @@ const PortfolioAssistant: React.FC<PortfolioAssistantProps> = ({ isOpen, onClose
 };
 
 export default PortfolioAssistant;
+</file>
+
+<file path="components/RebalancingTable.tsx">
+import React, { useMemo, useState, useEffect } from 'react';
+import { Asset, AssetCategory, ExchangeRates, Currency } from '../types';
+
+interface RebalancingTableProps {
+  assets: Asset[];
+  exchangeRates: ExchangeRates;
+}
+
+interface CategoryData {
+  category: AssetCategory;
+  currentValue: number;
+  currentWeight: number;
+  targetWeight: number;
+  targetValue: number;
+  difference: number;
+}
+
+const RebalancingTable: React.FC<RebalancingTableProps> = ({ assets, exchangeRates }) => {
+  // --- 1. Calculate Current Values & Weights ---
+  const { categoryValues, totalCurrentValue } = useMemo(() => {
+    const values: Record<string, number> = {};
+    let total = 0;
+
+    assets.forEach((asset) => {
+      const rate = asset.currency === Currency.KRW ? 1 : (exchangeRates[asset.currency] || 0);
+      const val = asset.currentPrice * asset.quantity * rate;
+      values[asset.category] = (values[asset.category] || 0) + val;
+      total += val;
+    });
+
+    return { categoryValues: values, totalCurrentValue: total };
+  }, [assets, exchangeRates]);
+
+  // --- 2. State ---
+  // Initialize targetTotalAmount with current total value
+  const [targetTotalAmount, setTargetTotalAmount] = useState<number>(0);
+  
+  // Initialize targetWeights with current weights
+  const [targetWeights, setTargetWeights] = useState<Record<string, number>>({});
+
+  // Effect to update state when data loads or changes significantly (optional, but good for UX)
+  // We only set initial values if they are not set yet (or maybe we want to reset? Let's stick to init)
+  useEffect(() => {
+    if (totalCurrentValue > 0 && targetTotalAmount === 0) {
+        setTargetTotalAmount(totalCurrentValue);
+        
+        const initialWeights: Record<string, number> = {};
+        Object.keys(categoryValues).forEach(cat => {
+            initialWeights[cat] = (categoryValues[cat] / totalCurrentValue) * 100;
+        });
+        setTargetWeights(prev => {
+            // Only update if empty to preserve user input during re-renders
+             if (Object.keys(prev).length === 0) return initialWeights;
+             return prev;
+        });
+    }
+  }, [totalCurrentValue, categoryValues, targetTotalAmount]);
+
+
+  // --- 3. Calculate Table Data ---
+  const tableData: CategoryData[] = useMemo(() => {
+    // Get all unique categories from assets + any keys in targetWeights
+    const categories = Array.from(new Set([
+        ...Object.keys(categoryValues),
+        ...Object.keys(targetWeights)
+    ])) as AssetCategory[];
+
+    return categories.map(category => {
+        const currentValue = categoryValues[category] || 0;
+        const currentWeight = totalCurrentValue > 0 ? (currentValue / totalCurrentValue) * 100 : 0;
+        const targetWeight = targetWeights[category] || 0;
+        const targetValue = (targetTotalAmount * targetWeight) / 100;
+        const difference = targetValue - currentValue;
+
+        return {
+            category,
+            currentValue,
+            currentWeight,
+            targetWeight,
+            targetValue,
+            difference
+        };
+    }).sort((a, b) => b.currentValue - a.currentValue); // Sort by current value desc
+  }, [categoryValues, totalCurrentValue, targetTotalAmount, targetWeights]);
+
+  // Calculate totals for footer
+  const totalTargetWeight = tableData.reduce((sum, item) => sum + item.targetWeight, 0);
+  const totalTargetValue = tableData.reduce((sum, item) => sum + item.targetValue, 0);
+  const totalDifference = tableData.reduce((sum, item) => sum + item.difference, 0);
+
+
+  // --- Handlers ---
+  const handleWeightChange = (category: string, value: string) => {
+    const numVal = parseFloat(value);
+    setTargetWeights(prev => ({
+        ...prev,
+        [category]: isNaN(numVal) ? 0 : numVal
+    }));
+  };
+
+  const handleTotalAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      // Remove commas for parsing
+      const rawValue = e.target.value.replace(/,/g, '');
+      const numVal = parseFloat(rawValue);
+      setTargetTotalAmount(isNaN(numVal) ? 0 : numVal);
+  };
+
+  // --- Helpers ---
+  const formatKRW = (num: number) => {
+    return new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW', maximumFractionDigits: 0 }).format(num);
+  };
+  
+  const formatNumber = (num: number) => {
+      return new Intl.NumberFormat('ko-KR').format(num);
+  }
+
+  const getDiffColor = (val: number) => {
+      if (val > 0) return 'text-red-400'; // Buying needed (usually red/positive in stock apps? or maybe just distinct color)
+      // Actually, standard: Red for Buy (+), Blue for Sell (-) in KR logic often, but let's stick to Green/Red logic if used elsewhere.
+      // In DashboardView: Profit is text-success (Green?), Loss is text-danger (Red?).
+      // Let's use text-red-400 for Buy (+) and text-blue-400 for Sell (-) to match typical Korean MTS style if applicable, 
+      // or just Green for Positive (Buy) and Red for Negative (Sell)?
+      // The prompt says: "+면 매수, -면 매도". 
+      // Usually + (Buy) means we need to spend money. - (Sell) means we get money.
+      // Let's use: Positive (Buy) -> Red (Active/Action), Negative (Sell) -> Blue (Passive/Release). 
+      // Or stick to: Positive -> Success color, Negative -> Danger color. 
+      // Let's check CategorySummaryTable: Profit > 0 is text-success (likely green), Loss < 0 is text-danger (likely red).
+      // Here: Positive diff means "Buy". Negative diff means "Sell".
+      if (val > 0) return 'text-red-400 font-bold'; // Buy
+      if (val < 0) return 'text-blue-400 font-bold'; // Sell
+      return 'text-gray-400';
+  };
+
+  return (
+    <div className="bg-gray-800 p-6 rounded-lg shadow-lg">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+        <h2 className="text-xl font-bold text-white">포트폴리오 리밸런싱 (배분표)</h2>
+        <div className="flex items-center gap-2">
+            <label htmlFor="targetTotal" className="text-sm font-medium text-gray-300 whitespace-nowrap">
+                목표 총 자산 (KRW):
+            </label>
+            <input
+                id="targetTotal"
+                type="text"
+                value={formatNumber(targetTotalAmount)}
+                onChange={handleTotalAmountChange}
+                className="bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white text-right focus:outline-none focus:ring-2 focus:ring-blue-500 w-40 sm:w-56"
+            />
+        </div>
+      </div>
+
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm text-left text-gray-400">
+            <thead className="text-xs text-gray-300 uppercase bg-gray-700">
+                <tr>
+                    <th className="px-4 py-3">자산군</th>
+                    <th className="px-4 py-3 text-right">현재금액</th>
+                    <th className="px-4 py-3 text-right">현재비중</th>
+                    <th className="px-4 py-3 text-right bg-gray-600 bg-opacity-30 border-b-2 border-blue-500">목표비중 (%)</th>
+                    <th className="px-4 py-3 text-right">목표금액</th>
+                    <th className="px-4 py-3 text-right">매수/매도 필요액</th>
+                </tr>
+            </thead>
+            <tbody>
+                {tableData.map((row) => (
+                    <tr key={row.category} className="border-b border-gray-700 hover:bg-gray-750">
+                        <td className="px-4 py-3 font-medium text-white">{row.category}</td>
+                        <td className="px-4 py-3 text-right">{formatKRW(row.currentValue)}</td>
+                        <td className="px-4 py-3 text-right">{row.currentWeight.toFixed(2)}%</td>
+                        <td className="px-4 py-3 text-right">
+                            <input
+                                type="number"
+                                min="0"
+                                max="100"
+                                step="0.1"
+                                value={row.targetWeight}
+                                onChange={(e) => handleWeightChange(row.category, e.target.value)}
+                                className="bg-gray-700 border border-gray-600 rounded px-2 py-1 text-right text-white w-20 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                            />
+                        </td>
+                        <td className="px-4 py-3 text-right text-gray-300">{formatKRW(row.targetValue)}</td>
+                        <td className={`px-4 py-3 text-right ${getDiffColor(row.difference)}`}>
+                            {row.difference > 0 ? '+' : ''}{formatKRW(row.difference)}
+                        </td>
+                    </tr>
+                ))}
+                
+                {/* Total Row */}
+                <tr className="bg-gray-750 font-bold border-t-2 border-gray-600">
+                    <td className="px-4 py-3 text-white">합계</td>
+                    <td className="px-4 py-3 text-right">{formatKRW(totalCurrentValue)}</td>
+                    <td className="px-4 py-3 text-right">100.00%</td>
+                    <td className={`px-4 py-3 text-right ${Math.abs(totalTargetWeight - 100) > 0.1 ? 'text-yellow-400' : 'text-green-400'}`}>
+                        {totalTargetWeight.toFixed(2)}%
+                    </td>
+                    <td className="px-4 py-3 text-right">{formatKRW(totalTargetValue)}</td>
+                    <td className="px-4 py-3 text-right text-white">
+                        {/* The total difference should mathematically be (Target Total - Current Total) */}
+                        {formatKRW(totalDifference)}
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+      </div>
+      <div className="mt-4 text-xs text-gray-400 text-right">
+        * 목표 비중 합계가 100%가 되도록 설정해주세요.
+        <br />
+        * 매수/매도 필요액이 (+)인 경우 매수, (-)인 경우 매도가 필요함을 의미합니다.
+      </div>
+    </div>
+  );
+};
+
+export default RebalancingTable;
 </file>
 
 <file path="components/TopBottomAssets.tsx">
@@ -3477,73 +3762,6 @@ export function useOnClickOutside<T extends HTMLElement>(
 </html>
 </file>
 
-<file path="initialData.ts">
-import { Asset, AssetCategory, Currency } from './types';
-
-export const initialAssets: Asset[] = [
-  {
-    id: '1',
-    category: AssetCategory.US_STOCK,
-    ticker: 'AAPL',
-    exchange: 'NASDAQ',
-    name: 'Apple Inc.',
-    quantity: 10,
-    purchasePrice: 150,
-    purchaseDate: '2023-01-15',
-    currency: Currency.USD,
-    purchaseExchangeRate: 1240.0,
-    currentPrice: 295000,
-    priceOriginal: 215.50,
-    highestPrice: 300000,
-  },
-  {
-    id: '2',
-    category: AssetCategory.KOREAN_STOCK,
-    ticker: '005930',
-    exchange: 'KRX (코스피/코스닥)',
-    name: '삼성전자',
-    quantity: 20,
-    purchasePrice: 70000,
-    purchaseDate: '2023-03-22',
-    currency: Currency.KRW,
-    purchaseExchangeRate: 1,
-    currentPrice: 78000,
-    priceOriginal: 78000,
-    highestPrice: 81000,
-  },
-  {
-    id: '3',
-    category: AssetCategory.CRYPTOCURRENCY,
-    ticker: 'BTC',
-    exchange: '주요 거래소 (종합)',
-    name: '비트코인',
-    quantity: 0.5,
-    purchasePrice: 30000,
-    purchaseDate: '2023-11-01',
-    currency: Currency.USD,
-    purchaseExchangeRate: 1350.0,
-    currentPrice: 95000000,
-    priceOriginal: 68000,
-    highestPrice: 100000000,
-  },
-   {
-    id: '4',
-    category: AssetCategory.PHYSICAL_ASSET,
-    ticker: 'KR7079120004',
-    exchange: 'KRX 금시장',
-    name: 'KRX 금현물',
-    quantity: 10,
-    purchasePrice: 85000,
-    purchaseDate: '2024-01-10',
-    currency: Currency.KRW,
-    purchaseExchangeRate: 1,
-    currentPrice: 110000,
-    priceOriginal: 110000,
-    highestPrice: 115000,
-  },
-];
-</file>
-
 <file path="package.json">
 {
   "name": "자산-관리-시트",
@@ -3696,216 +3914,6 @@ const ExchangeRateInput: React.FC<Props> = ({ rates, onRatesChange, showWarning,
 export default ExchangeRateInput;
 </file>
 
-<file path="components/layouts/DashboardView.tsx">
-import React, { useMemo, useCallback } from 'react';
-import { Asset, AssetCategory, ExchangeRates, PortfolioSnapshot, Currency, ALLOWED_CATEGORIES } from '../../types';
-import StatCard from '../StatCard';
-import ExchangeRateInput from '../ExchangeRateInput';
-import ProfitLossChart from '../ProfitLossChart';
-import AllocationChart from '../AllocationChart';
-import CategorySummaryTable from '../CategorySummaryTable';
-import TopBottomAssets from '../TopBottomAssets';
-
-interface DashboardViewProps {
-  assets: Asset[];
-  portfolioHistory: PortfolioSnapshot[];
-  exchangeRates: ExchangeRates;
-  dashboardFilterCategory: AssetCategory | 'ALL';
-  setDashboardFilterCategory: (cat: AssetCategory | 'ALL') => void;
-  alertCount: number;
-  onAlertClick: () => void;
-  onRatesChange: (rates: ExchangeRates) => void;
-  showExchangeRateWarning: boolean;
-  totalValue: number; // 부모에서 계산해서 내려줌 (혹은 여기서 계산)
-}
-
-const DashboardView: React.FC<DashboardViewProps> = ({
-  assets,
-  portfolioHistory,
-  exchangeRates,
-  dashboardFilterCategory,
-  setDashboardFilterCategory,
-  alertCount,
-  onAlertClick,
-  onRatesChange,
-  showExchangeRateWarning,
-  // totalValue -> 내부 계산으로 변경
-}) => {
-
-  const getValueInKRW = useCallback((value: number, currency: Currency): number => {
-    if (currency === Currency.KRW) return value;
-    const rate = exchangeRates[currency] || 0;
-    return value * rate;
-  }, [exchangeRates]);
-
-  const totalValue = useMemo(() => {
-    return assets.reduce((acc, asset) => {
-      const v = asset.currentPrice * asset.quantity;
-      return acc + getValueInKRW(v, asset.currency);
-    }, 0);
-  }, [assets, getValueInKRW]);
-
-  const categoryOptions = useMemo(() => {
-    const extras = Array.from(new Set(assets.map(asset => asset.category))).filter(
-      (cat) => !ALLOWED_CATEGORIES.includes(cat)
-    );
-    return [...ALLOWED_CATEGORIES, ...extras];
-  }, [assets]);
-
-  const dashboardFilteredAssets = useMemo(() => {
-      if (dashboardFilterCategory === 'ALL') {
-          return assets;
-      }
-      return assets.filter(asset => asset.category === dashboardFilterCategory);
-  }, [assets, dashboardFilterCategory]);
-
-  const dashboardTotalValue = useMemo(() => {
-      return dashboardFilteredAssets.reduce((acc, asset) => {
-        const v = asset.currentPrice * asset.quantity;
-        return acc + getValueInKRW(v, asset.currency);
-      }, 0);
-  }, [dashboardFilteredAssets, getValueInKRW]);
-
-  const dashboardTotalPurchaseValue = useMemo(() => {
-      return dashboardFilteredAssets.reduce((acc, asset) => {
-        const v = asset.purchasePrice * asset.quantity;
-        return acc + getValueInKRW(v, asset.currency);
-      }, 0);
-  }, [dashboardFilteredAssets, getValueInKRW]);
-
-  const dashboardTotalGainLoss = dashboardTotalValue - dashboardTotalPurchaseValue;
-  const dashboardTotalReturn = dashboardTotalPurchaseValue === 0 ? 0 : (dashboardTotalGainLoss / dashboardTotalPurchaseValue) * 100;
-
-  const soldAssetsStats = useMemo(() => {
-    let totalSoldAmount = 0;
-    let totalSoldPurchaseValue = 0;
-    let totalSoldProfit = 0;
-    let soldCount = 0;
-
-    assets.forEach(asset => {
-      if (asset.sellTransactions && asset.sellTransactions.length > 0) {
-        asset.sellTransactions.forEach(transaction => {
-          totalSoldAmount += transaction.sellPrice * transaction.sellQuantity;
-          soldCount += 1;
-          
-          let purchaseValueForSold: number;
-          if (asset.currency === Currency.KRW) {
-            purchaseValueForSold = asset.purchasePrice * transaction.sellQuantity;
-          } else if (asset.purchaseExchangeRate) {
-            purchaseValueForSold = asset.purchasePrice * asset.purchaseExchangeRate * transaction.sellQuantity;
-          } else if (asset.priceOriginal > 0) {
-            const exchangeRate = asset.currentPrice / asset.priceOriginal;
-            purchaseValueForSold = asset.purchasePrice * exchangeRate * transaction.sellQuantity;
-          } else {
-            purchaseValueForSold = asset.purchasePrice * transaction.sellQuantity;
-          }
-          totalSoldPurchaseValue += purchaseValueForSold;
-        });
-      }
-    });
-
-    totalSoldProfit = totalSoldAmount - totalSoldPurchaseValue;
-    const soldReturn = totalSoldPurchaseValue === 0 ? 0 : (totalSoldProfit / totalSoldPurchaseValue) * 100;
-
-    return {
-      totalSoldAmount,
-      totalSoldPurchaseValue,
-      totalSoldProfit,
-      soldReturn,
-      soldCount,
-    };
-  }, [assets]);
-
-  const profitLossChartTitle = useMemo(() => (
-      dashboardFilterCategory === 'ALL'
-      ? '손익 추이 분석'
-      : `${dashboardFilterCategory} 손익 추이 분석`
-  ), [dashboardFilterCategory]);
-
-  const formatCurrencyKRW = (value: number) => {
-    return value.toLocaleString('ko-KR', { 
-        style: 'currency', 
-        currency: 'KRW', 
-        maximumFractionDigits: 0 
-    });
-  };
-
-  return (
-    <div className="space-y-6">
-      <div className="bg-gray-800 p-4 rounded-lg shadow-lg flex items-center justify-between flex-wrap gap-4">
-          <div className="flex items-center gap-4" title="대시보드에 표시될 자산의 종류를 선택합니다.">
-              <label htmlFor="dashboard-filter" className="text-sm font-medium text-gray-300">
-                  자산 구분 필터:
-              </label>
-              <div className="relative">
-                  <select
-                      id="dashboard-filter"
-                      value={dashboardFilterCategory}
-                      onChange={(e) => setDashboardFilterCategory(e.target.value as AssetCategory | 'ALL')}
-                      className="bg-gray-700 border border-gray-600 rounded-md py-2 pl-3 pr-8 text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent appearance-none"
-                  >
-                      <option value="ALL">전체 포트폴리오</option>
-                      {categoryOptions.map((cat) => (
-                          <option key={cat} value={cat}>{cat}</option>
-                      ))}
-                  </select>
-                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-400">
-                      <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
-                  </div>
-              </div>
-          </div>
-          <ExchangeRateInput 
-            rates={exchangeRates} 
-            onRatesChange={onRatesChange} 
-            showWarning={showExchangeRateWarning} 
-          />
-          <StatCard 
-              title="매도 알림 발생" 
-              value={`${alertCount}개`}
-              tooltip="설정된 하락률 기준을 초과한 자산의 수입니다. 클릭하여 필터링된 목록을 확인하세요."
-              onClick={onAlertClick}
-              isAlert={alertCount > 0}
-              size="small"
-          />
-      </div>
-       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-        <StatCard title="총 자산 (원화)" value={formatCurrencyKRW(dashboardTotalValue)} tooltip="선택된 자산의 현재 평가금액 총합입니다." />
-        <StatCard title="투자 원금" value={formatCurrencyKRW(dashboardTotalPurchaseValue)} tooltip="선택된 자산의 총 매수금액 합계입니다." />
-        <StatCard title="총 손익 (원화)" value={formatCurrencyKRW(dashboardTotalGainLoss)} isProfit={dashboardTotalGainLoss >= 0} tooltip="총 평가금액에서 총 매수금액을 뺀 금액입니다."/>
-        <StatCard title="총 수익률" value={`${dashboardTotalReturn.toFixed(2)}%`} isProfit={dashboardTotalReturn >= 0} tooltip="총 손익을 총 매수금액으로 나눈 백분율입니다."/>
-      </div>
-      {soldAssetsStats.soldCount > 0 && (
-        <div className="bg-gray-800 p-6 rounded-lg shadow-lg mb-6">
-          <h3 className="text-xl font-bold text-white mb-4">매도 통계</h3>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            <StatCard title="매도 횟수" value={soldAssetsStats.soldCount.toString()} tooltip="총 매도 거래 횟수입니다." size="small" />
-            <StatCard title="매도 금액" value={formatCurrencyKRW(soldAssetsStats.totalSoldAmount)} tooltip="매도된 종목의 총 매도금액입니다." size="small" />
-            <StatCard title="매도 수익" value={formatCurrencyKRW(soldAssetsStats.totalSoldProfit)} isProfit={soldAssetsStats.totalSoldProfit >= 0} tooltip="매도금액에서 매수금액을 뺀 수익입니다." size="small" />
-            <StatCard title="매도 수익률" value={`${soldAssetsStats.soldReturn.toFixed(2)}%`} isProfit={soldAssetsStats.soldReturn >= 0} tooltip="매도 수익을 매수금액으로 나눈 백분율입니다." size="small" />
-          </div>
-        </div>
-      )}
-      <ProfitLossChart history={portfolioHistory} assetsToDisplay={dashboardFilteredAssets} title={profitLossChartTitle} />
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="lg:col-span-1">
-          <AllocationChart assets={assets} exchangeRates={exchangeRates} />
-        </div>
-        <div className="lg:col-span-1">
-           <CategorySummaryTable 
-            assets={assets} 
-            totalPortfolioValue={totalValue} 
-            exchangeRates={exchangeRates} 
-           />
-        </div>
-      </div>
-      <TopBottomAssets assets={assets} />
-    </div>
-  );
-};
-
-export default DashboardView;
-</file>
-
 <file path="components/portfolio-table/PortfolioTableRow.tsx">
 import React, { Fragment, useRef, useState } from 'react';
 import { Asset, Currency, PortfolioSnapshot } from '../../types';
@@ -4051,178 +4059,6 @@ const PortfolioTableRow: React.FC<PortfolioTableRowProps> = ({
 };
 
 export default PortfolioTableRow;
-</file>
-
-<file path="components/portfolio-table/usePortfolioData.ts">
-import { useMemo, useState } from 'react';
-import { Asset, ExchangeRates, ALLOWED_CATEGORIES, AssetCategory } from '../../types';
-import { getValueInKRW } from './utils';
-import { EnrichedAsset, SortKey, SortDirection } from './types';
-
-interface UsePortfolioDataProps {
-  assets: Asset[];
-  exchangeRates: ExchangeRates;
-  filterAlerts: boolean;
-  sellAlertDropRate: number;
-  showFailedOnly: boolean;
-  failedIds?: Set<string>;
-}
-
-export const usePortfolioData = ({
-  assets,
-  exchangeRates,
-  filterAlerts,
-  sellAlertDropRate,
-  showFailedOnly,
-  failedIds
-}: UsePortfolioDataProps) => {
-  const [sortConfig, setSortConfig] = useState<{ key: SortKey; direction: SortDirection } | null>(null);
-
-  const totalValueKRW = useMemo(() => {
-    return assets.reduce((sum, asset) => {
-      const valueInOriginalCurrency = asset.currentPrice * asset.quantity;
-      return sum + getValueInKRW(valueInOriginalCurrency, asset.currency, exchangeRates);
-    }, 0);
-  }, [assets, exchangeRates]);
-
-  const categoryOptions = useMemo(() => {
-    const extras = Array.from(new Set(assets.map(asset => asset.category))).filter(
-      (cat) => !ALLOWED_CATEGORIES.includes(cat) && cat !== AssetCategory.FOREIGN_STOCK
-    );
-    return [...ALLOWED_CATEGORIES, ...extras];
-  }, [assets]);
-
-  const enrichedAndSortedAssets = useMemo(() => {
-    let enriched: EnrichedAsset[] = assets.map(asset => {
-      const currentValue = asset.currentPrice * asset.quantity;
-      const purchaseValue = asset.purchasePrice * asset.quantity;
-      
-      const profitLoss = currentValue - purchaseValue;
-      const returnPercentage = purchaseValue === 0 ? 0 : (profitLoss / purchaseValue) * 100;
-      
-      const currentValueKRW = getValueInKRW(currentValue, asset.currency, exchangeRates);
-      const purchaseValueKRW = getValueInKRW(purchaseValue, asset.currency, exchangeRates);
-      const profitLossKRW = currentValueKRW - purchaseValueKRW;
-      
-      const currentPriceKRW = getValueInKRW(asset.currentPrice, asset.currency, exchangeRates);
-      const purchasePriceKRW = getValueInKRW(asset.purchasePrice, asset.currency, exchangeRates);
-
-      const allocation = totalValueKRW === 0 ? 0 : (currentValueKRW / totalValueKRW) * 100;
-      const dropFromHigh = asset.highestPrice === 0 ? 0 : ((asset.currentPrice - asset.highestPrice) / asset.highestPrice) * 100;
-      const diffFromHigh = asset.currentPrice - asset.highestPrice;
-      
-      const yesterdayPrice = asset.yesterdayPrice || 0;
-      const yesterdayPriceKRW = getValueInKRW(yesterdayPrice, asset.currency, exchangeRates);
-      
-      const yesterdayChange = yesterdayPriceKRW > 0 
-        ? ((currentPriceKRW - yesterdayPriceKRW) / yesterdayPriceKRW) * 100 
-        : 0;
-        
-      const diffFromYesterday = yesterdayPriceKRW > 0 
-        ? currentPriceKRW - yesterdayPriceKRW 
-        : 0;
-      
-      return {
-        ...asset,
-        metrics: {
-          purchasePrice: asset.purchasePrice,
-          currentPrice: asset.currentPrice,
-          currentPriceKRW,
-          purchasePriceKRW,
-          purchaseValue, currentValue, purchaseValueKRW, currentValueKRW,
-          returnPercentage, allocation, dropFromHigh, profitLoss, profitLossKRW,
-          diffFromHigh, yesterdayChange, diffFromYesterday,
-        }
-      };
-    });
-
-    if (filterAlerts) {
-      enriched = enriched.filter(asset => {
-        const alertRate = asset.sellAlertDropRate ?? sellAlertDropRate;
-        return asset.metrics.dropFromHigh <= -alertRate;
-      });
-    }
-
-    if (showFailedOnly && failedIds && failedIds.size > 0) {
-      enriched = enriched.filter(asset => failedIds.has(asset.id));
-    }
-
-    if (sortConfig !== null) {
-      enriched.sort((a, b) => {
-        const { key, direction } = sortConfig;
-        let aValue: any, bValue: any;
-
-        if (key === 'name') {
-          aValue = (a.customName?.toLowerCase() || a.name.toLowerCase());
-          bValue = (b.customName?.toLowerCase() || b.name.toLowerCase());
-        } else if (key === 'purchaseDate') {
-          aValue = a.purchaseDate; bValue = b.purchaseDate;
-        } else if (key === 'quantity') {
-          aValue = a.quantity; bValue = b.quantity;
-        } else if (key === 'currentPrice') {
-          aValue = a.metrics.currentPriceKRW;
-          bValue = b.metrics.currentPriceKRW;
-        } else if (key === 'purchasePrice') {
-          aValue = a.metrics.purchasePriceKRW;
-          bValue = b.metrics.purchasePriceKRW;
-        } else if (key === 'currentValue') {
-           aValue = a.metrics.currentValueKRW;
-           bValue = b.metrics.currentValueKRW;
-        } else if (key === 'purchaseValue') {
-           aValue = a.metrics.purchaseValueKRW;
-           bValue = b.metrics.purchaseValueKRW;
-        } else {
-          aValue = a.metrics[key as keyof typeof a.metrics];
-          bValue = b.metrics[key as keyof typeof b.metrics];
-        }
-
-        if (aValue < bValue) return direction === 'ascending' ? -1 : 1;
-        if (aValue > bValue) return direction === 'ascending' ? 1 : -1;
-        return 0;
-      });
-    }
-
-    return enriched;
-  }, [assets, sortConfig, totalValueKRW, exchangeRates, filterAlerts, sellAlertDropRate, showFailedOnly, failedIds]);
-
-  const requestSort = (key: SortKey) => {
-    let direction: SortDirection = 'ascending';
-    if (sortConfig && sortConfig.key === key && sortConfig.direction === 'ascending') {
-      direction = 'descending';
-    }
-    setSortConfig({ key, direction });
-  };
-  
-  const toggleReturnSort = () => {
-    const s = sortConfig;
-    if (!s || (s.key !== 'returnPercentage' && s.key !== 'profitLossKRW')) {
-      setSortConfig({ key: 'returnPercentage', direction: 'descending' });
-      return;
-    }
-    if (s.key === 'returnPercentage' && s.direction === 'descending') {
-      setSortConfig({ key: 'returnPercentage', direction: 'ascending' });
-      return;
-    }
-    if (s.key === 'returnPercentage' && s.direction === 'ascending') {
-      setSortConfig({ key: 'profitLossKRW', direction: 'descending' });
-      return;
-    }
-    if (s.key === 'profitLossKRW' && s.direction === 'descending') {
-      setSortConfig({ key: 'profitLossKRW', direction: 'ascending' });
-      return;
-    }
-    setSortConfig(null);
-  };
-
-  return {
-    enrichedAndSortedAssets,
-    sortConfig,
-    requestSort,
-    toggleReturnSort,
-    categoryOptions,
-    totalValueKRW
-  };
-};
 </file>
 
 <file path="components/SellAnalyticsPage.tsx">
@@ -4981,161 +4817,414 @@ const ProfitLossChart: React.FC<ProfitLossChartProps> = ({ history, assetsToDisp
 export default ProfitLossChart;
 </file>
 
-<file path="services/upbitService.ts">
-// src/services/upbitService.ts
+<file path="components/layouts/DashboardView.tsx">
+import React, { useMemo, useCallback } from 'react';
+import { Asset, AssetCategory, ExchangeRates, PortfolioSnapshot, Currency, ALLOWED_CATEGORIES } from '../../types';
+import StatCard from '../StatCard';
+import ExchangeRateInput from '../ExchangeRateInput';
+import ProfitLossChart from '../ProfitLossChart';
+import AllocationChart from '../AllocationChart';
+import CategorySummaryTable from '../CategorySummaryTable';
+import TopBottomAssets from '../TopBottomAssets';
+import RebalancingTable from '../RebalancingTable';
 
-export interface UpbitTicker {
-  market: string;
-  trade_price: number;
-  prev_closing_price: number;
-  signed_change_price: number;
-  signed_change_rate: number;
+interface DashboardViewProps {
+  assets: Asset[];
+  portfolioHistory: PortfolioSnapshot[];
+  exchangeRates: ExchangeRates;
+  dashboardFilterCategory: AssetCategory | 'ALL';
+  setDashboardFilterCategory: (cat: AssetCategory | 'ALL') => void;
+  alertCount: number;
+  onAlertClick: () => void;
+  onRatesChange: (rates: ExchangeRates) => void;
+  showExchangeRateWarning: boolean;
+  totalValue: number; // 부모에서 계산해서 내려줌 (혹은 여기서 계산)
 }
 
-// 심볼 변환 (BTC -> KRW-BTC)
-export const toUpbitPair = (symbol: string): string => {
-  const s = (symbol || '').trim().toUpperCase();
-  if (s.startsWith('KRW-') || s.startsWith('BTC-') || s.startsWith('USDT-')) {
-    return s;
-  }
-  return `KRW-${s.replace(/USDT$/, '')}`;
-};
+const DashboardView: React.FC<DashboardViewProps> = ({
+  assets,
+  portfolioHistory,
+  exchangeRates,
+  dashboardFilterCategory,
+  setDashboardFilterCategory,
+  alertCount,
+  onAlertClick,
+  onRatesChange,
+  showExchangeRateWarning,
+  // totalValue -> 내부 계산으로 변경
+}) => {
 
-// 배치 조회 (여러 코인 한 번에 조회)
-export const fetchUpbitPricesBatch = async (symbols: string[]): Promise<Map<string, UpbitTicker>> => {
-  if (symbols.length === 0) return new Map();
+  const getValueInKRW = useCallback((value: number, currency: Currency): number => {
+    if (currency === Currency.KRW) return value;
+    const rate = exchangeRates[currency] || 0;
+    return value * rate;
+  }, [exchangeRates]);
 
-  // 중복 제거 및 마켓 코드 변환
-  const uniqueMarkets = Array.from(new Set(symbols.map(s => toUpbitPair(s))));
-  
-  // 업비트 API URL (쉼표로 구분해서 한 번에 요청)
-  const marketsParam = uniqueMarkets.join(',');
-  
-  try {
-    const res = await fetch(`https://api.upbit.com/v1/ticker?markets=${marketsParam}`, {
-      headers: { Accept: 'application/json' }
-    });
-    
-    if (!res.ok) throw new Error(`Upbit API failed: ${res.status}`);
-    
-    const data: UpbitTicker[] = await res.json();
-    const resultMap = new Map<string, UpbitTicker>();
-    
-    data.forEach(ticker => {
-      // 결과 매핑: KRW-BTC -> Ticker 데이터
-      resultMap.set(ticker.market, ticker);
-      // "BTC"라고만 검색해도 찾을 수 있게 추가 매핑
-      if(ticker.market.startsWith('KRW-')) {
-        resultMap.set(ticker.market.replace('KRW-', ''), ticker);
+  const totalValue = useMemo(() => {
+    return assets.reduce((acc, asset) => {
+      const v = asset.currentPrice * asset.quantity;
+      return acc + getValueInKRW(v, asset.currency);
+    }, 0);
+  }, [assets, getValueInKRW]);
+
+  const categoryOptions = useMemo(() => {
+    const extras = Array.from(new Set(assets.map(asset => asset.category))).filter(
+      (cat) => !ALLOWED_CATEGORIES.includes(cat)
+    );
+    return [...ALLOWED_CATEGORIES, ...extras];
+  }, [assets]);
+
+  const dashboardFilteredAssets = useMemo(() => {
+      if (dashboardFilterCategory === 'ALL') {
+          return assets;
+      }
+      return assets.filter(asset => asset.category === dashboardFilterCategory);
+  }, [assets, dashboardFilterCategory]);
+
+  const dashboardTotalValue = useMemo(() => {
+      return dashboardFilteredAssets.reduce((acc, asset) => {
+        const v = asset.currentPrice * asset.quantity;
+        return acc + getValueInKRW(v, asset.currency);
+      }, 0);
+  }, [dashboardFilteredAssets, getValueInKRW]);
+
+  const dashboardTotalPurchaseValue = useMemo(() => {
+      return dashboardFilteredAssets.reduce((acc, asset) => {
+        const v = asset.purchasePrice * asset.quantity;
+        return acc + getValueInKRW(v, asset.currency);
+      }, 0);
+  }, [dashboardFilteredAssets, getValueInKRW]);
+
+  const dashboardTotalGainLoss = dashboardTotalValue - dashboardTotalPurchaseValue;
+  const dashboardTotalReturn = dashboardTotalPurchaseValue === 0 ? 0 : (dashboardTotalGainLoss / dashboardTotalPurchaseValue) * 100;
+
+  const soldAssetsStats = useMemo(() => {
+    let totalSoldAmount = 0;
+    let totalSoldPurchaseValue = 0;
+    let totalSoldProfit = 0;
+    let soldCount = 0;
+
+    assets.forEach(asset => {
+      if (asset.sellTransactions && asset.sellTransactions.length > 0) {
+        asset.sellTransactions.forEach(transaction => {
+          totalSoldAmount += transaction.sellPrice * transaction.sellQuantity;
+          soldCount += 1;
+          
+          let purchaseValueForSold: number;
+          if (asset.currency === Currency.KRW) {
+            purchaseValueForSold = asset.purchasePrice * transaction.sellQuantity;
+          } else if (asset.purchaseExchangeRate) {
+            purchaseValueForSold = asset.purchasePrice * asset.purchaseExchangeRate * transaction.sellQuantity;
+          } else if (asset.priceOriginal > 0) {
+            const exchangeRate = asset.currentPrice / asset.priceOriginal;
+            purchaseValueForSold = asset.purchasePrice * exchangeRate * transaction.sellQuantity;
+          } else {
+            purchaseValueForSold = asset.purchasePrice * transaction.sellQuantity;
+          }
+          totalSoldPurchaseValue += purchaseValueForSold;
+        });
       }
     });
 
-    return resultMap;
-  } catch (error) {
-    console.error("Upbit fetch error:", error);
-    return new Map();
-  }
+    totalSoldProfit = totalSoldAmount - totalSoldPurchaseValue;
+    const soldReturn = totalSoldPurchaseValue === 0 ? 0 : (totalSoldProfit / totalSoldPurchaseValue) * 100;
+
+    return {
+      totalSoldAmount,
+      totalSoldPurchaseValue,
+      totalSoldProfit,
+      soldReturn,
+      soldCount,
+    };
+  }, [assets]);
+
+  const profitLossChartTitle = useMemo(() => (
+      dashboardFilterCategory === 'ALL'
+      ? '손익 추이 분석'
+      : `${dashboardFilterCategory} 손익 추이 분석`
+  ), [dashboardFilterCategory]);
+
+  const formatCurrencyKRW = (value: number) => {
+    return value.toLocaleString('ko-KR', { 
+        style: 'currency', 
+        currency: 'KRW', 
+        maximumFractionDigits: 0 
+    });
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="bg-gray-800 p-4 rounded-lg shadow-lg flex items-center justify-between flex-wrap gap-4">
+          <div className="flex items-center gap-4" title="대시보드에 표시될 자산의 종류를 선택합니다.">
+              <label htmlFor="dashboard-filter" className="text-sm font-medium text-gray-300">
+                  자산 구분 필터:
+              </label>
+              <div className="relative">
+                  <select
+                      id="dashboard-filter"
+                      value={dashboardFilterCategory}
+                      onChange={(e) => setDashboardFilterCategory(e.target.value as AssetCategory | 'ALL')}
+                      className="bg-gray-700 border border-gray-600 rounded-md py-2 pl-3 pr-8 text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent appearance-none"
+                  >
+                      <option value="ALL">전체 포트폴리오</option>
+                      {categoryOptions.map((cat) => (
+                          <option key={cat} value={cat}>{cat}</option>
+                      ))}
+                  </select>
+                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-400">
+                      <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                  </div>
+              </div>
+          </div>
+          <ExchangeRateInput 
+            rates={exchangeRates} 
+            onRatesChange={onRatesChange} 
+            showWarning={showExchangeRateWarning} 
+          />
+          <StatCard 
+              title="매도 알림 발생" 
+              value={`${alertCount}개`}
+              tooltip="설정된 하락률 기준을 초과한 자산의 수입니다. 클릭하여 필터링된 목록을 확인하세요."
+              onClick={onAlertClick}
+              isAlert={alertCount > 0}
+              size="small"
+          />
+      </div>
+       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+        <StatCard title="총 자산 (원화)" value={formatCurrencyKRW(dashboardTotalValue)} tooltip="선택된 자산의 현재 평가금액 총합입니다." />
+        <StatCard title="투자 원금" value={formatCurrencyKRW(dashboardTotalPurchaseValue)} tooltip="선택된 자산의 총 매수금액 합계입니다." />
+        <StatCard title="총 손익 (원화)" value={formatCurrencyKRW(dashboardTotalGainLoss)} isProfit={dashboardTotalGainLoss >= 0} tooltip="총 평가금액에서 총 매수금액을 뺀 금액입니다."/>
+        <StatCard title="총 수익률" value={`${dashboardTotalReturn.toFixed(2)}%`} isProfit={dashboardTotalReturn >= 0} tooltip="총 손익을 총 매수금액으로 나눈 백분율입니다."/>
+      </div>
+      {soldAssetsStats.soldCount > 0 && (
+        <div className="bg-gray-800 p-6 rounded-lg shadow-lg mb-6">
+          <h3 className="text-xl font-bold text-white mb-4">매도 통계</h3>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <StatCard title="매도 횟수" value={soldAssetsStats.soldCount.toString()} tooltip="총 매도 거래 횟수입니다." size="small" />
+            <StatCard title="매도 금액" value={formatCurrencyKRW(soldAssetsStats.totalSoldAmount)} tooltip="매도된 종목의 총 매도금액입니다." size="small" />
+            <StatCard title="매도 수익" value={formatCurrencyKRW(soldAssetsStats.totalSoldProfit)} isProfit={soldAssetsStats.totalSoldProfit >= 0} tooltip="매도금액에서 매수금액을 뺀 수익입니다." size="small" />
+            <StatCard title="매도 수익률" value={`${soldAssetsStats.soldReturn.toFixed(2)}%`} isProfit={soldAssetsStats.soldReturn >= 0} tooltip="매도 수익을 매수금액으로 나눈 백분율입니다." size="small" />
+          </div>
+        </div>
+      )}
+      <ProfitLossChart history={portfolioHistory} assetsToDisplay={dashboardFilteredAssets} title={profitLossChartTitle} />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="lg:col-span-1">
+          <AllocationChart assets={assets} exchangeRates={exchangeRates} />
+        </div>
+        <div className="lg:col-span-1">
+           <CategorySummaryTable 
+            assets={assets} 
+            totalPortfolioValue={totalValue} 
+            exchangeRates={exchangeRates} 
+           />
+        </div>
+      </div>
+      <RebalancingTable assets={assets} exchangeRates={exchangeRates} />
+      <TopBottomAssets assets={assets} />
+    </div>
+  );
 };
+
+export default DashboardView;
 </file>
 
-<file path="utils/migrateData.ts">
-// utils/migrateData.ts
-// 기존 DB 데이터를 새 구조로 변환하는 마이그레이션 스크립트
+<file path="components/portfolio-table/usePortfolioData.ts">
+import { useMemo, useState } from 'react';
+import { Asset, ExchangeRates, ALLOWED_CATEGORIES, AssetCategory } from '../../types';
+import { Currency } from '../../types';
+import { getValueInKRW } from './utils';
+import { EnrichedAsset, SortKey, SortDirection } from './types';
 
-import { Currency, AssetCategory } from '../types';
+interface UsePortfolioDataProps {
+  assets: Asset[];
+  exchangeRates: ExchangeRates;
+  filterAlerts: boolean;
+  sellAlertDropRate: number;
+  showFailedOnly: boolean;
+  failedIds?: Set<string>;
+}
 
-/**
- * 마이그레이션 실행
- * 
- * 핵심 변경:
- * 1. 암호화폐: purchasePrice가 원화로 입력된 경우 currency를 KRW로 복구
- * 2. USD/JPY 자산: currentPrice가 원화로 저장된 경우 priceOriginal로 교체
- */
-export const runMigrationIfNeeded = (data: any) => {
-  if (!data || typeof data !== 'object') return data;
-  
-  // 환율 초기화
-  if (!data.exchangeRates) {
-    data.exchangeRates = { USD: 0, JPY: 0 };
-  }
-  
-  // 자산 마이그레이션
-  if (Array.isArray(data.assets)) {
-    console.log('[Migration] 데이터 마이그레이션 시작...');
-    let fixedCount = 0;
-    
-    data.assets = data.assets.map((asset: any) => {
-      const ticker = asset.ticker || '?';
-      const category = asset.category || '';
-      const currency = asset.currency || 'KRW';
-      const purchasePrice = asset.purchasePrice || 0;
-      const currentPrice = asset.currentPrice || 0;
-      const priceOriginal = asset.priceOriginal || 0;
-      
-      // ✅ 암호화폐 특별 처리
-      if (category === '암호화폐' || category === AssetCategory.CRYPTOCURRENCY) {
-        // USD로 설정되어 있지만 purchasePrice가 원화 수준인 경우
-        if (currency === 'USD' || currency === Currency.USD) {
-          // BTC: purchasePrice가 1억 이상이면 원화
-          // ETH: purchasePrice가 100만 이상이면 원화
-          // 기타: purchasePrice가 1000 이상이고 currentPrice가 1000 미만이면 원화
-          const isKRWPurchase = 
-            (purchasePrice > 100000000) ||  // 1억 이상 (BTC급)
-            (purchasePrice > 1000000 && currentPrice < 10000) ||  // 100만 이상, 현재가 1만 미만 (ETH급)
-            (purchasePrice > 1000 && currentPrice < 1000);  // 1000 이상, 현재가 1000 미만 (일반)
-          
-          if (isKRWPurchase) {
-            console.log(`[Migration] ${ticker}: 암호화폐 KRW 복구`);
-            console.log(`  - purchasePrice: ${purchasePrice.toLocaleString()} (KRW)`);
-            console.log(`  - currency: USD → KRW`);
-            fixedCount++;
-            
-            return {
-              ...asset,
-              currency: Currency.KRW,
-            };
-          }
-        }
+export const usePortfolioData = ({
+  assets,
+  exchangeRates,
+  filterAlerts,
+  sellAlertDropRate,
+  showFailedOnly,
+  failedIds
+}: UsePortfolioDataProps) => {
+  const [sortConfig, setSortConfig] = useState<{ key: SortKey; direction: SortDirection } | null>(null);
+
+  const totalValueKRW = useMemo(() => {
+    return assets.reduce((sum, asset) => {
+      const valueInOriginalCurrency = asset.currentPrice * asset.quantity;
+      return sum + getValueInKRW(valueInOriginalCurrency, asset.currency, exchangeRates);
+    }, 0);
+  }, [assets, exchangeRates]);
+
+  const categoryOptions = useMemo(() => {
+    const extras = Array.from(new Set(assets.map(asset => asset.category))).filter(
+      (cat) => !ALLOWED_CATEGORIES.includes(cat) && cat !== AssetCategory.FOREIGN_STOCK
+    );
+    return [...ALLOWED_CATEGORIES, ...extras];
+  }, [assets]);
+
+  const enrichedAndSortedAssets = useMemo(() => {
+    let enriched: EnrichedAsset[] = assets.map(asset => {
+      // 1. isKRWExchange: Check if exchange is Upbit or Bithumb
+      const isKRWExchange = asset.exchange === 'Upbit' || asset.exchange === 'Bithumb';
+
+      // 2. Calculate Current Price in KRW
+      let currentPriceKRW: number;
+      if (isKRWExchange) {
+        // If Upbit/Bithumb, API returns KRW even if asset is set to USD
+        currentPriceKRW = asset.currentPrice;
+      } else {
+        currentPriceKRW = getValueInKRW(asset.currentPrice, asset.currency, exchangeRates);
       }
-      
-      // ✅ USD/JPY 자산: currentPrice가 원화로 저장된 경우 복구
-      if (currency === 'USD' || currency === 'JPY' || 
-          currency === Currency.USD || currency === Currency.JPY) {
+
+      const currentValueKRW = currentPriceKRW * asset.quantity;
+      const purchasePriceKRW = getValueInKRW(asset.purchasePrice, asset.currency, exchangeRates);
+      const purchaseValueKRW = purchasePriceKRW * asset.quantity;
+      const profitLossKRW = currentValueKRW - purchaseValueKRW;
+
+      // Calculate Return Percentage using KRW values to ensure consistency
+      const returnPercentage = purchaseValueKRW === 0 ? 0 : (profitLossKRW / purchaseValueKRW) * 100;
+
+      // Raw values (kept for reference, though mixed currencies may exist)
+      const currentValue = asset.currentPrice * asset.quantity;
+      const purchaseValue = asset.purchasePrice * asset.quantity;
+      const profitLoss = currentValue - purchaseValue;
+
+      // 3. Calculate Yesterday Price in KRW
+      const yesterdayPrice = asset.yesterdayPrice || 0;
+      let yesterdayPriceKRW: number;
+
+      if (isKRWExchange) {
+        if (asset.currency === Currency.USD) {
+          // Fix data mismatch: yesterdayPrice is in USD, convert to KRW
+          yesterdayPriceKRW = yesterdayPrice * (exchangeRates.USD || 1);
+        } else {
+          // Currency is KRW, use as is
+          yesterdayPriceKRW = yesterdayPrice;
+        }
+      } else {
+        yesterdayPriceKRW = getValueInKRW(yesterdayPrice, asset.currency, exchangeRates);
+      }
+
+      // 4. Calculate Yesterday Change (Daily Return)
+      const yesterdayChange = yesterdayPriceKRW > 0 
+        ? ((currentPriceKRW - yesterdayPriceKRW) / yesterdayPriceKRW) * 100 
+        : 0;
         
-        if (priceOriginal > 0 && currentPrice > 0) {
-          const ratio = currentPrice / priceOriginal;
-          
-          // currentPrice가 priceOriginal보다 100배 이상 크면 원화로 저장된 것
-          if (ratio > 100) {
-            console.log(`[Migration] ${ticker}: 가격 복구 (원화→원래통화)`);
-            console.log(`  - currentPrice: ${currentPrice.toLocaleString()} → ${priceOriginal}`);
-            fixedCount++;
-            
-            // 최고가도 복구
-            let newHighestPrice = priceOriginal;
-            if (asset.highestPrice > 0) {
-              newHighestPrice = asset.highestPrice / ratio;
-              if (newHighestPrice < priceOriginal) {
-                newHighestPrice = priceOriginal;
-              }
-            }
-            
-            return {
-              ...asset,
-              currentPrice: priceOriginal,
-              highestPrice: newHighestPrice,
-            };
-          }
-        }
-      }
+      const diffFromYesterday = yesterdayPriceKRW > 0 
+        ? currentPriceKRW - yesterdayPriceKRW 
+        : 0;
+
+      const allocation = totalValueKRW === 0 ? 0 : (currentValueKRW / totalValueKRW) * 100;
+      const dropFromHigh = asset.highestPrice === 0 ? 0 : ((asset.currentPrice - asset.highestPrice) / asset.highestPrice) * 100;
+      const diffFromHigh = asset.currentPrice - asset.highestPrice;
       
-      return asset;
+      return {
+        ...asset,
+        metrics: {
+          purchasePrice: asset.purchasePrice,
+          currentPrice: asset.currentPrice,
+          currentPriceKRW,
+          purchasePriceKRW,
+          purchaseValue, currentValue, purchaseValueKRW, currentValueKRW,
+          returnPercentage, allocation, dropFromHigh, profitLoss, profitLossKRW,
+          diffFromHigh, yesterdayChange, diffFromYesterday,
+        }
+      };
     });
-    
-    console.log(`[Migration] 완료! ${fixedCount}개 자산 수정됨`);
-  }
+
+    if (filterAlerts) {
+      enriched = enriched.filter(asset => {
+        const alertRate = asset.sellAlertDropRate ?? sellAlertDropRate;
+        return asset.metrics.dropFromHigh <= -alertRate;
+      });
+    }
+
+    if (showFailedOnly && failedIds && failedIds.size > 0) {
+      enriched = enriched.filter(asset => failedIds.has(asset.id));
+    }
+
+    if (sortConfig !== null) {
+      enriched.sort((a, b) => {
+        const { key, direction } = sortConfig;
+        let aValue: any, bValue: any;
+
+        if (key === 'name') {
+          aValue = (a.customName?.toLowerCase() || a.name.toLowerCase());
+          bValue = (b.customName?.toLowerCase() || b.name.toLowerCase());
+        } else if (key === 'purchaseDate') {
+          aValue = a.purchaseDate; bValue = b.purchaseDate;
+        } else if (key === 'quantity') {
+          aValue = a.quantity; bValue = b.quantity;
+        } else if (key === 'currentPrice') {
+          aValue = a.metrics.currentPriceKRW;
+          bValue = b.metrics.currentPriceKRW;
+        } else if (key === 'purchasePrice') {
+          aValue = a.metrics.purchasePriceKRW;
+          bValue = b.metrics.purchasePriceKRW;
+        } else if (key === 'currentValue') {
+           aValue = a.metrics.currentValueKRW;
+           bValue = b.metrics.currentValueKRW;
+        } else if (key === 'purchaseValue') {
+           aValue = a.metrics.purchaseValueKRW;
+           bValue = b.metrics.purchaseValueKRW;
+        } else {
+          aValue = a.metrics[key as keyof typeof a.metrics];
+          bValue = b.metrics[key as keyof typeof b.metrics];
+        }
+
+        if (aValue < bValue) return direction === 'ascending' ? -1 : 1;
+        if (aValue > bValue) return direction === 'ascending' ? 1 : -1;
+        return 0;
+      });
+    }
+
+    return enriched;
+  }, [assets, sortConfig, totalValueKRW, exchangeRates, filterAlerts, sellAlertDropRate, showFailedOnly, failedIds]);
+
+  const requestSort = (key: SortKey) => {
+    let direction: SortDirection = 'ascending';
+    if (sortConfig && sortConfig.key === key && sortConfig.direction === 'ascending') {
+      direction = 'descending';
+    }
+    setSortConfig({ key, direction });
+  };
   
-  return data;
+  const toggleReturnSort = () => {
+    const s = sortConfig;
+    if (!s || (s.key !== 'returnPercentage' && s.key !== 'profitLossKRW')) {
+      setSortConfig({ key: 'returnPercentage', direction: 'descending' });
+      return;
+    }
+    if (s.key === 'returnPercentage' && s.direction === 'descending') {
+      setSortConfig({ key: 'returnPercentage', direction: 'ascending' });
+      return;
+    }
+    if (s.key === 'returnPercentage' && s.direction === 'ascending') {
+      setSortConfig({ key: 'profitLossKRW', direction: 'descending' });
+      return;
+    }
+    if (s.key === 'profitLossKRW' && s.direction === 'descending') {
+      setSortConfig({ key: 'profitLossKRW', direction: 'ascending' });
+      return;
+    }
+    setSortConfig(null);
+  };
+
+  return {
+    enrichedAndSortedAssets,
+    sortConfig,
+    requestSort,
+    toggleReturnSort,
+    categoryOptions,
+    totalValueKRW
+  };
 };
 </file>
 
@@ -5404,6 +5493,677 @@ const SellAssetModal: React.FC<SellAssetModalProps> = ({
 };
 
 export default SellAssetModal;
+</file>
+
+<file path="services/upbitService.ts">
+// src/services/upbitService.ts
+
+export interface UpbitTicker {
+  market: string;
+  trade_price: number;
+  prev_closing_price: number;
+  signed_change_price: number;
+  signed_change_rate: number;
+}
+
+// 심볼 변환 (BTC -> KRW-BTC)
+export const toUpbitPair = (symbol: string): string => {
+  const s = (symbol || '').trim().toUpperCase();
+  if (s.startsWith('KRW-') || s.startsWith('BTC-') || s.startsWith('USDT-')) {
+    return s;
+  }
+  return `KRW-${s.replace(/USDT$/, '')}`;
+};
+
+// 배치 조회 (여러 코인 한 번에 조회)
+export const fetchUpbitPricesBatch = async (symbols: string[]): Promise<Map<string, UpbitTicker>> => {
+  if (symbols.length === 0) return new Map();
+
+  // 중복 제거 및 마켓 코드 변환
+  const uniqueMarkets = Array.from(new Set(symbols.map(s => toUpbitPair(s))));
+  
+  // 업비트 API URL (쉼표로 구분해서 한 번에 요청)
+  const marketsParam = uniqueMarkets.join(',');
+  
+  try {
+    const res = await fetch(`https://api.upbit.com/v1/ticker?markets=${marketsParam}`, {
+      headers: { Accept: 'application/json' }
+    });
+    
+    if (!res.ok) throw new Error(`Upbit API failed: ${res.status}`);
+    
+    const data: UpbitTicker[] = await res.json();
+    const resultMap = new Map<string, UpbitTicker>();
+    
+    data.forEach(ticker => {
+      // 결과 매핑: KRW-BTC -> Ticker 데이터
+      resultMap.set(ticker.market, ticker);
+      // "BTC"라고만 검색해도 찾을 수 있게 추가 매핑
+      if(ticker.market.startsWith('KRW-')) {
+        resultMap.set(ticker.market.replace('KRW-', ''), ticker);
+      }
+    });
+
+    return resultMap;
+  } catch (error) {
+    console.error("Upbit fetch error:", error);
+    return new Map();
+  }
+};
+</file>
+
+<file path="utils/migrateData.ts">
+// utils/migrateData.ts
+// 기존 DB 데이터를 새 구조로 변환하는 마이그레이션 스크립트
+
+import { Currency, AssetCategory } from '../types';
+
+/**
+ * 마이그레이션 실행
+ * 
+ * 핵심 변경:
+ * 1. 암호화폐: purchasePrice가 원화로 입력된 경우 currency를 KRW로 복구
+ * 2. USD/JPY 자산: currentPrice가 원화로 저장된 경우 priceOriginal로 교체
+ */
+export const runMigrationIfNeeded = (data: any) => {
+  if (!data || typeof data !== 'object') return data;
+  
+  // 환율 초기화
+  if (!data.exchangeRates) {
+    data.exchangeRates = { USD: 0, JPY: 0 };
+  }
+  
+  // 자산 마이그레이션
+  if (Array.isArray(data.assets)) {
+    console.log('[Migration] 데이터 마이그레이션 시작...');
+    let fixedCount = 0;
+    
+    data.assets = data.assets.map((asset: any) => {
+      const ticker = asset.ticker || '?';
+      const category = asset.category || '';
+      const currency = asset.currency || 'KRW';
+      const purchasePrice = asset.purchasePrice || 0;
+      const currentPrice = asset.currentPrice || 0;
+      const priceOriginal = asset.priceOriginal || 0;
+      
+      // ✅ 암호화폐 특별 처리
+      if (category === '암호화폐' || category === AssetCategory.CRYPTOCURRENCY) {
+        // USD로 설정되어 있지만 purchasePrice가 원화 수준인 경우
+        if (currency === 'USD' || currency === Currency.USD) {
+          // BTC: purchasePrice가 1억 이상이면 원화
+          // ETH: purchasePrice가 100만 이상이면 원화
+          // 기타: purchasePrice가 1000 이상이고 currentPrice가 1000 미만이면 원화
+          const isKRWPurchase = 
+            (purchasePrice > 100000000) ||  // 1억 이상 (BTC급)
+            (purchasePrice > 1000000 && currentPrice < 10000) ||  // 100만 이상, 현재가 1만 미만 (ETH급)
+            (purchasePrice > 1000 && currentPrice < 1000);  // 1000 이상, 현재가 1000 미만 (일반)
+          
+          if (isKRWPurchase) {
+            console.log(`[Migration] ${ticker}: 암호화폐 KRW 복구`);
+            console.log(`  - purchasePrice: ${purchasePrice.toLocaleString()} (KRW)`);
+            console.log(`  - currency: USD → KRW`);
+            fixedCount++;
+            
+            return {
+              ...asset,
+              currency: Currency.KRW,
+            };
+          }
+        }
+      }
+      
+      // ✅ USD/JPY 자산: currentPrice가 원화로 저장된 경우 복구
+      if (currency === 'USD' || currency === 'JPY' || 
+          currency === Currency.USD || currency === Currency.JPY) {
+        
+        if (priceOriginal > 0 && currentPrice > 0) {
+          const ratio = currentPrice / priceOriginal;
+          
+          // currentPrice가 priceOriginal보다 100배 이상 크면 원화로 저장된 것
+          if (ratio > 100) {
+            console.log(`[Migration] ${ticker}: 가격 복구 (원화→원래통화)`);
+            console.log(`  - currentPrice: ${currentPrice.toLocaleString()} → ${priceOriginal}`);
+            fixedCount++;
+            
+            // 최고가도 복구
+            let newHighestPrice = priceOriginal;
+            if (asset.highestPrice > 0) {
+              newHighestPrice = asset.highestPrice / ratio;
+              if (newHighestPrice < priceOriginal) {
+                newHighestPrice = priceOriginal;
+              }
+            }
+            
+            return {
+              ...asset,
+              currentPrice: priceOriginal,
+              highestPrice: newHighestPrice,
+            };
+          }
+        }
+      }
+      
+      return asset;
+    });
+    
+    console.log(`[Migration] 완료! ${fixedCount}개 자산 수정됨`);
+  }
+  
+  return data;
+};
+</file>
+
+<file path="components/AddNewAssetModal.tsx">
+import React, { useState, useEffect, useCallback } from 'react';
+import { Asset, AssetCategory, NewAssetForm, EXCHANGE_MAP, Currency, SymbolSearchResult, ALL_EXCHANGES, inferCategoryFromExchange, ALLOWED_CATEGORIES, normalizeExchange } from '../types';
+import { searchSymbols } from '../services/geminiService';
+
+interface AddNewAssetModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onAddAsset: (asset: NewAssetForm) => void;
+  isLoading: boolean;
+  assets: Asset[];
+}
+
+const AddNewAssetModal: React.FC<AddNewAssetModalProps> = ({ isOpen, onClose, onAddAsset, isLoading, assets }) => {
+  const [ticker, setTicker] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<SymbolSearchResult[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [isFocused, setIsFocused] = useState(false);
+  const [duplicateError, setDuplicateError] = useState<string | null>(null);
+  
+  const [quantity, setQuantity] = useState('');
+  const [purchasePrice, setPurchasePrice] = useState('');
+  const [purchaseDate, setPurchaseDate] = useState(new Date().toISOString().slice(0, 10));
+  const [category, setCategory] = useState<AssetCategory>(AssetCategory.US_STOCK);
+  const initialExchange = EXCHANGE_MAP[AssetCategory.US_STOCK]?.[0] || ALL_EXCHANGES[0] || '';
+  const [exchange, setExchange] = useState<string>(initialExchange);
+  const [currency, setCurrency] = useState<Currency>(Currency.USD);
+
+  const clearForm = useCallback(() => {
+    setTicker('');
+    setSearchQuery('');
+    setQuantity('');
+    setPurchasePrice('');
+    setSearchResults([]);
+    setCategory(AssetCategory.US_STOCK);
+    setExchange(initialExchange);
+    setPurchaseDate(new Date().toISOString().slice(0, 10));
+    setCurrency(Currency.USD);
+    setDuplicateError(null);
+  }, [initialExchange]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      clearForm();
+    }
+  }, [isOpen, clearForm]);
+
+
+  const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const newQuery = e.target.value;
+    setSearchQuery(newQuery);
+    if (ticker) {
+      setTicker('');
+    }
+    setDuplicateError(null);
+  }, [ticker]);
+
+  useEffect(() => {
+    if (searchQuery.length < 2 || searchQuery === ticker) {
+      setSearchResults([]);
+      return;
+    }
+
+    const handler = setTimeout(async () => {
+      setIsSearching(true);
+      try {
+        const results = await searchSymbols(searchQuery);
+        setSearchResults(results);
+      } catch (error) {
+        console.error("Search failed:", error);
+        setSearchResults([]);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 300);
+
+    return () => { clearTimeout(handler); };
+  }, [searchQuery, ticker]);
+
+  const handleSelectSymbol = (result: SymbolSearchResult) => {
+     const isDuplicate = assets.some(
+      asset => asset.ticker.toUpperCase() === result.ticker.toUpperCase() &&
+               normalizeExchange(asset.exchange) === normalizeExchange(result.exchange)
+    );
+
+    if (isDuplicate) {
+      setDuplicateError('이미 포트폴리오에 존재하는 자산입니다.');
+    } else {
+      setDuplicateError(null);
+    }
+    setSearchResults([]);
+    const current = (ticker || '').trim();
+    let nextTicker = current;
+    if (!current) {
+      nextTicker = result.ticker;
+    } else {
+      const ok = window.confirm(`티커를 '${current}'에서 '${result.ticker}'로 변경하시겠습니까?`);
+      if (ok) nextTicker = result.ticker;
+    }
+    setTicker(nextTicker);
+    setSearchQuery(result.name);
+    setExchange(normalizeExchange(result.exchange));
+
+    // 거래소에서 자산구분 자동 추론
+    const inferredCategory = inferCategoryFromExchange(normalizeExchange(result.exchange));
+    setCategory(inferredCategory);
+    
+    setSearchResults([]);
+  };
+
+  useEffect(() => {
+    if (category === AssetCategory.KOREAN_STOCK) {
+      setExchange('KRX (코스피/코스닥)');
+    } else if (category === AssetCategory.US_STOCK) {
+      setExchange('NASDAQ');
+    } else if (category === AssetCategory.CRYPTOCURRENCY) {
+      setExchange('주요 거래소 (종합)');
+    }
+  }, [category]);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!ticker) {
+      alert('종목 검색을 통해 유효한 자산을 선택해주세요.');
+      return;
+    }
+    if (!quantity || !purchasePrice || !purchaseDate || !exchange || !currency || !category) {
+      alert('모든 필드를 입력해주세요.');
+      return;
+    }
+    const isDuplicateSubmit = assets.some(
+      asset => asset.ticker.toUpperCase() === ticker.toUpperCase() &&
+               normalizeExchange(asset.exchange) === normalizeExchange(exchange)
+    );
+    if (isDuplicateSubmit) {
+      alert('이미 포트폴리오에 존재하는 자산입니다.');
+      return;
+    }
+    onAddAsset({
+      ticker,
+      quantity: parseFloat(quantity),
+      purchasePrice: parseFloat(purchasePrice),
+      purchaseDate,
+      category,
+      exchange,
+      currency
+    });
+  };
+  
+  const inputClasses = "w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition";
+  const labelClasses = "block text-sm font-medium text-gray-300 mb-1";
+  const showResults = isFocused && searchResults.length > 0;
+
+  if (!isOpen) return null;
+
+  return (
+     <div className="fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center z-50" onClick={onClose} role="dialog" aria-modal="true">
+      <div className="bg-gray-800 p-6 rounded-lg shadow-xl w-full max-w-lg" onClick={(e) => e.stopPropagation()}>
+        <div className="flex justify-between items-center mb-6">
+            <h2 className="text-2xl font-bold text-white">신규 자산 추가</h2>
+            <button onClick={onClose} className="text-gray-400 hover:text-white transition">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+        </div>
+        <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+                <label htmlFor="category" className={labelClasses}>자산 구분</label>
+                <select 
+                  id="category" 
+                  value={category} 
+                  onChange={(e) => setCategory(e.target.value as AssetCategory)} 
+                  className={inputClasses} 
+                  title="자산의 구분을 선택하세요. 거래소 선택 시 자동으로 설정되며 수동으로 변경할 수 있습니다."
+                >
+                  {ALLOWED_CATEGORIES.map((cat) => (
+                    <option key={cat} value={cat}>{cat}</option>
+                  ))}
+                </select>
+            </div>
+            <div>
+                <label className={labelClasses}>거래소/시장</label>
+                <input value={exchange} readOnly className="w-full bg-gray-600 border border-gray-500 rounded-md py-2 px-3 text-gray-300 cursor-not-allowed" title="자산구분 또는 종목 검색에 따라 자동으로 결정됩니다." />
+            </div>
+            
+            <div className="relative">
+            <label htmlFor="ticker-search" className={labelClasses}>티커 (종목 검색)</label>
+            <input 
+                id="ticker-search" 
+                type="text" 
+                value={searchQuery} 
+                onChange={handleSearchChange} 
+                onFocus={() => setIsFocused(true)}
+                onBlur={() => setTimeout(() => setIsFocused(false), 150)} // Delay to allow click on results
+                placeholder="예: Apple, 삼성전자"
+                className={inputClasses}
+                required 
+                autoComplete="off"
+                title="자산의 이름 또는 티커를 입력하여 검색하세요."
+            />
+            {duplicateError && <p className="text-danger text-sm mt-1">{duplicateError}</p>}
+            {isSearching && (
+                <div className="absolute top-9 right-3">
+                    <svg className="animate-spin h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8_0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                </div>
+            )}
+            {showResults && (
+                <ul className="absolute z-10 w-full bg-gray-700 border border-gray-600 rounded-md mt-1 max-h-60 overflow-y-auto shadow-lg">
+                {searchResults.map((result) => (
+                    <li 
+                    key={`${result.ticker}-${result.exchange}`} 
+                    onMouseDown={() => handleSelectSymbol(result)} 
+                    className="px-3 py-2 cursor-pointer hover:bg-primary-dark transition-colors"
+                    role="option"
+                    aria-selected="false"
+                    >
+                    <div className="font-bold text-white">{result.name} ({result.ticker})</div>
+                    <div className="text-sm text-gray-400">{result.exchange}</div>
+                    </li>
+                ))}
+                </ul>
+            )}
+            </div>
+
+            <div className="grid grid-cols-3 gap-4">
+            <div>
+                <label htmlFor="quantity" className={labelClasses}>수량</label>
+                <input id="quantity" type="number" value={quantity} onChange={(e) => setQuantity(e.target.value)} placeholder="10" className={inputClasses} required min="0" step="any" title="보유하고 있는 자산의 수량을 입력하세요."/>
+            </div>
+            <div>
+                <label htmlFor="purchasePrice" className={labelClasses}>매수가</label>
+                <input id="purchasePrice" type="number" value={purchasePrice} onChange={(e) => setPurchasePrice(e.target.value)} placeholder="150.00" className={inputClasses} required min="0" step="any" title="자산을 매수한 평균 단가를 선택한 통화 기준으로 입력하세요." />
+            </div>
+            <div>
+                <label htmlFor="currency" className={labelClasses}>통화</label>
+                <select id="currency" value={currency} onChange={(e) => setCurrency(e.target.value as Currency)} className={inputClasses} title="매수 가격의 통화 단위를 선택하세요.">
+                    {Object.values(Currency).map((cur) => (
+                    <option key={cur} value={cur}>{cur}</option>
+                    ))}
+                </select>
+            </div>
+            </div>
+            <div>
+            <label htmlFor="purchaseDate" className={labelClasses}>매수/보유 시작일</label>
+            <input id="purchaseDate" type="date" value={purchaseDate} onChange={(e) => setPurchaseDate(e.target.value)} className={inputClasses} required title="자산을 매수했거나 보유하기 시작한 날짜를 선택하세요."/>
+            </div>
+            <div className="pt-4 flex justify-end">
+                <button type="submit" disabled={isLoading || !!duplicateError} className="w-full bg-primary hover:bg-primary-dark text-white font-bold py-2.5 px-4 rounded-md disabled:bg-gray-600 disabled:cursor-not-allowed transition duration-300 flex items-center justify-center" title="입력한 정보로 새 자산을 포트폴리오에 추가합니다.">
+                {isLoading ? (
+                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                ) : '자산 추가'}
+                </button>
+            </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+export default AddNewAssetModal;
+</file>
+
+<file path="components/EditAssetModal.tsx">
+import React, { useState, useEffect, useMemo } from 'react';
+import { Asset, AssetCategory, Currency, ALL_EXCHANGES, inferCategoryFromExchange, ALLOWED_CATEGORIES, normalizeExchange } from '../types';
+import { searchSymbols } from '../services/geminiService';
+
+interface EditAssetModalProps {
+  asset: Asset | null;
+  isOpen: boolean;
+  onClose: () => void;
+  onSave: (asset: Asset) => void;
+  onDelete: (assetId: string) => void;
+  isLoading: boolean;
+}
+
+const EditAssetModal: React.FC<EditAssetModalProps> = ({ asset, isOpen, onClose, onSave, onDelete, isLoading }) => {
+  const [formData, setFormData] = useState<Asset | null>(null);
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [searchResults, setSearchResults] = useState<{ ticker: string; name: string; exchange: string }[]>([]);
+  const [isSearching, setIsSearching] = useState<boolean>(false);
+  const categoryOptions = useMemo(() => {
+    if (!formData) return ALLOWED_CATEGORIES;
+    return ALLOWED_CATEGORIES.includes(formData.category)
+      ? ALLOWED_CATEGORIES
+      : [formData.category, ...ALLOWED_CATEGORIES];
+  }, [formData]);
+
+  useEffect(() => {
+    if (asset) {
+        setFormData({
+            ...asset,
+            purchaseDate: new Date(asset.purchaseDate).toISOString().slice(0, 10)
+        });
+        setSearchQuery('');
+        setSearchResults([]);
+        setIsSearching(false);
+    }
+  }, [asset]);
+
+  if (!isOpen || !formData) return null;
+  
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => {
+        if (!prev) return null;
+
+        let newValue: any = value;
+        if (name === 'quantity' || name === 'purchasePrice') {
+            newValue = parseFloat(value) || 0;
+        } else if (name === 'sellAlertDropRate') {
+            newValue = value === '' ? undefined : parseFloat(value);
+            if (isNaN(newValue as number)) newValue = undefined;
+        }
+
+        return { ...prev, [name]: newValue };
+    });
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (formData) {
+      onSave(formData);
+    }
+  };
+
+  const handleSearchChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const q = e.target.value;
+    setSearchQuery(q);
+    if (!q || q.length < 2) {
+      setSearchResults([]);
+      return;
+    }
+    setIsSearching(true);
+    try {
+      const results = await searchSymbols(q);
+      setSearchResults(results);
+    } catch {
+      setSearchResults([]);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const applySymbol = (r: { ticker: string; name: string; exchange: string }) => {
+    const ex = normalizeExchange(r.exchange);
+    const cat = inferCategoryFromExchange(ex);
+    setFormData(prev => {
+      if (!prev) return null;
+      const current = (prev.ticker || '').trim();
+      let nextTicker = current;
+      const ok = window.confirm(`티커를 '${current || '(비어있음)'}'에서 '${r.ticker}'로 변경하시겠습니까?`);
+      if (ok) nextTicker = r.ticker;
+      return { ...prev, ticker: nextTicker, name: r.name, exchange: ex, category: cat };
+    });
+    setSearchQuery('');
+    setSearchResults([]);
+  };
+
+  const handleDelete = () => {
+    if (asset && window.confirm(`'${(asset.customName?.trim() || asset.name)}' 자산을 정말 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.`)) {
+      onDelete(asset.id);
+    }
+  };
+
+  const inputClasses = "w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition";
+  const labelClasses = "block text-sm font-medium text-gray-300 mb-1";
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center z-50" onClick={onClose} role="dialog" aria-modal="true">
+      <div className="bg-gray-800 p-6 rounded-lg shadow-xl w-full max-w-lg" onClick={(e) => e.stopPropagation()}>
+        <h2 className="text-2xl font-bold text-white mb-6">자산 수정: {(asset?.customName?.trim() || asset?.name)}</h2>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label htmlFor="category-edit" className={labelClasses}>자산 구분</label>
+            <select id="category-edit" name="category" value={formData.category} onChange={handleChange} className={inputClasses}>
+              {categoryOptions.map((cat) => (
+                <option key={cat} value={cat}>{cat}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label htmlFor="customName-edit" className={labelClasses}>표시용 종목명 (사용자 지정)</label>
+            <input
+              id="customName-edit"
+              name="customName"
+              type="text"
+              value={formData.customName || ''}
+              onChange={handleChange}
+              className={inputClasses}
+              placeholder="비워두면 공식 종목명을 사용합니다"
+            />
+            <p className="text-xs text-gray-400 mt-1">티커/거래소·가격 계산에는 영향이 없고 화면 표시 및 내보내기에만 적용됩니다.</p>
+          </div>
+           <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className={labelClasses}>거래소/시장</label>
+              <input value={formData.exchange} readOnly className="w-full bg-gray-600 border border-gray-500 rounded-md py-2 px-3 text-gray-300 cursor-not-allowed" />
+            </div>
+            <div>
+              <label htmlFor="ticker-edit" className={labelClasses}>티커 (종목코드)</label>
+              <input id="ticker-edit" name="ticker" type="text" value={formData.ticker} onChange={handleChange} className={inputClasses} required />
+              <div className="mt-2">
+                <label htmlFor="ticker-search" className={labelClasses}>티커/종목 검색</label>
+                <input id="ticker-search" type="text" value={searchQuery} onChange={handleSearchChange} placeholder="예: BMNR 또는 회사명" className={inputClasses} />
+                {isSearching && <p className="text-xs text-gray-400 mt-1">검색 중...</p>}
+                {searchResults.length > 0 && (
+                  <ul className="mt-1 bg-gray-700 border border-gray-600 rounded-md max-h-40 overflow-y-auto">
+                    {searchResults.map((r) => (
+                      <li key={`${r.ticker}-${r.exchange}`} className="px-3 py-2 cursor-pointer hover:bg-gray-600" onMouseDown={() => applySymbol(r)}>
+                        <div className="text-white font-semibold">{r.name} ({r.ticker})</div>
+                        <div className="text-xs text-gray-300">{r.exchange}</div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
+          </div>
+          <div className="grid grid-cols-3 gap-4">
+            <div>
+              <label htmlFor="quantity-edit" className={labelClasses}>수량</label>
+              <input id="quantity-edit" name="quantity" type="number" value={formData.quantity} onChange={handleChange} className={inputClasses} required min="0" step="any" />
+            </div>
+            <div>
+              <label htmlFor="purchasePrice-edit" className={labelClasses}>매수가</label>
+              <input id="purchasePrice-edit" name="purchasePrice" type="number" value={formData.purchasePrice} onChange={handleChange} className={inputClasses} required min="0" step="any" />
+            </div>
+            <div>
+              <label htmlFor="currency-edit" className={labelClasses}>매수 통화</label>
+              <select id="currency-edit" name="currency" value={formData.currency} onChange={handleChange} className={inputClasses}>
+                  {Object.values(Currency).map((cur) => (
+                    <option key={cur} value={cur}>{cur}</option>
+                  ))}
+              </select>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label htmlFor="purchaseDate-edit" className={labelClasses}>매수일</label>
+              <input id="purchaseDate-edit" name="purchaseDate" type="date" value={formData.purchaseDate} onChange={handleChange} className={inputClasses} required />
+            </div>
+            <div>
+                <label htmlFor="sellAlertDropRate-edit" className={labelClasses}>
+                    개별 매도 알림률 (%)
+                </label>
+                <input
+                    id="sellAlertDropRate-edit"
+                    name="sellAlertDropRate"
+                    type="number"
+                    placeholder="기본값 사용"
+                    value={formData.sellAlertDropRate ?? ''}
+                    onChange={handleChange}
+                    className={inputClasses}
+                    min="0"
+                    step="1"
+                    title="비워두면 전역 설정을 따릅니다."
+                />
+            </div>
+          </div>
+          <div>
+            <label htmlFor="memo-edit" className={labelClasses}>메모</label>
+            <textarea
+              id="memo-edit"
+              name="memo"
+              value={formData.memo || ''}
+              onChange={handleChange}
+              className={inputClasses}
+              rows={3}
+              placeholder="종목에 대한 메모를 입력하세요..."
+            />
+          </div>
+          
+          <div className="mt-8 flex justify-between items-center pt-4">
+            <button
+              type="button"
+              onClick={handleDelete}
+              disabled={isLoading}
+              className="bg-danger hover:bg-red-600 text-white font-medium py-2 px-4 rounded-md transition duration-300 disabled:bg-gray-600 disabled:cursor-not-allowed"
+            >
+              삭제
+            </button>
+            <div className="flex space-x-4">
+              <button type="button" onClick={onClose} className="bg-gray-600 hover:bg-gray-500 text-white font-medium py-2 px-4 rounded-md transition duration-300">
+                취소
+              </button>
+              <button type="submit" disabled={isLoading} className="bg-primary hover:bg-primary-dark text-white font-bold py-2 px-4 rounded-md disabled:bg-gray-600 disabled:cursor-not-allowed transition duration-300 flex items-center justify-center">
+                {isLoading ? (
+                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                ) : '저장'}
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+export default EditAssetModal;
 </file>
 
 <file path="components/WatchlistPage.tsx">
@@ -5830,1129 +6590,6 @@ const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, onAdd, onUpdat
 export default WatchlistPage;
 </file>
 
-<file path="README.md">
-# KIM'S 퀸트자산관리 - 포트폴리오 관리 시스템
-
-## 📋 프로젝트 개요
-
-KIM'S 퀸트자산관리는 계량적 투자 전략을 기반으로 한 종합 자산 관리 시스템입니다. Google Drive 연동을 통해 데이터를 안전하게 저장하고, 실시간 시세 정보를 제공하며, 다양한 자산 종류를 지원하는 포트폴리오 관리 도구입니다.
-
-### 핵심 기능
-- **멀티 자산 지원**: 한국주식, 미국주식, 해외주식, 채권, 암호화폐, 실물자산, 현금
-- **실시간 시세 업데이트**: 외부 API를 통한 실시간 가격 정보
-- **환율 자동 반영**: USD, JPY 등 주요 통화 환율 자동 적용
-- **Google Drive 동기화**: 안전한 클라우드 저장소 연동
-- **포트폴리오 분석**: 자산 배분, 수익률, 손익 추이 분석
-- **매도 알림**: 설정한 하락률 기준 알림 기능
-- **관심종목 관리**: 별도의 워치리스트 기능
-- **CSV 대량 등록**: 대량의 자산 일괄 등록
-
-## 🏗️ 시스템 아키텍처
-
-### 기술 스택
-- **프론트엔드**: React 19.2.0, TypeScript
-- **스타일링**: Tailwind CSS
-- **빌드 도구**: Vite
-- **차트 라이브러리**: Recharts
-- **아이콘**: Lucide React
-- **배포**: GitHub Pages
-
-### 프로젝트 구조
-
-```
-자산-관리-시트/
-├── components/                 # React 컴포넌트
-│   ├── common/               # 공통 컴포넌트
-│   │   └── Toggle.tsx       # 토글 스위치 컴포넌트
-│   ├── AddAssetForm.tsx     # 자산 추가 폼
-│   ├── AddNewAssetModal.tsx # 새 자산 추가 모달
-│   ├── AllocationChart.tsx  # 자산 배분 차트
-│   ├── AssetTrendChart.tsx  # 자산 추이 차트
-│   ├── BulkUploadModal.tsx  # CSV 대량 업로드 모달
-│   ├── CategorySummaryTable.tsx # 카테고리 요약 테이블
-│   ├── DataConflictModal.tsx # 데이터 충돌 모달
-│   ├── EditAssetModal.tsx   # 자산 수정 모달
-│   ├── ExchangeRateInput.tsx # 환율 입력 컴포넌트
-│   ├── Header.tsx           # 헤더 컴포넌트
-│   ├── layouts/             # 레이아웃 컴포넌트 (탭별 화면)
-│   │   ├── DashboardView.tsx    # 대시보드 탭
-│   │   ├── PortfolioView.tsx    # 포트폴리오 탭
-│   │   ├── AnalyticsView.tsx    # 통계 탭
-│   │   └── WatchlistView.tsx    # 관심종목 탭
-│   ├── PortfolioAssistant.tsx # 포트폴리오 AI 어시스턴트
-│   ├── PortfolioModal.tsx   # 포트폴리오 모달
-│   ├── PortfolioTable.tsx   # 포트폴리오 테이블 (메인 Wrapper)
-│   ├── portfolio-table/     # 포트폴리오 테이블 내부 컴포넌트
-│   │   ├── PortfolioTableRow.tsx # 테이블 행 컴포넌트
-│   │   ├── usePortfolioData.ts   # 데이터 로직 훅
-│   │   ├── types.ts              # 타입 정의
-│   │   └── utils.ts              # 유틸리티 함수
-│   ├── ProfitLossChart.tsx  # 손익 추이 차트
-│   ├── RegionAllocationChart.tsx # 지역 배분 차트
-│   ├── SellAlertControl.tsx # 매도 알림 설정
-│   ├── SellAnalyticsPage.tsx # 매도 분석 페이지
-│   ├── SellAssetModal.tsx   # 자산 매도 모달
-│   ├── StatCard.tsx         # 통계 카드
-│   ├── TopBottomAssets.tsx  # 상위/하위 자산
-│   └── WatchlistPage.tsx    # 관심종목 페이지
-├── hooks/                    # 커스텀 훅
-│   ├── usePortfolioData.ts   # 핵심 데이터 및 동기화 관리
-│   ├── useMarketData.ts      # 시세 및 환율 관리
-│   ├── useAssetActions.ts    # 자산 CRUD 및 액션 관리
-│   ├── useGoogleDriveSync.ts # Google Drive API 래퍼
-│   └── useOnClickOutside.ts  # 외부 클릭 감지 훅
-├── services/                 # 외부 서비스 연동
-│   ├── geminiService.ts   # Gemini AI 서비스
-│   ├── googleDriveService.ts # Google Drive API
-│   ├── priceService.ts    # 시세 정보 서비스
-│   └── upbitService.ts    # 업비트 API 서비스
-├── utils/                    # 유틸리티 함수
-│   └── migrateData.ts     # 데이터 마이그레이션
-├── types.ts                # TypeScript 타입 정의
-├── App.tsx                 # 메인 애플리케이션
-├── index.tsx              # 애플리케이션 진입점
-└── initialData.ts         # 초기 데이터
-```
-
-## 📊 데이터 흐름 및 의존성
-
-### 핵심 데이터 구조
-
-#### 1. 자산 (Asset) 데이터
-```typescript
-interface Asset {
-  id: string;                    // 고유 식별자
-  category: AssetCategory;       // 자산 카테고리
-  ticker: string;                // 티커 심볼
-  exchange: string;              // 거래소
-  name: string;                  // 자산명
-  customName?: string;           // 사용자 지정명
-  quantity: number;               // 보유 수량
-  purchasePrice: number;        // 매수 단가
-  purchaseDate: string;         // 매수일
-  currency: Currency;           // 통화
-  purchaseExchangeRate?: number; // 매수 시 환율
-  currentPrice: number;        // 현재가
-  priceOriginal: number;       // 원화 이외 통화의 원가
-  highestPrice: number;        // 최고가
-  yesterdayPrice?: number;     // 전일 종가
-  sellAlertDropRate?: number;  // 매도 알림 하락률
-  memo?: string;               // 메모
-  sellTransactions?: SellTransaction[]; // 매도 이력
-}
-```
-
-#### 2. 포트폴리오 스냅샷
-```typescript
-interface PortfolioSnapshot {
-  date: string;                 // 날짜
-  assets: AssetSnapshot[];     // 자산 스냅샷
-}
-
-interface AssetSnapshot {
-  id: string;                  // 자산 ID
-  name: string;               // 자산명
-  currentValue: number;       // 현재가치
-  purchaseValue: number;      // 매수가치
-  unitPrice?: number;        // 1주당 단가
-}
-```
-
-### 데이터 흐름도
-
-```
-사용자 입력 → 컴포넌트 → 상태 관리 → Google Drive 저장
-     ↓
-외부 API (시세/환율) → priceService → 데이터 가공 → UI 반영
-     ↓
-포트폴리오 분석 → 차트/통계 → 시각화
-```
-
-### 주요 의존성
-
-#### 1. 외부 API 의존성
-- **시세 API**: `https://asset-manager-887842923289.asia-northeast3.run.app`
-  - 한국주식, 미국주식, 해외주식 시세
-  - 암호화폐 가격 (USD 기준)
-  - 환율 정보 (USD/KRW, JPY/KRW)
-
-#### 2. Google Drive API
-- **인증**: OAuth 2.0
-- **스코프**: 
-  - `https://www.googleapis.com/auth/drive.file`
-  - `https://www.googleapis.com/auth/userinfo.email`
-  - `https://www.googleapis.com/auth/userinfo.profile`
-  - `openid`
-
-#### 3. 내부 모듈 의존성
-```
-App.tsx
-├── services/
-│   ├── priceService.ts      (시세 정보)
-│   ├── googleDriveService.ts (클라우드 저장)
-│   └── geminiService.ts    (AI 분석)
-├── hooks/
-│   └── useGoogleDriveSync.ts (동기화 관리)
-└── components/             (UI 컴포넌트들)
-```
-
-## 🎯 주요 컴포넌트 상세
-
-### 1. App.tsx (메인 컴포넌트)
-**역할**: 애플리케이션 진입점 및 레이아웃 구성
-**책임**:
-- 주요 Hooks(`usePortfolioData`, `useMarketData`, `useAssetActions`) 초기화 및 연결
-- 탭 네비게이션 상태 관리 및 라우팅
-- 전역 모달(설정, 파일 업로드 등) 관리
-- 로그인 상태에 따른 화면 분기 처리
-
-### 2. 핵심 Hooks (상태 및 로직 분리)
-- **usePortfolioData**: 자산, 히스토리, 환율 등 핵심 데이터 상태 관리 및 Google Drive 동기화 담당
-- **useMarketData**: 외부 API를 통한 시세 업데이트, 환율 갱신 로직 담당
-- **useAssetActions**: 자산 추가/수정/삭제, 매도, CSV 업로드 등 사용자 인터랙션 처리
-
-### 6. PortfolioTable.tsx (포트폴리오 테이블)
-**역할**: 자산 목록 표시 및 관리 (Wrapper 컴포넌트)
-**구조**:
-- `components/portfolio-table/` 디렉토리로 로직 분리
-- `usePortfolioData`: 데이터 가공, 정렬, 필터링 로직 담당
-**주요 변경사항**:
-- **수익률 계산 오류 수정**: 어제 대비 수익률(`yesterdayChange`) 계산 시, 환율을 적용하여 KRW 기준으로 통일. 단위 불일치로 인한 비정상적인 수익률(예: 100,000%) 표시 문제 해결.
-- **변동액 표시 개선**: 전일 대비 변동액(`diffFromYesterday`) 또한 KRW 기준으로 계산 및 표시.
-
-## ⚙️ 핵심 로직 및 알고리즘
-**역할**: 외부 API를 통한 시세 정보 관리
-**책임**:
-- 배치 단위 시세 조회 (20개씩 청크 처리)
-- 환율 정보 조회
-- 재시도 로직 (1회)
-- 에러 처리 및 모킹 데이터 제공
-
-### 4. googleDriveService.ts (Google Drive 서비스)
-**역할**: 클라우드 저장소 관리
-**책임**:
-- OAuth 2.0 인증
-- 토큰 자동 갱신 (만료 5분 전)
-- 파일 저장/불러오기
-- 사용자 정보 관리
-
-### 5. DashboardView.tsx (대시보드)
-**역할**: 전체 자산 현황 요약 및 환율/필터 제어
-**주요 변경사항**:
-- **UI 레이아웃 개선**: 자산 필터, 환율 입력, 매도 알림을 상단 한 줄에 배치하여 공간 효율성 최적화
-- **ExchangeRateInput 연동**: 외부 스타일 주입(`className`)을 통해 유연한 배치 적용
-- **반응형 디자인**: 화면 크기에 따른 자동 줄바꿈(`flex-wrap`) 지원
-
-## ⚙️ 핵심 로직 및 알고리즘
-
-### 1. 시세 업데이트 로직
-```typescript
-// 청크 단위 처리 (20개씩)
-const CHUNK_SIZE = 20;
-const CHUNK_DELAY_MS = 500;
-
-// 환율 우선 업데이트 → 자산 가격 업데이트
-// KRW 단위 오류 자동 보정
-// 비현금/현금 자산 분리 처리
-```
-
-### 2. 환율 적용 로직
-```typescript
-// 대시보드 환율 값 우선 적용
-// 기본값: USD: 1450, JPY: 9.5
-// 실시간 API 실패 시 기존 값 유지
-```
-
-### 3. 자산 카테고리 추론
-```typescript
-// 거래소 정보를 통한 카테고리 자동 판단
-KRX/KONEX → 한국주식
-NASDAQ/NYSE → 미국주식
-TSE → 해외주식
-금 관련 거래소 → 실물자산
-```
-
-### 4. 데이터 마이그레이션
-```typescript
-// 이전 버전 데이터 구조 변환
-// region 필드 제거
-// category 매핑 (한국어 → enum)
-// exchange 기본값 설정
-```
-
-## 🔧 설정 및 환경 변수
-
-### 필수 환경 변수
-```env
-VITE_GOOGLE_CLIENT_ID=your_google_client_id
-```
-
-### Google Cloud Console 설정
-1. OAuth 2.0 클라이언트 ID 생성
-2. 승인된 리디렉션 URI 설정
-3. 필요한 API 활성화:
-   - Google Drive API
-   - Google OAuth2.0
-
-### 빌드 설정
-```typescript
-// vite.config.ts
-base: '/asset-manager/'  // GitHub Pages 경로
-```
-
-## 🚀 배포 및 빌드
-
-### 개발 서버 실행
-```bash
-npm run dev
-```
-
-### 프로덕션 빌드
-```bash
-npm run build
-```
-
-### GitHub Pages 배포
-```bash
-npm run deploy
-```
-
-## 📋 주의사항 및 오류 방지 가이드
-
-### 1. 시세 API 관련
-- **청크 크기 제한**: 20개씩 요청 (API 제한 사항)
-- **재시도**: 실패 시 1회 재시도, 1초 대기
-- **모킹 데이터**: API 실패 시 기본값 제공 (isMocked: true)
-
-### 2. 환율 처리
-- **기본값 설정**: USD 1450, JPY 9.5
-- **유효성 검사**: USD > 100, JPY > 1
-- **실시간 반영**: 자산 가치 계산 전 환율 우선 업데이트
-
-### 3. Google Drive 동기화
-- **자동 저장**: 2초 디바운스 적용
-- **토큰 갱신**: 만료 5분 전 자동 갱신
-- **오류 처리**: 네트워크 오류 시 재시도 로직
-
-### 4. 데이터 무결성
-- **마이그레이션**: 이전 버전 데이터 자동 변환
-- **구조 검증**: 필수 필드 존재 여부 확인
-- **백업**: Google Drive에 자동 저장
-
-### 5. 성능 최적화
-- **useMemo 활용**: 무거운 계산 결과 캐싱
-- **청크 처리**: 대량 데이터分批 처리
-- **지연 로딩**: 컴포넌트 지연 로딩 적용
-
-## 🔍 디버깅 및 모니터링
-
-### 로그 레벨
-- `console.log`: API 요청/응답 데이터
-- `console.error`: 오류 상세 정보
-- `console.warn`: 경고 메시지
-
-### 에러 처리
-- **사용자 친화적 메시지**: 기술적 오류를 이해하기 쉽게 변환
-- **자동 복구**: 가능한 경우 자동 복구 시도
-- **상태 복원**: 오류 발생 시 이전 상태로 복원
-
-### 모니터링 포인트
-- API 응답 시간
-- 환율 업데이트 성공률
-- Google Drive 동기화 성공률
-- 메모리 사용량
-
-## 📚 확장 가이드
-
-### 새로운 자산 카테고리 추가
-1. `AssetCategory` enum에 추가
-2. `EXCHANGE_MAP`에 거래소 매핑
-3. `inferCategoryFromExchange` 로직 업데이트
-4. 관련 컴포넌트 UI 업데이트
-
-### 새로운 거래소 추가
-1. `COMMON_EXCHANGES` 또는 `ALL_EXCHANGES`에 추가
-2. 카테고리 추론 로직 업데이트
-3. 시세 API 지원 확인
-
-### 통화 추가
-1. `Currency` enum에 추가
-2. `CURRENCY_SYMBOLS`에 심볼 추가
-3. 환율 API 엔드포인트 확인
-4. 환율 입력 UI 업데이트
-
----
-
-**문의사항**: 프로젝트 이슈 트래커를 통해 문의해 주세요.
-**라이선스**: 이 프로젝트는 개인 용도로 사용 가능합니다.
-</file>
-
-<file path="components/EditAssetModal.tsx">
-import React, { useState, useEffect, useMemo } from 'react';
-import { Asset, AssetCategory, Currency, ALL_EXCHANGES, inferCategoryFromExchange, ALLOWED_CATEGORIES, normalizeExchange } from '../types';
-import { searchSymbols } from '../services/geminiService';
-
-interface EditAssetModalProps {
-  asset: Asset | null;
-  isOpen: boolean;
-  onClose: () => void;
-  onSave: (asset: Asset) => void;
-  onDelete: (assetId: string) => void;
-  isLoading: boolean;
-}
-
-const EditAssetModal: React.FC<EditAssetModalProps> = ({ asset, isOpen, onClose, onSave, onDelete, isLoading }) => {
-  const [formData, setFormData] = useState<Asset | null>(null);
-  const [searchQuery, setSearchQuery] = useState<string>('');
-  const [searchResults, setSearchResults] = useState<{ ticker: string; name: string; exchange: string }[]>([]);
-  const [isSearching, setIsSearching] = useState<boolean>(false);
-  const categoryOptions = useMemo(() => {
-    if (!formData) return ALLOWED_CATEGORIES;
-    return ALLOWED_CATEGORIES.includes(formData.category)
-      ? ALLOWED_CATEGORIES
-      : [formData.category, ...ALLOWED_CATEGORIES];
-  }, [formData]);
-
-  useEffect(() => {
-    if (asset) {
-        setFormData({
-            ...asset,
-            purchaseDate: new Date(asset.purchaseDate).toISOString().slice(0, 10)
-        });
-        setSearchQuery('');
-        setSearchResults([]);
-        setIsSearching(false);
-    }
-  }, [asset]);
-
-  if (!isOpen || !formData) return null;
-  
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => {
-        if (!prev) return null;
-
-        let newValue: any = value;
-        if (name === 'quantity' || name === 'purchasePrice') {
-            newValue = parseFloat(value) || 0;
-        } else if (name === 'sellAlertDropRate') {
-            newValue = value === '' ? undefined : parseFloat(value);
-            if (isNaN(newValue as number)) newValue = undefined;
-        }
-
-        return { ...prev, [name]: newValue };
-    });
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (formData) {
-      onSave(formData);
-    }
-  };
-
-  const handleSearchChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const q = e.target.value;
-    setSearchQuery(q);
-    if (!q || q.length < 2) {
-      setSearchResults([]);
-      return;
-    }
-    setIsSearching(true);
-    try {
-      const results = await searchSymbols(q);
-      setSearchResults(results);
-    } catch {
-      setSearchResults([]);
-    } finally {
-      setIsSearching(false);
-    }
-  };
-
-  const applySymbol = (r: { ticker: string; name: string; exchange: string }) => {
-    const ex = normalizeExchange(r.exchange);
-    const cat = inferCategoryFromExchange(ex);
-    setFormData(prev => {
-      if (!prev) return null;
-      const current = (prev.ticker || '').trim();
-      let nextTicker = current;
-      const ok = window.confirm(`티커를 '${current || '(비어있음)'}'에서 '${r.ticker}'로 변경하시겠습니까?`);
-      if (ok) nextTicker = r.ticker;
-      return { ...prev, ticker: nextTicker, name: r.name, exchange: ex, category: cat };
-    });
-    setSearchQuery('');
-    setSearchResults([]);
-  };
-
-  const handleDelete = () => {
-    if (asset && window.confirm(`'${(asset.customName?.trim() || asset.name)}' 자산을 정말 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.`)) {
-      onDelete(asset.id);
-    }
-  };
-
-  const inputClasses = "w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition";
-  const labelClasses = "block text-sm font-medium text-gray-300 mb-1";
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center z-50" onClick={onClose} role="dialog" aria-modal="true">
-      <div className="bg-gray-800 p-6 rounded-lg shadow-xl w-full max-w-lg" onClick={(e) => e.stopPropagation()}>
-        <h2 className="text-2xl font-bold text-white mb-6">자산 수정: {(asset?.customName?.trim() || asset?.name)}</h2>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label htmlFor="category-edit" className={labelClasses}>자산 구분</label>
-            <select id="category-edit" name="category" value={formData.category} onChange={handleChange} className={inputClasses}>
-              {categoryOptions.map((cat) => (
-                <option key={cat} value={cat}>{cat}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label htmlFor="customName-edit" className={labelClasses}>표시용 종목명 (사용자 지정)</label>
-            <input
-              id="customName-edit"
-              name="customName"
-              type="text"
-              value={formData.customName || ''}
-              onChange={handleChange}
-              className={inputClasses}
-              placeholder="비워두면 공식 종목명을 사용합니다"
-            />
-            <p className="text-xs text-gray-400 mt-1">티커/거래소·가격 계산에는 영향이 없고 화면 표시 및 내보내기에만 적용됩니다.</p>
-          </div>
-           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className={labelClasses}>거래소/시장</label>
-              <input value={formData.exchange} readOnly className="w-full bg-gray-600 border border-gray-500 rounded-md py-2 px-3 text-gray-300 cursor-not-allowed" />
-            </div>
-            <div>
-              <label htmlFor="ticker-edit" className={labelClasses}>티커 (종목코드)</label>
-              <input id="ticker-edit" name="ticker" type="text" value={formData.ticker} onChange={handleChange} className={inputClasses} required />
-              <div className="mt-2">
-                <label htmlFor="ticker-search" className={labelClasses}>티커/종목 검색</label>
-                <input id="ticker-search" type="text" value={searchQuery} onChange={handleSearchChange} placeholder="예: BMNR 또는 회사명" className={inputClasses} />
-                {isSearching && <p className="text-xs text-gray-400 mt-1">검색 중...</p>}
-                {searchResults.length > 0 && (
-                  <ul className="mt-1 bg-gray-700 border border-gray-600 rounded-md max-h-40 overflow-y-auto">
-                    {searchResults.map((r) => (
-                      <li key={`${r.ticker}-${r.exchange}`} className="px-3 py-2 cursor-pointer hover:bg-gray-600" onMouseDown={() => applySymbol(r)}>
-                        <div className="text-white font-semibold">{r.name} ({r.ticker})</div>
-                        <div className="text-xs text-gray-300">{r.exchange}</div>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            </div>
-          </div>
-          <div className="grid grid-cols-3 gap-4">
-            <div>
-              <label htmlFor="quantity-edit" className={labelClasses}>수량</label>
-              <input id="quantity-edit" name="quantity" type="number" value={formData.quantity} onChange={handleChange} className={inputClasses} required min="0" step="any" />
-            </div>
-            <div>
-              <label htmlFor="purchasePrice-edit" className={labelClasses}>매수가</label>
-              <input id="purchasePrice-edit" name="purchasePrice" type="number" value={formData.purchasePrice} onChange={handleChange} className={inputClasses} required min="0" step="any" />
-            </div>
-            <div>
-              <label htmlFor="currency-edit" className={labelClasses}>매수 통화</label>
-              <select id="currency-edit" name="currency" value={formData.currency} onChange={handleChange} className={inputClasses}>
-                  {Object.values(Currency).map((cur) => (
-                    <option key={cur} value={cur}>{cur}</option>
-                  ))}
-              </select>
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label htmlFor="purchaseDate-edit" className={labelClasses}>매수일</label>
-              <input id="purchaseDate-edit" name="purchaseDate" type="date" value={formData.purchaseDate} onChange={handleChange} className={inputClasses} required />
-            </div>
-            <div>
-                <label htmlFor="sellAlertDropRate-edit" className={labelClasses}>
-                    개별 매도 알림률 (%)
-                </label>
-                <input
-                    id="sellAlertDropRate-edit"
-                    name="sellAlertDropRate"
-                    type="number"
-                    placeholder="기본값 사용"
-                    value={formData.sellAlertDropRate ?? ''}
-                    onChange={handleChange}
-                    className={inputClasses}
-                    min="0"
-                    step="1"
-                    title="비워두면 전역 설정을 따릅니다."
-                />
-            </div>
-          </div>
-          <div>
-            <label htmlFor="memo-edit" className={labelClasses}>메모</label>
-            <textarea
-              id="memo-edit"
-              name="memo"
-              value={formData.memo || ''}
-              onChange={handleChange}
-              className={inputClasses}
-              rows={3}
-              placeholder="종목에 대한 메모를 입력하세요..."
-            />
-          </div>
-          
-          <div className="mt-8 flex justify-between items-center pt-4">
-            <button
-              type="button"
-              onClick={handleDelete}
-              disabled={isLoading}
-              className="bg-danger hover:bg-red-600 text-white font-medium py-2 px-4 rounded-md transition duration-300 disabled:bg-gray-600 disabled:cursor-not-allowed"
-            >
-              삭제
-            </button>
-            <div className="flex space-x-4">
-              <button type="button" onClick={onClose} className="bg-gray-600 hover:bg-gray-500 text-white font-medium py-2 px-4 rounded-md transition duration-300">
-                취소
-              </button>
-              <button type="submit" disabled={isLoading} className="bg-primary hover:bg-primary-dark text-white font-bold py-2 px-4 rounded-md disabled:bg-gray-600 disabled:cursor-not-allowed transition duration-300 flex items-center justify-center">
-                {isLoading ? (
-                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                ) : '저장'}
-              </button>
-            </div>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-};
-
-export default EditAssetModal;
-</file>
-
-<file path="components/AddNewAssetModal.tsx">
-import React, { useState, useEffect, useCallback } from 'react';
-import { Asset, AssetCategory, NewAssetForm, EXCHANGE_MAP, Currency, SymbolSearchResult, ALL_EXCHANGES, inferCategoryFromExchange, ALLOWED_CATEGORIES, normalizeExchange } from '../types';
-import { searchSymbols } from '../services/geminiService';
-
-interface AddNewAssetModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onAddAsset: (asset: NewAssetForm) => void;
-  isLoading: boolean;
-  assets: Asset[];
-}
-
-const AddNewAssetModal: React.FC<AddNewAssetModalProps> = ({ isOpen, onClose, onAddAsset, isLoading, assets }) => {
-  const [ticker, setTicker] = useState('');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<SymbolSearchResult[]>([]);
-  const [isSearching, setIsSearching] = useState(false);
-  const [isFocused, setIsFocused] = useState(false);
-  const [duplicateError, setDuplicateError] = useState<string | null>(null);
-  
-  const [quantity, setQuantity] = useState('');
-  const [purchasePrice, setPurchasePrice] = useState('');
-  const [purchaseDate, setPurchaseDate] = useState(new Date().toISOString().slice(0, 10));
-  const [category, setCategory] = useState<AssetCategory>(AssetCategory.US_STOCK);
-  const initialExchange = EXCHANGE_MAP[AssetCategory.US_STOCK]?.[0] || ALL_EXCHANGES[0] || '';
-  const [exchange, setExchange] = useState<string>(initialExchange);
-  const [currency, setCurrency] = useState<Currency>(Currency.USD);
-
-  const clearForm = useCallback(() => {
-    setTicker('');
-    setSearchQuery('');
-    setQuantity('');
-    setPurchasePrice('');
-    setSearchResults([]);
-    setCategory(AssetCategory.US_STOCK);
-    setExchange(initialExchange);
-    setPurchaseDate(new Date().toISOString().slice(0, 10));
-    setCurrency(Currency.USD);
-    setDuplicateError(null);
-  }, [initialExchange]);
-
-  useEffect(() => {
-    if (!isOpen) {
-      clearForm();
-    }
-  }, [isOpen, clearForm]);
-
-
-  const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const newQuery = e.target.value;
-    setSearchQuery(newQuery);
-    if (ticker) {
-      setTicker('');
-    }
-    setDuplicateError(null);
-  }, [ticker]);
-
-  useEffect(() => {
-    if (searchQuery.length < 2 || searchQuery === ticker) {
-      setSearchResults([]);
-      return;
-    }
-
-    const handler = setTimeout(async () => {
-      setIsSearching(true);
-      try {
-        const results = await searchSymbols(searchQuery);
-        setSearchResults(results);
-      } catch (error) {
-        console.error("Search failed:", error);
-        setSearchResults([]);
-      } finally {
-        setIsSearching(false);
-      }
-    }, 300);
-
-    return () => { clearTimeout(handler); };
-  }, [searchQuery, ticker]);
-
-  const handleSelectSymbol = (result: SymbolSearchResult) => {
-     const isDuplicate = assets.some(
-      asset => asset.ticker.toUpperCase() === result.ticker.toUpperCase() &&
-               normalizeExchange(asset.exchange) === normalizeExchange(result.exchange)
-    );
-
-    if (isDuplicate) {
-      setDuplicateError('이미 포트폴리오에 존재하는 자산입니다.');
-    } else {
-      setDuplicateError(null);
-    }
-    setSearchResults([]);
-    const current = (ticker || '').trim();
-    let nextTicker = current;
-    if (!current) {
-      nextTicker = result.ticker;
-    } else {
-      const ok = window.confirm(`티커를 '${current}'에서 '${result.ticker}'로 변경하시겠습니까?`);
-      if (ok) nextTicker = result.ticker;
-    }
-    setTicker(nextTicker);
-    setSearchQuery(result.name);
-    setExchange(normalizeExchange(result.exchange));
-
-    // 거래소에서 자산구분 자동 추론
-    const inferredCategory = inferCategoryFromExchange(normalizeExchange(result.exchange));
-    setCategory(inferredCategory);
-    
-    setSearchResults([]);
-  };
-
-  useEffect(() => {
-    if (category === AssetCategory.KOREAN_STOCK) {
-      setExchange('KRX (코스피/코스닥)');
-    } else if (category === AssetCategory.US_STOCK) {
-      setExchange('NASDAQ');
-    } else if (category === AssetCategory.CRYPTOCURRENCY) {
-      setExchange('주요 거래소 (종합)');
-    }
-  }, [category]);
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!ticker) {
-      alert('종목 검색을 통해 유효한 자산을 선택해주세요.');
-      return;
-    }
-    if (!quantity || !purchasePrice || !purchaseDate || !exchange || !currency || !category) {
-      alert('모든 필드를 입력해주세요.');
-      return;
-    }
-    const isDuplicateSubmit = assets.some(
-      asset => asset.ticker.toUpperCase() === ticker.toUpperCase() &&
-               normalizeExchange(asset.exchange) === normalizeExchange(exchange)
-    );
-    if (isDuplicateSubmit) {
-      alert('이미 포트폴리오에 존재하는 자산입니다.');
-      return;
-    }
-    onAddAsset({
-      ticker,
-      quantity: parseFloat(quantity),
-      purchasePrice: parseFloat(purchasePrice),
-      purchaseDate,
-      category,
-      exchange,
-      currency
-    });
-  };
-  
-  const inputClasses = "w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition";
-  const labelClasses = "block text-sm font-medium text-gray-300 mb-1";
-  const showResults = isFocused && searchResults.length > 0;
-
-  if (!isOpen) return null;
-
-  return (
-     <div className="fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center z-50" onClick={onClose} role="dialog" aria-modal="true">
-      <div className="bg-gray-800 p-6 rounded-lg shadow-xl w-full max-w-lg" onClick={(e) => e.stopPropagation()}>
-        <div className="flex justify-between items-center mb-6">
-            <h2 className="text-2xl font-bold text-white">신규 자산 추가</h2>
-            <button onClick={onClose} className="text-gray-400 hover:text-white transition">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-            </button>
-        </div>
-        <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-                <label htmlFor="category" className={labelClasses}>자산 구분</label>
-                <select 
-                  id="category" 
-                  value={category} 
-                  onChange={(e) => setCategory(e.target.value as AssetCategory)} 
-                  className={inputClasses} 
-                  title="자산의 구분을 선택하세요. 거래소 선택 시 자동으로 설정되며 수동으로 변경할 수 있습니다."
-                >
-                  {ALLOWED_CATEGORIES.map((cat) => (
-                    <option key={cat} value={cat}>{cat}</option>
-                  ))}
-                </select>
-            </div>
-            <div>
-                <label className={labelClasses}>거래소/시장</label>
-                <input value={exchange} readOnly className="w-full bg-gray-600 border border-gray-500 rounded-md py-2 px-3 text-gray-300 cursor-not-allowed" title="자산구분 또는 종목 검색에 따라 자동으로 결정됩니다." />
-            </div>
-            
-            <div className="relative">
-            <label htmlFor="ticker-search" className={labelClasses}>티커 (종목 검색)</label>
-            <input 
-                id="ticker-search" 
-                type="text" 
-                value={searchQuery} 
-                onChange={handleSearchChange} 
-                onFocus={() => setIsFocused(true)}
-                onBlur={() => setTimeout(() => setIsFocused(false), 150)} // Delay to allow click on results
-                placeholder="예: Apple, 삼성전자"
-                className={inputClasses}
-                required 
-                autoComplete="off"
-                title="자산의 이름 또는 티커를 입력하여 검색하세요."
-            />
-            {duplicateError && <p className="text-danger text-sm mt-1">{duplicateError}</p>}
-            {isSearching && (
-                <div className="absolute top-9 right-3">
-                    <svg className="animate-spin h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8_0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                </div>
-            )}
-            {showResults && (
-                <ul className="absolute z-10 w-full bg-gray-700 border border-gray-600 rounded-md mt-1 max-h-60 overflow-y-auto shadow-lg">
-                {searchResults.map((result) => (
-                    <li 
-                    key={`${result.ticker}-${result.exchange}`} 
-                    onMouseDown={() => handleSelectSymbol(result)} 
-                    className="px-3 py-2 cursor-pointer hover:bg-primary-dark transition-colors"
-                    role="option"
-                    aria-selected="false"
-                    >
-                    <div className="font-bold text-white">{result.name} ({result.ticker})</div>
-                    <div className="text-sm text-gray-400">{result.exchange}</div>
-                    </li>
-                ))}
-                </ul>
-            )}
-            </div>
-
-            <div className="grid grid-cols-3 gap-4">
-            <div>
-                <label htmlFor="quantity" className={labelClasses}>수량</label>
-                <input id="quantity" type="number" value={quantity} onChange={(e) => setQuantity(e.target.value)} placeholder="10" className={inputClasses} required min="0" step="any" title="보유하고 있는 자산의 수량을 입력하세요."/>
-            </div>
-            <div>
-                <label htmlFor="purchasePrice" className={labelClasses}>매수가</label>
-                <input id="purchasePrice" type="number" value={purchasePrice} onChange={(e) => setPurchasePrice(e.target.value)} placeholder="150.00" className={inputClasses} required min="0" step="any" title="자산을 매수한 평균 단가를 선택한 통화 기준으로 입력하세요." />
-            </div>
-            <div>
-                <label htmlFor="currency" className={labelClasses}>통화</label>
-                <select id="currency" value={currency} onChange={(e) => setCurrency(e.target.value as Currency)} className={inputClasses} title="매수 가격의 통화 단위를 선택하세요.">
-                    {Object.values(Currency).map((cur) => (
-                    <option key={cur} value={cur}>{cur}</option>
-                    ))}
-                </select>
-            </div>
-            </div>
-            <div>
-            <label htmlFor="purchaseDate" className={labelClasses}>매수/보유 시작일</label>
-            <input id="purchaseDate" type="date" value={purchaseDate} onChange={(e) => setPurchaseDate(e.target.value)} className={inputClasses} required title="자산을 매수했거나 보유하기 시작한 날짜를 선택하세요."/>
-            </div>
-            <div className="pt-4 flex justify-end">
-                <button type="submit" disabled={isLoading || !!duplicateError} className="w-full bg-primary hover:bg-primary-dark text-white font-bold py-2.5 px-4 rounded-md disabled:bg-gray-600 disabled:cursor-not-allowed transition duration-300 flex items-center justify-center" title="입력한 정보로 새 자산을 포트폴리오에 추가합니다.">
-                {isLoading ? (
-                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                ) : '자산 추가'}
-                </button>
-            </div>
-        </form>
-      </div>
-    </div>
-  );
-};
-
-export default AddNewAssetModal;
-</file>
-
-<file path="services/priceService.ts">
-import { AssetCategory, Currency, AssetDataResult, normalizeExchange } from '../types';
-
-const STOCK_API_URL = 'https://asset-manager-887842923289.asia-northeast3.run.app';
-const CHUNK_SIZE = 20;
-const CHUNK_DELAY_MS = 500;
-const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-
-function toNumber(v: any, fallback = 0): number {
-  const n = Number(v);
-  return isFinite(n) ? n : fallback;
-}
-
-function createMockResult(ticker: string): AssetDataResult {
-  return {
-    name: ticker,
-    priceOriginal: 0,
-    priceKRW: 0,
-    currency: 'KRW',
-    pricePreviousClose: 0,
-    highestPrice: 0,
-    isMocked: true,
-  };
-}
-
-function extractByTickerKey(data: any, key?: string): any {
-  if (!data) return undefined;
-  if (Array.isArray(data?.results)) {
-    if (!key) return data.results?.[0];
-    const k = String(key).toUpperCase();
-    return data.results.find((x: any) => String(x?.ticker ?? x?.symbol ?? '').toUpperCase() === k);
-  }
-  if (Array.isArray(data)) {
-    if (!key) return data[0];
-    const k = String(key).toUpperCase();
-    return data.find((x: any) => String(x?.ticker ?? x?.symbol ?? '').toUpperCase() === k);
-  }
-  if (typeof data === 'object') {
-    if (!key) {
-      const firstKey = Object.keys(data)[0];
-      return data[firstKey];
-    }
-    const k = String(key).toUpperCase();
-    const direct = Object.prototype.hasOwnProperty.call(data, k) ? data[k] : undefined;
-    if (direct) return direct;
-    const alt = Object.keys(data).find((kk) => String(kk).toUpperCase() === k);
-    return alt ? data[alt] : undefined;
-  }
-  return undefined;
-}
-
-async function fetchStocksBatch(payload: Array<{ ticker: string; exchange?: string }>): Promise<any> {
-  console.log('fetchStocksBatch request', payload);
-  const res = await fetch(STOCK_API_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ tickers: payload }),
-  });
-  if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    throw new Error(`시세 서버 호출 실패: ${res.status} ${text}`);
-  }
-  try {
-    const json = await res.json();
-    console.log('fetchStocksBatch response', json);
-    return json;
-  } catch {
-    const text = await res.text().catch(() => '');
-    console.error('fetchStocksBatch parse failed', {
-      status: res.status,
-      contentType: res.headers.get('Content-Type') ?? res.headers.get('content-type') ?? '',
-      preview: typeof text === 'string' ? text.slice(0, 512) : '',
-    });
-    throw new Error(`시세 서버 응답 처리 실패: ${text}`);
-  }
-}
-
-export async function fetchExchangeRate(): Promise<number> {
-  try {
-    const data = await fetchStocksBatch([{ ticker: 'USD/KRW', exchange: 'KRX' }]);
-    const obj: any = extractByTickerKey(data, 'USD/KRW');
-    console.log('fetchExchangeRate parsed', obj);
-    const rate = toNumber(obj?.priceOriginal ?? obj?.price ?? obj?.close, 0);
-    if (rate > 0) return rate;
-    throw new Error('환율 데이터가 올바르지 않습니다');
-  } catch (e) {
-    throw e;
-  }
-}
-
-export async function fetchExchangeRateJPY(): Promise<number> {
-  try {
-    const data = await fetchStocksBatch([{ ticker: 'JPY/KRW', exchange: 'KRX' }]);
-    const obj: any = extractByTickerKey(data, 'JPY/KRW');
-    console.log('fetchExchangeRateJPY parsed', obj);
-    const rate = toNumber(obj?.priceOriginal ?? obj?.price ?? obj?.close, 0);
-    if (rate > 0) return rate;
-    throw new Error('엔화 환율 데이터가 올바르지 않습니다');
-  } catch (e) {
-    throw e;
-  }
-}
-
-export async function fetchBatchAssetPrices(
-  assets: { ticker: string; exchange: string; id: string; category?: AssetCategory; currency?: Currency }[],
-): Promise<Map<string, AssetDataResult>> {
-  const resultMap = new Map<string, AssetDataResult>();
-  if (assets.length === 0) return resultMap;
-
-  for (let i = 0; i < assets.length; i += CHUNK_SIZE) {
-    const chunk = assets.slice(i, i + CHUNK_SIZE);
-    const payload = chunk.map(s => {
-      const isCrypto = s.category === AssetCategory.CRYPTOCURRENCY;
-      const reqTicker = isCrypto ? `${String(s.ticker).toUpperCase()}-USD` : String(s.ticker).toUpperCase();
-      return { ticker: reqTicker, exchange: normalizeExchange(s.exchange) };
-    });
-    console.log('fetchBatchAssetPrices payload', payload);
-    try {
-      const data = await fetchStocksBatch(payload);
-      console.log('fetchBatchAssetPrices raw response', data);
-      const items: any[] = [];
-      if (Array.isArray(data?.results)) {
-        items.push(...data.results);
-      } else if (Array.isArray(data)) {
-        items.push(...data);
-      } else if (typeof data === 'object' && data) {
-        Object.keys(data).forEach(k => {
-          const v = data[k];
-          if (v && typeof v === 'object') items.push({ ...v, ticker: k });
-        });
-      }
-      items.forEach((item: any) => {
-        const ticker = String(item.ticker ?? item.symbol ?? '').toUpperCase();
-        const normalizedTicker = ticker.endsWith('-USD') ? ticker.replace(/-USD$/i, '') : ticker;
-        const matched = assets.find(a => a.ticker.toUpperCase() === normalizedTicker);
-        if (!matched) return;
-        const priceOrig = toNumber(item.priceOriginal ?? item.price ?? item.close, 0);
-        const prev = toNumber(item.previousClose ?? item.prev_close ?? item.yesterdayPrice, priceOrig);
-        const currencyFromServer = String(item.currency ?? matched.currency ?? Currency.USD);
-        const keepOriginalCurrency = matched.category === AssetCategory.CRYPTOCURRENCY;
-        const currency = keepOriginalCurrency ? String(matched.currency ?? currencyFromServer) : currencyFromServer;
-        const priceKRW = typeof item.priceKRW === 'number'
-          ? item.priceKRW
-          : (currency === Currency.KRW ? priceOrig : priceOrig);
-        const name = String(item.name ?? matched.ticker);
-        const isMocked = !(priceOrig > 0);
-        const result: AssetDataResult = {
-          name,
-          priceOriginal: priceOrig,
-          priceKRW,
-          currency,
-          pricePreviousClose: prev,
-          highestPrice: (currency === Currency.KRW ? priceKRW : priceOrig) * 1.1,
-          isMocked,
-        };
-        resultMap.set(matched.id, result);
-      });
-    } catch (e) {
-      console.error('API Error Details:', e);
-      console.error('Chunk meta', { index: Math.floor(i / CHUNK_SIZE), size: chunk.length });
-      await sleep(1000);
-      try {
-        const data = await fetchStocksBatch(payload);
-        console.log('fetchBatchAssetPrices raw response (retry)', data);
-        const items: any[] = [];
-        if (Array.isArray(data?.results)) {
-          items.push(...data.results);
-        } else if (Array.isArray(data)) {
-          items.push(...data);
-        } else if (typeof data === 'object' && data) {
-          Object.keys(data).forEach(k => {
-            const v = data[k];
-            if (v && typeof v === 'object') items.push({ ...v, ticker: k });
-          });
-        }
-        items.forEach((item: any) => {
-          const ticker = String(item.ticker ?? item.symbol ?? '').toUpperCase();
-          const normalizedTicker = ticker.endsWith('-USD') ? ticker.replace(/-USD$/i, '') : ticker;
-          const matched = assets.find(a => a.ticker.toUpperCase() === normalizedTicker);
-          if (!matched) return;
-          const priceOrig = toNumber(item.priceOriginal ?? item.price ?? item.close, 0);
-          const prev = toNumber(item.previousClose ?? item.prev_close ?? item.yesterdayPrice, priceOrig);
-          const currencyFromServer = String(item.currency ?? matched.currency ?? Currency.USD);
-          const keepOriginalCurrency = matched.category === AssetCategory.CRYPTOCURRENCY;
-          const currency = keepOriginalCurrency ? String(matched.currency ?? currencyFromServer) : currencyFromServer;
-          const priceKRW = typeof item.priceKRW === 'number'
-            ? item.priceKRW
-            : (currency === Currency.KRW ? priceOrig : priceOrig);
-          const name = String(item.name ?? matched.ticker);
-          const isMocked = !(priceOrig > 0);
-          const result: AssetDataResult = {
-            name,
-            priceOriginal: priceOrig,
-            priceKRW,
-            currency,
-            pricePreviousClose: prev,
-            highestPrice: (currency === Currency.KRW ? priceKRW : priceOrig) * 1.1,
-            isMocked,
-          };
-          resultMap.set(matched.id, result);
-        });
-      } catch (e2) {
-        console.error('API Error Details (retry failed):', e2);
-      }
-    }
-    await sleep(CHUNK_DELAY_MS);
-  }
-
-  assets.forEach(s => {
-    if (!resultMap.has(s.id)) resultMap.set(s.id, {
-      name: s.ticker,
-      priceOriginal: 0,
-      priceKRW: 0,
-      currency: String(s.currency ?? Currency.USD),
-      pricePreviousClose: 0,
-      highestPrice: 0,
-      isMocked: true,
-    });
-  });
-
-  return resultMap;
-}
-
-export async function fetchAssetData(asset: { ticker: string; exchange: string; category?: AssetCategory; currency?: Currency }): Promise<AssetDataResult> {
-  const normalizedExchange = normalizeExchange(asset.exchange);
-  try {
-    const isCrypto = asset.category === AssetCategory.CRYPTOCURRENCY;
-    const reqTicker = isCrypto ? `${String(asset.ticker).toUpperCase()}-USD` : String(asset.ticker).toUpperCase();
-    const data = await fetchStocksBatch([{ ticker: reqTicker, exchange: normalizedExchange }]);
-    const obj: any = extractByTickerKey(data, reqTicker);
-    console.log('fetchAssetData parsed', obj);
-    const priceOrig = toNumber(obj?.priceOriginal ?? obj?.price ?? obj?.close, 0);
-    const prev = toNumber(obj?.previousClose ?? obj?.prev_close ?? obj?.yesterdayPrice, priceOrig);
-    const currency = String(obj?.currency ?? asset.currency ?? Currency.USD);
-    const priceKRW = typeof obj?.priceKRW === 'number'
-      ? obj.priceKRW
-      : (currency === Currency.KRW ? priceOrig : priceOrig);
-    const name = String(obj?.name ?? asset.ticker);
-    return {
-      name,
-      priceOriginal: priceOrig,
-      priceKRW,
-      currency,
-      pricePreviousClose: prev,
-      highestPrice: (currency === Currency.KRW ? priceKRW : priceOrig) * 1.1,
-      isMocked: false,
-    };
-  } catch {
-    throw new Error('시세 데이터를 가져오지 못했습니다. 잠시 후 다시 시도해주세요.');
-  }
-}
-</file>
-
 <file path="types.ts">
 export enum AssetCategory {
   KOREAN_STOCK = "한국주식",
@@ -7165,6 +6802,633 @@ export interface AssetDataResult {
   pricePreviousClose: number;
   highestPrice?: number;
   isMocked: boolean;
+}
+</file>
+
+<file path="README.md">
+# KIM'S 퀸트자산관리 - 포트폴리오 관리 시스템
+
+## 📋 프로젝트 개요
+
+KIM'S 퀸트자산관리는 계량적 투자 전략을 기반으로 한 종합 자산 관리 시스템입니다. Google Drive 연동을 통해 데이터를 안전하게 저장하고, 실시간 시세 정보를 제공하며, 다양한 자산 종류를 지원하는 포트폴리오 관리 도구입니다.
+
+### 핵심 기능
+- **멀티 자산 지원**: 한국주식, 미국주식, 해외주식, 채권, 암호화폐, 실물자산, 현금
+- **실시간 시세 업데이트**: 외부 API를 통한 실시간 가격 정보
+- **환율 자동 반영**: USD, JPY 등 주요 통화 환율 자동 적용
+- **Google Drive 동기화**: 안전한 클라우드 저장소 연동
+- **포트폴리오 분석**: 자산 배분, 수익률, 손익 추이 분석
+- **매도 알림**: 설정한 하락률 기준 알림 기능
+- **관심종목 관리**: 별도의 워치리스트 기능
+- **CSV 대량 등록**: 대량의 자산 일괄 등록
+
+## 🏗️ 시스템 아키텍처
+
+### 기술 스택
+- **프론트엔드**: React 19.2.0, TypeScript
+- **스타일링**: Tailwind CSS
+- **빌드 도구**: Vite
+- **차트 라이브러리**: Recharts
+- **아이콘**: Lucide React
+- **배포**: GitHub Pages
+
+### 프로젝트 구조
+
+```
+자산-관리-시트/
+├── components/                 # React 컴포넌트
+│   ├── common/               # 공통 컴포넌트
+│   │   └── Toggle.tsx       # 토글 스위치 컴포넌트
+│   ├── AddAssetForm.tsx     # 자산 추가 폼
+│   ├── AddNewAssetModal.tsx # 새 자산 추가 모달
+│   ├── AllocationChart.tsx  # 자산 배분 차트
+│   ├── AssetTrendChart.tsx  # 자산 추이 차트
+│   ├── BulkUploadModal.tsx  # CSV 대량 업로드 모달
+│   ├── CategorySummaryTable.tsx # 카테고리 요약 테이블
+│   ├── DataConflictModal.tsx # 데이터 충돌 모달
+│   ├── EditAssetModal.tsx   # 자산 수정 모달
+│   ├── ExchangeRateInput.tsx # 환율 입력 컴포넌트
+│   ├── Header.tsx           # 헤더 컴포넌트
+│   ├── layouts/             # 레이아웃 컴포넌트 (탭별 화면)
+│   │   ├── DashboardView.tsx    # 대시보드 탭
+│   │   ├── PortfolioView.tsx    # 포트폴리오 탭
+│   │   ├── AnalyticsView.tsx    # 통계 탭
+│   │   └── WatchlistView.tsx    # 관심종목 탭
+│   ├── PortfolioAssistant.tsx # 포트폴리오 AI 어시스턴트
+│   ├── PortfolioModal.tsx   # 포트폴리오 모달
+│   ├── PortfolioTable.tsx   # 포트폴리오 테이블 (메인 Wrapper)
+│   ├── portfolio-table/     # 포트폴리오 테이블 내부 컴포넌트
+│   │   ├── PortfolioTableRow.tsx # 테이블 행 컴포넌트
+│   │   ├── usePortfolioData.ts   # 데이터 로직 훅
+│   │   ├── types.ts              # 타입 정의
+│   │   └── utils.ts              # 유틸리티 함수
+│   ├── ProfitLossChart.tsx  # 손익 추이 차트
+│   ├── RegionAllocationChart.tsx # 지역 배분 차트
+│   ├── SellAlertControl.tsx # 매도 알림 설정
+│   ├── SellAnalyticsPage.tsx # 매도 분석 페이지
+│   ├── SellAssetModal.tsx   # 자산 매도 모달
+│   ├── StatCard.tsx         # 통계 카드
+│   ├── TopBottomAssets.tsx  # 상위/하위 자산
+│   └── WatchlistPage.tsx    # 관심종목 페이지
+├── hooks/                    # 커스텀 훅
+│   ├── usePortfolioData.ts   # 핵심 데이터 및 동기화 관리
+│   ├── useMarketData.ts      # 시세 및 환율 관리
+│   ├── useAssetActions.ts    # 자산 CRUD 및 액션 관리
+│   ├── useGoogleDriveSync.ts # Google Drive API 래퍼
+│   └── useOnClickOutside.ts  # 외부 클릭 감지 훅
+├── services/                 # 외부 서비스 연동
+│   ├── geminiService.ts   # Gemini AI 서비스
+│   ├── googleDriveService.ts # Google Drive API
+│   ├── priceService.ts    # 시세 정보 서비스
+│   └── upbitService.ts    # 업비트 API 서비스
+├── utils/                    # 유틸리티 함수
+│   └── migrateData.ts     # 데이터 마이그레이션
+├── types.ts                # TypeScript 타입 정의
+├── App.tsx                 # 메인 애플리케이션
+├── index.tsx              # 애플리케이션 진입점
+└── initialData.ts         # 초기 데이터
+```
+
+## 📊 데이터 흐름 및 의존성
+
+### 핵심 데이터 구조
+
+#### 1. 자산 (Asset) 데이터
+```typescript
+interface Asset {
+  id: string;                    // 고유 식별자
+  category: AssetCategory;       // 자산 카테고리
+  ticker: string;                // 티커 심볼
+  exchange: string;              // 거래소
+  name: string;                  // 자산명
+  customName?: string;           // 사용자 지정명
+  quantity: number;               // 보유 수량
+  purchasePrice: number;        // 매수 단가
+  purchaseDate: string;         // 매수일
+  currency: Currency;           // 통화
+  purchaseExchangeRate?: number; // 매수 시 환율
+  currentPrice: number;        // 현재가
+  priceOriginal: number;       // 원화 이외 통화의 원가
+  highestPrice: number;        // 최고가
+  yesterdayPrice?: number;     // 전일 종가
+  sellAlertDropRate?: number;  // 매도 알림 하락률
+  memo?: string;               // 메모
+  sellTransactions?: SellTransaction[]; // 매도 이력
+}
+```
+
+#### 2. 포트폴리오 스냅샷
+```typescript
+interface PortfolioSnapshot {
+  date: string;                 // 날짜
+  assets: AssetSnapshot[];     // 자산 스냅샷
+}
+
+interface AssetSnapshot {
+  id: string;                  // 자산 ID
+  name: string;               // 자산명
+  currentValue: number;       // 현재가치
+  purchaseValue: number;      // 매수가치
+  unitPrice?: number;        // 1주당 단가
+}
+```
+
+### 데이터 흐름도
+
+```
+사용자 입력 → 컴포넌트 → 상태 관리 → Google Drive 저장
+     ↓
+외부 API (시세/환율) → priceService → 데이터 가공 → UI 반영
+     ↓
+포트폴리오 분석 → 차트/통계 → 시각화
+```
+
+### 주요 의존성
+
+#### 1. 외부 API 의존성
+- **시세 API**: `https://asset-manager-887842923289.asia-northeast3.run.app`
+  - 한국주식, 미국주식, 해외주식 시세
+  - 암호화폐 가격 (USD 기준)
+  - 환율 정보 (USD/KRW, JPY/KRW)
+
+#### 2. Google Drive API
+- **인증**: OAuth 2.0
+- **스코프**: 
+  - `https://www.googleapis.com/auth/drive.file`
+  - `https://www.googleapis.com/auth/userinfo.email`
+  - `https://www.googleapis.com/auth/userinfo.profile`
+  - `openid`
+
+#### 3. 내부 모듈 의존성
+```
+App.tsx
+├── services/
+│   ├── priceService.ts      (시세 정보)
+│   ├── googleDriveService.ts (클라우드 저장)
+│   └── geminiService.ts    (AI 분석)
+├── hooks/
+│   └── useGoogleDriveSync.ts (동기화 관리)
+└── components/             (UI 컴포넌트들)
+```
+
+## 🎯 주요 컴포넌트 상세
+
+### 1. App.tsx (메인 컴포넌트)
+**역할**: 애플리케이션 진입점 및 레이아웃 구성
+**책임**:
+- 주요 Hooks(`usePortfolioData`, `useMarketData`, `useAssetActions`) 초기화 및 연결
+- 탭 네비게이션 상태 관리 및 라우팅
+- 전역 모달(설정, 파일 업로드 등) 관리
+- 로그인 상태에 따른 화면 분기 처리
+
+### 2. 핵심 Hooks (상태 및 로직 분리)
+- **usePortfolioData**: 자산, 히스토리, 환율 등 핵심 데이터 상태 관리 및 Google Drive 동기화 담당
+- **useMarketData**: 외부 API를 통한 시세 업데이트, 환율 갱신 로직 담당
+- **useAssetActions**: 자산 추가/수정/삭제, 매도, CSV 업로드 등 사용자 인터랙션 처리
+
+### 6. PortfolioTable.tsx (포트폴리오 테이블)
+**역할**: 자산 목록 표시 및 관리 (Wrapper 컴포넌트)
+**구조**:
+- `components/portfolio-table/` 디렉토리로 로직 분리
+- `usePortfolioData`: 데이터 가공, 정렬, 필터링 로직 담당
+**주요 변경사항**:
+- **수익률 계산 로직 개선 (Upbit/Bithumb 예외 처리)**: Upbit/Bithumb 자산의 경우, 설정된 통화(`currency`)와 무관하게 API가 반환하는 원화(`KRW`) 가격을 기준으로 수익률을 계산하도록 로직 수정. `currency`가 'USD'로 설정되어 있어도 `currentPrice`는 KRW(API 값), `yesterdayPrice`는 USD(데이터 불일치)인 경우를 감지하여 환율을 자동 적용해 올바른 등락률(`yesterdayChange`)을 계산하고 비정상적인 수익률(예: 147,000%) 표시 문제를 해결함.
+- **변동액 표시 개선**: 전일 대비 변동액(`diffFromYesterday`) 또한 KRW 기준으로 계산 및 표시.
+
+### 7. RebalancingTable.tsx (포트폴리오 리밸런싱)
+**역할**: 목표 자산 비중 설정 및 리밸런싱 가이드 제공
+**기능**:
+- **목표 비중 설정**: 자산군별 목표 비중(%) 입력 및 목표 금액 자동 계산
+- **리밸런싱 가이드**: 현재 평가액과 목표 금액의 차이를 계산하여 매수/매도 필요 금액 제시
+- **상태 관리**: 목표 총 자산 금액 및 비중 설정을 실시간으로 반영하여 시뮬레이션 가능
+
+## ⚙️ 핵심 로직 및 알고리즘
+**역할**: 외부 API를 통한 시세 정보 관리
+**책임**:
+- 배치 단위 시세 조회 (20개씩 청크 처리)
+- 환율 정보 조회
+- 재시도 로직 (1회)
+- 에러 처리 및 모킹 데이터 제공
+
+### 4. googleDriveService.ts (Google Drive 서비스)
+**역할**: 클라우드 저장소 관리
+**책임**:
+- OAuth 2.0 인증
+- 토큰 자동 갱신 (만료 5분 전)
+- 파일 저장/불러오기
+- 사용자 정보 관리
+
+### 5. DashboardView.tsx (대시보드)
+**역할**: 전체 자산 현황 요약 및 환율/필터 제어
+**주요 변경사항**:
+- **UI 레이아웃 개선**: 자산 필터, 환율 입력, 매도 알림을 상단 한 줄에 배치하여 공간 효율성 최적화
+- **ExchangeRateInput 연동**: 외부 스타일 주입(`className`)을 통해 유연한 배치 적용
+- **반응형 디자인**: 화면 크기에 따른 자동 줄바꿈(`flex-wrap`) 지원
+
+## ⚙️ 핵심 로직 및 알고리즘
+
+### 1. 시세 업데이트 로직
+```typescript
+// 청크 단위 처리 (20개씩)
+const CHUNK_SIZE = 20;
+const CHUNK_DELAY_MS = 500;
+
+// 환율 우선 업데이트 → 자산 가격 업데이트
+// KRW 단위 오류 자동 보정
+// 비현금/현금 자산 분리 처리
+```
+
+### 2. 환율 적용 로직
+```typescript
+// 대시보드 환율 값 우선 적용
+// 기본값: USD: 1450, JPY: 9.5
+// 실시간 API 실패 시 기존 값 유지
+```
+
+### 3. 자산 카테고리 추론
+```typescript
+// 거래소 정보를 통한 카테고리 자동 판단
+KRX/KONEX → 한국주식
+NASDAQ/NYSE → 미국주식
+TSE → 해외주식
+금 관련 거래소 → 실물자산
+```
+
+### 4. 데이터 마이그레이션
+```typescript
+// 이전 버전 데이터 구조 변환
+// region 필드 제거
+// category 매핑 (한국어 → enum)
+// exchange 기본값 설정
+```
+
+## 🔧 설정 및 환경 변수
+
+### 필수 환경 변수
+```env
+VITE_GOOGLE_CLIENT_ID=your_google_client_id
+```
+
+### Google Cloud Console 설정
+1. OAuth 2.0 클라이언트 ID 생성
+2. 승인된 리디렉션 URI 설정
+3. 필요한 API 활성화:
+   - Google Drive API
+   - Google OAuth2.0
+
+### 빌드 설정
+```typescript
+// vite.config.ts
+base: '/asset-manager/'  // GitHub Pages 경로
+```
+
+## 🚀 배포 및 빌드
+
+### 개발 서버 실행
+```bash
+npm run dev
+```
+
+### 프로덕션 빌드
+```bash
+npm run build
+```
+
+### GitHub Pages 배포
+```bash
+npm run deploy
+```
+
+## 📋 주의사항 및 오류 방지 가이드
+
+### 1. 시세 API 관련
+- **청크 크기 제한**: 20개씩 요청 (API 제한 사항)
+- **Upbit/Bithumb 예외 처리**: Upbit/Bithumb API는 항상 KRW 가격을 반환하므로, `currency` 설정과 무관하게 강제로 KRW로 처리하여 데이터 정합성 보장.
+- **재시도**: 실패 시 1회 재시도, 1초 대기
+- **모킹 데이터**: API 실패 시 기본값 제공 (isMocked: true)
+
+### 2. 환율 처리
+- **기본값 설정**: USD 1450, JPY 9.5
+- **유효성 검사**: USD > 100, JPY > 1
+- **실시간 반영**: 자산 가치 계산 전 환율 우선 업데이트
+
+### 3. Google Drive 동기화
+- **자동 저장**: 2초 디바운스 적용
+- **토큰 갱신**: 만료 5분 전 자동 갱신
+- **오류 처리**: 네트워크 오류 시 재시도 로직
+
+### 4. 데이터 무결성
+- **마이그레이션**: 이전 버전 데이터 자동 변환
+- **구조 검증**: 필수 필드 존재 여부 확인
+- **백업**: Google Drive에 자동 저장
+
+### 5. 성능 최적화
+- **useMemo 활용**: 무거운 계산 결과 캐싱
+- **청크 처리**: 대량 데이터分批 처리
+- **지연 로딩**: 컴포넌트 지연 로딩 적용
+
+## 🔍 디버깅 및 모니터링
+
+### 로그 레벨
+- `console.log`: API 요청/응답 데이터
+- `console.error`: 오류 상세 정보
+- `console.warn`: 경고 메시지
+
+### 에러 처리
+- **사용자 친화적 메시지**: 기술적 오류를 이해하기 쉽게 변환
+- **자동 복구**: 가능한 경우 자동 복구 시도
+- **상태 복원**: 오류 발생 시 이전 상태로 복원
+
+### 모니터링 포인트
+- API 응답 시간
+- 환율 업데이트 성공률
+- Google Drive 동기화 성공률
+- 메모리 사용량
+
+## 📚 확장 가이드
+
+### 새로운 자산 카테고리 추가
+1. `AssetCategory` enum에 추가
+2. `EXCHANGE_MAP`에 거래소 매핑
+3. `inferCategoryFromExchange` 로직 업데이트
+4. 관련 컴포넌트 UI 업데이트
+
+### 새로운 거래소 추가
+1. `COMMON_EXCHANGES` 또는 `ALL_EXCHANGES`에 추가
+2. 카테고리 추론 로직 업데이트
+3. 시세 API 지원 확인
+
+### 통화 추가
+1. `Currency` enum에 추가
+2. `CURRENCY_SYMBOLS`에 심볼 추가
+3. 환율 API 엔드포인트 확인
+4. 환율 입력 UI 업데이트
+
+---
+
+**문의사항**: 프로젝트 이슈 트래커를 통해 문의해 주세요.
+**라이선스**: 이 프로젝트는 개인 용도로 사용 가능합니다.
+</file>
+
+<file path="services/priceService.ts">
+import { AssetCategory, Currency, AssetDataResult, normalizeExchange } from '../types';
+
+const STOCK_API_URL = 'https://asset-manager-887842923289.asia-northeast3.run.app';
+const CHUNK_SIZE = 20;
+const CHUNK_DELAY_MS = 500;
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+function toNumber(v: any, fallback = 0): number {
+  const n = Number(v);
+  return isFinite(n) ? n : fallback;
+}
+
+function createMockResult(ticker: string): AssetDataResult {
+  return {
+    name: ticker,
+    priceOriginal: 0,
+    priceKRW: 0,
+    currency: 'KRW',
+    pricePreviousClose: 0,
+    highestPrice: 0,
+    isMocked: true,
+  };
+}
+
+function extractByTickerKey(data: any, key?: string): any {
+  if (!data) return undefined;
+  if (Array.isArray(data?.results)) {
+    if (!key) return data.results?.[0];
+    const k = String(key).toUpperCase();
+    return data.results.find((x: any) => String(x?.ticker ?? x?.symbol ?? '').toUpperCase() === k);
+  }
+  if (Array.isArray(data)) {
+    if (!key) return data[0];
+    const k = String(key).toUpperCase();
+    return data.find((x: any) => String(x?.ticker ?? x?.symbol ?? '').toUpperCase() === k);
+  }
+  if (typeof data === 'object') {
+    if (!key) {
+      const firstKey = Object.keys(data)[0];
+      return data[firstKey];
+    }
+    const k = String(key).toUpperCase();
+    const direct = Object.prototype.hasOwnProperty.call(data, k) ? data[k] : undefined;
+    if (direct) return direct;
+    const alt = Object.keys(data).find((kk) => String(kk).toUpperCase() === k);
+    return alt ? data[alt] : undefined;
+  }
+  return undefined;
+}
+
+async function fetchStocksBatch(payload: Array<{ ticker: string; exchange?: string }>): Promise<any> {
+  console.log('fetchStocksBatch request', payload);
+  const res = await fetch(STOCK_API_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ tickers: payload }),
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(`시세 서버 호출 실패: ${res.status} ${text}`);
+  }
+  try {
+    const json = await res.json();
+    console.log('fetchStocksBatch response', json);
+    return json;
+  } catch {
+    const text = await res.text().catch(() => '');
+    console.error('fetchStocksBatch parse failed', {
+      status: res.status,
+      contentType: res.headers.get('Content-Type') ?? res.headers.get('content-type') ?? '',
+      preview: typeof text === 'string' ? text.slice(0, 512) : '',
+    });
+    throw new Error(`시세 서버 응답 처리 실패: ${text}`);
+  }
+}
+
+export async function fetchExchangeRate(): Promise<number> {
+  try {
+    const data = await fetchStocksBatch([{ ticker: 'USD/KRW', exchange: 'KRX' }]);
+    const obj: any = extractByTickerKey(data, 'USD/KRW');
+    console.log('fetchExchangeRate parsed', obj);
+    const rate = toNumber(obj?.priceOriginal ?? obj?.price ?? obj?.close, 0);
+    if (rate > 0) return rate;
+    throw new Error('환율 데이터가 올바르지 않습니다');
+  } catch (e) {
+    throw e;
+  }
+}
+
+export async function fetchExchangeRateJPY(): Promise<number> {
+  try {
+    const data = await fetchStocksBatch([{ ticker: 'JPY/KRW', exchange: 'KRX' }]);
+    const obj: any = extractByTickerKey(data, 'JPY/KRW');
+    console.log('fetchExchangeRateJPY parsed', obj);
+    const rate = toNumber(obj?.priceOriginal ?? obj?.price ?? obj?.close, 0);
+    if (rate > 0) return rate;
+    throw new Error('엔화 환율 데이터가 올바르지 않습니다');
+  } catch (e) {
+    throw e;
+  }
+}
+
+export async function fetchBatchAssetPrices(
+  assets: { ticker: string; exchange: string; id: string; category?: AssetCategory; currency?: Currency }[],
+): Promise<Map<string, AssetDataResult>> {
+  const resultMap = new Map<string, AssetDataResult>();
+  if (assets.length === 0) return resultMap;
+
+  for (let i = 0; i < assets.length; i += CHUNK_SIZE) {
+    const chunk = assets.slice(i, i + CHUNK_SIZE);
+    const payload = chunk.map(s => {
+      const isCrypto = s.category === AssetCategory.CRYPTOCURRENCY;
+      const reqTicker = isCrypto ? `${String(s.ticker).toUpperCase()}-USD` : String(s.ticker).toUpperCase();
+      return { ticker: reqTicker, exchange: normalizeExchange(s.exchange) };
+    });
+    console.log('fetchBatchAssetPrices payload', payload);
+    try {
+      const data = await fetchStocksBatch(payload);
+      console.log('fetchBatchAssetPrices raw response', data);
+      const items: any[] = [];
+      if (Array.isArray(data?.results)) {
+        items.push(...data.results);
+      } else if (Array.isArray(data)) {
+        items.push(...data);
+      } else if (typeof data === 'object' && data) {
+        Object.keys(data).forEach(k => {
+          const v = data[k];
+          if (v && typeof v === 'object') items.push({ ...v, ticker: k });
+        });
+      }
+      items.forEach((item: any) => {
+        const ticker = String(item.ticker ?? item.symbol ?? '').toUpperCase();
+        const normalizedTicker = ticker.endsWith('-USD') ? ticker.replace(/-USD$/i, '') : ticker;
+        const matched = assets.find(a => a.ticker.toUpperCase() === normalizedTicker);
+        if (!matched) return;
+        const priceOrig = toNumber(item.priceOriginal ?? item.price ?? item.close, 0);
+        const prev = toNumber(item.previousClose ?? item.prev_close ?? item.yesterdayPrice, priceOrig);
+        const currencyFromServer = String(item.currency ?? matched.currency ?? Currency.USD);
+        const keepOriginalCurrency = matched.category === AssetCategory.CRYPTOCURRENCY;
+        const currency = keepOriginalCurrency ? String(matched.currency ?? currencyFromServer) : currencyFromServer;
+        const priceKRW = typeof item.priceKRW === 'number'
+          ? item.priceKRW
+          : (currency === Currency.KRW ? priceOrig : priceOrig);
+        const name = String(item.name ?? matched.ticker);
+        const isMocked = !(priceOrig > 0);
+        const result: AssetDataResult = {
+          name,
+          priceOriginal: priceOrig,
+          priceKRW,
+          currency,
+          pricePreviousClose: prev,
+          highestPrice: (currency === Currency.KRW ? priceKRW : priceOrig) * 1.1,
+          isMocked,
+        };
+        resultMap.set(matched.id, result);
+      });
+    } catch (e) {
+      console.error('API Error Details:', e);
+      console.error('Chunk meta', { index: Math.floor(i / CHUNK_SIZE), size: chunk.length });
+      await sleep(1000);
+      try {
+        const data = await fetchStocksBatch(payload);
+        console.log('fetchBatchAssetPrices raw response (retry)', data);
+        const items: any[] = [];
+        if (Array.isArray(data?.results)) {
+          items.push(...data.results);
+        } else if (Array.isArray(data)) {
+          items.push(...data);
+        } else if (typeof data === 'object' && data) {
+          Object.keys(data).forEach(k => {
+            const v = data[k];
+            if (v && typeof v === 'object') items.push({ ...v, ticker: k });
+          });
+        }
+        items.forEach((item: any) => {
+          const ticker = String(item.ticker ?? item.symbol ?? '').toUpperCase();
+          const normalizedTicker = ticker.endsWith('-USD') ? ticker.replace(/-USD$/i, '') : ticker;
+          const matched = assets.find(a => a.ticker.toUpperCase() === normalizedTicker);
+          if (!matched) return;
+          const priceOrig = toNumber(item.priceOriginal ?? item.price ?? item.close, 0);
+          const prev = toNumber(item.previousClose ?? item.prev_close ?? item.yesterdayPrice, priceOrig);
+          const currencyFromServer = String(item.currency ?? matched.currency ?? Currency.USD);
+          const keepOriginalCurrency = matched.category === AssetCategory.CRYPTOCURRENCY;
+          let currency = keepOriginalCurrency ? String(matched.currency ?? currencyFromServer) : currencyFromServer;
+
+          // [Data Consistency Fix]
+          // Upbit and Bithumb API always return KRW prices regardless of the requested currency.
+          // We enforce KRW currency for these exchanges to ensure data consistency.
+          // This allows usePortfolioData.ts to correctly handle price calculations without unnecessary conversions.
+          if (matched.exchange === 'Upbit' || matched.exchange === 'Bithumb') {
+            currency = Currency.KRW;
+          }
+
+          const priceKRW = typeof item.priceKRW === 'number'
+            ? item.priceKRW
+            : (currency === Currency.KRW ? priceOrig : priceOrig);
+          const name = String(item.name ?? matched.ticker);
+          const isMocked = !(priceOrig > 0);
+          const result: AssetDataResult = {
+            name,
+            priceOriginal: priceOrig,
+            priceKRW,
+            currency,
+            pricePreviousClose: prev,
+            highestPrice: (currency === Currency.KRW ? priceKRW : priceOrig) * 1.1,
+            isMocked,
+          };
+          resultMap.set(matched.id, result);
+        });
+      } catch (e2) {
+        console.error('API Error Details (retry failed):', e2);
+      }
+    }
+    await sleep(CHUNK_DELAY_MS);
+  }
+
+  assets.forEach(s => {
+    if (!resultMap.has(s.id)) resultMap.set(s.id, {
+      name: s.ticker,
+      priceOriginal: 0,
+      priceKRW: 0,
+      currency: String(s.currency ?? Currency.USD),
+      pricePreviousClose: 0,
+      highestPrice: 0,
+      isMocked: true,
+    });
+  });
+
+  return resultMap;
+}
+
+export async function fetchAssetData(asset: { ticker: string; exchange: string; category?: AssetCategory; currency?: Currency }): Promise<AssetDataResult> {
+  const normalizedExchange = normalizeExchange(asset.exchange);
+  try {
+    const isCrypto = asset.category === AssetCategory.CRYPTOCURRENCY;
+    const reqTicker = isCrypto ? `${String(asset.ticker).toUpperCase()}-USD` : String(asset.ticker).toUpperCase();
+    const data = await fetchStocksBatch([{ ticker: reqTicker, exchange: normalizedExchange }]);
+    const obj: any = extractByTickerKey(data, reqTicker);
+    console.log('fetchAssetData parsed', obj);
+    const priceOrig = toNumber(obj?.priceOriginal ?? obj?.price ?? obj?.close, 0);
+    const prev = toNumber(obj?.previousClose ?? obj?.prev_close ?? obj?.yesterdayPrice, priceOrig);
+    const currency = String(obj?.currency ?? asset.currency ?? Currency.USD);
+    const priceKRW = typeof obj?.priceKRW === 'number'
+      ? obj.priceKRW
+      : (currency === Currency.KRW ? priceOrig : priceOrig);
+    const name = String(obj?.name ?? asset.ticker);
+    return {
+      name,
+      priceOriginal: priceOrig,
+      priceKRW,
+      currency,
+      pricePreviousClose: prev,
+      highestPrice: (currency === Currency.KRW ? priceKRW : priceOrig) * 1.1,
+      isMocked: false,
+    };
+  } catch {
+    throw new Error('시세 데이터를 가져오지 못했습니다. 잠시 후 다시 시도해주세요.');
+  }
 }
 </file>
 
@@ -7392,575 +7656,6 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
 };
 
 export default PortfolioTable;
-</file>
-
-<file path="services/geminiService.ts">
-import { GoogleGenAI } from '@google/genai';
-import { Asset, Currency, SymbolSearchResult, normalizeExchange } from '../types';
-
-// =================================================================
-// 1. 설정 및 초기화
-// =================================================================
-const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
-const ai = API_KEY ? new GoogleGenAI({ apiKey: API_KEY }) : null;
-
-console.log("Gemini Service Status:", API_KEY ? "✅ API Key Loaded" : "❌ No API Key");
-
-// =================================================================
-// 2. 캐싱 시스템 (API 호출 횟수 감소)
-// =================================================================
-interface CacheEntry<T> {
-  data: T;
-  timestamp: number;
-}
-
-const CACHE_TTL = 5 * 60 * 1000; // 5분
-const priceCache = new Map<string, CacheEntry<AssetDataResult>>();
-const searchCache = new Map<string, CacheEntry<SymbolSearchResult[]>>();
-const exchangeRateCache = new Map<string, CacheEntry<number>>();
-
-function getCached<T>(cache: Map<string, CacheEntry<T>>, key: string): T | null {
-  const entry = cache.get(key);
-  if (entry && Date.now() - entry.timestamp < CACHE_TTL) {
-    return entry.data;
-  }
-  cache.delete(key);
-  return null;
-}
-
-function setCache<T>(cache: Map<string, CacheEntry<T>>, key: string, data: T): void {
-  cache.set(key, { data, timestamp: Date.now() });
-}
-
-// =================================================================
-// 3. Rate Limiting (API 차단 방지)
-// =================================================================
-const requestQueue: Array<() => Promise<void>> = [];
-let isProcessing = false;
-const MIN_REQUEST_INTERVAL = 500; // 0.5초 간격
-
-async function processQueue(): Promise<void> {
-  if (isProcessing || requestQueue.length === 0) return;
-  
-  isProcessing = true;
-  while (requestQueue.length > 0) {
-    const request = requestQueue.shift();
-    if (request) {
-      await request();
-      await delay(MIN_REQUEST_INTERVAL);
-    }
-  }
-  isProcessing = false;
-}
-
-function delay(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
-
-// =================================================================
-// 4. Gemini API 호출 (SDK 방식 - 안정적)
-// =================================================================
-async function callGeminiWithSearch(prompt: string): Promise<string> {
-  if (!ai) {
-    console.error("Gemini AI not initialized");
-    return "";
-  }
-
-  try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: prompt,
-      config: {
-        tools: [{ googleSearch: {} }],
-      }
-    });
-
-    const text = response.text?.trim() || "";
-    // JSON 블록 정리
-    return text.replace(/^```json\s*|```$/g, '').trim();
-  } catch (error) {
-    console.error("Gemini API Error:", error);
-    return "";
-  }
-}
-
-async function callGeminiBasic(prompt: string): Promise<string> {
-  if (!ai) {
-    console.error("Gemini AI not initialized");
-    return "";
-  }
-
-  try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: prompt,
-    });
-
-    return response.text?.trim() || "";
-  } catch (error) {
-    console.error("Gemini API Error:", error);
-    return "";
-  }
-}
-
-// =================================================================
-// 5. 종목 검색
-// =================================================================
-export async function searchSymbols(query: string): Promise<SymbolSearchResult[]> {
-  const cacheKey = query.toLowerCase();
-  const cached = getCached(searchCache, cacheKey);
-  if (cached) return cached;
-
-  if (!ai) return [];
-
-  const prompt = `Search for stock or crypto symbols matching "${query}".
-Return a JSON array of up to 5 results. Each object in the array must have these exact keys: "ticker", "name" (in Korean), and "exchange" (e.g., "NASDAQ", "KRX (코스피/코스닥)", "주요 거래소 (종합)").
-
-Example for query "samsung":
-[
-  {
-    "ticker": "005930",
-    "name": "삼성전자",
-    "exchange": "KRX (코스피/코스닥)"
-  }
-]
-
-Example for query "apple":
-[
-  {
-    "ticker": "AAPL",
-    "name": "Apple Inc.",
-    "exchange": "NASDAQ"
-  }
-]
-
-If no results are found, return an empty array [].
-Your final output must be only the JSON array, with no other text or markdown formatting.`;
-
-  try {
-    const jsonText = await callGeminiWithSearch(prompt);
-    const results = JSON.parse(jsonText || "[]");
-    
-    const validResults = results.filter((item: any) =>
-      typeof item.ticker === 'string' &&
-      typeof item.name === 'string' &&
-      typeof item.exchange === 'string'
-    );
-    
-    setCache(searchCache, cacheKey, validResults);
-    return validResults;
-  } catch (error) {
-    console.error(`Search failed for "${query}":`, error);
-    return [];
-  }
-}
-
-// =================================================================
-// 6. 단일 자산 시세 조회
-// =================================================================
-export interface AssetDataResult {
-  name: string;
-  priceOriginal: number;
-  priceKRW: number;
-  currency: string;
-  pricePreviousClose: number;
-  highestPrice?: number;
-  isMocked: boolean;
-}
-
-export const fetchAssetData = async (
-  ticker: string, 
-  exchange: string, 
-  currencyInput?: Currency
-): Promise<AssetDataResult> => {
-  const normalizedExchange = normalizeExchange(exchange);
-  const cacheKey = `${ticker}-${exchange}`;
-  const cached = getCached(priceCache, cacheKey);
-  if (cached) {
-    console.log(`📦 Cache hit: ${ticker}`);
-    return cached;
-  }
-
-  if (!ai) {
-    return createMockResult(ticker);
-  }
-
-  const prompt = `Using Google Search, find the following data for the asset with ticker "${ticker}" listed on the "${normalizedExchange}" exchange.
-Use EXACT ticker match ("${ticker}"). If the exchange is NYSE American/AMEX, treat them as synonyms.
-Do NOT return data for similarly named tickers:
-1. The closing price for the MOST RECENT trading day.
-1. The closing price for the MOST RECENT trading day.
-2. The closing price for the PREVIOUS trading day (the day before the most recent one).
-3. Its official name in Korean.
-
-Return the response ONLY as a JSON object with these keys:
-- "name": Official Korean name.
-- "priceOriginal": Most recent closing price in native currency.
-- "previousClose": Previous trading day's closing price in native currency.
-- "currency": ISO 4217 currency code (e.g., USD, KRW, JPY).
-- "priceKRW": Most recent closing price converted to Korean Won (KRW).
-
-Example for AAPL (NASDAQ):
-{
-  "name": "애플",
-  "priceOriginal": 215.50,
-  "previousClose": 214.00,
-  "currency": "USD",
-  "priceKRW": 295000
-}
-
-Ensure all prices are numbers. Return ONLY the JSON object.`;
-
-  try {
-    const jsonText = await callGeminiWithSearch(prompt);
-    const data = JSON.parse(jsonText || "{}");
-
-    const priceOriginal = Number(data.priceOriginal) || 0;
-    const priceKRW = Number(data.priceKRW) || 0;
-    const previousClose = Number(data.previousClose) || priceOriginal;
-
-    if (priceOriginal === 0 && priceKRW === 0) {
-      throw new Error('Invalid price data');
-    }
-
-    const result: AssetDataResult = {
-      name: data.name || ticker,
-      priceOriginal,
-      priceKRW,
-      currency: data.currency || 'KRW',
-      pricePreviousClose: previousClose,
-      highestPrice: priceKRW * 1.1,
-      isMocked: false
-    };
-
-    setCache(priceCache, cacheKey, result);
-    console.log(`✅ Fetched: ${ticker} = ${priceKRW.toLocaleString()} KRW`);
-    return result;
-  } catch (error) {
-    console.error(`❌ Failed to fetch ${ticker}:`, error);
-    return createMockResult(ticker);
-  }
-};
-
-function createMockResult(ticker: string): AssetDataResult {
-  return {
-    name: ticker,
-    priceOriginal: 0,
-    priceKRW: 0,
-    currency: 'KRW',
-    pricePreviousClose: 0,
-    highestPrice: 0,
-    isMocked: true
-  };
-}
-
-// =================================================================
-// 7. 배치 시세 조회 (핵심 성능 개선!)
-// =================================================================
-export const fetchBatchAssetPrices = async (
-  assets: { ticker: string; exchange: string; id: string }[]
-): Promise<Map<string, AssetDataResult>> => {
-  const resultMap = new Map<string, AssetDataResult>();
-  
-  if (assets.length === 0) return resultMap;
-  if (!ai) {
-    assets.forEach(a => resultMap.set(a.id, createMockResult(a.ticker)));
-    return resultMap;
-  }
-
-  // 캐시 확인 - 캐시에 있는 것들은 바로 반환
-  const uncachedAssets: typeof assets = [];
-  for (const asset of assets) {
-    const cacheKey = `${asset.ticker}-${asset.exchange}`;
-    const cached = getCached(priceCache, cacheKey);
-    if (cached) {
-      resultMap.set(asset.id, cached);
-      console.log(`📦 Cache hit: ${asset.ticker}`);
-    } else {
-      uncachedAssets.push(asset);
-    }
-  }
-
-  if (uncachedAssets.length === 0) {
-    return resultMap;
-  }
-
-  // 배치 크기 제한 (한 번에 최대 10개)
-  const BATCH_SIZE = 10;
-  const batches: typeof assets[] = [];
-  
-  for (let i = 0; i < uncachedAssets.length; i += BATCH_SIZE) {
-    batches.push(uncachedAssets.slice(i, i + BATCH_SIZE));
-  }
-
-  for (const batch of batches) {
-    const batchResults = await fetchBatchInternal(batch);
-    batchResults.forEach((value, key) => {
-      resultMap.set(key, value);
-    });
-    
-    // 배치 간 딜레이
-    if (batches.length > 1) {
-      await delay(1000);
-    }
-  }
-
-  return resultMap;
-};
-
-async function fetchBatchInternal(
-  assets: { ticker: string; exchange: string; id: string }[]
-): Promise<Map<string, AssetDataResult>> {
-  const resultMap = new Map<string, AssetDataResult>();
-
-  const assetsListString = assets
-    .map(a => `{"ticker": "${a.ticker}", "exchange": "${normalizeExchange(a.exchange)}", "id": "${a.id}"}`)
-    .join(',\n');
-
-  const prompt = `I have a list of assets. Using Google Search, find the following for EACH asset:
-1. Closing price of the MOST RECENT trading day.
-2. Closing price of the PREVIOUS trading day (Previous Close).
-
-Assets List:
-[
-${assetsListString}
-]
-
-Use EXACT ticker matches. If the exchange is NYSE American/AMEX, treat them as synonyms.
-Return the response ONLY as a JSON ARRAY of objects. Each object must strictly follow this structure:
-{
-  "id": "The exact id provided in the input",
-  "name": "The official Korean name of the asset",
-  "priceOriginal": Number (recent close in native currency),
-  "previousClose": Number (previous close in native currency),
-  "currency": "ISO 4217 currency code (e.g. USD, KRW, JPY)",
-  "priceKRW": Number (recent close converted to Korean Won)
-}
-
-Ensure all prices are numbers. Do not miss any assets. Return ONLY the JSON array.`;
-
-  try {
-    const jsonText = await callGeminiWithSearch(prompt);
-    const data = JSON.parse(jsonText || "[]");
-
-    if (!Array.isArray(data)) {
-      throw new Error('Batch API did not return an array.');
-    }
-
-    data.forEach((item: any) => {
-      if (item.id && typeof item.priceKRW === 'number') {
-        const result: AssetDataResult = {
-          name: item.name || '',
-          priceKRW: item.priceKRW,
-          priceOriginal: item.priceOriginal || item.priceKRW,
-          pricePreviousClose: item.previousClose || item.priceOriginal || item.priceKRW,
-          currency: item.currency || 'KRW',
-          highestPrice: item.priceKRW * 1.1,
-          isMocked: false
-        };
-        
-        resultMap.set(item.id, result);
-        
-        // 개별 캐시에도 저장
-        const asset = assets.find(a => a.id === item.id);
-        if (asset) {
-          const cacheKey = `${asset.ticker}-${asset.exchange}`;
-          setCache(priceCache, cacheKey, result);
-        }
-        
-        console.log(`✅ Batch fetched: ${item.name || item.id} = ${item.priceKRW?.toLocaleString()} KRW`);
-      }
-    });
-
-    // 실패한 자산들은 mock 데이터로 채움
-    assets.forEach(asset => {
-      if (!resultMap.has(asset.id)) {
-        console.warn(`⚠️ Missing in batch result: ${asset.ticker}`);
-        resultMap.set(asset.id, createMockResult(asset.ticker));
-      }
-    });
-
-    return resultMap;
-  } catch (error) {
-    console.error('❌ Batch fetch failed:', error);
-    // 전체 실패 시 개별 조회로 폴백
-    for (const asset of assets) {
-      try {
-        const singleResult = await fetchAssetData(asset.ticker, asset.exchange);
-        resultMap.set(asset.id, singleResult);
-        await delay(500);
-      } catch {
-        resultMap.set(asset.id, createMockResult(asset.ticker));
-      }
-    }
-    return resultMap;
-  }
-}
-
-// =================================================================
-// 8. 환율 조회
-// =================================================================
-export const fetchCurrentExchangeRate = async (
-  fromCurrency: string, 
-  toCurrency: string
-): Promise<number> => {
-  if (fromCurrency === toCurrency) return 1;
-
-  const cacheKey = `${fromCurrency}-${toCurrency}`;
-  const cached = getCached(exchangeRateCache, cacheKey);
-  if (cached) return cached;
-
-  if (!ai) return getDefaultExchangeRate(fromCurrency, toCurrency);
-
-  const prompt = `Using Google Search, what was the closing exchange rate for the most recent business day between ${fromCurrency} and ${toCurrency}?
-Return the response ONLY as a JSON object with a single key "rate".
-The value should be a number representing how many ${toCurrency} one ${fromCurrency} is worth.
-For example, for USD to KRW, the response should be:
-{
-  "rate": 1380.25
-}
-Do not include any other text, symbols, or explanations. Your final output must be only the JSON object.`;
-
-  try {
-    const jsonText = await callGeminiWithSearch(prompt);
-    const data = JSON.parse(jsonText || "{}");
-
-    if (typeof data.rate !== 'number') {
-      throw new Error('Invalid rate format');
-    }
-
-    setCache(exchangeRateCache, cacheKey, data.rate);
-    console.log(`💱 Exchange rate ${fromCurrency}→${toCurrency}: ${data.rate}`);
-    return data.rate;
-  } catch (error) {
-    console.error(`Failed to fetch exchange rate ${fromCurrency}→${toCurrency}:`, error);
-    return getDefaultExchangeRate(fromCurrency, toCurrency);
-  }
-};
-
-export const fetchHistoricalExchangeRate = async (
-  date: string, 
-  fromCurrency: string, 
-  toCurrency: string
-): Promise<number> => {
-  if (fromCurrency === toCurrency) return 1;
-  if (!ai) return getDefaultExchangeRate(fromCurrency, toCurrency);
-
-  const prompt = `Using Google Search, what was the exchange rate between ${fromCurrency} and ${toCurrency} at the end of the day on ${date}?
-Return the response ONLY as a JSON object with a single key "rate".
-The value should be a number representing how many ${toCurrency} one ${fromCurrency} was worth.
-For example, for USD to KRW, the response should be:
-{
-  "rate": 1350.5
-}
-Do not include any other text, symbols, or explanations. Your final output must be only the JSON object.`;
-
-  try {
-    const jsonText = await callGeminiWithSearch(prompt);
-    const data = JSON.parse(jsonText || "{}");
-
-    if (typeof data.rate !== 'number') {
-      throw new Error('Invalid rate format');
-    }
-
-    return data.rate;
-  } catch (error) {
-    console.error(`Failed to fetch historical exchange rate:`, error);
-    return getDefaultExchangeRate(fromCurrency, toCurrency);
-  }
-};
-
-function getDefaultExchangeRate(from: string, to: string): number {
-  // 기본 환율 (폴백용)
-  const rates: Record<string, number> = {
-    'USD-KRW': 1400,
-    'JPY-KRW': 9.5,
-    'EUR-KRW': 1500,
-    'CNY-KRW': 195,
-  };
-  return rates[`${from}-${to}`] || 1;
-}
-
-// =================================================================
-// 9. 포트폴리오 분석 (AI 채팅)
-// =================================================================
-function formatAssetsForAI(assets: Asset[]): string {
-  return assets.map(asset => {
-    const value = asset.quantity * asset.currentPrice;
-    const displayName = asset.customName ?? asset.name;
-    return `- ${displayName} (${asset.ticker}): ${asset.quantity}주, 현재가 ${asset.currentPrice.toLocaleString()}원, 평가액 ${value.toLocaleString()}원, 카테고리: ${asset.category}`;
-  }).join('\n');
-}
-
-export const askPortfolioQuestion = async (
-  assets: Asset[], 
-  question: string
-): Promise<string> => {
-  if (!ai) return "API 키가 설정되지 않았습니다.";
-
-  const simplifiedAssets = assets.map(asset => ({
-    name: asset.customName ?? asset.name,
-    ticker: asset.ticker,
-    exchange: asset.exchange,
-    category: asset.category,
-    quantity: asset.quantity,
-    purchase_price_original: asset.purchasePrice,
-    purchase_date: asset.purchaseDate,
-    current_price_krw: asset.currentPrice,
-    price_original: asset.priceOriginal,
-    currency: asset.currency,
-    current_value_krw: asset.currentPrice * asset.quantity,
-    highest_price_krw: asset.highestPrice,
-    yesterday_price_krw: asset.yesterdayPrice ?? null,
-  }));
-
-  const portfolioJson = JSON.stringify(simplifiedAssets, null, 2);
-
-  const prompt = `당신은 사용자의 자산 포트폴리오를 분석하고 질문에 답변하는 전문 금융 어시스턴트입니다.
-    
-다음은 사용자의 현재 포트폴리오 데이터입니다 (JSON 형식). 각 항목에는 현재가와 함께 어제 종가가 포함될 수 있으므로, "어제 대비" 변동을 계산할 때는 \`yesterday_price_krw\`를 사용하세요. 날짜 메타가 없으면 제공된 값만으로 판단하세요:
-\`\`\`json
-${portfolioJson}
-\`\`\`
-
-위 데이터를 기반으로 다음 사용자의 질문에 대해 명확하고 간결하게 답변해주세요. 답변은 한국어로 작성하고, 마크다운 형식을 사용하여 가독성을 높여주세요. 외부 정보는 사용하지 말고, 제공된 포트폴리오 데이터만을 근거로 분석해야 합니다.
-
-사용자 질문: "${question}"`;
-
-  try {
-    const response = await callGeminiBasic(prompt);
-    return response || "죄송합니다. 답변을 생성할 수 없습니다.";
-  } catch (error) {
-    console.error('Portfolio question error:', error);
-    return "포트폴리오 질문에 대한 답변 생성에 실패했습니다.";
-  }
-};
-
-// 레거시 호환용
-export const analyzePortfolio = askPortfolioQuestion;
-
-// =================================================================
-// 10. 캐시 관리 유틸리티
-// =================================================================
-export function clearPriceCache(): void {
-  priceCache.clear();
-  console.log("🗑️ Price cache cleared");
-}
-
-export function clearAllCaches(): void {
-  priceCache.clear();
-  searchCache.clear();
-  exchangeRateCache.clear();
-  console.log("🗑️ All caches cleared");
-}
-
-export function getCacheStats(): { prices: number; searches: number; rates: number } {
-  return {
-    prices: priceCache.size,
-    searches: searchCache.size,
-    rates: exchangeRateCache.size
-  };
-}
 </file>
 
 <file path="App.tsx">
@@ -8571,6 +8266,575 @@ const App: React.FC = () => {
 };
 
 export default App;
+</file>
+
+<file path="services/geminiService.ts">
+import { GoogleGenAI } from '@google/genai';
+import { Asset, Currency, SymbolSearchResult, normalizeExchange } from '../types';
+
+// =================================================================
+// 1. 설정 및 초기화
+// =================================================================
+const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
+const ai = API_KEY ? new GoogleGenAI({ apiKey: API_KEY }) : null;
+
+console.log("Gemini Service Status:", API_KEY ? "✅ API Key Loaded" : "❌ No API Key");
+
+// =================================================================
+// 2. 캐싱 시스템 (API 호출 횟수 감소)
+// =================================================================
+interface CacheEntry<T> {
+  data: T;
+  timestamp: number;
+}
+
+const CACHE_TTL = 5 * 60 * 1000; // 5분
+const priceCache = new Map<string, CacheEntry<AssetDataResult>>();
+const searchCache = new Map<string, CacheEntry<SymbolSearchResult[]>>();
+const exchangeRateCache = new Map<string, CacheEntry<number>>();
+
+function getCached<T>(cache: Map<string, CacheEntry<T>>, key: string): T | null {
+  const entry = cache.get(key);
+  if (entry && Date.now() - entry.timestamp < CACHE_TTL) {
+    return entry.data;
+  }
+  cache.delete(key);
+  return null;
+}
+
+function setCache<T>(cache: Map<string, CacheEntry<T>>, key: string, data: T): void {
+  cache.set(key, { data, timestamp: Date.now() });
+}
+
+// =================================================================
+// 3. Rate Limiting (API 차단 방지)
+// =================================================================
+const requestQueue: Array<() => Promise<void>> = [];
+let isProcessing = false;
+const MIN_REQUEST_INTERVAL = 500; // 0.5초 간격
+
+async function processQueue(): Promise<void> {
+  if (isProcessing || requestQueue.length === 0) return;
+  
+  isProcessing = true;
+  while (requestQueue.length > 0) {
+    const request = requestQueue.shift();
+    if (request) {
+      await request();
+      await delay(MIN_REQUEST_INTERVAL);
+    }
+  }
+  isProcessing = false;
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+// =================================================================
+// 4. Gemini API 호출 (SDK 방식 - 안정적)
+// =================================================================
+async function callGeminiWithSearch(prompt: string): Promise<string> {
+  if (!ai) {
+    console.error("Gemini AI not initialized");
+    return "";
+  }
+
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: prompt,
+      config: {
+        tools: [{ googleSearch: {} }],
+      }
+    });
+
+    const text = response.text?.trim() || "";
+    // JSON 블록 정리
+    return text.replace(/^```json\s*|```$/g, '').trim();
+  } catch (error) {
+    console.error("Gemini API Error:", error);
+    return "";
+  }
+}
+
+async function callGeminiBasic(prompt: string): Promise<string> {
+  if (!ai) {
+    console.error("Gemini AI not initialized");
+    return "";
+  }
+
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: prompt,
+    });
+
+    return response.text?.trim() || "";
+  } catch (error) {
+    console.error("Gemini API Error:", error);
+    return "";
+  }
+}
+
+// =================================================================
+// 5. 종목 검색
+// =================================================================
+export async function searchSymbols(query: string): Promise<SymbolSearchResult[]> {
+  const cacheKey = query.toLowerCase();
+  const cached = getCached(searchCache, cacheKey);
+  if (cached) return cached;
+
+  if (!ai) return [];
+
+  const prompt = `Search for stock or crypto symbols matching "${query}".
+Return a JSON array of up to 5 results. Each object in the array must have these exact keys: "ticker", "name" (in Korean), and "exchange" (e.g., "NASDAQ", "KRX (코스피/코스닥)", "주요 거래소 (종합)").
+
+Example for query "samsung":
+[
+  {
+    "ticker": "005930",
+    "name": "삼성전자",
+    "exchange": "KRX (코스피/코스닥)"
+  }
+]
+
+Example for query "apple":
+[
+  {
+    "ticker": "AAPL",
+    "name": "Apple Inc.",
+    "exchange": "NASDAQ"
+  }
+]
+
+If no results are found, return an empty array [].
+Your final output must be only the JSON array, with no other text or markdown formatting.`;
+
+  try {
+    const jsonText = await callGeminiWithSearch(prompt);
+    const results = JSON.parse(jsonText || "[]");
+    
+    const validResults = results.filter((item: any) =>
+      typeof item.ticker === 'string' &&
+      typeof item.name === 'string' &&
+      typeof item.exchange === 'string'
+    );
+    
+    setCache(searchCache, cacheKey, validResults);
+    return validResults;
+  } catch (error) {
+    console.error(`Search failed for "${query}":`, error);
+    return [];
+  }
+}
+
+// =================================================================
+// 6. 단일 자산 시세 조회
+// =================================================================
+export interface AssetDataResult {
+  name: string;
+  priceOriginal: number;
+  priceKRW: number;
+  currency: string;
+  pricePreviousClose: number;
+  highestPrice?: number;
+  isMocked: boolean;
+}
+
+export const fetchAssetData = async (
+  ticker: string, 
+  exchange: string, 
+  currencyInput?: Currency
+): Promise<AssetDataResult> => {
+  const normalizedExchange = normalizeExchange(exchange);
+  const cacheKey = `${ticker}-${exchange}`;
+  const cached = getCached(priceCache, cacheKey);
+  if (cached) {
+    console.log(`📦 Cache hit: ${ticker}`);
+    return cached;
+  }
+
+  if (!ai) {
+    return createMockResult(ticker);
+  }
+
+  const prompt = `Using Google Search, find the following data for the asset with ticker "${ticker}" listed on the "${normalizedExchange}" exchange.
+Use EXACT ticker match ("${ticker}"). If the exchange is NYSE American/AMEX, treat them as synonyms.
+Do NOT return data for similarly named tickers:
+1. The closing price for the MOST RECENT trading day.
+1. The closing price for the MOST RECENT trading day.
+2. The closing price for the PREVIOUS trading day (the day before the most recent one).
+3. Its official name in Korean.
+
+Return the response ONLY as a JSON object with these keys:
+- "name": Official Korean name.
+- "priceOriginal": Most recent closing price in native currency.
+- "previousClose": Previous trading day's closing price in native currency.
+- "currency": ISO 4217 currency code (e.g., USD, KRW, JPY).
+- "priceKRW": Most recent closing price converted to Korean Won (KRW).
+
+Example for AAPL (NASDAQ):
+{
+  "name": "애플",
+  "priceOriginal": 215.50,
+  "previousClose": 214.00,
+  "currency": "USD",
+  "priceKRW": 295000
+}
+
+Ensure all prices are numbers. Return ONLY the JSON object.`;
+
+  try {
+    const jsonText = await callGeminiWithSearch(prompt);
+    const data = JSON.parse(jsonText || "{}");
+
+    const priceOriginal = Number(data.priceOriginal) || 0;
+    const priceKRW = Number(data.priceKRW) || 0;
+    const previousClose = Number(data.previousClose) || priceOriginal;
+
+    if (priceOriginal === 0 && priceKRW === 0) {
+      throw new Error('Invalid price data');
+    }
+
+    const result: AssetDataResult = {
+      name: data.name || ticker,
+      priceOriginal,
+      priceKRW,
+      currency: data.currency || 'KRW',
+      pricePreviousClose: previousClose,
+      highestPrice: priceKRW * 1.1,
+      isMocked: false
+    };
+
+    setCache(priceCache, cacheKey, result);
+    console.log(`✅ Fetched: ${ticker} = ${priceKRW.toLocaleString()} KRW`);
+    return result;
+  } catch (error) {
+    console.error(`❌ Failed to fetch ${ticker}:`, error);
+    return createMockResult(ticker);
+  }
+};
+
+function createMockResult(ticker: string): AssetDataResult {
+  return {
+    name: ticker,
+    priceOriginal: 0,
+    priceKRW: 0,
+    currency: 'KRW',
+    pricePreviousClose: 0,
+    highestPrice: 0,
+    isMocked: true
+  };
+}
+
+// =================================================================
+// 7. 배치 시세 조회 (핵심 성능 개선!)
+// =================================================================
+export const fetchBatchAssetPrices = async (
+  assets: { ticker: string; exchange: string; id: string }[]
+): Promise<Map<string, AssetDataResult>> => {
+  const resultMap = new Map<string, AssetDataResult>();
+  
+  if (assets.length === 0) return resultMap;
+  if (!ai) {
+    assets.forEach(a => resultMap.set(a.id, createMockResult(a.ticker)));
+    return resultMap;
+  }
+
+  // 캐시 확인 - 캐시에 있는 것들은 바로 반환
+  const uncachedAssets: typeof assets = [];
+  for (const asset of assets) {
+    const cacheKey = `${asset.ticker}-${asset.exchange}`;
+    const cached = getCached(priceCache, cacheKey);
+    if (cached) {
+      resultMap.set(asset.id, cached);
+      console.log(`📦 Cache hit: ${asset.ticker}`);
+    } else {
+      uncachedAssets.push(asset);
+    }
+  }
+
+  if (uncachedAssets.length === 0) {
+    return resultMap;
+  }
+
+  // 배치 크기 제한 (한 번에 최대 10개)
+  const BATCH_SIZE = 10;
+  const batches: typeof assets[] = [];
+  
+  for (let i = 0; i < uncachedAssets.length; i += BATCH_SIZE) {
+    batches.push(uncachedAssets.slice(i, i + BATCH_SIZE));
+  }
+
+  for (const batch of batches) {
+    const batchResults = await fetchBatchInternal(batch);
+    batchResults.forEach((value, key) => {
+      resultMap.set(key, value);
+    });
+    
+    // 배치 간 딜레이
+    if (batches.length > 1) {
+      await delay(1000);
+    }
+  }
+
+  return resultMap;
+};
+
+async function fetchBatchInternal(
+  assets: { ticker: string; exchange: string; id: string }[]
+): Promise<Map<string, AssetDataResult>> {
+  const resultMap = new Map<string, AssetDataResult>();
+
+  const assetsListString = assets
+    .map(a => `{"ticker": "${a.ticker}", "exchange": "${normalizeExchange(a.exchange)}", "id": "${a.id}"}`)
+    .join(',\n');
+
+  const prompt = `I have a list of assets. Using Google Search, find the following for EACH asset:
+1. Closing price of the MOST RECENT trading day.
+2. Closing price of the PREVIOUS trading day (Previous Close).
+
+Assets List:
+[
+${assetsListString}
+]
+
+Use EXACT ticker matches. If the exchange is NYSE American/AMEX, treat them as synonyms.
+Return the response ONLY as a JSON ARRAY of objects. Each object must strictly follow this structure:
+{
+  "id": "The exact id provided in the input",
+  "name": "The official Korean name of the asset",
+  "priceOriginal": Number (recent close in native currency),
+  "previousClose": Number (previous close in native currency),
+  "currency": "ISO 4217 currency code (e.g. USD, KRW, JPY)",
+  "priceKRW": Number (recent close converted to Korean Won)
+}
+
+Ensure all prices are numbers. Do not miss any assets. Return ONLY the JSON array.`;
+
+  try {
+    const jsonText = await callGeminiWithSearch(prompt);
+    const data = JSON.parse(jsonText || "[]");
+
+    if (!Array.isArray(data)) {
+      throw new Error('Batch API did not return an array.');
+    }
+
+    data.forEach((item: any) => {
+      if (item.id && typeof item.priceKRW === 'number') {
+        const result: AssetDataResult = {
+          name: item.name || '',
+          priceKRW: item.priceKRW,
+          priceOriginal: item.priceOriginal || item.priceKRW,
+          pricePreviousClose: item.previousClose || item.priceOriginal || item.priceKRW,
+          currency: item.currency || 'KRW',
+          highestPrice: item.priceKRW * 1.1,
+          isMocked: false
+        };
+        
+        resultMap.set(item.id, result);
+        
+        // 개별 캐시에도 저장
+        const asset = assets.find(a => a.id === item.id);
+        if (asset) {
+          const cacheKey = `${asset.ticker}-${asset.exchange}`;
+          setCache(priceCache, cacheKey, result);
+        }
+        
+        console.log(`✅ Batch fetched: ${item.name || item.id} = ${item.priceKRW?.toLocaleString()} KRW`);
+      }
+    });
+
+    // 실패한 자산들은 mock 데이터로 채움
+    assets.forEach(asset => {
+      if (!resultMap.has(asset.id)) {
+        console.warn(`⚠️ Missing in batch result: ${asset.ticker}`);
+        resultMap.set(asset.id, createMockResult(asset.ticker));
+      }
+    });
+
+    return resultMap;
+  } catch (error) {
+    console.error('❌ Batch fetch failed:', error);
+    // 전체 실패 시 개별 조회로 폴백
+    for (const asset of assets) {
+      try {
+        const singleResult = await fetchAssetData(asset.ticker, asset.exchange);
+        resultMap.set(asset.id, singleResult);
+        await delay(500);
+      } catch {
+        resultMap.set(asset.id, createMockResult(asset.ticker));
+      }
+    }
+    return resultMap;
+  }
+}
+
+// =================================================================
+// 8. 환율 조회
+// =================================================================
+export const fetchCurrentExchangeRate = async (
+  fromCurrency: string, 
+  toCurrency: string
+): Promise<number> => {
+  if (fromCurrency === toCurrency) return 1;
+
+  const cacheKey = `${fromCurrency}-${toCurrency}`;
+  const cached = getCached(exchangeRateCache, cacheKey);
+  if (cached) return cached;
+
+  if (!ai) return getDefaultExchangeRate(fromCurrency, toCurrency);
+
+  const prompt = `Using Google Search, what was the closing exchange rate for the most recent business day between ${fromCurrency} and ${toCurrency}?
+Return the response ONLY as a JSON object with a single key "rate".
+The value should be a number representing how many ${toCurrency} one ${fromCurrency} is worth.
+For example, for USD to KRW, the response should be:
+{
+  "rate": 1380.25
+}
+Do not include any other text, symbols, or explanations. Your final output must be only the JSON object.`;
+
+  try {
+    const jsonText = await callGeminiWithSearch(prompt);
+    const data = JSON.parse(jsonText || "{}");
+
+    if (typeof data.rate !== 'number') {
+      throw new Error('Invalid rate format');
+    }
+
+    setCache(exchangeRateCache, cacheKey, data.rate);
+    console.log(`💱 Exchange rate ${fromCurrency}→${toCurrency}: ${data.rate}`);
+    return data.rate;
+  } catch (error) {
+    console.error(`Failed to fetch exchange rate ${fromCurrency}→${toCurrency}:`, error);
+    return getDefaultExchangeRate(fromCurrency, toCurrency);
+  }
+};
+
+export const fetchHistoricalExchangeRate = async (
+  date: string, 
+  fromCurrency: string, 
+  toCurrency: string
+): Promise<number> => {
+  if (fromCurrency === toCurrency) return 1;
+  if (!ai) return getDefaultExchangeRate(fromCurrency, toCurrency);
+
+  const prompt = `Using Google Search, what was the exchange rate between ${fromCurrency} and ${toCurrency} at the end of the day on ${date}?
+Return the response ONLY as a JSON object with a single key "rate".
+The value should be a number representing how many ${toCurrency} one ${fromCurrency} was worth.
+For example, for USD to KRW, the response should be:
+{
+  "rate": 1350.5
+}
+Do not include any other text, symbols, or explanations. Your final output must be only the JSON object.`;
+
+  try {
+    const jsonText = await callGeminiWithSearch(prompt);
+    const data = JSON.parse(jsonText || "{}");
+
+    if (typeof data.rate !== 'number') {
+      throw new Error('Invalid rate format');
+    }
+
+    return data.rate;
+  } catch (error) {
+    console.error(`Failed to fetch historical exchange rate:`, error);
+    return getDefaultExchangeRate(fromCurrency, toCurrency);
+  }
+};
+
+function getDefaultExchangeRate(from: string, to: string): number {
+  // 기본 환율 (폴백용)
+  const rates: Record<string, number> = {
+    'USD-KRW': 1400,
+    'JPY-KRW': 9.5,
+    'EUR-KRW': 1500,
+    'CNY-KRW': 195,
+  };
+  return rates[`${from}-${to}`] || 1;
+}
+
+// =================================================================
+// 9. 포트폴리오 분석 (AI 채팅)
+// =================================================================
+function formatAssetsForAI(assets: Asset[]): string {
+  return assets.map(asset => {
+    const value = asset.quantity * asset.currentPrice;
+    const displayName = asset.customName ?? asset.name;
+    return `- ${displayName} (${asset.ticker}): ${asset.quantity}주, 현재가 ${asset.currentPrice.toLocaleString()}원, 평가액 ${value.toLocaleString()}원, 카테고리: ${asset.category}`;
+  }).join('\n');
+}
+
+export const askPortfolioQuestion = async (
+  assets: Asset[], 
+  question: string
+): Promise<string> => {
+  if (!ai) return "API 키가 설정되지 않았습니다.";
+
+  const simplifiedAssets = assets.map(asset => ({
+    name: asset.customName ?? asset.name,
+    ticker: asset.ticker,
+    exchange: asset.exchange,
+    category: asset.category,
+    quantity: asset.quantity,
+    purchase_price_original: asset.purchasePrice,
+    purchase_date: asset.purchaseDate,
+    current_price_krw: asset.currentPrice,
+    price_original: asset.priceOriginal,
+    currency: asset.currency,
+    current_value_krw: asset.currentPrice * asset.quantity,
+    highest_price_krw: asset.highestPrice,
+    yesterday_price_krw: asset.yesterdayPrice ?? null,
+  }));
+
+  const portfolioJson = JSON.stringify(simplifiedAssets, null, 2);
+
+  const prompt = `당신은 사용자의 자산 포트폴리오를 분석하고 질문에 답변하는 전문 금융 어시스턴트입니다.
+    
+다음은 사용자의 현재 포트폴리오 데이터입니다 (JSON 형식). 각 항목에는 현재가와 함께 어제 종가가 포함될 수 있으므로, "어제 대비" 변동을 계산할 때는 \`yesterday_price_krw\`를 사용하세요. 날짜 메타가 없으면 제공된 값만으로 판단하세요:
+\`\`\`json
+${portfolioJson}
+\`\`\`
+
+위 데이터를 기반으로 다음 사용자의 질문에 대해 명확하고 간결하게 답변해주세요. 답변은 한국어로 작성하고, 마크다운 형식을 사용하여 가독성을 높여주세요. 외부 정보는 사용하지 말고, 제공된 포트폴리오 데이터만을 근거로 분석해야 합니다.
+
+사용자 질문: "${question}"`;
+
+  try {
+    const response = await callGeminiBasic(prompt);
+    return response || "죄송합니다. 답변을 생성할 수 없습니다.";
+  } catch (error) {
+    console.error('Portfolio question error:', error);
+    return "포트폴리오 질문에 대한 답변 생성에 실패했습니다.";
+  }
+};
+
+// 레거시 호환용
+export const analyzePortfolio = askPortfolioQuestion;
+
+// =================================================================
+// 10. 캐시 관리 유틸리티
+// =================================================================
+export function clearPriceCache(): void {
+  priceCache.clear();
+  console.log("🗑️ Price cache cleared");
+}
+
+export function clearAllCaches(): void {
+  priceCache.clear();
+  searchCache.clear();
+  exchangeRateCache.clear();
+  console.log("🗑️ All caches cleared");
+}
+
+export function getCacheStats(): { prices: number; searches: number; rates: number } {
+  return {
+    prices: priceCache.size,
+    searches: searchCache.size,
+    rates: exchangeRateCache.size
+  };
+}
 </file>
 
 </files>
