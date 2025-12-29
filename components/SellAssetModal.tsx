@@ -2,29 +2,17 @@
 // 수정된 버전: 매도 통화를 자산 통화로 고정
 
 import React, { useState, useEffect } from 'react';
-import { Asset, Currency, CURRENCY_SYMBOLS } from '../types';
+import { Asset, Currency, CURRENCY_SYMBOLS, SellTransaction } from '../types';
+import { usePortfolio } from '../contexts/PortfolioContext';
 
-interface SellAssetModalProps {
-  asset: Asset | null;
-  isOpen: boolean;
-  onClose: () => void;
-  onSell: (
-    assetId: string, 
-    sellDate: string, 
-    sellPrice: number,      // 자산 통화 기준 매도가
-    sellQuantity: number,
-    currency: Currency      // 자산의 통화
-  ) => void;
-  isLoading: boolean;
-}
-
-const SellAssetModal: React.FC<SellAssetModalProps> = ({ 
-  asset, 
-  isOpen, 
-  onClose, 
-  onSell, 
-  isLoading 
-}) => {
+const SellAssetModal: React.FC = () => {
+  const { modal, actions, status } = usePortfolio();
+  const asset = modal.sellingAsset;
+  const isOpen = !!modal.sellingAsset;
+  const onClose = actions.closeSellModal;
+  const onSell = (assetId: string, sellDate: string, sellPrice: number, sellQuantity: number, currency: Currency) =>
+    actions.confirmSell(assetId, sellDate, sellPrice, sellQuantity, currency);
+  const isLoading = status.isLoading;
   const [sellDate, setSellDate] = useState<string>(new Date().toISOString().slice(0, 10));
   const [sellPrice, setSellPrice] = useState<string>('');
   const [sellQuantity, setSellQuantity] = useState<string>('');

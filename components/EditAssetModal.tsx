@@ -2,17 +2,16 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Asset, AssetCategory, Currency, ALL_EXCHANGES, inferCategoryFromExchange, ALLOWED_CATEGORIES, normalizeExchange } from '../types';
 import { searchSymbols } from '../services/geminiService';
+import { usePortfolio } from '../contexts/PortfolioContext';
 
-interface EditAssetModalProps {
-  asset: Asset | null;
-  isOpen: boolean;
-  onClose: () => void;
-  onSave: (asset: Asset) => void;
-  onDelete: (assetId: string) => void;
-  isLoading: boolean;
-}
-
-const EditAssetModal: React.FC<EditAssetModalProps> = ({ asset, isOpen, onClose, onSave, onDelete, isLoading }) => {
+const EditAssetModal: React.FC = () => {
+  const { modal, actions, status } = usePortfolio();
+  const asset = modal.editingAsset;
+  const isOpen = !!modal.editingAsset;
+  const onClose = actions.closeEditModal;
+  const onSave = actions.updateAsset;
+  const onDelete = actions.deleteAsset;
+  const isLoading = status.isLoading;
   const [formData, setFormData] = useState<Asset | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [searchResults, setSearchResults] = useState<{ ticker: string; name: string; exchange: string }[]>([]);

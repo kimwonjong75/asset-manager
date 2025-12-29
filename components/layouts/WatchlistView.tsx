@@ -1,38 +1,22 @@
 import React from 'react';
 import { WatchlistItem } from '../../types';
+import { usePortfolio } from '../../contexts/PortfolioContext';
 import WatchlistPage from '../WatchlistPage';
 
-interface WatchlistViewProps {
-  watchlist: WatchlistItem[];
-  isLoading: boolean;
-  onAdd: (item: Omit<WatchlistItem, 'id' | 'currentPrice' | 'priceOriginal' | 'currency' | 'yesterdayPrice' | 'highestPrice' | 'lastSignalAt' | 'lastSignalType'>) => void;
-  onUpdate: (item: WatchlistItem) => void;
-  onDelete: (id: string) => void;
-  onToggleMonitoring: (id: string, enabled: boolean) => void;
-  onRefreshAll: () => void;
-  onBulkDelete: (ids: string[]) => void;
-}
-
-const WatchlistView: React.FC<WatchlistViewProps> = ({
-  watchlist,
-  isLoading,
-  onAdd,
-  onUpdate,
-  onDelete,
-  onToggleMonitoring,
-  onRefreshAll,
-  onBulkDelete
-}) => {
+const WatchlistView: React.FC = () => {
+  const { data, status, actions } = usePortfolio();
+  const watchlist = data.watchlist;
+  const isLoading = status.isLoading;
   return (
     <WatchlistPage
       watchlist={watchlist}
-      onAdd={onAdd}
-      onUpdate={onUpdate}
-      onDelete={onDelete}
-      onToggleMonitoring={onToggleMonitoring}
-      onRefreshAll={onRefreshAll}
+      onAdd={actions.addWatchItem}
+      onUpdate={actions.updateWatchItem}
+      onDelete={actions.deleteWatchItem}
+      onToggleMonitoring={actions.toggleWatchMonitoring}
+      onRefreshAll={actions.refreshWatchlistPrices}
       isLoading={isLoading}
-      onBulkDelete={onBulkDelete}
+      onBulkDelete={actions.bulkDeleteWatchItems}
     />
   );
 };

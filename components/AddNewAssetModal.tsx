@@ -1,16 +1,15 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Asset, AssetCategory, NewAssetForm, EXCHANGE_MAP, Currency, SymbolSearchResult, ALL_EXCHANGES, inferCategoryFromExchange, ALLOWED_CATEGORIES, normalizeExchange } from '../types';
 import { searchSymbols } from '../services/geminiService';
+import { usePortfolio } from '../contexts/PortfolioContext';
 
-interface AddNewAssetModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onAddAsset: (asset: NewAssetForm) => void;
-  isLoading: boolean;
-  assets: Asset[];
-}
-
-const AddNewAssetModal: React.FC<AddNewAssetModalProps> = ({ isOpen, onClose, onAddAsset, isLoading, assets }) => {
+const AddNewAssetModal: React.FC = () => {
+  const { modal, actions, status, data } = usePortfolio();
+  const isOpen = modal.addAssetOpen;
+  const onClose = actions.closeAddAsset;
+  const onAddAsset = actions.addAsset as unknown as (asset: NewAssetForm) => void;
+  const isLoading = status.isLoading;
+  const assets = data.assets;
   const [ticker, setTicker] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<SymbolSearchResult[]>([]);

@@ -1,53 +1,18 @@
 import React, { useMemo } from 'react';
-import { Asset, AssetCategory, ExchangeRates, PortfolioSnapshot } from '../../types';
+import { Asset } from '../../types';
 import PortfolioTable from '../PortfolioTable';
 import SellAlertControl from '../SellAlertControl';
+import { usePortfolio } from '../../contexts/PortfolioContext';
 
-interface PortfolioViewProps {
-  assets: Asset[];
-  portfolioHistory: PortfolioSnapshot[];
-  exchangeRates: ExchangeRates;
-  filterCategory: AssetCategory | 'ALL';
-  setFilterCategory: (cat: AssetCategory | 'ALL') => void;
-  filterAlerts: boolean;
-  setFilterAlerts: (active: boolean) => void;
-  searchQuery: string;
-  setSearchQuery: (query: string) => void;
-  sellAlertDropRate: number;
-  setSellAlertDropRate: (rate: number) => void;
-  isLoading: boolean;
-  failedAssetIds: Set<string>;
-  
-  // Actions
-  onRefreshAll: () => void;
-  onRefreshSelected: (ids: string[]) => void;
-  onRefreshOne: (id: string) => void;
-  onEdit: (asset: Asset) => void;
-  onSell: (asset: Asset) => void;
-  onAddSelectedToWatchlist: (assets: Asset[]) => void;
-}
-
-const PortfolioView: React.FC<PortfolioViewProps> = ({
-  assets,
-  portfolioHistory,
-  exchangeRates,
-  filterCategory,
-  setFilterCategory,
-  filterAlerts,
-  setFilterAlerts,
-  searchQuery,
-  setSearchQuery,
-  sellAlertDropRate,
-  setSellAlertDropRate,
-  isLoading,
-  failedAssetIds,
-  onRefreshAll,
-  onRefreshSelected,
-  onRefreshOne,
-  onEdit,
-  onSell,
-  onAddSelectedToWatchlist
-}) => {
+const PortfolioView: React.FC = () => {
+  const { data, ui, actions, status } = usePortfolio();
+  const assets = data.assets;
+  const portfolioHistory = data.portfolioHistory;
+  const exchangeRates = data.exchangeRates;
+  const filterCategory = ui.filterCategory;
+  const filterAlerts = ui.filterAlerts;
+  const searchQuery = ui.searchQuery;
+  const sellAlertDropRate = ui.sellAlertDropRate;
   const filteredAssets = useMemo(() => {
     let filtered = assets;
     if (filterCategory !== 'ALL') {
@@ -66,25 +31,25 @@ const PortfolioView: React.FC<PortfolioViewProps> = ({
 
   return (
     <div className="space-y-6">
-       <SellAlertControl value={sellAlertDropRate} onChange={setSellAlertDropRate} />
+       <SellAlertControl value={sellAlertDropRate} onChange={actions.setSellAlertDropRate} />
         <PortfolioTable
           assets={filteredAssets}
           history={portfolioHistory}
-          onRefreshAll={onRefreshAll}
-          onRefreshSelected={onRefreshSelected}
-          onRefreshOne={onRefreshOne}
-          onEdit={onEdit}
-          onSell={onSell}
-          isLoading={isLoading}
+          onRefreshAll={() => actions.refreshAllPrices(false)}
+          onRefreshSelected={actions.refreshSelectedPrices}
+          onRefreshOne={actions.refreshOnePrice}
+          onEdit={actions.openEditModal}
+          onSell={actions.openSellModal}
+          isLoading={status.isLoading}
           sellAlertDropRate={sellAlertDropRate}
           filterCategory={filterCategory}
-          onFilterChange={setFilterCategory}
+          onFilterChange={actions.setFilterCategory}
           filterAlerts={filterAlerts}
-          onFilterAlertsChange={setFilterAlerts}
+          onFilterAlertsChange={actions.setFilterAlerts}
           searchQuery={searchQuery}
-          onSearchChange={setSearchQuery}
-          onAddSelectedToWatchlist={onAddSelectedToWatchlist}
-          failedIds={failedAssetIds}
+          onSearchChange={actions.setSearchQuery}
+          onAddSelectedToWatchlist={(assets: Asset[]) => actions.addSelectedToWatchlist(assets)}
+          failedIds={new Set(status.failedAssetIds)}
           exchangeRates={exchangeRates}
         />
     </div>

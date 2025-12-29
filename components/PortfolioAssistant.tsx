@@ -4,13 +4,10 @@ import { askPortfolioQuestion } from '../services/geminiService';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
+import { usePortfolio } from '../contexts/PortfolioContext';
 
 
-interface PortfolioAssistantProps {
-  isOpen: boolean;
-  onClose: () => void;
-  assets: Asset[];
-}
+interface PortfolioAssistantProps {}
 
 interface Message {
     role: 'user' | 'model';
@@ -19,7 +16,11 @@ interface Message {
 
 const ASSISTANT_HISTORY_KEY = 'quant-assistant-history';
 
-const PortfolioAssistant: React.FC<PortfolioAssistantProps> = ({ isOpen, onClose, assets }) => {
+const PortfolioAssistant: React.FC<PortfolioAssistantProps> = () => {
+    const { modal, actions, data } = usePortfolio();
+    const isOpen = modal.assistantOpen;
+    const onClose = actions.closeAssistant;
+    const assets = data.assets;
     const [messages, setMessages] = useState<Message[]>(() => {
         try {
             const savedHistory = localStorage.getItem(ASSISTANT_HISTORY_KEY);

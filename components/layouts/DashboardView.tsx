@@ -1,5 +1,5 @@
 import React, { useMemo, useCallback } from 'react';
-import { Asset, AssetCategory, ExchangeRates, PortfolioSnapshot, Currency, ALLOWED_CATEGORIES } from '../../types';
+import { Asset, AssetCategory, Currency, ALLOWED_CATEGORIES } from '../../types';
 import StatCard from '../StatCard';
 import ExchangeRateInput from '../ExchangeRateInput';
 import ProfitLossChart from '../ProfitLossChart';
@@ -7,32 +7,22 @@ import AllocationChart from '../AllocationChart';
 import CategorySummaryTable from '../CategorySummaryTable';
 import TopBottomAssets from '../TopBottomAssets';
 import RebalancingTable from '../RebalancingTable';
+import { usePortfolio } from '../../contexts/PortfolioContext';
 
-interface DashboardViewProps {
-  assets: Asset[];
-  portfolioHistory: PortfolioSnapshot[];
-  exchangeRates: ExchangeRates;
-  dashboardFilterCategory: AssetCategory | 'ALL';
-  setDashboardFilterCategory: (cat: AssetCategory | 'ALL') => void;
-  alertCount: number;
-  onAlertClick: () => void;
-  onRatesChange: (rates: ExchangeRates) => void;
-  showExchangeRateWarning: boolean;
-  totalValue: number; // 부모에서 계산해서 내려줌 (혹은 여기서 계산)
-}
-
-const DashboardView: React.FC<DashboardViewProps> = ({
-  assets,
-  portfolioHistory,
-  exchangeRates,
-  dashboardFilterCategory,
-  setDashboardFilterCategory,
-  alertCount,
-  onAlertClick,
-  onRatesChange,
-  showExchangeRateWarning,
-  // totalValue -> 내부 계산으로 변경
-}) => {
+const DashboardView: React.FC = () => {
+  const { data, ui, actions, status, derived } = usePortfolio();
+  const assets = data.assets;
+  const portfolioHistory = data.portfolioHistory;
+  const exchangeRates = data.exchangeRates;
+  const dashboardFilterCategory = ui.dashboardFilterCategory;
+  const setDashboardFilterCategory = actions.setDashboardFilterCategory;
+  const alertCount = derived.alertCount;
+  const onAlertClick = () => {
+    actions.setActiveTab('portfolio');
+    actions.setFilterAlerts(true);
+  };
+  const onRatesChange = actions.setExchangeRates;
+  const showExchangeRateWarning = status.showExchangeRateWarning;
 
   const getValueInKRW = useCallback((value: number, currency: Currency): number => {
     if (currency === Currency.KRW) return value;

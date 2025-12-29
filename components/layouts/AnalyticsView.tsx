@@ -1,13 +1,11 @@
 import React from 'react';
-import { Asset, SellRecord } from '../../types';
+import { usePortfolio } from '../../contexts/PortfolioContext';
 import SellAnalyticsPage from '../SellAnalyticsPage';
 
-interface AnalyticsViewProps {
-  assets: Asset[];
-  sellHistory: SellRecord[];
-}
-
-const AnalyticsView: React.FC<AnalyticsViewProps> = ({ assets, sellHistory }) => {
+const AnalyticsView: React.FC = () => {
+  const { data } = usePortfolio();
+  const assets = data.assets;
+  const sellHistory = data.sellHistory;
   return (
     <SellAnalyticsPage assets={assets} sellHistory={sellHistory} />
   );

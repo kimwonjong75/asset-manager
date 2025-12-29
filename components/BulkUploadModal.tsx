@@ -1,13 +1,12 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { AssetCategory, Currency, EXCHANGE_MAP, BulkUploadResult, ALLOWED_CATEGORIES } from '../types';
+import { usePortfolio } from '../contexts/PortfolioContext';
 
-interface BulkUploadModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onFileUpload: (file: File) => Promise<BulkUploadResult>;
-}
-
-const BulkUploadModal: React.FC<BulkUploadModalProps> = ({ isOpen, onClose, onFileUpload }) => {
+const BulkUploadModal: React.FC = () => {
+  const { modal, actions } = usePortfolio();
+  const isOpen = modal.bulkUploadOpen;
+  const onClose = actions.closeBulkUpload;
+  const onFileUpload = actions.uploadCsv;
   const [view, setView] = useState<'instructions' | 'loading' | 'results'>('instructions');
   const [result, setResult] = useState<BulkUploadResult | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
