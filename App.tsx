@@ -18,7 +18,7 @@ import WatchlistView from './components/layouts/WatchlistView';
 
 type ActiveTab = 'dashboard' | 'portfolio' | 'analytics' | 'watchlist';
 
-const App: React.FC = () => {
+const AppContent: React.FC = () => {
   const { data, status, ui, modal, actions, derived } = usePortfolio();
   
 
@@ -71,7 +71,6 @@ const App: React.FC = () => {
   };
 
   return (
-    <PortfolioProvider>
     <div className="min-h-screen bg-gray-900 font-sans p-4 sm:p-6 lg:p-8">
       <div className="max-w-7xl mx-auto">
         <Header 
@@ -182,8 +181,13 @@ const App: React.FC = () => {
       </div>
 
     </div>
-    </PortfolioProvider>
   );
 };
+
+const App: React.FC = () => (
+  <PortfolioProvider>
+    <AppContent />
+  </PortfolioProvider>
+);
 
 export default App;
