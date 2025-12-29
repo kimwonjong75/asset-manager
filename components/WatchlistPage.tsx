@@ -291,7 +291,6 @@ const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, onAdd, onUpdat
                   onUpdate(updated);
                 } else {
                   onAdd({
-                    id: '',
                     ticker: form.ticker,
                     exchange: form.exchange,
                     name: form.name,
@@ -301,7 +300,7 @@ const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, onAdd, onUpdat
                     buyZoneMin: form.buyZoneMin ? parseFloat(form.buyZoneMin) : undefined,
                     buyZoneMax: form.buyZoneMax ? parseFloat(form.buyZoneMax) : undefined,
                     dropFromHighThreshold: form.dropFromHighThreshold ? parseFloat(form.dropFromHighThreshold) : undefined,
-                  } as any);
+                  });
                 }
                 setForm({ ticker: '', exchange: 'KRX (코스피/코스닥)', name: '', category: AssetCategory.KOREAN_STOCK });
                 setSymbolQuery('');

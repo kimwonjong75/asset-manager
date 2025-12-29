@@ -1,7 +1,7 @@
 // utils/migrateData.ts
 // 기존 DB 데이터를 새 구조로 변환하는 마이그레이션 스크립트
 
-import { Currency, AssetCategory } from '../types';
+import { Currency, AssetCategory, ExchangeRates, LegacyAssetShape, PortfolioSnapshot, SellRecord, WatchlistItem } from '../types';
 
 /**
  * 마이그레이션 실행
@@ -10,7 +10,7 @@ import { Currency, AssetCategory } from '../types';
  * 1. 암호화폐: purchasePrice가 원화로 입력된 경우 currency를 KRW로 복구
  * 2. USD/JPY 자산: currentPrice가 원화로 저장된 경우 priceOriginal로 교체
  */
-export const runMigrationIfNeeded = (data: any) => {
+export const runMigrationIfNeeded = (data: { exchangeRates?: ExchangeRates; assets?: LegacyAssetShape[]; portfolioHistory?: PortfolioSnapshot[]; sellHistory?: SellRecord[]; watchlist?: WatchlistItem[] } | null | undefined) => {
   if (!data || typeof data !== 'object') return data;
   
   // 환율 초기화
@@ -23,10 +23,10 @@ export const runMigrationIfNeeded = (data: any) => {
     console.log('[Migration] 데이터 마이그레이션 시작...');
     let fixedCount = 0;
     
-    data.assets = data.assets.map((asset: any) => {
+    data.assets = data.assets.map((asset: LegacyAssetShape) => {
       const ticker = asset.ticker || '?';
       const category = asset.category || '';
-      const currency = asset.currency || 'KRW';
+      const currency: string | Currency = asset.currency || 'KRW';
       const purchasePrice = asset.purchasePrice || 0;
       const currentPrice = asset.currentPrice || 0;
       const priceOriginal = asset.priceOriginal || 0;

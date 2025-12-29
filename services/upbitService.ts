@@ -12,6 +12,7 @@ export interface UpbitTicker {
   high_price?: number;
   low_price?: number;
 }
+type UpbitTickerResponse = Partial<UpbitTicker> & { error?: unknown };
 
 // 심볼 변환 (BTC -> KRW-BTC)
 export const toUpbitPair = (symbol: string): string => {
@@ -70,7 +71,7 @@ export const fetchUpbitPricesBatch = async (symbols: string[]): Promise<Map<stri
     console.log('[Upbit] 프록시 응답:', data);
 
     // 응답 데이터를 Map으로 변환
-    Object.entries(data).forEach(([market, tickerData]: [string, any]) => {
+    Object.entries(data).forEach(([market, tickerData]: [string, UpbitTickerResponse]) => {
       if (tickerData && typeof tickerData === 'object' && !tickerData.error) {
         const ticker: UpbitTicker = {
           market: tickerData.market || market,

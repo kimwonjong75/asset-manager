@@ -1,11 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { AssetCategory } from '../types';
 import { useOnClickOutside } from '../hooks/useOnClickOutside';
-import { PortfolioTableProps, SortKey } from './portfolio-table/types';
+import { PortfolioTableProps, SortKey, SortDirection } from './portfolio-table/types';
 import { usePortfolioData } from './portfolio-table/usePortfolioData';
 import PortfolioTableRow from './portfolio-table/PortfolioTableRow';
 
-const SortIcon = ({ sortKey, sortConfig }: { sortKey: SortKey, sortConfig: any }) => {
+const SortIcon = ({ sortKey, sortConfig }: { sortKey: SortKey, sortConfig: { key: SortKey; direction: SortDirection } | null }) => {
   if (!sortConfig || sortConfig.key !== sortKey) return <span className="opacity-30">↕</span>;
   return sortConfig.direction === 'descending' ? <span>▼</span> : <span>▲</span>;
 };

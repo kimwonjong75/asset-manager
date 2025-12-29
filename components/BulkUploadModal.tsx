@@ -26,8 +26,9 @@ const BulkUploadModal: React.FC = () => {
       const uploadResult = await onFileUpload(file);
       setResult(uploadResult);
       setView('results');
-    } catch (e: any) {
-       setResult({ successCount: 0, failedCount: 0, errors: [{ ticker: '파일 처리 오류', reason: e.message }] });
+    } catch (e: unknown) {
+       const reason = e instanceof Error ? e.message : '알 수 없는 오류';
+       setResult({ successCount: 0, failedCount: 0, errors: [{ ticker: '파일 처리 오류', reason }] });
        setView('results');
     }
     

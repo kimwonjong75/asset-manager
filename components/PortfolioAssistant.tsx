@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Asset } from '../types';
 import { askPortfolioQuestion } from '../services/geminiService';
-import ReactMarkdown from 'react-markdown';
+import ReactMarkdown, { type Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
 import { usePortfolio } from '../contexts/PortfolioContext';
@@ -110,28 +110,28 @@ const PortfolioAssistant: React.FC<PortfolioAssistantProps> = () => {
         })));
     }, [assets]);
 
-    const markdownComponents = {
-        table: ({node, ...props}: any) => <table className="table-auto w-full my-4 text-sm border-collapse border border-gray-600" {...props} />,
-        thead: ({node, ...props}: any) => <thead className="bg-gray-700/50" {...props} />,
-        th: ({node, ...props}: any) => <th className="border border-gray-600 px-3 py-2 text-left font-semibold text-gray-200" {...props} />,
-        td: ({node, ...props}: any) => <td className="border border-gray-600 px-3 py-2" {...props} />,
-        p: ({node, ...props}: any) => <p className="mb-2 last:mb-0" {...props} />,
-        ul: ({node, ...props}: any) => <ul className="list-disc list-inside mb-2 pl-4" {...props} />,
-        ol: ({node, ...props}: any) => <ol className="list-decimal list-inside mb-2 pl-4" {...props} />,
-        li: ({node, ...props}: any) => <li className="mb-1" {...props} />,
-        h3: ({node, ...props}: any) => <h3 className="text-lg font-bold mt-4 mb-2 text-primary-light" {...props} />,
-        strong: ({node, ...props}: any) => <strong className="font-bold text-white" {...props} />,
-        code: ({node, inline, ...props}: any) => inline
+    const markdownComponents: Components = {
+        table: ({...props}) => <table className="table-auto w-full my-4 text-sm border-collapse border border-gray-600" {...props} />,
+        thead: ({...props}) => <thead className="bg-gray-700/50" {...props} />,
+        th: ({...props}) => <th className="border border-gray-600 px-3 py-2 text-left font-semibold text-gray-200" {...props} />,
+        td: ({...props}) => <td className="border border-gray-600 px-3 py-2" {...props} />,
+        p: ({...props}) => <p className="mb-2 last:mb-0" {...props} />,
+        ul: ({...props}) => <ul className="list-disc list-inside mb-2 pl-4" {...props} />,
+        ol: ({...props}) => <ol className="list-decimal list-inside mb-2 pl-4" {...props} />,
+        li: ({...props}) => <li className="mb-1" {...props} />,
+        h3: ({...props}) => <h3 className="text-lg font-bold mt-4 mb-2 text-primary-light" {...props} />,
+        strong: ({...props}) => <strong className="font-bold text-white" {...props} />,
+        code: (props) => ((props as { inline?: boolean }).inline)
           ? <code className="bg-gray-900 text-yellow-300 px-1.5 py-1 rounded text-sm font-mono" {...props} />
           : <pre className="bg-gray-900 p-3 rounded-md overflow-x-auto my-2 text-sm"><code className="font-mono" {...props} /></pre>,
-        img: ({node, ...props}: any) => (
+        img: ({...props}) => (
             <img 
                 {...props} 
                 className="max-w-full rounded my-2" 
                 loading="lazy"
                 alt={props.alt || '이미지'}
-                onError={(e: any) => {
-                    e.target.style.display = 'none';
+                onError={(e: React.SyntheticEvent<HTMLImageElement>) => {
+                    (e.target as HTMLImageElement).style.display = 'none';
                 }}
             />
         )

@@ -205,8 +205,56 @@ export interface AssetDataResult {
   name: string;
   priceOriginal: number;
   priceKRW: number;
-  currency: string;
+  currency: Currency;
   pricePreviousClose: number;
   highestPrice?: number;
   isMocked: boolean;
+}
+
+export interface PriceItem {
+  ticker?: string;
+  symbol?: string;
+  name?: string;
+  priceOriginal?: number;
+  priceKRW?: number;
+  price?: number;
+  close?: number;
+  previousClose?: number;
+  prev_close?: number;
+  yesterdayPrice?: number;
+  currency?: Currency | string;
+}
+
+export type PriceAPIArrayResponse = PriceItem[];
+export type PriceAPIObjectResponse = Record<string, PriceItem>;
+export interface PriceAPIResultResponse {
+  results: PriceItem[];
+}
+export type PriceAPIResponse = PriceAPIArrayResponse | PriceAPIObjectResponse | PriceAPIResultResponse;
+
+export interface LegacyAssetShape {
+  id?: string;
+  category: AssetCategory | string;
+  ticker: string;
+  exchange?: string;
+  name: string;
+  customName?: string;
+  quantity: number;
+  purchasePrice: number;
+  purchaseDate: string;
+  currency?: Currency;
+  purchaseExchangeRate?: number;
+  currentPrice: number;
+  priceOriginal?: number;
+  highestPrice?: number;
+  yesterdayPrice?: number;
+  sellAlertDropRate?: number;
+  memo?: string;
+  region?: string;
+}
+
+export interface DriveFileMetadata {
+  name: string;
+  mimeType: string;
+  parents?: string[];
 }

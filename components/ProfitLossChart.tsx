@@ -17,7 +17,7 @@ const ProfitLossChart: React.FC<ProfitLossChartProps> = ({ history, assetsToDisp
     const assetIdsToDisplay = new Set(assetsToDisplay.map(a => a.id));
 
     const data = history.map(snapshot => {
-      const dateEntry: { [key: string]: any } = {
+      const dateEntry: Record<string, number | string> = {
         date: new Date(snapshot.date).toLocaleDateString('ko-KR', { month: '2-digit', day: '2-digit' }),
       };
       
@@ -46,10 +46,12 @@ const ProfitLossChart: React.FC<ProfitLossChartProps> = ({ history, assetsToDisp
   };
   const formatPercent = (value: number) => `${(Number(value) || 0).toFixed(2)}%`;
   
-  const CustomTooltip = ({ active, payload, label }: any) => {
+  const CustomTooltip = ({ active, payload, label }: { active?: boolean; payload?: Array<{ dataKey?: string; value?: number }>; label?: string }) => {
     if (!active || !payload || payload.length === 0) return null;
-    const datum = payload.reduce((acc: any, p: any) => {
-      if (p && p.dataKey) acc[p.dataKey] = p.value;
+    const datum = (payload ?? []).reduce<Record<string, number>>((acc, p) => {
+      const key = (p as any).dataKey as string;
+      const val = (p as any).value as number;
+      if (key) acc[key] = val;
       return acc;
     }, {});
     const principal = datum['투자 원금'];

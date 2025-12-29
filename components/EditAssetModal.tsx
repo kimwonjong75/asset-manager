@@ -42,12 +42,16 @@ const EditAssetModal: React.FC = () => {
     setFormData(prev => {
         if (!prev) return null;
 
-        let newValue: any = value;
+        let newValue: string | number | Currency | AssetCategory | undefined = value;
         if (name === 'quantity' || name === 'purchasePrice') {
             newValue = parseFloat(value) || 0;
         } else if (name === 'sellAlertDropRate') {
-            newValue = value === '' ? undefined : parseFloat(value);
-            if (isNaN(newValue as number)) newValue = undefined;
+            const parsed = value === '' ? undefined : parseFloat(value);
+            newValue = typeof parsed === 'number' && !isNaN(parsed) ? parsed : undefined;
+        } else if (name === 'currency') {
+            newValue = value as Currency;
+        } else if (name === 'category') {
+            newValue = value as AssetCategory;
         }
 
         return { ...prev, [name]: newValue };

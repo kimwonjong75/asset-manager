@@ -77,7 +77,7 @@ export const useAssetActions = ({
           priceOriginal: d.priceOriginal,
           highestPrice: currentPrice,
           purchaseExchangeRate,
-          currency: (d.currency as Currency) || newAssetData.currency,
+          currency: d.currency || newAssetData.currency,
         };
       }
       
@@ -170,7 +170,7 @@ export const useAssetActions = ({
               name: d.name,
               currentPrice: newCurrentPrice,
               priceOriginal: d.priceOriginal,
-              currency: (d.currency as Currency) || finalAsset.currency,
+              currency: d.currency || finalAsset.currency,
               highestPrice: Math.max(finalAsset.highestPrice, newCurrentPrice),
             };
           }
@@ -353,7 +353,7 @@ export const useAssetActions = ({
                                       name: d.name,
                                       currentPrice,
                                       priceOriginal: d.priceOriginal,
-                                      currency: (d.currency as Currency) || form.currency,
+                                      currency: d.currency || form.currency,
                                       highestPrice: currentPrice,
                                       purchaseExchangeRate,
                                   };
@@ -368,10 +368,10 @@ export const useAssetActions = ({
                               finalNewAsset.sellAlertDropRate = form.sellAlertDropRate;
                             }
                             newAssets.push(finalNewAsset);
-                        } catch (error: any) {
+                        } catch (error: unknown) {
                             errors.push({
                                 ticker: form.ticker,
-                                reason: error.message || '데이터 조회 실패',
+                                reason: error instanceof Error ? error.message : '데이터 조회 실패',
                             });
                         }
                         await new Promise(resolve => setTimeout(resolve, 300));
@@ -388,8 +388,8 @@ export const useAssetActions = ({
                 failedCount = errors.length;
                 resolve({ successCount, failedCount, errors });
 
-            } catch (err: any) {
-                resolve({ successCount: 0, failedCount: lines.length > 1 ? lines.length - 1 : 0, errors: [{ ticker: '파일 전체', reason: err.message }] });
+            } catch (err: unknown) {
+                resolve({ successCount: 0, failedCount: lines.length > 1 ? lines.length - 1 : 0, errors: [{ ticker: '파일 전체', reason: err instanceof Error ? err.message : '파일 처리 실패' }] });
             }
         };
 

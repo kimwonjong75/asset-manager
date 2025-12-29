@@ -1,10 +1,10 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { Asset, PortfolioSnapshot, SellRecord, WatchlistItem, ExchangeRates, AssetCategory, Currency, ALLOWED_CATEGORIES } from '../types';
+import { Asset, PortfolioSnapshot, SellRecord, WatchlistItem, ExchangeRates, AssetCategory, Currency, ALLOWED_CATEGORIES, LegacyAssetShape } from '../types';
 import { useGoogleDriveSync } from './useGoogleDriveSync';
 import { runMigrationIfNeeded } from '../utils/migrateData';
 
 // App.tsx의 mapToNewAssetStructure 로직을 여기로 가져옴
-const mapToNewAssetStructure = (asset: any): Asset => {
+const mapToNewAssetStructure = (asset: LegacyAssetShape): Asset => {
   let newAsset = { ...asset };
 
   // App.tsx에 있던 기본값 설정 로직
@@ -51,7 +51,7 @@ const mapToNewAssetStructure = (asset: any): Asset => {
       }
   }
   
-  if (!Object.values(AssetCategory).includes(newAsset.category)) {
+  if (!Object.values(AssetCategory).includes(newAsset.category as AssetCategory)) {
       newAsset.category = AssetCategory.OTHER_FOREIGN_STOCK;
   }
 
@@ -111,9 +111,9 @@ export const usePortfolioData = () => {
         setSuccessMessage('Google Drive에 저장된 포트폴리오가 없습니다. 자산을 추가해주세요.');
         setTimeout(() => setSuccessMessage(null), 3000);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Failed to load from Google Drive:', error);
-      const message = error?.message ? error.message : '';
+      const message = error instanceof Error ? error.message : '';
       setError(`Google Drive에서 데이터를 불러오지 못했습니다.${message ? ` (${message})` : ''}`);
       setTimeout(() => setError(null), 3000);
     }

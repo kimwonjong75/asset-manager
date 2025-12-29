@@ -512,6 +512,32 @@ gcloud run deploy asset-manager --source . --region asia-northeast3 --allow-unau
 2. 해당 거래소 API가 업비트와 호환되는지 확인
 3. 호환되지 않는 경우 별도 서비스 파일 생성 및 Cloud Run 엔드포인트 추가
 
+## 🧩 개발 참고: 타입 가이드 및 any 금지
+
+- 공용 타입은 모두 [types.ts](file:///c:/Users/beari/Desktop/Dev/asset-manager/types.ts)에 정의하고 전 파일에서 일관되게 사용
+- any 사용 금지: 응답/데이터는 명확한 인터페이스로 모델링
+  - 시세 응답 아이템: [PriceItem](file:///c:/Users/beari/Desktop/Dev/asset-manager/types.ts#L214-L232)
+  - 시세 응답 포맷: [PriceAPIResponse](file:///c:/Users/beari/Desktop/Dev/asset-manager/types.ts#L234-L241)
+  - 구버전 데이터: [LegacyAssetShape](file:///c:/Users/beari/Desktop/Dev/asset-manager/types.ts#L243-L270)
+  - 드라이브 메타데이터: [DriveFileMetadata](file:///c:/Users/beari/Desktop/Dev/asset-manager/types.ts#L272-L276)
+- 통화 타입 일관화: [AssetDataResult.currency](file:///c:/Users/beari/Desktop/Dev/asset-manager/types.ts#L204-L212)는 반드시 [Currency](file:///c:/Users/beari/Desktop/Dev/asset-manager/types.ts#L13-L18)
+- 프런트 서비스에서의 적용 예시
+  - 일반 시세/환율 처리: [priceService.ts](file:///c:/Users/beari/Desktop/Dev/asset-manager/services/priceService.ts)
+  - 업비트 시세 처리: [upbitService.ts](file:///c:/Users/beari/Desktop/Dev/asset-manager/services/upbitService.ts)
+  - 데이터 마이그레이션: [migrateData.ts](file:///c:/Users/beari/Desktop/Dev/asset-manager/utils/migrateData.ts)
+
+## 🔗 데이터 소스 및 구현 확인
+
+- 주식/ETF/해외주식
+  - 소스: Google Cloud Run 기본 엔드포인트 `/` (Python) + FinanceDataReader
+  - 클라이언트: [priceService.ts](file:///c:/Users/beari/Desktop/Dev/asset-manager/services/priceService.ts) 배치 조회/환율 조회 사용
+  - 분기/병합: [useMarketData.ts](file:///c:/Users/beari/Desktop/Dev/asset-manager/hooks/useMarketData.ts#L126-L154) 일반 자산을 Cloud Run으로 조회 후 결과 병합
+- 암호화폐
+  - 소스: Cloud Run `/upbit` 프록시 → 업비트 API(KRW)
+  - 클라이언트: [upbitService.ts](file:///c:/Users/beari/Desktop/Dev/asset-manager/services/upbitService.ts#L36-L66)
+  - 분기 로직: [shouldUseUpbitAPI](file:///c:/Users/beari/Desktop/Dev/asset-manager/hooks/useMarketData.ts#L26-L41)로 Upbit/Bithumb 또는 한글 거래소+암호화폐 판별
+  - 병합/반영: [useMarketData.ts](file:///c:/Users/beari/Desktop/Dev/asset-manager/hooks/useMarketData.ts#L135-L147), [useMarketData.ts](file:///c:/Users/beari/Desktop/Dev/asset-manager/hooks/useMarketData.ts#L175-L201)
+
 ---
 
 ## 📝 변경 이력

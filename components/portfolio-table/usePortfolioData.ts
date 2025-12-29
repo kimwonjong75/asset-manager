@@ -121,7 +121,7 @@ export const usePortfolioData = ({
     if (sortConfig !== null) {
       enriched.sort((a, b) => {
         const { key, direction } = sortConfig;
-        let aValue: any, bValue: any;
+        let aValue: number | string, bValue: number | string;
 
         if (key === 'name') {
           aValue = (a.customName?.toLowerCase() || a.name.toLowerCase());

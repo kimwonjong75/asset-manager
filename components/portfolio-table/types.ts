@@ -1,4 +1,4 @@
-import { Asset, AssetCategory, PortfolioSnapshot, ExchangeRates, Currency } from '../../types';
+import { Asset, AssetCategory, PortfolioSnapshot, ExchangeRates } from '../../types';
 
 export interface PortfolioTableProps {
   assets: Asset[];

@@ -168,9 +168,11 @@ class GoogleDriveService {
             }, refreshTime);
             
             resolve(userInfo);
-          } catch (error: any) {
+          } catch (error: unknown) {
             console.error('Failed to get user info:', error);
-            console.error('Error details:', error.message, error.stack);
+            if (error instanceof Error) {
+              console.error('Error details:', error.message, error.stack);
+            }
             // 토큰은 받았지만 사용자 정보를 가져오지 못한 경우, 토큰을 저장하지 않음
             this.accessToken = null;
             reject(error);
@@ -210,12 +212,12 @@ class GoogleDriveService {
       }
 
       // 방법 2: Google API 클라이언트 사용 (대안)
-      if (window.gapi?.client && (window.gapi.client as any).setToken) {
+      if (window.gapi?.client && window.gapi.client.setToken) {
         try {
           // 토큰 설정
-          (window.gapi.client as any).setToken({ access_token: this.accessToken });
-          await (window.gapi.client as any).load('oauth2', 'v2');
-          const userInfo = await (window.gapi.client as any).oauth2.userinfo.get();
+          window.gapi.client.setToken({ access_token: this.accessToken });
+          await window.gapi.client.load('oauth2', 'v2');
+          const userInfo = await window.gapi.client.oauth2.userinfo.get();
           if (userInfo.result && userInfo.result.email) {
             return {
               email: userInfo.result.email,
@@ -240,7 +242,7 @@ class GoogleDriveService {
       } else {
         throw new Error(`사용자 정보를 가져올 수 없습니다 (${response.status}): ${errorText}`);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('getUserInfo error:', error);
       throw error;
     }
@@ -391,7 +393,7 @@ class GoogleDriveService {
       }
     } else {
       // 새 파일 생성
-      const metadata: any = { ...baseMetadata };
+      const metadata: { name: string; mimeType: string; parents?: string[] } = { ...baseMetadata };
       if (this.folderId) {
         metadata.parents = [this.folderId];
       }

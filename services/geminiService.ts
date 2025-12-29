@@ -1,5 +1,5 @@
 import { GoogleGenAI } from '@google/genai';
-import { Asset, Currency, SymbolSearchResult, normalizeExchange } from '../types';
+import { Asset, Currency, SymbolSearchResult, normalizeExchange, AssetDataResult } from '../types';
 
 // =================================================================
 // 1. 설정 및 초기화
@@ -142,16 +142,15 @@ Your final output must be only the JSON array, with no other text or markdown fo
 
   try {
     const jsonText = await callGeminiWithSearch(prompt);
-    const results = JSON.parse(jsonText || "[]");
-    
-    const validResults = results.filter((item: any) =>
-      typeof item.ticker === 'string' &&
-      typeof item.name === 'string' &&
-      typeof item.exchange === 'string'
-    );
-    
-    setCache(searchCache, cacheKey, validResults);
-    return validResults;
+    const parsed = JSON.parse(jsonText || "[]");
+    const isItem = (x: unknown): x is SymbolSearchResult => {
+      return !!x && typeof (x as SymbolSearchResult).ticker === 'string' &&
+        typeof (x as SymbolSearchResult).name === 'string' &&
+        typeof (x as SymbolSearchResult).exchange === 'string';
+    };
+    const results: SymbolSearchResult[] = Array.isArray(parsed) ? parsed.filter(isItem) : [];
+    setCache(searchCache, cacheKey, results);
+    return results;
   } catch (error) {
     console.error(`Search failed for "${query}":`, error);
     return [];
@@ -161,15 +160,6 @@ Your final output must be only the JSON array, with no other text or markdown fo
 // =================================================================
 // 6. 단일 자산 시세 조회
 // =================================================================
-export interface AssetDataResult {
-  name: string;
-  priceOriginal: number;
-  priceKRW: number;
-  currency: string;
-  pricePreviousClose: number;
-  highestPrice?: number;
-  isMocked: boolean;
-}
 
 export const fetchAssetData = async (
   ticker: string, 
@@ -250,7 +240,7 @@ function createMockResult(ticker: string): AssetDataResult {
     name: ticker,
     priceOriginal: 0,
     priceKRW: 0,
-    currency: 'KRW',
+    currency: Currency.KRW,
     pricePreviousClose: 0,
     highestPrice: 0,
     isMocked: true
@@ -311,6 +301,15 @@ export const fetchBatchAssetPrices = async (
   return resultMap;
 };
 
+interface BatchItem {
+  id: string;
+  name?: string;
+  priceKRW: number;
+  priceOriginal?: number;
+  previousClose?: number;
+  currency?: string;
+}
+
 async function fetchBatchInternal(
   assets: { ticker: string; exchange: string; id: string }[]
 ): Promise<Map<string, AssetDataResult>> {
@@ -350,14 +349,14 @@ Ensure all prices are numbers. Do not miss any assets. Return ONLY the JSON arra
       throw new Error('Batch API did not return an array.');
     }
 
-    data.forEach((item: any) => {
+    data.forEach((item: BatchItem) => {
       if (item.id && typeof item.priceKRW === 'number') {
         const result: AssetDataResult = {
           name: item.name || '',
           priceKRW: item.priceKRW,
           priceOriginal: item.priceOriginal || item.priceKRW,
           pricePreviousClose: item.previousClose || item.priceOriginal || item.priceKRW,
-          currency: item.currency || 'KRW',
+          currency: (item.currency as Currency) || Currency.KRW,
           highestPrice: item.priceKRW * 1.1,
           isMocked: false
         };

@@ -1,11 +1,11 @@
-import { AssetCategory, Currency, AssetDataResult, normalizeExchange } from '../types';
+import { AssetCategory, Currency, AssetDataResult, normalizeExchange, PriceAPIResponse, PriceItem } from '../types';
 
 const STOCK_API_URL = 'https://asset-manager-887842923289.asia-northeast3.run.app';
 const CHUNK_SIZE = 20;
 const CHUNK_DELAY_MS = 500;
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-function toNumber(v: any, fallback = 0): number {
+function toNumber(v: unknown, fallback = 0): number {
   const n = Number(v);
   return isFinite(n) ? n : fallback;
 }
@@ -15,24 +15,24 @@ function createMockResult(ticker: string): AssetDataResult {
     name: ticker,
     priceOriginal: 0,
     priceKRW: 0,
-    currency: 'KRW',
+    currency: Currency.KRW,
     pricePreviousClose: 0,
     highestPrice: 0,
     isMocked: true,
   };
 }
 
-function extractByTickerKey(data: any, key?: string): any {
+function extractByTickerKey(data: PriceAPIResponse, key?: string): PriceItem | undefined {
   if (!data) return undefined;
-  if (Array.isArray(data?.results)) {
-    if (!key) return data.results?.[0];
+  if ('results' in data && Array.isArray((data as { results: PriceItem[] }).results)) {
+    if (!key) return (data as { results: PriceItem[] }).results?.[0];
     const k = String(key).toUpperCase();
-    return data.results.find((x: any) => String(x?.ticker ?? x?.symbol ?? '').toUpperCase() === k);
+    return (data as { results: PriceItem[] }).results.find((x) => String(x?.ticker ?? x?.symbol ?? '').toUpperCase() === k);
   }
   if (Array.isArray(data)) {
     if (!key) return data[0];
     const k = String(key).toUpperCase();
-    return data.find((x: any) => String(x?.ticker ?? x?.symbol ?? '').toUpperCase() === k);
+    return data.find((x) => String(x?.ticker ?? x?.symbol ?? '').toUpperCase() === k);
   }
   if (typeof data === 'object') {
     if (!key) {
@@ -40,15 +40,15 @@ function extractByTickerKey(data: any, key?: string): any {
       return data[firstKey];
     }
     const k = String(key).toUpperCase();
-    const direct = Object.prototype.hasOwnProperty.call(data, k) ? data[k] : undefined;
+    const direct = Object.prototype.hasOwnProperty.call(data, k) ? (data as Record<string, PriceItem>)[k] : undefined;
     if (direct) return direct;
     const alt = Object.keys(data).find((kk) => String(kk).toUpperCase() === k);
-    return alt ? data[alt] : undefined;
+    return alt ? (data as Record<string, PriceItem>)[alt] : undefined;
   }
   return undefined;
 }
 
-async function fetchStocksBatch(payload: Array<{ ticker: string; exchange?: string }>): Promise<any> {
+async function fetchStocksBatch(payload: Array<{ ticker: string; exchange?: string }>): Promise<PriceAPIResponse> {
   console.log('fetchStocksBatch request', payload);
   const res = await fetch(STOCK_API_URL, {
     method: 'POST',
@@ -77,7 +77,7 @@ async function fetchStocksBatch(payload: Array<{ ticker: string; exchange?: stri
 export async function fetchExchangeRate(): Promise<number> {
   try {
     const data = await fetchStocksBatch([{ ticker: 'USD/KRW', exchange: 'KRX' }]);
-    const obj: any = extractByTickerKey(data, 'USD/KRW');
+    const obj = extractByTickerKey(data, 'USD/KRW');
     console.log('fetchExchangeRate parsed', obj);
     const rate = toNumber(obj?.priceOriginal ?? obj?.price ?? obj?.close, 0);
     if (rate > 0) return rate;
@@ -90,7 +90,7 @@ export async function fetchExchangeRate(): Promise<number> {
 export async function fetchExchangeRateJPY(): Promise<number> {
   try {
     const data = await fetchStocksBatch([{ ticker: 'JPY/KRW', exchange: 'KRX' }]);
-    const obj: any = extractByTickerKey(data, 'JPY/KRW');
+    const obj = extractByTickerKey(data, 'JPY/KRW');
     console.log('fetchExchangeRateJPY parsed', obj);
     const rate = toNumber(obj?.priceOriginal ?? obj?.price ?? obj?.close, 0);
     if (rate > 0) return rate;
@@ -117,9 +117,9 @@ export async function fetchBatchAssetPrices(
     try {
       const data = await fetchStocksBatch(payload);
       console.log('fetchBatchAssetPrices raw response', data);
-      const items: any[] = [];
-      if (Array.isArray(data?.results)) {
-        items.push(...data.results);
+      const items: PriceItem[] = [];
+      if ('results' in data && Array.isArray((data as { results: PriceItem[] }).results)) {
+        items.push(...(data as { results: PriceItem[] }).results);
       } else if (Array.isArray(data)) {
         items.push(...data);
       } else if (typeof data === 'object' && data) {
@@ -128,7 +128,7 @@ export async function fetchBatchAssetPrices(
           if (v && typeof v === 'object') items.push({ ...v, ticker: k });
         });
       }
-      items.forEach((item: any) => {
+      items.forEach((item: PriceItem) => {
         const ticker = String(item.ticker ?? item.symbol ?? '').toUpperCase();
         const normalizedTicker = ticker.endsWith('-USD') ? ticker.replace(/-USD$/i, '') : ticker;
         const matched = assets.find(a => a.ticker.toUpperCase() === normalizedTicker);
@@ -137,7 +137,10 @@ export async function fetchBatchAssetPrices(
         const prev = toNumber(item.previousClose ?? item.prev_close ?? item.yesterdayPrice, priceOrig);
         const currencyFromServer = String(item.currency ?? matched.currency ?? Currency.USD);
         const keepOriginalCurrency = matched.category === AssetCategory.CRYPTOCURRENCY;
-        const currency = keepOriginalCurrency ? String(matched.currency ?? currencyFromServer) : currencyFromServer;
+        const currencyStr = keepOriginalCurrency ? String(matched.currency ?? currencyFromServer) : currencyFromServer;
+        const currency: Currency = [Currency.KRW, Currency.USD, Currency.JPY, Currency.CNY].includes(currencyStr as Currency)
+          ? (currencyStr as Currency)
+          : Currency.KRW;
         const priceKRW = typeof item.priceKRW === 'number'
           ? item.priceKRW
           : (currency === Currency.KRW ? priceOrig : priceOrig);
@@ -161,9 +164,9 @@ export async function fetchBatchAssetPrices(
       try {
         const data = await fetchStocksBatch(payload);
         console.log('fetchBatchAssetPrices raw response (retry)', data);
-        const items: any[] = [];
-        if (Array.isArray(data?.results)) {
-          items.push(...data.results);
+        const items: PriceItem[] = [];
+        if ('results' in data && Array.isArray((data as { results: PriceItem[] }).results)) {
+          items.push(...(data as { results: PriceItem[] }).results);
         } else if (Array.isArray(data)) {
           items.push(...data);
         } else if (typeof data === 'object' && data) {
@@ -172,7 +175,7 @@ export async function fetchBatchAssetPrices(
             if (v && typeof v === 'object') items.push({ ...v, ticker: k });
           });
         }
-        items.forEach((item: any) => {
+        items.forEach((item: PriceItem) => {
           const ticker = String(item.ticker ?? item.symbol ?? '').toUpperCase();
           const normalizedTicker = ticker.endsWith('-USD') ? ticker.replace(/-USD$/i, '') : ticker;
           const matched = assets.find(a => a.ticker.toUpperCase() === normalizedTicker);
@@ -181,12 +184,11 @@ export async function fetchBatchAssetPrices(
           const prev = toNumber(item.previousClose ?? item.prev_close ?? item.yesterdayPrice, priceOrig);
           const currencyFromServer = String(item.currency ?? matched.currency ?? Currency.USD);
           const keepOriginalCurrency = matched.category === AssetCategory.CRYPTOCURRENCY;
-          let currency = keepOriginalCurrency ? String(matched.currency ?? currencyFromServer) : currencyFromServer;
+          const currencyStr = keepOriginalCurrency ? String(matched.currency ?? currencyFromServer) : currencyFromServer;
+          let currency: Currency = [Currency.KRW, Currency.USD, Currency.JPY, Currency.CNY].includes(currencyStr as Currency)
+            ? (currencyStr as Currency)
+            : Currency.KRW;
 
-          // [Data Consistency Fix]
-          // Upbit and Bithumb API always return KRW prices regardless of the requested currency.
-          // We enforce KRW currency for these exchanges to ensure data consistency.
-          // This allows usePortfolioData.ts to correctly handle price calculations without unnecessary conversions.
           if (matched.exchange === 'Upbit' || matched.exchange === 'Bithumb') {
             currency = Currency.KRW;
           }
@@ -219,7 +221,7 @@ export async function fetchBatchAssetPrices(
       name: s.ticker,
       priceOriginal: 0,
       priceKRW: 0,
-      currency: String(s.currency ?? Currency.USD),
+      currency: (s.currency ?? Currency.USD),
       pricePreviousClose: 0,
       highestPrice: 0,
       isMocked: true,
@@ -235,11 +237,14 @@ export async function fetchAssetData(asset: { ticker: string; exchange: string; 
     const isCrypto = asset.category === AssetCategory.CRYPTOCURRENCY;
     const reqTicker = isCrypto ? `${String(asset.ticker).toUpperCase()}-USD` : String(asset.ticker).toUpperCase();
     const data = await fetchStocksBatch([{ ticker: reqTicker, exchange: normalizedExchange }]);
-    const obj: any = extractByTickerKey(data, reqTicker);
+    const obj = extractByTickerKey(data, reqTicker);
     console.log('fetchAssetData parsed', obj);
     const priceOrig = toNumber(obj?.priceOriginal ?? obj?.price ?? obj?.close, 0);
     const prev = toNumber(obj?.previousClose ?? obj?.prev_close ?? obj?.yesterdayPrice, priceOrig);
-    const currency = String(obj?.currency ?? asset.currency ?? Currency.USD);
+    const currencyStr = String(obj?.currency ?? asset.currency ?? Currency.USD);
+    const currency: Currency = [Currency.KRW, Currency.USD, Currency.JPY, Currency.CNY].includes(currencyStr as Currency)
+      ? (currencyStr as Currency)
+      : Currency.KRW;
     const priceKRW = typeof obj?.priceKRW === 'number'
       ? obj.priceKRW
       : (currency === Currency.KRW ? priceOrig : priceOrig);

@@ -14,7 +14,13 @@ interface ChartData {
   value: number;
 }
 
-const CustomTooltip: React.FC<any> = ({ active, payload, totalValue }) => {
+interface CustomTooltipProps {
+  active?: boolean;
+  payload?: Array<{ dataKey?: string; value?: number; payload?: ChartData }>;
+  totalValue: number;
+}
+
+const CustomTooltip: React.FC<CustomTooltipProps> = ({ active, payload, totalValue }) => {
   if (active && payload && payload.length) {
     const { name, value } = payload[0].payload;
     const percent = totalValue > 0 ? (value / totalValue) * 100 : 0;
