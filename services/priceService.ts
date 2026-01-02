@@ -109,8 +109,9 @@ export async function fetchBatchAssetPrices(
   for (let i = 0; i < assets.length; i += CHUNK_SIZE) {
     const chunk = assets.slice(i, i + CHUNK_SIZE);
     const payload = chunk.map(s => {
-      const isCrypto = s.category === AssetCategory.CRYPTOCURRENCY;
-      const reqTicker = isCrypto ? `${String(s.ticker).toUpperCase()}-USD` : String(s.ticker).toUpperCase();
+      // 카테고리 무관하게 원본 티커 그대로 사용
+      // (만약 Yahoo Finance로 코인을 조회하고 싶다면, 사용자가 애초에 'BTC-USD'로 입력해야 함)
+      const reqTicker = String(s.ticker).toUpperCase(); 
       return { ticker: reqTicker, exchange: normalizeExchange(s.exchange) };
     });
     console.log('fetchBatchAssetPrices payload', payload);

@@ -18,26 +18,16 @@ interface UseMarketDataProps {
   setSuccessMessage: (msg: string | null) => void;
 }
 
-/**
- * 업비트 API로 조회해야 하는 자산인지 확인
- * - exchange가 'Upbit', 'Bithumb'인 경우
- * - exchange가 '주요 거래소', '종합' 등 한글이 포함되어 있고, 카테고리가 암호화폐인 경우
- */
-const shouldUseUpbitAPI = (exchange: string, category?: AssetCategory): boolean => {
-  const normalized = (exchange || '').toLowerCase();
+// category 인자 제거
+const shouldUseUpbitAPI = (exchange: string): boolean => {
+  const normalized = (exchange || '').toLowerCase().trim();
   
-  // 명확하게 Upbit/Bithumb인 경우
-  if (normalized === 'upbit' || normalized === 'bithumb') {
-    return true;
-  }
-  
-  // 한글이 포함된 거래소명이고 암호화폐인 경우 (예: '주요 거래소 (종합)')
-  const hasKorean = /[ㄱ-ㅎ|ㅏ-ㅣ|가-힣]/.test(exchange);
-  if (hasKorean && category === AssetCategory.CRYPTOCURRENCY) {
-    return true;
-  }
-  
-  return false;
+  // 업비트 API를 타야 하는 거래소 목록을 명시적으로 정의
+  // '주요 거래소 (종합)'은 앱에서 암호화폐 기본 거래소로 사용하는 명칭임
+  const upbitExchanges = ['upbit', 'bithumb', '주요 거래소 (종합)'];
+
+  // 해당 거래소 이름이 포함되어 있거나 일치하는지 확인
+  return upbitExchanges.some(ex => normalized.includes(ex));
 };
 
 export const useMarketData = ({
