@@ -84,10 +84,10 @@ export const useMarketData = ({
     // 2. 자산 분류 (현금 / 업비트 / 일반)
     const cashAssets = assets.filter(a => a.category === AssetCategory.CASH);
     const upbitAssets = assets.filter(a => 
-      a.category !== AssetCategory.CASH && shouldUseUpbitAPI(a.exchange, a.category)
+      a.category !== AssetCategory.CASH && shouldUseUpbitAPI(a.exchange)
     );
     const generalAssets = assets.filter(a => 
-      a.category !== AssetCategory.CASH && !shouldUseUpbitAPI(a.exchange, a.category)
+      a.category !== AssetCategory.CASH && !shouldUseUpbitAPI(a.exchange)
     );
 
     console.log('[useMarketData] 자산 분류:', {
@@ -163,7 +163,7 @@ export const useMarketData = ({
         }
 
         // 업비트 자산 처리 (업비트 API 직접 호출 결과 사용)
-        if (shouldUseUpbitAPI(asset.exchange, asset.category)) {
+        if (shouldUseUpbitAPI(asset.exchange)) {
           const tickerUpper = asset.ticker.toUpperCase();
           const upbitData = upbitPriceMap.get(tickerUpper) || 
                            upbitPriceMap.get(`KRW-${tickerUpper}`);
@@ -269,10 +269,10 @@ export const useMarketData = ({
     
     const cashAssets = targetAssets.filter(a => a.category === AssetCategory.CASH);
     const upbitAssets = targetAssets.filter(a => 
-      a.category !== AssetCategory.CASH && shouldUseUpbitAPI(a.exchange, a.category)
+      a.category !== AssetCategory.CASH && shouldUseUpbitAPI(a.exchange)
     );
     const generalAssets = targetAssets.filter(a => 
-      a.category !== AssetCategory.CASH && !shouldUseUpbitAPI(a.exchange, a.category)
+      a.category !== AssetCategory.CASH && !shouldUseUpbitAPI(a.exchange)
     );
     
     const cashPromises = cashAssets.map(asset => 
@@ -328,7 +328,7 @@ export const useMarketData = ({
           }
 
           // 업비트 자산 처리
-          if (shouldUseUpbitAPI(asset.exchange, asset.category)) {
+          if (shouldUseUpbitAPI(asset.exchange)) {
             const tickerUpper = asset.ticker.toUpperCase();
             const upbitData = upbitPriceMap.get(tickerUpper) || 
                              upbitPriceMap.get(`KRW-${tickerUpper}`);
@@ -402,7 +402,7 @@ export const useMarketData = ({
 
     try {
       // 업비트 자산인 경우 업비트 API 직접 호출
-      if (shouldUseUpbitAPI(target.exchange, target.category)) {
+      if (shouldUseUpbitAPI(target.exchange)) {
         console.log(`[useMarketData] 단일 조회 (업비트): ${target.ticker}`);
         const upbitPriceMap = await fetchUpbitPricesBatch([target.ticker]);
         const tickerUpper = target.ticker.toUpperCase();
@@ -471,9 +471,8 @@ export const useMarketData = ({
     setError(null);
 
     // 업비트 자산과 일반 자산 분리
-    const upbitItems = watchlist.filter(item => shouldUseUpbitAPI(item.exchange, item.category));
-    const generalItems = watchlist.filter(item => !shouldUseUpbitAPI(item.exchange, item.category));
-
+    const upbitItems = watchlist.filter(item => shouldUseUpbitAPI(item.exchange));
+    const generalItems = watchlist.filter(item => !shouldUseUpbitAPI(item.exchange));
     const itemsToFetch = generalItems.map(item => ({
       ticker: item.ticker,
       exchange: item.exchange,
@@ -492,7 +491,7 @@ export const useMarketData = ({
 
       const updated = watchlist.map((item) => {
         // 업비트 자산 처리
-        if (shouldUseUpbitAPI(item.exchange, item.category)) {
+        if (shouldUseUpbitAPI(item.exchange)) {
           const tickerUpper = item.ticker.toUpperCase();
           const upbitData = upbitPriceMap.get(tickerUpper) || 
                            upbitPriceMap.get(`KRW-${tickerUpper}`);
