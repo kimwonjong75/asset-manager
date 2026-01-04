@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react';
 import { Asset, ExchangeRates, ALLOWED_CATEGORIES, AssetCategory } from '../../types';
 import { Currency } from '../../types';
-import { getValueInKRW } from './utils';
-import { EnrichedAsset, SortKey, SortDirection } from './types';
+import { PortfolioTableProps, SortKey, SortDirection, EnrichedAsset, AssetMetrics } from '../../types';
+import { usePortfolioCalculator } from '../../hooks/usePortfolioCalculator';
 
 interface UsePortfolioDataProps {
   assets: Asset[];
@@ -22,13 +22,12 @@ export const usePortfolioData = ({
   failedIds
 }: UsePortfolioDataProps) => {
   const [sortConfig, setSortConfig] = useState<{ key: SortKey; direction: SortDirection } | null>(null);
+  const { calculatePortfolioStats, calculateAssetMetrics } = usePortfolioCalculator();
 
   const totalValueKRW = useMemo(() => {
-    return assets.reduce((sum, asset) => {
-      const valueInOriginalCurrency = asset.currentPrice * asset.quantity;
-      return sum + getValueInKRW(valueInOriginalCurrency, asset.currency, exchangeRates);
-    }, 0);
-  }, [assets, exchangeRates]);
+    const stats = calculatePortfolioStats(assets, exchangeRates);
+    return stats.totalValue;
+  }, [assets, exchangeRates, calculatePortfolioStats]);
 
   const categoryOptions = useMemo(() => {
     const extras = Array.from(new Set(assets.map(asset => asset.category))).filter(
@@ -39,72 +38,7 @@ export const usePortfolioData = ({
 
   const enrichedAndSortedAssets = useMemo(() => {
     let enriched: EnrichedAsset[] = assets.map(asset => {
-      // 1. isKRWExchange: Check if exchange is Upbit or Bithumb
-      const isKRWExchange = asset.exchange === 'Upbit' || asset.exchange === 'Bithumb';
-
-      // 2. Calculate Current Price in KRW
-      let currentPriceKRW: number;
-      if (isKRWExchange) {
-        // If Upbit/Bithumb, API returns KRW even if asset is set to USD
-        currentPriceKRW = asset.currentPrice;
-      } else {
-        currentPriceKRW = getValueInKRW(asset.currentPrice, asset.currency, exchangeRates);
-      }
-
-      const currentValueKRW = currentPriceKRW * asset.quantity;
-      const purchasePriceKRW = getValueInKRW(asset.purchasePrice, asset.currency, exchangeRates);
-      const purchaseValueKRW = purchasePriceKRW * asset.quantity;
-      const profitLossKRW = currentValueKRW - purchaseValueKRW;
-
-      // Calculate Return Percentage using KRW values to ensure consistency
-      const returnPercentage = purchaseValueKRW === 0 ? 0 : (profitLossKRW / purchaseValueKRW) * 100;
-
-      // Raw values (kept for reference, though mixed currencies may exist)
-      const currentValue = asset.currentPrice * asset.quantity;
-      const purchaseValue = asset.purchasePrice * asset.quantity;
-      const profitLoss = currentValue - purchaseValue;
-
-      // 3. Calculate Yesterday Price in KRW
-      const yesterdayPrice = asset.yesterdayPrice || 0;
-      let yesterdayPriceKRW: number;
-
-      if (isKRWExchange) {
-        if (asset.currency === Currency.USD) {
-          // Fix data mismatch: yesterdayPrice is in USD, convert to KRW
-          yesterdayPriceKRW = yesterdayPrice * (exchangeRates.USD || 1);
-        } else {
-          // Currency is KRW, use as is
-          yesterdayPriceKRW = yesterdayPrice;
-        }
-      } else {
-        yesterdayPriceKRW = getValueInKRW(yesterdayPrice, asset.currency, exchangeRates);
-      }
-
-      // 4. Calculate Yesterday Change (Daily Return)
-      const yesterdayChange = yesterdayPriceKRW > 0 
-        ? ((currentPriceKRW - yesterdayPriceKRW) / yesterdayPriceKRW) * 100 
-        : 0;
-        
-      const diffFromYesterday = yesterdayPriceKRW > 0 
-        ? currentPriceKRW - yesterdayPriceKRW 
-        : 0;
-
-      const allocation = totalValueKRW === 0 ? 0 : (currentValueKRW / totalValueKRW) * 100;
-      const dropFromHigh = asset.highestPrice === 0 ? 0 : ((asset.currentPrice - asset.highestPrice) / asset.highestPrice) * 100;
-      const diffFromHigh = asset.currentPrice - asset.highestPrice;
-      
-      return {
-        ...asset,
-        metrics: {
-          purchasePrice: asset.purchasePrice,
-          currentPrice: asset.currentPrice,
-          currentPriceKRW,
-          purchasePriceKRW,
-          purchaseValue, currentValue, purchaseValueKRW, currentValueKRW,
-          returnPercentage, allocation, dropFromHigh, profitLoss, profitLossKRW,
-          diffFromHigh, yesterdayChange, diffFromYesterday,
-        }
-      };
+      return calculateAssetMetrics(asset, exchangeRates, totalValueKRW);
     });
 
     if (filterAlerts) {

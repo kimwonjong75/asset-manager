@@ -63,7 +63,7 @@ const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, onAdd, onUpdat
       .map(w => ({
         ...w,
         dropFromHigh: w.highestPrice && w.currentPrice ? ((w.currentPrice - w.highestPrice) / w.highestPrice) * 100 : 0,
-        yesterdayChange: w.yesterdayPrice && w.currentPrice ? ((w.currentPrice - w.yesterdayPrice) / w.yesterdayPrice) * 100 : 0,
+        yesterdayChange: w.previousClosePrice && w.currentPrice ? ((w.currentPrice - w.previousClosePrice) / w.previousClosePrice) * 100 : 0,
         inBuyZone: w.buyZoneMin !== undefined && w.buyZoneMax !== undefined && w.currentPrice !== undefined
           ? w.currentPrice >= w.buyZoneMin && w.currentPrice <= w.buyZoneMax
           : false,

@@ -1,6 +1,6 @@
 import React, { Fragment, useRef, useState } from 'react';
 import { Asset, Currency, PortfolioSnapshot } from '../../types';
-import { EnrichedAsset } from './types';
+import { EnrichedAsset } from '../../types';
 import AssetTrendChart from '../AssetTrendChart';
 import { MoreHorizontal } from 'lucide-react';
 import { useOnClickOutside } from '../../hooks/useOnClickOutside';

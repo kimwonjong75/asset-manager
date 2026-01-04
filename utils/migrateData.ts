@@ -30,6 +30,18 @@ export const runMigrationIfNeeded = (data: { exchangeRates?: ExchangeRates; asse
       const purchasePrice = asset.purchasePrice || 0;
       const currentPrice = asset.currentPrice || 0;
       const priceOriginal = asset.priceOriginal || 0;
+      const yesterdayPrice = asset.yesterdayPrice || 0;
+      
+      // ✅ Rename yesterdayPrice to previousClosePrice
+      const migratedAsset = {
+        ...asset,
+        previousClosePrice: yesterdayPrice,
+      };
+      delete (migratedAsset as any).yesterdayPrice;
+
+      // Use migratedAsset for subsequent checks
+      const targetAsset = migratedAsset;
+
       
       // ✅ 암호화폐 특별 처리
       if (category === '암호화폐' || category === AssetCategory.CRYPTOCURRENCY) {
@@ -50,7 +62,7 @@ export const runMigrationIfNeeded = (data: { exchangeRates?: ExchangeRates; asse
             fixedCount++;
             
             return {
-              ...asset,
+              ...targetAsset,
               currency: Currency.KRW,
             };
           }
@@ -88,7 +100,7 @@ export const runMigrationIfNeeded = (data: { exchangeRates?: ExchangeRates; asse
         }
       }
       
-      return asset;
+      return targetAsset;
     });
     
     console.log(`[Migration] 완료! ${fixedCount}개 자산 수정됨`);

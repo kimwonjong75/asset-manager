@@ -109,7 +109,7 @@ export const useMarketData = ({
         priceKRW: rate * asset.priceOriginal,
         priceOriginal: asset.priceOriginal,
         currency: asset.currency,
-        pricePreviousClose: rate * asset.priceOriginal,
+        previousClosePrice: rate * asset.priceOriginal,
       }))
     );
 
@@ -150,7 +150,7 @@ export const useMarketData = ({
             const data = result.value;
             return {
               ...asset,
-              yesterdayPrice: data.pricePreviousClose,
+              previousClosePrice: data.previousClosePrice,
               currentPrice: data.priceKRW,
               priceOriginal: data.priceOriginal,
               currency: data.currency as Currency,
@@ -176,7 +176,7 @@ export const useMarketData = ({
             
             return {
               ...asset,
-              yesterdayPrice: newYesterdayPrice,
+              previousClosePrice: newYesterdayPrice,
               currentPrice: newCurrentPrice,
               priceOriginal: newCurrentPrice, // 업비트는 KRW 기준
               currency: Currency.KRW, // 업비트는 항상 KRW
@@ -207,7 +207,7 @@ export const useMarketData = ({
           }
           
           // KRW 단위 오류 보정
-          let newYesterdayPrice = priceData.pricePreviousClose;
+          let newYesterdayPrice = priceData.previousClosePrice;
           if (asset.currency === Currency.KRW && newYesterdayPrice > 0) {
              const ratio = newCurrentPrice / newYesterdayPrice;
              if (ratio > 50 || ratio < 0.02) {
@@ -220,7 +220,7 @@ export const useMarketData = ({
 
           return {
             ...asset,
-            yesterdayPrice: newYesterdayPrice,
+            previousClosePrice: newYesterdayPrice,
             currentPrice: newCurrentPrice,
             currency: newCurrency,
             highestPrice: Math.max(asset.highestPrice, newCurrentPrice),
@@ -286,7 +286,7 @@ export const useMarketData = ({
         priceKRW: rate * asset.priceOriginal, 
         priceOriginal: asset.priceOriginal, 
         currency: asset.currency, 
-        pricePreviousClose: rate * asset.priceOriginal
+        previousClosePrice: rate * asset.priceOriginal
       }))
     );
 
@@ -336,7 +336,7 @@ export const useMarketData = ({
             if (upbitData) {
               return {
                 ...asset,
-                yesterdayPrice: upbitData.prev_closing_price,
+                previousClosePrice: upbitData.prev_closing_price,
                 currentPrice: upbitData.trade_price,
                 priceOriginal: upbitData.trade_price,
                 currency: Currency.KRW,
@@ -412,7 +412,7 @@ export const useMarketData = ({
         if (upbitData) {
           const updated = assets.map(a => a.id === assetId ? {
             ...a,
-            yesterdayPrice: upbitData.prev_closing_price,
+            previousClosePrice: upbitData.prev_closing_price,
             currentPrice: upbitData.trade_price,
             priceOriginal: upbitData.trade_price,
             currency: Currency.KRW,
@@ -445,7 +445,7 @@ export const useMarketData = ({
         
         const updated = assets.map(a => a.id === assetId ? {
           ...a,
-          yesterdayPrice: d.pricePreviousClose,
+          previousClosePrice: d.previousClosePrice,
           currentPrice: newCurrentPrice,
           currency: newCurrency,
           highestPrice: Math.max(a.highestPrice, newCurrentPrice),
@@ -503,7 +503,7 @@ export const useMarketData = ({
               currentPrice: upbitData.trade_price,
               priceOriginal: upbitData.trade_price,
               currency: Currency.KRW,
-              yesterdayPrice: upbitData.prev_closing_price,
+              previousClosePrice: upbitData.prev_closing_price,
               highestPrice,
             };
           }
@@ -523,7 +523,7 @@ export const useMarketData = ({
             currentPrice: newCurrentPrice,
             priceOriginal: d.priceOriginal,
             currency: newCurrency,
-            yesterdayPrice: d.pricePreviousClose,
+            previousClosePrice: d.previousClosePrice,
             highestPrice,
           };
         }

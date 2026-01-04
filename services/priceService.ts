@@ -16,7 +16,7 @@ function createMockResult(ticker: string): AssetDataResult {
     priceOriginal: 0,
     priceKRW: 0,
     currency: Currency.KRW,
-    pricePreviousClose: 0,
+    previousClosePrice: 0,
     highestPrice: 0,
     isMocked: true,
   };
@@ -152,7 +152,7 @@ export async function fetchBatchAssetPrices(
           priceOriginal: priceOrig,
           priceKRW,
           currency,
-          pricePreviousClose: prev,
+          previousClosePrice: prev,
           highestPrice: (currency === Currency.KRW ? priceKRW : priceOrig) * 1.1,
           isMocked,
         };
@@ -204,7 +204,7 @@ export async function fetchBatchAssetPrices(
             priceOriginal: priceOrig,
             priceKRW,
             currency,
-            pricePreviousClose: prev,
+            previousClosePrice: prev,
             highestPrice: (currency === Currency.KRW ? priceKRW : priceOrig) * 1.1,
             isMocked,
           };
@@ -223,7 +223,7 @@ export async function fetchBatchAssetPrices(
       priceOriginal: 0,
       priceKRW: 0,
       currency: (s.currency ?? Currency.USD),
-      pricePreviousClose: 0,
+      previousClosePrice: 0,
       highestPrice: 0,
       isMocked: true,
     });
@@ -255,7 +255,7 @@ export async function fetchAssetData(asset: { ticker: string; exchange: string; 
       priceOriginal: priceOrig,
       priceKRW,
       currency,
-      pricePreviousClose: prev,
+      previousClosePrice: prev,
       highestPrice: (currency === Currency.KRW ? priceKRW : priceOrig) * 1.1,
       isMocked: false,
     };
