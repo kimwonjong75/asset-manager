@@ -1,5 +1,6 @@
 import { GoogleGenAI } from '@google/genai';
-import { Asset, Currency, SymbolSearchResult, normalizeExchange, AssetDataResult } from '../types';
+import { Asset, Currency, SymbolSearchResult, normalizeExchange } from '../types';
+import { AssetDataResult } from '../types/api';
 
 // =================================================================
 // 1. 설정 및 초기화

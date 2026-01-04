@@ -4,9 +4,8 @@ import {
   AssetCategory,
   Currency,
   ExchangeRates,
-  PortfolioContextValue,
-  UIState,
 } from '../types';
+import { PortfolioContextValue, UIState } from '../types/store';
 import { usePortfolioData } from '../hooks/usePortfolioData';
 import { useMarketData } from '../hooks/useMarketData';
 import { useAssetActions } from '../hooks/useAssetActions';

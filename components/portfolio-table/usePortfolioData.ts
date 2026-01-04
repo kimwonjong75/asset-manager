@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Asset, ExchangeRates, ALLOWED_CATEGORIES, AssetCategory } from '../../types';
 import { Currency } from '../../types';
-import { PortfolioTableProps, SortKey, SortDirection, EnrichedAsset, AssetMetrics } from '../../types';
+import { PortfolioTableProps, SortKey, SortDirection, AssetMetrics, EnrichedAsset } from '../../types/ui';
 import { usePortfolioCalculator } from '../../hooks/usePortfolioCalculator';
 
 interface UsePortfolioDataProps {

@@ -1,4 +1,5 @@
-import { AssetCategory, Currency, AssetDataResult, normalizeExchange, PriceAPIResponse, PriceItem } from '../types';
+import { AssetCategory, Currency, normalizeExchange } from '../types';
+import { AssetDataResult, PriceAPIResponse, PriceItem } from '../types/api';
 
 const STOCK_API_URL = 'https://asset-manager-887842923289.asia-northeast3.run.app';
 const CHUNK_SIZE = 20;

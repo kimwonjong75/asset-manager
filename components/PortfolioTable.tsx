@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { AssetCategory } from '../types';
 import { useOnClickOutside } from '../hooks/useOnClickOutside';
-import { PortfolioTableProps, SortKey, SortDirection } from '../types';
+import { PortfolioTableProps, SortKey, SortDirection } from '../types/ui';
 import { usePortfolioData } from './portfolio-table/usePortfolioData';
 import PortfolioTableRow from './portfolio-table/PortfolioTableRow';
 
