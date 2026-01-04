@@ -43,10 +43,16 @@ KIM'S 퀸트자산관리는 계량적 투자 전략을 기반으로 한 종합 �
 │   ├── ExchangeRateInput.tsx # 환율 입력 컴포넌트
 │   ├── Header.tsx           # 헤더 컴포넌트
 │   ├── layouts/             # 레이아웃 컴포넌트 (탭별 화면)
-│   │   ├── DashboardView.tsx    # 대시보드 탭
+│   │   ├── DashboardView.tsx    # 대시보드 탭 (조합형)
 │   │   ├── PortfolioView.tsx    # 포트폴리오 탭
 │   │   ├── AnalyticsView.tsx    # 통계 탭
 │   │   └── WatchlistView.tsx    # 관심종목 탭
+│   ├── dashboard/           # 대시보드 전용 컴포넌트 (신규)
+│   │   ├── DashboardControls.tsx # 상단 컨트롤
+│   │   ├── DashboardStats.tsx    # 핵심 지표
+│   │   ├── AllocationChart.tsx   # 배분 차트
+│   │   ├── ProfitLossChart.tsx   # 손익 차트
+│   │   └── ...
 │   ├── PortfolioAssistant.tsx # 포트폴리오 AI 어시스턴트
 │   ├── PortfolioModal.tsx   # 포트폴리오 모달
 │   ├── PortfolioTable.tsx   # 포트폴리오 테이블 (메인 Wrapper)
@@ -55,7 +61,6 @@ KIM'S 퀸트자산관리는 계량적 투자 전략을 기반으로 한 종합 �
 │   │   ├── usePortfolioData.ts   # 데이터 로직 훅
 │   │   ├── types.ts              # 타입 정의
 │   │   └── utils.ts              # 유틸리티 함수
-│   ├── ProfitLossChart.tsx  # 손익 추이 차트
 │   ├── RegionAllocationChart.tsx # 지역 배분 차트
 │   ├── SellAlertControl.tsx # 매도 알림 설정
 │   ├── SellAnalyticsPage.tsx # 매도 분석 페이지
@@ -103,7 +108,7 @@ interface Asset {
   currentPrice: number;        // 현재가
   priceOriginal: number;       // 원화 이외 통화의 원가
   highestPrice: number;        // 최고가
-  yesterdayPrice?: number;     // 전일 종가
+  previousClosePrice?: number; // 전일 종가 (구 yesterdayPrice)
   sellAlertDropRate?: number;  // 매도 알림 하락률
   memo?: string;               // 메모
   sellTransactions?: SellTransaction[]; // 매도 이력
@@ -514,13 +519,13 @@ gcloud run deploy asset-manager --source . --region asia-northeast3 --allow-unau
 
 ## 🧩 개발 참고: 타입 가이드 및 any 금지
 
-- 공용 타입은 모두 [types.ts](file:///c:/Users/beari/Desktop/Dev/asset-manager/types.ts)에 정의하고 전 파일에서 일관되게 사용
+- 공용 타입은 모두 `types/` 디렉토리 내의 파일들에 정의하고 전 파일에서 일관되게 사용
 - any 사용 금지: 응답/데이터는 명확한 인터페이스로 모델링
-  - 시세 응답 아이템: [PriceItem](file:///c:/Users/beari/Desktop/Dev/asset-manager/types.ts#L214-L232)
-  - 시세 응답 포맷: [PriceAPIResponse](file:///c:/Users/beari/Desktop/Dev/asset-manager/types.ts#L234-L241)
-  - 구버전 데이터: [LegacyAssetShape](file:///c:/Users/beari/Desktop/Dev/asset-manager/types.ts#L243-L270)
-  - 드라이브 메타데이터: [DriveFileMetadata](file:///c:/Users/beari/Desktop/Dev/asset-manager/types.ts#L272-L276)
-- 통화 타입 일관화: [AssetDataResult.currency](file:///c:/Users/beari/Desktop/Dev/asset-manager/types.ts#L204-L212)는 반드시 [Currency](file:///c:/Users/beari/Desktop/Dev/asset-manager/types.ts#L13-L18)
+  - 시세 응답 아이템: [PriceItem](file:///c:/Users/beari/Desktop/Dev/asset-manager/types/api.ts)
+  - 시세 응답 포맷: [PriceAPIResponse](file:///c:/Users/beari/Desktop/Dev/asset-manager/types/api.ts)
+  - 구버전 데이터: [LegacyAssetShape](file:///c:/Users/beari/Desktop/Dev/asset-manager/types/index.ts)
+  - 드라이브 메타데이터: [DriveFileMetadata](file:///c:/Users/beari/Desktop/Dev/asset-manager/types/index.ts)
+- 통화 타입 일관화: `AssetDataResult.currency`는 반드시 [Currency](file:///c:/Users/beari/Desktop/Dev/asset-manager/types/index.ts)
 - 프런트 서비스에서의 적용 예시
   - 일반 시세/환율 처리: [priceService.ts](file:///c:/Users/beari/Desktop/Dev/asset-manager/services/priceService.ts)
   - 업비트 시세 처리: [upbitService.ts](file:///c:/Users/beari/Desktop/Dev/asset-manager/services/upbitService.ts)
