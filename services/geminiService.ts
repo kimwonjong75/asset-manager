@@ -221,7 +221,7 @@ Ensure all prices are numbers. Return ONLY the JSON object.`;
       priceOriginal,
       priceKRW,
       currency: data.currency || 'KRW',
-      pricePreviousClose: previousClose,
+      previousClosePrice: previousClose,
       highestPrice: priceKRW * 1.1,
       isMocked: false
     };
@@ -241,7 +241,7 @@ function createMockResult(ticker: string): AssetDataResult {
     priceOriginal: 0,
     priceKRW: 0,
     currency: Currency.KRW,
-    pricePreviousClose: 0,
+    previousClosePrice: 0,
     highestPrice: 0,
     isMocked: true
   };
@@ -355,7 +355,7 @@ Ensure all prices are numbers. Do not miss any assets. Return ONLY the JSON arra
           name: item.name || '',
           priceKRW: item.priceKRW,
           priceOriginal: item.priceOriginal || item.priceKRW,
-          pricePreviousClose: item.previousClose || item.priceOriginal || item.priceKRW,
+          previousClosePrice: item.previousClose || item.priceOriginal || item.priceKRW,
           currency: (item.currency as Currency) || Currency.KRW,
           highestPrice: item.priceKRW * 1.1,
           isMocked: false
@@ -513,7 +513,7 @@ export const askPortfolioQuestion = async (
     currency: asset.currency,
     current_value_krw: asset.currentPrice * asset.quantity,
     highest_price_krw: asset.highestPrice,
-    yesterday_price_krw: asset.yesterdayPrice ?? null,
+    yesterday_price_krw: asset.previousClosePrice ?? null,
   }));
 
   const portfolioJson = JSON.stringify(simplifiedAssets, null, 2);

@@ -293,9 +293,9 @@ export const useMarketData = ({
     const itemsToFetch = generalAssets.map(a => ({ 
       ticker: a.ticker, 
       exchange: a.exchange, 
-      id: a.id,
-      category: a.category,
-      currency: a.currency,
+      id: a.id, 
+      category: a.category, 
+      currency: a.currency, 
     }));
 
     const upbitSymbols = upbitAssets.map(a => a.ticker);
@@ -317,7 +317,7 @@ export const useMarketData = ({
                 const data = result.value;
                 return { 
                   ...asset, 
-                  yesterdayPrice: data.pricePreviousClose, 
+                  previousClosePrice: data.previousClosePrice, 
                   currentPrice: data.priceKRW, 
                   priceOriginal: data.priceOriginal, 
                   currency: data.currency as Currency, 
@@ -359,7 +359,7 @@ export const useMarketData = ({
               }
             }
             
-            let newYesterdayPrice = priceData.pricePreviousClose;
+            let newYesterdayPrice = priceData.previousClosePrice;
             if (asset.currency === Currency.KRW && newYesterdayPrice > 0) {
                   const ratio = newCurrentPrice / newYesterdayPrice;
                   if (ratio > 50 || ratio < 0.02) {
@@ -370,7 +370,7 @@ export const useMarketData = ({
 
             return { 
               ...asset, 
-              yesterdayPrice: newYesterdayPrice, 
+              previousClosePrice: newYesterdayPrice, 
               currentPrice: newCurrentPrice, 
               currency: newCurrency, 
               highestPrice: Math.max(asset.highestPrice, newCurrentPrice) 
