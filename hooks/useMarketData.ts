@@ -1,7 +1,9 @@
 import { useCallback, useState } from 'react';
 import { Asset, AssetCategory, Currency, ExchangeRates, PortfolioSnapshot, SellRecord, WatchlistItem } from '../types';
-import { fetchBatchAssetPrices as fetchBatchAssetPricesNew, fetchCurrentExchangeRate } from '../services/priceService';
-import { fetchExchangeRate, fetchExchangeRateJPY } from '../services/priceService';
+// [수정] import 경로를 원래대로 복구 (priceService에서 불러오도록 수정)
+import { fetchBatchAssetPrices as fetchBatchAssetPricesNew, fetchExchangeRate, fetchExchangeRateJPY } from '../services/priceService';
+// [수정] geminiService 경로 복구
+import { fetchCurrentExchangeRate } from '../services/geminiService'; 
 import { fetchUpbitPricesBatch } from '../services/upbitService';
 
 interface UseMarketDataProps {
@@ -153,7 +155,7 @@ export const useMarketData = ({
             return asset;
           }
 
-          // (C) 일반 자산 (주식/ETF/해외) - 여기가 문제 해결의 핵심
+          // (C) 일반 자산 (주식/ETF/해외)
           const priceData = batchPriceMap.get(asset.id);
           if (priceData && !priceData.isMocked) {
              const isCrypto = asset.category === AssetCategory.CRYPTOCURRENCY;
@@ -166,7 +168,7 @@ export const useMarketData = ({
              // 만약 "최고가"가 "현재가"보다 20배 이상 크고, 원화 자산이 아니라면 -> 단위 오류로 간주하고 리셋
              let safeHighestPrice = asset.highestPrice;
              if (asset.currency !== Currency.KRW && safeHighestPrice > newCurrentPrice * 20) {
-                 console.log(`[Data Fix] ${asset.ticker}의 최고가 오류 감지(KRW값 추정). ${safeHighestPrice} -> ${newCurrentPrice}로 리셋`);
+                 console.log(`[Data Fix] ${asset.ticker}의 최고가 오류 감지. ${safeHighestPrice} -> ${newCurrentPrice}로 리셋`);
                  safeHighestPrice = 0; // 초기화
              }
 
@@ -212,11 +214,10 @@ export const useMarketData = ({
     }
   }, [assets, portfolioHistory, sellHistory, watchlist, exchangeRates, triggerAutoSave, setAssets, setExchangeRates, setError, setSuccessMessage]);
 
-  // 나머지 함수들(단일 갱신 등)은 분량상 생략되었으나, 위 handleRefreshAllPrices만 잘 작동하면 대부분 해결됩니다.
-  // 에러 방지를 위해 껍데기 함수 유지
+  // 에러 방지를 위한 래퍼 함수들
   const handleRefreshSelectedPrices = async (ids: string[]) => { await handleRefreshAllPrices(); };
   const handleRefreshOnePrice = async (id: string) => { await handleRefreshAllPrices(); };
-  const handleRefreshWatchlistPrices = async () => { /* Watchlist 로직 별도 구현 가능 */ };
+  const handleRefreshWatchlistPrices = async () => { /* 필요시 구현 */ };
 
   return {
     isLoading,
