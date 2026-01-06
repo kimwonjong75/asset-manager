@@ -197,6 +197,7 @@ const PortfolioTableRow: React.FC<PortfolioTableRowProps> = ({
               assetName={(asset.customName?.trim() || asset.name)}
               // @ts-ignore: AssetTrendChart가 currentQuantity를 prop으로 받도록 수정되었는지 확인 필요
               currentQuantity={asset.quantity} 
+              currentPrice={asset.currentPrice}  
             />
           </td>
         </tr>
