@@ -366,14 +366,12 @@ export const useMarketData = ({
             }
             
             let newYesterdayPrice = priceData.previousClosePrice;
-            if (asset.currency === Currency.KRW && newYesterdayPrice > 0) {
-                  const ratio = newCurrentPrice / newYesterdayPrice;
-                  if (ratio > 50 || ratio < 0.02) {
-                      const impliedRate = priceData.priceOriginal > 0 ? (priceData.priceKRW / priceData.priceOriginal) : 1450;
-                      if (ratio > 50) newYesterdayPrice = newYesterdayPrice * impliedRate;
-                  }
-            }
 
+            // API에서 전일종가를 0이나 null로 줬을 때만 기존 로직으로 추정 시도
+            if (newYesterdayPrice <= 0 && asset.currency === Currency.KRW) { 
+                // 기존 보정 로직 (혹은 이전 asset.previousClosePrice 유지)
+                newYesterdayPrice = asset.previousClosePrice || 0;
+            }
             return { 
               ...asset, 
               previousClosePrice: newYesterdayPrice, 
