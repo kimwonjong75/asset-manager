@@ -1,9 +1,8 @@
 import { useCallback, useState } from 'react';
 import { Asset, AssetCategory, Currency, ExchangeRates, PortfolioSnapshot, SellRecord, WatchlistItem } from '../types';
-// [수정] import 경로를 원래대로 복구 (priceService에서 불러오도록 수정)
-import { fetchBatchAssetPrices as fetchBatchAssetPricesNew, fetchExchangeRate, fetchExchangeRateJPY } from '../services/priceService';
-// [수정] geminiService 경로 복구
-import { fetchCurrentExchangeRate } from '../services/geminiService'; 
+// [수정] fetchAssetData import 복구 (단일 갱신 시 필요)
+import { fetchBatchAssetPrices as fetchBatchAssetPricesNew, fetchAssetData as fetchAssetDataNew, fetchExchangeRate, fetchExchangeRateJPY } from '../services/priceService';
+import { fetchCurrentExchangeRate } from '../services/geminiService';
 import { fetchUpbitPricesBatch } from '../services/upbitService';
 
 interface UseMarketDataProps {
@@ -47,7 +46,18 @@ export const useMarketData = ({
     triggerAutoSave(assets, portfolioHistory, sellHistory, watchlist, newRates);
   }, [assets, portfolioHistory, sellHistory, watchlist, triggerAutoSave, setExchangeRates]);
 
-  // [핵심 함수] 전체 시세 갱신 및 데이터 오류 자동 보정
+  // 공통 로직: 최고가 오류 자동 보정 함수
+  const fixHighestPrice = (asset: Asset, newCurrentPrice: number, apiHighest: number = 0) => {
+      let safeHighestPrice = asset.highestPrice;
+      // 최고가가 현재가보다 20배 이상 크고, 원화 자산이 아니라면 단위 오류로 간주하고 리셋
+      if (asset.currency !== Currency.KRW && safeHighestPrice > newCurrentPrice * 20) {
+          console.log(`[Data Fix] ${asset.ticker} 최고가 오류 보정. ${safeHighestPrice} -> 0`);
+          safeHighestPrice = 0;
+      }
+      return Math.max(safeHighestPrice, apiHighest, newCurrentPrice);
+  };
+
+  // 1. 전체 시세 갱신
   const handleRefreshAllPrices = useCallback(async (isAutoUpdate = false, isScheduled = false) => {
     if (assets.length === 0) return;
     
@@ -62,7 +72,6 @@ export const useMarketData = ({
     }
 
     try {
-        // 1. 환율 업데이트
         const [usdRate, jpyRate] = await Promise.all([
             fetchExchangeRate().catch(() => 1450),
             fetchExchangeRateJPY().catch(() => 9.5)
@@ -74,38 +83,20 @@ export const useMarketData = ({
         };
         setExchangeRates(newRates);
 
-        // 2. 자산 분류
         const cashAssets = assets.filter(a => a.category === AssetCategory.CASH);
         const upbitAssets = assets.filter(a => a.category !== AssetCategory.CASH && shouldUseUpbitAPI(a.exchange));
         const generalAssets = assets.filter(a => a.category !== AssetCategory.CASH && !shouldUseUpbitAPI(a.exchange));
 
-        // 3. API 요청 준비
         const cashPromises = cashAssets.map(asset => 
-          (asset.currency === Currency.USD 
-            ? Promise.resolve(newRates.USD)
-            : asset.currency === Currency.JPY 
-              ? Promise.resolve(newRates.JPY)
-              : fetchCurrentExchangeRate(asset.currency, Currency.KRW)
-          ).then(rate => ({
-            id: asset.id,
-            priceKRW: rate * asset.priceOriginal,
-            priceOriginal: asset.priceOriginal,
-            currency: asset.currency,
-            previousClosePrice: rate * asset.priceOriginal,
+          (asset.currency === Currency.USD ? Promise.resolve(newRates.USD) : asset.currency === Currency.JPY ? Promise.resolve(newRates.JPY) : fetchCurrentExchangeRate(asset.currency, Currency.KRW))
+          .then(rate => ({
+            id: asset.id, priceKRW: rate * asset.priceOriginal, priceOriginal: asset.priceOriginal, currency: asset.currency, previousClosePrice: rate * asset.priceOriginal
           }))
         );
 
-        const assetsToFetch = generalAssets.map(a => ({
-          ticker: a.ticker,
-          exchange: a.exchange,
-          id: a.id,
-          category: a.category,
-          currency: a.currency,
-        }));
-
+        const assetsToFetch = generalAssets.map(a => ({ ticker: a.ticker, exchange: a.exchange, id: a.id, category: a.category, currency: a.currency }));
         const upbitSymbols = upbitAssets.map(a => a.ticker);
 
-        // 4. API 동시 호출
         const [cashResults, batchPriceMap, upbitPriceMap] = await Promise.all([
           Promise.allSettled(cashPromises),
           assetsToFetch.length > 0 ? fetchBatchAssetPricesNew(assetsToFetch) : Promise.resolve(new Map()),
@@ -115,95 +106,41 @@ export const useMarketData = ({
         const failedTickers: string[] = [];
         const failedIds: string[] = [];
 
-        // 5. 데이터 병합 및 "최고가 오류 자동 수정" 로직 적용
         const updatedAssets = assets.map((asset) => {
-          
-          // (A) 현금 자산
           if (asset.category === AssetCategory.CASH) {
-            const cashIdx = cashAssets.findIndex(ca => ca.id === asset.id);
-            const result = cashResults[cashIdx];
-            if (result && result.status === 'fulfilled') {
-              const data = result.value;
-              return { ...asset, currentPrice: data.priceKRW, previousClosePrice: data.priceKRW };
-            }
+            const result = cashResults[cashAssets.findIndex(ca => ca.id === asset.id)];
+            if (result && result.status === 'fulfilled') return { ...asset, currentPrice: result.value.priceKRW, previousClosePrice: result.value.priceKRW };
             return asset;
           }
 
-          // (B) 업비트 자산
           if (shouldUseUpbitAPI(asset.exchange)) {
-            const tickerUpper = asset.ticker.toUpperCase();
-            const upbitData = upbitPriceMap.get(tickerUpper) || upbitPriceMap.get(`KRW-${tickerUpper}`);
-            
+            const upbitData = upbitPriceMap.get(asset.ticker.toUpperCase()) || upbitPriceMap.get(`KRW-${asset.ticker.toUpperCase()}`);
             if (upbitData) {
               const newCurrent = upbitData.trade_price;
               const apiHigh = upbitData.highest_52_week_price || newCurrent;
-              // 업비트는 KRW 기준이므로 기존 로직 유지
-              const newHighest = Math.max(asset.highestPrice, apiHigh, newCurrent);
-              
-              return {
-                ...asset,
-                previousClosePrice: upbitData.prev_closing_price,
-                currentPrice: newCurrent,
-                priceOriginal: newCurrent,
-                currency: Currency.KRW,
-                highestPrice: newHighest,
-                changeRate: upbitData.signed_change_rate
-              };
+              const newHighest = Math.max(asset.highestPrice, apiHigh, newCurrent); // 업비트는 KRW라 보정 불필요
+              return { ...asset, previousClosePrice: upbitData.prev_closing_price, currentPrice: newCurrent, priceOriginal: newCurrent, currency: Currency.KRW, highestPrice: newHighest, changeRate: upbitData.signed_change_rate };
             }
-            failedTickers.push(asset.ticker);
-            failedIds.push(asset.id);
-            return asset;
+            failedTickers.push(asset.ticker); failedIds.push(asset.id); return asset;
           }
 
-          // (C) 일반 자산 (주식/ETF/해외)
           const priceData = batchPriceMap.get(asset.id);
           if (priceData && !priceData.isMocked) {
-             const isCrypto = asset.category === AssetCategory.CRYPTOCURRENCY;
-             const newCurrency = isCrypto ? asset.currency : (priceData.currency as Currency);
-             
-             // 현재가 결정 (외화는 외화 그대로)
-             let newCurrentPrice = (asset.currency === Currency.KRW) ? priceData.priceKRW : priceData.priceOriginal;
-             
-             // [강력한 데이터 보정 로직]
-             // 만약 "최고가"가 "현재가"보다 20배 이상 크고, 원화 자산이 아니라면 -> 단위 오류로 간주하고 리셋
-             let safeHighestPrice = asset.highestPrice;
-             if (asset.currency !== Currency.KRW && safeHighestPrice > newCurrentPrice * 20) {
-                 console.log(`[Data Fix] ${asset.ticker}의 최고가 오류 감지. ${safeHighestPrice} -> ${newCurrentPrice}로 리셋`);
-                 safeHighestPrice = 0; // 초기화
-             }
+             const newCurrency = (asset.category === AssetCategory.CRYPTOCURRENCY) ? asset.currency : (priceData.currency as Currency);
+             const newCurrentPrice = (asset.currency === Currency.KRW) ? priceData.priceKRW : priceData.priceOriginal;
+             const finalHighest = fixHighestPrice(asset, newCurrentPrice, priceData.highestPrice); // 보정 함수 적용
 
-             // API에서 준 52주 신고가 사용 (없으면 0)
-             const apiHigh = priceData.highestPrice || 0;
-             const finalHighest = Math.max(safeHighestPrice, apiHigh, newCurrentPrice);
-
-             return {
-               ...asset,
-               currentPrice: newCurrentPrice,
-               priceOriginal: priceData.priceOriginal,
-               previousClosePrice: priceData.previousClosePrice,
-               currency: newCurrency,
-               highestPrice: finalHighest, // 수정된 최고가 적용
-               changeRate: priceData.changeRate,
-               indicators: priceData.indicators
-             };
+             return { ...asset, currentPrice: newCurrentPrice, priceOriginal: priceData.priceOriginal, previousClosePrice: priceData.previousClosePrice, currency: newCurrency, highestPrice: finalHighest, changeRate: priceData.changeRate, indicators: priceData.indicators };
           }
-          
-          failedTickers.push(asset.ticker);
-          failedIds.push(asset.id);
-          return asset;
+          failedTickers.push(asset.ticker); failedIds.push(asset.id); return asset;
         });
 
         setAssets(updatedAssets);
         setFailedAssetIds(new Set(failedIds));
-        
-        // 자동 저장 실행
         triggerAutoSave(updatedAssets, portfolioHistory, sellHistory, watchlist, newRates);
-
-        if (failedTickers.length > 0) {
-           setError(`갱신 실패: ${failedTickers.join(', ')}`);
-        } else {
-           setSuccessMessage('모든 자산 시세 업데이트 완료');
-        }
+        
+        if (failedTickers.length > 0) setError(`갱신 실패: ${failedTickers.join(', ')}`);
+        else setSuccessMessage('시세 업데이트 완료');
         setTimeout(() => { setError(null); setSuccessMessage(null); }, 3000);
 
     } catch (error) {
@@ -214,10 +151,128 @@ export const useMarketData = ({
     }
   }, [assets, portfolioHistory, sellHistory, watchlist, exchangeRates, triggerAutoSave, setAssets, setExchangeRates, setError, setSuccessMessage]);
 
-  // 에러 방지를 위한 래퍼 함수들
-  const handleRefreshSelectedPrices = async (ids: string[]) => { await handleRefreshAllPrices(); };
-  const handleRefreshOnePrice = async (id: string) => { await handleRefreshAllPrices(); };
-  const handleRefreshWatchlistPrices = async () => { /* 필요시 구현 */ };
+  // 2. 선택 자산 갱신 (완전 구현)
+  const handleRefreshSelectedPrices = useCallback(async (ids: string[]) => {
+    if (ids.length === 0) return;
+    setIsLoading(true); setError(null);
+    const idSet = new Set(ids);
+    const targetAssets = assets.filter(a => idSet.has(a.id));
+    
+    try {
+        // 간략화: 선택 갱신도 로직 복잡성을 피하기 위해 전체 갱신 로직을 일부 차용하되 대상만 필터링
+        // 여기서는 코드 안정성을 위해, 선택된 ID가 포함된 전체 리스트를 다시 계산하는 방식이 가장 안전함 (부분 업데이트보다)
+        // 하지만 성능을 위해 필요한 부분만 fetch 하도록 구현
+        
+        const generalAssets = targetAssets.filter(a => !shouldUseUpbitAPI(a.exchange) && a.category !== AssetCategory.CASH);
+        const upbitAssets = targetAssets.filter(a => shouldUseUpbitAPI(a.exchange) && a.category !== AssetCategory.CASH);
+        
+        const assetsToFetch = generalAssets.map(a => ({ ticker: a.ticker, exchange: a.exchange, id: a.id, category: a.category, currency: a.currency }));
+        const upbitSymbols = upbitAssets.map(a => a.ticker);
+
+        const [batchPriceMap, upbitPriceMap] = await Promise.all([
+             assetsToFetch.length > 0 ? fetchBatchAssetPricesNew(assetsToFetch) : Promise.resolve(new Map()),
+             upbitSymbols.length > 0 ? fetchUpbitPricesBatch(upbitSymbols) : Promise.resolve(new Map())
+        ]);
+
+        const updatedAssets = assets.map(asset => {
+            if (!idSet.has(asset.id)) return asset;
+            if (asset.category === AssetCategory.CASH) return asset; // 현금은 전체 갱신 때만
+
+            if (shouldUseUpbitAPI(asset.exchange)) {
+                const upbitData = upbitPriceMap.get(asset.ticker.toUpperCase()) || upbitPriceMap.get(`KRW-${asset.ticker.toUpperCase()}`);
+                if (upbitData) {
+                    const newCurrent = upbitData.trade_price;
+                    const apiHigh = upbitData.highest_52_week_price || newCurrent;
+                    const newHighest = Math.max(asset.highestPrice, apiHigh, newCurrent);
+                    return { ...asset, previousClosePrice: upbitData.prev_closing_price, currentPrice: newCurrent, priceOriginal: newCurrent, currency: Currency.KRW, highestPrice: newHighest, changeRate: upbitData.signed_change_rate };
+                }
+                return asset;
+            }
+
+            const priceData = batchPriceMap.get(asset.id);
+            if (priceData && !priceData.isMocked) {
+                 const newCurrency = (asset.category === AssetCategory.CRYPTOCURRENCY) ? asset.currency : (priceData.currency as Currency);
+                 const newCurrentPrice = (asset.currency === Currency.KRW) ? priceData.priceKRW : priceData.priceOriginal;
+                 const finalHighest = fixHighestPrice(asset, newCurrentPrice, priceData.highestPrice);
+                 return { ...asset, currentPrice: newCurrentPrice, priceOriginal: priceData.priceOriginal, previousClosePrice: priceData.previousClosePrice, currency: newCurrency, highestPrice: finalHighest, changeRate: priceData.changeRate, indicators: priceData.indicators };
+            }
+            return asset;
+        });
+
+        setAssets(updatedAssets);
+        triggerAutoSave(updatedAssets, portfolioHistory, sellHistory, watchlist, exchangeRates);
+        setSuccessMessage('선택 항목 업데이트 완료');
+    } catch(e) { setError('선택 항목 업데이트 실패'); }
+    finally { setIsLoading(false); setTimeout(() => setSuccessMessage(null), 2000); }
+  }, [assets, portfolioHistory, sellHistory, watchlist, exchangeRates, triggerAutoSave, setAssets, setError, setSuccessMessage]);
+
+  // 3. 단일 자산 갱신 (완전 구현)
+  const handleRefreshOnePrice = useCallback(async (assetId: string) => {
+    const target = assets.find(a => a.id === assetId);
+    if (!target) return;
+    setIsLoading(true); setError(null);
+
+    try {
+      if (shouldUseUpbitAPI(target.exchange)) {
+        const upbitPriceMap = await fetchUpbitPricesBatch([target.ticker]);
+        const upbitData = upbitPriceMap.get(target.ticker.toUpperCase()) || upbitPriceMap.get(`KRW-${target.ticker.toUpperCase()}`);
+        if (upbitData) {
+             const newCurrent = upbitData.trade_price;
+             const newHighest = Math.max(target.highestPrice, upbitData.highest_52_week_price || 0, newCurrent);
+             const updated = assets.map(a => a.id === assetId ? { ...a, previousClosePrice: upbitData.prev_closing_price, currentPrice: newCurrent, priceOriginal: newCurrent, currency: Currency.KRW, highestPrice: newHighest } : a);
+             setAssets(updated);
+             triggerAutoSave(updated, portfolioHistory, sellHistory, watchlist, exchangeRates);
+             setSuccessMessage('업데이트 완료');
+        } else throw new Error('업비트 조회 실패');
+      } else {
+        const d = await fetchAssetDataNew({ ticker: target.ticker, exchange: target.exchange, category: target.category, currency: target.currency });
+        const newCurrency = (target.category === AssetCategory.CRYPTOCURRENCY) ? target.currency : (d.currency as Currency);
+        const newCurrentPrice = (target.currency === Currency.KRW) ? d.priceKRW : d.priceOriginal;
+        const finalHighest = fixHighestPrice(target, newCurrentPrice, d.highestPrice);
+        
+        const updated = assets.map(a => a.id === assetId ? { ...a, previousClosePrice: d.previousClosePrice, currentPrice: newCurrentPrice, currency: newCurrency, highestPrice: finalHighest } : a);
+        setAssets(updated);
+        triggerAutoSave(updated, portfolioHistory, sellHistory, watchlist, exchangeRates);
+        setSuccessMessage('업데이트 완료');
+      }
+    } catch (e) { setError('갱신 실패'); }
+    finally { setIsLoading(false); setTimeout(() => setSuccessMessage(null), 2000); }
+  }, [assets, portfolioHistory, sellHistory, watchlist, exchangeRates, triggerAutoSave, setAssets, setError, setSuccessMessage]);
+
+  // 4. 관심종목 갱신
+  const handleRefreshWatchlistPrices = useCallback(async () => {
+    if (watchlist.length === 0) return;
+    setIsLoading(true); setError(null);
+    try {
+        const generalItems = watchlist.filter(item => !shouldUseUpbitAPI(item.exchange));
+        const upbitItems = watchlist.filter(item => shouldUseUpbitAPI(item.exchange));
+        const itemsToFetch = generalItems.map(item => ({ ticker: item.ticker, exchange: item.exchange, id: item.id, category: item.category, currency: item.currency }));
+        const upbitSymbols = upbitItems.map(item => item.ticker);
+
+        const [priceMap, upbitPriceMap] = await Promise.all([
+            itemsToFetch.length > 0 ? fetchBatchAssetPricesNew(itemsToFetch) : Promise.resolve(new Map()),
+            upbitSymbols.length > 0 ? fetchUpbitPricesBatch(upbitSymbols) : Promise.resolve(new Map())
+        ]);
+
+        const updated = watchlist.map(item => {
+            if (shouldUseUpbitAPI(item.exchange)) {
+                const data = upbitPriceMap.get(item.ticker.toUpperCase()) || upbitPriceMap.get(`KRW-${item.ticker.toUpperCase()}`);
+                if (data) return { ...item, currentPrice: data.trade_price, priceOriginal: data.trade_price, currency: Currency.KRW, previousClosePrice: data.prev_closing_price, changeRate: data.signed_change_rate };
+                return item;
+            }
+            const d = priceMap.get(item.id);
+            if (d && !d.isMocked) {
+                const newCurrent = (item.currency === Currency.KRW) ? d.priceKRW : d.priceOriginal;
+                return { ...item, currentPrice: newCurrent, priceOriginal: d.priceOriginal, currency: (item.currency || d.currency) as Currency, previousClosePrice: d.previousClosePrice, changeRate: d.changeRate, indicators: d.indicators };
+            }
+            return item;
+        });
+        setWatchlist(updated);
+        triggerAutoSave(assets, portfolioHistory, sellHistory, updated, exchangeRates);
+        setSuccessMessage('관심종목 업데이트 완료');
+    } catch (e) { setError('관심종목 갱신 실패'); }
+    finally { setIsLoading(false); setTimeout(() => setSuccessMessage(null), 2000); }
+  }, [watchlist, assets, portfolioHistory, sellHistory, exchangeRates, triggerAutoSave, setWatchlist, setError, setSuccessMessage]);
 
   return {
     isLoading,
