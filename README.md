@@ -85,7 +85,11 @@ KIM'S 퀸트자산관리는 계량적 투자 전략을 기반으로 한 종합 �
 ├── utils/                    # 유틸리티 함수
 │   ├── migrateData.ts     # 데이터 마이그레이션
 │   └── signalUtils.ts     # 서버 신호/RSI 뱃지 렌더링 유틸
-├── types.ts                # TypeScript 타입 정의
+├── types/                  # TypeScript 타입 정의
+│   ├── index.ts           # 주요 타입 정의 (자산, 화폐, 거래소 등)
+│   ├── api.ts             # API 관련 타입 정의
+│   ├── store.ts           # 상태 관리 관련 타입 정의
+│   └── ui.ts              # UI 컴포넌트 관련 타입 정의
 ├── App.tsx                 # 메인 애플리케이션
 ├── index.tsx              # 애플리케이션 진입점
 └── initialData.ts         # 초기 데이터
