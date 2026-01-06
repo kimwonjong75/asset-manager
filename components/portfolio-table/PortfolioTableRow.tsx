@@ -58,7 +58,7 @@ const RSIIndicator = ({ rsi, status }: { rsi?: number, status?: string }) => {
 // ----------------------------------------------------------------------
 
 interface PortfolioTableRowProps {
-  asset: EnrichedAsset; // 원본 타입(EnrichedAsset) 유지
+  asset: EnrichedAsset;
   history: PortfolioSnapshot[];
   selectedIds: Set<string>;
   onSelect: (id: string, checked: boolean) => void;
@@ -96,7 +96,6 @@ const PortfolioTableRow: React.FC<PortfolioTableRowProps> = ({
     setExpandedAssetId(prevId => (prevId === assetId ? null : assetId));
   };
 
-  // 원본 구조(asset.metrics) 사용
   const { purchaseValue, currentValue, purchaseValueKRW, currentValueKRW, returnPercentage, allocation, dropFromHigh, profitLoss, profitLossKRW, diffFromHigh, yesterdayChange, diffFromYesterday } = asset.metrics;
   
   const alertRate = asset.sellAlertDropRate ?? sellAlertDropRate;
@@ -104,10 +103,16 @@ const PortfolioTableRow: React.FC<PortfolioTableRowProps> = ({
   const isNonKRW = asset.currency !== Currency.KRW;
   const investmentColor = getChangeColor(returnPercentage);
 
-  // [수정] 서버에서 받아온 changeRate가 있다면 그것을 우선 사용 (API는 Ratio로 주므로 * 100, 기존 yesterdayChange는 %단위)
+  // API changeRate 우선 사용
   const finalYesterdayChangeRate = asset.changeRate !== undefined 
     ? asset.changeRate * 100 
     : yesterdayChange;
+
+  // [수정] 차트에 전달할 환율 계산 (현재가치 KRW / 현재가치 외화)
+  // 값이 0이거나 KRW인 경우 1로 처리
+  const derivedExchangeRate = (isNonKRW && currentValue > 0) 
+    ? currentValueKRW / currentValue 
+    : 1;
 
   return (
     <Fragment>
@@ -126,7 +131,6 @@ const PortfolioTableRow: React.FC<PortfolioTableRowProps> = ({
                >
                  {(asset.customName?.trim() || asset.name)}
                </a>
-               {/* [추가] 퀀트 신호 배지 */}
                <SignalBadge signal={asset.indicators?.signal} />
                {isAlertTriggered && <span className="text-xs" title="알림 조건 도달">⚠️</span>}
              </div>
@@ -140,11 +144,9 @@ const PortfolioTableRow: React.FC<PortfolioTableRowProps> = ({
             {isNonKRW && <div className="text-xs text-gray-500">≈ {formatKRW(asset.metrics.purchasePriceKRW)}</div>}
           </td>
         )}
-        {/* 현재가 및 RSI */}
         <td className="px-4 py-4 text-right">
           <div className="font-semibold text-white">{formatOriginalCurrency(asset.currentPrice, asset.currency)}</div>
           {isNonKRW && <div className="text-xs text-gray-500">≈ {formatKRW(asset.metrics.currentPriceKRW)}</div>}
-          {/* [추가] RSI 표시 */}
           <RSIIndicator rsi={asset.indicators?.rsi} status={asset.indicators?.rsi_status} />
         </td>
         <td className={`px-4 py-4 font-medium text-right ${getChangeColor(returnPercentage)}`}>
@@ -165,7 +167,6 @@ const PortfolioTableRow: React.FC<PortfolioTableRowProps> = ({
             <div>{dropFromHigh.toFixed(2)}%</div>
             <div className="text-xs opacity-80">{formatProfitLoss(diffFromHigh, asset.currency)}</div>
         </td>
-        {/* 전일 대비 등락률 (API 값 우선 적용) */}
         <td className={`px-4 py-4 font-medium text-right ${getChangeColor(finalYesterdayChangeRate)}`}>
           <div>{finalYesterdayChangeRate.toFixed(2)}%</div>
           <div className="text-xs opacity-80">{formatProfitLoss(diffFromYesterday, Currency.KRW)}</div>
@@ -195,9 +196,10 @@ const PortfolioTableRow: React.FC<PortfolioTableRowProps> = ({
               history={history}
               assetId={asset.id}
               assetName={(asset.customName?.trim() || asset.name)}
-              // @ts-ignore: AssetTrendChart가 currentQuantity를 prop으로 받도록 수정되었는지 확인 필요
-              currentQuantity={asset.quantity} 
-              currentPrice={asset.currentPrice}  
+              currentQuantity={asset.quantity}
+              currentPrice={asset.currentPrice}  // [수정] 빌드 에러 해결: 현재가 전달
+              currency={asset.currency}          // [수정] 차트 환산용: 통화 전달
+              exchangeRate={derivedExchangeRate} // [수정] 차트 환산용: 환율 전달
             />
           </td>
         </tr>

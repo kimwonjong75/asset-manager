@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { PortfolioSnapshot } from '../types';
+import { PortfolioSnapshot, Currency } from '../types';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 interface AssetTrendChartProps {
@@ -7,7 +7,9 @@ interface AssetTrendChartProps {
   assetId: string;
   assetName: string;
   currentQuantity: number;
-  currentPrice: number; // [수정] 실시간 현재가 prop 추가
+  currentPrice: number;
+  currency?: Currency;
+  exchangeRate?: number;
 }
 
 const AssetTrendChart: React.FC<AssetTrendChartProps> = ({ 
@@ -15,10 +17,12 @@ const AssetTrendChart: React.FC<AssetTrendChartProps> = ({
   assetId, 
   assetName, 
   currentQuantity, 
-  currentPrice // [수정] 구조 분해 할당
+  currentPrice,
+  currency = Currency.KRW,
+  exchangeRate = 1
 }) => {
   const chartData = useMemo(() => {
-    // 1. 과거 데이터 매핑
+    // 1. 과거 데이터 매핑 (외화인 경우 KRW로 환산)
     const data = (history || []).map(snapshot => {
       const assetSnapshot = snapshot.assets.find(a => a.id === assetId);
       
@@ -30,38 +34,58 @@ const AssetTrendChart: React.FC<AssetTrendChartProps> = ({
             price = assetSnapshot.currentValue / currentQuantity;
         }
       }
-      
+
+      // [핵심] 외화 자산이고, 현재 KRW로 보고 싶다면(exchangeRate > 1) 환산 적용
+      // 단, history에 이미 KRW로 저장되어 있을 수도 있으니 주의해야 함.
+      // 보통 unitPrice는 원화가 저장되므로, currency가 KRW가 아니면 환율을 곱함.
+      let finalPrice = price;
+      if (currency !== Currency.KRW && exchangeRate > 1 && price > 0) {
+          // 가격이 너무 작으면(외화) 환율 곱하기
+          if (price < 5000) { 
+              finalPrice = Math.round(price * exchangeRate);
+          }
+      }
+
       return {
         date: new Date(snapshot.date).toLocaleDateString('ko-KR', { month: '2-digit', day: '2-digit' }),
-        '현재가': Math.round(price),
-        originalDate: snapshot.date // 날짜 비교용
+        '현재가': Math.round(finalPrice),
+        originalDate: snapshot.date
       };
     }).filter(d => d['현재가'] > 0);
 
-    // 2. [핵심 수정] 오늘 날짜의 실시간 데이터 추가 (또는 갱신)
+    // 2. 실시간 현재가 반영 (오늘 날짜)
     if (currentPrice > 0) {
       const todayStr = new Date().toLocaleDateString('ko-KR', { month: '2-digit', day: '2-digit' });
       const todayISO = new Date().toISOString().split('T')[0];
 
-      // 마지막 데이터가 오늘 날짜인지 확인
+      // 현재가도 KRW로 환산 (이미 KRW가 아닌 경우에만)
+      let finalCurrentPrice = currentPrice;
+      if (currency !== Currency.KRW && exchangeRate > 1) {
+         if (currentPrice < 5000) {
+             finalCurrentPrice = Math.round(currentPrice * exchangeRate);
+         }
+      } else {
+         finalCurrentPrice = Math.round(currentPrice);
+      }
+
       const lastItem = data[data.length - 1];
       const isLastItemToday = lastItem && (lastItem.date === todayStr || lastItem.originalDate === todayISO);
 
       if (isLastItemToday) {
-        // 이미 오늘 저장된 스냅샷이 있다면, 차트에서는 실시간 가격으로 덮어씌워 보여줌
-        lastItem['현재가'] = Math.round(currentPrice);
+        // 오늘자 스냅샷이 있으면 실시간 가격으로 시각적 갱신
+        lastItem['현재가'] = finalCurrentPrice;
       } else {
-        // 오늘 데이터가 없으면 추가
+        // 없으면 오늘자 추가
         data.push({
           date: todayStr,
-          '현재가': Math.round(currentPrice),
+          '현재가': finalCurrentPrice,
           originalDate: todayISO
         });
       }
     }
 
     return data;
-  }, [history, assetId, assetName, currentQuantity, currentPrice]);
+  }, [history, assetId, currentQuantity, currentPrice, currency, exchangeRate]);
 
   const formatCurrency = (value: number) => {
     return value.toLocaleString('ko-KR', { maximumFractionDigits: 0 });
@@ -69,15 +93,15 @@ const AssetTrendChart: React.FC<AssetTrendChartProps> = ({
 
   return (
     <div className="bg-gray-800 p-4 rounded-lg h-64">
-      <h3 className="text-md font-bold text-white mb-4 text-center">{`"${assetName}" 현재가 추이`}</h3>
-      {chartData.length > 0 ? ( // 조건 완화 (1개여도 점으로 표시 가능)
+      <h3 className="text-md font-bold text-white mb-4 text-center">{`"${assetName}" 가치 추이 (KRW)`}</h3>
+      {chartData.length > 0 ? (
         <ResponsiveContainer width="100%" height="85%">
           <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#4A5568" />
             <XAxis dataKey="date" stroke="#A0AEC0" fontSize={12} />
             <YAxis stroke="#A0AEC0" fontSize={12} tickFormatter={formatCurrency} width={80} domain={['auto', 'auto']} />
             <Tooltip
-              formatter={(value: number) => [`${formatCurrency(value)} 원`, '현재가']}
+              formatter={(value: number) => [`${formatCurrency(value)} 원`, '평가금액']}
               contentStyle={{ backgroundColor: '#2D3748', border: '1px solid #4A5568', borderRadius: '0.5rem' }}
               labelStyle={{ color: '#E2E8F0' }}
               itemStyle={{ fontWeight: 'bold', color: '#818CF8' }}

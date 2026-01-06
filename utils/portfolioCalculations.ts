@@ -23,6 +23,14 @@ export const mapToNewAssetStructure = (asset: LegacyAssetShape): Asset => {
     newAsset.purchaseExchangeRate = newAsset.currency === Currency.KRW ? 1 : undefined;
   }
 
+  // [수정] 최고가(Highest Price) 데이터 보정
+  // 기존 데이터에 최고가가 없으면 현재가와 매수가 중 큰 값으로 초기화하여 누락 방지
+  if (!newAsset.highestPrice) {
+    const current = newAsset.currentPrice || 0;
+    const purchase = newAsset.purchasePrice || 0;
+    newAsset.highestPrice = Math.max(current, purchase);
+  }
+
   const oldCategory = newAsset.category;
   if (['주식', 'ETF'].includes(oldCategory)) {
     if (newAsset.exchange?.startsWith('KRX')) {
