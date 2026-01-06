@@ -1,30 +1,14 @@
-import React from 'react';
-import { Asset, Currency, CURRENCY_SYMBOLS } from '../../types';
-import { PortfolioSnapshot } from '../../types';
+import React, { Fragment, useRef, useState } from 'react';
+import { Asset, Currency, PortfolioSnapshot } from '../../types';
+import { EnrichedAsset } from '../../types/ui';
+import AssetTrendChart from '../AssetTrendChart';
+import { MoreHorizontal } from 'lucide-react';
+import { useOnClickOutside } from '../../hooks/useOnClickOutside';
+import { formatNumber, formatOriginalCurrency, formatKRW, formatProfitLoss, getChangeColor } from './utils';
 
-interface PortfolioTableRowProps {
-  asset: Asset & {
-    currentValue: number;
-    purchaseValue: number;
-    returnPercentage: number;
-    profitLossKRW: number;
-    allocation: number;
-    dropFromHigh: number;
-    // [수정] 아래 두 필드를 선택적(?)으로 변경하여 데이터가 없어도 에러가 나지 않게 함
-    yesterdayChange?: number; 
-    yesterdayChangeRate?: number; 
-  };
-  history: PortfolioSnapshot[];
-  selectedIds: Set<string>;
-  onSelect: (id: string, checked: boolean) => void;
-  showHiddenColumns: boolean;
-  sellAlertDropRate?: number;
-  onEdit?: (asset: Asset) => void;
-  onSell?: (asset: Asset) => void;
-  filterAlerts?: boolean;
-}
-
-// 퀀트 신호 배지 컴포넌트
+// ----------------------------------------------------------------------
+// [추가된 컴포넌트] 퀀트 신호 배지
+// ----------------------------------------------------------------------
 const SignalBadge = ({ signal }: { signal?: string }) => {
   if (!signal || signal === 'NEUTRAL') return null;
 
@@ -46,13 +30,15 @@ const SignalBadge = ({ signal }: { signal?: string }) => {
   }
 
   return (
-    <span className={`ml-2 text-[10px] px-1.5 py-0.5 rounded font-bold ${bgClass}`}>
+    <span className={`ml-2 text-[10px] px-1.5 py-0.5 rounded font-bold ${bgClass} whitespace-nowrap`}>
       {text}
     </span>
   );
 };
 
-// RSI 상태 표시 컴포넌트
+// ----------------------------------------------------------------------
+// [추가된 컴포넌트] RSI 지표
+// ----------------------------------------------------------------------
 const RSIIndicator = ({ rsi, status }: { rsi?: number, status?: string }) => {
   if (typeof rsi !== 'number') return null;
   
@@ -67,148 +53,155 @@ const RSIIndicator = ({ rsi, status }: { rsi?: number, status?: string }) => {
   );
 };
 
+// ----------------------------------------------------------------------
+// Main Component
+// ----------------------------------------------------------------------
+
+interface PortfolioTableRowProps {
+  asset: EnrichedAsset; // 원본 타입(EnrichedAsset) 유지
+  history: PortfolioSnapshot[];
+  selectedIds: Set<string>;
+  onSelect: (id: string, checked: boolean) => void;
+  showHiddenColumns: boolean;
+  sellAlertDropRate: number;
+  onEdit: (asset: Asset) => void;
+  onSell?: (asset: Asset) => void;
+  filterAlerts: boolean;
+}
+
+const ChartBarIcon: React.FC = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+  </svg>
+);
+
 const PortfolioTableRow: React.FC<PortfolioTableRowProps> = ({
   asset,
+  history,
   selectedIds,
   onSelect,
   showHiddenColumns,
-  sellAlertDropRate = 5,
+  sellAlertDropRate,
   onEdit,
-  onSell
+  onSell,
+  filterAlerts
 }) => {
-  const isSelected = selectedIds.has(asset.id);
-  const symbol = CURRENCY_SYMBOLS[asset.currency] || asset.currency;
+  const [expandedAssetId, setExpandedAssetId] = useState<string | null>(null);
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+
+  useOnClickOutside(menuRef, () => setOpenMenuId(null), !!openMenuId);
+
+  const handleToggleExpand = (assetId: string) => {
+    setExpandedAssetId(prevId => (prevId === assetId ? null : assetId));
+  };
+
+  // 원본 구조(asset.metrics) 사용
+  const { purchaseValue, currentValue, purchaseValueKRW, currentValueKRW, returnPercentage, allocation, dropFromHigh, profitLoss, profitLossKRW, diffFromHigh, yesterdayChange, diffFromYesterday } = asset.metrics;
   
-  // [수정] 값이 undefined일 경우 0으로 처리하는 방어 로직 추가
-  const safeYesterdayChangeRate = asset.yesterdayChangeRate ?? 0;
+  const alertRate = asset.sellAlertDropRate ?? sellAlertDropRate;
+  const isAlertTriggered = dropFromHigh <= -alertRate;
+  const isNonKRW = asset.currency !== Currency.KRW;
+  const investmentColor = getChangeColor(returnPercentage);
 
-  // 색상 유틸리티
-  const getColor = (val: number) => {
-    if (val > 0) return 'text-red-400';
-    if (val < 0) return 'text-blue-400';
-    return 'text-gray-400';
-  };
-
-  // 알림 조건 스타일
-  const isDropAlert = asset.dropFromHigh <= -(asset.sellAlertDropRate || sellAlertDropRate);
-  const rowBgClass = isSelected ? 'bg-gray-700' : (isDropAlert ? 'bg-red-900/10' : 'hover:bg-gray-750');
-
-  // 숫자를 로케일 문자열로 변환 (소수점 처리)
-  const fmt = (num: number, currency: Currency) => {
-    return num.toLocaleString(undefined, {
-        minimumFractionDigits: currency === Currency.KRW ? 0 : 2,
-        maximumFractionDigits: currency === Currency.KRW ? 0 : 2
-    });
-  };
+  // [수정] 서버에서 받아온 changeRate가 있다면 그것을 우선 사용 (API는 Ratio로 주므로 * 100, 기존 yesterdayChange는 %단위)
+  const finalYesterdayChangeRate = asset.changeRate !== undefined 
+    ? asset.changeRate * 100 
+    : yesterdayChange;
 
   return (
-    <tr className={`border-b border-gray-700 transition-colors ${rowBgClass}`}>
-      {/* 체크박스 */}
-      <td className="px-4 py-3 text-center">
-        <input
-          type="checkbox"
-          checked={isSelected}
-          onChange={(e) => onSelect(asset.id, e.target.checked)}
-          className="rounded border-gray-600 text-primary focus:ring-primary bg-gray-700"
-        />
-      </td>
-
-      {/* 종목명 & 신호 */}
-      <td className="px-4 py-3">
-        <div className="flex flex-col">
-          <div className="flex items-center">
-            <span className="font-bold text-white">{asset.name}</span>
-            <SignalBadge signal={asset.indicators?.signal} />
+    <Fragment>
+      <tr className={`border-b border-gray-700 transition-colors duration-200 hover:bg-gray-700/50`}>
+        <td className="px-4 py-4 text-center">
+          <input type="checkbox" checked={selectedIds.has(asset.id)} onChange={(e) => onSelect(asset.id, e.target.checked)} />
+        </td>
+        <td className="px-4 py-4 font-medium text-white break-words">
+          <div className="flex flex-col">
+             <div className="flex items-center gap-2">
+               <a 
+                 href={`https://www.google.com/search?q=${encodeURIComponent(asset.ticker + ' 주가')}`}
+                 target="_blank" 
+                 rel="noopener noreferrer"
+                 className="font-bold hover:underline text-primary-light cursor-pointer"
+               >
+                 {(asset.customName?.trim() || asset.name)}
+               </a>
+               {/* [추가] 퀀트 신호 배지 */}
+               <SignalBadge signal={asset.indicators?.signal} />
+               {isAlertTriggered && <span className="text-xs" title="알림 조건 도달">⚠️</span>}
+             </div>
+            <span className="text-xs text-gray-500 break-all">{asset.ticker} | {asset.exchange}</span>
           </div>
-          <div className="text-xs text-gray-500 flex gap-2">
-            <span>{asset.ticker}</span>
-            <span className="text-gray-600">|</span>
-            <span>{asset.exchange}</span>
+        </td>
+        {showHiddenColumns && <td className="px-4 py-4 text-right">{formatNumber(asset.quantity)}</td>}
+        {showHiddenColumns && (
+          <td className="px-4 py-4 text-right">
+            <div>{formatOriginalCurrency(asset.purchasePrice, asset.currency)}</div>
+            {isNonKRW && <div className="text-xs text-gray-500">≈ {formatKRW(asset.metrics.purchasePriceKRW)}</div>}
+          </td>
+        )}
+        {/* 현재가 및 RSI */}
+        <td className="px-4 py-4 text-right">
+          <div className="font-semibold text-white">{formatOriginalCurrency(asset.currentPrice, asset.currency)}</div>
+          {isNonKRW && <div className="text-xs text-gray-500">≈ {formatKRW(asset.metrics.currentPriceKRW)}</div>}
+          {/* [추가] RSI 표시 */}
+          <RSIIndicator rsi={asset.indicators?.rsi} status={asset.indicators?.rsi_status} />
+        </td>
+        <td className={`px-4 py-4 font-medium text-right ${getChangeColor(returnPercentage)}`}>
+          <div>{returnPercentage.toFixed(2)}%</div>
+          <div className="text-xs opacity-80">{formatProfitLoss(profitLoss, asset.currency)}</div>
+        </td>
+        <td className="px-4 py-4 text-right">
+          <div className={investmentColor}>{formatOriginalCurrency(purchaseValue, asset.currency)}</div>
+          {isNonKRW && <div className="text-xs text-gray-500">≈ {formatKRW(purchaseValueKRW)}</div>}
+        </td>
+        <td className="px-4 py-4 text-right">
+          <div className="font-semibold text-white">{formatOriginalCurrency(currentValue, asset.currency)}</div>
+          {isNonKRW && <div className="text-xs text-gray-500">≈ {formatKRW(currentValueKRW)}</div>}
+        </td>
+        {showHiddenColumns && <td className="px-4 py-4 text-center">{asset.purchaseDate}</td>}
+        {showHiddenColumns && <td className="px-4 py-4 text-right">{allocation.toFixed(2)}%</td>}
+        <td className={`px-4 py-4 font-medium text-right ${getChangeColor(dropFromHigh)}`}>
+            <div>{dropFromHigh.toFixed(2)}%</div>
+            <div className="text-xs opacity-80">{formatProfitLoss(diffFromHigh, asset.currency)}</div>
+        </td>
+        {/* 전일 대비 등락률 (API 값 우선 적용) */}
+        <td className={`px-4 py-4 font-medium text-right ${getChangeColor(finalYesterdayChangeRate)}`}>
+          <div>{finalYesterdayChangeRate.toFixed(2)}%</div>
+          <div className="text-xs opacity-80">{formatProfitLoss(diffFromYesterday, Currency.KRW)}</div>
+        </td>
+        <td className="px-4 py-4 text-center relative">
+          <div className="flex items-center justify-center gap-1">
+            <button onClick={() => handleToggleExpand(asset.id)} className="p-2 text-gray-300 hover:text-white" title="차트">
+                <ChartBarIcon />
+            </button>
+            <button onClick={() => setOpenMenuId(openMenuId === asset.id ? null : asset.id)} className="p-2 text-gray-300 hover:text-white">
+                <MoreHorizontal className="h-5 w-5" />
+            </button>
           </div>
-        </div>
-      </td>
-
-      {/* 보유수량 (숨김 가능) */}
-      {showHiddenColumns && (
-        <td className="px-4 py-3 text-right font-mono text-gray-300">
-          {asset.quantity.toLocaleString()}
+          {openMenuId === asset.id && (
+            <div ref={menuRef} className="absolute right-0 mt-2 w-44 bg-gray-800 border border-gray-700 rounded-md shadow-lg z-30 text-sm">
+               <button onClick={() => { setOpenMenuId(null); onEdit(asset); }} className="block w-full text-left px-3 py-2 hover:bg-gray-700 text-white">수정</button>
+               {onSell && <button onClick={() => { setOpenMenuId(null); onSell(asset); }} className="block w-full text-left px-3 py-2 text-red-400 hover:bg-gray-700">매도</button>}
+               <button onClick={() => { setOpenMenuId(null); handleToggleExpand(asset.id); }} className="block w-full text-left px-3 py-2 text-gray-200 hover:bg-gray-700">차트 보기</button>
+            </div>
+          )}
         </td>
+      </tr>
+      {expandedAssetId === asset.id && (
+        <tr className="bg-gray-900/50">
+          <td colSpan={showHiddenColumns ? 13 : 9} className="p-0 sm:p-2">
+            <AssetTrendChart
+              history={history}
+              assetId={asset.id}
+              assetName={(asset.customName?.trim() || asset.name)}
+              // @ts-ignore: AssetTrendChart가 currentQuantity를 prop으로 받도록 수정되었는지 확인 필요
+              currentQuantity={asset.quantity} 
+            />
+          </td>
+        </tr>
       )}
-
-      {/* 매수평균가 (숨김 가능) */}
-      {showHiddenColumns && (
-        <td className="px-4 py-3 text-right font-mono text-gray-300">
-          {symbol}{fmt(asset.purchasePrice, asset.currency)}
-        </td>
-      )}
-
-      {/* 현재가 & RSI */}
-      <td className="px-4 py-3 text-right font-mono">
-        <div className="text-white font-medium">
-            {symbol}{fmt(asset.currentPrice, asset.currency)}
-        </div>
-        <RSIIndicator rsi={asset.indicators?.rsi} status={asset.indicators?.rsi_status} />
-      </td>
-
-      {/* 수익률 */}
-      <td className={`px-4 py-3 text-right font-mono font-bold ${getColor(asset.returnPercentage)}`}>
-        {asset.returnPercentage > 0 ? '+' : ''}{asset.returnPercentage.toFixed(2)}%
-        <div className="text-xs font-normal opacity-75">
-            {asset.profitLossKRW > 0 ? '+' : ''}{Math.round(asset.profitLossKRW).toLocaleString()}원
-        </div>
-      </td>
-
-      {/* 투자원금 */}
-      <td className="px-4 py-3 text-right font-mono text-gray-300">
-        {Math.round(asset.purchaseValue).toLocaleString()}
-      </td>
-
-      {/* 평가총액 */}
-      <td className="px-4 py-3 text-right font-mono text-white font-bold">
-        {Math.round(asset.currentValue).toLocaleString()}
-      </td>
-
-      {/* 매수일 (숨김 가능) */}
-      {showHiddenColumns && (
-        <td className="px-4 py-3 text-center text-gray-400 text-xs">
-          {asset.purchaseDate}
-        </td>
-      )}
-
-      {/* 비중 (숨김 가능) */}
-      {showHiddenColumns && (
-        <td className="px-4 py-3 text-right text-gray-300 font-mono">
-          {asset.allocation.toFixed(1)}%
-        </td>
-      )}
-
-      {/* 최고가 대비 하락률 (MDD) */}
-      <td className={`px-4 py-3 text-right font-mono ${isDropAlert ? 'text-red-500 font-bold' : 'text-gray-400'}`}>
-        {asset.dropFromHigh.toFixed(2)}%
-      </td>
-
-      {/* 전일 대비 등락 (Yesterday Change) */}
-      <td className={`px-4 py-3 text-right font-mono ${getColor(asset.changeRate ?? safeYesterdayChangeRate)}`}>
-         {/* [수정] API의 changeRate가 있으면 그것을 쓰고(1순위), 없으면 yesterdayChangeRate(2순위), 둘 다 없으면 0 */}
-         {((asset.changeRate !== undefined ? asset.changeRate : safeYesterdayChangeRate) * 100).toFixed(2)}%
-      </td>
-
-      {/* 관리 버튼 */}
-      <td className="px-4 py-3 text-center">
-        <div className="flex justify-center gap-2">
-            {onEdit && (
-                <button onClick={() => onEdit(asset)} className="text-gray-400 hover:text-white transition">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
-                </button>
-            )}
-            {onSell && (
-                <button onClick={() => onSell(asset)} className="text-gray-400 hover:text-red-400 transition">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                </button>
-            )}
-        </div>
-      </td>
-    </tr>
+    </Fragment>
   );
 };
 
