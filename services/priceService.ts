@@ -40,10 +40,9 @@ export async function fetchBatchAssetPrices(
       if (!response.ok) throw new Error(`API Error: ${response.status}`);
       
       const data = await response.json();
-      // console.log('[priceService] Raw API Response:', data); // 디버깅용 (필요시 주석 해제)
 
       // 응답 데이터를 평탄화 (Flat List)
-      const items: any[] = []; // 유연한 파싱을 위해 any 사용
+      const items: any[] = []; 
       
       if (Array.isArray(data)) {
         items.push(...data);
@@ -66,16 +65,16 @@ export async function fetchBatchAssetPrices(
         const itemTicker = String(item.ticker || item.symbol || '').toUpperCase();
         const normalizedItemTicker = itemTicker.endsWith('-USD') ? itemTicker.replace(/-USD$/i, '') : itemTicker;
 
-        // [중요 수정] find -> filter : 동일 티커를 가진 모든 자산을 찾아 업데이트
+        // 동일 티커를 가진 모든 자산을 찾아 업데이트
         const matchedAssets = assets.filter(a => a.ticker.toUpperCase() === normalizedItemTicker);
 
         matchedAssets.forEach(matched => {
             const priceOrig = toNumber(item.priceOriginal ?? item.price ?? item.close, 0);
             
-            // [중요] 전일 종가 파싱 강화 (API 응답 우선 -> 계산된 값 -> 0)
+            // 전일 종가 파싱 (API 응답 우선 -> 계산된 값 -> 0)
             const prev = toNumber(item.prev_close ?? item.previousClose ?? item.yesterdayPrice, 0);
             
-            // [중요] 등락률 파싱
+            // 등락률 파싱
             let changeRate = 0;
             if (typeof item.change_rate === 'number') {
                 changeRate = item.change_rate;
@@ -100,7 +99,15 @@ export async function fetchBatchAssetPrices(
 
             const priceKRW = typeof item.priceKRW === 'number'
               ? item.priceKRW
-              : (currency === Currency.KRW ? priceOrig : priceOrig); // 환율 적용은 useMarketData에서 함
+              : (currency === Currency.KRW ? priceOrig : priceOrig); 
+
+            // [수정됨] 최고가 매핑 로직 개선
+            // 백엔드에서 high52w, high_52_week_price 등을 보내준다면 우선 사용
+            // 없다면 당일 고가(high), 그것도 없다면 현재가 사용
+            const highestPrice = toNumber(
+                item.high52w ?? item.highest_52_week_price ?? item.high ?? priceOrig, 
+                priceOrig
+            );
 
             const result: AssetDataResult = {
               name: String(item.name ?? matched.ticker),
@@ -108,10 +115,10 @@ export async function fetchBatchAssetPrices(
               priceKRW,
               currency,
               previousClosePrice: prev, // API가 준 전일종가 사용
-              highestPrice: priceOrig * 1.1, // 임시값
+              highestPrice: highestPrice, // [수정됨] API 값 사용
               isMocked: !(priceOrig > 0),
               changeRate: changeRate,
-              indicators: item.indicators, // [중요] 퀀트 지표 전달
+              indicators: item.indicators, // 퀀트 지표 전달
             };
             
             resultMap.set(matched.id, result);
@@ -143,10 +150,8 @@ export async function fetchBatchAssetPrices(
   return resultMap;
 }
 
-// (나머지 fetchAssetData, fetchExchangeRate 등은 기존 유지 또는 위 로직 참고하여 수정)
-// 단일 조회 함수도 indicators를 반환하도록 확인 필요
+// 단일 조회 함수 (배치 함수 재사용)
 export async function fetchAssetData(asset: { ticker: string; exchange: string; category?: AssetCategory; currency?: Currency }): Promise<AssetDataResult> {
-    // 배치 함수를 재사용하여 일관성 유지
     const map = await fetchBatchAssetPrices([{ ...asset, id: 'temp-id' }]);
     return map.get('temp-id') as AssetDataResult;
 }

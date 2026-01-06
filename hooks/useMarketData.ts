@@ -21,12 +21,7 @@ interface UseMarketDataProps {
 // category 인자 제거
 const shouldUseUpbitAPI = (exchange: string): boolean => {
   const normalized = (exchange || '').toLowerCase().trim();
-  
-  // 업비트 API를 타야 하는 거래소 목록을 명시적으로 정의
-  // '주요 거래소 (종합)'은 앱에서 암호화폐 기본 거래소로 사용하는 명칭임
   const upbitExchanges = ['upbit', 'bithumb', '주요 거래소 (종합)'];
-
-  // 해당 거래소 이름이 포함되어 있거나 일치하는지 확인
   return upbitExchanges.some(ex => normalized.includes(ex));
 };
 
@@ -90,12 +85,6 @@ export const useMarketData = ({
       a.category !== AssetCategory.CASH && !shouldUseUpbitAPI(a.exchange)
     );
 
-    console.log('[useMarketData] 자산 분류:', {
-      cash: cashAssets.length,
-      upbit: upbitAssets.map(a => a.ticker),
-      general: generalAssets.map(a => a.ticker)
-    });
-
     // 3. 현금 자산 업데이트 로직
     const cashPromises = cashAssets.map(asset => 
       (asset.currency === Currency.USD 
@@ -126,16 +115,11 @@ export const useMarketData = ({
     const upbitSymbols = upbitAssets.map(a => a.ticker);
 
     try {
-      console.log('[useMarketData] 업비트 조회 심볼:', upbitSymbols);
-      console.log('[useMarketData] Cloud Run 조회:', assetsToFetch.map(a => a.ticker));
-
       const [cashResults, batchPriceMap, upbitPriceMap] = await Promise.all([
         Promise.allSettled(cashPromises),
         assetsToFetch.length > 0 ? fetchBatchAssetPricesNew(assetsToFetch) : Promise.resolve(new Map()),
         upbitSymbols.length > 0 ? fetchUpbitPricesBatch(upbitSymbols) : Promise.resolve(new Map())
       ]);
-
-      console.log('[useMarketData] 업비트 응답:', upbitPriceMap);
 
       const failedTickers: string[] = [];
       const failedIds: string[] = [];
@@ -162,7 +146,7 @@ export const useMarketData = ({
           return asset;
         }
 
-        // 업비트 자산 처리 (업비트 API 직접 호출 결과 사용)
+        // 업비트 자산 처리
         if (shouldUseUpbitAPI(asset.exchange)) {
           const tickerUpper = asset.ticker.toUpperCase();
           const upbitData = upbitPriceMap.get(tickerUpper) || 
@@ -171,8 +155,9 @@ export const useMarketData = ({
           if (upbitData) {
             const newCurrentPrice = upbitData.trade_price;
             const newYesterdayPrice = upbitData.prev_closing_price;
-            
-            console.log(`[Upbit] ${asset.ticker}: 현재가=${newCurrentPrice?.toLocaleString()}, 전일종가=${newYesterdayPrice?.toLocaleString()}`);
+            // [수정] 52주 신고가 반영 (API에 없으면 기존 로직 유지)
+            const apiHigh = upbitData.highest_52_week_price || upbitData.high_price || newCurrentPrice;
+            const newHighestPrice = Math.max(asset.highestPrice, apiHigh, newCurrentPrice);
             
             return {
               ...asset,
@@ -180,13 +165,12 @@ export const useMarketData = ({
               currentPrice: newCurrentPrice,
               priceOriginal: newCurrentPrice, // 업비트는 KRW 기준
               currency: Currency.KRW, // 업비트는 항상 KRW
-              highestPrice: Math.max(asset.highestPrice, newCurrentPrice),
+              highestPrice: newHighestPrice, // [수정됨]
               changeRate: upbitData.signed_change_rate,
               indicators: undefined,
             };
           }
           
-          console.warn(`[Upbit] ${asset.ticker}: 가격 데이터 없음`);
           failedTickers.push(asset.ticker);
           failedIds.push(asset.id);
           return asset;
@@ -208,7 +192,6 @@ export const useMarketData = ({
             }
           }
           
-          // KRW 단위 오류 보정
           let newYesterdayPrice = priceData.previousClosePrice;
           if (asset.currency === Currency.KRW && newYesterdayPrice > 0) {
              const ratio = newCurrentPrice / newYesterdayPrice;
@@ -220,12 +203,15 @@ export const useMarketData = ({
              }
           }
 
+          // [수정] 일반 자산 최고가 업데이트 (priceData.highestPrice 사용)
+          const newHighestPrice = Math.max(asset.highestPrice, priceData.highestPrice || 0, newCurrentPrice);
+
           return {
             ...asset,
             previousClosePrice: newYesterdayPrice,
             currentPrice: newCurrentPrice,
             currency: newCurrency,
-            highestPrice: Math.max(asset.highestPrice, newCurrentPrice),
+            highestPrice: newHighestPrice, // [수정됨]
             changeRate: priceData.changeRate,
             indicators: priceData.indicators,
           };
@@ -331,20 +317,23 @@ export const useMarketData = ({
             return asset;
           }
 
-          // 업비트 자산 처리
           if (shouldUseUpbitAPI(asset.exchange)) {
             const tickerUpper = asset.ticker.toUpperCase();
             const upbitData = upbitPriceMap.get(tickerUpper) || 
                              upbitPriceMap.get(`KRW-${tickerUpper}`);
             
             if (upbitData) {
+              // [수정] 52주 신고가 반영
+              const apiHigh = upbitData.highest_52_week_price || upbitData.high_price || upbitData.trade_price;
+              const newHighestPrice = Math.max(asset.highestPrice, apiHigh, upbitData.trade_price);
+              
               return {
                 ...asset,
                 previousClosePrice: upbitData.prev_closing_price,
                 currentPrice: upbitData.trade_price,
                 priceOriginal: upbitData.trade_price,
                 currency: Currency.KRW,
-                highestPrice: Math.max(asset.highestPrice, upbitData.trade_price),
+                highestPrice: newHighestPrice, // [수정됨]
                 changeRate: upbitData.signed_change_rate,
                 indicators: undefined,
               };
@@ -366,18 +355,19 @@ export const useMarketData = ({
             }
             
             let newYesterdayPrice = priceData.previousClosePrice;
-
-            // API에서 전일종가를 0이나 null로 줬을 때만 기존 로직으로 추정 시도
             if (newYesterdayPrice <= 0 && asset.currency === Currency.KRW) { 
-                // 기존 보정 로직 (혹은 이전 asset.previousClosePrice 유지)
                 newYesterdayPrice = asset.previousClosePrice || 0;
             }
+
+            // [수정] 일반 자산 최고가 반영
+            const newHighestPrice = Math.max(asset.highestPrice, priceData.highestPrice || 0, newCurrentPrice);
+
             return { 
               ...asset, 
               previousClosePrice: newYesterdayPrice, 
               currentPrice: newCurrentPrice, 
               currency: newCurrency, 
-              highestPrice: Math.max(asset.highestPrice, newCurrentPrice),
+              highestPrice: newHighestPrice, // [수정됨]
               changeRate: priceData.changeRate,
               indicators: priceData.indicators,
             };
@@ -407,7 +397,6 @@ export const useMarketData = ({
     setError(null);
 
     try {
-      // 업비트 자산인 경우 업비트 API 직접 호출
       if (shouldUseUpbitAPI(target.exchange)) {
         console.log(`[useMarketData] 단일 조회 (업비트): ${target.ticker}`);
         const upbitPriceMap = await fetchUpbitPricesBatch([target.ticker]);
@@ -416,13 +405,17 @@ export const useMarketData = ({
                          upbitPriceMap.get(`KRW-${tickerUpper}`);
         
         if (upbitData) {
+          // [수정] 52주 신고가 반영
+          const apiHigh = upbitData.highest_52_week_price || upbitData.high_price || upbitData.trade_price;
+          const newHighestPrice = Math.max(target.highestPrice, apiHigh, upbitData.trade_price);
+
           const updated = assets.map(a => a.id === assetId ? {
             ...a,
             previousClosePrice: upbitData.prev_closing_price,
             currentPrice: upbitData.trade_price,
             priceOriginal: upbitData.trade_price,
             currency: Currency.KRW,
-            highestPrice: Math.max(a.highestPrice, upbitData.trade_price),
+            highestPrice: newHighestPrice, // [수정됨]
           } : a);
           setAssets(updated);
           triggerAutoSave(updated, portfolioHistory, sellHistory, watchlist, exchangeRates);
@@ -432,7 +425,6 @@ export const useMarketData = ({
           throw new Error('업비트 가격 조회 실패');
         }
       } else {
-        // 일반 자산은 기존 로직 사용
         console.log(`[useMarketData] 단일 조회 (Cloud Run): ${target.ticker}`);
         const d = await fetchAssetDataNew({ ticker: target.ticker, exchange: target.exchange, category: target.category, currency: target.currency });
         
@@ -449,12 +441,15 @@ export const useMarketData = ({
           }
         }
         
+        // [수정] 일반 자산 최고가 반영
+        const newHighestPrice = Math.max(target.highestPrice, d.highestPrice || 0, newCurrentPrice);
+
         const updated = assets.map(a => a.id === assetId ? {
           ...a,
           previousClosePrice: d.previousClosePrice,
           currentPrice: newCurrentPrice,
           currency: newCurrency,
-          highestPrice: Math.max(a.highestPrice, newCurrentPrice),
+          highestPrice: newHighestPrice, // [수정됨]
         } : a);
         setAssets(updated);
         triggerAutoSave(updated, portfolioHistory, sellHistory, watchlist, exchangeRates);
@@ -476,7 +471,6 @@ export const useMarketData = ({
     setIsLoading(true);
     setError(null);
 
-    // 업비트 자산과 일반 자산 분리
     const upbitItems = watchlist.filter(item => shouldUseUpbitAPI(item.exchange));
     const generalItems = watchlist.filter(item => !shouldUseUpbitAPI(item.exchange));
     const itemsToFetch = generalItems.map(item => ({
@@ -496,21 +490,23 @@ export const useMarketData = ({
       ]);
 
       const updated = watchlist.map((item) => {
-        // 업비트 자산 처리
         if (shouldUseUpbitAPI(item.exchange)) {
           const tickerUpper = item.ticker.toUpperCase();
           const upbitData = upbitPriceMap.get(tickerUpper) || 
                            upbitPriceMap.get(`KRW-${tickerUpper}`);
           
           if (upbitData) {
-            const highestPrice = item.highestPrice ? Math.max(item.highestPrice, upbitData.trade_price) : upbitData.trade_price;
+            // [수정] 52주 신고가 반영
+            const apiHigh = upbitData.highest_52_week_price || upbitData.high_price || upbitData.trade_price;
+            const highestPrice = item.highestPrice ? Math.max(item.highestPrice, apiHigh, upbitData.trade_price) : upbitData.trade_price;
+            
             return {
               ...item,
               currentPrice: upbitData.trade_price,
               priceOriginal: upbitData.trade_price,
               currency: Currency.KRW,
               previousClosePrice: upbitData.prev_closing_price,
-              highestPrice,
+              highestPrice, // [수정됨]
               changeRate: upbitData.signed_change_rate,
               indicators: undefined,
             };
@@ -518,21 +514,24 @@ export const useMarketData = ({
           return item;
         }
 
-        // 일반 자산 처리
         const d = priceMap.get(item.id);
         if (d && !d.isMocked) {
           const newCurrency = item.currency || (d.currency as Currency);
           const newCurrentPrice = item.currency === Currency.KRW 
             ? d.priceKRW 
             : d.priceOriginal;
-          const highestPrice = item.highestPrice ? Math.max(item.highestPrice, newCurrentPrice) : newCurrentPrice;
+          
+          // [수정] 일반 자산 최고가 반영
+          const apiHigh = d.highestPrice || newCurrentPrice;
+          const highestPrice = item.highestPrice ? Math.max(item.highestPrice, apiHigh, newCurrentPrice) : newCurrentPrice;
+          
           return {
             ...item,
             currentPrice: newCurrentPrice,
             priceOriginal: d.priceOriginal,
             currency: newCurrency,
             previousClosePrice: d.previousClosePrice,
-            highestPrice,
+            highestPrice, // [수정됨]
             changeRate: d.changeRate,
             indicators: d.indicators,
           };

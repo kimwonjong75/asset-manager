@@ -9,8 +9,9 @@ export interface UpbitTicker {
   prev_closing_price: number;
   signed_change_price: number;
   signed_change_rate: number;
-  high_price?: number;
-  low_price?: number;
+  high_price?: number; // 당일 고가
+  low_price?: number;  // 당일 저가
+  highest_52_week_price?: number; // [추가] 52주 신고가
 }
 type UpbitTickerResponse = Partial<UpbitTicker> & { error?: unknown };
 
@@ -72,16 +73,17 @@ export const fetchUpbitPricesBatch = async (symbols: string[]): Promise<Map<stri
 
     // 응답 데이터를 Map으로 변환
     Object.entries(data).forEach(([market, tickerData]: [string, UpbitTickerResponse]) => {
-      if (tickerData && typeof tickerData === 'object' && !tickerData.error) {
-        const ticker: UpbitTicker = {
-          market: tickerData.market || market,
-          trade_price: tickerData.trade_price || 0,
-          prev_closing_price: tickerData.prev_closing_price || 0,
-          signed_change_price: tickerData.signed_change_price || 0,
-          signed_change_rate: tickerData.signed_change_rate || 0,
-          high_price: tickerData.high_price,
-          low_price: tickerData.low_price,
-        };
+          if (tickerData && typeof tickerData === 'object' && !tickerData.error) {
+            const ticker: UpbitTicker = {
+              market: tickerData.market || market,
+              trade_price: tickerData.trade_price || 0,
+              prev_closing_price: tickerData.prev_closing_price || 0,
+              signed_change_price: tickerData.signed_change_price || 0,
+              signed_change_rate: tickerData.signed_change_rate || 0,
+              high_price: tickerData.high_price,
+              low_price: tickerData.low_price,
+              highest_52_week_price: tickerData.highest_52_week_price, // [추가] 매핑
+            };
         
         // 마켓 코드로 매핑 (KRW-BTC)
         resultMap.set(market, ticker);
