@@ -181,6 +181,8 @@ export const useMarketData = ({
               priceOriginal: newCurrentPrice, // 업비트는 KRW 기준
               currency: Currency.KRW, // 업비트는 항상 KRW
               highestPrice: Math.max(asset.highestPrice, newCurrentPrice),
+              changeRate: upbitData.signed_change_rate,
+              indicators: undefined,
             };
           }
           
@@ -224,6 +226,8 @@ export const useMarketData = ({
             currentPrice: newCurrentPrice,
             currency: newCurrency,
             highestPrice: Math.max(asset.highestPrice, newCurrentPrice),
+            changeRate: priceData.changeRate,
+            indicators: priceData.indicators,
           };
         } else {
           failedTickers.push(asset.ticker);
@@ -341,6 +345,8 @@ export const useMarketData = ({
                 priceOriginal: upbitData.trade_price,
                 currency: Currency.KRW,
                 highestPrice: Math.max(asset.highestPrice, upbitData.trade_price),
+                changeRate: upbitData.signed_change_rate,
+                indicators: undefined,
               };
             }
             return asset;
@@ -373,7 +379,9 @@ export const useMarketData = ({
               previousClosePrice: newYesterdayPrice, 
               currentPrice: newCurrentPrice, 
               currency: newCurrency, 
-              highestPrice: Math.max(asset.highestPrice, newCurrentPrice) 
+              highestPrice: Math.max(asset.highestPrice, newCurrentPrice),
+              changeRate: priceData.changeRate,
+              indicators: priceData.indicators,
             };
           }
           return asset;
@@ -505,6 +513,8 @@ export const useMarketData = ({
               currency: Currency.KRW,
               previousClosePrice: upbitData.prev_closing_price,
               highestPrice,
+              changeRate: upbitData.signed_change_rate,
+              indicators: undefined,
             };
           }
           return item;
@@ -525,6 +535,8 @@ export const useMarketData = ({
             currency: newCurrency,
             previousClosePrice: d.previousClosePrice,
             highestPrice,
+            changeRate: d.changeRate,
+            indicators: d.indicators,
           };
         }
         return item;

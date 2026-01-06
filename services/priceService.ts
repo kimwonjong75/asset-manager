@@ -137,6 +137,7 @@ export async function fetchBatchAssetPrices(
         if (!matched) return;
         const priceOrig = toNumber(item.priceOriginal ?? item.price ?? item.close, 0);
         const prev = toNumber(item.previousClose ?? item.prev_close ?? item.yesterdayPrice, priceOrig);
+        const changeRate = typeof item.change_rate === 'number' ? item.change_rate : (prev > 0 ? (priceOrig - prev) / prev : 0);
         const currencyFromServer = String(item.currency ?? matched.currency ?? Currency.USD);
         const keepOriginalCurrency = matched.category === AssetCategory.CRYPTOCURRENCY;
         const currencyStr = keepOriginalCurrency ? String(matched.currency ?? currencyFromServer) : currencyFromServer;
@@ -156,6 +157,8 @@ export async function fetchBatchAssetPrices(
           previousClosePrice: prev,
           highestPrice: (currency === Currency.KRW ? priceKRW : priceOrig) * 1.1,
           isMocked,
+          changeRate,
+          indicators: item.indicators,
         };
         resultMap.set(matched.id, result);
       });
@@ -200,6 +203,7 @@ export async function fetchBatchAssetPrices(
             : (currency === Currency.KRW ? priceOrig : priceOrig);
           const name = String(item.name ?? matched.ticker);
           const isMocked = !(priceOrig > 0);
+          const changeRate = typeof item.change_rate === 'number' ? item.change_rate : (prev > 0 ? (priceOrig - prev) / prev : 0);
           const result: AssetDataResult = {
             name,
             priceOriginal: priceOrig,
@@ -208,6 +212,8 @@ export async function fetchBatchAssetPrices(
             previousClosePrice: prev,
             highestPrice: (currency === Currency.KRW ? priceKRW : priceOrig) * 1.1,
             isMocked,
+            changeRate,
+            indicators: item.indicators,
           };
           resultMap.set(matched.id, result);
         });
@@ -259,6 +265,8 @@ export async function fetchAssetData(asset: { ticker: string; exchange: string; 
       previousClosePrice: prev,
       highestPrice: (currency === Currency.KRW ? priceKRW : priceOrig) * 1.1,
       isMocked: false,
+      changeRate: typeof obj?.change_rate === 'number' ? obj.change_rate : (prev > 0 ? (priceOrig - prev) / prev : 0),
+      indicators: obj?.indicators,
     };
   } catch {
     throw new Error('시세 데이터를 가져오지 못했습니다. 잠시 후 다시 시도해주세요.');

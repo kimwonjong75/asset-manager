@@ -13,6 +13,9 @@ KIM'S 퀸트자산관리는 계량적 투자 전략을 기반으로 한 종합 �
 - **매도 알림**: 설정한 하락률 기준 알림 기능
 - **관심종목 관리**: 별도의 워치리스트 기능
 - **CSV 대량 등록**: 대량의 자산 일괄 등록
+- **기술적 지표 연동**: MA20/MA60 및 RSI 상태(NORMAL/OVERBOUGHT/OVERSOLD) 수신 및 표시
+- **서버 신호 표시**: 서버 제공 매수/매도 신호(STRONG_BUY/BUY/SELL/STRONG_SELL/NEUTRAL) 배지 표시
+- **전일종가 기반 변동률 개선**: 백엔드 prev_close 기반으로 일중 변동률(yesterdayChange) 정확 계산
 
 ## 🏗️ 시스템 아키텍처
 
@@ -80,7 +83,8 @@ KIM'S 퀸트자산관리는 계량적 투자 전략을 기반으로 한 종합 �
 │   ├── priceService.ts    # 시세 정보 서비스 (주식/ETF)
 │   └── upbitService.ts    # 업비트 API 서비스 (Cloud Run 프록시 경유)
 ├── utils/                    # 유틸리티 함수
-│   └── migrateData.ts     # 데이터 마이그레이션
+│   ├── migrateData.ts     # 데이터 마이그레이션
+│   └── signalUtils.ts     # 서버 신호/RSI 뱃지 렌더링 유틸
 ├── types.ts                # TypeScript 타입 정의
 ├── App.tsx                 # 메인 애플리케이션
 ├── index.tsx              # 애플리케이션 진입점
@@ -169,6 +173,7 @@ interface AssetSnapshot {
   - **`/` (POST)**: 한국주식, 미국주식, 해외주식, ETF 시세 (FinanceDataReader)
   - **`/upbit` (POST)**: 암호화폐 시세 (업비트 API 프록시) ← **신규 추가**
   - 환율 정보 (USD/KRW, JPY/KRW)
+  - 기술적 지표 및 신호: 응답 내 `indicators` 필드로 제공
 
 #### 2. 시세 조회 분기 로직 (신규)
 ```typescript
@@ -345,6 +350,21 @@ Upbit/Bithumb → 암호화폐
 // exchange 기본값 설정
 ```
 
+## 📈 기술적 지표 및 신호 표시
+
+- 응답 포맷
+  - `indicators.ma20`: 20일 이동평균
+  - `indicators.ma60`: 60일 이동평균
+  - `indicators.rsi`: RSI 값
+  - `indicators.rsi_status`: NORMAL/OVERBOUGHT/OVERSOLD
+  - `indicators.signal`: STRONG_BUY/BUY/SELL/STRONG_SELL/NEUTRAL
+- 데이터 전달 경로
+  - Cloud Run → services/priceService.ts → hooks/useMarketData.ts
+- UI 표시
+  - 워치리스트 “신호” 칼럼에서 서버 신호/RSI를 배지로 표시
+  - 표시 로직: utils/signalUtils.ts
+  - 컴포넌트: components/WatchlistPage.tsx
+
 ## 🖥️ Cloud Run 서버 (백엔드)
 
 ### 엔드포인트
@@ -446,6 +466,8 @@ gcloud run deploy asset-manager --source . --region asia-northeast3 --allow-unau
 - **CORS 우회**: 클라이언트에서 업비트 직접 호출 불가 → Cloud Run 프록시 필수
 - **재시도**: 실패 시 1회 재시도, 1초 대기
 - **모킹 데이터**: API 실패 시 기본값 제공 (isMocked: true)
+- **지표/신호 처리**: 지표/신호 계산은 백엔드에서 수행하며, 프론트는 전달/표시에만 집중한다.
+- **전일종가 기준**: Cloud Run의 `prev_close`/`previousClose`를 그대로 사용해 변동률을 계산한다.
 
 ### 2. 환율 처리
 - **기본값 설정**: USD 1450, JPY 9.5
@@ -530,6 +552,7 @@ gcloud run deploy asset-manager --source . --region asia-northeast3 --allow-unau
   - 일반 시세/환율 처리: [priceService.ts](file:///c:/Users/beari/Desktop/Dev/asset-manager/services/priceService.ts)
   - 업비트 시세 처리: [upbitService.ts](file:///c:/Users/beari/Desktop/Dev/asset-manager/services/upbitService.ts)
   - 데이터 마이그레이션: [migrateData.ts](file:///c:/Users/beari/Desktop/Dev/asset-manager/utils/migrateData.ts)
+  - 신호/RSI 표시 유틸: [signalUtils.ts](file:///c:/Users/beari/Desktop/Dev/asset-manager/utils/signalUtils.ts)
 
 ## 🔗 데이터 소스 및 구현 확인
 

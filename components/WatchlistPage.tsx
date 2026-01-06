@@ -3,6 +3,7 @@ import Toggle from './common/Toggle';
 import { Filter, Trash2 } from 'lucide-react';
 import { AssetCategory, Currency, CURRENCY_SYMBOLS, ALLOWED_CATEGORIES, WatchlistItem, inferCategoryFromExchange, normalizeExchange, SymbolSearchResult } from '../types';
 import { searchSymbols } from '../services/geminiService';
+import { getSignalBadge, getRsiBadge } from '../utils/signalUtils';
 
 interface WatchlistPageProps {
   watchlist: WatchlistItem[];
@@ -67,6 +68,8 @@ const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, onAdd, onUpdat
         inBuyZone: w.buyZoneMin !== undefined && w.buyZoneMax !== undefined && w.currentPrice !== undefined
           ? w.currentPrice >= w.buyZoneMin && w.currentPrice <= w.buyZoneMax
           : false,
+        serverSignalBadge: getSignalBadge(w.indicators?.signal),
+        rsiBadge: getRsiBadge(w.indicators?.rsi_status, w.indicators?.rsi),
       }));
   }, [watchlist, filterCategory, monitoringOnly, search]);
 
@@ -374,13 +377,18 @@ const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, onAdd, onUpdat
                     ) : '-'}
                   </td>
                   <td className="px-4 py-3 text-center">
-                    {hasSignal ? (
-                      <div className="flex justify-center gap-2">
-                        {signalBuyZone && <span className="px-2 py-1 rounded bg-success/20 text-success text-xs">매수존</span>}
-                        {signalDrop && <span className="px-2 py-1 rounded bg-blue-500/20 text-blue-400 text-xs">최고가대비</span>}
-                        {signalDailyDrop && <span className="px-2 py-1 rounded bg-danger/20 text-danger text-xs">일중하락</span>}
-                      </div>
-                    ) : <span className="text-gray-500">-</span>}
+                    <div className="flex justify-center gap-2">
+                      {w.serverSignalBadge ? <span className={w.serverSignalBadge.className}>{w.serverSignalBadge.label}</span> : null}
+                      {w.rsiBadge ? <span className={w.rsiBadge.className}>{w.rsiBadge.label}</span> : null}
+                      {hasSignal ? (
+                        <>
+                          {signalBuyZone && <span className="px-2 py-1 rounded bg-success/20 text-success text-xs">매수존</span>}
+                          {signalDrop && <span className="px-2 py-1 rounded bg-blue-500/20 text-blue-400 text-xs">최고가대비</span>}
+                          {signalDailyDrop && <span className="px-2 py-1 rounded bg-danger/20 text-danger text-xs">일중하락</span>}
+                        </>
+                      ) : null}
+                      {!w.serverSignalBadge && !w.rsiBadge && !hasSignal ? <span className="text-gray-500">-</span> : null}
+                    </div>
                   </td>
                   <td className="px-4 py-3 text-center">
                     <label className="inline-flex items-center cursor-pointer">

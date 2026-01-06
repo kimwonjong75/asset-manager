@@ -16,6 +16,7 @@
    - `App.tsx` 등 UI 컴포넌트는 화면 표시에만 집중한다.
    - 데이터 처리 및 비즈니스 로직은 반드시 `hooks/` 또는 `utils/`로 분리한다.
    - 복잡한 계산 로직(수익률, 환율 변환 등)은 `utils/portfolioCalculations.ts`에 작성하고 순수 함수(Pure Function)로 유지한다.
+   - 지표/신호는 백엔드에서 계산하며, 프론트는 전달/표시에만 집중한다. 신호 배지 렌더링은 `utils/signalUtils.ts`에서 처리한다.
 
 2. **상태 관리 (Context API):**
    - 3단계 이상의 Props Drilling은 금지한다.
@@ -25,11 +26,13 @@
    - **`any` 타입 사용을 엄격히 금지한다.**
    - 모든 데이터 구조는 `types/` 디렉토리에 정의된 interface와 enum(`AssetCategory` 등)을 사용한다.
    - 컴포넌트 Props는 반드시 타입을 명시한다.
+   - 서버 지표/신호는 `types/api.ts`의 `Indicators`와 `SignalType`을 사용하고, `Asset`/`WatchlistItem`에 선택적으로 포함한다.
 
 ### [외부 연동 및 에러 처리 원칙]
 1. **API 연동:**
    - 외부 API(Cloud Run, Upbit) 호출 로직은 `hooks/useMarketData.ts` 등 전용 훅 내에서만 수행한다.
    - API 실패 시 UI가 멈추지 않도록 `try-catch`와 `fallback` 데이터를 반드시 구현한다. (부분 성공 허용)
+   - 변동률 계산 시 백엔드의 `prev_close`를 우선 사용하고, 보정/환산이 필요한 경우에는 `services/priceService.ts` 또는 `hooks/useMarketData.ts`에서만 처리한다. UI 컴포넌트 내부에서 계산하지 않는다.
 
 2. **Google Drive 동기화:**
    - 데이터 저장(`hooks/usePortfolioData.ts`) 시에는 로컬 상태와 구글 드라이브 간의 정합성을 최우선으로 한다.
@@ -46,3 +49,4 @@
 
 3. **문서화:**
    - 새로운 파일이나 중요 로직이 추가되면 `README.md`의 관련 섹션도 함께 업데이트할 것을 제안한다.
+   - 지표/신호와 전일종가 로직 변경 시 `README.md`와 `RULES.md`를 최신 상태로 유지한다.

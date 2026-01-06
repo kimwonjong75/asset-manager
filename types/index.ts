@@ -115,6 +115,8 @@ export const normalizeExchange = (exchange: string): string => {
   return e;
 };
 
+import type { Indicators } from './api';
+
 export interface WatchlistItem {
   id: string;
   ticker: string;
@@ -133,6 +135,8 @@ export interface WatchlistItem {
   highestPrice?: number;
   lastSignalAt?: string;
   lastSignalType?: 'BUY_ZONE' | 'DROP_FROM_HIGH' | 'DAILY_DROP' | null;
+  changeRate?: number;
+  indicators?: Indicators;
 }
 
 export interface SellTransaction {
@@ -172,6 +176,8 @@ export interface Asset {
   sellAlertDropRate?: number;
   memo?: string;
   sellTransactions?: SellTransaction[];
+  changeRate?: number;
+  indicators?: Indicators;
 }
 
 export type NewAssetForm = Omit<Asset, 'id' | 'name' | 'currentPrice' | 'priceOriginal' | 'highestPrice' | 'purchaseExchangeRate' | 'previousClosePrice'>;
