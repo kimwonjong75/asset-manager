@@ -1,6 +1,6 @@
 import React from 'react';
 import { Asset, Currency, CURRENCY_SYMBOLS } from '../../types';
-import { PortfolioSnapshot, SellRecord } from '../../types';
+import { PortfolioSnapshot } from '../../types';
 
 interface PortfolioTableRowProps {
   asset: Asset & {
@@ -10,8 +10,9 @@ interface PortfolioTableRowProps {
     profitLossKRW: number;
     allocation: number;
     dropFromHigh: number;
-    yesterdayChange: number; // 원화 기준 변동액
-    yesterdayChangeRate: number; // 퍼센트
+    // [수정] 아래 두 필드를 선택적(?)으로 변경하여 데이터가 없어도 에러가 나지 않게 함
+    yesterdayChange?: number; 
+    yesterdayChangeRate?: number; 
   };
   history: PortfolioSnapshot[];
   selectedIds: Set<string>;
@@ -78,6 +79,9 @@ const PortfolioTableRow: React.FC<PortfolioTableRowProps> = ({
   const isSelected = selectedIds.has(asset.id);
   const symbol = CURRENCY_SYMBOLS[asset.currency] || asset.currency;
   
+  // [수정] 값이 undefined일 경우 0으로 처리하는 방어 로직 추가
+  const safeYesterdayChangeRate = asset.yesterdayChangeRate ?? 0;
+
   // 색상 유틸리티
   const getColor = (val: number) => {
     if (val > 0) return 'text-red-400';
@@ -114,7 +118,6 @@ const PortfolioTableRow: React.FC<PortfolioTableRowProps> = ({
         <div className="flex flex-col">
           <div className="flex items-center">
             <span className="font-bold text-white">{asset.name}</span>
-            {/* 여기에 퀀트 신호 표시 */}
             <SignalBadge signal={asset.indicators?.signal} />
           </div>
           <div className="text-xs text-gray-500 flex gap-2">
@@ -144,7 +147,6 @@ const PortfolioTableRow: React.FC<PortfolioTableRowProps> = ({
         <div className="text-white font-medium">
             {symbol}{fmt(asset.currentPrice, asset.currency)}
         </div>
-        {/* 여기에 RSI 표시 */}
         <RSIIndicator rsi={asset.indicators?.rsi} status={asset.indicators?.rsi_status} />
       </td>
 
@@ -186,9 +188,9 @@ const PortfolioTableRow: React.FC<PortfolioTableRowProps> = ({
       </td>
 
       {/* 전일 대비 등락 (Yesterday Change) */}
-      <td className={`px-4 py-3 text-right font-mono ${getColor(asset.yesterdayChangeRate)}`}>
-         {/* 서버에서 받은 changeRate 우선 사용, 없으면 계산된 값 */}
-         {(asset.changeRate !== undefined ? asset.changeRate * 100 : asset.yesterdayChangeRate).toFixed(2)}%
+      <td className={`px-4 py-3 text-right font-mono ${getColor(asset.changeRate ?? safeYesterdayChangeRate)}`}>
+         {/* [수정] API의 changeRate가 있으면 그것을 쓰고(1순위), 없으면 yesterdayChangeRate(2순위), 둘 다 없으면 0 */}
+         {((asset.changeRate !== undefined ? asset.changeRate : safeYesterdayChangeRate) * 100).toFixed(2)}%
       </td>
 
       {/* 관리 버튼 */}
