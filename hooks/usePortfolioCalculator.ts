@@ -12,6 +12,22 @@ export const usePortfolioCalculator = () => {
     }
   }, []);
 
+  // [신규] 매수가를 KRW로 변환 - 구매 당시 환율 우선 사용
+  const getPurchaseValueInKRW = useCallback((asset: Asset, exchangeRates: ExchangeRates): number => {
+    // KRW 자산은 그대로 반환
+    if (asset.currency === Currency.KRW) {
+      return asset.purchasePrice;
+    }
+    
+    // 구매 당시 환율이 있으면 사용 (우선)
+    if (asset.purchaseExchangeRate && asset.purchaseExchangeRate > 0) {
+      return asset.purchasePrice * asset.purchaseExchangeRate;
+    }
+    
+    // 구매 환율이 없으면 현재 환율로 폴백 (기존 로직 유지)
+    return getValueInKRW(asset.purchasePrice, asset.currency, exchangeRates);
+  }, [getValueInKRW]);
+
   const calculateAssetMetrics = useCallback((asset: Asset, exchangeRates: ExchangeRates, totalPortfolioValue: number = 0): EnrichedAsset => {
     // 1. isKRWExchange: Check if exchange is Upbit or Bithumb
     const isKRWExchange = asset.exchange === 'Upbit' || asset.exchange === 'Bithumb';
@@ -26,14 +42,16 @@ export const usePortfolioCalculator = () => {
     }
 
     const currentValueKRW = currentPriceKRW * asset.quantity;
-    const purchasePriceKRW = getValueInKRW(asset.purchasePrice, asset.currency, exchangeRates);
+    
+    // [수정] 매수가는 구매 당시 환율 사용
+    const purchasePriceKRW = getPurchaseValueInKRW(asset, exchangeRates);
     const purchaseValueKRW = purchasePriceKRW * asset.quantity;
     const profitLossKRW = currentValueKRW - purchaseValueKRW;
 
     // Calculate Return Percentage using KRW values to ensure consistency
     const returnPercentage = purchaseValueKRW === 0 ? 0 : (profitLossKRW / purchaseValueKRW) * 100;
 
-    // Raw values
+    // Raw values (외화 기준 - 개별 자산 표시용)
     const currentValue = asset.currentPrice * asset.quantity;
     const purchaseValue = asset.purchasePrice * asset.quantity;
     const profitLoss = currentValue - purchaseValue;
@@ -79,7 +97,7 @@ export const usePortfolioCalculator = () => {
       ...asset,
       metrics
     };
-  }, [getValueInKRW]);
+  }, [getValueInKRW, getPurchaseValueInKRW]);
 
   const calculatePortfolioStats = useCallback((assets: Asset[], exchangeRates: ExchangeRates) => {
     let totalValue = 0;
@@ -156,6 +174,7 @@ export const usePortfolioCalculator = () => {
 
   return {
     getValueInKRW,
+    getPurchaseValueInKRW,
     calculateAssetMetrics,
     calculatePortfolioStats,
     calculateSoldAssetsStats,
