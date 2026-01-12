@@ -37,13 +37,21 @@ export const usePortfolioHistory = ({ assets, exchangeRates, setPortfolioHistory
         const purchasePriceKRW = getPurchaseValueInKRW(asset, exchangeRates);
         const purchaseValueKRW = purchasePriceKRW * asset.quantity;
         
+        // 원화 환산 단가
         const unitPriceKRW = asset.currentPrice * rate;
+        
+        // [핵심 추가] 외화 원본 단가 저장
+        // priceOriginal이 있으면 사용, 없으면 currentPrice 사용
+        const unitPriceOriginal = asset.priceOriginal > 0 ? asset.priceOriginal : asset.currentPrice;
+        
         return {
           id: asset.id,
           name: (asset.customName?.trim() || asset.name),
           currentValue: currentValueKRW,
           purchaseValue: purchaseValueKRW,
           unitPrice: unitPriceKRW,
+          unitPriceOriginal: unitPriceOriginal, // [추가] 외화 원본 가격
+          currency: asset.currency,              // [추가] 통화 정보
         };
       });
       const newSnapshot = { date: today, assets: newAssetSnapshots };

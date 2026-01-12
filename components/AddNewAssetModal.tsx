@@ -7,11 +7,13 @@ const AddNewAssetModal: React.FC = () => {
   const { modal, actions, status, data } = usePortfolio();
   const isOpen = modal.addAssetOpen;
   const onClose = actions.closeAddAsset;
-  const onAddAsset = actions.addAsset as unknown as (asset: NewAssetForm) => void;
+  const onAddAsset = actions.addAsset as unknown as (asset: NewAssetForm & { name?: string }) => void;
   const isLoading = status.isLoading;
   const assets = data.assets;
   const [ticker, setTicker] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  // [추가] 검색에서 선택한 종목명을 별도로 저장
+  const [selectedName, setSelectedName] = useState('');
   const [searchResults, setSearchResults] = useState<SymbolSearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
@@ -28,6 +30,7 @@ const AddNewAssetModal: React.FC = () => {
   const clearForm = useCallback(() => {
     setTicker('');
     setSearchQuery('');
+    setSelectedName(''); // [추가] 초기화
     setQuantity('');
     setPurchasePrice('');
     setSearchResults([]);
@@ -50,6 +53,7 @@ const AddNewAssetModal: React.FC = () => {
     setSearchQuery(newQuery);
     if (ticker) {
       setTicker('');
+      setSelectedName(''); // [추가] 티커 초기화 시 이름도 초기화
     }
     setDuplicateError(null);
   }, [ticker]);
@@ -98,6 +102,8 @@ const AddNewAssetModal: React.FC = () => {
     }
     setTicker(nextTicker);
     setSearchQuery(result.name);
+    // [핵심 수정] 검색에서 선택한 종목명을 별도로 저장
+    setSelectedName(result.name);
     setExchange(normalizeExchange(result.exchange));
 
     // 거래소에서 자산구분 자동 추론
@@ -135,6 +141,7 @@ const AddNewAssetModal: React.FC = () => {
       alert('이미 포트폴리오에 존재하는 자산입니다.');
       return;
     }
+    // [핵심 수정] selectedName을 name으로 전달
     onAddAsset({
       ticker,
       quantity: parseFloat(quantity),
@@ -142,7 +149,8 @@ const AddNewAssetModal: React.FC = () => {
       purchaseDate,
       category,
       exchange,
-      currency
+      currency,
+      name: selectedName || undefined, // [추가] 검색에서 선택한 이름 전달
     });
   };
   
@@ -203,7 +211,7 @@ const AddNewAssetModal: React.FC = () => {
                 <div className="absolute top-9 right-3">
                     <svg className="animate-spin h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8_0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
                 </div>
             )}

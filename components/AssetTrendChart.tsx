@@ -7,7 +7,7 @@ interface AssetTrendChartProps {
   assetId: string;
   assetName: string;
   currentQuantity: number;
-  currentPrice: number;       // 실시간 현재가
+  currentPrice: number;       // 실시간 현재가 (외화 원본)
   currency?: Currency;        // 자산 통화 (USD, KRW, JPY...)
   exchangeRate?: number;      // (사용하지 않음 - 외화 그대로 표기 위해 남겨둠)
 }
@@ -23,26 +23,51 @@ const AssetTrendChart: React.FC<AssetTrendChartProps> = ({
 }) => {
   const chartData = useMemo(() => {
     // 1. 과거 데이터 매핑 (history는 '과거 종가'로 간주)
-    // 외화 자산도 원화로 변환하지 않고 그대로(original) 사용
+    // [핵심 수정] 외화 자산은 unitPriceOriginal 사용, 없으면 unitPrice에서 역산 시도
     const data = (history || []).map(snapshot => {
       const assetSnapshot = snapshot.assets.find(a => a.id === assetId);
       
       let price = 0;
       if (assetSnapshot) {
-        // 스냅샷에 unitPrice(1주당 단가)가 있으면 우선 사용 (가장 정확)
-        if (assetSnapshot.unitPrice !== undefined && assetSnapshot.unitPrice > 0) {
-            price = assetSnapshot.unitPrice;
-        } 
-        // unitPrice가 없으면 평가액/수량으로 역산
-        else if (currentQuantity > 0) {
+        // [수정] 통화에 따라 적절한 가격 선택
+        if (currency !== Currency.KRW) {
+          // 외화 자산: unitPriceOriginal 우선 사용
+          if (assetSnapshot.unitPriceOriginal !== undefined && assetSnapshot.unitPriceOriginal > 0) {
+            price = assetSnapshot.unitPriceOriginal;
+          } 
+          // unitPriceOriginal이 없는 과거 데이터: unitPrice에서 역산 시도
+          // (이 경우는 이전에 저장된 데이터로, 정확하지 않을 수 있음)
+          else if (assetSnapshot.unitPrice !== undefined && assetSnapshot.unitPrice > 0) {
+            // 스냅샷에 currency 정보가 있으면 확인
+            const snapshotCurrency = assetSnapshot.currency || currency;
+            if (snapshotCurrency === Currency.KRW) {
+              // 원화 데이터라면 그대로 사용 (호환성)
+              price = assetSnapshot.unitPrice;
+            } else {
+              // 외화인데 원본 가격이 없으면, unitPrice를 그대로 사용
+              // (이전 버전 데이터는 원화로 저장되어 있으므로 정확하지 않을 수 있음)
+              price = assetSnapshot.unitPrice;
+            }
+          }
+          // 둘 다 없으면 currentValue/quantity로 역산
+          else if (currentQuantity > 0) {
             price = assetSnapshot.currentValue / currentQuantity;
+          }
+        } else {
+          // KRW 자산: 기존 로직 유지
+          if (assetSnapshot.unitPrice !== undefined && assetSnapshot.unitPrice > 0) {
+            price = assetSnapshot.unitPrice;
+          } 
+          else if (currentQuantity > 0) {
+            price = assetSnapshot.currentValue / currentQuantity;
+          }
         }
       }
 
       return {
         date: new Date(snapshot.date).toLocaleDateString('ko-KR', { month: '2-digit', day: '2-digit' }),
         fullDate: snapshot.date, // YYYY-MM-DD (비교용)
-        '가격': price, // 키값을 '현재가'에서 '가격'으로 변경
+        '가격': price,
       };
     }).filter(d => d['가격'] > 0);
 
@@ -70,7 +95,7 @@ const AssetTrendChart: React.FC<AssetTrendChartProps> = ({
     }
 
     return data;
-  }, [history, assetId, currentQuantity, currentPrice]);
+  }, [history, assetId, currentQuantity, currentPrice, currency]);
 
   // 통화 기호 표시 헬퍼 함수
   const getCurrencySymbol = (curr: string) => {
@@ -95,10 +120,14 @@ const AssetTrendChart: React.FC<AssetTrendChartProps> = ({
 
   // Y축용 간략 포맷터 (공간 절약)
   const formatYAxis = (value: number) => {
-    if (value >= 10000 && currency === Currency.KRW) {
-       return `${(value / 10000).toFixed(0)}만`;
+    if (currency === Currency.KRW) {
+      if (value >= 10000) {
+        return `${(value / 10000).toFixed(0)}만`;
+      }
+      return value.toLocaleString();
     }
-    return value.toLocaleString();
+    // 외화는 소수점 2자리까지
+    return value.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 });
   };
 
   return (

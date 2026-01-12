@@ -194,12 +194,15 @@ export interface BulkUploadResult {
   errors: { ticker: string; reason: string }[];
 }
 
+// [수정] AssetSnapshot에 외화 원본 가격 필드 추가
 export interface AssetSnapshot {
   id: string;
   name: string;
-  currentValue: number;
-  purchaseValue: number;
-  unitPrice?: number; 
+  currentValue: number;      // 원화 환산 평가액
+  purchaseValue: number;     // 원화 환산 매수액
+  unitPrice?: number;        // 원화 환산 단가 (KRW)
+  unitPriceOriginal?: number; // [추가] 외화 원본 단가 (USD, JPY 등)
+  currency?: Currency;        // [추가] 통화 정보
 }
 
 export interface PortfolioSnapshot {
