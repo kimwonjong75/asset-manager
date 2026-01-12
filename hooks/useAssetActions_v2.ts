@@ -169,13 +169,9 @@ export const useAssetActions = ({
           if (infoChanged) {
             const d = await fetchAssetDataNew({ ticker: updatedAsset.ticker, exchange: updatedAsset.exchange, category: updatedAsset.category, currency: updatedAsset.currency });
             const newCurrentPrice = finalAsset.currency === Currency.KRW ? d.priceKRW : d.priceOriginal;
-            
-            // [수정] 기존 이름이 ticker와 같으면(잘못 저장된 경우) API 이름으로 교체
-            const shouldUpdateName = originalAsset.name === originalAsset.ticker || infoChanged;
-            
             finalAsset = {
               ...finalAsset,
-              name: shouldUpdateName ? d.name : finalAsset.name,
+              name: d.name,
               currentPrice: newCurrentPrice,
               priceOriginal: d.priceOriginal,
               currency: d.currency || finalAsset.currency,
@@ -185,50 +181,37 @@ export const useAssetActions = ({
           
           if (infoChanged || dateOrCurrencyChanged) {
             const purchaseExchangeRate = await fetchHistoricalExchangeRate(finalAsset.purchaseDate, finalAsset.currency, Currency.KRW);
-            finalAsset = { ...finalAsset, purchaseExchangeRate };
+            finalAsset.purchaseExchangeRate = purchaseExchangeRate;
           }
       }
-      
+
       setAssets(prevAssets => {
-        const updated = prevAssets.map(a => (a.id === finalAsset.id ? finalAsset : a));
-        triggerAutoSave(updated, portfolioHistory, sellHistory, watchlist, exchangeRates);
+        const updated = prevAssets.map(asset => 
+          asset.id === updatedAsset.id ? finalAsset : asset
+        );
+          triggerAutoSave(updated, portfolioHistory, sellHistory, watchlist, exchangeRates);
         return updated;
       });
-      setSuccessMessage(`${finalAsset.name} 자산이 수정되었습니다.`);
-      setTimeout(() => setSuccessMessage(null), 3000);
+      setEditingAsset(null);
     } catch (e) {
       console.error(e);
-      setError('자산 수정 중 오류가 발생했습니다.');
+      setError('자산 정보 업데이트에 실패했습니다. 입력값을 확인해주세요.');
       setTimeout(() => setError(null), 3000);
     } finally {
       setIsLoading(false);
-      setEditingAsset(null);
     }
-  }, [isSignedIn, assets, portfolioHistory, sellHistory, watchlist, exchangeRates, triggerAutoSave, setAssets, setError, setSuccessMessage]);
+  }, [isSignedIn, assets, portfolioHistory, sellHistory, watchlist, exchangeRates, triggerAutoSave, setAssets, setError]);
 
-  // 매도 확정
+  // 자산 매도 - [원본 유지]
   const handleConfirmSell = useCallback(async (
     assetId: string,
-    sellQuantity: number,
-    sellPrice: number,
     sellDate: string,
-    settlementCurrency?: Currency
+    sellPrice: number,
+    sellQuantity: number,
+    currency: Currency
   ) => {
     if (!isSignedIn) {
-      setError('Google Drive 로그인 후 매도를 기록할 수 있습니다.');
-      setTimeout(() => setError(null), 3000);
-      return;
-    }
-
-    const asset = assets.find(a => a.id === assetId);
-    if (!asset) {
-      setError('해당 자산을 찾을 수 없습니다.');
-      setTimeout(() => setError(null), 3000);
-      return;
-    }
-
-    if (sellQuantity > asset.quantity) {
-      setError('매도 수량이 보유 수량을 초과합니다.');
+      setError('Google Drive 로그인 후 매도할 수 있습니다.');
       setTimeout(() => setError(null), 3000);
       return;
     }
@@ -237,135 +220,101 @@ export const useAssetActions = ({
     setError(null);
 
     try {
-      const finalSettlementCurrency = settlementCurrency || asset.currency;
-      let sellExchangeRate = 1;
+      const updatedAssets = assets.map(a => {
+        if (a.id === assetId) {
+          const sellTransaction = {
+            id: `${assetId}-${Date.now()}`,
+            sellDate,
+            sellPrice,
+            sellQuantity,
+            currency,
+          };
 
-      if (finalSettlementCurrency !== Currency.KRW) {
-        sellExchangeRate = await fetchHistoricalExchangeRate(sellDate, finalSettlementCurrency, Currency.KRW);
-      }
+          const updatedAsset: Asset = {
+            ...a,
+            quantity: a.quantity - sellQuantity,
+            sellTransactions: [...(a.sellTransactions || []), sellTransaction],
+          };
 
-      const sellPriceSettlement = sellPrice;
-      const sellPriceOriginal = asset.currency !== Currency.KRW && asset.currency === finalSettlementCurrency
-        ? sellPrice
-        : sellPrice / sellExchangeRate;
+          const record: SellRecord = {
+            assetId: a.id,
+            ticker: a.ticker,
+            name: a.name,
+            category: a.category,
+            ...sellTransaction,
+          };
+          setSellHistory(prev => [...prev, record]);
 
-      const sellTransaction = {
-        id: `${Date.now()}`,
-        sellDate,
-        sellPrice: sellPrice * sellExchangeRate,
-        sellPriceOriginal,
-        sellQuantity,
-        sellExchangeRate,
-        settlementCurrency: finalSettlementCurrency,
-        sellPriceSettlement,
-      };
-
-      const sellRecord: SellRecord = {
-        ...sellTransaction,
-        assetId: asset.id,
-        ticker: asset.ticker,
-        name: asset.customName?.trim() || asset.name,
-        category: asset.category,
-      };
-
-      const newQuantity = asset.quantity - sellQuantity;
-
-      setAssets(prevAssets => {
-        let updated: Asset[];
-        if (newQuantity <= 0) {
-          updated = prevAssets.filter(a => a.id !== assetId);
-        } else {
-          updated = prevAssets.map(a => {
-            if (a.id === assetId) {
-              return {
-                ...a,
-                quantity: newQuantity,
-                sellTransactions: [...(a.sellTransactions || []), sellTransaction],
-              };
-            }
-            return a;
-          });
+          return updatedAsset.quantity <= 0 ? null : updatedAsset;
         }
-        
-        const newSellHistory = [...sellHistory, sellRecord];
-        setSellHistory(newSellHistory);
-        triggerAutoSave(updated, portfolioHistory, newSellHistory, watchlist, exchangeRates);
-        return updated;
-      });
+        return a;
+      }).filter((a): a is Asset => a !== null);
 
-      setSuccessMessage(`${asset.name} ${sellQuantity}주 매도가 기록되었습니다.`);
+      setAssets(updatedAssets);
+      setSellingAsset(null);
+      setSuccessMessage('매도가 완료되었습니다.');
       setTimeout(() => setSuccessMessage(null), 3000);
-    } catch (e) {
-      console.error(e);
+      
+      triggerAutoSave(updatedAssets, portfolioHistory, sellHistory, watchlist, exchangeRates);
+    } catch (error) {
+      console.error('Failed to sell asset:', error);
       setError('매도 처리 중 오류가 발생했습니다.');
       setTimeout(() => setError(null), 3000);
     } finally {
       setIsLoading(false);
-      setSellingAsset(null);
     }
   }, [isSignedIn, assets, portfolioHistory, sellHistory, watchlist, exchangeRates, triggerAutoSave, setAssets, setSellHistory, setError, setSuccessMessage]);
 
-  // CSV 파일 업로드
-  const handleCsvFileUpload = useCallback((file: File): Promise<BulkUploadResult> => {
+  // CSV 업로드 - [원본 유지]
+  const handleCsvFileUpload = useCallback(async (file: File): Promise<BulkUploadResult> => {
+    if (!isSignedIn) {
+      return {
+        successCount: 0,
+        failedCount: 0,
+        errors: [{ ticker: '권한 없음', reason: 'Google Drive 로그인 후 이용해주세요.' }]
+      };
+    }
     return new Promise((resolve) => {
-        if (!isSignedIn) {
-            resolve({ successCount: 0, failedCount: 0, errors: [{ ticker: '인증 오류', reason: 'Google Drive 로그인이 필요합니다.' }] });
-            return;
-        }
-        
         const reader = new FileReader();
         reader.onload = async (e) => {
+            let successCount = 0;
+            let failedCount = 0;
+            const errors: { ticker: string; reason: string }[] = [];
+            const lines = (e.target?.result as string).split('\n').filter(line => line.trim() !== '');
+
             try {
-                const text = e.target?.result as string;
-                const lines = text.split('\n').filter(line => line.trim());
+                if (lines.length < 2) throw new Error('CSV 파일에 헤더와 데이터가 포함되어야 합니다.');
                 
-                if (lines.length < 2) {
-                    resolve({ successCount: 0, failedCount: 0, errors: [{ ticker: '파일 형식 오류', reason: '헤더와 데이터가 필요합니다.' }] });
-                    return;
+                const headerLine = lines[0].trim().replace(/\uFEFF/g, '');
+                const header = headerLine.split(',').map(h => h.trim());
+                
+                const expectedHeaders = [
+                  ['ticker', 'exchange', 'quantity', 'purchasePrice', 'purchaseDate', 'category', 'currency', 'sellAlertDropRate'],
+                  ['ticker', 'exchange', 'quantity', 'purchasePrice', 'purchaseDate', 'category', 'currency']
+                ];
+
+                const headerMatch = expectedHeaders.find(h => JSON.stringify(h) === JSON.stringify(header));
+
+                if (!headerMatch) {
+                    throw new Error(`잘못된 헤더입니다. 예상 헤더: ${expectedHeaders[1].join(',')}`);
                 }
-
-                const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
-                const tickerIdx = headers.findIndex(h => h === 'ticker' || h === '티커');
-                const exchangeIdx = headers.findIndex(h => h === 'exchange' || h === '거래소');
-                const quantityIdx = headers.findIndex(h => h === 'quantity' || h === '수량');
-                const priceIdx = headers.findIndex(h => h === 'purchaseprice' || h === '매수가');
-                const dateIdx = headers.findIndex(h => h === 'purchasedate' || h === '매수일');
-                const categoryIdx = headers.findIndex(h => h === 'category' || h === '카테고리');
-                const currencyIdx = headers.findIndex(h => h === 'currency' || h === '통화');
-                const sellAlertRateIdx = headers.findIndex(h => h === 'sellalertdroprate' || h === '매도알림하락률');
-                const hasSellAlertRate = sellAlertRateIdx !== -1;
-
-                if (tickerIdx === -1 || exchangeIdx === -1 || quantityIdx === -1 || priceIdx === -1 || dateIdx === -1 || categoryIdx === -1 || currencyIdx === -1) {
-                    resolve({ successCount: 0, failedCount: 0, errors: [{ ticker: '파일 형식 오류', reason: '필수 헤더가 누락되었습니다. (ticker, exchange, quantity, purchasePrice, purchaseDate, category, currency)' }] });
-                    return;
-                }
-
-                let successCount = 0;
-                let failedCount = 0;
-                const errors: { ticker: string; reason: string }[] = [];
-
-                const newAssetForms = lines.slice(1).map(line => {
-                    const cols = line.split(',').map(c => c.trim());
-                    const ticker = cols[tickerIdx];
-                    const exchange = cols[exchangeIdx];
-                    const quantityStr = cols[quantityIdx];
-                    const priceStr = cols[priceIdx];
-                    const dateStr = cols[dateIdx];
-                    const categoryStr = cols[categoryIdx];
-                    const currencyStr = cols[currencyIdx];
-                    const sellAlertDropRateStr = hasSellAlertRate ? cols[sellAlertRateIdx] : undefined;
-
-                    if (!ticker || !exchange || !quantityStr || !priceStr || !dateStr || !categoryStr || !currencyStr) {
-                        return { error: '필수 필드 누락', ticker: ticker || '알 수 없음' };
+                const hasSellAlertRate = headerMatch.length === 8;
+                
+                const rows = lines.slice(1);
+                const newAssetForms: (NewAssetForm & { sellAlertDropRate?: number } | { error: string, ticker: string })[] = rows.map((row, index) => {
+                    const values = row.trim().split(',');
+                    if (values.length < 7 || values.length > 8) {
+                        return { error: `${headerMatch.length}개의 값이 필요합니다.`, ticker: `행 ${index + 2}` };
                     }
-
-                    if (!ALLOWED_CATEGORIES.includes(categoryStr as AssetCategory)) {
-                        return { error: `유효하지 않은 카테고리: ${categoryStr}`, ticker };
-                    }
-
-                    if (!Object.values(Currency).includes(currencyStr as Currency)) {
-                        return { error: `유효하지 않은 통화: ${currencyStr}`, ticker };
-                    }
+                    const [ticker, exchange, quantityStr, priceStr, dateStr, categoryStr, currencyStr, sellAlertDropRateStr] = values.map(v => v.trim());
+                    
+                    if (!ticker) return { error: '티커가 비어있습니다.', ticker: `행 ${index + 2}` };
+                    if (!exchange) return { error: '거래소가 비어있습니다.', ticker: `행 ${index + 2}` };
+                    if (isNaN(parseFloat(quantityStr)) || parseFloat(quantityStr) <= 0) return { error: '수량이 유효한 숫자가 아닙니다.', ticker };
+                    if (isNaN(parseFloat(priceStr)) || parseFloat(priceStr) < 0) return { error: '매수가가 유효한 숫자가 아닙니다.', ticker };
+                    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return { error: '날짜 형식이 YYYY-MM-DD가 아닙니다.', ticker };
+                    if (!ALLOWED_CATEGORIES.includes(categoryStr as AssetCategory)) return { error: '유효하지 않은 자산 구분입니다.', ticker };
+                    if (!Object.values(Currency).includes(currencyStr as Currency)) return { error: '유효하지 않은 통화입니다.', ticker };
                     
                     const form: NewAssetForm & { sellAlertDropRate?: number } = {
                         ticker,
