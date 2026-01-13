@@ -444,7 +444,13 @@ export const useAssetActions = ({
                 resolve({ successCount, failedCount, errors });
 
             } catch (err: unknown) {
-                resolve({ successCount: 0, failedCount: lines.length > 1 ? lines.length - 1 : 0, errors: [{ ticker: '파일 전체', reason: err instanceof Error ? err.message : '파일 처리 실패' }] });
+                // lines 변수가 try 블록 안에 있어서 참조 불가 에러 발생
+                // 에러 발생 시 전체 실패로 처리
+                resolve({ 
+                    successCount: 0, 
+                    failedCount: 0, 
+                    errors: [{ ticker: '파일 전체', reason: err instanceof Error ? err.message : '파일 처리 실패' }] 
+                });
             }
         };
 

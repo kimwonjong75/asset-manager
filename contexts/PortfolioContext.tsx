@@ -192,7 +192,12 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       addAsset: handleAddAsset,
       updateAsset: handleUpdateAsset,
       deleteAsset: handleDeleteAsset,
-      confirmSell: handleConfirmSell,
+      confirmSell: async (id: string, sellDate: string, sellPrice: number, sellQuantity: number, currency: Currency) => {
+        // [수정] Context의 인터페이스와 useAssetActions 구현체의 파라미터 순서 불일치 해결
+        // Context: (id, sellDate, sellPrice, sellQuantity, currency)
+        // Hook: (assetId, sellQuantity, sellPrice, sellDate, settlementCurrency)
+        await handleConfirmSell(id, sellQuantity, sellPrice, sellDate, currency);
+      },
       addSelectedToWatchlist: handleAddAssetsToWatchlist,
       addWatchItem: handleAddWatchItem,
       updateWatchItem: handleUpdateWatchItem,
