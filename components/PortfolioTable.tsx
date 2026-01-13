@@ -207,6 +207,7 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
                 onEdit={onEdit}
                 onSell={onSell}
                 filterAlerts={filterAlerts}
+                exchangeRates={exchangeRates}
               />
             )) : (
               <tr><td colSpan={13} className="text-center py-8 text-gray-500">

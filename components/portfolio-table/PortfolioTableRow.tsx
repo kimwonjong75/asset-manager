@@ -1,5 +1,5 @@
 import React, { Fragment, useRef, useState } from 'react';
-import { Asset, Currency, PortfolioSnapshot } from '../../types';
+import { Asset, Currency, PortfolioSnapshot, ExchangeRates } from '../../types';
 import { EnrichedAsset } from '../../types/ui';
 import AssetTrendChart from '../AssetTrendChart';
 import { MoreHorizontal } from 'lucide-react';
@@ -67,6 +67,7 @@ interface PortfolioTableRowProps {
   onEdit: (asset: Asset) => void;
   onSell?: (asset: Asset) => void;
   filterAlerts: boolean;
+  exchangeRates?: ExchangeRates; // [추가] 환율 정보
 }
 
 const ChartBarIcon: React.FC = () => (
@@ -84,7 +85,8 @@ const PortfolioTableRow: React.FC<PortfolioTableRowProps> = ({
   sellAlertDropRate,
   onEdit,
   onSell,
-  filterAlerts
+  filterAlerts,
+  exchangeRates
 }) => {
   const [expandedAssetId, setExpandedAssetId] = useState<string | null>(null);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
@@ -108,11 +110,18 @@ const PortfolioTableRow: React.FC<PortfolioTableRowProps> = ({
     ? asset.changeRate * 100 
     : yesterdayChange;
 
-  // [수정] 차트에 전달할 환율 계산 (현재가치 KRW / 현재가치 외화)
-  // 값이 0이거나 KRW인 경우 1로 처리
-  const derivedExchangeRate = (isNonKRW && currentValue > 0) 
-    ? currentValueKRW / currentValue 
-    : 1;
+  // [수정] 차트에 전달할 환율 계산
+  // 1순위: exchangeRates prop 사용 (가장 정확)
+  // 2순위: 현재가치 역산 (currentValueKRW / currentValue)
+  // 3순위: 1 (KRW이거나 정보 없음)
+  let derivedExchangeRate = 1;
+  if (isNonKRW) {
+      if (exchangeRates && asset.currency in exchangeRates) {
+          derivedExchangeRate = exchangeRates[asset.currency as keyof ExchangeRates];
+      } else if (currentValue > 0) {
+          derivedExchangeRate = currentValueKRW / currentValue;
+      }
+  }
 
   return (
     <Fragment>
@@ -197,9 +206,9 @@ const PortfolioTableRow: React.FC<PortfolioTableRowProps> = ({
               assetId={asset.id}
               assetName={(asset.customName?.trim() || asset.name)}
               currentQuantity={asset.quantity}
-              currentPrice={asset.currentPrice}  // [수정] 빌드 에러 해결: 현재가 전달
-              currency={asset.currency}          // [수정] 차트 환산용: 통화 전달
-              exchangeRate={derivedExchangeRate} // [수정] 차트 환산용: 환율 전달
+              currentPrice={asset.currentPrice}  
+              currency={asset.currency}          
+              exchangeRate={derivedExchangeRate} 
             />
           </td>
         </tr>
