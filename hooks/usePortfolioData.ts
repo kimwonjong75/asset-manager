@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { Asset, PortfolioSnapshot, SellRecord, WatchlistItem, ExchangeRates } from '../types';
+import { Asset, PortfolioSnapshot, SellRecord, WatchlistItem, ExchangeRates, AllocationTargets } from '../types';
 import { useGoogleDriveSync } from './useGoogleDriveSync';
 import { runMigrationIfNeeded } from '../utils/migrateData';
 import { mapToNewAssetStructure } from '../utils/portfolioCalculations';
@@ -14,6 +14,7 @@ export const usePortfolioData = () => {
   const [sellHistory, setSellHistory] = useState<SellRecord[]>([]);
   const [watchlist, setWatchlist] = useState<WatchlistItem[]>([]);
   const [exchangeRates, setExchangeRates] = useState<ExchangeRates>({ USD: 1450, JPY: 9.5 });
+  const [allocationTargets, setAllocationTargets] = useState<AllocationTargets>({});
   const [hasAutoUpdated, setHasAutoUpdated] = useState<boolean>(false);
 
   const { isSignedIn, googleUser, isInitializing, handleSignIn, handleSignOut: hookSignOut, loadFromGoogleDrive: hookLoadFromGoogleDrive, autoSave: hookAutoSave } = useGoogleDriveSync({ onError: setError, onSuccessMessage: setSuccessMessage });
@@ -43,6 +44,13 @@ export const usePortfolioData = () => {
         } else {
            setExchangeRates({ USD: 1450, JPY: 9.5 });
         }
+
+        if (loaded.allocationTargets) {
+          setAllocationTargets(loaded.allocationTargets);
+        } else {
+          setAllocationTargets({});
+        }
+
         setSuccessMessage('Google Drive에서 포트폴리오를 불러왔습니다.');
         setTimeout(() => setSuccessMessage(null), 3000);
       } else {
@@ -50,6 +58,7 @@ export const usePortfolioData = () => {
         setPortfolioHistory([]);
         setSellHistory([]);
         setWatchlist([]);
+        setAllocationTargets({});
         setSuccessMessage('Google Drive에 저장된 포트폴리오가 없습니다. 자산을 추가해주세요.');
         setTimeout(() => setSuccessMessage(null), 3000);
       }
@@ -75,6 +84,7 @@ export const usePortfolioData = () => {
       setPortfolioHistory([]);
       setSellHistory([]);
       setWatchlist([]); // watchlist 초기화 추가
+      setAllocationTargets({});
       setHasAutoUpdated(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -86,12 +96,13 @@ export const usePortfolioData = () => {
     newHistory: PortfolioSnapshot[], 
     newSells: SellRecord[], 
     newWatchlist: WatchlistItem[], 
-    newRates: ExchangeRates
+    newRates: ExchangeRates,
+    newAllocationTargets?: AllocationTargets
   ) => {
     if (isSignedIn) {
-      hookAutoSave(newAssets, newHistory, newSells, newWatchlist, newRates);
+      hookAutoSave(newAssets, newHistory, newSells, newWatchlist, newRates, newAllocationTargets || allocationTargets);
     }
-  }, [isSignedIn, hookAutoSave]);
+  }, [isSignedIn, hookAutoSave, allocationTargets]);
 
   const handleSignOut = useCallback(() => {
     hookSignOut();
@@ -99,6 +110,7 @@ export const usePortfolioData = () => {
     setPortfolioHistory([]);
     setSellHistory([]);
     setWatchlist([]);
+    setAllocationTargets({});
     setHasAutoUpdated(false);
   }, [hookSignOut]);
 
@@ -108,17 +120,19 @@ export const usePortfolioData = () => {
     newHistory: PortfolioSnapshot[],
     newSells: SellRecord[],
     newWatchlist: WatchlistItem[],
-    newRates?: ExchangeRates
+    newRates?: ExchangeRates,
+    newAllocationTargets?: AllocationTargets
   ) => {
     setAssets(newAssets);
     setPortfolioHistory(newHistory);
     setSellHistory(newSells);
     setWatchlist(newWatchlist);
     if (newRates) setExchangeRates(newRates);
+    if (newAllocationTargets) setAllocationTargets(newAllocationTargets);
     
     // 상태 업데이트 후 자동 저장 트리거
-    triggerAutoSave(newAssets, newHistory, newSells, newWatchlist, newRates || exchangeRates);
-  }, [triggerAutoSave, exchangeRates]);
+    triggerAutoSave(newAssets, newHistory, newSells, newWatchlist, newRates || exchangeRates, newAllocationTargets || allocationTargets);
+  }, [triggerAutoSave, exchangeRates, allocationTargets]);
 
   return {
     // 상태
@@ -127,6 +141,7 @@ export const usePortfolioData = () => {
     sellHistory, setSellHistory,
     watchlist, setWatchlist,
     exchangeRates, setExchangeRates,
+    allocationTargets, setAllocationTargets,
     isSignedIn, googleUser,
     isInitializing,
     isLoading: isInitializing, // Alias for legacy support

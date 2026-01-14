@@ -94,7 +94,7 @@ const DashboardView: React.FC = () => {
       
       <RebalancingTable assets={assets} exchangeRates={exchangeRates} />
       
-      <TopBottomAssets assets={assets} />
+      <TopBottomAssets assets={assets} exchangeRates={exchangeRates} />
     </div>
   );
 };

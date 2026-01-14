@@ -1,4 +1,4 @@
-import { Asset, PortfolioSnapshot, SellRecord, WatchlistItem, ExchangeRates, AssetCategory, Currency, BulkUploadResult } from './index';
+import { Asset, PortfolioSnapshot, SellRecord, WatchlistItem, ExchangeRates, AssetCategory, Currency, BulkUploadResult, AllocationTargets } from './index';
 
 export type PortfolioHistory = PortfolioSnapshot[];
 
@@ -8,6 +8,7 @@ export interface PortfolioData {
   sellHistory: SellRecord[];
   watchlist: WatchlistItem[];
   exchangeRates: ExchangeRates;
+  allocationTargets: AllocationTargets;
 }
 
 export interface PortfolioStatus {
@@ -89,6 +90,7 @@ export interface PortfolioActions {
   setFilterAlerts: (v: boolean) => void;
   setSearchQuery: (q: string) => void;
   setSellAlertDropRate: (n: number) => void;
+  updateAllocationTargets: (targets: AllocationTargets) => void;
   openEditModal: (asset: Asset) => void;
   closeEditModal: () => void;
   openSellModal: (asset: Asset) => void;

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { googleDriveService, GoogleUser } from '../services/googleDriveService';
-import { Asset, PortfolioSnapshot, SellRecord, WatchlistItem, ExchangeRates } from '../types';
+import { Asset, PortfolioSnapshot, SellRecord, WatchlistItem, ExchangeRates, AllocationTargets } from '../types';
 
 interface UseGoogleDriveSyncOptions {
   onError?: (msg: string) => void;
@@ -13,6 +13,7 @@ interface LoadedData {
   sellHistory: SellRecord[];
   watchlist: WatchlistItem[];
   exchangeRates?: ExchangeRates;
+  allocationTargets?: AllocationTargets;
 }
 
 export function useGoogleDriveSync(options: UseGoogleDriveSyncOptions = {}) {
@@ -86,11 +87,12 @@ export function useGoogleDriveSync(options: UseGoogleDriveSyncOptions = {}) {
     const sellHistory = Array.isArray(data.sellHistory) ? data.sellHistory as SellRecord[] : [];
     const watchlist = Array.isArray(data.watchlist) ? data.watchlist as WatchlistItem[] : [];
     const exchangeRates = data.exchangeRates as ExchangeRates | undefined;
+    const allocationTargets = data.allocationTargets as AllocationTargets | undefined;
     optionsRef.current.onSuccessMessage?.('Google Drive에서 포트폴리오를 불러왔습니다.');
-    return { assets, portfolioHistory, sellHistory, watchlist, exchangeRates };
+    return { assets, portfolioHistory, sellHistory, watchlist, exchangeRates, allocationTargets };
   }, []);
 
-  const autoSave = useCallback(async (assetsToSave: Asset[], history: PortfolioSnapshot[], sells: SellRecord[], watchlist: WatchlistItem[], exchangeRates?: ExchangeRates) => {
+  const autoSave = useCallback(async (assetsToSave: Asset[], history: PortfolioSnapshot[], sells: SellRecord[], watchlist: WatchlistItem[], exchangeRates?: ExchangeRates, allocationTargets?: AllocationTargets) => {
     if (!isSignedIn) {
       optionsRef.current.onError?.('Google Drive 로그인 후 저장할 수 있습니다.');
       return;
@@ -106,6 +108,7 @@ export function useGoogleDriveSync(options: UseGoogleDriveSyncOptions = {}) {
         sellHistory: sells,
         watchlist,
         exchangeRates,
+        allocationTargets,
         lastUpdateDate: new Date().toISOString().slice(0, 10),
       };
       const portfolioJSON = JSON.stringify(exportData, null, 2);

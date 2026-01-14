@@ -4,6 +4,7 @@ import {
   AssetCategory,
   Currency,
   ExchangeRates,
+  AllocationTargets,
 } from '../types';
 import { PortfolioContextValue, UIState } from '../types/store';
 import { usePortfolioData } from '../hooks/usePortfolioData';
@@ -23,6 +24,7 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     sellHistory, setSellHistory,
     watchlist, setWatchlist,
     exchangeRates, setExchangeRates,
+    allocationTargets, setAllocationTargets,
     isSignedIn, googleUser,
     isLoading: isAuthLoading,
     error, setError,
@@ -147,6 +149,7 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       sellHistory,
       watchlist,
       exchangeRates,
+      allocationTargets,
     },
     status: {
       isLoading,
@@ -213,6 +216,10 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       setFilterAlerts,
       setSearchQuery,
       setSellAlertDropRate,
+      updateAllocationTargets: (targets: AllocationTargets) => {
+        setAllocationTargets(targets);
+        triggerAutoSave(assets, portfolioHistory, sellHistory, watchlist, exchangeRates, targets);
+      },
       openEditModal: (asset: Asset) => setEditingAsset(asset),
       closeEditModal: () => setEditingAsset(null),
       openSellModal: (asset: Asset) => setSellingAsset(asset),

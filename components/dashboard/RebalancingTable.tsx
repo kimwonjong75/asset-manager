@@ -1,109 +1,33 @@
-import React, { useMemo, useState, useEffect } from 'react';
-import { Asset, AssetCategory, ExchangeRates, Currency } from '../../types';
+import React from 'react';
+import { Asset, ExchangeRates } from '../../types';
+import { usePortfolio } from '../../contexts/PortfolioContext';
+import { useRebalancing } from '../../hooks/useRebalancing';
 
 interface RebalancingTableProps {
   assets: Asset[];
   exchangeRates: ExchangeRates;
 }
 
-interface CategoryData {
-  category: AssetCategory;
-  currentValue: number;
-  currentWeight: number;
-  targetWeight: number;
-  targetValue: number;
-  difference: number;
-}
-
 const RebalancingTable: React.FC<RebalancingTableProps> = ({ assets, exchangeRates }) => {
-  // --- 1. Calculate Current Values & Weights ---
-  const { categoryValues, totalCurrentValue } = useMemo(() => {
-    const values: Record<string, number> = {};
-    let total = 0;
-
-    assets.forEach((asset) => {
-      const rate = asset.currency === Currency.KRW ? 1 : (exchangeRates[asset.currency] || 0);
-      const val = asset.currentPrice * asset.quantity * rate;
-      values[asset.category] = (values[asset.category] || 0) + val;
-      total += val;
-    });
-
-    return { categoryValues: values, totalCurrentValue: total };
-  }, [assets, exchangeRates]);
-
-  // --- 2. State ---
-  // Initialize targetTotalAmount with current total value
-  const [targetTotalAmount, setTargetTotalAmount] = useState<number>(0);
+  const { data, actions } = usePortfolio();
   
-  // Initialize targetWeights with current weights
-  const [targetWeights, setTargetWeights] = useState<Record<string, number>>({});
-
-  // Effect to update state when data loads or changes significantly (optional, but good for UX)
-  // We only set initial values if they are not set yet (or maybe we want to reset? Let's stick to init)
-  useEffect(() => {
-    if (totalCurrentValue > 0 && targetTotalAmount === 0) {
-        setTargetTotalAmount(totalCurrentValue);
-        
-        const initialWeights: Record<string, number> = {};
-        Object.keys(categoryValues).forEach(cat => {
-            initialWeights[cat] = (categoryValues[cat] / totalCurrentValue) * 100;
-        });
-        setTargetWeights(prev => {
-            // Only update if empty to preserve user input during re-renders
-             if (Object.keys(prev).length === 0) return initialWeights;
-             return prev;
-        });
-    }
-  }, [totalCurrentValue, categoryValues, targetTotalAmount]);
-
-
-  // --- 3. Calculate Table Data ---
-  const tableData: CategoryData[] = useMemo(() => {
-    // Get all unique categories from assets + any keys in targetWeights
-    const categories = Array.from(new Set([
-        ...Object.keys(categoryValues),
-        ...Object.keys(targetWeights)
-    ])) as AssetCategory[];
-
-    return categories.map(category => {
-        const currentValue = categoryValues[category] || 0;
-        const currentWeight = totalCurrentValue > 0 ? (currentValue / totalCurrentValue) * 100 : 0;
-        const targetWeight = targetWeights[category] || 0;
-        const targetValue = (targetTotalAmount * targetWeight) / 100;
-        const difference = targetValue - currentValue;
-
-        return {
-            category,
-            currentValue,
-            currentWeight,
-            targetWeight,
-            targetValue,
-            difference
-        };
-    }).sort((a, b) => b.currentValue - a.currentValue); // Sort by current value desc
-  }, [categoryValues, totalCurrentValue, targetTotalAmount, targetWeights]);
-
-  // Calculate totals for footer
-  const totalTargetWeight = tableData.reduce((sum, item) => sum + item.targetWeight, 0);
-  const totalTargetValue = tableData.reduce((sum, item) => sum + item.targetValue, 0);
-  const totalDifference = tableData.reduce((sum, item) => sum + item.difference, 0);
-
-
-  // --- Handlers ---
-  const handleWeightChange = (category: string, value: string) => {
-    const numVal = parseFloat(value);
-    setTargetWeights(prev => ({
-        ...prev,
-        [category]: isNaN(numVal) ? 0 : numVal
-    }));
-  };
-
-  const handleTotalAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-      // Remove commas for parsing
-      const rawValue = e.target.value.replace(/,/g, '');
-      const numVal = parseFloat(rawValue);
-      setTargetTotalAmount(isNaN(numVal) ? 0 : numVal);
-  };
+  const {
+      tableData,
+      totalCurrentValue,
+      totalTargetWeight,
+      totalTargetValue,
+      totalDifference,
+      targetTotalAmount,
+      handleWeightChange,
+      handleTotalAmountChange,
+      handleSave,
+      isSaved
+  } = useRebalancing({
+      assets,
+      exchangeRates,
+      allocationTargets: data.allocationTargets,
+      onSave: actions.updateAllocationTargets
+  });
 
   // --- Helpers ---
   const formatKRW = (num: number) => {
@@ -124,17 +48,28 @@ const RebalancingTable: React.FC<RebalancingTableProps> = ({ assets, exchangeRat
     <div className="bg-gray-800 p-6 rounded-lg shadow-lg">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
         <h2 className="text-xl font-bold text-white">포트폴리오 리밸런싱 (배분표)</h2>
-        <div className="flex items-center gap-2">
-            <label htmlFor="targetTotal" className="text-sm font-medium text-gray-300 whitespace-nowrap">
-                목표 총 자산 (KRW):
-            </label>
-            <input
-                id="targetTotal"
-                type="text"
-                value={formatNumber(targetTotalAmount)}
-                onChange={handleTotalAmountChange}
-                className="bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white text-right focus:outline-none focus:ring-2 focus:ring-blue-500 w-40 sm:w-56"
-            />
+        <div className="flex flex-col sm:flex-row items-end sm:items-center gap-4">
+            <div className="flex items-center gap-2">
+                <label htmlFor="targetTotal" className="text-sm font-medium text-gray-300 whitespace-nowrap">
+                    목표 총 자산 (KRW):
+                </label>
+                <input
+                    id="targetTotal"
+                    type="text"
+                    value={formatNumber(targetTotalAmount)}
+                    onChange={(e) => handleTotalAmountChange(e.target.value)}
+                    className="bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white text-right focus:outline-none focus:ring-2 focus:ring-blue-500 w-40 sm:w-56"
+                />
+            </div>
+            <div className="flex items-center gap-2">
+                <button 
+                    onClick={handleSave}
+                    className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition-colors"
+                >
+                    저장하기
+                </button>
+                {isSaved && <span className="text-green-400 text-sm animate-pulse">저장됨!</span>}
+            </div>
         </div>
       </div>
 
@@ -184,7 +119,6 @@ const RebalancingTable: React.FC<RebalancingTableProps> = ({ assets, exchangeRat
                     </td>
                     <td className="px-4 py-3 text-right">{formatKRW(totalTargetValue)}</td>
                     <td className="px-4 py-3 text-right text-white">
-                        {/* The total difference should mathematically be (Target Total - Current Total) */}
                         {formatKRW(totalDifference)}
                     </td>
                 </tr>

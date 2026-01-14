@@ -216,6 +216,8 @@ export interface DriveFileMetadata {
   parents?: string[];
 }
 
+export type AllocationTargets = Record<string, number>;
+
 export interface LegacyAssetShape {
   id?: string;
   category: AssetCategory | string;
