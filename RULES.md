@@ -42,6 +42,10 @@
 2. **Google Drive 동기화:**
    - 데이터 저장(`hooks/usePortfolioData.ts`) 시에는 로컬 상태와 구글 드라이브 간의 정합성을 최우선으로 한다.
 
+4. **사용자 설정 데이터 보존:**
+   - 사용자가 입력하는 설정값(예: 리밸런싱 목표 비중, 알림 조건 등)은 반드시 영구 저장되어야 한다.
+   - 이를 위해 `types/store.ts`의 `PortfolioData`에 필드를 추가하고, `hooks/useGoogleDriveSync.ts` 및 `hooks/usePortfolioData.ts`의 로드/저장 로직에 포함시켜야 한다.
+
 ## 3. 작업 워크플로우 (AI 지침)
 
 1. **영향도 분석 우선:**
