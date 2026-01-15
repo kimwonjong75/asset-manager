@@ -38,19 +38,23 @@ export const useRebalancing = ({ assets, exchangeRates, allocationTargets, onSav
   const [targetWeights, setTargetWeights] = useState<Record<string, number>>({});
   const [isSaved, setIsSaved] = useState(false);
 
-  // Initialize state
+  // Initialize state (Target Total Amount)
   useEffect(() => {
-    if (totalCurrentValue > 0 && targetTotalAmount === 0) {
-      setTargetTotalAmount(totalCurrentValue);
+    if (targetTotalAmount === 0) {
+      if (allocationTargets.targetTotalAmount && allocationTargets.targetTotalAmount > 0) {
+        setTargetTotalAmount(allocationTargets.targetTotalAmount);
+      } else if (totalCurrentValue > 0) {
+        setTargetTotalAmount(totalCurrentValue);
+      }
     }
-  }, [totalCurrentValue, targetTotalAmount]);
+  }, [totalCurrentValue, targetTotalAmount, allocationTargets]);
 
   // Initialize weights from props (allocationTargets) or current weights
   useEffect(() => {
     if (Object.keys(targetWeights).length === 0 && totalCurrentValue > 0) {
-        if (Object.keys(allocationTargets).length > 0) {
+        if (allocationTargets.weights && Object.keys(allocationTargets.weights).length > 0) {
             // Use saved targets
-            setTargetWeights(allocationTargets);
+            setTargetWeights(allocationTargets.weights);
         } else {
             // Default to current weights
             const initialWeights: Record<string, number> = {};
@@ -106,10 +110,14 @@ export const useRebalancing = ({ assets, exchangeRates, allocationTargets, onSav
       const rawValue = value.replace(/,/g, '');
       const numVal = parseFloat(rawValue);
       setTargetTotalAmount(isNaN(numVal) ? 0 : numVal);
+      setIsSaved(false); // Mark as unsaved when total amount changes
   };
 
   const handleSave = () => {
-      onSave(targetWeights);
+      onSave({
+        weights: targetWeights,
+        targetTotalAmount: targetTotalAmount
+      });
       setIsSaved(true);
       setTimeout(() => setIsSaved(false), 3000);
   };

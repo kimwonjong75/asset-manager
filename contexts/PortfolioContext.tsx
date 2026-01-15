@@ -124,6 +124,7 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     sellHistory,
     watchlist,
     exchangeRates,
+    allocationTargets,
     isSignedIn,
     triggerAutoSave,
     setError,
@@ -132,7 +133,8 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     setPortfolioHistory,
     setSellHistory,
     setWatchlist,
-    setExchangeRates
+    setExchangeRates,
+    setAllocationTargets,
   });
 
   const handleTabChange = (tab: UIState['activeTab']) => {

@@ -14,7 +14,7 @@ export const usePortfolioData = () => {
   const [sellHistory, setSellHistory] = useState<SellRecord[]>([]);
   const [watchlist, setWatchlist] = useState<WatchlistItem[]>([]);
   const [exchangeRates, setExchangeRates] = useState<ExchangeRates>({ USD: 1450, JPY: 9.5 });
-  const [allocationTargets, setAllocationTargets] = useState<AllocationTargets>({});
+  const [allocationTargets, setAllocationTargets] = useState<AllocationTargets>({ weights: {} });
   const [hasAutoUpdated, setHasAutoUpdated] = useState<boolean>(false);
 
   const { isSignedIn, googleUser, isInitializing, handleSignIn, handleSignOut: hookSignOut, loadFromGoogleDrive: hookLoadFromGoogleDrive, autoSave: hookAutoSave } = useGoogleDriveSync({ onError: setError, onSuccessMessage: setSuccessMessage });
@@ -46,9 +46,16 @@ export const usePortfolioData = () => {
         }
 
         if (loaded.allocationTargets) {
-          setAllocationTargets(loaded.allocationTargets);
+          // Migration check: If it doesn't have 'weights' property, it's the old format
+          if ('weights' in loaded.allocationTargets) {
+            setAllocationTargets(loaded.allocationTargets);
+          } else {
+            setAllocationTargets({ 
+              weights: loaded.allocationTargets as unknown as Record<string, number> 
+            });
+          }
         } else {
-          setAllocationTargets({});
+          setAllocationTargets({ weights: {} });
         }
 
         setSuccessMessage('Google Drive에서 포트폴리오를 불러왔습니다.');
@@ -58,7 +65,7 @@ export const usePortfolioData = () => {
         setPortfolioHistory([]);
         setSellHistory([]);
         setWatchlist([]);
-        setAllocationTargets({});
+        setAllocationTargets({ weights: {} });
         setSuccessMessage('Google Drive에 저장된 포트폴리오가 없습니다. 자산을 추가해주세요.');
         setTimeout(() => setSuccessMessage(null), 3000);
       }
@@ -84,7 +91,7 @@ export const usePortfolioData = () => {
       setPortfolioHistory([]);
       setSellHistory([]);
       setWatchlist([]); // watchlist 초기화 추가
-      setAllocationTargets({});
+      setAllocationTargets({ weights: {} });
       setHasAutoUpdated(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -110,7 +117,7 @@ export const usePortfolioData = () => {
     setPortfolioHistory([]);
     setSellHistory([]);
     setWatchlist([]);
-    setAllocationTargets({});
+    setAllocationTargets({ weights: {} });
     setHasAutoUpdated(false);
   }, [hookSignOut]);
 

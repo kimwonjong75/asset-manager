@@ -43,8 +43,9 @@
    - 데이터 저장(`hooks/usePortfolioData.ts`) 시에는 로컬 상태와 구글 드라이브 간의 정합성을 최우선으로 한다.
 
 4. **사용자 설정 데이터 보존:**
-   - 사용자가 입력하는 설정값(예: 리밸런싱 목표 비중, 알림 조건 등)은 반드시 영구 저장되어야 한다.
-   - 이를 위해 `types/store.ts`의 `PortfolioData`에 필드를 추가하고, `hooks/useGoogleDriveSync.ts` 및 `hooks/usePortfolioData.ts`의 로드/저장 로직에 포함시켜야 한다.
+   - 사용자가 입력하는 설정값(예: 리밸런싱 목표 비중 및 목표 금액, 알림 조건 등)은 반드시 영구 저장되어야 한다.
+   - 이를 위해 `types/store.ts` 또는 `types/index.ts`의 데이터 모델에 필드를 추가하고, `hooks/useGoogleDriveSync.ts`, `hooks/usePortfolioData.ts`, `hooks/usePortfolioExport.ts`의 로드/저장/내보내기 로직에 포함시켜야 한다.
+   - 데이터 구조 변경 시 하위 호환성을 위한 마이그레이션 로직(`utils/migrateData.ts` 또는 훅 내부)을 반드시 구현해야 한다.
 
 ## 3. 작업 워크플로우 (AI 지침)
 

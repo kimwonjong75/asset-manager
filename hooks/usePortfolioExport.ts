@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import { Asset, Currency, ExchangeRates, PortfolioSnapshot, SellRecord, WatchlistItem } from '../types';
+import { Asset, Currency, ExchangeRates, PortfolioSnapshot, SellRecord, WatchlistItem, AllocationTargets } from '../types';
 
 interface UsePortfolioExportProps {
   assets: Asset[];
@@ -7,8 +7,9 @@ interface UsePortfolioExportProps {
   sellHistory: SellRecord[];
   watchlist: WatchlistItem[];
   exchangeRates: ExchangeRates;
+  allocationTargets: AllocationTargets;
   isSignedIn: boolean;
-  triggerAutoSave: (assets: Asset[], history: PortfolioSnapshot[], sells: SellRecord[], watchlist: WatchlistItem[], rates: ExchangeRates) => void;
+  triggerAutoSave: (assets: Asset[], history: PortfolioSnapshot[], sells: SellRecord[], watchlist: WatchlistItem[], rates: ExchangeRates, targets: AllocationTargets) => void;
   setError: (msg: string | null) => void;
   setSuccessMessage: (msg: string | null) => void;
   setAssets: React.Dispatch<React.SetStateAction<Asset[]>>;
@@ -16,6 +17,7 @@ interface UsePortfolioExportProps {
   setSellHistory: React.Dispatch<React.SetStateAction<SellRecord[]>>;
   setWatchlist: React.Dispatch<React.SetStateAction<WatchlistItem[]>>;
   setExchangeRates: React.Dispatch<React.SetStateAction<ExchangeRates>>;
+  setAllocationTargets: React.Dispatch<React.SetStateAction<AllocationTargets>>;
 }
 
 export const usePortfolioExport = ({
@@ -24,6 +26,7 @@ export const usePortfolioExport = ({
   sellHistory,
   watchlist,
   exchangeRates,
+  allocationTargets,
   isSignedIn,
   triggerAutoSave,
   setError,
@@ -33,13 +36,14 @@ export const usePortfolioExport = ({
   setSellHistory,
   setWatchlist,
   setExchangeRates,
+  setAllocationTargets,
 }: UsePortfolioExportProps) => {
 
   const saveToDrive = useCallback(async () => {
-    triggerAutoSave(assets, portfolioHistory, sellHistory, watchlist, exchangeRates);
+    triggerAutoSave(assets, portfolioHistory, sellHistory, watchlist, exchangeRates, allocationTargets);
     setSuccessMessage('저장 요청되었습니다.');
     setTimeout(() => setSuccessMessage(null), 3000);
-  }, [assets, portfolioHistory, sellHistory, watchlist, exchangeRates, triggerAutoSave, setSuccessMessage]);
+  }, [assets, portfolioHistory, sellHistory, watchlist, exchangeRates, allocationTargets, triggerAutoSave, setSuccessMessage]);
 
   const exportJson = useCallback(async (fileName: string = 'portfolio.json') => {
     if (!isSignedIn) {
@@ -53,6 +57,7 @@ export const usePortfolioExport = ({
       sellHistory,
       exchangeRates,
       watchlist,
+      allocationTargets,
       lastUpdateDate: new Date().toISOString().slice(0, 10),
     };
     const portfolioJSON = JSON.stringify(exportData, null, 2);
@@ -72,7 +77,7 @@ export const usePortfolioExport = ({
       setError('파일 내보내기에 실패했습니다.');
       setTimeout(() => setError(null), 3000);
     }
-  }, [assets, portfolioHistory, sellHistory, watchlist, exchangeRates, isSignedIn, setError, setSuccessMessage]);
+  }, [assets, portfolioHistory, sellHistory, watchlist, exchangeRates, allocationTargets, isSignedIn, setError, setSuccessMessage]);
 
   const importJsonPrompt = useCallback(() => {
     if (!isSignedIn) {
@@ -96,6 +101,8 @@ export const usePortfolioExport = ({
           let loadedSellHistory: SellRecord[] = [];
           let loadedWatchlist: WatchlistItem[] = [];
           let loadedRates: ExchangeRates | undefined = undefined;
+          let loadedTargets: AllocationTargets = { weights: {} };
+
           if (Array.isArray(loadedData)) {
             loadedAssets = loadedData as Asset[];
           } else if (loadedData && typeof loadedData === 'object') {
@@ -104,12 +111,25 @@ export const usePortfolioExport = ({
             loadedSellHistory = Array.isArray(loadedData.sellHistory) ? loadedData.sellHistory : [];
             loadedWatchlist = Array.isArray(loadedData.watchlist) ? loadedData.watchlist : [];
             loadedRates = loadedData.exchangeRates;
+            
+            // AllocationTargets Migration
+            if (loadedData.allocationTargets) {
+              if ('weights' in loadedData.allocationTargets) {
+                loadedTargets = loadedData.allocationTargets;
+              } else {
+                loadedTargets = { 
+                  weights: loadedData.allocationTargets as unknown as Record<string, number> 
+                };
+              }
+            }
           }
           setAssets(loadedAssets);
           setPortfolioHistory(loadedHistory);
           setSellHistory(loadedSellHistory);
           setWatchlist(loadedWatchlist);
           if (loadedRates) setExchangeRates(loadedRates);
+          setAllocationTargets(loadedTargets);
+          
           setSuccessMessage('파일에서 데이터를 불러왔습니다.');
           setTimeout(() => setSuccessMessage(null), 3000);
         } catch (err) {
@@ -120,7 +140,7 @@ export const usePortfolioExport = ({
       reader.readAsText(file);
     };
     input.click();
-  }, [isSignedIn, setError, setSuccessMessage, setAssets, setPortfolioHistory, setSellHistory, setWatchlist, setExchangeRates]);
+  }, [isSignedIn, setError, setSuccessMessage, setAssets, setPortfolioHistory, setSellHistory, setWatchlist, setExchangeRates, setAllocationTargets]);
 
   const exportCsv = useCallback(async () => {
     if (!isSignedIn) {
