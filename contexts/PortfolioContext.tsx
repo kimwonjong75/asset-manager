@@ -100,6 +100,7 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   // 통계/파생 데이터 훅
   const { totalValue, alertCount } = usePortfolioStats({
     assets,
+    sellHistory,
     exchangeRates,
     sellAlertDropRate
   });

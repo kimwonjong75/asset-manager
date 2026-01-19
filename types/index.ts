@@ -155,6 +155,9 @@ export interface SellRecord extends SellTransaction {
   ticker: string;
   name: string;
   category: AssetCategory;
+  originalPurchasePrice?: number;
+  originalPurchaseExchangeRate?: number;
+  originalCurrency?: Currency;
 }
 
 export interface Asset {

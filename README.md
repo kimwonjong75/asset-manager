@@ -606,6 +606,19 @@ gcloud run deploy asset-manager --source . --region asia-northeast3 --allow-unau
 
 ## 📝 변경 이력
 
+### 2026-01-19: 매도 자산 통계 및 수익률 계산 개선
+- **문제**: 자산 전량 매도 후 목록에서 삭제 시, 대시보드 매도 통계에서 제외되고 수익금 계산이 불가능한 문제 발생
+- **해결**:
+  1. `SellRecord` 타입에 매수 당시 정보(`originalPurchasePrice`, `originalPurchaseExchangeRate` 등) 필드 추가
+  2. 매도 확정(`handleConfirmSell`) 시점에 매수 정보를 스냅샷하여 영구 저장
+  3. `usePortfolioCalculator`의 매도 통계 로직을 `assets`(보유 자산) 기준에서 `sellHistory`(전체 매도 이력) 기준으로 변경
+- **영향받는 파일**:
+  - `types/index.ts`
+  - `hooks/useAssetActions.ts`
+  - `hooks/usePortfolioCalculator.ts`
+  - `hooks/usePortfolioStats.ts`
+  - `contexts/PortfolioContext.tsx`
+
 ### 2026-01-15: 리밸런싱 목표 금액 저장 기능 추가
 - **기능 추가**: 목표 총 자산 금액(`targetTotalAmount`) 저장 기능 구현
   - `AllocationTargets` 타입 확장 (`weights` + `targetTotalAmount`)

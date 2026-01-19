@@ -16,6 +16,7 @@ import RebalancingTable from '../dashboard/RebalancingTable';
 const DashboardView: React.FC = () => {
   const { data, ui, actions, status, derived } = usePortfolio();
   const assets = data.assets;
+  const sellHistory = data.sellHistory;
   const portfolioHistory = data.portfolioHistory;
   const exchangeRates = data.exchangeRates;
   const dashboardFilterCategory = ui.dashboardFilterCategory;
@@ -47,7 +48,7 @@ const DashboardView: React.FC = () => {
   } = useMemo(() => calculatePortfolioStats(dashboardFilteredAssets, exchangeRates), [dashboardFilteredAssets, exchangeRates, calculatePortfolioStats]);
 
   // Use hook for sold stats (global)
-  const soldAssetsStats = useMemo(() => calculateSoldAssetsStats(assets), [assets, calculateSoldAssetsStats]);
+  const soldAssetsStats = useMemo(() => calculateSoldAssetsStats(sellHistory, assets), [sellHistory, assets, calculateSoldAssetsStats]);
 
   const profitLossChartTitle = useMemo(() => (
       dashboardFilterCategory === 'ALL'

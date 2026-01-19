@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import { Asset, Currency, ExchangeRates } from '../types';
+import { Asset, Currency, ExchangeRates, SellRecord } from '../types';
 import { AssetMetrics, EnrichedAsset } from '../types/ui';
 
 export const usePortfolioCalculator = () => {
@@ -123,32 +123,54 @@ export const usePortfolioCalculator = () => {
     };
   }, [calculateAssetMetrics]);
 
-  const calculateSoldAssetsStats = useCallback((assets: Asset[]) => {
+  const calculateSoldAssetsStats = useCallback((sellHistory: SellRecord[], assets: Asset[]) => {
     let totalSoldAmount = 0;
     let totalSoldPurchaseValue = 0;
     let totalSoldProfit = 0;
     let soldCount = 0;
 
-    assets.forEach(asset => {
-      if (asset.sellTransactions && asset.sellTransactions.length > 0) {
-        asset.sellTransactions.forEach(transaction => {
-          totalSoldAmount += transaction.sellPrice * transaction.sellQuantity;
-          soldCount += 1;
-          
-          let purchaseValueForSold: number;
-          if (asset.currency === Currency.KRW) {
-            purchaseValueForSold = asset.purchasePrice * transaction.sellQuantity;
-          } else if (asset.purchaseExchangeRate) {
-            purchaseValueForSold = asset.purchasePrice * asset.purchaseExchangeRate * transaction.sellQuantity;
-          } else if (asset.priceOriginal > 0) {
-            const exchangeRate = asset.currentPrice / asset.priceOriginal;
-            purchaseValueForSold = asset.purchasePrice * exchangeRate * transaction.sellQuantity;
-          } else {
-            purchaseValueForSold = asset.purchasePrice * transaction.sellQuantity;
-          }
-          totalSoldPurchaseValue += purchaseValueForSold;
-        });
+    sellHistory.forEach(record => {
+      // 매도 금액 합산 (이미 KRW 환산된 값으로 가정)
+      const sellAmount = record.sellPrice * record.sellQuantity;
+      totalSoldAmount += sellAmount;
+      soldCount += 1;
+      
+      let purchaseValueForSold = 0;
+      
+      // 1. 저장된 매수 원본 정보가 있는 경우 (신규 로직)
+      if (record.originalPurchasePrice && record.originalPurchasePrice > 0) {
+        const purchasePrice = record.originalPurchasePrice;
+        const purchaseExchangeRate = record.originalPurchaseExchangeRate || 1;
+        const currency = record.originalCurrency || Currency.KRW;
+        
+        if (currency === Currency.KRW) {
+             purchaseValueForSold = purchasePrice * record.sellQuantity;
+        } else {
+             purchaseValueForSold = purchasePrice * purchaseExchangeRate * record.sellQuantity;
+        }
+      } 
+      // 2. 저장된 정보가 없고, 현재 보유 자산 목록에 있는 경우 (기존 로직 호환)
+      else {
+        const asset = assets.find(a => a.id === record.assetId);
+        if (asset) {
+            if (asset.currency === Currency.KRW) {
+                purchaseValueForSold = asset.purchasePrice * record.sellQuantity;
+            } else if (asset.purchaseExchangeRate) {
+                purchaseValueForSold = asset.purchasePrice * asset.purchaseExchangeRate * record.sellQuantity;
+            } else if (asset.priceOriginal > 0) {
+                 const exchangeRate = asset.currentPrice / asset.priceOriginal;
+                 purchaseValueForSold = asset.purchasePrice * exchangeRate * record.sellQuantity;
+            } else {
+                 purchaseValueForSold = asset.purchasePrice * record.sellQuantity;
+            }
+        } else {
+            // 3. 자산도 삭제되고 이력에 매수 정보도 없는 경우
+            // 수익을 계산할 수 없으므로 매수금액 = 매도금액으로 처리하여 수익 0으로 잡음 (데이터 왜곡 방지)
+            purchaseValueForSold = sellAmount;
+        }
       }
+      
+      totalSoldPurchaseValue += purchaseValueForSold;
     });
 
     totalSoldProfit = totalSoldAmount - totalSoldPurchaseValue;

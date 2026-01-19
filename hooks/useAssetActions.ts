@@ -266,6 +266,9 @@ export const useAssetActions = ({
         ticker: asset.ticker,
         name: asset.customName?.trim() || asset.name,
         category: asset.category,
+        originalPurchasePrice: asset.purchasePrice,
+        originalPurchaseExchangeRate: asset.purchaseExchangeRate,
+        originalCurrency: asset.currency,
       };
 
       const newQuantity = asset.quantity - sellQuantity;

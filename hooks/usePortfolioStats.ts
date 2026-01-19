@@ -1,14 +1,15 @@
 import { useMemo } from 'react';
-import { Asset, ExchangeRates } from '../types';
+import { Asset, ExchangeRates, SellRecord } from '../types';
 import { usePortfolioCalculator } from './usePortfolioCalculator';
 
 interface UsePortfolioStatsProps {
   assets: Asset[];
+  sellHistory: SellRecord[];
   exchangeRates: ExchangeRates;
   sellAlertDropRate?: number;
 }
 
-export const usePortfolioStats = ({ assets, exchangeRates, sellAlertDropRate = 15 }: UsePortfolioStatsProps) => {
+export const usePortfolioStats = ({ assets, sellHistory, exchangeRates, sellAlertDropRate = 15 }: UsePortfolioStatsProps) => {
   const { getValueInKRW, calculatePortfolioStats, calculateSoldAssetsStats, calculateAlertCount } = usePortfolioCalculator();
 
   const { totalValue, totalPurchaseValue, totalGainLoss, totalReturn } = useMemo(
@@ -22,8 +23,8 @@ export const usePortfolioStats = ({ assets, exchangeRates, sellAlertDropRate = 1
   );
 
   const soldAssetsStats = useMemo(
-    () => calculateSoldAssetsStats(assets),
-    [assets, calculateSoldAssetsStats]
+    () => calculateSoldAssetsStats(sellHistory, assets),
+    [sellHistory, assets, calculateSoldAssetsStats]
   );
 
   return {
