@@ -15,6 +15,7 @@ export const usePortfolioData = () => {
   const [watchlist, setWatchlist] = useState<WatchlistItem[]>([]);
   const [exchangeRates, setExchangeRates] = useState<ExchangeRates>({ USD: 1450, JPY: 9.5 });
   const [allocationTargets, setAllocationTargets] = useState<AllocationTargets>({ weights: {} });
+  const [sellAlertDropRate, setSellAlertDropRate] = useState<number>(15);
   const [hasAutoUpdated, setHasAutoUpdated] = useState<boolean>(false);
 
   const { isSignedIn, googleUser, isInitializing, handleSignIn, handleSignOut: hookSignOut, loadFromGoogleDrive: hookLoadFromGoogleDrive, autoSave: hookAutoSave } = useGoogleDriveSync({ onError: setError, onSuccessMessage: setSuccessMessage });
@@ -50,12 +51,16 @@ export const usePortfolioData = () => {
           if ('weights' in loaded.allocationTargets) {
             setAllocationTargets(loaded.allocationTargets);
           } else {
-            setAllocationTargets({ 
-              weights: loaded.allocationTargets as unknown as Record<string, number> 
+            setAllocationTargets({
+              weights: loaded.allocationTargets as unknown as Record<string, number>
             });
           }
         } else {
           setAllocationTargets({ weights: {} });
+        }
+
+        if (typeof loaded.sellAlertDropRate === 'number' && loaded.sellAlertDropRate >= 0) {
+          setSellAlertDropRate(loaded.sellAlertDropRate);
         }
 
         setSuccessMessage('Google Drive에서 포트폴리오를 불러왔습니다.');
@@ -99,17 +104,18 @@ export const usePortfolioData = () => {
 
   // 자동 저장 래퍼
   const triggerAutoSave = useCallback((
-    newAssets: Asset[], 
-    newHistory: PortfolioSnapshot[], 
-    newSells: SellRecord[], 
-    newWatchlist: WatchlistItem[], 
+    newAssets: Asset[],
+    newHistory: PortfolioSnapshot[],
+    newSells: SellRecord[],
+    newWatchlist: WatchlistItem[],
     newRates: ExchangeRates,
-    newAllocationTargets?: AllocationTargets
+    newAllocationTargets?: AllocationTargets,
+    newSellAlertDropRate?: number
   ) => {
     if (isSignedIn) {
-      hookAutoSave(newAssets, newHistory, newSells, newWatchlist, newRates, newAllocationTargets || allocationTargets);
+      hookAutoSave(newAssets, newHistory, newSells, newWatchlist, newRates, newAllocationTargets || allocationTargets, newSellAlertDropRate ?? sellAlertDropRate);
     }
-  }, [isSignedIn, hookAutoSave, allocationTargets]);
+  }, [isSignedIn, hookAutoSave, allocationTargets, sellAlertDropRate]);
 
   const handleSignOut = useCallback(() => {
     hookSignOut();
@@ -118,6 +124,7 @@ export const usePortfolioData = () => {
     setSellHistory([]);
     setWatchlist([]);
     setAllocationTargets({ weights: {} });
+    setSellAlertDropRate(15);
     setHasAutoUpdated(false);
   }, [hookSignOut]);
 
@@ -149,6 +156,7 @@ export const usePortfolioData = () => {
     watchlist, setWatchlist,
     exchangeRates, setExchangeRates,
     allocationTargets, setAllocationTargets,
+    sellAlertDropRate, setSellAlertDropRate,
     isSignedIn, googleUser,
     isInitializing,
     isLoading: isInitializing, // Alias for legacy support

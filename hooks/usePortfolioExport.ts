@@ -9,7 +9,7 @@ interface UsePortfolioExportProps {
   exchangeRates: ExchangeRates;
   allocationTargets: AllocationTargets;
   isSignedIn: boolean;
-  triggerAutoSave: (assets: Asset[], history: PortfolioSnapshot[], sells: SellRecord[], watchlist: WatchlistItem[], rates: ExchangeRates, targets: AllocationTargets) => void;
+  triggerAutoSave: (assets: Asset[], history: PortfolioSnapshot[], sells: SellRecord[], watchlist: WatchlistItem[], rates: ExchangeRates, targets?: AllocationTargets, sellAlertDropRate?: number) => void;
   setError: (msg: string | null) => void;
   setSuccessMessage: (msg: string | null) => void;
   setAssets: React.Dispatch<React.SetStateAction<Asset[]>>;

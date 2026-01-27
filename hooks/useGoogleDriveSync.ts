@@ -14,6 +14,7 @@ interface LoadedData {
   watchlist: WatchlistItem[];
   exchangeRates?: ExchangeRates;
   allocationTargets?: AllocationTargets;
+  sellAlertDropRate?: number;
 }
 
 export function useGoogleDriveSync(options: UseGoogleDriveSyncOptions = {}) {
@@ -88,11 +89,12 @@ export function useGoogleDriveSync(options: UseGoogleDriveSyncOptions = {}) {
     const watchlist = Array.isArray(data.watchlist) ? data.watchlist as WatchlistItem[] : [];
     const exchangeRates = data.exchangeRates as ExchangeRates | undefined;
     const allocationTargets = data.allocationTargets as AllocationTargets | undefined;
+    const sellAlertDropRate = typeof data.sellAlertDropRate === 'number' ? data.sellAlertDropRate : undefined;
     optionsRef.current.onSuccessMessage?.('Google Drive에서 포트폴리오를 불러왔습니다.');
-    return { assets, portfolioHistory, sellHistory, watchlist, exchangeRates, allocationTargets };
+    return { assets, portfolioHistory, sellHistory, watchlist, exchangeRates, allocationTargets, sellAlertDropRate };
   }, []);
 
-  const autoSave = useCallback(async (assetsToSave: Asset[], history: PortfolioSnapshot[], sells: SellRecord[], watchlist: WatchlistItem[], exchangeRates?: ExchangeRates, allocationTargets?: AllocationTargets) => {
+  const autoSave = useCallback(async (assetsToSave: Asset[], history: PortfolioSnapshot[], sells: SellRecord[], watchlist: WatchlistItem[], exchangeRates?: ExchangeRates, allocationTargets?: AllocationTargets, sellAlertDropRate?: number) => {
     if (!isSignedIn) {
       optionsRef.current.onError?.('Google Drive 로그인 후 저장할 수 있습니다.');
       return;
@@ -109,6 +111,7 @@ export function useGoogleDriveSync(options: UseGoogleDriveSyncOptions = {}) {
         watchlist,
         exchangeRates,
         allocationTargets,
+        sellAlertDropRate,
         lastUpdateDate: new Date().toISOString().slice(0, 10),
       };
       const portfolioJSON = JSON.stringify(exportData, null, 2);

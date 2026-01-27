@@ -74,11 +74,25 @@ const SellAnalyticsPage: React.FC<SellAnalyticsPageProps> = ({ assets, sellHisto
     return a.purchasePrice * quantity;
   };
 
+  const toKRWPurchaseFromRecord = (r: SellRecord, quantity: number): number => {
+    if (r.originalPurchasePrice && r.originalPurchasePrice > 0) {
+      const currency = r.originalCurrency || Currency.KRW;
+      if (currency === Currency.KRW) {
+        return r.originalPurchasePrice * quantity;
+      }
+      const exchangeRate = r.originalPurchaseExchangeRate || 1;
+      return r.originalPurchasePrice * exchangeRate * quantity;
+    }
+    return 0;
+  };
+
   const recordWithCalc = useMemo(() => {
     const assetMap = new Map(assets.map(a => [a.id, a]));
     return filteredRecords.map(r => {
       const a = assetMap.get(r.assetId);
-      const purchaseKRW = a ? toKRWPurchaseUnit(a, r.sellQuantity) : 0;
+      const purchaseKRW = a
+        ? toKRWPurchaseUnit(a, r.sellQuantity)
+        : toKRWPurchaseFromRecord(r, r.sellQuantity);
       const realized = r.sellPrice * r.sellQuantity - purchaseKRW;
       const returnPct = purchaseKRW === 0 ? 0 : (realized / purchaseKRW) * 100;
       return { ...r, purchaseKRW, realized, returnPct };
@@ -291,6 +305,56 @@ const SellAnalyticsPage: React.FC<SellAnalyticsPageProps> = ({ assets, sellHisto
             <p className="text-gray-500">표시할 데이터가 없습니다.</p>
           )}
         </div>
+      </div>
+
+      {/* 매도 기록 리스트 */}
+      <div className="bg-gray-800 p-6 rounded-lg shadow-lg">
+        <h3 className="text-xl font-bold text-white mb-4">매도 기록</h3>
+        {recordWithCalc.length > 0 ? (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm text-left">
+              <thead>
+                <tr className="border-b border-gray-700 text-gray-400">
+                  <th className="py-3 px-3">매도일</th>
+                  <th className="py-3 px-3">종목명</th>
+                  <th className="py-3 px-3">티커</th>
+                  <th className="py-3 px-3 text-right">수량</th>
+                  <th className="py-3 px-3 text-right">매도금액</th>
+                  <th className="py-3 px-3 text-right">매수금액</th>
+                  <th className="py-3 px-3 text-right">실현손익</th>
+                  <th className="py-3 px-3 text-right">수익률</th>
+                </tr>
+              </thead>
+              <tbody>
+                {recordWithCalc
+                  .slice()
+                  .sort((a, b) => b.sellDate.localeCompare(a.sellDate))
+                  .map((r, idx) => {
+                    const sellTotal = r.sellPrice * r.sellQuantity;
+                    const isProfit = r.realized >= 0;
+                    return (
+                      <tr key={r.id || idx} className="border-b border-gray-700/50 hover:bg-gray-700/30 transition-colors">
+                        <td className="py-3 px-3 text-gray-300">{r.sellDate}</td>
+                        <td className="py-3 px-3 text-white font-medium">{r.name}</td>
+                        <td className="py-3 px-3 text-gray-400">{r.ticker}</td>
+                        <td className="py-3 px-3 text-right text-gray-300">{r.sellQuantity.toLocaleString()}</td>
+                        <td className="py-3 px-3 text-right text-gray-300">{formatKRW(sellTotal)}</td>
+                        <td className="py-3 px-3 text-right text-gray-300">{r.purchaseKRW > 0 ? formatKRW(r.purchaseKRW) : '-'}</td>
+                        <td className={`py-3 px-3 text-right font-semibold ${isProfit ? 'text-green-400' : 'text-red-400'}`}>
+                          {r.purchaseKRW > 0 ? formatKRW(r.realized) : '-'}
+                        </td>
+                        <td className={`py-3 px-3 text-right font-semibold ${isProfit ? 'text-green-400' : 'text-red-400'}`}>
+                          {r.purchaseKRW > 0 ? `${r.returnPct.toFixed(2)}%` : '-'}
+                        </td>
+                      </tr>
+                    );
+                  })}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p className="text-gray-500 text-center py-8">매도 기록이 없습니다.</p>
+        )}
       </div>
     </div>
   );

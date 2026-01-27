@@ -25,6 +25,8 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     watchlist, setWatchlist,
     exchangeRates, setExchangeRates,
     allocationTargets, setAllocationTargets,
+    sellAlertDropRate: persistedSellAlertDropRate,
+    setSellAlertDropRate: setPersistedSellAlertDropRate,
     isSignedIn, googleUser,
     isLoading: isAuthLoading,
     error, setError,
@@ -87,7 +89,7 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [activeTab, setActiveTab] = useState<UIState['activeTab']>('dashboard');
   const [dashboardFilterCategory, setDashboardFilterCategory] = useState<AssetCategory | 'ALL'>('ALL');
   const [filterCategory, setFilterCategory] = useState<AssetCategory | 'ALL'>('ALL');
-  const [sellAlertDropRate, setSellAlertDropRate] = useState<number>(15);
+  const sellAlertDropRate = persistedSellAlertDropRate;
   const [filterAlerts, setFilterAlerts] = useState(false);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [isBulkUploadModalOpen, setIsBulkUploadModalOpen] = useState<boolean>(false);
@@ -218,7 +220,10 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       setFilterCategory,
       setFilterAlerts,
       setSearchQuery,
-      setSellAlertDropRate,
+      setSellAlertDropRate: (n: number) => {
+        setPersistedSellAlertDropRate(n);
+        triggerAutoSave(assets, portfolioHistory, sellHistory, watchlist, exchangeRates, undefined, n);
+      },
       updateAllocationTargets: (targets: AllocationTargets) => {
         setAllocationTargets(targets);
         triggerAutoSave(assets, portfolioHistory, sellHistory, watchlist, exchangeRates, targets);
