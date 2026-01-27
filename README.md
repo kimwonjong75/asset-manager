@@ -606,6 +606,26 @@ gcloud run deploy asset-manager --source . --region asia-northeast3 --allow-unau
 
 ## 📝 변경 이력
 
+### 2026-01-27: 수익 통계 수익률 계산 오류 수정 및 매도 알림 설정 영구 저장
+- **버그 수정 1 — 완전 매도 자산 수익률 0% 표시 문제**:
+  - **문제**: 자산을 전량 매도(삭제)한 뒤, '수익 통계' 탭에서 해당 매도 기록의 수익률이 항상 `0.00%`로 표시됨
+  - **원인**: `SellAnalyticsPage.tsx`의 `recordWithCalc`에서 현재 보유 자산(`assets`)만 참조하여 매수가를 조회했기 때문에, 전량 매도 후 삭제된 자산은 매수가를 `0`으로 계산
+  - **해결**: `SellRecord`에 저장된 스냅샷 필드(`originalPurchasePrice`, `originalPurchaseExchangeRate`, `originalCurrency`)를 활용하는 `toKRWPurchaseFromRecord()` 함수 추가. 보유 자산에서 조회 실패 시 매도 기록의 스냅샷 데이터로 폴백
+- **기능 추가 — 매도 기록 목록 테이블**:
+  - '수익 통계' 탭 하단에 개별 매도 기록을 확인할 수 있는 테이블 추가
+  - 매도일, 종목명, 티커, 수량, 매도금액, 매수금액, 실현손익, 수익률 컬럼 제공
+  - 매도일 기준 최신순 정렬, 손익에 따른 색상 구분(녹색/빨간색)
+- **버그 수정 2 — 매도 알림 하락률(`sellAlertDropRate`) 미저장 문제**:
+  - **문제**: 매도 알림 '최고가대비' % 설정값이 페이지 새로고침 시 기본값(15%)으로 초기화됨
+  - **원인**: `sellAlertDropRate`가 `PortfolioContext`의 로컬 `useState`로만 관리되어 Google Drive 저장/로드 체인에 포함되지 않음
+  - **해결**: `useGoogleDriveSync` → `usePortfolioData` → `PortfolioContext` 전체 영속화 체인에 `sellAlertDropRate` 추가
+- **영향받는 파일**:
+  - `components/SellAnalyticsPage.tsx` (수익률 계산 수정 + 매도 기록 테이블 추가)
+  - `hooks/useGoogleDriveSync.ts` (`LoadedData` 타입 및 `autoSave`/`loadFromGoogleDrive`에 `sellAlertDropRate` 추가)
+  - `hooks/usePortfolioData.ts` (`sellAlertDropRate` 상태 관리 및 영속화)
+  - `hooks/usePortfolioExport.ts` (`triggerAutoSave` 타입 시그니처 업데이트)
+  - `contexts/PortfolioContext.tsx` (로컬 상태를 영속화된 값으로 교체)
+
 ### 2026-01-19: 매도 자산 통계 및 수익률 계산 개선
 - **문제**: 자산 전량 매도 후 목록에서 삭제 시, 대시보드 매도 통계에서 제외되고 수익금 계산이 불가능한 문제 발생
 - **해결**:

@@ -38,14 +38,14 @@
    - **외화 데이터 보존:** 자산 데이터 저장 시 반드시 `currentPrice`(원화 환산값)와 `priceOriginal`(외화 원본값)을 모두 저장해야 한다. 특히 히스토리 저장 시 외화 원본 가격(`unitPriceOriginal`) 누락을 주의한다.
    - **차트 일관성:** 외화 자산 차트는 기본적으로 해당 통화(USD 등)로 표시하되, 사용자 편의를 위해 KRW 환산 보기 옵션을 제공해야 한다.
    - **환율 처리:** 차트나 계산 로직에서 환율이 필요할 경우, 가급적 실시간 환율(`exchangeRates`)을 상위에서 주입받아 사용하며 컴포넌트 내부에서 임의의 상수를 사용하지 않는다.
-   - **이력 데이터 영속성:** 매도 등 히스토리 성격의 데이터를 저장할 때는, 원본 자산이 삭제되더라도 계산이 가능하도록 필요한 참조 데이터(매수 단가, 환율, 통화 등)를 이력 레코드 자체에 스냅샷(복사)하여 저장해야 한다.
+   - **이력 데이터 영속성:** 매도 등 히스토리 성격의 데이터를 저장할 때는, 원본 자산이 삭제되더라도 계산이 가능하도록 필요한 참조 데이터(매수 단가, 환율, 통화 등)를 이력 레코드 자체에 스냅샷(복사)하여 저장해야 한다. 분석/통계 화면에서 이력 데이터를 표시할 때도, 현재 보유 자산(`assets`) 조회 실패 시 반드시 이력 레코드의 스냅샷 필드(`originalPurchasePrice`, `originalPurchaseExchangeRate`, `originalCurrency`)를 폴백으로 사용해야 한다.
 
 2. **Google Drive 동기화:**
    - 데이터 저장(`hooks/usePortfolioData.ts`) 시에는 로컬 상태와 구글 드라이브 간의 정합성을 최우선으로 한다.
 
 4. **사용자 설정 데이터 보존:**
    - 사용자가 입력하는 설정값(예: 리밸런싱 목표 비중 및 목표 금액, 알림 조건 등)은 반드시 영구 저장되어야 한다.
-   - 이를 위해 `types/store.ts` 또는 `types/index.ts`의 데이터 모델에 필드를 추가하고, `hooks/useGoogleDriveSync.ts`, `hooks/usePortfolioData.ts`, `hooks/usePortfolioExport.ts`의 로드/저장/내보내기 로직에 포함시켜야 한다.
+   - 이를 위해 `types/store.ts` 또는 `types/index.ts`의 데이터 모델에 필드를 추가하고, `hooks/useGoogleDriveSync.ts`, `hooks/usePortfolioData.ts`, `hooks/usePortfolioExport.ts`의 로드/저장/내보내기 로직에 포함시켜야 한다. `contexts/PortfolioContext.tsx`에서 해당 설정값을 로컬 `useState`로만 관리하지 않고, 반드시 `usePortfolioData` 훅의 영속화된 상태를 사용해야 한다.
    - 데이터 구조 변경 시 하위 호환성을 위한 마이그레이션 로직(`utils/migrateData.ts` 또는 훅 내부)을 반드시 구현해야 한다.
 
 ## 3. 작업 워크플로우 (AI 지침)
