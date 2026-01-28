@@ -90,9 +90,11 @@ const SellAnalyticsPage: React.FC<SellAnalyticsPageProps> = ({ assets, sellHisto
     const assetMap = new Map(assets.map(a => [a.id, a]));
     return filteredRecords.map(r => {
       const a = assetMap.get(r.assetId);
-      const purchaseKRW = a
-        ? toKRWPurchaseUnit(a, r.sellQuantity)
-        : toKRWPurchaseFromRecord(r, r.sellQuantity);
+      // 스냅샷이 있으면 우선 사용, 없으면 현재 자산 정보 사용
+      const snapshotPurchase = toKRWPurchaseFromRecord(r, r.sellQuantity);
+      const purchaseKRW = snapshotPurchase > 0
+        ? snapshotPurchase
+        : (a ? toKRWPurchaseUnit(a, r.sellQuantity) : 0);
       const realized = r.sellPrice * r.sellQuantity - purchaseKRW;
       const returnPct = purchaseKRW === 0 ? 0 : (realized / purchaseKRW) * 100;
       return { ...r, purchaseKRW, realized, returnPct };
