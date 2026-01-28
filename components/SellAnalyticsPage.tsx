@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Asset, Currency, SellRecord, AssetCategory, ALLOWED_CATEGORIES } from '../types';
 import StatCard from './StatCard';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar, Cell } from 'recharts';
 
 interface SellAnalyticsPageProps {
   assets: Asset[];
@@ -281,7 +281,11 @@ const SellAnalyticsPage: React.FC<SellAnalyticsPageProps> = ({ assets, sellHisto
                 <XAxis type="number" stroke="#A0AEC0" fontSize={12} tickFormatter={(v: number) => `${v.toFixed(1)}%`} />
                 <YAxis type="category" dataKey="name" stroke="#A0AEC0" fontSize={12} width={160} />
                 <Tooltip formatter={(v: number) => [`${(v as number).toFixed(2)}%`, '평균 수익률']} contentStyle={{ backgroundColor: '#2D3748', border: '1px solid #4A5568', borderRadius: '0.5rem' }} />
-                <Bar dataKey="avgReturn" name="평균 수익률" fill="#60A5FA" />
+                <Bar dataKey="avgReturn" name="평균 수익률">
+                  {rankingData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.avgReturn >= 0 ? '#4ADE80' : '#F87171'} />
+                  ))}
+                </Bar>
               </BarChart>
             </ResponsiveContainer>
           ) : (

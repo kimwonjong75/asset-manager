@@ -132,11 +132,12 @@ const PortfolioTableRow: React.FC<PortfolioTableRowProps> = ({
         <td className="px-4 py-4 font-medium text-white break-words">
           <div className="flex flex-col">
              <div className="flex items-center gap-2">
-               <a 
+               <a
                  href={`https://www.google.com/search?q=${encodeURIComponent(asset.ticker + ' 주가')}`}
-                 target="_blank" 
+                 target="_blank"
                  rel="noopener noreferrer"
                  className="font-bold hover:underline text-primary-light cursor-pointer"
+                 title={asset.memo || undefined}
                >
                  {(asset.customName?.trim() || asset.name)}
                </a>
