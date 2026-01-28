@@ -66,6 +66,7 @@ interface PortfolioTableRowProps {
   sellAlertDropRate: number;
   onEdit: (asset: Asset) => void;
   onSell?: (asset: Asset) => void;
+  onBuy?: (asset: Asset) => void;
   filterAlerts: boolean;
   exchangeRates?: ExchangeRates; // [추가] 환율 정보
 }
@@ -85,6 +86,7 @@ const PortfolioTableRow: React.FC<PortfolioTableRowProps> = ({
   sellAlertDropRate,
   onEdit,
   onSell,
+  onBuy,
   filterAlerts,
   exchangeRates
 }) => {
@@ -193,6 +195,7 @@ const PortfolioTableRow: React.FC<PortfolioTableRowProps> = ({
           {openMenuId === asset.id && (
             <div ref={menuRef} className="absolute right-0 mt-2 w-44 bg-gray-800 border border-gray-700 rounded-md shadow-lg z-30 text-sm">
                <button onClick={() => { setOpenMenuId(null); onEdit(asset); }} className="block w-full text-left px-3 py-2 hover:bg-gray-700 text-white">수정</button>
+               {onBuy && <button onClick={() => { setOpenMenuId(null); onBuy(asset); }} className="block w-full text-left px-3 py-2 text-green-400 hover:bg-gray-700">매수</button>}
                {onSell && <button onClick={() => { setOpenMenuId(null); onSell(asset); }} className="block w-full text-left px-3 py-2 text-red-400 hover:bg-gray-700">매도</button>}
                <button onClick={() => { setOpenMenuId(null); handleToggleExpand(asset.id); }} className="block w-full text-left px-3 py-2 text-gray-200 hover:bg-gray-700">차트 보기</button>
             </div>

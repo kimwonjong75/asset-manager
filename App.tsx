@@ -3,6 +3,7 @@ import { AssetCategory } from './types';
 import Header from './components/Header';
 import EditAssetModal from './components/EditAssetModal';
 import SellAssetModal from './components/SellAssetModal';
+import BuyMoreAssetModal from './components/BuyMoreAssetModal';
 import BulkUploadModal from './components/BulkUploadModal';
 import AddNewAssetModal from './components/AddNewAssetModal';
 import PortfolioAssistant from './components/PortfolioAssistant';
@@ -155,6 +156,7 @@ const AppContent: React.FC = () => {
             
             <EditAssetModal />
             <SellAssetModal />
+            <BuyMoreAssetModal />
             <BulkUploadModal />
             <AddNewAssetModal />
 

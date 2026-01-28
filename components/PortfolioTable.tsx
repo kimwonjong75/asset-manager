@@ -21,8 +21,9 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
   history, 
   onRefreshAll, 
   onRefreshSelected, 
-  onEdit, 
-  onSell, 
+  onEdit,
+  onSell,
+  onBuy,
   isLoading, 
   sellAlertDropRate, 
   filterCategory, 
@@ -206,6 +207,7 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
                 sellAlertDropRate={sellAlertDropRate}
                 onEdit={onEdit}
                 onSell={onSell}
+                onBuy={onBuy}
                 filterAlerts={filterAlerts}
                 exchangeRates={exchangeRates}
               />

@@ -35,6 +35,7 @@ export const useAssetActions = ({
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [editingAsset, setEditingAsset] = useState<Asset | null>(null);
   const [sellingAsset, setSellingAsset] = useState<Asset | null>(null);
+  const [buyingAsset, setBuyingAsset] = useState<Asset | null>(null);
 
   // 자산 추가 - [수정] name 파라미터 추가
   const handleAddAsset = useCallback(async (newAssetData: NewAssetForm & { name?: string }) => {
@@ -308,6 +309,84 @@ export const useAssetActions = ({
     }
   }, [isSignedIn, assets, portfolioHistory, sellHistory, watchlist, exchangeRates, triggerAutoSave, setAssets, setSellHistory, setError, setSuccessMessage]);
 
+  // 추가매수 확정
+  const handleConfirmBuyMore = useCallback(async (
+    assetId: string,
+    buyQuantity: number,
+    buyPrice: number,
+    buyDate: string
+  ) => {
+    if (!isSignedIn) {
+      setError('Google Drive 로그인 후 추가매수를 기록할 수 있습니다.');
+      setTimeout(() => setError(null), 3000);
+      return;
+    }
+
+    const asset = assets.find(a => a.id === assetId);
+    if (!asset) {
+      setError('해당 자산을 찾을 수 없습니다.');
+      setTimeout(() => setError(null), 3000);
+      return;
+    }
+
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      // 외화 자산의 경우 매수일 환율 조회
+      let buyExchangeRate = 1;
+      if (asset.currency !== Currency.KRW) {
+        buyExchangeRate = await fetchHistoricalExchangeRate(buyDate, asset.currency, Currency.KRW);
+      }
+
+      const oldQuantity = asset.quantity;
+      const oldPrice = asset.purchasePrice;
+      const newTotalQuantity = oldQuantity + buyQuantity;
+
+      // 가중평균 매수단가 계산
+      const newAvgPrice = (oldQuantity * oldPrice + buyQuantity * buyPrice) / newTotalQuantity;
+
+      // 외화 자산의 경우 가중평균 환율 계산
+      let newExchangeRate = asset.purchaseExchangeRate;
+      if (asset.currency !== Currency.KRW && asset.purchaseExchangeRate) {
+        newExchangeRate = (oldQuantity * asset.purchaseExchangeRate + buyQuantity * buyExchangeRate) / newTotalQuantity;
+      }
+
+      // 메모에 추가매수 이력 기재
+      const d = new Date(buyDate);
+      const dateStr = `${String(d.getFullYear()).slice(2)}.${d.getMonth() + 1}.${d.getDate()}`;
+      const buyMemo = `(${dateStr} ${buyQuantity}주 ${buyPrice.toLocaleString()}${asset.currency !== Currency.KRW ? asset.currency : '원'} 추가매수)`;
+      const newMemo = asset.memo ? `${asset.memo}\n${buyMemo}` : buyMemo;
+
+      setAssets(prevAssets => {
+        const updated = prevAssets.map(a => {
+          if (a.id === assetId) {
+            return {
+              ...a,
+              quantity: newTotalQuantity,
+              purchasePrice: newAvgPrice,
+              purchaseExchangeRate: newExchangeRate,
+              memo: newMemo,
+            };
+          }
+          return a;
+        });
+        triggerAutoSave(updated, portfolioHistory, sellHistory, watchlist, exchangeRates);
+        return updated;
+      });
+
+      setSuccessMessage(`${asset.customName?.trim() || asset.name} ${buyQuantity}주 추가매수가 기록되었습니다.`);
+      setTimeout(() => setSuccessMessage(null), 3000);
+    } catch (e) {
+      console.error(e);
+      setError('추가매수 처리 중 오류가 발생했습니다.');
+      setTimeout(() => setError(null), 3000);
+    } finally {
+      setIsLoading(false);
+      setBuyingAsset(null);
+    }
+  }, [isSignedIn, assets, portfolioHistory, sellHistory, watchlist, exchangeRates, triggerAutoSave, setAssets, setError, setSuccessMessage]);
+
   // CSV 파일 업로드
   const handleCsvFileUpload = useCallback((file: File): Promise<BulkUploadResult> => {
     return new Promise((resolve) => {
@@ -539,10 +618,13 @@ export const useAssetActions = ({
     setEditingAsset,
     sellingAsset,
     setSellingAsset,
+    buyingAsset,
+    setBuyingAsset,
     handleAddAsset,
     handleDeleteAsset,
     handleUpdateAsset,
     handleConfirmSell,
+    handleConfirmBuyMore,
     handleCsvFileUpload,
     handleAddWatchItem,
     handleUpdateWatchItem,

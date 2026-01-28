@@ -62,10 +62,12 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     isLoading: isActionLoading,
     editingAsset, setEditingAsset,
     sellingAsset, setSellingAsset,
+    buyingAsset, setBuyingAsset,
     handleAddAsset,
     handleDeleteAsset,
     handleUpdateAsset,
     handleConfirmSell,
+    handleConfirmBuyMore,
     handleCsvFileUpload,
     handleAddWatchItem,
     handleUpdateWatchItem,
@@ -177,6 +179,7 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     modal: {
       editingAsset,
       sellingAsset,
+      buyingAsset,
       bulkUploadOpen: isBulkUploadModalOpen,
       addAssetOpen: isAddAssetModalOpen,
       assistantOpen: isAssistantOpen,
@@ -206,6 +209,9 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         // Hook: (assetId, sellQuantity, sellPrice, sellDate, settlementCurrency)
         await handleConfirmSell(id, sellQuantity, sellPrice, sellDate, currency);
       },
+      confirmBuyMore: async (id: string, buyDate: string, buyPrice: number, buyQuantity: number) => {
+        await handleConfirmBuyMore(id, buyQuantity, buyPrice, buyDate);
+      },
       addSelectedToWatchlist: handleAddAssetsToWatchlist,
       addWatchItem: handleAddWatchItem,
       updateWatchItem: handleUpdateWatchItem,
@@ -232,6 +238,8 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       closeEditModal: () => setEditingAsset(null),
       openSellModal: (asset: Asset) => setSellingAsset(asset),
       closeSellModal: () => setSellingAsset(null),
+      openBuyModal: (asset: Asset) => setBuyingAsset(asset),
+      closeBuyModal: () => setBuyingAsset(null),
       openBulkUpload: () => setIsBulkUploadModalOpen(true),
       closeBulkUpload: () => setIsBulkUploadModalOpen(false),
       openAddAsset: () => setIsAddAssetModalOpen(true),

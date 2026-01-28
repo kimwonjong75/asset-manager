@@ -8,6 +8,7 @@ export interface PortfolioTableProps {
   onRefreshOne?: (id: string) => void | Promise<void>;
   onEdit: (asset: Asset) => void;
   onSell?: (asset: Asset) => void;
+  onBuy?: (asset: Asset) => void;
   isLoading: boolean;
   sellAlertDropRate: number;
   filterCategory: AssetCategory | 'ALL';

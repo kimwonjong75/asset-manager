@@ -34,6 +34,7 @@ export interface UIState {
 export interface ModalState {
   editingAsset: Asset | null;
   sellingAsset: Asset | null;
+  buyingAsset: Asset | null;
   bulkUploadOpen: boolean;
   addAssetOpen: boolean;
   assistantOpen: boolean;
@@ -67,6 +68,7 @@ export interface PortfolioActions {
   updateAsset: (asset: Asset) => Promise<void>;
   deleteAsset: (id: string) => void;
   confirmSell: (id: string, sellDate: string, sellPrice: number, sellQuantity: number, currency: Currency) => Promise<void>;
+  confirmBuyMore: (id: string, buyDate: string, buyPrice: number, buyQuantity: number) => Promise<void>;
   addSelectedToWatchlist: (assets: Asset[]) => void;
 
   // 관심종목
@@ -95,6 +97,8 @@ export interface PortfolioActions {
   closeEditModal: () => void;
   openSellModal: (asset: Asset) => void;
   closeSellModal: () => void;
+  openBuyModal: (asset: Asset) => void;
+  closeBuyModal: () => void;
   openBulkUpload: () => void;
   closeBulkUpload: () => void;
   openAddAsset: () => void;

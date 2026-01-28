@@ -40,6 +40,7 @@ const PortfolioView: React.FC = () => {
           onRefreshOne={actions.refreshOnePrice}
           onEdit={actions.openEditModal}
           onSell={actions.openSellModal}
+          onBuy={actions.openBuyModal}
           isLoading={status.isLoading}
           sellAlertDropRate={sellAlertDropRate}
           filterCategory={filterCategory}
