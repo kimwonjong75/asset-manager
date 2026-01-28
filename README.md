@@ -11,6 +11,7 @@ KIM'S 퀸트자산관리는 계량적 투자 전략을 기반으로 한 종합 �
 - **Google Drive 동기화**: 안전한 클라우드 저장소 연동
 - **포트폴리오 분석**: 자산 배분, 수익률, 손익 추이 분석
 - **리밸런싱 목표 관리**: 자산군별 목표 비중 및 목표 총 자산 금액 설정/저장, 리밸런싱 가이드 제공
+- **추가매수 기록**: 보유 종목의 추가매수 시 가중평균 단가 자동 계산 및 메모 이력 기재
 - **매도 알림**: 설정한 하락률 기준 알림 기능
 - **관심종목 관리**: 별도의 워치리스트 기능
 - **CSV 대량 등록**: 대량의 자산 일괄 등록
@@ -68,6 +69,7 @@ KIM'S 퀸트자산관리는 계량적 투자 전략을 기반으로 한 종합 �
 │   ├── RegionAllocationChart.tsx # 지역 배분 차트
 │   ├── SellAlertControl.tsx # 매도 알림 설정
 │   ├── SellAnalyticsPage.tsx # 매도 분석 페이지
+│   ├── BuyMoreAssetModal.tsx # 추가매수 모달
 │   ├── SellAssetModal.tsx   # 자산 매도 모달
 │   ├── StatCard.tsx         # 통계 카드
 │   ├── TopBottomAssets.tsx  # 상위/하위 자산
@@ -231,7 +233,7 @@ App.tsx
 - **useMarketData**: 외부 API를 통한 시세 업데이트, 환율 갱신 로직 담당
   - **암호화폐 분기 처리**: `shouldUseUpbitAPI()` 함수를 통해 업비트 자산과 일반 자산 분리
   - **병렬 조회**: 업비트 API와 일반 시세 API를 동시에 호출하여 성능 최적화
-- **useAssetActions**: 자산 추가/수정/삭제, 매도, CSV 업로드 등 사용자 인터랙션 처리
+- **useAssetActions**: 자산 추가/수정/삭제, 매도, 추가매수, CSV 업로드 등 사용자 인터랙션 처리
 - **usePortfolioCalculator**: 수익률 및 손익 계산 담당 ← **수정됨**
   - **구매 환율 우선 적용**: 매수가 계산 시 `purchaseExchangeRate`(구매 당시 환율)를 우선 사용
   - **폴백 로직**: 구매 환율이 없는 기존 자산은 현재 환율로 계산 (하위 호환성)
@@ -605,6 +607,27 @@ gcloud run deploy asset-manager --source . --region asia-northeast3 --allow-unau
 ---
 
 ## 📝 변경 이력
+
+### 2026-01-28: 보유 종목 추가매수 기능 추가
+- **기능 추가 — 추가매수 모달 및 로직**:
+  - 포트폴리오 테이블의 '관리' 드롭다운 메뉴에 '매수' 버튼 추가 (매도 버튼 위에 위치, 초록색 텍스트)
+  - '매수' 클릭 시 추가매수 모달(`BuyMoreAssetModal.tsx`) 표시
+  - 모달에서 매수일자, 매수가, 매수 수량 입력 → 예상 매수금액, 변경 후 평균단가, 변경 후 총 수량 실시간 미리보기
+  - 추가매수 확인 시:
+    - **가중평균 매수단가** 자동 계산: `(기존수량 × 기존단가 + 추가수량 × 추가단가) / 총수량`
+    - **외화 자산 환율** 가중평균 재계산: 매수일 기준 환율 조회 후 기존 환율과 가중평균
+    - **매수일자** 유지: 최초 매수일 변경 없음
+    - **메모에 이력 기재**: `(YY.M.DD xx주 xxx원 추가매수)` 형식으로 자동 기록
+- **새로운 파일**: `components/BuyMoreAssetModal.tsx`
+- **의존 관계**:
+  - `useAssetActions.ts` → `handleConfirmBuyMore` 함수 추가 (외화 환율 조회를 위해 `geminiService.fetchHistoricalExchangeRate` 사용)
+  - `PortfolioContext.tsx` → `buyingAsset` 상태, `openBuyModal`/`closeBuyModal`/`confirmBuyMore` 액션 추가
+  - `types/store.ts` → `ModalState.buyingAsset`, `PortfolioActions.confirmBuyMore`/`openBuyModal`/`closeBuyModal` 타입 추가
+  - `types/ui.ts` → `PortfolioTableProps.onBuy` prop 추가
+  - `PortfolioTableRow.tsx` → 드롭다운 메뉴에 `onBuy` 콜백 연결
+  - `PortfolioTable.tsx` → `onBuy` prop 수신 및 Row로 전달
+  - `PortfolioView.tsx` → `onBuy={actions.openBuyModal}` 연결
+  - `App.tsx` → `BuyMoreAssetModal` 렌더링 추가
 
 ### 2026-01-27: 수익 통계 수익률 계산 오류 수정 및 매도 알림 설정 영구 저장
 - **버그 수정 1 — 완전 매도 자산 수익률 0% 표시 문제**:
