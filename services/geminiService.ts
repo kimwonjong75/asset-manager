@@ -110,10 +110,40 @@ async function callGeminiBasic(prompt: string): Promise<string> {
 // =================================================================
 // 5. 종목 검색
 // =================================================================
+
+// 특수 종목 정의 (백엔드 전용 코드)
+const SPECIAL_ASSETS: SymbolSearchResult[] = [
+  {
+    ticker: 'KRX-GOLD',
+    name: 'KRX 금현물',
+    exchange: 'KRX (코스피/코스닥)',
+  },
+];
+
+// 특수 종목 검색 키워드 매핑
+function findSpecialAsset(query: string): SymbolSearchResult | null {
+  const q = query.toLowerCase().trim();
+  const goldKeywords = ['금현물', 'krx-gold', 'krx gold', 'gold', 'm04020000', '금', '골드'];
+
+  if (goldKeywords.some(kw => q.includes(kw))) {
+    return SPECIAL_ASSETS.find(a => a.ticker === 'KRX-GOLD') || null;
+  }
+
+  return null;
+}
+
 export async function searchSymbols(query: string): Promise<SymbolSearchResult[]> {
   const cacheKey = query.toLowerCase();
   const cached = getCached(searchCache, cacheKey);
   if (cached) return cached;
+
+  // 특수 종목 우선 검색 (KRX 금현물 등)
+  const specialAsset = findSpecialAsset(query);
+  if (specialAsset) {
+    const results = [specialAsset];
+    setCache(searchCache, cacheKey, results);
+    return results;
+  }
 
   if (!ai) return [];
 

@@ -5,7 +5,11 @@
       "Read(//c/Users/beari/Downloads/**)",
       "Bash(node -e:*)",
       "Bash(dir \"C:\\\\Users\\\\beari\\\\Downloads\\\\portfolio*\")",
-      "Bash(dir:*)"
+      "Bash(dir:*)",
+      "Bash(python:*)",
+      "WebFetch(domain:m.stock.naver.com)",
+      "Bash(curl:*)",
+      "Bash(python3:*)"
     ],
     "additionalDirectories": [
       "C:\\Users\\beari\\Downloads"
