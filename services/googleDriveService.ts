@@ -16,7 +16,6 @@ export interface DriveFile {
 }
 
 const DRIVE_FOLDER_ID = '10O5cGNd9QVoAAxR8NdojqI9AD7wj0Q_g';
-const DRIVE_FILE_ID = '1aMkwjuna6uVb5laKhDHpe09yCP00lx28';
 
 class GoogleDriveService {
   private accessToken: string | null = null;
@@ -340,7 +339,6 @@ class GoogleDriveService {
     const searchParams = new URLSearchParams({
       q: query,
       spaces: 'drive',
-      corpora: 'allDrives',
       fields: 'files(id,name),nextPageToken',
       pageSize: '10',
       supportsAllDrives: 'true',
@@ -366,11 +364,15 @@ class GoogleDriveService {
     return data.files || [];
   }
 
-  // 파일 저장 (파일 ID로 직접 업데이트)
+  // 파일 저장 (생성 또는 업데이트)
   async saveFile(content: string, fileName: string = 'portfolio.json'): Promise<void> {
     if (!this.accessToken) {
       throw new Error('Not authenticated');
     }
+
+    // 기존 파일 확인
+    const files = await this.listFiles();
+    const existingFile = files.find(f => f.name === fileName);
 
     const fileContent = new Blob([content], { type: 'application/json' });
     const baseMetadata = {
@@ -378,38 +380,68 @@ class GoogleDriveService {
       mimeType: 'application/json',
     };
 
-    // 파일 ID로 직접 업데이트 (공유된 파일도 업데이트 가능)
-    const form = new FormData();
-    form.append('metadata', new Blob([JSON.stringify(baseMetadata)], { type: 'application/json' }));
-    form.append('file', fileContent);
+    if (existingFile) {
+      // 파일 업데이트
+      const form = new FormData();
+      form.append('metadata', new Blob([JSON.stringify(baseMetadata)], { type: 'application/json' }));
+      form.append('file', fileContent);
 
-    const response = await fetch(
-      `https://www.googleapis.com/upload/drive/v3/files/${DRIVE_FILE_ID}?uploadType=multipart&supportsAllDrives=true`,
-      {
-        method: 'PATCH',
-        headers: {
-          Authorization: `Bearer ${this.accessToken}`,
-        },
-        body: form,
+      const response = await fetch(
+        `https://www.googleapis.com/upload/drive/v3/files/${existingFile.id}?uploadType=multipart&supportsAllDrives=true`,
+        {
+          method: 'PATCH',
+          headers: {
+            Authorization: `Bearer ${this.accessToken}`,
+          },
+          body: form,
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error('Failed to update file');
       }
-    );
+    } else {
+      // 새 파일 생성
+      const metadata: { name: string; mimeType: string; parents?: string[] } = { ...baseMetadata };
+      if (this.folderId) {
+        metadata.parents = [this.folderId];
+      }
+      const form = new FormData();
+      form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
+      form.append('file', fileContent);
 
-    if (!response.ok) {
-      const errorText = await response.text().catch(() => 'Unknown error');
-      console.error('Drive save file error', response.status, errorText);
-      throw new Error(`Failed to update file (${response.status})`);
+      const response = await fetch(
+        'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true',
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${this.accessToken}`,
+          },
+          body: form,
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error('Failed to create file');
+      }
     }
   }
 
-  // 파일 불러오기 (파일 ID로 직접 접근)
-  async loadFile(_fileName: string = 'portfolio.json'): Promise<string | null> {
+  // 파일 불러오기
+  async loadFile(fileName: string = 'portfolio.json'): Promise<string | null> {
     if (!this.accessToken) {
       throw new Error('Not authenticated');
     }
 
-    // 파일 ID로 직접 접근 (공유된 파일도 접근 가능)
+    const files = await this.listFiles();
+    const file = files.find(f => f.name === fileName);
+
+    if (!file) {
+      return null;
+    }
+
     const response = await fetch(
-      `https://www.googleapis.com/drive/v3/files/${DRIVE_FILE_ID}?alt=media&supportsAllDrives=true`,
+      `https://www.googleapis.com/drive/v3/files/${file.id}?alt=media&supportsAllDrives=true`,
       {
         headers: {
           Authorization: `Bearer ${this.accessToken}`,
@@ -420,10 +452,6 @@ class GoogleDriveService {
     if (!response.ok) {
       const errorText = await response.text().catch(() => 'Unknown error');
       console.error('Drive load file error', response.status, errorText);
-      // 파일이 없거나 접근 권한이 없는 경우 null 반환
-      if (response.status === 404) {
-        return null;
-      }
       throw new Error(`Failed to load file (${response.status})`);
     }
 
