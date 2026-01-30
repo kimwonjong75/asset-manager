@@ -198,11 +198,12 @@ const shouldUseUpbitAPI = (exchange: string, category?: AssetCategory): boolean 
 
 #### 3. Google Drive API
 - **인증**: OAuth 2.0
-- **스코프**: 
-  - `https://www.googleapis.com/auth/drive.file`
+- **스코프**:
+  - `https://www.googleapis.com/auth/drive` (공유 폴더 접근을 위해 전체 Drive 권한 사용)
   - `https://www.googleapis.com/auth/userinfo.email`
   - `https://www.googleapis.com/auth/userinfo.profile`
   - `openid`
+- **공유 폴더 지원**: `supportsAllDrives`, `includeItemsFromAllDrives` 파라미터를 통해 다른 계정과 공유된 폴더의 데이터 접근 가능
 
 #### 4. 내부 모듈 의존성
 ```
@@ -607,6 +608,18 @@ gcloud run deploy asset-manager --source . --region asia-northeast3 --allow-unau
 ---
 
 ## 📝 변경 이력
+
+### 2026-01-30: Google Drive 공유 폴더 지원 추가
+- **기능 추가 — 다중 계정 데이터 공유**:
+  - OAuth scope를 `drive.file` → `drive`로 변경하여 공유 폴더 접근 권한 확보
+  - Google Drive API 호출 시 `supportsAllDrives`, `includeItemsFromAllDrives` 파라미터 추가
+  - 동일 폴더를 공유받은 계정들이 같은 `portfolio.json` 파일 참조 가능
+- **설정 방법**:
+  1. Google Cloud Console에서 OAuth 동의 화면에 `drive` scope 추가
+  2. Google Drive에서 데이터 폴더를 다른 계정과 "편집자" 권한으로 공유
+  3. 기존 로그인 세션 로그아웃 후 재로그인 (새 scope 적용)
+- **영향받는 파일**:
+  - `services/googleDriveService.ts` (scope 변경, API 파라미터 추가)
 
 ### 2026-01-28: 수익통계 매도 손익 계산 로직 개선
 - **버그 수정 — 추가매수 후 과거 매도 손익이 잘못 계산되는 문제**:

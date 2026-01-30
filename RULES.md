@@ -42,6 +42,7 @@
 
 2. **Google Drive 동기화:**
    - 데이터 저장(`hooks/usePortfolioData.ts`) 시에는 로컬 상태와 구글 드라이브 간의 정합성을 최우선으로 한다.
+   - **공유 폴더 지원**: 다중 계정 데이터 공유를 위해 `drive` scope와 `supportsAllDrives`/`includeItemsFromAllDrives` 파라미터가 필수다. 새로운 Drive API 호출 추가 시 해당 파라미터를 반드시 포함해야 한다.
 
 4. **사용자 설정 데이터 보존:**
    - 사용자가 입력하는 설정값(예: 리밸런싱 목표 비중 및 목표 금액, 알림 조건 등)은 반드시 영구 저장되어야 한다.
