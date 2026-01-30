@@ -58,8 +58,8 @@ class GoogleDriveService {
         }, refreshTime);
         return;
       } else {
-        // 토큰이 만료된 경우 - 자동 갱신 시도
-        if (savedTokenExpiry && expiryTime > now - 60 * 60 * 1000) { // 1시간 이내 만료된 경우만
+        // 토큰이 만료된 경우 - 자동 갱신 시도 (시간 제한 없이)
+        if (savedUser) {
           try {
             await this.refreshTokenSilently();
             if (this.accessToken) {
@@ -70,7 +70,7 @@ class GoogleDriveService {
             console.log('Silent token refresh failed, user needs to sign in again');
           }
         }
-        // 토큰이 만료된 경우
+        // silent refresh 실패 시 토큰 정리
         this.accessToken = null;
         this.user = null;
         localStorage.removeItem('google_drive_access_token');
@@ -180,8 +180,15 @@ class GoogleDriveService {
         },
       });
     
-      console.log('Requesting access token with prompt: consent');
-      this.tokenClient.requestAccessToken({ prompt: 'consent' });
+      // 이전 로그인 계정이 있으면 힌트 제공
+      const savedUser = localStorage.getItem('google_drive_user');
+      const hint = savedUser ? JSON.parse(savedUser).email : undefined;
+
+      console.log('Requesting access token with prompt: select_account');
+      this.tokenClient.requestAccessToken({
+        prompt: 'select_account',
+        login_hint: hint
+      });
     });
   }
 
@@ -489,7 +496,7 @@ declare global {
     namespace accounts {
       namespace oauth2 {
         interface TokenClient {
-          requestAccessToken: (options?: { prompt?: string }) => void;
+          requestAccessToken: (options?: { prompt?: string; login_hint?: string }) => void;
         }
         interface TokenResponse {
           access_token: string;
