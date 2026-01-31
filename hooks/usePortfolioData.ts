@@ -3,7 +3,7 @@ import { Asset, PortfolioSnapshot, SellRecord, WatchlistItem, ExchangeRates, All
 import { useGoogleDriveSync } from './useGoogleDriveSync';
 import { runMigrationIfNeeded } from '../utils/migrateData';
 import { mapToNewAssetStructure } from '../utils/portfolioCalculations';
-import { fillAllMissingDates } from '../utils/historyUtils';
+import { fillAllMissingDates, backfillWithRealPrices, getMissingDateRange } from '../utils/historyUtils';
 
 export const usePortfolioData = () => {
   const [error, setError] = useState<string | null>(null);
@@ -32,9 +32,37 @@ export const usePortfolioData = () => {
         setAssets(driveAssets);
         
         if (Array.isArray(data.portfolioHistory)) {
-          // 누락된 날짜 보간 적용
+          // 먼저 기존 보간 방식으로 빠르게 로드 (UX 향상)
           const filledHistory = fillAllMissingDates(data.portfolioHistory);
           setPortfolioHistory(filledHistory);
+
+          // 백필이 필요한지 확인
+          const missingRange = getMissingDateRange(data.portfolioHistory);
+          if (missingRange && driveAssets.length > 0) {
+            console.log(`[Backfill] ${missingRange.missingDates.length}일 누락 감지, 실제 시세 조회 시작...`);
+
+            // 비동기로 백필 수행 (기존 보간 데이터는 이미 표시됨)
+            const rates = data.exchangeRates || { USD: 1450, JPY: 9.5 };
+            backfillWithRealPrices(data.portfolioHistory, driveAssets, rates)
+              .then(backfilledHistory => {
+                // 백필된 히스토리로 업데이트
+                setPortfolioHistory(backfilledHistory);
+
+                // 자동 저장 트리거 (백필된 데이터 저장)
+                if (isSignedIn) {
+                  const watchlistData = Array.isArray(data.watchlist) ? data.watchlist : [];
+                  const sellData = Array.isArray(data.sellHistory) ? data.sellHistory : [];
+                  const allocData = loaded.allocationTargets && 'weights' in loaded.allocationTargets
+                    ? loaded.allocationTargets
+                    : { weights: loaded.allocationTargets || {} };
+                  hookAutoSave(driveAssets, backfilledHistory, sellData, watchlistData, rates, allocData as AllocationTargets, loaded.sellAlertDropRate ?? 15);
+                  console.log('[Backfill] 백필 완료, 자동 저장됨');
+                }
+              })
+              .catch(err => {
+                console.error('[Backfill] 백필 실패, 기존 보간 데이터 유지:', err);
+              });
+          }
         } else {
           setPortfolioHistory([]);
         }

@@ -8,7 +8,9 @@ KIM'S 퀸트자산관리는 계량적 투자 전략을 기반으로 한 종합 �
 - **멀티 자산 지원**: 한국주식, 미국주식, 해외주식, 채권, 암호화폐, 실물자산, 현금
 - **실시간 시세 업데이트**: 외부 API를 통한 실시간 가격 정보
 - **환율 자동 반영**: USD, JPY 등 주요 통화 환율 자동 적용
-- **Google Drive 동기화**: 안전한 클라우드 저장소 연동
+- **Google Drive 동기화**: 안전한 클라우드 저장소 연동 (LZ-String 압축 적용)
+- **앱 시작 시 자동 시세 업데이트**: 오늘 업데이트 안 했으면 자동 갱신
+- **히스토리 보간**: 앱을 안 열었던 날의 데이터 자동 채움
 - **포트폴리오 분석**: 자산 배분, 수익률, 손익 추이 분석
 - **리밸런싱 목표 관리**: 자산군별 목표 비중 및 목표 총 자산 금액 설정/저장, 리밸런싱 가이드 제공
 - **추가매수 기록**: 보유 종목의 추가매수 시 가중평균 단가 자동 계산 및 메모 이력 기재
@@ -91,7 +93,9 @@ KIM'S 퀸트자산관리는 계량적 투자 전략을 기반으로 한 종합 �
 │   └── upbitService.ts    # 업비트 API 서비스 (Cloud Run 프록시 경유)
 ├── utils/                    # 유틸리티 함수
 │   ├── migrateData.ts     # 데이터 마이그레이션
-│   └── signalUtils.ts     # 서버 신호/RSI 뱃지 렌더링 유틸
+│   ├── signalUtils.ts     # 서버 신호/RSI 뱃지 렌더링 유틸
+│   ├── historyUtils.ts    # 히스토리 보간/분리 유틸 (신규)
+│   └── portfolioCalculations.ts # 포트폴리오 계산 유틸
 ├── types/                  # TypeScript 타입 정의
 │   ├── index.ts           # 주요 타입 정의 (자산, 화폐, 거래소 등)
 │   ├── api.ts             # API 관련 타입 정의
@@ -517,6 +521,10 @@ gcloud run deploy asset-manager --source . --region asia-northeast3 --allow-unau
 - **자동 저장**: 2초 디바운스 적용
 - **토큰 갱신**: 만료 5분 전 자동 갱신
 - **오류 처리**: 네트워크 오류 시 재시도 로직
+- **LZ-String 압축**: 저장 시 UTF16 압축 적용 (파일 크기 70-80% 감소)
+- **레거시 호환**: 압축되지 않은 기존 파일도 정상 로드
+- **앱 시작 시 자동 업데이트**: 오늘 업데이트 안 했으면 자동으로 시세 갱신
+- **히스토리 보간**: 앱을 안 열었던 날의 데이터를 마지막 스냅샷으로 자동 채움
 
 ### 4. 데이터 무결성
 - **마이그레이션**: 이전 버전 데이터 자동 변환
@@ -608,6 +616,22 @@ gcloud run deploy asset-manager --source . --region asia-northeast3 --allow-unau
 ---
 
 ## 📝 변경 이력
+
+### 2026-01-31: Google Drive 저장 최적화 및 자동 업데이트
+- **기능 추가 — LZ-String 압축**:
+  - 저장 시 LZ-String UTF16 압축 적용으로 파일 크기 70-80% 감소
+  - 레거시 호환: 압축되지 않은 기존 파일도 정상 로드
+- **기능 추가 — 앱 시작 시 자동 시세 업데이트**:
+  - 마지막 업데이트 날짜(`lastUpdateDate`) 확인
+  - 오늘 업데이트 안 했으면 자동으로 시세 갱신
+- **기능 추가 — 히스토리 보간(Interpolation)**:
+  - 앱을 안 열었던 날의 데이터를 마지막 스냅샷으로 자동 채움
+  - `fillAllMissingDates()` 함수로 중간 빈 날짜도 보간
+- **새로운 파일**: `utils/historyUtils.ts`
+- **의존 관계**:
+  - `googleDriveService.ts` → `lz-string` 패키지 의존성 추가
+  - `usePortfolioData.ts` → `historyUtils.ts`의 `fillAllMissingDates` 사용
+  - `PortfolioContext.tsx` → `shouldAutoUpdate` 플래그 기반 자동 업데이트 트리거
 
 ### 2026-01-30: Google Drive 공유 폴더 지원 추가
 - **기능 추가 — 다중 계정 데이터 공유**:

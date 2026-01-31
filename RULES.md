@@ -43,6 +43,14 @@
 2. **Google Drive 동기화:**
    - 데이터 저장(`hooks/usePortfolioData.ts`) 시에는 로컬 상태와 구글 드라이브 간의 정합성을 최우선으로 한다.
    - **공유 폴더 지원**: 다중 계정 데이터 공유를 위해 `drive` scope와 `supportsAllDrives`/`includeItemsFromAllDrives` 파라미터가 필수다. 새로운 Drive API 호출 추가 시 해당 파라미터를 반드시 포함해야 한다.
+   - **LZ-String 압축**: `googleDriveService.ts`에서 저장 시 `LZString.compressToUTF16()`, 로드 시 `LZString.decompressFromUTF16()`을 적용한다. 레거시 비압축 파일 호환을 위해 압축 해제 실패 시 원본 반환한다.
+   - **히스토리 백필 및 보간**:
+     - 데이터 로드 시 `backfillWithRealPrices()`를 호출하여 **실제 과거 시세**로 누락된 날짜를 채운다.
+     - 주식/ETF: Cloud Run `/history` 엔드포인트 (FinanceDataReader)
+     - 암호화폐: Cloud Run `/upbit/history` 엔드포인트 (Upbit Candles API)
+     - API 실패 시 기존 `fillAllMissingDates()`로 폴백하여 마지막 데이터 복사.
+     - 90일 초과 누락 시 API 부하 방지를 위해 기존 보간 방식 사용.
+   - **자동 업데이트**: `lastUpdateDate`가 오늘이 아니면 `shouldAutoUpdate` 플래그를 설정하고, `PortfolioContext`에서 자동으로 시세 갱신을 트리거한다.
 
 4. **사용자 설정 데이터 보존:**
    - 사용자가 입력하는 설정값(예: 리밸런싱 목표 비중 및 목표 금액, 알림 조건 등)은 반드시 영구 저장되어야 한다.
