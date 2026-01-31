@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useMemo } from 'react';
+import React, { createContext, useContext, useState, useMemo, useEffect } from 'react';
 import {
   Asset,
   AssetCategory,
@@ -31,7 +31,8 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     isLoading: isAuthLoading,
     error, setError,
     successMessage, setSuccessMessage,
-    hasAutoUpdated,
+    hasAutoUpdated, setHasAutoUpdated,
+    shouldAutoUpdate, setShouldAutoUpdate,
     handleSignIn,
     handleSignOut,
     triggerAutoSave,
@@ -56,6 +57,16 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     setError,
     setSuccessMessage,
   });
+
+  // 앱 시작 시 자동 업데이트 (오늘 아직 업데이트 안 했으면)
+  useEffect(() => {
+    if (shouldAutoUpdate && assets.length > 0 && !hasAutoUpdated && !isMarketLoading) {
+      setHasAutoUpdated(true);
+      setShouldAutoUpdate(false);
+      // 자동 업데이트 실행 (isAutoUpdate=true로 호출)
+      handleRefreshAllPrices(true);
+    }
+  }, [shouldAutoUpdate, assets.length, hasAutoUpdated, isMarketLoading, handleRefreshAllPrices, setHasAutoUpdated, setShouldAutoUpdate]);
 
   // 자산/관심종목 액션 훅
   const {

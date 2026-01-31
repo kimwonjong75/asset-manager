@@ -3,6 +3,7 @@ import { Asset, PortfolioSnapshot, SellRecord, WatchlistItem, ExchangeRates, All
 import { useGoogleDriveSync } from './useGoogleDriveSync';
 import { runMigrationIfNeeded } from '../utils/migrateData';
 import { mapToNewAssetStructure } from '../utils/portfolioCalculations';
+import { fillAllMissingDates } from '../utils/historyUtils';
 
 export const usePortfolioData = () => {
   const [error, setError] = useState<string | null>(null);
@@ -17,6 +18,8 @@ export const usePortfolioData = () => {
   const [allocationTargets, setAllocationTargets] = useState<AllocationTargets>({ weights: {} });
   const [sellAlertDropRate, setSellAlertDropRate] = useState<number>(15);
   const [hasAutoUpdated, setHasAutoUpdated] = useState<boolean>(false);
+  const [shouldAutoUpdate, setShouldAutoUpdate] = useState<boolean>(false);
+  const [lastUpdateDate, setLastUpdateDate] = useState<string | null>(null);
 
   const { isSignedIn, googleUser, isInitializing, handleSignIn, handleSignOut: hookSignOut, loadFromGoogleDrive: hookLoadFromGoogleDrive, autoSave: hookAutoSave } = useGoogleDriveSync({ onError: setError, onSuccessMessage: setSuccessMessage });
 
@@ -28,8 +31,13 @@ export const usePortfolioData = () => {
         const driveAssets = Array.isArray(data.assets) ? data.assets.map(mapToNewAssetStructure) : [];
         setAssets(driveAssets);
         
-        if (Array.isArray(data.portfolioHistory)) setPortfolioHistory(data.portfolioHistory);
-        else setPortfolioHistory([]);
+        if (Array.isArray(data.portfolioHistory)) {
+          // 누락된 날짜 보간 적용
+          const filledHistory = fillAllMissingDates(data.portfolioHistory);
+          setPortfolioHistory(filledHistory);
+        } else {
+          setPortfolioHistory([]);
+        }
         
         if (Array.isArray(data.sellHistory)) setSellHistory(data.sellHistory);
         else setSellHistory([]);
@@ -61,6 +69,16 @@ export const usePortfolioData = () => {
 
         if (typeof loaded.sellAlertDropRate === 'number' && loaded.sellAlertDropRate >= 0) {
           setSellAlertDropRate(loaded.sellAlertDropRate);
+        }
+
+        // 마지막 업데이트 날짜 확인 및 자동 업데이트 플래그 설정
+        const today = new Date().toISOString().slice(0, 10);
+        const savedLastUpdate = (loaded as { lastUpdateDate?: string }).lastUpdateDate;
+        setLastUpdateDate(savedLastUpdate || null);
+
+        // 오늘 아직 업데이트 안 했고, 자산이 있으면 자동 업데이트 예약
+        if (savedLastUpdate !== today && driveAssets.length > 0) {
+          setShouldAutoUpdate(true);
         }
 
         setSuccessMessage('Google Drive에서 포트폴리오를 불러왔습니다.');
@@ -163,7 +181,9 @@ export const usePortfolioData = () => {
     error, setError,
     successMessage, setSuccessMessage,
     hasAutoUpdated, setHasAutoUpdated,
-    
+    shouldAutoUpdate, setShouldAutoUpdate,
+    lastUpdateDate,
+
     // 액션
     handleSignIn,
     handleSignOut,

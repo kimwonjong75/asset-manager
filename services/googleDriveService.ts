@@ -1,6 +1,8 @@
 // Google Drive API 서비스
 // Google Identity Services를 사용한 OAuth 인증 및 Drive API 연동
 
+import LZString from 'lz-string';
+
 export interface GoogleUser {
   email: string;
   name: string;
@@ -325,13 +327,13 @@ class GoogleDriveService {
     }
   }
 
-  // 파일 목록 가져오기
-  async listFiles(): Promise<DriveFile[]> {
+  // 파일 목록 가져오기 (기본: portfolio.json)
+  async listFiles(fileName: string = 'portfolio.json'): Promise<DriveFile[]> {
     if (!this.accessToken) {
       throw new Error('Not authenticated');
     }
 
-    let query = "name = 'portfolio.json' and trashed = false";
+    let query = `name = '${fileName}' and trashed = false`;
     if (this.folderId) {
       query += ` and '${this.folderId}' in parents`;
     }
@@ -364,17 +366,56 @@ class GoogleDriveService {
     return data.files || [];
   }
 
-  // 파일 저장 (생성 또는 업데이트)
+  // 패턴으로 파일 목록 가져오기 (예: history_*.json)
+  async listFilesByPattern(pattern: string): Promise<DriveFile[]> {
+    if (!this.accessToken) {
+      throw new Error('Not authenticated');
+    }
+
+    let query = `name contains '${pattern}' and trashed = false`;
+    if (this.folderId) {
+      query += ` and '${this.folderId}' in parents`;
+    }
+
+    const searchParams = new URLSearchParams({
+      q: query,
+      spaces: 'drive',
+      fields: 'files(id,name),nextPageToken',
+      pageSize: '100',
+      supportsAllDrives: 'true',
+      includeItemsFromAllDrives: 'true',
+    });
+
+    const response = await fetch(
+      `https://www.googleapis.com/drive/v3/files?${searchParams.toString()}`,
+      {
+        headers: {
+          Authorization: `Bearer ${this.accessToken}`,
+        },
+      }
+    );
+
+    if (!response.ok) {
+      return [];
+    }
+
+    const data = await response.json();
+    return data.files || [];
+  }
+
+  // 파일 저장 (생성 또는 업데이트) - LZ-String 압축 적용
   async saveFile(content: string, fileName: string = 'portfolio.json'): Promise<void> {
     if (!this.accessToken) {
       throw new Error('Not authenticated');
     }
 
     // 기존 파일 확인
-    const files = await this.listFiles();
+    const files = await this.listFiles(fileName);
     const existingFile = files.find(f => f.name === fileName);
 
-    const fileContent = new Blob([content], { type: 'application/json' });
+    // LZ-String UTF16 압축 적용
+    const compressed = LZString.compressToUTF16(content);
+    const fileContent = new Blob([compressed], { type: 'application/json' });
     const baseMetadata = {
       name: fileName,
       mimeType: 'application/json',
@@ -427,13 +468,13 @@ class GoogleDriveService {
     }
   }
 
-  // 파일 불러오기
+  // 파일 불러오기 - LZ-String 압축 해제 및 레거시 호환
   async loadFile(fileName: string = 'portfolio.json'): Promise<string | null> {
     if (!this.accessToken) {
       throw new Error('Not authenticated');
     }
 
-    const files = await this.listFiles();
+    const files = await this.listFiles(fileName);
     const file = files.find(f => f.name === fileName);
 
     if (!file) {
@@ -455,7 +496,20 @@ class GoogleDriveService {
       throw new Error(`Failed to load file (${response.status})`);
     }
 
-    return await response.text();
+    const rawContent = await response.text();
+
+    // LZ-String 압축 해제 시도 (레거시 호환: 압축 안 된 파일도 지원)
+    try {
+      const decompressed = LZString.decompressFromUTF16(rawContent);
+      if (decompressed && decompressed.startsWith('{')) {
+        return decompressed;
+      }
+    } catch {
+      // 압축 해제 실패 시 원본 반환
+    }
+
+    // 압축되지 않은 레거시 데이터 그대로 반환
+    return rawContent;
   }
 }
 
