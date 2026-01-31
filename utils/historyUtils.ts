@@ -5,7 +5,7 @@ import {
   fetchExchangeRateHistory,
   convertTickerForAPI,
   isCryptoExchange,
-  HistoricalPriceData,
+  HistoricalPriceResult,
 } from '../services/historicalPriceService';
 
 /**
@@ -237,8 +237,8 @@ export const backfillWithRealPrices = async (
     ]);
 
     // 결과 확인
-    const hasStockData = Object.values(stockPrices).some(r => r.data && Object.keys(r.data).length > 0);
-    const hasCryptoData = Object.values(cryptoPrices).some(r => r.data && Object.keys(r.data).length > 0);
+    const hasStockData = Object.values(stockPrices as Record<string, HistoricalPriceResult>).some(r => r.data && Object.keys(r.data).length > 0);
+    const hasCryptoData = Object.values(cryptoPrices as Record<string, HistoricalPriceResult>).some(r => r.data && Object.keys(r.data).length > 0);
 
     if (!hasStockData && !hasCryptoData) {
       console.warn('[Backfill] API에서 데이터를 받지 못함, 기존 보간 방식 사용');
