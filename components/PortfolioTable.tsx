@@ -4,6 +4,8 @@ import { useOnClickOutside } from '../hooks/useOnClickOutside';
 import { PortfolioTableProps, SortKey, SortDirection } from '../types/ui';
 import { usePortfolioData } from './portfolio-table/usePortfolioData';
 import PortfolioTableRow from './portfolio-table/PortfolioTableRow';
+import Tooltip from './common/Tooltip';
+import { COLUMN_DESCRIPTIONS } from '../constants/columnDescriptions';
 
 const SortIcon = ({ sortKey, sortConfig }: { sortKey: SortKey, sortConfig: { key: SortKey; direction: SortDirection } | null }) => {
   if (!sortConfig || sortConfig.key !== sortKey) return <span className="opacity-30">↕</span>;
@@ -176,18 +178,60 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
                 }} />
               </th>
               <th scope="col" className={`${thClasses} z-20`} onClick={() => requestSort('name')}>
-                <div className={thContentClasses}><span>종목명</span> <SortIcon sortKey='name' sortConfig={sortConfig}/></div>
+                <Tooltip content={COLUMN_DESCRIPTIONS.name} position="bottom">
+                  <div className={thContentClasses}><span>종목명</span> <SortIcon sortKey='name' sortConfig={sortConfig}/></div>
+                </Tooltip>
               </th>
-              {showHiddenColumns && <th scope="col" className={`${thClasses} text-right`} onClick={() => requestSort('quantity')}><div className={`${thContentClasses} justify-end`}><span>보유수량</span> <SortIcon sortKey='quantity' sortConfig={sortConfig}/></div></th>}
-              {showHiddenColumns && <th scope="col" className={`${thClasses} text-right`} onClick={() => requestSort('purchasePrice')}><div className={`${thContentClasses} justify-end`}><span>매수평균가</span> <SortIcon sortKey='purchasePrice' sortConfig={sortConfig}/></div></th>}
-              <th scope="col" className={`${thClasses} text-right`} onClick={() => requestSort('currentPrice')}><div className={`${thContentClasses} justify-end`}><span>현재가</span> <SortIcon sortKey='currentPrice' sortConfig={sortConfig}/></div></th>
-              <th scope="col" className={`${thClasses} justify-end`} onClick={toggleReturnSort}><div className={`${thContentClasses} justify-end`}><span>{getReturnHeaderLabel()}</span></div></th>
-              <th scope="col" className={`${thClasses} justify-end`} onClick={() => requestSort('purchaseValue')}><div className={`${thContentClasses} justify-end`}><span>투자원금</span> <SortIcon sortKey='purchaseValue' sortConfig={sortConfig}/></div></th>
-              <th scope="col" className={`${thClasses} justify-end`} onClick={() => requestSort('currentValue')}><div className={`${thContentClasses} justify-end`}><span>평가총액</span> <SortIcon sortKey='currentValue' sortConfig={sortConfig}/></div></th>
-              {showHiddenColumns && <th scope="col" className={`${thClasses} text-center`} onClick={() => requestSort('purchaseDate')}><div className={`${thContentClasses} justify-center`}><span>매수일</span> <SortIcon sortKey='purchaseDate' sortConfig={sortConfig}/></div></th>}
-              {showHiddenColumns && <th scope="col" className={`${thClasses} justify-end`} onClick={() => requestSort('allocation')}><div className={`${thContentClasses} justify-end`}><span>비중</span> <SortIcon sortKey='allocation' sortConfig={sortConfig}/></div></th>}
-              <th scope="col" className={`${thClasses} justify-end`} onClick={() => requestSort('dropFromHigh')}><div className={`${thContentClasses} justify-end`}><span>최고가 대비</span> <SortIcon sortKey='dropFromHigh' sortConfig={sortConfig}/></div></th>
-              <th scope="col" className={`${thClasses} justify-end`} onClick={() => requestSort('yesterdayChange')}><div className={`${thContentClasses} justify-end`}><span>어제대비</span> <SortIcon sortKey='yesterdayChange' sortConfig={sortConfig}/></div></th>
+              {showHiddenColumns && <th scope="col" className={`${thClasses} text-right`} onClick={() => requestSort('quantity')}>
+                <Tooltip content={COLUMN_DESCRIPTIONS.quantity} position="bottom">
+                  <div className={`${thContentClasses} justify-end`}><span>보유수량</span> <SortIcon sortKey='quantity' sortConfig={sortConfig}/></div>
+                </Tooltip>
+              </th>}
+              {showHiddenColumns && <th scope="col" className={`${thClasses} text-right`} onClick={() => requestSort('purchasePrice')}>
+                <Tooltip content={COLUMN_DESCRIPTIONS.purchasePrice} position="bottom">
+                  <div className={`${thContentClasses} justify-end`}><span>매수평균가</span> <SortIcon sortKey='purchasePrice' sortConfig={sortConfig}/></div>
+                </Tooltip>
+              </th>}
+              <th scope="col" className={`${thClasses} text-right`} onClick={() => requestSort('currentPrice')}>
+                <Tooltip content={COLUMN_DESCRIPTIONS.currentPrice} position="bottom">
+                  <div className={`${thContentClasses} justify-end`}><span>현재가</span> <SortIcon sortKey='currentPrice' sortConfig={sortConfig}/></div>
+                </Tooltip>
+              </th>
+              <th scope="col" className={`${thClasses} justify-end`} onClick={toggleReturnSort}>
+                <Tooltip content={sortConfig?.key === 'profitLossKRW' ? COLUMN_DESCRIPTIONS.profitLossKRW : COLUMN_DESCRIPTIONS.returnPercentage} position="bottom">
+                  <div className={`${thContentClasses} justify-end`}><span>{getReturnHeaderLabel()}</span></div>
+                </Tooltip>
+              </th>
+              <th scope="col" className={`${thClasses} justify-end`} onClick={() => requestSort('purchaseValue')}>
+                <Tooltip content={COLUMN_DESCRIPTIONS.purchaseValue} position="bottom">
+                  <div className={`${thContentClasses} justify-end`}><span>투자원금</span> <SortIcon sortKey='purchaseValue' sortConfig={sortConfig}/></div>
+                </Tooltip>
+              </th>
+              <th scope="col" className={`${thClasses} justify-end`} onClick={() => requestSort('currentValue')}>
+                <Tooltip content={COLUMN_DESCRIPTIONS.currentValue} position="bottom">
+                  <div className={`${thContentClasses} justify-end`}><span>평가총액</span> <SortIcon sortKey='currentValue' sortConfig={sortConfig}/></div>
+                </Tooltip>
+              </th>
+              {showHiddenColumns && <th scope="col" className={`${thClasses} text-center`} onClick={() => requestSort('purchaseDate')}>
+                <Tooltip content={COLUMN_DESCRIPTIONS.purchaseDate} position="bottom">
+                  <div className={`${thContentClasses} justify-center`}><span>매수일</span> <SortIcon sortKey='purchaseDate' sortConfig={sortConfig}/></div>
+                </Tooltip>
+              </th>}
+              {showHiddenColumns && <th scope="col" className={`${thClasses} justify-end`} onClick={() => requestSort('allocation')}>
+                <Tooltip content={COLUMN_DESCRIPTIONS.allocation} position="bottom">
+                  <div className={`${thContentClasses} justify-end`}><span>비중</span> <SortIcon sortKey='allocation' sortConfig={sortConfig}/></div>
+                </Tooltip>
+              </th>}
+              <th scope="col" className={`${thClasses} justify-end`} onClick={() => requestSort('dropFromHigh')}>
+                <Tooltip content={COLUMN_DESCRIPTIONS.dropFromHigh} position="bottom">
+                  <div className={`${thContentClasses} justify-end`}><span>최고가 대비</span> <SortIcon sortKey='dropFromHigh' sortConfig={sortConfig}/></div>
+                </Tooltip>
+              </th>
+              <th scope="col" className={`${thClasses} justify-end`} onClick={() => requestSort('yesterdayChange')}>
+                <Tooltip content={COLUMN_DESCRIPTIONS.yesterdayChange} position="bottom">
+                  <div className={`${thContentClasses} justify-end`}><span>어제대비</span> <SortIcon sortKey='yesterdayChange' sortConfig={sortConfig}/></div>
+                </Tooltip>
+              </th>
               <th scope="col" className="px-4 py-3 text-center sticky top-0 bg-gray-700 z-20">관리</th>
             </tr>
           </thead>

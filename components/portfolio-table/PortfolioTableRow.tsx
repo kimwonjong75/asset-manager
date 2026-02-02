@@ -5,6 +5,8 @@ import AssetTrendChart from '../AssetTrendChart';
 import { MoreHorizontal } from 'lucide-react';
 import { useOnClickOutside } from '../../hooks/useOnClickOutside';
 import { formatNumber, formatOriginalCurrency, formatKRW, formatProfitLoss, getChangeColor } from './utils';
+import Tooltip from '../common/Tooltip';
+import { COLUMN_DESCRIPTIONS } from '../../constants/columnDescriptions';
 
 // ----------------------------------------------------------------------
 // [추가된 컴포넌트] 퀀트 신호 배지
@@ -134,60 +136,113 @@ const PortfolioTableRow: React.FC<PortfolioTableRowProps> = ({
         <td className="px-4 py-4 font-medium text-white break-words">
           <div className="flex flex-col">
              <div className="flex items-center gap-2">
-               <a
-                 href={`https://www.google.com/search?q=${encodeURIComponent(asset.ticker + ' 주가')}`}
-                 target="_blank"
-                 rel="noopener noreferrer"
-                 className="font-bold hover:underline text-primary-light cursor-pointer"
-                 title={asset.memo || undefined}
-               >
-                 {(asset.customName?.trim() || asset.name)}
-               </a>
+               <Tooltip content={asset.memo} position="right" wrap>
+                 <a
+                   href={`https://www.google.com/search?q=${encodeURIComponent(asset.ticker + ' 주가')}`}
+                   target="_blank"
+                   rel="noopener noreferrer"
+                   className="font-bold hover:underline text-primary-light cursor-pointer"
+                 >
+                   {(asset.customName?.trim() || asset.name)}
+                 </a>
+               </Tooltip>
                <SignalBadge signal={asset.indicators?.signal} />
-               {isAlertTriggered && <span className="text-xs" title="알림 조건 도달">⚠️</span>}
+               {isAlertTriggered && (
+                 <Tooltip content="알림 조건 도달" position="right">
+                   <span className="text-xs">⚠️</span>
+                 </Tooltip>
+               )}
              </div>
             <span className="text-xs text-gray-500 break-all">{asset.ticker} | {asset.exchange}</span>
           </div>
         </td>
-        {showHiddenColumns && <td className="px-4 py-4 text-right">{formatNumber(asset.quantity)}</td>}
         {showHiddenColumns && (
           <td className="px-4 py-4 text-right">
-            <div>{formatOriginalCurrency(asset.purchasePrice, asset.currency)}</div>
-            {isNonKRW && <div className="text-xs text-gray-500">≈ {formatKRW(asset.metrics.purchasePriceKRW)}</div>}
+            <Tooltip content={COLUMN_DESCRIPTIONS.quantity} position="top">
+              <span>{formatNumber(asset.quantity)}</span>
+            </Tooltip>
+          </td>
+        )}
+        {showHiddenColumns && (
+          <td className="px-4 py-4 text-right">
+            <Tooltip content={COLUMN_DESCRIPTIONS.purchasePrice} position="top">
+              <div>
+                <div>{formatOriginalCurrency(asset.purchasePrice, asset.currency)}</div>
+                {isNonKRW && <div className="text-xs text-gray-500">≈ {formatKRW(asset.metrics.purchasePriceKRW)}</div>}
+              </div>
+            </Tooltip>
           </td>
         )}
         <td className="px-4 py-4 text-right">
-          <div className="font-semibold text-white">{formatOriginalCurrency(asset.currentPrice, asset.currency)}</div>
-          {isNonKRW && <div className="text-xs text-gray-500">≈ {formatKRW(asset.metrics.currentPriceKRW)}</div>}
-          <RSIIndicator rsi={asset.indicators?.rsi} status={asset.indicators?.rsi_status} />
+          <Tooltip content={COLUMN_DESCRIPTIONS.currentPrice} position="top">
+            <div>
+              <div className="font-semibold text-white">{formatOriginalCurrency(asset.currentPrice, asset.currency)}</div>
+              {isNonKRW && <div className="text-xs text-gray-500">≈ {formatKRW(asset.metrics.currentPriceKRW)}</div>}
+              <RSIIndicator rsi={asset.indicators?.rsi} status={asset.indicators?.rsi_status} />
+            </div>
+          </Tooltip>
         </td>
         <td className={`px-4 py-4 font-medium text-right ${getChangeColor(returnPercentage)}`}>
-          <div>{returnPercentage.toFixed(2)}%</div>
-          <div className="text-xs opacity-80">{formatProfitLoss(profitLoss, asset.currency)}</div>
+          <Tooltip content={COLUMN_DESCRIPTIONS.returnPercentage} position="top">
+            <div>
+              <div>{returnPercentage.toFixed(2)}%</div>
+              <div className="text-xs opacity-80">{formatProfitLoss(profitLoss, asset.currency)}</div>
+            </div>
+          </Tooltip>
         </td>
         <td className="px-4 py-4 text-right">
-          <div className={investmentColor}>{formatOriginalCurrency(purchaseValue, asset.currency)}</div>
-          {isNonKRW && <div className="text-xs text-gray-500">≈ {formatKRW(purchaseValueKRW)}</div>}
+          <Tooltip content={COLUMN_DESCRIPTIONS.purchaseValue} position="top">
+            <div>
+              <div className={investmentColor}>{formatOriginalCurrency(purchaseValue, asset.currency)}</div>
+              {isNonKRW && <div className="text-xs text-gray-500">≈ {formatKRW(purchaseValueKRW)}</div>}
+            </div>
+          </Tooltip>
         </td>
         <td className="px-4 py-4 text-right">
-          <div className="font-semibold text-white">{formatOriginalCurrency(currentValue, asset.currency)}</div>
-          {isNonKRW && <div className="text-xs text-gray-500">≈ {formatKRW(currentValueKRW)}</div>}
+          <Tooltip content={COLUMN_DESCRIPTIONS.currentValue} position="top">
+            <div>
+              <div className="font-semibold text-white">{formatOriginalCurrency(currentValue, asset.currency)}</div>
+              {isNonKRW && <div className="text-xs text-gray-500">≈ {formatKRW(currentValueKRW)}</div>}
+            </div>
+          </Tooltip>
         </td>
-        {showHiddenColumns && <td className="px-4 py-4 text-center">{asset.purchaseDate}</td>}
-        {showHiddenColumns && <td className="px-4 py-4 text-right">{allocation.toFixed(2)}%</td>}
+        {showHiddenColumns && (
+          <td className="px-4 py-4 text-center">
+            <Tooltip content={COLUMN_DESCRIPTIONS.purchaseDate} position="top">
+              <span>{asset.purchaseDate}</span>
+            </Tooltip>
+          </td>
+        )}
+        {showHiddenColumns && (
+          <td className="px-4 py-4 text-right">
+            <Tooltip content={COLUMN_DESCRIPTIONS.allocation} position="top">
+              <span>{allocation.toFixed(2)}%</span>
+            </Tooltip>
+          </td>
+        )}
         <td className={`px-4 py-4 font-medium text-right ${getChangeColor(dropFromHigh)}`}>
-            <div>{dropFromHigh.toFixed(2)}%</div>
-            <div className="text-xs opacity-80">{formatProfitLoss(diffFromHigh, asset.currency)}</div>
+          <Tooltip content={COLUMN_DESCRIPTIONS.dropFromHigh} position="top">
+            <div>
+              <div>{dropFromHigh.toFixed(2)}%</div>
+              <div className="text-xs opacity-80">{formatProfitLoss(diffFromHigh, asset.currency)}</div>
+            </div>
+          </Tooltip>
         </td>
         <td className={`px-4 py-4 font-medium text-right ${getChangeColor(finalYesterdayChangeRate)}`}>
-          <div>{finalYesterdayChangeRate.toFixed(2)}%</div>
-          <div className="text-xs opacity-80">{formatProfitLoss(diffFromYesterday, Currency.KRW)}</div>
+          <Tooltip content={COLUMN_DESCRIPTIONS.yesterdayChange} position="top">
+            <div>
+              <div>{finalYesterdayChangeRate.toFixed(2)}%</div>
+              <div className="text-xs opacity-80">{formatProfitLoss(diffFromYesterday, Currency.KRW)}</div>
+            </div>
+          </Tooltip>
         </td>
         <td className="px-4 py-4 text-center relative">
           <div className="flex items-center justify-center gap-1">
-            <button onClick={() => handleToggleExpand(asset.id)} className="p-2 text-gray-300 hover:text-white" title="차트">
-                <ChartBarIcon />
-            </button>
+            <Tooltip content="차트" position="left">
+              <button onClick={() => handleToggleExpand(asset.id)} className="p-2 text-gray-300 hover:text-white">
+                  <ChartBarIcon />
+              </button>
+            </Tooltip>
             <button onClick={() => setOpenMenuId(openMenuId === asset.id ? null : asset.id)} className="p-2 text-gray-300 hover:text-white">
                 <MoreHorizontal className="h-5 w-5" />
             </button>

@@ -38,7 +38,8 @@ KIM'S 퀸트자산관리는 계량적 투자 전략을 기반으로 한 종합 �
 자산-관리-시트/
 ├── components/                 # React 컴포넌트
 │   ├── common/               # 공통 컴포넌트
-│   │   └── Toggle.tsx       # 토글 스위치 컴포넌트
+│   │   ├── Toggle.tsx       # 토글 스위치 컴포넌트
+│   │   └── Tooltip.tsx      # 툴팁 컴포넌트 (계산 방법 설명, 메모 표시)
 │   ├── AddAssetForm.tsx     # 자산 추가 폼
 │   ├── AddNewAssetModal.tsx # 새 자산 추가 모달
 │   ├── AllocationChart.tsx  # 자산 배분 차트
@@ -102,6 +103,8 @@ KIM'S 퀸트자산관리는 계량적 투자 전략을 기반으로 한 종합 �
 │   ├── api.ts             # API 관련 타입 정의
 │   ├── store.ts           # 상태 관리 관련 타입 정의
 │   └── ui.ts              # UI 컴포넌트 관련 타입 정의
+├── constants/              # 상수 정의
+│   └── columnDescriptions.ts # 포트폴리오 테이블 컬럼별 계산 방법 설명
 ├── App.tsx                 # 메인 애플리케이션
 ├── index.tsx              # 애플리케이션 진입점
 └── initialData.ts         # 초기 데이터
@@ -287,9 +290,12 @@ App.tsx
 **구조**:
 - `components/portfolio-table/` 디렉토리로 로직 분리
 - `usePortfolioData`: 데이터 가공, 정렬, 필터링 로직 담당
-**주요 변경사항**:
-- **수익률 계산 로직 개선 (Upbit/Bithumb 예외 처리)**: Upbit/Bithumb 자산의 경우, 설정된 통화(`currency`)와 무관하게 API가 반환하는 원화(`KRW`) 가격을 기준으로 수익률을 계산하도록 로직 수정. `currency`가 'USD'로 설정되어 있어도 `currentPrice`는 KRW(API 값), `yesterdayPrice`는 USD(데이터 불일치)인 경우를 감지하여 환율을 자동 적용해 올바른 등락률(`yesterdayChange`)을 계산하고 비정상적인 수익률(예: 147,000%) 표시 문제를 해결함.
-- **변동액 표시 개선**: 전일 대비 변동액(`diffFromYesterday`) 또한 KRW 기준으로 계산 및 표시.
+- `constants/columnDescriptions.ts`: 컬럼별 계산 방법 설명 상수
+**주요 기능**:
+- **컬럼 툴팁**: 헤더 및 데이터 셀에 마우스 오버 시 해당 항목의 계산 방법을 툴팁으로 표시
+- **메모 툴팁**: 종목명에 마우스 오버 시 메모 내용 표시 (줄바꿈 지원)
+- **수익률 계산 로직 (Upbit/Bithumb 예외 처리)**: Upbit/Bithumb 자산의 경우, 설정된 통화(`currency`)와 무관하게 API가 반환하는 원화(`KRW`) 가격을 기준으로 수익률을 계산
+- **변동액 표시**: 전일 대비 변동액(`diffFromYesterday`) KRW 기준으로 계산 및 표시
 
 ### 7. RebalancingTable.tsx (포트폴리오 리밸런싱)
 **역할**: 목표 자산 비중 설정 및 리밸런싱 가이드 제공
@@ -647,6 +653,23 @@ gcloud run deploy asset-manager --source . --region asia-northeast3 --allow-unau
 ---
 
 ## 📝 변경 이력
+
+### 2026-02-02: 포트폴리오 테이블 툴팁 기능 추가
+- **기능 추가 — 컬럼 계산 방법 툴팁**:
+  - 테이블 헤더 및 데이터 셀에 마우스 오버 시 해당 항목의 계산 방법을 툴팁으로 표시
+  - 예: 최고가 대비 → "(현재가 - 52주 최고가) / 52주 최고가 × 100"
+- **기능 개선 — 메모 툴팁**:
+  - 기존 브라우저 기본 `title` 속성을 커스텀 툴팁으로 교체 (빠른 반응 속도)
+  - 긴 메모는 자동 줄바꿈, 입력 시 줄바꿈도 유지
+- **새로운 파일**:
+  - `components/common/Tooltip.tsx`: 공용 툴팁 컴포넌트 (CSS-only, `wrap` prop으로 줄바꿈 제어)
+  - `constants/columnDescriptions.ts`: 컬럼별 계산 방법 설명 상수
+- **수정된 파일**:
+  - `components/PortfolioTable.tsx`: 헤더에 Tooltip 적용
+  - `components/portfolio-table/PortfolioTableRow.tsx`: 데이터 셀 및 메모에 Tooltip 적용
+- **의존 관계**:
+  - `PortfolioTable.tsx` → `Tooltip`, `COLUMN_DESCRIPTIONS`
+  - `PortfolioTableRow.tsx` → `Tooltip`, `COLUMN_DESCRIPTIONS`
 
 ### 2026-02-02: 히스토리 백필(Backfill) 기능 구현
 - **기능 추가 — 실제 과거 시세로 히스토리 채우기**:
