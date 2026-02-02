@@ -165,3 +165,54 @@ export async function fetchExchangeRateJPY(): Promise<number> {
     const map = await fetchBatchAssetPrices([{ ticker: 'JPY/KRW', exchange: 'KRX', id: 'jpy', category: AssetCategory.KOREAN_STOCK, currency: Currency.KRW }]);
     return map.get('jpy')?.priceOriginal || 0;
 }
+
+// 기본 환율 (폴백용)
+const DEFAULT_EXCHANGE_RATES: Record<string, number> = {
+    'USD-KRW': 1400,
+    'JPY-KRW': 9.5,
+    'EUR-KRW': 1500,
+    'CNY-KRW': 195,
+};
+
+/**
+ * 현재 환율 조회 (Cloud Run API 사용)
+ */
+export async function fetchCurrentExchangeRate(from: Currency, to: Currency): Promise<number> {
+    try {
+        const response = await fetch(`${STOCK_API_URL}/exchange-rate`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ from, to }),
+        });
+
+        if (!response.ok) throw new Error(`API Error: ${response.status}`);
+
+        const data = await response.json();
+        return data.rate || DEFAULT_EXCHANGE_RATES[`${from}-${to}`] || 1;
+    } catch (e) {
+        console.error('[priceService] fetchCurrentExchangeRate failed:', e);
+        return DEFAULT_EXCHANGE_RATES[`${from}-${to}`] || 1;
+    }
+}
+
+/**
+ * 과거 날짜 환율 조회 (Cloud Run API 사용)
+ * @param date YYYY-MM-DD 형식
+ */
+export async function fetchHistoricalExchangeRate(date: string, from: Currency, to: Currency): Promise<number> {
+    try {
+        const response = await fetch(`${STOCK_API_URL}/exchange-rate`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ from, to, date }),
+        });
+
+        if (!response.ok) throw new Error(`API Error: ${response.status}`);
+
+        const data = await response.json();
+        return data.rate || DEFAULT_EXCHANGE_RATES[`${from}-${to}`] || 1;
+    } catch (e) {
+        console.error('[priceService] fetchHistoricalExchangeRate failed:', e);
+        return DEFAULT_EXCHANGE_RATES[`${from}-${to}`] || 1;
+    }
+}

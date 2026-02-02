@@ -1,8 +1,7 @@
 import { useCallback, useState } from 'react';
 import { Asset, AssetCategory, Currency, ExchangeRates, PortfolioSnapshot, SellRecord, WatchlistItem } from '../types';
 // [수정] fetchAssetData import 복구 (단일 갱신 시 필요)
-import { fetchBatchAssetPrices as fetchBatchAssetPricesNew, fetchAssetData as fetchAssetDataNew, fetchExchangeRate, fetchExchangeRateJPY } from '../services/priceService';
-import { fetchCurrentExchangeRate } from '../services/geminiService';
+import { fetchBatchAssetPrices as fetchBatchAssetPricesNew, fetchAssetData as fetchAssetDataNew, fetchExchangeRate, fetchExchangeRateJPY, fetchCurrentExchangeRate } from '../services/priceService';
 import { fetchUpbitPricesBatch } from '../services/upbitService';
 
 interface UseMarketDataProps {

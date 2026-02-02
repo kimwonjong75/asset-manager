@@ -6,6 +6,8 @@
 - **Data Source:**
   - 주식: Google Cloud Run (Python) + FinanceDataReader
   - 코인: Upbit API
+  - 환율: Google Cloud Run + FinanceDataReader (`/exchange-rate` 엔드포인트)
+  - AI 검색/분석: Gemini API (종목 검색, 포트폴리오 AI 분석만)
   - 데이터 저장소: Google Drive (JSON 동기화)
 - **State Management:** Context API (PortfolioContext)
 

@@ -216,10 +216,10 @@ App.tsx
 │   └── useMarketData.ts ─────┬─── priceService.ts (주식/ETF)
 │                             └─── upbitService.ts (암호화폐)
 ├── services/
-│   ├── priceService.ts      (시세 정보 - Cloud Run /)
-│   ├── upbitService.ts      (암호화폐 - Cloud Run /upbit) ← 신규 의존성
+│   ├── priceService.ts      (시세 정보 - Cloud Run / + 환율 - Cloud Run /exchange-rate)
+│   ├── upbitService.ts      (암호화폐 - Cloud Run /upbit)
 │   ├── googleDriveService.ts (클라우드 저장)
-│   └── geminiService.ts    (AI 분석)
+│   └── geminiService.ts    (AI 분석, 종목 검색)
 └── components/             (UI 컴포넌트들)
 ```
 
@@ -245,11 +245,11 @@ App.tsx
   - **일관된 수익률**: 대시보드와 손익 차트의 수익률이 동일하게 표시됨
 - **usePortfolioHistory**: 매일 포트폴리오 스냅샷 저장 (KRW 변환 후 저장)
 
-### 3. priceService.ts (주식/ETF 시세 서비스)
-**역할**: Cloud Run 서버를 통한 주식/ETF 시세 정보 관리
+### 3. priceService.ts (주식/ETF/환율 서비스)
+**역할**: Cloud Run 서버를 통한 시세 및 환율 정보 관리
 **책임**:
 - 배치 단위 시세 조회 (20개씩 청크 처리)
-- 환율 정보 조회
+- 환율 정보 조회 (현재 및 과거 날짜) ← **Gemini에서 이전됨**
 - 재시도 로직 (1회)
 - 에러 처리 및 모킹 데이터 제공
 **대상 자산**:
@@ -257,6 +257,7 @@ App.tsx
 - 미국주식 (NASDAQ, NYSE, AMEX)
 - 해외주식 (TSE 등)
 - ETF, 채권, 실물자산
+- 환율 (USD/KRW, JPY/KRW, EUR/KRW, CNY/KRW)
 
 ### 4. upbitService.ts (암호화폐 시세 서비스) ← **신규/수정**
 **역할**: Cloud Run 프록시를 통한 업비트 암호화폐 시세 조회
@@ -411,6 +412,7 @@ Upbit/Bithumb → 암호화폐
 |------|--------|------|-----------|
 | `/` | POST | 주식/ETF 시세 조회 | `{ "tickers": [{"ticker": "005930", "exchange": "KRX"}] }` |
 | `/upbit` | POST | 암호화폐 시세 조회 | `{ "symbols": ["BTC", "ETH"] }` |
+| `/exchange-rate` | POST | 환율 조회 (현재/과거) | `{ "from": "USD", "to": "KRW", "date": "2024-01-15" }` |
 
 ### 주요 파일
 ```
@@ -421,25 +423,31 @@ cloud-run/
 
 ### main.py 핵심 기능
 ```python
-# 기존: 주식/ETF 시세 조회 (FinanceDataReader)
+# 주식/ETF 시세 조회 (FinanceDataReader)
 def fetch_single_ticker(ticker):
     df = fdr.DataReader(ticker, start=start_date, end=end_date)
     ...
 
-# 신규: 업비트 프록시
+# 업비트 프록시
 def fetch_upbit_prices(markets):
     url = f"https://api.upbit.com/v1/ticker?markets={markets_param}"
     response = requests.get(url)
+    ...
+
+# 환율 조회 (FinanceDataReader) - 신규
+def fetch_exchange_rate(from_currency, to_currency, target_date=None):
+    symbol = f"{from_currency}/{to_currency}"  # 예: USD/KRW
+    df = fdr.DataReader(symbol, start=start_date, end=end_date)
     ...
 
 @functions_framework.http
 def get_stock_prices(request):
     if path == '/upbit' or path == '/upbit/':
         # 업비트 프록시 처리
-        ...
+    elif path == '/exchange-rate' or path == '/exchange-rate/':
+        # 환율 조회 처리 (신규)
     else:
-        # 기존 주식 조회 처리
-        ...
+        # 주식 조회 처리
 ```
 
 ### 배포 명령
@@ -616,6 +624,23 @@ gcloud run deploy asset-manager --source . --region asia-northeast3 --allow-unau
 ---
 
 ## 📝 변경 이력
+
+### 2026-02-02: 환율 조회를 Gemini API에서 Cloud Run으로 이전
+- **기능 변경 — 환율 조회 API 이전**:
+  - Gemini API 사용을 줄이기 위해 환율 조회를 Cloud Run (FinanceDataReader)으로 이전
+  - 현재 환율 및 과거 날짜 환율 모두 지원
+- **새로운 엔드포인트**: Cloud Run `/exchange-rate`
+  - 요청: `{ "from": "USD", "to": "KRW", "date": "2024-01-15" }` (date는 선택)
+  - 응답: `{ "rate": 1350.5, "date": "2024-01-15", "from": "USD", "to": "KRW" }`
+- **영향받는 파일**:
+  - `main.py` (Cloud Run): `fetch_exchange_rate()` 함수 및 `/exchange-rate` 엔드포인트 추가
+  - `services/priceService.ts`: `fetchCurrentExchangeRate()`, `fetchHistoricalExchangeRate()` 함수 추가
+  - `hooks/useMarketData.ts`: import 경로 변경 (geminiService → priceService)
+  - `hooks/useAssetActions.ts`: import 경로 변경 (geminiService → priceService)
+  - `services/geminiService.ts`: 환율 관련 함수 제거
+- **의존 관계 변경**:
+  - 환율 조회: `geminiService.ts` → `priceService.ts` (Cloud Run `/exchange-rate`)
+  - Gemini API 사용처: 종목 검색(`searchSymbols`), 포트폴리오 AI 분석(`askPortfolioQuestion`)만 유지
 
 ### 2026-01-31: Google Drive 저장 최적화 및 자동 업데이트
 - **기능 추가 — LZ-String 압축**:

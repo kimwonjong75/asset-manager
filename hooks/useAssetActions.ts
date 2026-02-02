@@ -1,7 +1,6 @@
 import { useCallback, useState } from 'react';
 import { Asset, AssetCategory, BulkUploadResult, Currency, ExchangeRates, NewAssetForm, PortfolioSnapshot, SellRecord, WatchlistItem, ALLOWED_CATEGORIES, normalizeExchange } from '../types';
-import { fetchAssetData as fetchAssetDataNew, fetchExchangeRate, fetchExchangeRateJPY } from '../services/priceService';
-import { fetchHistoricalExchangeRate, fetchCurrentExchangeRate } from '../services/geminiService';
+import { fetchAssetData as fetchAssetDataNew, fetchExchangeRate, fetchExchangeRateJPY, fetchHistoricalExchangeRate, fetchCurrentExchangeRate } from '../services/priceService';
 
 interface UseAssetActionsProps {
   assets: Asset[];

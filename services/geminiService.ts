@@ -21,7 +21,6 @@ interface CacheEntry<T> {
 const CACHE_TTL = 5 * 60 * 1000; // 5분
 const priceCache = new Map<string, CacheEntry<AssetDataResult>>();
 const searchCache = new Map<string, CacheEntry<SymbolSearchResult[]>>();
-const exchangeRateCache = new Map<string, CacheEntry<number>>();
 
 function getCached<T>(cache: Map<string, CacheEntry<T>>, key: string): T | null {
   const entry = cache.get(key);
@@ -431,91 +430,7 @@ Ensure all prices are numbers. Do not miss any assets. Return ONLY the JSON arra
 }
 
 // =================================================================
-// 8. 환율 조회
-// =================================================================
-export const fetchCurrentExchangeRate = async (
-  fromCurrency: string, 
-  toCurrency: string
-): Promise<number> => {
-  if (fromCurrency === toCurrency) return 1;
-
-  const cacheKey = `${fromCurrency}-${toCurrency}`;
-  const cached = getCached(exchangeRateCache, cacheKey);
-  if (cached) return cached;
-
-  if (!ai) return getDefaultExchangeRate(fromCurrency, toCurrency);
-
-  const prompt = `Using Google Search, what was the closing exchange rate for the most recent business day between ${fromCurrency} and ${toCurrency}?
-Return the response ONLY as a JSON object with a single key "rate".
-The value should be a number representing how many ${toCurrency} one ${fromCurrency} is worth.
-For example, for USD to KRW, the response should be:
-{
-  "rate": 1380.25
-}
-Do not include any other text, symbols, or explanations. Your final output must be only the JSON object.`;
-
-  try {
-    const jsonText = await callGeminiWithSearch(prompt);
-    const data = JSON.parse(jsonText || "{}");
-
-    if (typeof data.rate !== 'number') {
-      throw new Error('Invalid rate format');
-    }
-
-    setCache(exchangeRateCache, cacheKey, data.rate);
-    console.log(`💱 Exchange rate ${fromCurrency}→${toCurrency}: ${data.rate}`);
-    return data.rate;
-  } catch (error) {
-    console.error(`Failed to fetch exchange rate ${fromCurrency}→${toCurrency}:`, error);
-    return getDefaultExchangeRate(fromCurrency, toCurrency);
-  }
-};
-
-export const fetchHistoricalExchangeRate = async (
-  date: string, 
-  fromCurrency: string, 
-  toCurrency: string
-): Promise<number> => {
-  if (fromCurrency === toCurrency) return 1;
-  if (!ai) return getDefaultExchangeRate(fromCurrency, toCurrency);
-
-  const prompt = `Using Google Search, what was the exchange rate between ${fromCurrency} and ${toCurrency} at the end of the day on ${date}?
-Return the response ONLY as a JSON object with a single key "rate".
-The value should be a number representing how many ${toCurrency} one ${fromCurrency} was worth.
-For example, for USD to KRW, the response should be:
-{
-  "rate": 1350.5
-}
-Do not include any other text, symbols, or explanations. Your final output must be only the JSON object.`;
-
-  try {
-    const jsonText = await callGeminiWithSearch(prompt);
-    const data = JSON.parse(jsonText || "{}");
-
-    if (typeof data.rate !== 'number') {
-      throw new Error('Invalid rate format');
-    }
-
-    return data.rate;
-  } catch (error) {
-    console.error(`Failed to fetch historical exchange rate:`, error);
-    return getDefaultExchangeRate(fromCurrency, toCurrency);
-  }
-};
-
-function getDefaultExchangeRate(from: string, to: string): number {
-  // 기본 환율 (폴백용)
-  const rates: Record<string, number> = {
-    'USD-KRW': 1400,
-    'JPY-KRW': 9.5,
-    'EUR-KRW': 1500,
-    'CNY-KRW': 195,
-  };
-  return rates[`${from}-${to}`] || 1;
-}
-
-// =================================================================
-// 9. 포트폴리오 분석 (AI 채팅)
+// 8. 포트폴리오 분석 (AI 채팅)
 // =================================================================
 function formatAssetsForAI(assets: Asset[]): string {
   return assets.map(asset => {
@@ -573,7 +488,7 @@ ${portfolioJson}
 export const analyzePortfolio = askPortfolioQuestion;
 
 // =================================================================
-// 10. 캐시 관리 유틸리티
+// 9. 캐시 관리 유틸리티
 // =================================================================
 export function clearPriceCache(): void {
   priceCache.clear();
@@ -583,14 +498,12 @@ export function clearPriceCache(): void {
 export function clearAllCaches(): void {
   priceCache.clear();
   searchCache.clear();
-  exchangeRateCache.clear();
   console.log("🗑️ All caches cleared");
 }
 
-export function getCacheStats(): { prices: number; searches: number; rates: number } {
+export function getCacheStats(): { prices: number; searches: number } {
   return {
     prices: priceCache.size,
     searches: searchCache.size,
-    rates: exchangeRateCache.size
   };
 }
