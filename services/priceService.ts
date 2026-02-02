@@ -174,10 +174,32 @@ const DEFAULT_EXCHANGE_RATES: Record<string, number> = {
     'CNY-KRW': 195,
 };
 
+// 환율 캐시 (5분 TTL)
+const exchangeRateCache = new Map<string, { rate: number; timestamp: number }>();
+const EXCHANGE_RATE_CACHE_TTL = 5 * 60 * 1000; // 5분
+
+function getCachedExchangeRate(key: string): number | null {
+    const cached = exchangeRateCache.get(key);
+    if (cached && Date.now() - cached.timestamp < EXCHANGE_RATE_CACHE_TTL) {
+        console.log(`[priceService] 💱 Cache hit: ${key}`);
+        return cached.rate;
+    }
+    exchangeRateCache.delete(key);
+    return null;
+}
+
+function setCachedExchangeRate(key: string, rate: number): void {
+    exchangeRateCache.set(key, { rate, timestamp: Date.now() });
+}
+
 /**
- * 현재 환율 조회 (Cloud Run API 사용)
+ * 현재 환율 조회 (Cloud Run API 사용, 5분 캐싱)
  */
 export async function fetchCurrentExchangeRate(from: Currency, to: Currency): Promise<number> {
+    const cacheKey = `current-${from}-${to}`;
+    const cached = getCachedExchangeRate(cacheKey);
+    if (cached !== null) return cached;
+
     try {
         const response = await fetch(`${STOCK_API_URL}/exchange-rate`, {
             method: 'POST',
@@ -188,7 +210,10 @@ export async function fetchCurrentExchangeRate(from: Currency, to: Currency): Pr
         if (!response.ok) throw new Error(`API Error: ${response.status}`);
 
         const data = await response.json();
-        return data.rate || DEFAULT_EXCHANGE_RATES[`${from}-${to}`] || 1;
+        const rate = data.rate || DEFAULT_EXCHANGE_RATES[`${from}-${to}`] || 1;
+        setCachedExchangeRate(cacheKey, rate);
+        console.log(`[priceService] 💱 Fetched: ${from}→${to} = ${rate}`);
+        return rate;
     } catch (e) {
         console.error('[priceService] fetchCurrentExchangeRate failed:', e);
         return DEFAULT_EXCHANGE_RATES[`${from}-${to}`] || 1;
@@ -196,10 +221,14 @@ export async function fetchCurrentExchangeRate(from: Currency, to: Currency): Pr
 }
 
 /**
- * 과거 날짜 환율 조회 (Cloud Run API 사용)
+ * 과거 날짜 환율 조회 (Cloud Run API 사용, 5분 캐싱)
  * @param date YYYY-MM-DD 형식
  */
 export async function fetchHistoricalExchangeRate(date: string, from: Currency, to: Currency): Promise<number> {
+    const cacheKey = `hist-${date}-${from}-${to}`;
+    const cached = getCachedExchangeRate(cacheKey);
+    if (cached !== null) return cached;
+
     try {
         const response = await fetch(`${STOCK_API_URL}/exchange-rate`, {
             method: 'POST',
@@ -210,7 +239,10 @@ export async function fetchHistoricalExchangeRate(date: string, from: Currency, 
         if (!response.ok) throw new Error(`API Error: ${response.status}`);
 
         const data = await response.json();
-        return data.rate || DEFAULT_EXCHANGE_RATES[`${from}-${to}`] || 1;
+        const rate = data.rate || DEFAULT_EXCHANGE_RATES[`${from}-${to}`] || 1;
+        setCachedExchangeRate(cacheKey, rate);
+        console.log(`[priceService] 💱 Fetched historical: ${date} ${from}→${to} = ${rate}`);
+        return rate;
     } catch (e) {
         console.error('[priceService] fetchHistoricalExchangeRate failed:', e);
         return DEFAULT_EXCHANGE_RATES[`${from}-${to}`] || 1;
