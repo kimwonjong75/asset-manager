@@ -10,7 +10,7 @@ KIM'S 퀸트자산관리는 계량적 투자 전략을 기반으로 한 종합 �
 - **환율 자동 반영**: USD, JPY 등 주요 통화 환율 자동 적용
 - **Google Drive 동기화**: 안전한 클라우드 저장소 연동 (LZ-String 압축 적용)
 - **앱 시작 시 자동 시세 업데이트**: 오늘 업데이트 안 했으면 자동 갱신
-- **히스토리 보간**: 앱을 안 열었던 날의 데이터 자동 채움
+- **히스토리 백필**: 앱을 안 열었던 날의 **실제 과거 시세**를 API로 조회하여 채움 (실패 시 보간으로 폴백)
 - **포트폴리오 분석**: 자산 배분, 수익률, 손익 추이 분석
 - **리밸런싱 목표 관리**: 자산군별 목표 비중 및 목표 총 자산 금액 설정/저장, 리밸런싱 가이드 제공
 - **추가매수 기록**: 보유 종목의 추가매수 시 가중평균 단가 자동 계산 및 메모 이력 기재
@@ -89,6 +89,7 @@ KIM'S 퀸트자산관리는 계량적 투자 전략을 기반으로 한 종합 �
 ├── services/                 # 외부 서비스 연동
 │   ├── geminiService.ts   # Gemini AI 서비스
 │   ├── googleDriveService.ts # Google Drive API
+│   ├── historicalPriceService.ts # 과거 시세 백필 서비스 (신규)
 │   ├── priceService.ts    # 시세 정보 서비스 (주식/ETF)
 │   └── upbitService.ts    # 업비트 API 서비스 (Cloud Run 프록시 경유)
 ├── utils/                    # 유틸리티 함수
@@ -213,11 +214,14 @@ const shouldUseUpbitAPI = (exchange: string, category?: AssetCategory): boolean 
 ```
 App.tsx
 ├── hooks/
-│   └── useMarketData.ts ─────┬─── priceService.ts (주식/ETF)
-│                             └─── upbitService.ts (암호화폐)
+│   ├── useMarketData.ts ─────┬─── priceService.ts (주식/ETF 실시간)
+│   │                         └─── upbitService.ts (암호화폐 실시간)
+│   └── usePortfolioData.ts ──┬─── historyUtils.ts (백필 로직)
+│                              └─── historicalPriceService.ts (과거 시세 API)
 ├── services/
 │   ├── priceService.ts      (시세 정보 - Cloud Run / + 환율 - Cloud Run /exchange-rate)
 │   ├── upbitService.ts      (암호화폐 - Cloud Run /upbit)
+│   ├── historicalPriceService.ts (과거 시세 - Cloud Run /history, /upbit/history)
 │   ├── googleDriveService.ts (클라우드 저장)
 │   └── geminiService.ts    (AI 분석, 종목 검색)
 └── components/             (UI 컴포넌트들)
@@ -412,6 +416,8 @@ Upbit/Bithumb → 암호화폐
 |------|--------|------|-----------|
 | `/` | POST | 주식/ETF 시세 조회 | `{ "tickers": [{"ticker": "005930", "exchange": "KRX"}] }` |
 | `/upbit` | POST | 암호화폐 시세 조회 | `{ "symbols": ["BTC", "ETH"] }` |
+| `/history` | POST | 주식/ETF 과거 시세 (백필용) | `{ "tickers": ["005930", "AAPL"], "start_date": "2024-01-01", "end_date": "2024-01-31" }` |
+| `/upbit/history` | POST | 암호화폐 과거 시세 (백필용) | `{ "symbols": ["BTC", "ETH"], "start_date": "2024-01-01", "end_date": "2024-01-31" }` |
 | `/exchange-rate` | POST | 환율 조회 (현재/과거) | `{ "from": "USD", "to": "KRW", "date": "2024-01-15" }` |
 
 ### 주요 파일
@@ -428,13 +434,23 @@ def fetch_single_ticker(ticker):
     df = fdr.DataReader(ticker, start=start_date, end=end_date)
     ...
 
+# 주식/ETF 과거 시세 조회 - 백필용 (신규)
+def fetch_historical_prices(ticker, start_date, end_date):
+    df = fdr.DataReader(ticker, start=start_date, end=end_date)
+    return {"data": {date: close_price, ...}, "ticker": ticker}
+
 # 업비트 프록시
 def fetch_upbit_prices(markets):
     url = f"https://api.upbit.com/v1/ticker?markets={markets_param}"
     response = requests.get(url)
     ...
 
-# 환율 조회 (FinanceDataReader) - 신규
+# 업비트 일봉 조회 - 백필용 (신규)
+def fetch_upbit_candles(market, start_date, end_date):
+    url = "https://api.upbit.com/v1/candles/days"
+    return {"data": {date: close_price, ...}, "market": market}
+
+# 환율 조회 (FinanceDataReader)
 def fetch_exchange_rate(from_currency, to_currency, target_date=None):
     symbol = f"{from_currency}/{to_currency}"  # 예: USD/KRW
     df = fdr.DataReader(symbol, start=start_date, end=end_date)
@@ -442,10 +458,14 @@ def fetch_exchange_rate(from_currency, to_currency, target_date=None):
 
 @functions_framework.http
 def get_stock_prices(request):
-    if path == '/upbit' or path == '/upbit/':
+    if path == '/history':
+        # 주식/ETF 과거 시세 조회 (백필용)
+    elif path == '/upbit/history':
+        # 암호화폐 과거 시세 조회 (백필용)
+    elif path == '/upbit':
         # 업비트 프록시 처리
-    elif path == '/exchange-rate' or path == '/exchange-rate/':
-        # 환율 조회 처리 (신규)
+    elif path == '/exchange-rate':
+        # 환율 조회 처리
     else:
         # 주식 조회 처리
 ```
@@ -532,7 +552,10 @@ gcloud run deploy asset-manager --source . --region asia-northeast3 --allow-unau
 - **LZ-String 압축**: 저장 시 UTF16 압축 적용 (파일 크기 70-80% 감소)
 - **레거시 호환**: 압축되지 않은 기존 파일도 정상 로드
 - **앱 시작 시 자동 업데이트**: 오늘 업데이트 안 했으면 자동으로 시세 갱신
-- **히스토리 보간**: 앱을 안 열었던 날의 데이터를 마지막 스냅샷으로 자동 채움
+- **히스토리 백필**: 앱을 안 열었던 날의 **실제 과거 시세**를 API로 조회하여 채움
+  - 주식/ETF: Cloud Run `/history` (FinanceDataReader)
+  - 암호화폐: Cloud Run `/upbit/history` (Upbit Candles API)
+  - 90일 초과 누락 시 또는 API 실패 시: 기존 보간 방식으로 폴백
 
 ### 4. 데이터 무결성
 - **마이그레이션**: 이전 버전 데이터 자동 변환
@@ -624,6 +647,25 @@ gcloud run deploy asset-manager --source . --region asia-northeast3 --allow-unau
 ---
 
 ## 📝 변경 이력
+
+### 2026-02-02: 히스토리 백필(Backfill) 기능 구현
+- **기능 추가 — 실제 과거 시세로 히스토리 채우기**:
+  - 앱을 안 열었던 날의 데이터를 **실제 과거 종가**로 채움 (기존: 마지막 스냅샷 복사)
+  - 주식/ETF: Cloud Run `/history` 엔드포인트 (FinanceDataReader)
+  - 암호화폐: Cloud Run `/upbit/history` 엔드포인트 (Upbit Candles API)
+  - **데이터 소스 분리 원칙 준수**: 실시간 시세와 동일한 API 소스 사용 (일관성)
+- **폴백 처리**:
+  - API 실패 시 기존 `fillAllMissingDates()`로 자동 폴백
+  - 90일 초과 누락 시 API 부하 방지를 위해 기존 보간 방식 사용
+- **새로운 파일**:
+  - `services/historicalPriceService.ts`: 백필 API 호출 서비스
+- **수정된 파일**:
+  - `main.py` (Cloud Run): `fetch_historical_prices()`, `fetch_upbit_candles()` 함수 및 `/history`, `/upbit/history` 엔드포인트 추가
+  - `utils/historyUtils.ts`: `backfillWithRealPrices()`, `getMissingDateRange()` 함수 추가
+  - `hooks/usePortfolioData.ts`: 로드 시 자동 백필 로직 추가
+- **의존 관계 변경**:
+  - `usePortfolioData.ts` → `historyUtils.ts`의 `backfillWithRealPrices`, `getMissingDateRange` 사용
+  - `historyUtils.ts` → `historicalPriceService.ts`의 백필 API 함수들 사용
 
 ### 2026-02-02: 환율 조회를 Gemini API에서 Cloud Run으로 이전
 - **기능 변경 — 환율 조회 API 이전**:
