@@ -18,6 +18,7 @@ KIM'S 퀸트자산관리는 계량적 투자 전략을 기반으로 한 종합 �
 - **관심종목 관리**: 별도의 워치리스트 기능
 - **CSV 대량 등록**: 대량의 자산 일괄 등록
 - **기술적 지표 연동**: MA20/MA60 및 RSI 상태(NORMAL/OVERBOUGHT/OVERSOLD) 수신 및 표시
+- **차트 MA 오버레이**: 자산 차트에 사용자 커스텀 이동평균선(MA5/10/20/60/120/200) 오버레이, 토글로 활성/비활성 선택, 설정 localStorage 저장
 - **서버 신호 표시**: 서버 제공 매수/매도 신호(STRONG_BUY/BUY/SELL/STRONG_SELL/NEUTRAL) 배지 표시
 - **전일종가 기반 변동률 개선**: 백엔드 prev_close 기반으로 일중 변동률(yesterdayChange) 정확 계산
 
@@ -83,6 +84,7 @@ KIM'S 퀸트자산관리는 계량적 투자 전략을 기반으로 한 종합 �
 │   ├── useAssetActions.ts    # 자산 CRUD 및 액션 관리
 │   ├── useRebalancing.ts     # 리밸런싱 계산 및 저장 로직 (신규)
 │   ├── useTopBottomAssets.ts # 수익률 상/하위 계산 로직 (신규)
+│   ├── useHistoricalPriceData.ts # MA 차트용 과거 시세 fetch 훅 (캐시 내장)
 │   ├── usePortfolioCalculator.ts # 수익률/손익 계산 (구매 환율 기준)
 │   ├── usePortfolioHistory.ts # 포트폴리오 스냅샷 히스토리 관리
 │   ├── useGoogleDriveSync.ts # Google Drive API 래퍼
@@ -95,6 +97,7 @@ KIM'S 퀸트자산관리는 계량적 투자 전략을 기반으로 한 종합 �
 │   └── upbitService.ts    # 업비트 API 서비스 (Cloud Run 프록시 경유)
 ├── utils/                    # 유틸리티 함수
 │   ├── migrateData.ts     # 데이터 마이그레이션
+│   ├── maCalculations.ts  # 이동평균선(SMA) 계산 및 차트 데이터 빌드 유틸
 │   ├── signalUtils.ts     # 서버 신호/RSI 뱃지 렌더링 유틸
 │   ├── historyUtils.ts    # 히스토리 보간/분리 유틸 (신규)
 │   └── portfolioCalculations.ts # 포트폴리오 계산 유틸
@@ -219,15 +222,21 @@ App.tsx
 ├── hooks/
 │   ├── useMarketData.ts ─────┬─── priceService.ts (주식/ETF 실시간)
 │   │                         └─── upbitService.ts (암호화폐 실시간)
-│   └── usePortfolioData.ts ──┬─── historyUtils.ts (백필 로직)
-│                              └─── historicalPriceService.ts (과거 시세 API)
+│   ├── usePortfolioData.ts ──┬─── historyUtils.ts (백필 로직)
+│   │                         └─── historicalPriceService.ts (과거 시세 API)
+│   └── useHistoricalPriceData.ts ─┬─── historicalPriceService.ts (과거 시세 API)
+│                                  └─── maCalculations.ts (SMA 계산)
 ├── services/
 │   ├── priceService.ts      (시세 정보 - Cloud Run / + 환율 - Cloud Run /exchange-rate)
 │   ├── upbitService.ts      (암호화폐 - Cloud Run /upbit)
 │   ├── historicalPriceService.ts (과거 시세 - Cloud Run /history, /upbit/history)
 │   ├── googleDriveService.ts (클라우드 저장)
 │   └── geminiService.ts    (AI 분석, 종목 검색)
-└── components/             (UI 컴포넌트들)
+├── components/
+│   └── AssetTrendChart.tsx ──┬─── useHistoricalPriceData.ts (과거 시세 fetch)
+│                             └─── maCalculations.ts (차트 데이터 빌드)
+└── utils/
+    └── maCalculations.ts     (SMA 계산, 차트 데이터 빌드, 순수 함수)
 ```
 
 ## 🎯 주요 컴포넌트 상세
@@ -402,6 +411,7 @@ Upbit/Bithumb → 암호화폐
 
 ## 📈 기술적 지표 및 신호 표시
 
+### 서버 제공 지표 (단일값)
 - 응답 포맷
   - `indicators.ma20`: 20일 이동평균
   - `indicators.ma60`: 60일 이동평균
@@ -411,9 +421,21 @@ Upbit/Bithumb → 암호화폐
 - 데이터 전달 경로
   - Cloud Run → services/priceService.ts → hooks/useMarketData.ts
 - UI 표시
-  - 워치리스트 “신호” 칼럼에서 서버 신호/RSI를 배지로 표시
+  - 워치리스트 "신호" 칼럼에서 서버 신호/RSI를 배지로 표시
   - 표시 로직: utils/signalUtils.ts
   - 컴포넌트: components/WatchlistPage.tsx
+
+### 차트 MA 오버레이 (프론트엔드 계산)
+- **데이터 소스**: `/history` 또는 `/upbit/history` 엔드포인트의 과거 종가
+- **계산**: `utils/maCalculations.ts`에서 SMA(단순이동평균)를 순수 함수로 계산
+- **지원 기간**: MA5, MA10, MA20, MA60, MA120, MA200 (사용자 토글 선택)
+- **기본 활성**: MA20 (#EF4444), MA60 (#3B82F6)
+- **데이터 흐름**:
+  - `hooks/useHistoricalPriceData.ts` → `historicalPriceService.ts`로 과거 시세 fetch (모듈 레벨 캐시, TTL 10분)
+  - `utils/maCalculations.ts`의 `buildChartDataWithMA()` → Recharts용 데이터 배열 빌드
+  - `components/AssetTrendChart.tsx`에서 활성 MA별 `<Line>` 컴포넌트 동적 렌더링
+- **설정 저장**: localStorage (`asset-manager-ma-preferences`)
+- **폴백**: MA 비활성 시 기존 PortfolioSnapshot 기반 차트 로직 유지, 과거 시세 API 실패 시에도 기존 차트 정상 동작
 
 ## 🖥️ Cloud Run 서버 (백엔드)
 
@@ -653,6 +675,27 @@ gcloud run deploy asset-manager --source . --region asia-northeast3 --allow-unau
 ---
 
 ## 📝 변경 이력
+
+### 2026-02-05: AssetTrendChart에 사용자 커스텀 이동평균선(MA) 오버레이 추가
+- **기능 추가 — 차트 MA 오버레이**:
+  - 자산 차트에 MA5/10/20/60/120/200 이동평균선 오버레이
+  - 사용자가 칩 토글로 MA 기간별 표시/숨김 선택 (기본: MA20, MA60 활성)
+  - MA 활성 시: `/history` 과거 종가 기반 차트 + SMA 라인 오버레이
+  - MA 비활성 시: 기존 PortfolioSnapshot 기반 차트 로직 유지 (폴백)
+  - KRW 토글이 MA 데이터에도 동일 적용
+  - 현금(CASH) 자산은 MA 토글 숨김
+  - 과거 시세 모듈 레벨 캐시 (TTL 10분)
+  - MA 토글 설정은 localStorage에 저장
+- **새로운 파일**:
+  - `utils/maCalculations.ts`: SMA 계산, 차트 데이터 빌드, MA 설정 상수 (순수 함수)
+  - `hooks/useHistoricalPriceData.ts`: 과거 시세 fetch 훅 (주식/암호화폐 자동 분기, 캐시 내장)
+- **수정된 파일**:
+  - `components/AssetTrendChart.tsx`: MA 토글 UI, 과거 시세 기반 차트 데이터, 동적 MA 라인 렌더링 추가
+  - `components/portfolio-table/PortfolioTableRow.tsx`: AssetTrendChart에 `ticker`, `exchange`, `category` props 전달
+- **의존 관계 추가**:
+  - `AssetTrendChart.tsx` → `useHistoricalPriceData`, `maCalculations`
+  - `useHistoricalPriceData.ts` → `historicalPriceService.ts`, `maCalculations.ts`
+  - `PortfolioTableRow.tsx` → `AssetTrendChart` (기존, props 3개 추가)
 
 ### 2026-02-02: 포트폴리오 테이블 툴팁 기능 추가
 - **기능 추가 — 컬럼 계산 방법 툴팁**:

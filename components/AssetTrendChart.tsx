@@ -1,6 +1,31 @@
-import React, { useMemo, useState } from 'react';
-import { PortfolioSnapshot, Currency } from '../types';
+import React, { useMemo, useState, useCallback } from 'react';
+import { PortfolioSnapshot, Currency, AssetCategory } from '../types';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { useHistoricalPriceData } from '../hooks/useHistoricalPriceData';
+import { DEFAULT_MA_CONFIGS, MALineConfig, buildChartDataWithMA } from '../utils/maCalculations';
+
+const MA_PREFS_KEY = 'asset-manager-ma-preferences';
+
+function loadMAConfigs(): MALineConfig[] {
+  try {
+    const stored = localStorage.getItem(MA_PREFS_KEY);
+    if (stored) {
+      const parsed = JSON.parse(stored) as MALineConfig[];
+      // 저장된 설정을 DEFAULT와 병합 (새 MA가 추가될 경우 대비)
+      return DEFAULT_MA_CONFIGS.map(def => {
+        const saved = parsed.find(p => p.period === def.period);
+        return saved ? { ...def, enabled: saved.enabled } : def;
+      });
+    }
+  } catch { /* ignore */ }
+  return DEFAULT_MA_CONFIGS.map(c => ({ ...c }));
+}
+
+function saveMAConfigs(configs: MALineConfig[]): void {
+  try {
+    localStorage.setItem(MA_PREFS_KEY, JSON.stringify(configs));
+  } catch { /* ignore */ }
+}
 
 interface AssetTrendChartProps {
   history: PortfolioSnapshot[];
@@ -10,54 +35,79 @@ interface AssetTrendChartProps {
   currentPrice: number;       // 실시간 현재가 (외화 원본)
   currency?: Currency;        // 자산 통화 (USD, KRW, JPY...)
   exchangeRate?: number;      // 환율 (KRW 변환용)
+  ticker?: string;
+  exchange?: string;
+  category?: AssetCategory;
 }
 
-const AssetTrendChart: React.FC<AssetTrendChartProps> = ({ 
-  history, 
-  assetId, 
-  assetName, 
-  currentQuantity, 
+const AssetTrendChart: React.FC<AssetTrendChartProps> = ({
+  history,
+  assetId,
+  assetName,
+  currentQuantity,
   currentPrice,
   currency = Currency.KRW,
   exchangeRate = 1,
+  ticker,
+  exchange,
+  category,
 }) => {
   const [showInKRW, setShowInKRW] = useState<boolean>(false);
+  const [maConfigs, setMAConfigs] = useState<MALineConfig[]>(loadMAConfigs);
 
-  const chartData = useMemo(() => {
-    // 1. 과거 데이터 매핑
+  const isCash = category === AssetCategory.CASH;
+  const enabledConfigs = maConfigs.filter(c => c.enabled);
+  const enabledPeriods = enabledConfigs.map(c => c.period);
+  const maxMAPeriod = enabledPeriods.length > 0 ? Math.max(...enabledPeriods) : 0;
+  const hasMASupport = !!ticker && !!exchange && !!category && !isCash;
+
+  // 과거 시세 fetch (MA 활성 시에만)
+  const { historicalPrices, isLoading: maLoading, error: maError } = useHistoricalPriceData({
+    ticker: ticker || '',
+    exchange: exchange || '',
+    category: category || AssetCategory.KOREAN_STOCK,
+    isExpanded: true,
+    maxMAPeriod: hasMASupport ? maxMAPeriod : 0,
+  });
+
+  const handleToggleMA = useCallback((period: number) => {
+    setMAConfigs(prev => {
+      const next = prev.map(c =>
+        c.period === period ? { ...c, enabled: !c.enabled } : c
+      );
+      saveMAConfigs(next);
+      return next;
+    });
+  }, []);
+
+  // MA 데이터가 있으면 과거시세 기반 차트, 없으면 기존 PortfolioSnapshot 기반
+  const useMAData = hasMASupport && maxMAPeriod > 0 && historicalPrices && Object.keys(historicalPrices).length > 0;
+
+  // 기존 PortfolioSnapshot 기반 차트 데이터
+  const snapshotChartData = useMemo(() => {
     const data = (history || []).map(snapshot => {
       const assetSnapshot = snapshot.assets.find(a => a.id === assetId);
-      
+
       let price = 0;
       if (assetSnapshot) {
-        // KRW로 보기 옵션이 켜져 있거나, 원래 KRW 자산인 경우
         if (showInKRW || currency === Currency.KRW) {
-            // 1순위: unitPrice (원화 단가) 사용
             if (assetSnapshot.unitPrice !== undefined && assetSnapshot.unitPrice > 0) {
                 price = assetSnapshot.unitPrice;
             }
-            // 2순위: unitPriceOriginal이 있다면 환율 적용 (환율 정보가 없으면 현재 환율 사용 - 근사치)
             else if (assetSnapshot.unitPriceOriginal !== undefined && assetSnapshot.unitPriceOriginal > 0) {
                 price = assetSnapshot.unitPriceOriginal * exchangeRate;
             }
-            // 3순위: currentValue / quantity 역산
             else if (currentQuantity > 0) {
                 price = assetSnapshot.currentValue / currentQuantity;
             }
-        } 
-        // 외화로 보기 (기본값)
+        }
         else {
-            // 1순위: unitPriceOriginal (외화 원본) 사용
             if (assetSnapshot.unitPriceOriginal !== undefined && assetSnapshot.unitPriceOriginal > 0) {
                 price = assetSnapshot.unitPriceOriginal;
             }
-            // 2순위: unitPrice (원화)를 환율로 나누어 역산 (과거 데이터 호환성)
-            // 주의: 과거 환율 정보가 없으므로 현재 환율을 사용하여 근사치를 구함.
-            // 이는 스케일 차이(예: 20만원 vs 150달러)를 보정하기 위함임.
             else if (assetSnapshot.unitPrice !== undefined && assetSnapshot.unitPrice > 0) {
                 price = assetSnapshot.unitPrice / exchangeRate;
             }
-            // 3순위: currentValue / quantity 역산 후 환율 적용
             else if (currentQuantity > 0) {
                 price = (assetSnapshot.currentValue / currentQuantity) / exchangeRate;
             }
@@ -71,25 +121,19 @@ const AssetTrendChart: React.FC<AssetTrendChartProps> = ({
       };
     }).filter(d => d['가격'] > 0);
 
-    // 2. 오늘 날짜(실시간 현재가) 처리 로직
     if (currentPrice > 0) {
       const today = new Date();
       const todayStr = today.toLocaleDateString('ko-KR', { month: '2-digit', day: '2-digit' });
       const todayISO = today.toISOString().split('T')[0];
 
-      // 표시할 현재가 결정
       const displayCurrentPrice = (showInKRW && currency !== Currency.KRW)
         ? currentPrice * exchangeRate
         : currentPrice;
 
-      // 차트 데이터의 마지막 날짜 확인
       const lastItem = data[data.length - 1];
-
-      // 마지막 데이터가 오늘 날짜라면 -> 실시간 가격으로 교체
       if (lastItem && (lastItem.date === todayStr || lastItem.fullDate === todayISO)) {
         lastItem['가격'] = displayCurrentPrice;
-      } 
-      // 오늘 데이터가 차트에 아직 없다면 -> 추가
+      }
       else {
         data.push({
           date: todayStr,
@@ -101,6 +145,55 @@ const AssetTrendChart: React.FC<AssetTrendChartProps> = ({
 
     return data;
   }, [history, assetId, currentQuantity, currentPrice, currency, exchangeRate, showInKRW]);
+
+  // MA 기반 차트 데이터 (과거 시세 + MA 오버레이)
+  const maChartData = useMemo(() => {
+    if (!useMAData || !historicalPrices) return [];
+
+    // KRW 토글이 켜져있고 외화 자산이면 환율 적용
+    const applyKRW = showInKRW && currency !== Currency.KRW;
+    const processedPrices = applyKRW
+      ? Object.fromEntries(
+          Object.entries(historicalPrices).map(([date, price]) => [date, price * exchangeRate])
+        )
+      : historicalPrices;
+
+    const data = buildChartDataWithMA(processedPrices, enabledPeriods);
+
+    // 오늘 날짜 실시간 currentPrice 오버레이
+    if (currentPrice > 0 && data.length > 0) {
+      const today = new Date();
+      const todayStr = today.toLocaleDateString('ko-KR', { month: '2-digit', day: '2-digit' });
+      const todayISO = today.toISOString().split('T')[0];
+
+      const displayCurrentPrice = applyKRW
+        ? currentPrice * exchangeRate
+        : currentPrice;
+
+      const lastItem = data[data.length - 1];
+      if (lastItem && (lastItem.date === todayStr || lastItem.fullDate === todayISO)) {
+        lastItem['가격'] = displayCurrentPrice;
+      } else {
+        const newPoint: Record<string, string | number | undefined> = {
+          date: todayStr,
+          fullDate: todayISO,
+          '가격': displayCurrentPrice,
+        };
+        // MA 값은 오늘자 데이터에서는 계산 불가이므로 마지막 MA값을 이어서 표시
+        for (const period of enabledPeriods) {
+          const key = `MA${period}`;
+          if (lastItem[key] !== undefined) {
+            newPoint[key] = lastItem[key];
+          }
+        }
+        data.push(newPoint as typeof data[number]);
+      }
+    }
+
+    return data;
+  }, [useMAData, historicalPrices, enabledPeriods, currentPrice, currency, exchangeRate, showInKRW]);
+
+  const chartData = useMAData ? maChartData : snapshotChartData;
 
   // 통화 기호 표시 헬퍼 함수
   const getCurrencySymbol = (curr: string) => {
@@ -117,13 +210,13 @@ const AssetTrendChart: React.FC<AssetTrendChartProps> = ({
   const displayCurrency = showInKRW ? Currency.KRW : currency;
 
   // 툴팁 포맷터
-  const formatTooltip = (value: number) => {
+  const formatTooltip = (value: number, name: string) => {
     const symbol = getCurrencySymbol(currency);
-    const formattedValue = displayCurrency === Currency.KRW 
+    const formattedValue = displayCurrency === Currency.KRW
       ? value.toLocaleString('ko-KR')
       : value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-    return [`${symbol} ${formattedValue}`, '가격'];
+    return [`${symbol} ${formattedValue}`, name];
   };
 
   // Y축 포맷터
@@ -137,13 +230,16 @@ const AssetTrendChart: React.FC<AssetTrendChartProps> = ({
     return value.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 });
   };
 
+  // MA 토글 영역 높이 보정: MA 토글이 보이면 차트 높이 조정
+  const hasMAToggle = hasMASupport;
+
   return (
-    <div className="bg-gray-800 p-4 rounded-lg h-64 relative">
-      <div className="flex justify-between items-center mb-4">
+    <div className={`bg-gray-800 p-4 rounded-lg relative ${hasMAToggle ? 'h-80' : 'h-64'}`}>
+      <div className="flex justify-between items-center mb-1">
           <h3 className="text-md font-bold text-white text-center flex-1">
             {`"${assetName}" 가격 추이 (${displayCurrency})`}
           </h3>
-          
+
           {/* 통화 전환 토글 (외화 자산인 경우에만 표시) */}
           {currency !== Currency.KRW && (
               <button
@@ -155,39 +251,76 @@ const AssetTrendChart: React.FC<AssetTrendChartProps> = ({
               </button>
           )}
       </div>
-      
+
+      {/* MA 토글 칩 (현금 제외) */}
+      {hasMAToggle && (
+        <div className="flex items-center gap-1.5 mb-2 flex-wrap">
+          <span className="text-[10px] text-gray-500 mr-0.5">MA</span>
+          {maConfigs.map(config => (
+            <button
+              key={config.period}
+              onClick={() => handleToggleMA(config.period)}
+              className={`text-[10px] px-1.5 py-0.5 rounded-full border transition-colors ${
+                config.enabled
+                  ? 'text-white border-transparent'
+                  : 'text-gray-400 border-gray-600 bg-transparent hover:border-gray-500'
+              }`}
+              style={config.enabled ? { backgroundColor: config.color, borderColor: config.color } : undefined}
+            >
+              {config.period}
+            </button>
+          ))}
+          {maLoading && <span className="text-[10px] text-gray-500 ml-1">불러오는 중...</span>}
+          {maError && !maLoading && maxMAPeriod > 0 && <span className="text-[10px] text-red-400 ml-1">{maError}</span>}
+        </div>
+      )}
+
       {chartData.length > 0 ? (
         <ResponsiveContainer width="100%" height="85%">
           <LineChart data={chartData} margin={{ top: 5, right: 30, left: 10, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#4A5568" />
-            <XAxis 
-              dataKey="date" 
-              stroke="#A0AEC0" 
-              fontSize={12} 
+            <XAxis
+              dataKey="date"
+              stroke="#A0AEC0"
+              fontSize={12}
             />
-            <YAxis 
-              stroke="#A0AEC0" 
-              fontSize={12} 
-              tickFormatter={formatYAxis} 
-              domain={['auto', 'auto']} 
+            <YAxis
+              stroke="#A0AEC0"
+              fontSize={12}
+              tickFormatter={formatYAxis}
+              domain={['auto', 'auto']}
               width={60}
             />
             <Tooltip
               formatter={formatTooltip}
               contentStyle={{ backgroundColor: '#2D3748', border: '1px solid #4A5568', borderRadius: '0.5rem' }}
               labelStyle={{ color: '#E2E8F0' }}
-              itemStyle={{ fontWeight: 'bold', color: '#818CF8' }}
+              itemStyle={{ fontWeight: 'bold' }}
             />
             <Legend wrapperStyle={{fontSize: "12px", bottom: -10}} />
-            <Line 
-              type="monotone" 
-              dataKey="가격" 
-              stroke="#818CF8" 
-              strokeWidth={2} 
-              dot={{ r: 3 }} 
+            <Line
+              type="monotone"
+              dataKey="가격"
+              stroke="#818CF8"
+              strokeWidth={2}
+              dot={{ r: useMAData ? 0 : 3 }}
               activeDot={{ r: 6 }}
-              isAnimationActive={false} 
+              isAnimationActive={false}
             />
+            {/* 활성 MA 라인 동적 렌더링 */}
+            {enabledConfigs.map(config => (
+              <Line
+                key={config.period}
+                type="monotone"
+                dataKey={`MA${config.period}`}
+                stroke={config.color}
+                strokeWidth={1.5}
+                dot={false}
+                activeDot={{ r: 4 }}
+                isAnimationActive={false}
+                connectNulls={false}
+              />
+            ))}
           </LineChart>
         </ResponsiveContainer>
       ) : (

@@ -19,6 +19,7 @@
    - 데이터 처리 및 비즈니스 로직은 반드시 `hooks/` 또는 `utils/`로 분리한다.
    - 복잡한 계산 로직(수익률, 환율 변환 등)은 `utils/portfolioCalculations.ts`에 작성하고 순수 함수(Pure Function)로 유지한다.
    - 지표/신호는 백엔드에서 계산하며, 프론트는 전달/표시에만 집중한다. 신호 배지 렌더링은 `utils/signalUtils.ts`에서 처리한다.
+   - **예외 — 차트 MA 오버레이:** 차트에 표시하는 이동평균선(MA5~MA200)은 `/history` 엔드포인트의 과거 종가를 기반으로 프론트엔드(`utils/maCalculations.ts`)에서 SMA를 계산한다. 이는 백엔드가 제공하는 단일값 `indicators.ma20/ma60`과는 별개이며, 사용자가 임의 기간을 선택할 수 있도록 하기 위함이다.
 
 2. **상태 관리 (Context API):**
    - 3단계 이상의 Props Drilling은 금지한다.
@@ -38,7 +39,8 @@
 
 3. **데이터 모델링 및 차트 원칙:**
    - **외화 데이터 보존:** 자산 데이터 저장 시 반드시 `currentPrice`(원화 환산값)와 `priceOriginal`(외화 원본값)을 모두 저장해야 한다. 특히 히스토리 저장 시 외화 원본 가격(`unitPriceOriginal`) 누락을 주의한다.
-   - **차트 일관성:** 외화 자산 차트는 기본적으로 해당 통화(USD 등)로 표시하되, 사용자 편의를 위해 KRW 환산 보기 옵션을 제공해야 한다.
+   - **차트 일관성:** 외화 자산 차트는 기본적으로 해당 통화(USD 등)로 표시하되, 사용자 편의를 위해 KRW 환산 보기 옵션을 제공해야 한다. MA 오버레이 데이터에도 동일한 KRW 토글을 적용한다.
+   - **차트 MA 오버레이:** AssetTrendChart는 MA 활성 시 `/history` 과거 시세 기반, MA 비활성 시 기존 PortfolioSnapshot 기반으로 동작한다. 과거 시세 fetch는 `hooks/useHistoricalPriceData.ts`에서 전담하며, 모듈 레벨 캐시(TTL 10분)를 사용한다. MA 토글 설정은 localStorage(`asset-manager-ma-preferences`)에 저장한다(경량 UI 설정이므로 Google Drive 동기화 대상 아님).
    - **환율 처리:** 차트나 계산 로직에서 환율이 필요할 경우, 가급적 실시간 환율(`exchangeRates`)을 상위에서 주입받아 사용하며 컴포넌트 내부에서 임의의 상수를 사용하지 않는다.
    - **이력 데이터 영속성:** 매도 등 히스토리 성격의 데이터를 저장할 때는, 원본 자산이 삭제되더라도 계산이 가능하도록 필요한 참조 데이터(매수 단가, 환율, 통화 등)를 이력 레코드 자체에 스냅샷(복사)하여 저장해야 한다. 분석/통계 화면에서 이력 데이터를 표시할 때는 이력 레코드의 스냅샷 필드(`originalPurchasePrice`, `originalPurchaseExchangeRate`, `originalCurrency`)를 **우선 사용**하고, 스냅샷이 없는 경우에만 현재 보유 자산(`assets`)을 폴백으로 조회해야 한다. (추가매수로 인한 평균 매수가 변경이 과거 매도 손익에 영향을 주지 않도록 하기 위함)
 

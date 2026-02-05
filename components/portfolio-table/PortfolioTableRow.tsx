@@ -265,9 +265,12 @@ const PortfolioTableRow: React.FC<PortfolioTableRowProps> = ({
               assetId={asset.id}
               assetName={(asset.customName?.trim() || asset.name)}
               currentQuantity={asset.quantity}
-              currentPrice={asset.currentPrice}  
-              currency={asset.currency}          
-              exchangeRate={derivedExchangeRate} 
+              currentPrice={asset.currentPrice}
+              currency={asset.currency}
+              exchangeRate={derivedExchangeRate}
+              ticker={asset.ticker}
+              exchange={asset.exchange}
+              category={asset.category}
             />
           </td>
         </tr>
