@@ -1,76 +1,420 @@
 # 프로젝트 개발 원칙 (RULES.md)
 
+> **이 문서의 목적**: AI 코딩 도구(Claude, Cursor 등)가 코드 수정/추가 시 참고하는 개발 규칙 및 의존관계 문서
+
 ## 1. 프로젝트 정체성 및 기술 스택
+
 - **목표:** 개인 투자용 퀀트 자산 관리 시스템 (주식, 코인, 실물자산 통합)
 - **Frontend:** React 19.2+, TypeScript, Vite, Tailwind CSS
 - **Data Source:**
-  - 주식: Google Cloud Run (Python) + FinanceDataReader
-  - 코인: Upbit API
-  - 환율: Google Cloud Run + FinanceDataReader (`/exchange-rate` 엔드포인트)
+  - 주식/ETF: Cloud Run `/` (Python + FinanceDataReader)
+  - 암호화폐: Cloud Run `/upbit` (Upbit API 프록시)
+  - 환율: Cloud Run `/exchange-rate` (FinanceDataReader)
   - AI 검색/분석: Gemini API (종목 검색, 포트폴리오 AI 분석만)
-  - 데이터 저장소: Google Drive (JSON 동기화)
+  - 데이터 저장소: Google Drive (JSON 동기화, LZ-String 압축)
 - **State Management:** Context API (PortfolioContext)
 
-## 2. 아키텍처 및 코드 작성 원칙 (절대 준수)
+---
 
-### [구조 분리 원칙]
-1. **UI와 로직의 분리:**
-   - `App.tsx` 등 UI 컴포넌트는 화면 표시에만 집중한다.
-   - 데이터 처리 및 비즈니스 로직은 반드시 `hooks/` 또는 `utils/`로 분리한다.
-   - 복잡한 계산 로직(수익률, 환율 변환 등)은 `utils/portfolioCalculations.ts`에 작성하고 순수 함수(Pure Function)로 유지한다.
-   - 지표/신호는 백엔드에서 계산하며, 프론트는 전달/표시에만 집중한다. 신호 배지 렌더링은 `utils/signalUtils.ts`에서 처리한다.
-   - **예외 — 차트 MA 오버레이:** 차트에 표시하는 이동평균선(MA5~MA200)은 `/history` 엔드포인트의 과거 종가를 기반으로 프론트엔드(`utils/maCalculations.ts`)에서 SMA를 계산한다. 이는 백엔드가 제공하는 단일값 `indicators.ma20/ma60`과는 별개이며, 사용자가 임의 기간을 선택할 수 있도록 하기 위함이다.
+## 2. 아키텍처 및 코드 작성 원칙
 
-2. **상태 관리 (Context API):**
-   - 3단계 이상의 Props Drilling은 금지한다.
-   - 전역 데이터(자산 목록, 환율, 설정 등)는 `PortfolioContext`를 통해 접근한다.
+### 구조 분리 원칙
+| 영역 | 책임 | 금지 사항 |
+|------|------|----------|
+| `App.tsx`, 컴포넌트 | UI 렌더링만 | 비즈니스 로직, API 호출 금지 |
+| `hooks/` | 데이터 처리, API 호출, 상태 관리 | UI 렌더링 금지 |
+| `utils/` | 순수 함수, 계산 로직 | 상태 변경, side effect 금지 |
+| `services/` | 외부 API 호출 | 상태 관리 금지 |
 
-3. **타입 안전성 (TypeScript):**
-   - **`any` 타입 사용을 엄격히 금지한다.**
-   - 모든 데이터 구조는 `types/` 디렉토리에 정의된 interface와 enum(`AssetCategory` 등)을 사용한다.
-   - 컴포넌트 Props는 반드시 타입을 명시한다.
-   - 서버 지표/신호는 `types/api.ts`의 `Indicators`와 `SignalType`을 사용하고, `Asset`/`WatchlistItem`에 선택적으로 포함한다.
+### 상태 관리 규칙
+- **3단계 이상 Props Drilling 금지** → `PortfolioContext` 사용
+- 전역 데이터(자산 목록, 환율, 설정 등)는 `PortfolioContext`를 통해 접근
 
-### [외부 연동 및 에러 처리 원칙]
-1. **API 연동:**
-   - 외부 API(Cloud Run, Upbit) 호출 로직은 `hooks/useMarketData.ts` 등 전용 훅 내에서만 수행한다.
-   - API 실패 시 UI가 멈추지 않도록 `try-catch`와 `fallback` 데이터를 반드시 구현한다. (부분 성공 허용)
-   - 변동률 계산 시 백엔드의 `prev_close`를 우선 사용하고, 보정/환산이 필요한 경우에는 `services/priceService.ts` 또는 `hooks/useMarketData.ts`에서만 처리한다. UI 컴포넌트 내부에서 계산하지 않는다.
+### 타입 안전성
+- **`any` 타입 사용 절대 금지**
+- 모든 데이터 구조는 `types/` 디렉토리의 interface/enum 사용
+- 컴포넌트 Props는 반드시 타입 명시
+- 서버 지표/신호는 `types/api.ts`의 `Indicators`, `SignalType` 사용
 
-3. **데이터 모델링 및 차트 원칙:**
-   - **외화 데이터 보존:** 자산 데이터 저장 시 반드시 `currentPrice`(원화 환산값)와 `priceOriginal`(외화 원본값)을 모두 저장해야 한다. 특히 히스토리 저장 시 외화 원본 가격(`unitPriceOriginal`) 누락을 주의한다.
-   - **차트 일관성:** 외화 자산 차트는 기본적으로 해당 통화(USD 등)로 표시하되, 사용자 편의를 위해 KRW 환산 보기 옵션을 제공해야 한다. MA 오버레이 데이터에도 동일한 KRW 토글을 적용한다.
-   - **차트 MA 오버레이:** AssetTrendChart는 MA 활성 시 `/history` 과거 시세 기반, MA 비활성 시 기존 PortfolioSnapshot 기반으로 동작한다. 과거 시세 fetch는 `hooks/useHistoricalPriceData.ts`에서 전담하며, 모듈 레벨 캐시(TTL 10분)를 사용한다. MA 토글 설정은 localStorage(`asset-manager-ma-preferences`)에 저장한다(경량 UI 설정이므로 Google Drive 동기화 대상 아님).
-   - **환율 처리:** 차트나 계산 로직에서 환율이 필요할 경우, 가급적 실시간 환율(`exchangeRates`)을 상위에서 주입받아 사용하며 컴포넌트 내부에서 임의의 상수를 사용하지 않는다.
-   - **이력 데이터 영속성:** 매도 등 히스토리 성격의 데이터를 저장할 때는, 원본 자산이 삭제되더라도 계산이 가능하도록 필요한 참조 데이터(매수 단가, 환율, 통화 등)를 이력 레코드 자체에 스냅샷(복사)하여 저장해야 한다. 분석/통계 화면에서 이력 데이터를 표시할 때는 이력 레코드의 스냅샷 필드(`originalPurchasePrice`, `originalPurchaseExchangeRate`, `originalCurrency`)를 **우선 사용**하고, 스냅샷이 없는 경우에만 현재 보유 자산(`assets`)을 폴백으로 조회해야 한다. (추가매수로 인한 평균 매수가 변경이 과거 매도 손익에 영향을 주지 않도록 하기 위함)
+### API 연동 원칙
+- 외부 API 호출은 `hooks/useMarketData.ts` 등 전용 훅에서만 수행
+- API 실패 시 `try-catch`와 `fallback` 데이터 필수 (부분 성공 허용)
+- 변동률 계산은 백엔드 `prev_close` 우선 사용, UI 컴포넌트 내 계산 금지
 
-2. **Google Drive 동기화:**
-   - 데이터 저장(`hooks/usePortfolioData.ts`) 시에는 로컬 상태와 구글 드라이브 간의 정합성을 최우선으로 한다.
-   - **공유 폴더 지원**: 다중 계정 데이터 공유를 위해 `drive` scope와 `supportsAllDrives`/`includeItemsFromAllDrives` 파라미터가 필수다. 새로운 Drive API 호출 추가 시 해당 파라미터를 반드시 포함해야 한다.
-   - **LZ-String 압축**: `googleDriveService.ts`에서 저장 시 `LZString.compressToUTF16()`, 로드 시 `LZString.decompressFromUTF16()`을 적용한다. 레거시 비압축 파일 호환을 위해 압축 해제 실패 시 원본 반환한다.
-   - **히스토리 백필 및 보간**:
-     - 데이터 로드 시 `backfillWithRealPrices()`를 호출하여 **실제 과거 시세**로 누락된 날짜를 채운다.
-     - 주식/ETF: Cloud Run `/history` 엔드포인트 (FinanceDataReader)
-     - 암호화폐: Cloud Run `/upbit/history` 엔드포인트 (Upbit Candles API)
-     - API 실패 시 기존 `fillAllMissingDates()`로 폴백하여 마지막 데이터 복사.
-     - 90일 초과 누락 시 API 부하 방지를 위해 기존 보간 방식 사용.
-   - **자동 업데이트**: `lastUpdateDate`가 오늘이 아니면 `shouldAutoUpdate` 플래그를 설정하고, `PortfolioContext`에서 자동으로 시세 갱신을 트리거한다.
+---
 
-4. **사용자 설정 데이터 보존:**
-   - 사용자가 입력하는 설정값(예: 리밸런싱 목표 비중 및 목표 금액, 알림 조건 등)은 반드시 영구 저장되어야 한다.
-   - 이를 위해 `types/store.ts` 또는 `types/index.ts`의 데이터 모델에 필드를 추가하고, `hooks/useGoogleDriveSync.ts`, `hooks/usePortfolioData.ts`, `hooks/usePortfolioExport.ts`의 로드/저장/내보내기 로직에 포함시켜야 한다. `contexts/PortfolioContext.tsx`에서 해당 설정값을 로컬 `useState`로만 관리하지 않고, 반드시 `usePortfolioData` 훅의 영속화된 상태를 사용해야 한다.
-   - 데이터 구조 변경 시 하위 호환성을 위한 마이그레이션 로직(`utils/migrateData.ts` 또는 훅 내부)을 반드시 구현해야 한다.
+## 3. 파일/폴더별 책임 범위
 
-## 3. 작업 워크플로우 (AI 지침)
+### hooks/ (커스텀 훅)
+| 파일 | 책임 | 의존 | 수정 시 확인 |
+|------|------|------|-------------|
+| `usePortfolioData.ts` | 핵심 데이터 상태, Google Drive 동기화 | `useGoogleDriveSync`, `historyUtils` | `PortfolioContext` |
+| `useMarketData.ts` | 시세/환율 업데이트, 암호화폐 분기 | `priceService`, `upbitService` | `PortfolioContext` |
+| `useAssetActions.ts` | 자산 CRUD, 매도/매수/CSV 처리 | `priceService`, `geminiService` | 모달 컴포넌트들 |
+| `usePortfolioCalculator.ts` | 수익률/손익 계산 (구매 환율 기준) | `types/index` | 대시보드, 통계 |
+| `useHistoricalPriceData.ts` | MA 차트용 과거 시세 (캐시 내장) | `historicalPriceService`, `maCalculations` | `AssetTrendChart` |
+| `usePortfolioHistory.ts` | 포트폴리오 스냅샷 저장 | `types/index` | 차트 데이터 |
+| `useRebalancing.ts` | 리밸런싱 계산 및 저장 | `PortfolioContext` | `RebalancingTable` |
+| `useGoogleDriveSync.ts` | Google Drive 저장/로드, 토큰 갱신 | `googleDriveService`, `lz-string` | `usePortfolioData` |
 
-1. **영향도 분석 우선:**
-   - 코드를 수정하기 전에, 해당 파일이 어디서 참조되고 있는지(`grep` 등 활용) 먼저 파악하고 사용자에게 보고한다.
-   - 특히 `types/`나 `utils/`를 수정할 때는 프로젝트 전체에 미칠 영향을 분석해야 한다.
+### services/ (외부 API 연동)
+| 파일 | 책임 | API 엔드포인트 | 수정 시 확인 |
+|------|------|----------------|-------------|
+| `priceService.ts` | 주식/ETF 시세, 환율 | Cloud Run `/`, `/exchange-rate` | `useMarketData`, `useAssetActions` |
+| `upbitService.ts` | 암호화폐 시세 | Cloud Run `/upbit` | `useMarketData` |
+| `historicalPriceService.ts` | 과거 시세 (백필/차트용) | Cloud Run `/history`, `/upbit/history` | `useHistoricalPriceData`, `historyUtils` |
+| `googleDriveService.ts` | 클라우드 저장/로드 | Google Drive API | `useGoogleDriveSync` |
+| `geminiService.ts` | 종목 검색, AI 분석 | Gemini API | `useAssetActions`, `PortfolioAssistant` |
 
-2. **기존 코드 보존:**
-   - 잘 작동하는 기존 기능(특히 로그인, 자동저장)을 훼손하지 않는다.
-   - 리팩토링 시 기존 함수의 입출력(Input/Output) 호환성을 유지한다.
+### utils/ (순수 함수)
+| 파일 | 책임 | 수정 시 영향 범위 |
+|------|------|------------------|
+| `portfolioCalculations.ts` | 포트폴리오 계산 유틸 | 전역 (계산 결과 변경) |
+| `historyUtils.ts` | 히스토리 보간/백필 | `usePortfolioData` |
+| `maCalculations.ts` | SMA 계산, 차트 데이터 빌드 | `AssetTrendChart` |
+| `signalUtils.ts` | 신호/RSI 배지 렌더링 | `WatchlistPage` |
+| `migrateData.ts` | 데이터 마이그레이션 | 로드 시 자동 실행 |
 
-3. **문서화:**
-   - 새로운 파일이나 중요 로직이 추가되면 `README.md`의 관련 섹션도 함께 업데이트할 것을 제안한다.
-   - 지표/신호와 전일종가 로직 변경 시 `README.md`와 `RULES.md`를 최신 상태로 유지한다.
+### types/ (타입 정의)
+| 파일 | 책임 | 수정 시 영향 범위 |
+|------|------|------------------|
+| `index.ts` | 핵심 타입 (`Asset`, `Currency`, `AssetCategory` 등) | **전역** - 거의 모든 파일 |
+| `api.ts` | API 응답 타입 (`PriceItem`, `Indicators` 등) | `services/`, `hooks/` |
+| `store.ts` | 상태 관리 타입 (`PortfolioContextValue` 등) | `contexts/`, `hooks/` |
+| `ui.ts` | UI 컴포넌트 Props 타입 | `components/` |
+
+### contexts/
+| 파일 | 책임 | 수정 시 영향 범위 |
+|------|------|------------------|
+| `PortfolioContext.tsx` | 전역 상태 Provider, 모든 훅 통합 | **전역** - App.tsx 및 모든 컴포넌트 |
+
+---
+
+## 4. 의존관계 매핑
+
+### 핵심 데이터 흐름
+```
+App.tsx
+  └─ PortfolioContext.tsx
+       ├─ usePortfolioData.ts ──────┬─ useGoogleDriveSync.ts
+       │                            ├─ historyUtils.ts
+       │                            └─ migrateData.ts
+       ├─ useMarketData.ts ─────────┬─ priceService.ts (주식/ETF/환율)
+       │                            └─ upbitService.ts (암호화폐)
+       ├─ useAssetActions.ts ───────┬─ priceService.ts
+       │                            └─ geminiService.ts
+       └─ usePortfolioCalculator.ts ── types/index.ts
+```
+
+### 시세 조회 분기 흐름
+```
+useMarketData.ts
+    │
+    ├─ shouldUseUpbitAPI() 판단
+    │   ├─ true: Upbit/Bithumb 또는 한글거래소+암호화폐
+    │   │         └─ upbitService.ts → Cloud Run /upbit
+    │   └─ false: 그 외
+    │             └─ priceService.ts → Cloud Run /
+    │
+    └─ 결과 병합 → UI 반영
+```
+
+### 차트 데이터 흐름
+```
+AssetTrendChart.tsx
+    │
+    ├─ MA 활성 시
+    │   └─ useHistoricalPriceData.ts
+    │        └─ historicalPriceService.ts → /history 또는 /upbit/history
+    │             └─ maCalculations.ts (SMA 계산)
+    │
+    └─ MA 비활성 시
+        └─ PortfolioSnapshot 기반 (기존 로직)
+```
+
+### 수정 시 확인해야 할 의존관계
+
+| 수정 대상 | 반드시 확인할 파일 |
+|-----------|-------------------|
+| `types/index.ts`의 `Asset` | `hooks/*`, `components/*`, `utils/portfolioCalculations.ts` |
+| `types/index.ts`의 `Currency`/`AssetCategory` | `hooks/*`, `components/*`, `utils/*` |
+| `priceService.ts` | `useMarketData.ts`, `useAssetActions.ts` |
+| `upbitService.ts` | `useMarketData.ts` |
+| `historyUtils.ts` | `usePortfolioData.ts` |
+| `usePortfolioData.ts` | `PortfolioContext.tsx` |
+| `useGoogleDriveSync.ts` | `usePortfolioData.ts`, `usePortfolioExport.ts` |
+| `PortfolioContext.tsx` | `App.tsx`, 모든 Context 소비 컴포넌트 |
+
+---
+
+## 5. 핵심 타입 정의
+
+### Asset (자산)
+```typescript
+interface Asset {
+  id: string;                    // 고유 식별자
+  category: AssetCategory;       // 자산 카테고리 (한국주식, 미국주식, 암호화폐 등)
+  ticker: string;                // 티커 심볼 (005930, AAPL, BTC)
+  exchange: string;              // 거래소 (KRX, NASDAQ, Upbit)
+  name: string;                  // 자산명
+  customName?: string;           // 사용자 지정명
+  quantity: number;              // 보유 수량
+  purchasePrice: number;         // 매수 단가
+  purchaseDate: string;          // 매수일
+  currency: Currency;            // 통화 (KRW, USD, JPY)
+  purchaseExchangeRate?: number; // 매수 시 환율 (수익률 계산용)
+  currentPrice: number;          // 현재가 (KRW 환산)
+  priceOriginal: number;         // 외화 원본 가격
+  highestPrice: number;          // 52주 최고가
+  previousClosePrice?: number;   // 전일 종가
+  sellAlertDropRate?: number;    // 매도 알림 하락률
+  memo?: string;                 // 메모
+  sellTransactions?: SellTransaction[]; // 매도 이력
+}
+```
+
+### PortfolioSnapshot (스냅샷)
+```typescript
+interface PortfolioSnapshot {
+  date: string;              // 날짜 (YYYY-MM-DD)
+  assets: AssetSnapshot[];   // 자산별 스냅샷
+}
+
+interface AssetSnapshot {
+  id: string;                // 자산 ID
+  name: string;              // 자산명
+  currentValue: number;      // 현재가치 (KRW)
+  purchaseValue: number;     // 매수가치 (KRW)
+  unitPrice?: number;        // 1주당 단가 (KRW)
+  unitPriceOriginal?: number; // 외화 원본 단가 (차트용)
+}
+```
+
+### SellRecord (매도 기록)
+```typescript
+interface SellRecord {
+  id: string;
+  assetId: string;
+  date: string;
+  quantity: number;
+  price: number;               // 매도 단가
+  // 스냅샷 필드 (원본 자산 삭제되어도 계산 가능)
+  originalPurchasePrice?: number;
+  originalPurchaseExchangeRate?: number;
+  originalCurrency?: Currency;
+}
+```
+
+---
+
+## 6. 핵심 로직 상세
+
+### 암호화폐 분기 판단 (`shouldUseUpbitAPI`)
+```typescript
+// hooks/useMarketData.ts
+const shouldUseUpbitAPI = (exchange: string, category?: AssetCategory): boolean => {
+  const normalized = (exchange || '').toLowerCase();
+
+  // 명확하게 Upbit/Bithumb인 경우
+  if (normalized === 'upbit' || normalized === 'bithumb') return true;
+
+  // 한글 거래소명 + 암호화폐 카테고리
+  const hasKorean = /[ㄱ-ㅎ|ㅏ-ㅣ|가-힣]/.test(exchange);
+  if (hasKorean && category === AssetCategory.CRYPTOCURRENCY) return true;
+
+  return false;
+};
+```
+
+### 환율 적용 로직 (`getPurchaseValueInKRW`)
+```typescript
+// hooks/usePortfolioCalculator.ts
+const getPurchaseValueInKRW = (asset: Asset, exchangeRates: ExchangeRates): number => {
+  if (asset.currency === Currency.KRW) return asset.purchasePrice;
+
+  // 구매 당시 환율 우선 사용
+  if (asset.purchaseExchangeRate && asset.purchaseExchangeRate > 0) {
+    return asset.purchasePrice * asset.purchaseExchangeRate;
+  }
+
+  // 폴백: 현재 환율 사용 (기존 자산 호환성)
+  return getValueInKRW(asset.purchasePrice, asset.currency, exchangeRates);
+};
+```
+
+### 히스토리 백필 로직
+- **주식/ETF**: `/history` 엔드포인트 (FinanceDataReader)
+- **암호화폐**: `/upbit/history` 엔드포인트 (Upbit Candles API)
+- **90일 초과 누락**: API 부하 방지를 위해 기존 보간 방식 사용
+- **API 실패**: `fillAllMissingDates()`로 폴백 (마지막 데이터 복사)
+
+---
+
+## 7. 에러 처리 패턴
+
+### API 호출 표준 패턴
+```typescript
+try {
+  const result = await fetchSomething();
+  // 성공 처리
+} catch (error) {
+  console.error('[함수명] 에러:', error);
+  // 폴백 데이터 반환 또는 부분 성공 처리
+  return fallbackData;
+}
+```
+
+### 부분 성공 허용
+- 시세 조회 시 일부 자산 실패해도 성공한 자산만 업데이트
+- `isMocked: true` 플래그로 모킹 데이터 여부 표시
+
+### 사용자 알림
+- 치명적 오류: `alert()` 또는 Toast
+- 경고성 오류: `console.warn()` + UI 상태 표시
+- 디버그 정보: `console.log()` (프로덕션에서 제거 고려)
+
+---
+
+## 8. 주의사항 및 오류 방지
+
+### 시세 API 관련
+| 항목 | 주의사항 |
+|------|---------|
+| **청크 크기** | 20개씩 요청 (API 제한) |
+| **재시도** | 실패 시 1회 재시도, 1초 대기 |
+| **모킹 데이터** | API 실패 시 `isMocked: true` 플래그와 함께 기본값 제공 |
+| **부분 성공** | 일부 자산 실패해도 성공한 자산만 업데이트 |
+
+### 암호화폐 분기 처리
+- **Upbit/Bithumb 예외**: 업비트 API는 **항상 KRW 가격**을 반환
+  - `currency` 설정과 무관하게 강제로 KRW로 처리
+  - 수익률 계산 시 환율 변환 불필요
+- **CORS 우회 필수**: 클라이언트에서 업비트 직접 호출 불가 → Cloud Run 프록시 경유
+
+### 환율 처리
+- **기본값**: USD 1450, JPY 9.5 (API 실패 시)
+- **유효성 검사**: USD > 100, JPY > 1
+- **현재가 vs 매수가**: 현재가는 실시간 환율, 매수가는 구매 당시 환율 사용
+
+### Google Drive 동기화
+- **자동 저장 디바운스**: 2초 (빈번한 저장 방지)
+- **토큰 갱신**: 만료 5분 전 자동 갱신
+- **공유 폴더 파라미터**: 새 Drive API 호출 시 `supportsAllDrives`, `includeItemsFromAllDrives` 필수
+
+### 디버깅 로그 패턴
+```typescript
+// 표준 로그 형식
+console.log('[useMarketData] 자산 분류:', { upbit: upbitAssets.length, general: generalAssets.length });
+console.log('[useMarketData] 업비트 조회 심볼:', upbitSymbols);
+console.log('[Upbit] BTC: 현재가=xxx, 전일종가=xxx');
+console.error('[priceService] 시세 조회 실패:', error);
+```
+
+### 데이터 무결성
+- **마이그레이션**: `migrateData.ts`에서 이전 버전 데이터 자동 변환
+- **구조 검증**: 필수 필드 존재 여부 확인 후 로드
+- **스냅샷 우선**: 매도 통계에서 스냅샷 필드(`originalPurchasePrice` 등) 우선 사용
+
+---
+
+## 9. 수정 시 체크리스트
+
+### 새 자산 필드 추가 시
+- [ ] `types/index.ts`의 `Asset` 인터페이스에 필드 추가
+- [ ] `types/index.ts`의 `LegacyAssetShape`에 마이그레이션용 필드 추가
+- [ ] `utils/migrateData.ts`에 마이그레이션 로직 추가
+- [ ] `hooks/useGoogleDriveSync.ts`의 저장/로드 로직 확인
+- [ ] 관련 컴포넌트 UI 업데이트
+
+### 새 API 엔드포인트 연동 시
+- [ ] `services/`에 함수 추가 또는 기존 서비스 확장
+- [ ] `types/api.ts`에 응답 타입 정의
+- [ ] `hooks/`에서 해당 서비스 호출
+- [ ] 에러 핸들링 및 폴백 로직 구현
+
+### 시세 조회 로직 수정 시
+- [ ] `useMarketData.ts`의 `shouldUseUpbitAPI()` 확인
+- [ ] 주식/암호화폐 분기 로직 확인
+- [ ] 병렬 조회 및 결과 병합 로직 확인
+- [ ] 환율 변환 로직 확인
+
+### 새 설정값 저장 시 (리밸런싱 목표 등)
+- [ ] `types/index.ts` 또는 `types/store.ts`에 타입 추가
+- [ ] `hooks/useGoogleDriveSync.ts`의 `LoadedData` 타입에 추가
+- [ ] `hooks/usePortfolioData.ts`에 상태 관리 추가
+- [ ] `hooks/usePortfolioExport.ts`의 내보내기/가져오기에 추가
+- [ ] `contexts/PortfolioContext.tsx`에서 노출
+
+### UI 컴포넌트 수정 시
+- [ ] `types/ui.ts`의 Props 타입 확인/수정
+- [ ] 부모 컴포넌트에서 props 전달 확인
+- [ ] 반응형 디자인 테스트
+
+### 데이터 구조 변경 시
+- [ ] `utils/migrateData.ts`에 하위 호환성 마이그레이션 추가
+- [ ] 기존 데이터 로드 테스트
+
+---
+
+## 10. 확장 가이드
+
+### 새로운 자산 카테고리 추가
+1. `types/index.ts`의 `AssetCategory` enum에 추가
+2. `EXCHANGE_MAP`에 거래소 매핑
+3. `inferCategoryFromExchange` 로직 업데이트
+4. 관련 컴포넌트 UI 업데이트
+
+### 새로운 거래소 추가
+1. `COMMON_EXCHANGES` 또는 `ALL_EXCHANGES`에 추가
+2. 카테고리 추론 로직 업데이트
+3. 시세 API 지원 확인
+4. **암호화폐 거래소인 경우**: `shouldUseUpbitAPI()` 함수에 조건 추가
+
+### 통화 추가
+1. `types/index.ts`의 `Currency` enum에 추가
+2. `CURRENCY_SYMBOLS`에 심볼 추가
+3. 환율 API 지원 확인 (`/exchange-rate`)
+4. 환율 입력 UI 업데이트
+
+### 새로운 암호화폐 거래소 추가
+1. `shouldUseUpbitAPI()` 함수에 거래소명 조건 추가
+2. 해당 거래소 API가 업비트와 호환되는지 확인
+3. 호환되지 않는 경우:
+   - `services/`에 별도 서비스 파일 생성
+   - Cloud Run에 새 엔드포인트 추가
+   - `useMarketData.ts`에 분기 로직 추가
+
+---
+
+## 11. 데이터 모델링 원칙
+
+### 외화 데이터 보존
+- 저장 시 `currentPrice`(원화 환산값)와 `priceOriginal`(외화 원본값) **모두 저장**
+- 히스토리 저장 시 `unitPriceOriginal`(외화 원본 가격) 누락 주의
+
+### 이력 데이터 영속성
+- 매도 등 히스토리 저장 시 원본 자산이 삭제되어도 계산 가능하도록 스냅샷 저장
+- 스냅샷 필드: `originalPurchasePrice`, `originalPurchaseExchangeRate`, `originalCurrency`
+- 분석/통계에서 **스냅샷 필드 우선 사용**, 없으면 현재 자산으로 폴백
+
+### Google Drive 동기화
+- **공유 폴더 지원**: `supportsAllDrives`, `includeItemsFromAllDrives` 파라미터 필수
+- **LZ-String 압축**: 저장 시 압축, 로드 시 압축 해제 (레거시 호환)
+- **자동 업데이트**: `lastUpdateDate`가 오늘이 아니면 `shouldAutoUpdate` 플래그 설정
+
+---
+
+## 12. 작업 워크플로우
+
+### 코드 수정 전
+1. 해당 파일이 어디서 참조되는지 `grep` 등으로 파악
+2. `types/`나 `utils/` 수정 시 프로젝트 전체 영향도 분석
+3. 수정 계획을 사용자에게 보고
+
+### 코드 수정 시
+- 잘 작동하는 기존 기능(로그인, 자동저장) 훼손 금지
+- 리팩토링 시 기존 함수의 입출력(I/O) 호환성 유지
+
+### 코드 수정 후
+- 새로운 파일이나 중요 로직 추가 시 `README.md` 업데이트 제안
+- 지표/신호 로직 변경 시 문서 함께 갱신

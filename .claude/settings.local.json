@@ -10,7 +10,8 @@
       "WebFetch(domain:m.stock.naver.com)",
       "Bash(curl:*)",
       "Bash(python3:*)",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash(tree:*)"
     ],
     "additionalDirectories": [
       "C:\\Users\\beari\\Downloads"
