@@ -1,5 +1,5 @@
 // hooks/useHistoricalPriceData.ts
-// MA 차트용 과거 시세 데이터 fetching hook
+// 차트용 과거 시세 데이터 fetching hook (종가 기반)
 
 import { useState, useEffect, useRef } from 'react';
 import { AssetCategory } from '../types';
@@ -52,17 +52,20 @@ export function useHistoricalPriceData({
   const abortRef = useRef(false);
 
   useEffect(() => {
-    // 차트가 접혀있거나 MA가 비활성이면 fetch하지 않음
-    if (!isExpanded || maxMAPeriod <= 0) {
+    // 차트가 접혀있거나 ticker가 없으면 fetch하지 않음
+    if (!isExpanded || !ticker) {
       return;
     }
+
+    // MA 비활성이어도 기본 종가 데이터는 fetch (장중가 스냅샷 대신 실제 종가 사용)
+    const effectivePeriod = Math.max(maxMAPeriod, 1);
 
     const cacheKey = getCacheKey(ticker, exchange);
     const now = Date.now();
 
-    // 캐시 확인: TTL 유효 + 이전 요청이 현재 maxPeriod를 커버하면 재사용
+    // 캐시 확인: TTL 유효 + 이전 요청이 현재 period를 커버하면 재사용
     const cached = cache.get(cacheKey);
-    if (cached && (now - cached.fetchedAt) < CACHE_TTL_MS && cached.maxPeriod >= maxMAPeriod) {
+    if (cached && (now - cached.fetchedAt) < CACHE_TTL_MS && cached.maxPeriod >= effectivePeriod) {
       setHistoricalPrices(cached.data);
       setError(null);
       return;
@@ -74,7 +77,7 @@ export function useHistoricalPriceData({
 
     const fetchData = async () => {
       try {
-        const days = getRequiredHistoryDays(maxMAPeriod);
+        const days = getRequiredHistoryDays(effectivePeriod);
         const endDate = new Date().toISOString().split('T')[0];
         const startD = new Date();
         startD.setDate(startD.getDate() - days);
@@ -101,7 +104,7 @@ export function useHistoricalPriceData({
           cache.set(cacheKey, {
             data: priceData,
             fetchedAt: Date.now(),
-            maxPeriod: maxMAPeriod,
+            maxPeriod: effectivePeriod,
           });
           setHistoricalPrices(priceData);
           setError(null);

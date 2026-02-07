@@ -61,7 +61,8 @@ const AssetTrendChart: React.FC<AssetTrendChartProps> = ({
   const maxMAPeriod = enabledPeriods.length > 0 ? Math.max(...enabledPeriods) : 0;
   const hasMASupport = !!ticker && !!exchange && !!category && !isCash;
 
-  // 과거 시세 fetch (MA 활성 시에만)
+  // 과거 시세 fetch (차트 열릴 때 항상 — 종가 기반 정확도 보장)
+  // MA 비활성이어도 hook 내부에서 기본 기간으로 종가 데이터를 가져옴
   const { historicalPrices, isLoading: maLoading, error: maError } = useHistoricalPriceData({
     ticker: ticker || '',
     exchange: exchange || '',
@@ -80,8 +81,8 @@ const AssetTrendChart: React.FC<AssetTrendChartProps> = ({
     });
   }, []);
 
-  // MA 데이터가 있으면 과거시세 기반 차트, 없으면 기존 PortfolioSnapshot 기반
-  const useMAData = hasMASupport && maxMAPeriod > 0 && historicalPrices && Object.keys(historicalPrices).length > 0;
+  // 과거 종가 데이터가 있으면 우선 사용 (MA 활성 여부 무관), 없으면 PortfolioSnapshot 폴백
+  const useHistoricalData = hasMASupport && !!historicalPrices && Object.keys(historicalPrices).length > 0;
 
   // 기존 PortfolioSnapshot 기반 차트 데이터
   const snapshotChartData = useMemo(() => {
@@ -146,9 +147,9 @@ const AssetTrendChart: React.FC<AssetTrendChartProps> = ({
     return data;
   }, [history, assetId, currentQuantity, currentPrice, currency, exchangeRate, showInKRW]);
 
-  // MA 기반 차트 데이터 (과거 시세 + MA 오버레이)
-  const maChartData = useMemo(() => {
-    if (!useMAData || !historicalPrices) return [];
+  // 과거 종가 기반 차트 데이터 (+ MA 오버레이)
+  const historicalChartData = useMemo(() => {
+    if (!useHistoricalData || !historicalPrices) return [];
 
     // KRW 토글이 켜져있고 외화 자산이면 환율 적용
     const applyKRW = showInKRW && currency !== Currency.KRW;
@@ -191,9 +192,9 @@ const AssetTrendChart: React.FC<AssetTrendChartProps> = ({
     }
 
     return data;
-  }, [useMAData, historicalPrices, enabledPeriods, currentPrice, currency, exchangeRate, showInKRW]);
+  }, [useHistoricalData, historicalPrices, enabledPeriods, currentPrice, currency, exchangeRate, showInKRW]);
 
-  const chartData = useMAData ? maChartData : snapshotChartData;
+  const chartData = useHistoricalData ? historicalChartData : snapshotChartData;
 
   // 통화 기호 표시 헬퍼 함수
   const getCurrencySymbol = (curr: string) => {
@@ -271,7 +272,7 @@ const AssetTrendChart: React.FC<AssetTrendChartProps> = ({
             </button>
           ))}
           {maLoading && <span className="text-[10px] text-gray-500 ml-1">불러오는 중...</span>}
-          {maError && !maLoading && maxMAPeriod > 0 && <span className="text-[10px] text-red-400 ml-1">{maError}</span>}
+          {maError && !maLoading && <span className="text-[10px] text-red-400 ml-1">{maError}</span>}
         </div>
       )}
 
@@ -303,7 +304,7 @@ const AssetTrendChart: React.FC<AssetTrendChartProps> = ({
               dataKey="가격"
               stroke="#818CF8"
               strokeWidth={2}
-              dot={{ r: useMAData ? 0 : 3 }}
+              dot={{ r: enabledPeriods.length > 0 ? 0 : 3 }}
               activeDot={{ r: 6 }}
               isAnimationActive={false}
             />

@@ -39,7 +39,7 @@
 ### API 연동 원칙
 - 외부 API 호출은 `hooks/useMarketData.ts` 등 전용 훅에서만 수행
 - API 실패 시 `try-catch`와 `fallback` 데이터 필수 (부분 성공 허용)
-- 변동률 계산은 백엔드 `prev_close` 우선 사용, UI 컴포넌트 내 계산 금지
+- 변동률(어제대비) 계산은 `usePortfolioCalculator`의 `yesterdayChange` 사용 (현재가-전일종가 기반 직접 계산)
 
 ---
 
@@ -52,7 +52,7 @@
 | `useMarketData.ts` | 시세/환율 업데이트, 암호화폐 분기 | `priceService`, `upbitService` | `PortfolioContext` |
 | `useAssetActions.ts` | 자산 CRUD, 매도/매수/CSV 처리 | `priceService`, `geminiService` | 모달 컴포넌트들 |
 | `usePortfolioCalculator.ts` | 수익률/손익 계산 (구매 환율 기준) | `types/index` | 대시보드, 통계 |
-| `useHistoricalPriceData.ts` | MA 차트용 과거 시세 (캐시 내장) | `historicalPriceService`, `maCalculations` | `AssetTrendChart` |
+| `useHistoricalPriceData.ts` | 차트용 과거 종가 데이터 (MA 여부 무관, 캐시 내장) | `historicalPriceService`, `maCalculations` | `AssetTrendChart` |
 | `usePortfolioHistory.ts` | 포트폴리오 스냅샷 저장 | `types/index` | 차트 데이터 |
 | `useRebalancing.ts` | 리밸런싱 계산 및 저장 | `PortfolioContext` | `RebalancingTable` |
 | `useGoogleDriveSync.ts` | Google Drive 저장/로드, 토큰 갱신 | `googleDriveService`, `lz-string` | `usePortfolioData` |
@@ -70,7 +70,7 @@
 | 파일 | 책임 | 수정 시 영향 범위 |
 |------|------|------------------|
 | `portfolioCalculations.ts` | 포트폴리오 계산 유틸 | 전역 (계산 결과 변경) |
-| `historyUtils.ts` | 히스토리 보간/백필 | `usePortfolioData` |
+| `historyUtils.ts` | 히스토리 보간/백필/기존 스냅샷 종가 교정 | `usePortfolioData` |
 | `maCalculations.ts` | SMA 계산, 차트 데이터 빌드 | `AssetTrendChart` |
 | `signalUtils.ts` | 신호/RSI 배지 렌더링 | `WatchlistPage` |
 | `migrateData.ts` | 데이터 마이그레이션 | 로드 시 자동 실행 |
@@ -123,13 +123,13 @@ useMarketData.ts
 ```
 AssetTrendChart.tsx
     │
-    ├─ MA 활성 시
-    │   └─ useHistoricalPriceData.ts
+    ├─ ticker/exchange 있는 자산 (주식, 코인 등)
+    │   └─ useHistoricalPriceData.ts (MA 여부 무관, 항상 fetch)
     │        └─ historicalPriceService.ts → /history 또는 /upbit/history
-    │             └─ maCalculations.ts (SMA 계산)
+    │             └─ 실제 종가 기반 차트 + MA 오버레이 (활성 시)
     │
-    └─ MA 비활성 시
-        └─ PortfolioSnapshot 기반 (기존 로직)
+    └─ 현금 등 ticker 없는 자산
+        └─ PortfolioSnapshot 기반 (폴백)
 ```
 
 ### 수정 시 확인해야 할 의존관계
@@ -242,10 +242,11 @@ const getPurchaseValueInKRW = (asset: Asset, exchangeRates: ExchangeRates): numb
 };
 ```
 
-### 히스토리 백필 로직
+### 히스토리 백필 + 종가 교정 로직
 - **주식/ETF**: `/history` 엔드포인트 (FinanceDataReader)
 - **암호화폐**: `/upbit/history` 엔드포인트 (Upbit Candles API)
-- **90일 초과 누락**: API 부하 방지를 위해 기존 보간 방식 사용
+- **기존 스냅샷 교정**: 장중 업데이트로 기록된 가격을 실제 종가로 소급 교정 (오늘 제외)
+- **90일 초과**: 최근 90일만 교정/백필 (API 부하 방지)
 - **API 실패**: `fillAllMissingDates()`로 폴백 (마지막 데이터 복사)
 
 ---
@@ -300,6 +301,12 @@ try {
 - **자동 저장 디바운스**: 2초 (빈번한 저장 방지)
 - **토큰 갱신**: 만료 5분 전 자동 갱신
 - **공유 폴더 파라미터**: 새 Drive API 호출 시 `supportsAllDrives`, `includeItemsFromAllDrives` 필수
+
+### 자동 시세 업데이트 (하루 1회)
+- **판단 기준**: Google Drive의 `lastUpdateDate` + `localStorage`의 `lastAutoUpdateDate` **이중 체크**
+- **실행 흐름**: `usePortfolioData` → `shouldAutoUpdate` 플래그 → `PortfolioContext` useEffect → `handleRefreshAllPrices(true)`
+- **중복 방지**: `localStorage`에 즉시 기록하여 Drive 저장 지연/새로고침 시에도 재실행 차단
+- **수정 시 확인**: `usePortfolioData.ts` (플래그 설정), `PortfolioContext.tsx` (실행), `useGoogleDriveSync.ts` (날짜 저장)
 
 ### 디버깅 로그 패턴
 ```typescript
@@ -400,7 +407,7 @@ console.error('[priceService] 시세 조회 실패:', error);
 ### Google Drive 동기화
 - **공유 폴더 지원**: `supportsAllDrives`, `includeItemsFromAllDrives` 파라미터 필수
 - **LZ-String 압축**: 저장 시 압축, 로드 시 압축 해제 (레거시 호환)
-- **자동 업데이트**: `lastUpdateDate`가 오늘이 아니면 `shouldAutoUpdate` 플래그 설정
+- **자동 업데이트**: `lastUpdateDate`(Drive)와 `localStorage.lastAutoUpdateDate` **둘 다** 오늘이 아닐 때만 `shouldAutoUpdate` 플래그 설정. 실행 직전 `localStorage`에 날짜를 기록하여 Drive 저장 지연/실패 시에도 중복 실행 방지
 
 ---
 

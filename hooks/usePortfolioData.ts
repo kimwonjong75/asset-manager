@@ -105,7 +105,9 @@ export const usePortfolioData = () => {
         setLastUpdateDate(savedLastUpdate || null);
 
         // 오늘 아직 업데이트 안 했고, 자산이 있으면 자동 업데이트 예약
-        if (savedLastUpdate !== today && driveAssets.length > 0) {
+        // localStorage도 확인하여 새로고침/Drive 저장 지연 시 중복 실행 방지
+        const localLastUpdate = localStorage.getItem('lastAutoUpdateDate');
+        if (savedLastUpdate !== today && localLastUpdate !== today && driveAssets.length > 0) {
           setShouldAutoUpdate(true);
         }
 

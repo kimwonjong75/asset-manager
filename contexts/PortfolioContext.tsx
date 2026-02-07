@@ -61,6 +61,7 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   // 앱 시작 시 자동 업데이트 (오늘 아직 업데이트 안 했으면)
   useEffect(() => {
     if (shouldAutoUpdate && assets.length > 0 && !hasAutoUpdated && !isMarketLoading) {
+      localStorage.setItem('lastAutoUpdateDate', new Date().toISOString().slice(0, 10));
       setHasAutoUpdated(true);
       setShouldAutoUpdate(false);
       // 자동 업데이트 실행 (isAutoUpdate=true로 호출)

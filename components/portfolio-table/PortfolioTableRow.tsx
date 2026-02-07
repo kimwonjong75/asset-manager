@@ -109,10 +109,7 @@ const PortfolioTableRow: React.FC<PortfolioTableRowProps> = ({
   const isNonKRW = asset.currency !== Currency.KRW;
   const investmentColor = getChangeColor(returnPercentage);
 
-  // API changeRate 우선 사용
-  const finalYesterdayChangeRate = asset.changeRate !== undefined 
-    ? asset.changeRate * 100 
-    : yesterdayChange;
+  const finalYesterdayChangeRate = yesterdayChange;
 
   // [수정] 차트에 전달할 환율 계산
   // 1순위: exchangeRates prop 사용 (가장 정확)

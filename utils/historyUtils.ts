@@ -158,36 +158,20 @@ export const getMissingDateRange = (history: PortfolioSnapshot[]): { startDate: 
 };
 
 /**
- * 실제 과거 시세로 히스토리 백필
+ * 실제 과거 시세로 히스토리 백필 + 기존 스냅샷 종가 교정
  *
- * @param history 기존 히스토리
- * @param assets 현재 보유 자산 목록 (티커 정보 참조용)
- * @param exchangeRates 현재 환율 (폴백용)
- * @returns 백필된 히스토리 또는 기존 보간 히스토리 (실패 시)
+ * - 누락된 날짜: 새 스냅샷 생성 (기존 동작)
+ * - 기존 스냅샷: 장중 업데이트로 기록된 가격을 실제 종가로 교정
+ *   (오늘 스냅샷은 교정 대상에서 제외)
  */
 export const backfillWithRealPrices = async (
   history: PortfolioSnapshot[],
   assets: Asset[],
   exchangeRates: { USD: number; JPY: number }
 ): Promise<PortfolioSnapshot[]> => {
-  // 누락 범위 확인
-  const missingRange = getMissingDateRange(history);
-  if (!missingRange) {
-    console.log('[Backfill] 누락된 날짜 없음');
-    return fillAllMissingDates(history);
-  }
-
-  const { startDate, endDate, missingDates } = missingRange;
-  console.log(`[Backfill] 백필 시작: ${startDate} ~ ${endDate} (${missingDates.length}일)`);
-
-  // 백필 대상이 너무 많으면 기존 보간 사용 (API 부하 방지)
-  if (missingDates.length > 90) {
-    console.warn('[Backfill] 누락일이 90일 초과, 기존 보간 방식 사용');
-    return fillAllMissingDates(history);
-  }
-
-  // 마지막 스냅샷의 자산 ID 목록
   const sorted = [...history].sort((a, b) => a.date.localeCompare(b.date));
+  if (sorted.length === 0) return history;
+
   const lastSnapshot = sorted[sorted.length - 1];
   const assetIds = new Set(lastSnapshot.assets.map(a => a.id));
 
@@ -202,41 +186,50 @@ export const backfillWithRealPrices = async (
   // 주식/ETF와 암호화폐 분리
   const stockTickers: string[] = [];
   const cryptoSymbols: string[] = [];
-  const tickerToAssetIds = new Map<string, string[]>();
 
-  assetInfoMap.forEach((asset, id) => {
-    // 현금은 백필 제외
+  assetInfoMap.forEach((asset) => {
     if (asset.category === AssetCategory.CASH) return;
-
     const ticker = convertTickerForAPI(asset.ticker, asset.exchange, asset.category);
-
     if (isCryptoExchange(asset.exchange)) {
-      if (!cryptoSymbols.includes(asset.ticker)) {
-        cryptoSymbols.push(asset.ticker);
-      }
+      if (!cryptoSymbols.includes(asset.ticker)) cryptoSymbols.push(asset.ticker);
     } else {
-      if (!stockTickers.includes(ticker)) {
-        stockTickers.push(ticker);
-      }
+      if (!stockTickers.includes(ticker)) stockTickers.push(ticker);
     }
-
-    // 티커 -> 자산ID 매핑 (동일 티커를 여러 자산이 가질 수 있음)
-    const existing = tickerToAssetIds.get(ticker) || tickerToAssetIds.get(asset.ticker) || [];
-    existing.push(id);
-    tickerToAssetIds.set(isCryptoExchange(asset.exchange) ? asset.ticker : ticker, existing);
   });
 
-  console.log(`[Backfill] 주식 ${stockTickers.length}개, 암호화폐 ${cryptoSymbols.length}개 조회 예정`);
+  if (stockTickers.length === 0 && cryptoSymbols.length === 0) {
+    return fillAllMissingDates(history);
+  }
+
+  // 누락 범위 확인
+  const missingRange = getMissingDateRange(history);
+  const missingDates = missingRange?.missingDates || [];
+
+  // 기존 스냅샷 중 종가 교정 대상 (오늘 제외)
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const existingDates = sorted.filter(s => s.date !== todayStr).map(s => s.date);
+
+  // API 조회 범위 계산
+  const allDates = [...new Set([...existingDates, ...missingDates])].sort();
+  if (allDates.length === 0) {
+    console.log('[Backfill] 교정/백필 대상 없음');
+    return fillAllMissingDates(history);
+  }
+
+  // 너무 많으면 최근 90일만
+  const targetDates = allDates.length > 90 ? allDates.slice(-90) : allDates;
+  const fetchStart = targetDates[0];
+  const fetchEnd = targetDates[targetDates.length - 1];
+
+  console.log(`[Backfill] 백필+교정: ${fetchStart} ~ ${fetchEnd} (누락 ${missingDates.length}일, 교정 ${existingDates.length}일)`);
 
   try {
-    // 병렬로 API 호출
     const [stockPrices, cryptoPrices, exchangeRateHistory] = await Promise.all([
-      stockTickers.length > 0 ? fetchStockHistoricalPrices(stockTickers, startDate, endDate) : Promise.resolve({}),
-      cryptoSymbols.length > 0 ? fetchCryptoHistoricalPrices(cryptoSymbols, startDate, endDate) : Promise.resolve({}),
-      fetchExchangeRateHistory(startDate, endDate),
+      stockTickers.length > 0 ? fetchStockHistoricalPrices(stockTickers, fetchStart, fetchEnd) : Promise.resolve({}),
+      cryptoSymbols.length > 0 ? fetchCryptoHistoricalPrices(cryptoSymbols, fetchStart, fetchEnd) : Promise.resolve({}),
+      fetchExchangeRateHistory(fetchStart, fetchEnd),
     ]);
 
-    // 결과 확인
     const hasStockData = Object.values(stockPrices as Record<string, HistoricalPriceResult>).some(r => r.data && Object.keys(r.data).length > 0);
     const hasCryptoData = Object.values(cryptoPrices as Record<string, HistoricalPriceResult>).some(r => r.data && Object.keys(r.data).length > 0);
 
@@ -245,85 +238,81 @@ export const backfillWithRealPrices = async (
       return fillAllMissingDates(history);
     }
 
-    // 누락된 날짜별로 스냅샷 생성
-    const newSnapshots: PortfolioSnapshot[] = [];
-
-    for (const date of missingDates) {
-      const dayExchangeRate = exchangeRateHistory[date] || exchangeRates.USD;
-
-      // 마지막 스냅샷 기준으로 자산 복사 후 가격만 업데이트
-      const dayAssets: AssetSnapshot[] = lastSnapshot.assets.map(snapshotAsset => {
+    // 스냅샷 자산의 가격을 실제 종가로 교정하는 헬퍼
+    const correctAssets = (snapshotAssets: AssetSnapshot[], date: string, dayExchangeRate: number): AssetSnapshot[] => {
+      return snapshotAssets.map(snapshotAsset => {
         const assetInfo = assetInfoMap.get(snapshotAsset.id);
-
-        if (!assetInfo) {
-          // 자산 정보 없으면 그대로 복사 (현금 등)
+        if (!assetInfo || assetInfo.category === AssetCategory.CASH) {
           return { ...snapshotAsset };
         }
 
-        // 매수일 이전 날짜는 제외 (0으로 처리)
         if (assetInfo.purchaseDate && date < assetInfo.purchaseDate) {
-          return {
-            ...snapshotAsset,
-            currentValue: 0,
-            purchaseValue: 0,
-            unitPrice: 0,
-            unitPriceOriginal: 0,
-          };
+          return { ...snapshotAsset, currentValue: 0, purchaseValue: 0, unitPrice: 0, unitPriceOriginal: 0 };
         }
 
         let newUnitPriceOriginal = snapshotAsset.unitPriceOriginal || 0;
         let newUnitPrice = snapshotAsset.unitPrice || 0;
 
         if (isCryptoExchange(assetInfo.exchange)) {
-          // 암호화폐: Upbit 데이터
           const cryptoResult = cryptoPrices[assetInfo.ticker.toUpperCase()] || cryptoPrices[`KRW-${assetInfo.ticker.toUpperCase()}`];
           if (cryptoResult?.data?.[date]) {
             newUnitPriceOriginal = cryptoResult.data[date];
-            newUnitPrice = newUnitPriceOriginal; // KRW 기준
+            newUnitPrice = newUnitPriceOriginal;
           }
         } else {
-          // 주식: FinanceDataReader 데이터
           const ticker = convertTickerForAPI(assetInfo.ticker, assetInfo.exchange, assetInfo.category);
           const stockResult = stockPrices[ticker];
           if (stockResult?.data?.[date]) {
             newUnitPriceOriginal = stockResult.data[date];
-
-            // 원화 환산
             if (assetInfo.currency === Currency.USD) {
               newUnitPrice = newUnitPriceOriginal * dayExchangeRate;
             } else if (assetInfo.currency === Currency.KRW) {
               newUnitPrice = newUnitPriceOriginal;
             } else {
-              // 기타 통화는 기존 값 유지
               newUnitPrice = snapshotAsset.unitPrice || newUnitPriceOriginal;
             }
           }
         }
 
-        // 평가액 계산 (수량은 마지막 스냅샷 기준)
         const quantity = snapshotAsset.currentValue / (snapshotAsset.unitPrice || 1);
         const newCurrentValue = newUnitPrice > 0 ? quantity * newUnitPrice : snapshotAsset.currentValue;
 
-        return {
-          ...snapshotAsset,
-          unitPrice: newUnitPrice,
-          unitPriceOriginal: newUnitPriceOriginal,
-          currentValue: newCurrentValue,
-        };
+        return { ...snapshotAsset, unitPrice: newUnitPrice, unitPriceOriginal: newUnitPriceOriginal, currentValue: newCurrentValue };
       });
+    };
 
-      newSnapshots.push({
-        date,
-        assets: dayAssets,
-      });
+    // 1) 기존 스냅샷 교정 (장중가 → 종가, 오늘 제외)
+    let correctedCount = 0;
+    const correctedHistory = sorted.map(snapshot => {
+      if (snapshot.date === todayStr) return snapshot;
+      const dayExchangeRate = exchangeRateHistory[snapshot.date] || exchangeRates.USD;
+      const correctedAssets = correctAssets(snapshot.assets, snapshot.date, dayExchangeRate);
+      const changed = correctedAssets.some((a, i) =>
+        a.unitPriceOriginal !== snapshot.assets[i]?.unitPriceOriginal
+      );
+      if (changed) correctedCount++;
+      return { ...snapshot, assets: correctedAssets };
+    });
+
+    if (correctedCount > 0) {
+      console.log(`[Backfill] 기존 스냅샷 ${correctedCount}개 종가로 교정`);
     }
 
-    console.log(`[Backfill] ${newSnapshots.length}개 스냅샷 생성 완료`);
+    // 2) 누락 날짜 스냅샷 생성
+    const existingDateSet = new Set(sorted.map(s => s.date));
+    const newSnapshots: PortfolioSnapshot[] = [];
+    for (const date of missingDates) {
+      if (existingDateSet.has(date)) continue;
+      const dayExchangeRate = exchangeRateHistory[date] || exchangeRates.USD;
+      const dayAssets = correctAssets(lastSnapshot.assets, date, dayExchangeRate);
+      newSnapshots.push({ date, assets: dayAssets });
+    }
 
-    // 기존 히스토리 + 새 스냅샷 병합 후 정렬
-    const merged = [...sorted, ...newSnapshots].sort((a, b) => a.date.localeCompare(b.date));
+    if (newSnapshots.length > 0) {
+      console.log(`[Backfill] ${newSnapshots.length}개 새 스냅샷 생성`);
+    }
 
-    // 중간에 빠진 날짜(주말/휴장일)는 기존 보간으로 채우기
+    const merged = [...correctedHistory, ...newSnapshots].sort((a, b) => a.date.localeCompare(b.date));
     return fillAllMissingDates(merged);
 
   } catch (error) {
