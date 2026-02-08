@@ -35,7 +35,7 @@ const FILTER_HELP_SECTIONS = [
   {
     title: '이동평균 (MA) — 기간 선택',
     items: [
-      '헤더 드롭다운에서 단기(10/20/60)·장기(60/120/200) MA 기간 선택',
+      '현재가>MA 칩의 드롭다운에서 단기(10/20/60)·장기(60/120/200) 기간 선택',
       '현재가>단기MA / 현재가>장기MA: 가격이 해당 이동평균선 위에 있는 종목',
       '정배열: 단기MA > 장기MA — 상승 추세 (보유 유지 또는 매수 고려)',
       '역배열: 단기MA < 장기MA — 하락 추세 (매도 고려 또는 매수 보류)',
@@ -112,10 +112,10 @@ const SmartFilterPanel: React.FC<SmartFilterPanelProps> = ({
 
   // 단기 MA 변경 시 장기보다 작게 유지
   const handleShortPeriodChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    e.stopPropagation();
     const newShort = parseInt(e.target.value, 10);
     onMaShortPeriodChange(newShort);
     if (newShort >= filter.maLongPeriod) {
-      // 장기를 단기보다 큰 값으로 자동 조정
       const nextLong = MA_LONG_OPTIONS.find(v => v > newShort);
       if (nextLong) onMaLongPeriodChange(nextLong);
     }
@@ -123,13 +123,84 @@ const SmartFilterPanel: React.FC<SmartFilterPanelProps> = ({
 
   // 장기 MA 변경 시 단기보다 크게 유지
   const handleLongPeriodChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    e.stopPropagation();
     const newLong = parseInt(e.target.value, 10);
     onMaLongPeriodChange(newLong);
     if (newLong <= filter.maShortPeriod) {
-      // 단기를 장기보다 작은 값으로 자동 조정
       const prevShort = [...MA_SHORT_OPTIONS].reverse().find(v => v < newLong);
       if (prevShort) onMaShortPeriodChange(prevShort);
     }
+  };
+
+  const renderChip = (chip: typeof SMART_FILTER_CHIPS[number]) => {
+    const isActive = filter.activeFilters.has(chip.key);
+    const isLoadingChip = chip.needsEnriched && isEnrichedLoading;
+    const isMaPeriodChip = chip.key === 'PRICE_ABOVE_SHORT_MA' || chip.key === 'PRICE_ABOVE_LONG_MA';
+
+    return (
+      <button
+        key={chip.key}
+        onClick={() => onToggleFilter(chip.key)}
+        className={`
+          px-2 py-0.5 rounded-full text-xs font-medium transition-all flex items-center gap-0.5
+          ${isActive
+            ? `${chip.colorClass} text-white shadow-sm`
+            : 'bg-gray-700 text-gray-400 hover:bg-gray-600 hover:text-gray-200'}
+          ${isLoadingChip && isActive ? 'opacity-60' : ''}
+        `}
+      >
+        {isLoadingChip && isActive && (
+          <svg className="animate-spin h-3 w-3" viewBox="0 0 24 24" fill="none">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+          </svg>
+        )}
+        {isMaPeriodChip ? (
+          <>
+            <span>현재가&gt;</span>
+            <select
+              value={chip.key === 'PRICE_ABOVE_SHORT_MA' ? filter.maShortPeriod : filter.maLongPeriod}
+              onChange={chip.key === 'PRICE_ABOVE_SHORT_MA' ? handleShortPeriodChange : handleLongPeriodChange}
+              onClick={(e) => e.stopPropagation()}
+              className={`bg-transparent text-xs font-bold focus:outline-none cursor-pointer
+                ${isActive ? 'text-white' : 'text-gray-300'}`}
+            >
+              {(chip.key === 'PRICE_ABOVE_SHORT_MA' ? MA_SHORT_OPTIONS : MA_LONG_OPTIONS).map(p => (
+                <option
+                  key={p}
+                  value={p}
+                  disabled={
+                    chip.key === 'PRICE_ABOVE_SHORT_MA'
+                      ? p >= filter.maLongPeriod
+                      : p <= filter.maShortPeriod
+                  }
+                  className="bg-gray-800 text-gray-200"
+                >
+                  MA{p}
+                </option>
+              ))}
+            </select>
+          </>
+        ) : (
+          chip.labelFn ? chip.labelFn(filter) : chip.label
+        )}
+        {chip.key === 'DROP_FROM_HIGH' && isActive && (
+          <>
+            <input
+              type="number"
+              value={filter.dropFromHighThreshold}
+              onChange={(e) => onDropThresholdChange(
+                Math.max(0, parseInt(e.target.value) || 0)
+              )}
+              onClick={(e) => e.stopPropagation()}
+              className="w-10 bg-gray-900 border border-gray-600 rounded px-1 text-white text-xs text-center"
+              min="0"
+            />
+            <span>%</span>
+          </>
+        )}
+      </button>
+    );
   };
 
   return (
@@ -139,143 +210,77 @@ const SmartFilterPanel: React.FC<SmartFilterPanelProps> = ({
         {GROUPS.map(group => {
           const chips = SMART_FILTER_CHIPS.filter(c => c.group === group);
           return (
-            <div key={group} className="bg-gray-700/30 rounded-lg px-2.5 py-2">
+            <div key={group} className="bg-gray-900 border border-gray-600/50 rounded-lg shadow-md px-2.5 py-2">
               {/* 그룹 헤더 */}
               <div className="flex items-center gap-1.5 mb-1.5">
-                <span className="text-[11px] text-gray-500">
+                <span className="text-[11px] text-gray-400 font-medium">
                   {SMART_FILTER_GROUP_LABELS[group]}
                 </span>
-                {/* MA 그룹: 기간 선택 드롭다운 */}
-                {group === 'ma' && (
-                  <div className="flex items-center gap-1 ml-auto">
-                    <select
-                      value={filter.maShortPeriod}
-                      onChange={handleShortPeriodChange}
-                      className="bg-gray-800 border border-gray-600 rounded text-[10px] text-gray-300 px-1 py-0 h-5 focus:outline-none focus:ring-1 focus:ring-primary"
-                    >
-                      {MA_SHORT_OPTIONS.map(p => (
-                        <option key={p} value={p} disabled={p >= filter.maLongPeriod}>
-                          {p}
-                        </option>
-                      ))}
-                    </select>
-                    <span className="text-[10px] text-gray-500">/</span>
-                    <select
-                      value={filter.maLongPeriod}
-                      onChange={handleLongPeriodChange}
-                      className="bg-gray-800 border border-gray-600 rounded text-[10px] text-gray-300 px-1 py-0 h-5 focus:outline-none focus:ring-1 focus:ring-primary"
-                    >
-                      {MA_LONG_OPTIONS.map(p => (
-                        <option key={p} value={p} disabled={p <= filter.maShortPeriod}>
-                          {p}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                )}
               </div>
               {/* 칩 목록 */}
               <div className="flex flex-wrap gap-1.5">
-                {chips.map(chip => {
-                  const isActive = filter.activeFilters.has(chip.key);
-                  const chipLabel = chip.labelFn ? chip.labelFn(filter) : chip.label;
-                  const isLoadingChip = chip.needsEnriched && isEnrichedLoading;
-                  return (
+                {chips.map(renderChip)}
+              </div>
+              {/* 포트폴리오 그룹: 매도알림 섹션 */}
+              {group === 'portfolio' && (
+                <div className="mt-2 pt-1.5 border-t border-gray-600/30">
+                  <div className="flex flex-wrap items-center gap-1.5">
                     <button
-                      key={chip.key}
-                      onClick={() => onToggleFilter(chip.key)}
+                      onClick={() => onFilterAlertsChange(!filterAlerts)}
                       className={`
                         px-2 py-0.5 rounded-full text-xs font-medium transition-all flex items-center gap-1
-                        ${isActive
-                          ? `${chip.colorClass} text-white shadow-sm`
+                        ${filterAlerts
+                          ? 'bg-yellow-600 text-white shadow-sm'
                           : 'bg-gray-700 text-gray-400 hover:bg-gray-600 hover:text-gray-200'}
-                        ${isLoadingChip && isActive ? 'opacity-60' : ''}
                       `}
                     >
-                      {isLoadingChip && isActive && (
-                        <svg className="animate-spin h-3 w-3" viewBox="0 0 24 24" fill="none">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                        </svg>
-                      )}
-                      {chipLabel}
-                      {chip.key === 'DROP_FROM_HIGH' && isActive && (
-                        <>
-                          <input
-                            type="number"
-                            value={filter.dropFromHighThreshold}
-                            onChange={(e) => onDropThresholdChange(
-                              Math.max(0, parseInt(e.target.value) || 0)
-                            )}
-                            onClick={(e) => e.stopPropagation()}
-                            className="w-10 bg-gray-900 border border-gray-600 rounded px-1 text-white text-xs text-center"
-                            min="0"
-                          />
-                          <span>%</span>
-                        </>
-                      )}
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                      </svg>
+                      알림만
                     </button>
-                  );
-                })}
-              </div>
+                    <div className="flex items-center gap-1 text-[10px] text-gray-400">
+                      <span>최고가</span>
+                      <input
+                        type="number"
+                        value={sellAlertDropRate}
+                        onChange={handleSellAlertRateChange}
+                        min="0"
+                        className="w-10 bg-gray-800 border border-gray-600 rounded px-1 py-0.5 text-white text-[10px] text-center font-bold focus:outline-none focus:ring-1 focus:ring-primary"
+                      />
+                      <span>% 이하</span>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           );
         })}
       </div>
 
-      {/* 매도알림 Footer + 필터 도움말 */}
-      <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-700/50">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => onFilterAlertsChange(!filterAlerts)}
-            className={`
-              px-2.5 py-1 rounded-full text-xs font-medium transition-all flex items-center gap-1
-              ${filterAlerts
-                ? 'bg-yellow-600 text-white shadow-sm'
-                : 'bg-gray-700 text-gray-400 hover:bg-gray-600 hover:text-gray-200'}
-            `}
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            </svg>
-            알림만 보기
-          </button>
-          <div className="flex items-center gap-1 text-xs text-gray-400">
-            <span>최고가 대비</span>
-            <input
-              type="number"
-              value={sellAlertDropRate}
-              onChange={handleSellAlertRateChange}
-              min="0"
-              className="w-12 bg-gray-700 border border-gray-600 rounded px-1 py-0.5 text-white text-xs text-center font-bold focus:outline-none focus:ring-1 focus:ring-primary"
-            />
-            <span>% 이하 하락 시 알림</span>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-3">
-          {hasActiveFilters && (
-            <>
-              <span className="text-xs text-gray-400">
-                {matchCount}/{totalCount}개 매칭
-              </span>
-              <button
-                onClick={onClearAll}
-                className="text-xs text-gray-400 hover:text-white transition"
-              >
-                초기화
-              </button>
-            </>
-          )}
-          <button
-            onClick={() => setShowHelp(true)}
-            className="text-gray-500 hover:text-gray-300 transition"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          </button>
-        </div>
+      {/* Footer: 매칭 수 + 초기화 + 도움말 */}
+      <div className="flex items-center justify-end gap-3 mt-2">
+        {hasActiveFilters && (
+          <>
+            <span className="text-xs text-gray-400">
+              {matchCount}/{totalCount}개 매칭
+            </span>
+            <button
+              onClick={onClearAll}
+              className="text-xs text-gray-400 hover:text-white transition"
+            >
+              초기화
+            </button>
+          </>
+        )}
+        <button
+          onClick={() => setShowHelp(true)}
+          className="text-gray-500 hover:text-gray-300 transition"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        </button>
       </div>
 
       {/* 필터 도움말 모달 */}
