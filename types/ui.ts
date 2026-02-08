@@ -11,6 +11,7 @@ export interface PortfolioTableProps {
   onBuy?: (asset: Asset) => void;
   isLoading: boolean;
   sellAlertDropRate: number;
+  onSellAlertDropRateChange?: (value: number) => void;
   filterCategory: AssetCategory | 'ALL';
   onFilterChange: (category: AssetCategory | 'ALL') => void;
   filterAlerts: boolean;

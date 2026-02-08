@@ -38,10 +38,10 @@ const Tooltip: React.FC<TooltipProps> = ({
 
   // 화살표 위치별 CSS
   const arrowClasses = {
-    top: 'top-full left-1/2 -translate-x-1/2 border-t-gray-600 border-x-transparent border-b-transparent',
-    bottom: 'bottom-full left-1/2 -translate-x-1/2 border-b-gray-600 border-x-transparent border-t-transparent',
-    left: 'left-full top-1/2 -translate-y-1/2 border-l-gray-600 border-y-transparent border-r-transparent',
-    right: 'right-full top-1/2 -translate-y-1/2 border-r-gray-600 border-y-transparent border-l-transparent',
+    top: 'top-full left-1/2 -translate-x-1/2 border-t-gray-900 border-x-transparent border-b-transparent',
+    bottom: 'bottom-full left-1/2 -translate-x-1/2 border-b-gray-900 border-x-transparent border-t-transparent',
+    left: 'left-full top-1/2 -translate-y-1/2 border-l-gray-900 border-y-transparent border-r-transparent',
+    right: 'right-full top-1/2 -translate-y-1/2 border-r-gray-900 border-y-transparent border-l-transparent',
   };
 
   return (
@@ -49,14 +49,14 @@ const Tooltip: React.FC<TooltipProps> = ({
       {children}
       <div
         className={`
-          absolute ${positionClasses[position]} z-50
-          px-3 py-2 text-sm text-gray-200 bg-gray-600 rounded-md shadow-lg
+          absolute ${positionClasses[position]} z-50 w-max
+          px-3.5 py-2.5 text-sm leading-relaxed text-gray-100 bg-gray-900 border border-gray-600 rounded-lg shadow-xl
           opacity-0 invisible group-hover/tooltip:opacity-100 group-hover/tooltip:visible
           transition-opacity duration-100 ease-out
           pointer-events-none text-left
           ${wrap ? 'whitespace-pre-wrap break-words' : 'whitespace-nowrap'}
         `}
-        style={{ maxWidth: wrap ? 280 : maxWidth }}
+        style={{ maxWidth: wrap ? 340 : maxWidth }}
         role="tooltip"
       >
         {content}

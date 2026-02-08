@@ -72,7 +72,8 @@
 | `portfolioCalculations.ts` | 포트폴리오 계산 유틸 | 전역 (계산 결과 변경) |
 | `historyUtils.ts` | 히스토리 보간/백필/기존 스냅샷 종가 교정 | `usePortfolioData` |
 | `maCalculations.ts` | SMA 계산, 차트 데이터 빌드 | `AssetTrendChart` |
-| `signalUtils.ts` | 신호/RSI 배지 렌더링 | `WatchlistPage` |
+| `signalUtils.ts` | 신호/RSI 배지 렌더링 | `PortfolioTableRow`, `WatchlistPage` |
+| `smartFilterLogic.ts` | 스마트 필터 매칭 (그룹 내 OR, 그룹 간 AND) | `PortfolioTable` |
 | `migrateData.ts` | 데이터 마이그레이션 | 로드 시 자동 실행 |
 
 ### types/ (타입 정의)
@@ -82,6 +83,13 @@
 | `api.ts` | API 응답 타입 (`PriceItem`, `Indicators` 등) | `services/`, `hooks/` |
 | `store.ts` | 상태 관리 타입 (`PortfolioContextValue` 등) | `contexts/`, `hooks/` |
 | `ui.ts` | UI 컴포넌트 Props 타입 | `components/` |
+| `smartFilter.ts` | 스마트 필터 타입, 그룹 매핑, 초기값 | `utils/smartFilterLogic`, `SmartFilterPanel`, `PortfolioTable` |
+
+### constants/ (상수 정의)
+| 파일 | 책임 | 수정 시 영향 범위 |
+|------|------|------------------|
+| `columnDescriptions.ts` | 포트폴리오 테이블 컬럼 툴팁 텍스트 | `PortfolioTable`, `PortfolioTableRow` |
+| `smartFilterChips.ts` | 스마트 필터 칩 정의 (라벨, 그룹, 색상) | `SmartFilterPanel` |
 
 ### contexts/
 | 파일 | 책임 | 수정 시 영향 범위 |
@@ -163,8 +171,8 @@ interface Asset {
   purchaseDate: string;          // 매수일
   currency: Currency;            // 통화 (KRW, USD, JPY)
   purchaseExchangeRate?: number; // 매수 시 환율 (수익률 계산용)
-  currentPrice: number;          // 현재가 (KRW 환산)
-  priceOriginal: number;         // 외화 원본 가격
+  currentPrice: number;          // 현재가 (KRW 자산은 KRW, 외화 자산은 원본통화)
+  priceOriginal: number;         // 외화 원본 가격 (항상 원본통화)
   highestPrice: number;          // 52주 최고가
   previousClosePrice?: number;   // 전일 종가
   sellAlertDropRate?: number;    // 매도 알림 하락률
@@ -396,7 +404,8 @@ console.error('[priceService] 시세 조회 실패:', error);
 ## 11. 데이터 모델링 원칙
 
 ### 외화 데이터 보존
-- 저장 시 `currentPrice`(원화 환산값)와 `priceOriginal`(외화 원본값) **모두 저장**
+- 저장 시 `currentPrice`(KRW 자산은 KRW, 외화 자산은 원본통화)와 `priceOriginal`(항상 원본통화) **모두 저장**
+- **MA/RSI 등 기술적 지표와 가격 비교 시 `priceOriginal` 사용** (통화 일치 보장)
 - 히스토리 저장 시 `unitPriceOriginal`(외화 원본 가격) 누락 주의
 
 ### 이력 데이터 영속성

@@ -133,7 +133,15 @@ const PortfolioTableRow: React.FC<PortfolioTableRowProps> = ({
         <td className="px-4 py-4 font-medium text-white break-words">
           <div className="flex flex-col">
              <div className="flex items-center gap-2">
-               <Tooltip content={asset.memo} position="right" wrap>
+               <Tooltip content={asset.memo ? (
+                 <div className="space-y-0.5">
+                   {asset.memo.split('\n').map((line, i) => (
+                     <p key={i} className={line.startsWith('-') || line.startsWith('·') ? 'pl-2 text-gray-300' : ''}>
+                       {line || '\u00A0'}
+                     </p>
+                   ))}
+                 </div>
+               ) : null} position="right" wrap>
                  <a
                    href={`https://www.google.com/search?q=${encodeURIComponent(asset.ticker + ' 주가')}`}
                    target="_blank"
@@ -155,14 +163,14 @@ const PortfolioTableRow: React.FC<PortfolioTableRowProps> = ({
         </td>
         {showHiddenColumns && (
           <td className="px-4 py-4 text-right">
-            <Tooltip content={COLUMN_DESCRIPTIONS.quantity} position="top">
+            <Tooltip content={COLUMN_DESCRIPTIONS.quantity} position="top" wrap>
               <span>{formatNumber(asset.quantity)}</span>
             </Tooltip>
           </td>
         )}
         {showHiddenColumns && (
           <td className="px-4 py-4 text-right">
-            <Tooltip content={COLUMN_DESCRIPTIONS.purchasePrice} position="top">
+            <Tooltip content={COLUMN_DESCRIPTIONS.purchasePrice} position="top" wrap>
               <div>
                 <div>{formatOriginalCurrency(asset.purchasePrice, asset.currency)}</div>
                 {isNonKRW && <div className="text-xs text-gray-500">≈ {formatKRW(asset.metrics.purchasePriceKRW)}</div>}
@@ -171,7 +179,7 @@ const PortfolioTableRow: React.FC<PortfolioTableRowProps> = ({
           </td>
         )}
         <td className="px-4 py-4 text-right">
-          <Tooltip content={COLUMN_DESCRIPTIONS.currentPrice} position="top">
+          <Tooltip content={COLUMN_DESCRIPTIONS.currentPrice} position="top" wrap>
             <div>
               <div className="font-semibold text-white">{formatOriginalCurrency(asset.currentPrice, asset.currency)}</div>
               {isNonKRW && <div className="text-xs text-gray-500">≈ {formatKRW(asset.metrics.currentPriceKRW)}</div>}
@@ -180,7 +188,7 @@ const PortfolioTableRow: React.FC<PortfolioTableRowProps> = ({
           </Tooltip>
         </td>
         <td className={`px-4 py-4 font-medium text-right ${getChangeColor(returnPercentage)}`}>
-          <Tooltip content={COLUMN_DESCRIPTIONS.returnPercentage} position="top">
+          <Tooltip content={COLUMN_DESCRIPTIONS.returnPercentage} position="top" wrap>
             <div>
               <div>{returnPercentage.toFixed(2)}%</div>
               <div className="text-xs opacity-80">{formatProfitLoss(profitLoss, asset.currency)}</div>
@@ -188,7 +196,7 @@ const PortfolioTableRow: React.FC<PortfolioTableRowProps> = ({
           </Tooltip>
         </td>
         <td className="px-4 py-4 text-right">
-          <Tooltip content={COLUMN_DESCRIPTIONS.purchaseValue} position="top">
+          <Tooltip content={COLUMN_DESCRIPTIONS.purchaseValue} position="top" wrap>
             <div>
               <div className={investmentColor}>{formatOriginalCurrency(purchaseValue, asset.currency)}</div>
               {isNonKRW && <div className="text-xs text-gray-500">≈ {formatKRW(purchaseValueKRW)}</div>}
@@ -196,7 +204,7 @@ const PortfolioTableRow: React.FC<PortfolioTableRowProps> = ({
           </Tooltip>
         </td>
         <td className="px-4 py-4 text-right">
-          <Tooltip content={COLUMN_DESCRIPTIONS.currentValue} position="top">
+          <Tooltip content={COLUMN_DESCRIPTIONS.currentValue} position="top" wrap>
             <div>
               <div className="font-semibold text-white">{formatOriginalCurrency(currentValue, asset.currency)}</div>
               {isNonKRW && <div className="text-xs text-gray-500">≈ {formatKRW(currentValueKRW)}</div>}
@@ -205,20 +213,20 @@ const PortfolioTableRow: React.FC<PortfolioTableRowProps> = ({
         </td>
         {showHiddenColumns && (
           <td className="px-4 py-4 text-center">
-            <Tooltip content={COLUMN_DESCRIPTIONS.purchaseDate} position="top">
+            <Tooltip content={COLUMN_DESCRIPTIONS.purchaseDate} position="top" wrap>
               <span>{asset.purchaseDate}</span>
             </Tooltip>
           </td>
         )}
         {showHiddenColumns && (
           <td className="px-4 py-4 text-right">
-            <Tooltip content={COLUMN_DESCRIPTIONS.allocation} position="top">
+            <Tooltip content={COLUMN_DESCRIPTIONS.allocation} position="top" wrap>
               <span>{allocation.toFixed(2)}%</span>
             </Tooltip>
           </td>
         )}
         <td className={`px-4 py-4 font-medium text-right ${getChangeColor(dropFromHigh)}`}>
-          <Tooltip content={COLUMN_DESCRIPTIONS.dropFromHigh} position="top">
+          <Tooltip content={COLUMN_DESCRIPTIONS.dropFromHigh} position="top" wrap>
             <div>
               <div>{dropFromHigh.toFixed(2)}%</div>
               <div className="text-xs opacity-80">{formatProfitLoss(diffFromHigh, asset.currency)}</div>
@@ -226,7 +234,7 @@ const PortfolioTableRow: React.FC<PortfolioTableRowProps> = ({
           </Tooltip>
         </td>
         <td className={`px-4 py-4 font-medium text-right ${getChangeColor(finalYesterdayChangeRate)}`}>
-          <Tooltip content={COLUMN_DESCRIPTIONS.yesterdayChange} position="top">
+          <Tooltip content={COLUMN_DESCRIPTIONS.yesterdayChange} position="top" wrap>
             <div>
               <div>{finalYesterdayChangeRate.toFixed(2)}%</div>
               <div className="text-xs opacity-80">{formatProfitLoss(diffFromYesterday, Currency.KRW)}</div>

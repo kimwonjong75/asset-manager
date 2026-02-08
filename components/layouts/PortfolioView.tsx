@@ -1,7 +1,6 @@
 import React, { useMemo } from 'react';
 import { Asset } from '../../types';
 import PortfolioTable from '../PortfolioTable';
-import SellAlertControl from '../SellAlertControl';
 import { usePortfolio } from '../../contexts/PortfolioContext';
 
 const PortfolioView: React.FC = () => {
@@ -31,7 +30,6 @@ const PortfolioView: React.FC = () => {
 
   return (
     <div className="space-y-6">
-       <SellAlertControl value={sellAlertDropRate} onChange={actions.setSellAlertDropRate} />
         <PortfolioTable
           assets={filteredAssets}
           history={portfolioHistory}
@@ -43,6 +41,7 @@ const PortfolioView: React.FC = () => {
           onBuy={actions.openBuyModal}
           isLoading={status.isLoading}
           sellAlertDropRate={sellAlertDropRate}
+          onSellAlertDropRateChange={actions.setSellAlertDropRate}
           filterCategory={filterCategory}
           onFilterChange={actions.setFilterCategory}
           filterAlerts={filterAlerts}
