@@ -10,6 +10,7 @@ import type { SmartFilterState, SmartFilterKey } from '../types/smartFilter';
 import { EMPTY_SMART_FILTER } from '../types/smartFilter';
 import { matchesSmartFilter } from '../utils/smartFilterLogic';
 import SmartFilterPanel from './portfolio-table/SmartFilterPanel';
+import { useEnrichedIndicators } from '../hooks/useEnrichedIndicators';
 
 const SortIcon = ({ sortKey, sortConfig }: { sortKey: SortKey, sortConfig: { key: SortKey; direction: SortDirection } | null }) => {
   if (!sortConfig || sortConfig.key !== sortKey) return <span className="opacity-30">↕</span>;
@@ -68,11 +69,14 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
     failedIds
   });
 
+  // 확장 지표 (MA 전 기간 + RSI 전일값) 배치 조회
+  const { enrichedMap, isLoading: isEnrichedLoading } = useEnrichedIndicators(assets);
+
   // 스마트 필터 적용 (usePortfolioData 미수정, 별도 useMemo)
   const filteredAssets = useMemo(() => {
     if (smartFilter.activeFilters.size === 0) return enrichedAndSortedAssets;
-    return enrichedAndSortedAssets.filter(a => matchesSmartFilter(a, smartFilter));
-  }, [enrichedAndSortedAssets, smartFilter]);
+    return enrichedAndSortedAssets.filter(a => matchesSmartFilter(a, smartFilter, enrichedMap));
+  }, [enrichedAndSortedAssets, smartFilter, enrichedMap]);
 
   const handleToggleFilter = (key: SmartFilterKey) => {
     setSmartFilter(prev => {
@@ -89,6 +93,14 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
 
   const handleDropThresholdChange = (value: number) => {
     setSmartFilter(prev => ({ ...prev, dropFromHighThreshold: value }));
+  };
+
+  const handleMaShortPeriodChange = (period: number) => {
+    setSmartFilter(prev => ({ ...prev, maShortPeriod: period }));
+  };
+
+  const handleMaLongPeriodChange = (period: number) => {
+    setSmartFilter(prev => ({ ...prev, maLongPeriod: period }));
   };
 
   const allSelected = filteredAssets.length > 0 && filteredAssets.every(a => selectedIds.has(a.id));
@@ -202,12 +214,15 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
         onToggleFilter={handleToggleFilter}
         onClearAll={handleClearAllFilters}
         onDropThresholdChange={handleDropThresholdChange}
+        onMaShortPeriodChange={handleMaShortPeriodChange}
+        onMaLongPeriodChange={handleMaLongPeriodChange}
         matchCount={filteredAssets.length}
         totalCount={enrichedAndSortedAssets.length}
         sellAlertDropRate={sellAlertDropRate}
         onSellAlertDropRateChange={onSellAlertDropRateChange || (() => {})}
         filterAlerts={filterAlerts}
         onFilterAlertsChange={onFilterAlertsChange}
+        isEnrichedLoading={isEnrichedLoading}
       />
 
       {/* 테이블 영역 */}

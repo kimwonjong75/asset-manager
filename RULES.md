@@ -53,6 +53,7 @@
 | `useAssetActions.ts` | 자산 CRUD, 매도/매수/CSV 처리 | `priceService`, `geminiService` | 모달 컴포넌트들 |
 | `usePortfolioCalculator.ts` | 수익률/손익 계산 (구매 환율 기준) | `types/index` | 대시보드, 통계 |
 | `useHistoricalPriceData.ts` | 차트용 과거 종가 데이터 (MA 여부 무관, 캐시 내장) | `historicalPriceService`, `maCalculations` | `AssetTrendChart` |
+| `useEnrichedIndicators.ts` | 전 종목 배치 과거 데이터 조회 → MA 전 기간(5~200) + RSI(금일/전일) 계산 | `historicalPriceService`, `maCalculations` | `PortfolioTable` (스마트 필터) |
 | `usePortfolioHistory.ts` | 포트폴리오 스냅샷 저장 | `types/index` | 차트 데이터 |
 | `useRebalancing.ts` | 리밸런싱 계산 및 저장 | `PortfolioContext` | `RebalancingTable` |
 | `useGoogleDriveSync.ts` | Google Drive 저장/로드, 토큰 갱신 | `googleDriveService`, `lz-string` | `usePortfolioData` |
@@ -71,9 +72,9 @@
 |------|------|------------------|
 | `portfolioCalculations.ts` | 포트폴리오 계산 유틸 | 전역 (계산 결과 변경) |
 | `historyUtils.ts` | 히스토리 보간/백필/기존 스냅샷 종가 교정 | `usePortfolioData` |
-| `maCalculations.ts` | SMA 계산, 차트 데이터 빌드 | `AssetTrendChart` |
+| `maCalculations.ts` | SMA/RSI 계산, 차트 데이터 빌드 | `AssetTrendChart`, `useEnrichedIndicators` |
 | `signalUtils.ts` | 신호/RSI 배지 렌더링 | `PortfolioTableRow`, `WatchlistPage` |
-| `smartFilterLogic.ts` | 스마트 필터 매칭 (그룹 내 OR, 그룹 간 AND) | `PortfolioTable` |
+| `smartFilterLogic.ts` | 스마트 필터 매칭 (그룹 내 OR, 그룹 간 AND), enriched 지표 참조 | `PortfolioTable`, `useEnrichedIndicators` |
 | `migrateData.ts` | 데이터 마이그레이션 | 로드 시 자동 실행 |
 
 ### types/ (타입 정의)
@@ -83,13 +84,13 @@
 | `api.ts` | API 응답 타입 (`PriceItem`, `Indicators` 등) | `services/`, `hooks/` |
 | `store.ts` | 상태 관리 타입 (`PortfolioContextValue` 등) | `contexts/`, `hooks/` |
 | `ui.ts` | UI 컴포넌트 Props 타입 | `components/` |
-| `smartFilter.ts` | 스마트 필터 타입, 그룹 매핑, 초기값 | `utils/smartFilterLogic`, `SmartFilterPanel`, `PortfolioTable` |
+| `smartFilter.ts` | 스마트 필터 타입 (17개 키, MA 기간 설정 포함), 그룹 매핑, 초기값 | `utils/smartFilterLogic`, `SmartFilterPanel`, `PortfolioTable` |
 
 ### constants/ (상수 정의)
 | 파일 | 책임 | 수정 시 영향 범위 |
 |------|------|------------------|
 | `columnDescriptions.ts` | 포트폴리오 테이블 컬럼 툴팁 텍스트 | `PortfolioTable`, `PortfolioTableRow` |
-| `smartFilterChips.ts` | 스마트 필터 칩 정의 (라벨, 그룹, 색상) | `SmartFilterPanel` |
+| `smartFilterChips.ts` | 스마트 필터 칩 정의 (17개 칩, 동적 라벨, 색상) | `SmartFilterPanel` |
 
 ### contexts/
 | 파일 | 책임 | 수정 시 영향 범위 |
@@ -140,6 +141,21 @@ AssetTrendChart.tsx
         └─ PortfolioSnapshot 기반 (폴백)
 ```
 
+### 스마트 필터 확장 지표 흐름
+```
+PortfolioTable.tsx
+    │
+    └─ useEnrichedIndicators.ts (전 종목 배치)
+         ├─ historicalPriceService.ts → /history, /upbit/history (330일)
+         ├─ maCalculations.ts → calculateSMA() (5/10/20/60/120/200)
+         ├─ maCalculations.ts → calculateRSI() (14일)
+         └─ 결과: Map<ticker, { ma, prevMa, rsi, prevRsi }>
+              └─ smartFilterLogic.ts → 골든크로스/데드크로스/RSI전환 판정
+```
+- **데이터 소스**: 차트와 동일한 과거 종가 API 사용 (10분 캐시)
+- **계산 위치**: 프론트엔드 로컬 계산 (백엔드 수정 불필요)
+- **폴백**: enriched 데이터 로딩 전 → 백엔드 `indicators.ma20/ma60/rsi` 사용
+
 ### 수정 시 확인해야 할 의존관계
 
 | 수정 대상 | 반드시 확인할 파일 |
@@ -151,6 +167,8 @@ AssetTrendChart.tsx
 | `historyUtils.ts` | `usePortfolioData.ts` |
 | `usePortfolioData.ts` | `PortfolioContext.tsx` |
 | `useGoogleDriveSync.ts` | `usePortfolioData.ts`, `usePortfolioExport.ts` |
+| `maCalculations.ts` | `AssetTrendChart`, `useEnrichedIndicators`, `useHistoricalPriceData` |
+| `useEnrichedIndicators.ts` | `PortfolioTable` (스마트 필터 enriched 데이터) |
 | `PortfolioContext.tsx` | `App.tsx`, 모든 Context 소비 컴포넌트 |
 
 ---

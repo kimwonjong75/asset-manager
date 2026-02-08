@@ -60,6 +60,63 @@ export interface MAChartDataPoint {
 /**
  * 과거 시세 데이터 + 활성 MA 기간으로 Recharts용 데이터 배열 생성
  */
+/**
+ * RSI(Relative Strength Index) 계산 — Wilder's smoothing
+ * sortedPrices는 날짜 오름차순 정렬된 배열이어야 함
+ * 최소 period+1개의 데이터 필요 (변동값 계산에 1개 소모)
+ */
+export function calculateRSI(
+  sortedPrices: PricePoint[],
+  period: number = 14
+): (number | null)[] {
+  const result: (number | null)[] = [];
+  if (sortedPrices.length < period + 1) {
+    return sortedPrices.map(() => null);
+  }
+
+  // 가격 변동 배열 (index 0은 null — 이전 가격 없음)
+  const changes: number[] = [];
+  for (let i = 1; i < sortedPrices.length; i++) {
+    changes.push(sortedPrices[i].price - sortedPrices[i - 1].price);
+  }
+
+  // 첫 period일간 단순평균으로 초기 avgGain/avgLoss
+  let avgGain = 0;
+  let avgLoss = 0;
+  for (let i = 0; i < period; i++) {
+    const change = changes[i];
+    if (change > 0) avgGain += change;
+    else avgLoss += Math.abs(change);
+  }
+  avgGain /= period;
+  avgLoss /= period;
+
+  // 첫 번째 데이터는 변동값 계산 불가 → null
+  result.push(null);
+
+  // changes[0]~changes[period-2]까지는 period 미충족 → null
+  for (let i = 0; i < period - 1; i++) {
+    result.push(null);
+  }
+
+  // 첫 RSI (period번째 인덱스에 대응)
+  const firstRS = avgLoss === 0 ? 100 : avgGain / avgLoss;
+  result.push(avgLoss === 0 ? 100 : 100 - 100 / (1 + firstRS));
+
+  // Wilder's smoothing으로 이후 RSI 계산
+  for (let i = period; i < changes.length; i++) {
+    const change = changes[i];
+    const gain = change > 0 ? change : 0;
+    const loss = change < 0 ? Math.abs(change) : 0;
+    avgGain = (avgGain * (period - 1) + gain) / period;
+    avgLoss = (avgLoss * (period - 1) + loss) / period;
+    const rs = avgLoss === 0 ? 100 : avgGain / avgLoss;
+    result.push(avgLoss === 0 ? 100 : 100 - 100 / (1 + rs));
+  }
+
+  return result;
+}
+
 export function buildChartDataWithMA(
   historicalPrices: HistoricalPriceData,
   enabledPeriods: number[]

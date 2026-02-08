@@ -7,15 +7,21 @@ interface SmartFilterPanelProps {
   onToggleFilter: (key: SmartFilterKey) => void;
   onClearAll: () => void;
   onDropThresholdChange: (value: number) => void;
+  onMaShortPeriodChange: (period: number) => void;
+  onMaLongPeriodChange: (period: number) => void;
   matchCount: number;
   totalCount: number;
   sellAlertDropRate: number;
   onSellAlertDropRateChange: (value: number) => void;
   filterAlerts: boolean;
   onFilterAlertsChange: (isActive: boolean) => void;
+  isEnrichedLoading?: boolean;
 }
 
 const GROUPS = ['ma', 'rsi', 'signal', 'portfolio'] as const;
+
+const MA_SHORT_OPTIONS = [10, 20, 60];
+const MA_LONG_OPTIONS = [60, 120, 200];
 
 const FILTER_HELP_SECTIONS = [
   {
@@ -23,32 +29,55 @@ const FILTER_HELP_SECTIONS = [
     items: [
       '같은 그룹 내: OR (하나라도 해당되면 표시)',
       '다른 그룹 간: AND (모든 그룹 조건 충족 시 표시)',
-      '예: [정배열] + [매수] → 정배열이면서 매수 신호인 종목만 표시',
+      '예: [골든크로스] + [RSI 반등] → 추세 전환 + 과매도 탈출 종목만 표시',
     ],
   },
   {
-    title: '이동평균',
+    title: '이동평균 (MA) — 기간 선택',
     items: [
-      '현재 종가와 20일/60일 이동평균선 비교',
-      '정배열: 가격 > MA20 > MA60 (상승 추세)',
-      '역배열: 가격 < MA20 < MA60 (하락 추세)',
+      '헤더 드롭다운에서 단기(10/20/60)·장기(60/120/200) MA 기간 선택',
+      '현재가>단기MA / 현재가>장기MA: 가격이 해당 이동평균선 위에 있는 종목',
+      '정배열: 단기MA > 장기MA — 상승 추세 (보유 유지 또는 매수 고려)',
+      '역배열: 단기MA < 장기MA — 하락 추세 (매도 고려 또는 매수 보류)',
     ],
   },
   {
-    title: 'RSI',
+    title: '이동평균 — 추세 전환 감지',
     items: [
-      '14일 RSI 기준',
-      '과매수 (RSI ≥ 70): 과열 구간, 조정 가능성',
-      '과매도 (RSI ≤ 30): 침체 구간, 반등 가능성',
+      '골든크로스: 전일 역배열 → 금일 정배열 전환 (매수 시점 탐색)',
+      '데드크로스: 전일 정배열 → 금일 역배열 전환 (매도 시점 탐색)',
+      '※ 과거 종가 데이터 기반 계산 — 로딩 완료 후 활성화',
     ],
   },
   {
-    title: '매매신호',
-    items: ['기술적 분석 기반 매수/매도 추천 강도'],
+    title: 'RSI (상대강도지수)',
+    items: [
+      '14일 RSI 기준, 최근 상승/하락 힘의 비율 (0~100)',
+      '과매수 (RSI ≥ 70): 과열 구간 — 추가 매수 주의, 분할 매도 고려',
+      '과매도 (RSI ≤ 30): 침체 구간 — 반등 가능성, 분할 매수 고려',
+      'RSI 반등↑: 전일 ≤30 → 금일 >30 (과매도 탈출 — 매수 시점 탐색)',
+      'RSI 과열진입↓: 전일 <70 → 금일 ≥70 (과매수 진입 — 매도 시점 탐색)',
+    ],
   },
   {
-    title: '포트폴리오',
-    items: ['현재 수익/손실 상태, 고점 대비 하락폭 기준 필터링'],
+    title: '투자 시점 잡기 — 필터 조합 예시',
+    items: [
+      '매수 기회: [골든크로스] + [RSI 반등↑] → 상승 전환 + 과매도 탈출',
+      '매수 기회: [정배열] + [과매도] → 상승 추세에서 일시 조정 중',
+      '매도 시점: [데드크로스] + [RSI 과열진입↓] → 하락 전환 + 과매수 진입',
+      '매도 시점: [역배열] + [과매수] → 하락 추세에서 반짝 반등 (빠져나올 타이밍)',
+      '관망: [역배열] + [과매도] → 하락 추세 + 계속 하락 중 (매수 금지)',
+      '※ 지표는 100% 예측 도구가 아닌 확률적 참고 도구입니다',
+      '※ 항상 분할 매수/매도를 권장합니다',
+    ],
+  },
+  {
+    title: '매매신호 / 포트폴리오',
+    items: [
+      '매매신호: 서버 기술적 분석 기반 매수/매도 추천 강도',
+      '수익중/손실중: 현재 보유 자산의 손익 상태',
+      '고점대비 하락: 52주 최고가 대비 설정 비율(%) 이상 하락 종목',
+    ],
   },
   {
     title: '매도알림',
@@ -61,12 +90,15 @@ const SmartFilterPanel: React.FC<SmartFilterPanelProps> = ({
   onToggleFilter,
   onClearAll,
   onDropThresholdChange,
+  onMaShortPeriodChange,
+  onMaLongPeriodChange,
   matchCount,
   totalCount,
   sellAlertDropRate,
   onSellAlertDropRateChange,
   filterAlerts,
   onFilterAlertsChange,
+  isEnrichedLoading = false,
 }) => {
   const hasActiveFilters = filter.activeFilters.size > 0;
   const [showHelp, setShowHelp] = useState(false);
@@ -78,6 +110,28 @@ const SmartFilterPanel: React.FC<SmartFilterPanelProps> = ({
     }
   };
 
+  // 단기 MA 변경 시 장기보다 작게 유지
+  const handleShortPeriodChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newShort = parseInt(e.target.value, 10);
+    onMaShortPeriodChange(newShort);
+    if (newShort >= filter.maLongPeriod) {
+      // 장기를 단기보다 큰 값으로 자동 조정
+      const nextLong = MA_LONG_OPTIONS.find(v => v > newShort);
+      if (nextLong) onMaLongPeriodChange(nextLong);
+    }
+  };
+
+  // 장기 MA 변경 시 단기보다 크게 유지
+  const handleLongPeriodChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newLong = parseInt(e.target.value, 10);
+    onMaLongPeriodChange(newLong);
+    if (newLong <= filter.maShortPeriod) {
+      // 단기를 장기보다 작은 값으로 자동 조정
+      const prevShort = [...MA_SHORT_OPTIONS].reverse().find(v => v < newLong);
+      if (prevShort) onMaShortPeriodChange(prevShort);
+    }
+  };
+
   return (
     <div className="px-4 sm:px-6 py-2.5 border-b border-gray-700 bg-gray-800/50">
       {/* 필터 그리드 */}
@@ -86,12 +140,46 @@ const SmartFilterPanel: React.FC<SmartFilterPanelProps> = ({
           const chips = SMART_FILTER_CHIPS.filter(c => c.group === group);
           return (
             <div key={group} className="bg-gray-700/30 rounded-lg px-2.5 py-2">
-              <span className="text-[11px] text-gray-500 block mb-1.5">
-                {SMART_FILTER_GROUP_LABELS[group]}
-              </span>
+              {/* 그룹 헤더 */}
+              <div className="flex items-center gap-1.5 mb-1.5">
+                <span className="text-[11px] text-gray-500">
+                  {SMART_FILTER_GROUP_LABELS[group]}
+                </span>
+                {/* MA 그룹: 기간 선택 드롭다운 */}
+                {group === 'ma' && (
+                  <div className="flex items-center gap-1 ml-auto">
+                    <select
+                      value={filter.maShortPeriod}
+                      onChange={handleShortPeriodChange}
+                      className="bg-gray-800 border border-gray-600 rounded text-[10px] text-gray-300 px-1 py-0 h-5 focus:outline-none focus:ring-1 focus:ring-primary"
+                    >
+                      {MA_SHORT_OPTIONS.map(p => (
+                        <option key={p} value={p} disabled={p >= filter.maLongPeriod}>
+                          {p}
+                        </option>
+                      ))}
+                    </select>
+                    <span className="text-[10px] text-gray-500">/</span>
+                    <select
+                      value={filter.maLongPeriod}
+                      onChange={handleLongPeriodChange}
+                      className="bg-gray-800 border border-gray-600 rounded text-[10px] text-gray-300 px-1 py-0 h-5 focus:outline-none focus:ring-1 focus:ring-primary"
+                    >
+                      {MA_LONG_OPTIONS.map(p => (
+                        <option key={p} value={p} disabled={p <= filter.maShortPeriod}>
+                          {p}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+              </div>
+              {/* 칩 목록 */}
               <div className="flex flex-wrap gap-1.5">
                 {chips.map(chip => {
                   const isActive = filter.activeFilters.has(chip.key);
+                  const chipLabel = chip.labelFn ? chip.labelFn(filter) : chip.label;
+                  const isLoadingChip = chip.needsEnriched && isEnrichedLoading;
                   return (
                     <button
                       key={chip.key}
@@ -101,9 +189,16 @@ const SmartFilterPanel: React.FC<SmartFilterPanelProps> = ({
                         ${isActive
                           ? `${chip.colorClass} text-white shadow-sm`
                           : 'bg-gray-700 text-gray-400 hover:bg-gray-600 hover:text-gray-200'}
+                        ${isLoadingChip && isActive ? 'opacity-60' : ''}
                       `}
                     >
-                      {chip.label}
+                      {isLoadingChip && isActive && (
+                        <svg className="animate-spin h-3 w-3" viewBox="0 0 24 24" fill="none">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                        </svg>
+                      )}
+                      {chipLabel}
                       {chip.key === 'DROP_FROM_HIGH' && isActive && (
                         <>
                           <input

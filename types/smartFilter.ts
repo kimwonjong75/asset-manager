@@ -2,14 +2,18 @@ import type { SignalType, RSIStatus } from './api';
 
 /** 개별 필터 조건 식별자 */
 export type SmartFilterKey =
-  // 이동평균 (MA)
-  | 'PRICE_ABOVE_MA20'
-  | 'PRICE_ABOVE_MA60'
+  // 이동평균 (MA) — 선택 기간 기반
+  | 'PRICE_ABOVE_SHORT_MA'
+  | 'PRICE_ABOVE_LONG_MA'
   | 'MA_BULLISH_ALIGN'
   | 'MA_BEARISH_ALIGN'
+  | 'MA_GOLDEN_CROSS'
+  | 'MA_DEAD_CROSS'
   // RSI
   | 'RSI_OVERBOUGHT'
   | 'RSI_OVERSOLD'
+  | 'RSI_BOUNCE'
+  | 'RSI_OVERHEAT_ENTRY'
   // 매매신호
   | 'SIGNAL_STRONG_BUY'
   | 'SIGNAL_BUY'
@@ -25,12 +29,16 @@ export type SmartFilterGroup = 'ma' | 'rsi' | 'signal' | 'portfolio';
 
 /** 각 필터 키가 속한 그룹 매핑 */
 export const FILTER_KEY_TO_GROUP: Record<SmartFilterKey, SmartFilterGroup> = {
-  PRICE_ABOVE_MA20: 'ma',
-  PRICE_ABOVE_MA60: 'ma',
+  PRICE_ABOVE_SHORT_MA: 'ma',
+  PRICE_ABOVE_LONG_MA: 'ma',
   MA_BULLISH_ALIGN: 'ma',
   MA_BEARISH_ALIGN: 'ma',
+  MA_GOLDEN_CROSS: 'ma',
+  MA_DEAD_CROSS: 'ma',
   RSI_OVERBOUGHT: 'rsi',
   RSI_OVERSOLD: 'rsi',
+  RSI_BOUNCE: 'rsi',
+  RSI_OVERHEAT_ENTRY: 'rsi',
   SIGNAL_STRONG_BUY: 'signal',
   SIGNAL_BUY: 'signal',
   SIGNAL_SELL: 'signal',
@@ -44,18 +52,26 @@ export const FILTER_KEY_TO_GROUP: Record<SmartFilterKey, SmartFilterGroup> = {
 export interface SmartFilterState {
   activeFilters: Set<SmartFilterKey>;
   dropFromHighThreshold: number;
+  maShortPeriod: number;
+  maLongPeriod: number;
 }
 
 /** 필터 칩 UI 정의 */
 export interface SmartFilterChipDef {
   key: SmartFilterKey;
   label: string;
+  /** 동적 라벨 함수 — 있으면 label 대신 사용 */
+  labelFn?: (state: SmartFilterState) => string;
   group: SmartFilterGroup;
   colorClass: string;
+  /** enriched 데이터 필요 여부 (true면 로딩 중 반투명 처리) */
+  needsEnriched?: boolean;
 }
 
 /** 초기 필터 상태 */
 export const EMPTY_SMART_FILTER: SmartFilterState = {
   activeFilters: new Set(),
   dropFromHighThreshold: 20,
+  maShortPeriod: 20,
+  maLongPeriod: 60,
 };
