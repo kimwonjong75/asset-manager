@@ -369,6 +369,13 @@ console.error('[priceService] 시세 조회 실패:', error);
 - **구조 검증**: 필수 필드 존재 여부 확인 후 로드
 - **스냅샷 우선**: 매도 통계에서 스냅샷 필드(`originalPurchasePrice` 등) 우선 사용
 
+### 매도 기록 이중 저장 구조
+- **저장 위치가 2곳**: 매도 시 동일한 거래가 `sellHistory[]`(글로벌)와 `asset.sellTransactions[]`(자산 내부) **양쪽에 저장**됨
+  - 전량 매도: 자산 삭제 → `sellHistory`만 남음 (중복 없음)
+  - 부분 매도: 자산 유지 → 양쪽 모두 존재 (중복 위험)
+- **조회 시 `id` 기반 중복 제거 필수**: `SellAnalyticsPage`에서 양쪽을 합칠 때 `sellHistory`의 `id` Set으로 `inlineRecords` 중복 방지
+- **수정 시 확인**: `useAssetActions.ts`(저장), `SellAnalyticsPage.tsx`(조회/집계)
+
 ---
 
 ## 9. 수정 시 체크리스트
