@@ -36,17 +36,20 @@ const SellAnalyticsPage: React.FC<SellAnalyticsPageProps> = ({ assets, sellHisto
   }, []);
 
   const allSellRecords: SellRecord[] = useMemo(() => {
+    const sellHistoryIds = new Set(sellHistory.map(r => r.id));
     const inlineRecords: SellRecord[] = [];
     assets.forEach(a => {
       if (a.sellTransactions && a.sellTransactions.length > 0) {
         a.sellTransactions.forEach(t => {
-          inlineRecords.push({
-            assetId: a.id,
-            ticker: a.ticker,
-            name: a.name,
-            category: a.category,
-            ...t,
-          });
+          if (!sellHistoryIds.has(t.id)) {
+            inlineRecords.push({
+              assetId: a.id,
+              ticker: a.ticker,
+              name: a.name,
+              category: a.category,
+              ...t,
+            });
+          }
         });
       }
     });

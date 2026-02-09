@@ -11,7 +11,8 @@
       "Bash(curl:*)",
       "Bash(python3:*)",
       "Bash(npm install:*)",
-      "Bash(tree:*)"
+      "Bash(tree:*)",
+      "Bash(find:*)"
     ],
     "additionalDirectories": [
       "C:\\Users\\beari\\Downloads"

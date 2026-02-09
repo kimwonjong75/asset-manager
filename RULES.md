@@ -63,16 +63,16 @@
 |------|------|----------------|-------------|
 | `priceService.ts` | 주식/ETF 시세, 환율 | Cloud Run `/`, `/exchange-rate` | `useMarketData`, `useAssetActions` |
 | `upbitService.ts` | 암호화폐 시세 | Cloud Run `/upbit` | `useMarketData` |
-| `historicalPriceService.ts` | 과거 시세 (백필/차트용) | Cloud Run `/history`, `/upbit/history` | `useHistoricalPriceData`, `historyUtils` |
+| `historicalPriceService.ts` | 과거 시세 (백필/차트용/AI분석용) | Cloud Run `/history`, `/upbit/history` | `useHistoricalPriceData`, `historyUtils`, `geminiService` |
 | `googleDriveService.ts` | 클라우드 저장/로드 | Google Drive API | `useGoogleDriveSync` |
-| `geminiService.ts` | 종목 검색, AI 분석 | Gemini API | `useAssetActions`, `PortfolioAssistant` |
+| `geminiService.ts` | 종목 검색, AI 분석 (기술적 질문 시 과거 시세 fetch+지표 계산 포함) | Gemini API, `historicalPriceService`, `maCalculations` | `useAssetActions`, `PortfolioAssistant` |
 
 ### utils/ (순수 함수)
 | 파일 | 책임 | 수정 시 영향 범위 |
 |------|------|------------------|
 | `portfolioCalculations.ts` | 포트폴리오 계산 유틸 | 전역 (계산 결과 변경) |
 | `historyUtils.ts` | 히스토리 보간/백필/기존 스냅샷 종가 교정 | `usePortfolioData` |
-| `maCalculations.ts` | SMA/RSI 계산, 차트 데이터 빌드 | `AssetTrendChart`, `useEnrichedIndicators` |
+| `maCalculations.ts` | SMA/RSI 계산, 차트 데이터 빌드 | `AssetTrendChart`, `useEnrichedIndicators`, `geminiService` |
 | `signalUtils.ts` | 신호/RSI 배지 렌더링 | `PortfolioTableRow`, `WatchlistPage` |
 | `smartFilterLogic.ts` | 스마트 필터 매칭 (그룹 내 OR, 그룹 간 AND), enriched 지표 참조 | `PortfolioTable`, `useEnrichedIndicators` |
 | `migrateData.ts` | 데이터 마이그레이션 | 로드 시 자동 실행 |
@@ -156,6 +156,27 @@ PortfolioTable.tsx
 - **계산 위치**: 프론트엔드 로컬 계산 (백엔드 수정 불필요)
 - **폴백**: enriched 데이터 로딩 전 → 백엔드 `indicators.ma20/ma60/rsi` 사용
 
+### AI 어시스턴트 기술적 분석 흐름
+```
+PortfolioAssistant.tsx
+    │
+    └─ geminiService.ts → askPortfolioQuestion()
+         │
+         ├─ containsTechnicalKeywords() → 기술적 질문 감지
+         │   (이평선, 정배열, RSI, 골든크로스, 기술적, 추세 등)
+         │
+         ├─ [기술적 질문일 때] fetchTechnicalIndicators()
+         │     ├─ historicalPriceService.ts → /history, /upbit/history
+         │     ├─ maCalculations.ts → calculateSMA() (5/10/20/60/120/200)
+         │     ├─ maCalculations.ts → calculateRSI() (14일)
+         │     └─ 결과: MA값, RSI, 정배열/역배열, 골든/데드크로스
+         │
+         └─ 프롬프트에 포트폴리오 + 기술 지표 포함 → Gemini API
+```
+- **일반 질문**: 기본 포트폴리오 데이터만 전송 (토큰 절약)
+- **기술적 질문**: 과거 시세 fetch → 지표 계산 → 프롬프트에 포함
+- **현금 자산**: 기술적 분석에서 자동 제외
+
 ### 수정 시 확인해야 할 의존관계
 
 | 수정 대상 | 반드시 확인할 파일 |
@@ -167,7 +188,7 @@ PortfolioTable.tsx
 | `historyUtils.ts` | `usePortfolioData.ts` |
 | `usePortfolioData.ts` | `PortfolioContext.tsx` |
 | `useGoogleDriveSync.ts` | `usePortfolioData.ts`, `usePortfolioExport.ts` |
-| `maCalculations.ts` | `AssetTrendChart`, `useEnrichedIndicators`, `useHistoricalPriceData` |
+| `maCalculations.ts` | `AssetTrendChart`, `useEnrichedIndicators`, `useHistoricalPriceData`, `geminiService` |
 | `useEnrichedIndicators.ts` | `PortfolioTable` (스마트 필터 enriched 데이터) |
 | `PortfolioContext.tsx` | `App.tsx`, 모든 Context 소비 컴포넌트 |
 
