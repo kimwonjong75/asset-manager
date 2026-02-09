@@ -5,6 +5,7 @@ import ReactMarkdown, { type Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
 import { usePortfolio } from '../contexts/PortfolioContext';
+import { useEnrichedIndicators } from '../hooks/useEnrichedIndicators';
 
 
 interface PortfolioAssistantProps {}
@@ -21,6 +22,7 @@ const PortfolioAssistant: React.FC<PortfolioAssistantProps> = () => {
     const isOpen = modal.assistantOpen;
     const onClose = actions.closeAssistant;
     const assets = data.assets;
+    const { enrichedMap } = useEnrichedIndicators(assets);
     const [messages, setMessages] = useState<Message[]>(() => {
         try {
             const savedHistory = localStorage.getItem(ASSISTANT_HISTORY_KEY);
@@ -66,7 +68,7 @@ const PortfolioAssistant: React.FC<PortfolioAssistantProps> = () => {
         setIsLoading(true);
 
         try {
-            const modelResponse = await askPortfolioQuestion(assets, input);
+            const modelResponse = await askPortfolioQuestion(assets, input, enrichedMap);
             const assistantMessage: Message = { role: 'model', content: modelResponse };
             setMessages(prev => [...prev, assistantMessage]);
         } catch (error) {

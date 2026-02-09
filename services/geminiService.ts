@@ -1,6 +1,7 @@
 import { GoogleGenAI } from '@google/genai';
 import { Asset, Currency, SymbolSearchResult, normalizeExchange } from '../types';
 import { AssetDataResult } from '../types/api';
+import type { EnrichedIndicatorData } from '../hooks/useEnrichedIndicators';
 
 // =================================================================
 // 1. 설정 및 초기화
@@ -432,41 +433,107 @@ Ensure all prices are numbers. Do not miss any assets. Return ONLY the JSON arra
 // =================================================================
 // 8. 포트폴리오 분석 (AI 채팅)
 // =================================================================
-function formatAssetsForAI(assets: Asset[]): string {
-  return assets.map(asset => {
-    const value = asset.quantity * asset.currentPrice;
-    const displayName = asset.customName ?? asset.name;
-    return `- ${displayName} (${asset.ticker}): ${asset.quantity}주, 현재가 ${asset.currentPrice.toLocaleString()}원, 평가액 ${value.toLocaleString()}원, 카테고리: ${asset.category}`;
-  }).join('\n');
+
+// 기술적 분석 키워드 감지
+const TECHNICAL_KEYWORDS = [
+  '이평선', '이동평균', 'MA', 'ma', '정배열', '역배열',
+  '골든크로스', '데드크로스', 'RSI', 'rsi', '과매수', '과매도',
+  '기술적', '차트', '매매신호', '시그널', 'signal',
+  '단기', '장기', '추세', '지지', '저항',
+];
+
+function containsTechnicalKeywords(question: string): boolean {
+  return TECHNICAL_KEYWORDS.some(kw => question.includes(kw));
 }
 
 export const askPortfolioQuestion = async (
-  assets: Asset[], 
-  question: string
+  assets: Asset[],
+  question: string,
+  enrichedMap?: Map<string, EnrichedIndicatorData>
 ): Promise<string> => {
   if (!ai) return "API 키가 설정되지 않았습니다.";
 
-  const simplifiedAssets = assets.map(asset => ({
-    name: asset.customName ?? asset.name,
-    ticker: asset.ticker,
-    exchange: asset.exchange,
-    category: asset.category,
-    quantity: asset.quantity,
-    purchase_price_original: asset.purchasePrice,
-    purchase_date: asset.purchaseDate,
-    current_price_krw: asset.currentPrice,
-    price_original: asset.priceOriginal,
-    currency: asset.currency,
-    current_value_krw: asset.currentPrice * asset.quantity,
-    highest_price_krw: asset.highestPrice,
-    yesterday_price_krw: asset.previousClosePrice ?? null,
-  }));
+  const isTechnicalQuestion = containsTechnicalKeywords(question) && enrichedMap && enrichedMap.size > 0;
+
+  const simplifiedAssets = assets.map(asset => {
+    const base: Record<string, unknown> = {
+      name: asset.customName ?? asset.name,
+      ticker: asset.ticker,
+      exchange: asset.exchange,
+      category: asset.category,
+      quantity: asset.quantity,
+      purchase_price_original: asset.purchasePrice,
+      purchase_date: asset.purchaseDate,
+      current_price_krw: asset.currentPrice,
+      price_original: asset.priceOriginal,
+      currency: asset.currency,
+      current_value_krw: asset.currentPrice * asset.quantity,
+      highest_price_krw: asset.highestPrice,
+      yesterday_price_krw: asset.previousClosePrice ?? null,
+    };
+
+    // 기술적 질문 시 enriched 지표 추가
+    if (isTechnicalQuestion) {
+      const enriched = enrichedMap.get(asset.ticker);
+      if (enriched) {
+        const ma = enriched.ma;
+        const prevMa = enriched.prevMa;
+        base.ma_5 = ma[5] ?? null;
+        base.ma_10 = ma[10] ?? null;
+        base.ma_20 = ma[20] ?? null;
+        base.ma_60 = ma[60] ?? null;
+        base.ma_120 = ma[120] ?? null;
+        base.ma_200 = ma[200] ?? null;
+        base.rsi = enriched.rsi ?? null;
+
+        // 정배열/역배열 (단기MA > 장기MA)
+        const shortMa = ma[20];
+        const longMa = ma[60];
+        if (typeof shortMa === 'number' && typeof longMa === 'number') {
+          base.ma_alignment = shortMa > longMa ? '정배열' : '역배열';
+        }
+
+        // 골든크로스/데드크로스
+        const prevShort = prevMa[20];
+        const prevLong = prevMa[60];
+        if (typeof shortMa === 'number' && typeof longMa === 'number' &&
+            typeof prevShort === 'number' && typeof prevLong === 'number') {
+          if (prevShort <= prevLong && shortMa > longMa) {
+            base.cross_signal = '골든크로스';
+          } else if (prevShort >= prevLong && shortMa < longMa) {
+            base.cross_signal = '데드크로스';
+          }
+        }
+
+        // 현재가 vs 주요 이평선 위치
+        const priceForMa = asset.priceOriginal || asset.currentPrice;
+        if (typeof shortMa === 'number') {
+          base.price_vs_ma20 = priceForMa > shortMa ? '위' : '아래';
+        }
+        if (typeof longMa === 'number') {
+          base.price_vs_ma60 = priceForMa > longMa ? '위' : '아래';
+        }
+      }
+    }
+
+    return base;
+  });
 
   const portfolioJson = JSON.stringify(simplifiedAssets, null, 2);
 
+  const technicalGuide = isTechnicalQuestion
+    ? `\n\n각 종목에는 기술적 지표가 포함되어 있습니다:
+- \`ma_5\` ~ \`ma_200\`: 5일~200일 이동평균선 값
+- \`rsi\`: RSI(14일) 값 (70 이상 과매수, 30 이하 과매도)
+- \`ma_alignment\`: 정배열(단기MA>장기MA) 또는 역배열
+- \`cross_signal\`: 골든크로스 또는 데드크로스 발생 여부
+- \`price_vs_ma20\`, \`price_vs_ma60\`: 현재가가 해당 이평선 대비 위/아래
+이 지표들을 적극 활용하여 기술적 관점에서 분석해주세요.`
+    : '';
+
   const prompt = `당신은 사용자의 자산 포트폴리오를 분석하고 질문에 답변하는 전문 금융 어시스턴트입니다.
-    
-다음은 사용자의 현재 포트폴리오 데이터입니다 (JSON 형식). 각 항목에는 현재가와 함께 어제 종가가 포함될 수 있으므로, "어제 대비" 변동을 계산할 때는 \`yesterday_price_krw\`를 사용하세요. 날짜 메타가 없으면 제공된 값만으로 판단하세요:
+
+다음은 사용자의 현재 포트폴리오 데이터입니다 (JSON 형식). 각 항목에는 현재가와 함께 어제 종가가 포함될 수 있으므로, "어제 대비" 변동을 계산할 때는 \`yesterday_price_krw\`를 사용하세요. 날짜 메타가 없으면 제공된 값만으로 판단하세요:${technicalGuide}
 \`\`\`json
 ${portfolioJson}
 \`\`\`
