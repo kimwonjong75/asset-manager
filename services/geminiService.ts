@@ -1,7 +1,13 @@
 import { GoogleGenAI } from '@google/genai';
 import { Asset, Currency, SymbolSearchResult, normalizeExchange } from '../types';
 import { AssetDataResult } from '../types/api';
-import type { EnrichedIndicatorData } from '../hooks/useEnrichedIndicators';
+import {
+  fetchStockHistoricalPrices,
+  fetchCryptoHistoricalPrices,
+  convertTickerForAPI,
+  isCryptoExchange,
+} from './historicalPriceService';
+import { calculateSMA, calculateRSI, getRequiredHistoryDays } from '../utils/maCalculations';
 
 // =================================================================
 // 1. 설정 및 초기화
@@ -446,14 +452,106 @@ function containsTechnicalKeywords(question: string): boolean {
   return TECHNICAL_KEYWORDS.some(kw => question.includes(kw));
 }
 
+/**
+ * 기술적 질문 시 과거 시세를 직접 fetch하여 지표 계산
+ */
+const MA_PERIODS = [5, 10, 20, 60, 120, 200];
+const RSI_PERIOD = 14;
+
+interface TechnicalIndicators {
+  ma: Record<number, number | null>;
+  prevMa: Record<number, number | null>;
+  rsi: number | null;
+  prevRsi: number | null;
+}
+
+async function fetchTechnicalIndicators(
+  assets: Asset[]
+): Promise<Map<string, TechnicalIndicators>> {
+  const result = new Map<string, TechnicalIndicators>();
+  if (assets.length === 0) return result;
+
+  try {
+    const days = getRequiredHistoryDays(200);
+    const endDate = new Date().toISOString().split('T')[0];
+    const startD = new Date();
+    startD.setDate(startD.getDate() - days);
+    const startDate = startD.toISOString().split('T')[0];
+
+    const stockTickers: { asset: Asset; apiTicker: string }[] = [];
+    const cryptoTickers: { asset: Asset; apiTicker: string }[] = [];
+
+    for (const asset of assets) {
+      // 현금은 기술적 분석 불필요
+      if (asset.category === '현금') continue;
+      const apiTicker = convertTickerForAPI(asset.ticker, asset.exchange, asset.category);
+      if (isCryptoExchange(asset.exchange)) {
+        cryptoTickers.push({ asset, apiTicker });
+      } else {
+        stockTickers.push({ asset, apiTicker });
+      }
+    }
+
+    const [stockResults, cryptoResults] = await Promise.all([
+      stockTickers.length > 0
+        ? fetchStockHistoricalPrices(stockTickers.map(t => t.apiTicker), startDate, endDate)
+        : Promise.resolve({}),
+      cryptoTickers.length > 0
+        ? fetchCryptoHistoricalPrices(cryptoTickers.map(t => t.apiTicker), startDate, endDate)
+        : Promise.resolve({}),
+    ]);
+
+    const allItems = [
+      ...stockTickers.map(t => ({ ...t, results: stockResults })),
+      ...cryptoTickers.map(t => ({ ...t, results: cryptoResults })),
+    ];
+
+    for (const { asset, apiTicker, results } of allItems) {
+      const entry = results[apiTicker] || results[Object.keys(results).find(k => k === apiTicker) || ''];
+      const priceData = entry?.data;
+      if (!priceData || Object.keys(priceData).length === 0) continue;
+
+      const sortedDates = Object.keys(priceData).sort();
+      const sortedPrices = sortedDates.map(date => ({ date, price: priceData[date] }));
+
+      const ma: Record<number, number | null> = {};
+      const prevMa: Record<number, number | null> = {};
+      for (const period of MA_PERIODS) {
+        const smaValues = calculateSMA(sortedPrices, period);
+        const lastIdx = smaValues.length - 1;
+        ma[period] = lastIdx >= 0 ? smaValues[lastIdx] : null;
+        prevMa[period] = lastIdx >= 1 ? smaValues[lastIdx - 1] : null;
+      }
+
+      const rsiValues = calculateRSI(sortedPrices, RSI_PERIOD);
+      const lastRsiIdx = rsiValues.length - 1;
+      const rsi = lastRsiIdx >= 0 ? rsiValues[lastRsiIdx] : null;
+      const prevRsi = lastRsiIdx >= 1 ? rsiValues[lastRsiIdx - 1] : null;
+
+      result.set(asset.ticker, { ma, prevMa, rsi, prevRsi });
+    }
+  } catch (err) {
+    console.error('[fetchTechnicalIndicators] error:', err);
+  }
+
+  return result;
+}
+
 export const askPortfolioQuestion = async (
   assets: Asset[],
-  question: string,
-  enrichedMap?: Map<string, EnrichedIndicatorData>
+  question: string
 ): Promise<string> => {
   if (!ai) return "API 키가 설정되지 않았습니다.";
 
-  const isTechnicalQuestion = containsTechnicalKeywords(question) && enrichedMap && enrichedMap.size > 0;
+  const isTechnicalQuestion = containsTechnicalKeywords(question);
+
+  // 기술적 질문이면 과거 시세를 직접 fetch하여 지표 계산
+  let enrichedMap: Map<string, TechnicalIndicators> | null = null;
+  if (isTechnicalQuestion) {
+    enrichedMap = await fetchTechnicalIndicators(assets);
+  }
+
+  const hasTechnicalData = enrichedMap && enrichedMap.size > 0;
 
   const simplifiedAssets = assets.map(asset => {
     const base: Record<string, unknown> = {
@@ -473,8 +571,8 @@ export const askPortfolioQuestion = async (
     };
 
     // 기술적 질문 시 enriched 지표 추가
-    if (isTechnicalQuestion) {
-      const enriched = enrichedMap.get(asset.ticker);
+    if (hasTechnicalData) {
+      const enriched = enrichedMap!.get(asset.ticker);
       if (enriched) {
         const ma = enriched.ma;
         const prevMa = enriched.prevMa;
@@ -521,12 +619,12 @@ export const askPortfolioQuestion = async (
 
   const portfolioJson = JSON.stringify(simplifiedAssets, null, 2);
 
-  const technicalGuide = isTechnicalQuestion
+  const technicalGuide = hasTechnicalData
     ? `\n\n각 종목에는 기술적 지표가 포함되어 있습니다:
-- \`ma_5\` ~ \`ma_200\`: 5일~200일 이동평균선 값
+- \`ma_5\` ~ \`ma_200\`: 5일~200일 이동평균선 값 (원화가 아닌 해당 종목의 원래 통화 기준)
 - \`rsi\`: RSI(14일) 값 (70 이상 과매수, 30 이하 과매도)
-- \`ma_alignment\`: 정배열(단기MA>장기MA) 또는 역배열
-- \`cross_signal\`: 골든크로스 또는 데드크로스 발생 여부
+- \`ma_alignment\`: 정배열(단기MA>장기MA, 상승추세) 또는 역배열(하락추세)
+- \`cross_signal\`: 골든크로스(매수신호) 또는 데드크로스(매도신호) 발생 여부
 - \`price_vs_ma20\`, \`price_vs_ma60\`: 현재가가 해당 이평선 대비 위/아래
 이 지표들을 적극 활용하여 기술적 관점에서 분석해주세요.`
     : '';
