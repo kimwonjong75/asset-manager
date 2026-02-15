@@ -3,6 +3,8 @@ import { PortfolioSnapshot, Currency, AssetCategory } from '../types';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { useHistoricalPriceData } from '../hooks/useHistoricalPriceData';
 import { DEFAULT_MA_CONFIGS, MALineConfig, buildChartDataWithMA } from '../utils/maCalculations';
+import { usePortfolio } from '../contexts/PortfolioContext';
+import { getGlobalPeriodDays } from '../hooks/useGlobalPeriodDays';
 
 const MA_PREFS_KEY = 'asset-manager-ma-preferences';
 
@@ -61,6 +63,9 @@ const AssetTrendChart: React.FC<AssetTrendChartProps> = ({
   const maxMAPeriod = enabledPeriods.length > 0 ? Math.max(...enabledPeriods) : 0;
   const hasMASupport = !!ticker && !!exchange && !!category && !isCash;
 
+  const { ui } = usePortfolio();
+  const displayDays = getGlobalPeriodDays(ui.globalPeriod);
+
   // 과거 시세 fetch (차트 열릴 때 항상 — 종가 기반 정확도 보장)
   // MA 비활성이어도 hook 내부에서 기본 기간으로 종가 데이터를 가져옴
   const { historicalPrices, isLoading: maLoading, error: maError } = useHistoricalPriceData({
@@ -69,6 +74,7 @@ const AssetTrendChart: React.FC<AssetTrendChartProps> = ({
     category: category || AssetCategory.KOREAN_STOCK,
     isExpanded: true,
     maxMAPeriod: hasMASupport ? maxMAPeriod : 0,
+    displayDays,
   });
 
   const handleToggleMA = useCallback((period: number) => {
@@ -86,7 +92,17 @@ const AssetTrendChart: React.FC<AssetTrendChartProps> = ({
 
   // 기존 PortfolioSnapshot 기반 차트 데이터
   const snapshotChartData = useMemo(() => {
-    const data = (history || []).map(snapshot => {
+    // 글로벌 기간 cutoff 계산
+    let cutoffStr: string | null = null;
+    if (displayDays !== null) {
+      const cutoff = new Date();
+      cutoff.setDate(cutoff.getDate() - displayDays);
+      cutoffStr = cutoff.toISOString().split('T')[0];
+    }
+
+    const data = (history || [])
+      .filter(snapshot => !cutoffStr || snapshot.date >= cutoffStr)
+      .map(snapshot => {
       const assetSnapshot = snapshot.assets.find(a => a.id === assetId);
 
       let price = 0;
@@ -145,7 +161,7 @@ const AssetTrendChart: React.FC<AssetTrendChartProps> = ({
     }
 
     return data;
-  }, [history, assetId, currentQuantity, currentPrice, currency, exchangeRate, showInKRW]);
+  }, [history, assetId, currentQuantity, currentPrice, currency, exchangeRate, showInKRW, displayDays]);
 
   // 과거 종가 기반 차트 데이터 (+ MA 오버레이)
   const historicalChartData = useMemo(() => {
@@ -159,7 +175,15 @@ const AssetTrendChart: React.FC<AssetTrendChartProps> = ({
         )
       : historicalPrices;
 
-    const data = buildChartDataWithMA(processedPrices, enabledPeriods);
+    let data = buildChartDataWithMA(processedPrices, enabledPeriods);
+
+    // 글로벌 기간으로 표시 범위 제한 (MA warm-up 구간 제거)
+    if (displayDays !== null && data.length > 0) {
+      const cutoff = new Date();
+      cutoff.setDate(cutoff.getDate() - displayDays);
+      const cutoffStr = cutoff.toISOString().split('T')[0];
+      data = data.filter(d => !d.fullDate || d.fullDate >= cutoffStr);
+    }
 
     // 오늘 날짜 실시간 currentPrice 오버레이
     if (currentPrice > 0 && data.length > 0) {

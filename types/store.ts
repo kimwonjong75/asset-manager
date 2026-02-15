@@ -2,6 +2,8 @@ import { Asset, PortfolioSnapshot, SellRecord, WatchlistItem, ExchangeRates, Ass
 
 export type PortfolioHistory = PortfolioSnapshot[];
 
+export type GlobalPeriod = '3M' | '6M' | '1Y' | '2Y' | 'ALL';
+
 export interface PortfolioData {
   assets: Asset[];
   portfolioHistory: PortfolioHistory;
@@ -24,6 +26,7 @@ export interface PortfolioStatus {
 
 export interface UIState {
   activeTab: 'dashboard' | 'portfolio' | 'analytics' | 'watchlist';
+  globalPeriod: GlobalPeriod;
   dashboardFilterCategory: AssetCategory | 'ALL';
   filterCategory: AssetCategory | 'ALL';
   filterAlerts: boolean;
@@ -89,6 +92,7 @@ export interface PortfolioActions {
 
   // UI/모달
   setActiveTab: (tab: UIState['activeTab']) => void;
+  setGlobalPeriod: (p: GlobalPeriod) => void;
   setDashboardFilterCategory: (c: UIState['dashboardFilterCategory']) => void;
   setFilterCategory: (c: UIState['filterCategory']) => void;
   setFilterAlerts: (v: boolean) => void;

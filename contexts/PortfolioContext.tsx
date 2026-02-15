@@ -7,7 +7,7 @@ import {
   AllocationTargets,
   WatchlistItem,
 } from '../types';
-import { PortfolioContextValue, UIState } from '../types/store';
+import { PortfolioContextValue, UIState, GlobalPeriod } from '../types/store';
 import { usePortfolioData } from '../hooks/usePortfolioData';
 import { useMarketData } from '../hooks/useMarketData';
 import { useAssetActions } from '../hooks/useAssetActions';
@@ -101,6 +101,17 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   });
 
   // UI 상태
+  const [globalPeriod, setGlobalPeriod] = useState<GlobalPeriod>(() => {
+    try {
+      const stored = localStorage.getItem('asset-manager-global-period');
+      if (stored && ['3M', '6M', '1Y', '2Y', 'ALL'].includes(stored)) return stored as GlobalPeriod;
+    } catch { /* ignore */ }
+    return '1Y';
+  });
+  const handleSetGlobalPeriod = (p: GlobalPeriod) => {
+    setGlobalPeriod(p);
+    try { localStorage.setItem('asset-manager-global-period', p); } catch { /* ignore */ }
+  };
   const [activeTab, setActiveTab] = useState<UIState['activeTab']>('dashboard');
   const [dashboardFilterCategory, setDashboardFilterCategory] = useState<AssetCategory | 'ALL'>('ALL');
   const [filterCategory, setFilterCategory] = useState<AssetCategory | 'ALL'>('ALL');
@@ -185,6 +196,7 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     },
     ui: {
       activeTab,
+      globalPeriod,
       dashboardFilterCategory,
       filterCategory,
       filterAlerts,
@@ -239,6 +251,7 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       clearError: () => setError(null),
       clearSuccessMessage: () => setSuccessMessage(null),
       setActiveTab: handleTabChange,
+      setGlobalPeriod: handleSetGlobalPeriod,
       setDashboardFilterCategory,
       setFilterCategory,
       setFilterAlerts,

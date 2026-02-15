@@ -7,6 +7,7 @@ import BuyMoreAssetModal from './components/BuyMoreAssetModal';
 import BulkUploadModal from './components/BulkUploadModal';
 import AddNewAssetModal from './components/AddNewAssetModal';
 import PortfolioAssistant from './components/PortfolioAssistant';
+import PeriodSelector from './components/common/PeriodSelector';
 
 // Hooks
 import { PortfolioProvider, usePortfolio } from './contexts/PortfolioContext';
@@ -128,12 +129,15 @@ const AppContent: React.FC = () => {
         {status.isSignedIn ? (
           <>
             <div className="border-b border-gray-700">
-              <nav className="-mb-px flex space-x-8" aria-label="Tabs">
-                <TabButton tabId="dashboard" onClick={() => actions.setActiveTab('dashboard')}>대시보드</TabButton>
-                <TabButton tabId="portfolio" onClick={() => actions.setActiveTab('portfolio')}>포트폴리오 상세</TabButton>
-                <TabButton tabId="analytics" onClick={() => actions.setActiveTab('analytics')}>수익 통계</TabButton>
-                <TabButton tabId="watchlist" onClick={() => actions.setActiveTab('watchlist')}>관심종목</TabButton>
-              </nav>
+              <div className="flex items-center justify-between">
+                <nav className="-mb-px flex space-x-8" aria-label="Tabs">
+                  <TabButton tabId="dashboard" onClick={() => actions.setActiveTab('dashboard')}>대시보드</TabButton>
+                  <TabButton tabId="portfolio" onClick={() => actions.setActiveTab('portfolio')}>포트폴리오 상세</TabButton>
+                  <TabButton tabId="watchlist" onClick={() => actions.setActiveTab('watchlist')}>관심종목</TabButton>
+                  <TabButton tabId="analytics" onClick={() => actions.setActiveTab('analytics')}>수익 통계</TabButton>
+                </nav>
+                <PeriodSelector value={ui.globalPeriod} onChange={actions.setGlobalPeriod} />
+              </div>
             </div>
 
             <main className="mt-8">

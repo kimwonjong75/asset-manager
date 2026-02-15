@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Asset, Currency, SellRecord, AssetCategory, ALLOWED_CATEGORIES } from '../types';
 import StatCard from './StatCard';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar, Cell } from 'recharts';
@@ -6,34 +6,19 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsi
 interface SellAnalyticsPageProps {
   assets: Asset[];
   sellHistory: SellRecord[];
+  periodStartDate: string;
+  periodEndDate: string;
 }
 
 type Grouping = 'daily' | 'weekly' | 'monthly' | 'quarterly';
 
-const SellAnalyticsPage: React.FC<SellAnalyticsPageProps> = ({ assets, sellHistory }) => {
+const SellAnalyticsPage: React.FC<SellAnalyticsPageProps> = ({ assets, sellHistory, periodStartDate, periodEndDate }) => {
   const [grouping, setGrouping] = useState<Grouping>('monthly');
-  const [startDate, setStartDate] = useState<string>('');
-  const [endDate, setEndDate] = useState<string>('');
   const [search, setSearch] = useState<string>('');
   const [category, setCategory] = useState<AssetCategory | 'ALL'>('ALL');
 
-  const [pendingStartDate, setPendingStartDate] = useState<string>('');
-  const [pendingEndDate, setPendingEndDate] = useState<string>('');
   const [pendingSearch, setPendingSearch] = useState<string>('');
   const [pendingCategory, setPendingCategory] = useState<AssetCategory | 'ALL'>('ALL');
-
-  useEffect(() => {
-    const today = new Date();
-    const lastYear = new Date();
-    lastYear.setFullYear(today.getFullYear() - 1);
-    const fmt = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-    const s = fmt(lastYear);
-    const e = fmt(today);
-    setStartDate(s);
-    setEndDate(e);
-    setPendingStartDate(s);
-    setPendingEndDate(e);
-  }, []);
 
   const allSellRecords: SellRecord[] = useMemo(() => {
     const sellHistoryIds = new Set(sellHistory.map(r => r.id));
@@ -59,13 +44,13 @@ const SellAnalyticsPage: React.FC<SellAnalyticsPageProps> = ({ assets, sellHisto
   const filteredRecords = useMemo(() => {
     return allSellRecords.filter(r => {
       const d = r.sellDate;
-      const inStart = !startDate || d >= startDate;
-      const inEnd = !endDate || d <= endDate;
+      const inStart = !periodStartDate || d >= periodStartDate;
+      const inEnd = !periodEndDate || d <= periodEndDate;
       const inSearch = !search || r.name.toLowerCase().includes(search.toLowerCase()) || r.ticker.toLowerCase().includes(search.toLowerCase());
       const inCategory = category === 'ALL' || r.category === category;
       return inStart && inEnd && inSearch && inCategory;
     });
-  }, [allSellRecords, startDate, endDate, search, category]);
+  }, [allSellRecords, periodStartDate, periodEndDate, search, category]);
 
   const toKRWPurchaseUnit = (a: Asset, quantity: number): number => {
     if (a.currency === Currency.KRW) return a.purchasePrice * quantity;
@@ -178,12 +163,6 @@ const SellAnalyticsPage: React.FC<SellAnalyticsPageProps> = ({ assets, sellHisto
     <div className="space-y-6">
       <div className="bg-gray-800 p-4 rounded-lg shadow-lg flex items-center justify-between flex-wrap gap-4">
         <div className="flex items-center gap-4 flex-wrap">
-          <div className="flex items-center gap-2">
-            <label className="text-sm font-medium text-gray-300">기간:</label>
-            <input type="date" value={pendingStartDate} onChange={e => setPendingStartDate(e.target.value)} className="bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
-            <span className="text-gray-400">~</span>
-            <input type="date" value={pendingEndDate} onChange={e => setPendingEndDate(e.target.value)} className="bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
-          </div>
           <div className="relative">
             <select value={grouping} onChange={e => setGrouping(e.target.value as Grouping)} className="bg-gray-700 border border-gray-600 rounded-md py-2 pl-3 pr-8 text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary appearance-none">
               <option value="daily">일별</option>
@@ -216,8 +195,6 @@ const SellAnalyticsPage: React.FC<SellAnalyticsPageProps> = ({ assets, sellHisto
         <div>
           <button
             onClick={() => {
-              setStartDate(pendingStartDate);
-              setEndDate(pendingEndDate);
               setSearch(pendingSearch);
               setCategory(pendingCategory);
             }}

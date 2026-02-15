@@ -18,6 +18,7 @@ interface UseHistoricalPriceDataProps {
   category: AssetCategory;
   isExpanded: boolean;
   maxMAPeriod: number;
+  displayDays?: number | null; // 글로벌 기간 (null = ALL)
 }
 
 interface UseHistoricalPriceDataResult {
@@ -29,7 +30,7 @@ interface UseHistoricalPriceDataResult {
 interface CacheEntry {
   data: HistoricalPriceData;
   fetchedAt: number;
-  maxPeriod: number;
+  totalDays: number;
 }
 
 const CACHE_TTL_MS = 10 * 60 * 1000; // 10분
@@ -45,6 +46,7 @@ export function useHistoricalPriceData({
   category,
   isExpanded,
   maxMAPeriod,
+  displayDays,
 }: UseHistoricalPriceDataProps): UseHistoricalPriceDataResult {
   const [historicalPrices, setHistoricalPrices] = useState<HistoricalPriceData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -57,15 +59,27 @@ export function useHistoricalPriceData({
       return;
     }
 
-    // MA 비활성이어도 기본 종가 데이터는 fetch (장중가 스냅샷 대신 실제 종가 사용)
+    // MA warm-up에 필요한 일수
     const effectivePeriod = Math.max(maxMAPeriod, 1);
+    const maWarmupDays = getRequiredHistoryDays(effectivePeriod);
+
+    // 총 fetch 일수: 표시 기간 + MA warm-up (또는 MA warm-up만)
+    let totalDays: number;
+    if (displayDays === null) {
+      // ALL: 최대 10년
+      totalDays = 3650;
+    } else if (displayDays && displayDays > 0) {
+      totalDays = displayDays + maWarmupDays;
+    } else {
+      totalDays = maWarmupDays;
+    }
 
     const cacheKey = getCacheKey(ticker, exchange);
     const now = Date.now();
 
-    // 캐시 확인: TTL 유효 + 이전 요청이 현재 period를 커버하면 재사용
+    // 캐시 확인: TTL 유효 + 이전 요청이 현재 일수를 커버하면 재사용
     const cached = cache.get(cacheKey);
-    if (cached && (now - cached.fetchedAt) < CACHE_TTL_MS && cached.maxPeriod >= effectivePeriod) {
+    if (cached && (now - cached.fetchedAt) < CACHE_TTL_MS && cached.totalDays >= totalDays) {
       setHistoricalPrices(cached.data);
       setError(null);
       return;
@@ -77,10 +91,9 @@ export function useHistoricalPriceData({
 
     const fetchData = async () => {
       try {
-        const days = getRequiredHistoryDays(effectivePeriod);
         const endDate = new Date().toISOString().split('T')[0];
         const startD = new Date();
-        startD.setDate(startD.getDate() - days);
+        startD.setDate(startD.getDate() - totalDays);
         const startDate = startD.toISOString().split('T')[0];
 
         const apiTicker = convertTickerForAPI(ticker, exchange, category);
@@ -104,7 +117,7 @@ export function useHistoricalPriceData({
           cache.set(cacheKey, {
             data: priceData,
             fetchedAt: Date.now(),
-            maxPeriod: effectivePeriod,
+            totalDays,
           });
           setHistoricalPrices(priceData);
           setError(null);
@@ -127,7 +140,7 @@ export function useHistoricalPriceData({
     return () => {
       abortRef.current = true;
     };
-  }, [ticker, exchange, category, isExpanded, maxMAPeriod]);
+  }, [ticker, exchange, category, isExpanded, maxMAPeriod, displayDays]);
 
   return { historicalPrices, isLoading, error };
 }

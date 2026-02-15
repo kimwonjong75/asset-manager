@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { AssetCategory } from '../../types';
 import { usePortfolio } from '../../contexts/PortfolioContext';
 import { usePortfolioCalculator } from '../../hooks/usePortfolioCalculator';
+import { useGlobalPeriodDays } from '../../hooks/useGlobalPeriodDays';
 
 // Dashboard Components
 import DashboardControls from '../dashboard/DashboardControls';
@@ -17,7 +18,11 @@ const DashboardView: React.FC = () => {
   const { data, ui, actions, status, derived } = usePortfolio();
   const assets = data.assets;
   const sellHistory = data.sellHistory;
-  const portfolioHistory = data.portfolioHistory;
+  const { startDate: periodStart } = useGlobalPeriodDays(ui.globalPeriod);
+  const portfolioHistory = useMemo(
+    () => data.portfolioHistory.filter(s => s.date >= periodStart),
+    [data.portfolioHistory, periodStart]
+  );
   const exchangeRates = data.exchangeRates;
   const dashboardFilterCategory = ui.dashboardFilterCategory;
   const setDashboardFilterCategory = actions.setDashboardFilterCategory;

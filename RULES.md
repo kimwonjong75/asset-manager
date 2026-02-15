@@ -52,7 +52,8 @@
 | `useMarketData.ts` | 시세/환율 업데이트, 암호화폐 분기, **관심종목 시세도 함께 갱신** | `priceService`, `upbitService` | `PortfolioContext` |
 | `useAssetActions.ts` | 자산 CRUD, 매도/매수/CSV 처리 | `priceService`, `geminiService` | 모달 컴포넌트들 |
 | `usePortfolioCalculator.ts` | 수익률/손익 계산 (구매 환율 기준) | `types/index` | 대시보드, 통계 |
-| `useHistoricalPriceData.ts` | 차트용 과거 종가 데이터 (MA 여부 무관, 캐시 내장) | `historicalPriceService`, `maCalculations` | `AssetTrendChart` |
+| `useHistoricalPriceData.ts` | 차트용 과거 종가 데이터 (MA 여부 무관, 캐시 내장, `displayDays` 기반 기간 제어) | `historicalPriceService`, `maCalculations` | `AssetTrendChart` |
+| `useGlobalPeriodDays.ts` | 글로벌 기간(`GlobalPeriod`) → `{ startDate, endDate, days }` 변환 유틸 훅 | `types/store` | `AssetTrendChart`, `DashboardView`, `AnalyticsView` |
 | `useEnrichedIndicators.ts` | 전 종목 배치 과거 데이터 조회 → MA 전 기간(5~200) + RSI(금일/전일) 계산 | `historicalPriceService`, `maCalculations` | `PortfolioTable` (스마트 필터) |
 | `usePortfolioHistory.ts` | 포트폴리오 스냅샷 저장 | `types/index` | 차트 데이터 |
 | `useRebalancing.ts` | 리밸런싱 계산 및 저장 | `PortfolioContext` | `RebalancingTable` |
@@ -82,7 +83,7 @@
 |------|------|------------------|
 | `index.ts` | 핵심 타입 (`Asset`, `Currency`, `AssetCategory` 등) | **전역** - 거의 모든 파일 |
 | `api.ts` | API 응답 타입 (`PriceItem`, `Indicators` 등) | `services/`, `hooks/` |
-| `store.ts` | 상태 관리 타입 (`PortfolioContextValue` 등) | `contexts/`, `hooks/` |
+| `store.ts` | 상태 관리 타입 (`PortfolioContextValue`, `GlobalPeriod` 등) | `contexts/`, `hooks/`, `components/common/PeriodSelector` |
 | `ui.ts` | UI 컴포넌트 Props 타입 | `components/` |
 | `smartFilter.ts` | 스마트 필터 타입 (17개 키, MA 기간 설정 포함), 그룹 매핑, 초기값 | `utils/smartFilterLogic`, `SmartFilterPanel`, `PortfolioTable` |
 
@@ -91,6 +92,13 @@
 |------|------|------------------|
 | `columnDescriptions.ts` | 포트폴리오 테이블 컬럼 툴팁 텍스트 | `PortfolioTable`, `PortfolioTableRow` |
 | `smartFilterChips.ts` | 스마트 필터 칩 정의 (17개 칩, 동적 라벨, 색상) | `SmartFilterPanel` |
+
+### components/common/ (공용 컴포넌트)
+| 파일 | 책임 | 의존 |
+|------|------|------|
+| `PeriodSelector.tsx` | 글로벌 기간 선택 버튼 (3개월/6개월/1년/2년/전체) | `types/store` (`GlobalPeriod`) |
+| `Toggle.tsx` | 토글 스위치 | - |
+| `Tooltip.tsx` | 툴팁 | - |
 
 ### components/ (관심종목 모달)
 | 파일 | 책임 | 의존 |
@@ -142,17 +150,33 @@ useMarketData.ts → handleRefreshAllPrices()
 ```
 > **주의**: `handleRefreshAllPrices`가 보유 자산과 관심종목을 **한 번에** 갱신함. 관심종목 별도 갱신 버튼 없음.
 
+### 글로벌 기간 선택 흐름
+```
+PeriodSelector (App.tsx 탭 바 우측)
+    │
+    └─ PortfolioContext.globalPeriod (3M/6M/1Y/2Y/ALL, 기본 1Y)
+         │   └─ localStorage 영속 ('asset-manager-global-period')
+         │
+         ├─ DashboardView → portfolioHistory 필터 → ProfitLossChart
+         ├─ AssetTrendChart → useHistoricalPriceData(displayDays) + 차트 데이터 slice
+         ├─ AnalyticsView → SellAnalyticsPage(periodStartDate, periodEndDate)
+         └─ WatchlistPage → AssetTrendChart (동일)
+```
+- **탭 순서**: 대시보드 | 포트폴리오 상세 | **관심종목** | **수익 통계** (관심종목이 수익통계보다 앞)
+- **수익 통계 기간**: 자체 date input 삭제됨, 글로벌 기간 props로 전달받음
+
 ### 차트 데이터 흐름
 ```
 AssetTrendChart.tsx
     │
     ├─ ticker/exchange 있는 자산 (주식, 코인 등)
-    │   └─ useHistoricalPriceData.ts (MA 여부 무관, 항상 fetch)
+    │   └─ useHistoricalPriceData.ts (displayDays + MA warm-up 합산 fetch)
     │        └─ historicalPriceService.ts → /history 또는 /upbit/history
     │             └─ 실제 종가 기반 차트 + MA 오버레이 (활성 시)
+    │                  └─ displayDays 기준으로 표시 범위 slice (MA warm-up 구간 제거)
     │
     └─ 현금 등 ticker 없는 자산
-        └─ PortfolioSnapshot 기반 (폴백)
+        └─ PortfolioSnapshot 기반 (폴백, 글로벌 기간으로 필터)
 ```
 
 ### 스마트 필터 확장 지표 흐름
@@ -204,6 +228,7 @@ PortfolioAssistant.tsx
 | `useGoogleDriveSync.ts` | `usePortfolioData.ts`, `usePortfolioExport.ts` |
 | `maCalculations.ts` | `AssetTrendChart`, `useEnrichedIndicators`, `useHistoricalPriceData`, `geminiService` |
 | `useEnrichedIndicators.ts` | `PortfolioTable` (스마트 필터 enriched 데이터) |
+| `useGlobalPeriodDays.ts` | `AssetTrendChart`, `DashboardView`, `AnalyticsView` |
 | `PortfolioContext.tsx` | `App.tsx`, 모든 Context 소비 컴포넌트 |
 
 ---
@@ -371,6 +396,14 @@ try {
 - **자동 저장 디바운스**: 2초 (빈번한 저장 방지)
 - **토큰 갱신**: 만료 5분 전 자동 갱신
 - **공유 폴더 파라미터**: 새 Drive API 호출 시 `supportsAllDrives`, `includeItemsFromAllDrives` 필수
+
+### 글로벌 기간 선택기 (GlobalPeriod)
+- **상태 위치**: `PortfolioContext.ui.globalPeriod` (타입: `'3M' | '6M' | '1Y' | '2Y' | 'ALL'`)
+- **기본값**: `'1Y'`, localStorage에 영속 (`'asset-manager-global-period'`)
+- **영향 범위**: 모든 탭에 일관 적용 — 대시보드(ProfitLossChart 필터), 차트(AssetTrendChart fetch 기간), 수익 통계(매도 기록 필터)
+- **차트 fetch 계산**: `totalDays = displayDays + MA warm-up days` (MA200 + 2년 = 730 + 330 = 1060일 fetch)
+- **`ALL` 선택 시**: 최대 10년(3650일) fetch, 날짜 필터는 `'2000-01-01'`부터
+- **수익 통계 탭**: 자체 date input이 **삭제됨** — 반드시 `periodStartDate`/`periodEndDate` props로 전달받아야 함
 
 ### 관심종목 (WatchlistItem)
 - **매수존(buyZone) 필드 삭제됨** — `buyZoneMin`, `buyZoneMax` 없음
