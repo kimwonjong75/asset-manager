@@ -38,6 +38,8 @@ export interface ModalState {
   bulkUploadOpen: boolean;
   addAssetOpen: boolean;
   assistantOpen: boolean;
+  editingWatchItem: WatchlistItem | null;
+  addWatchItemOpen: boolean;
 }
 
 export interface DerivedState {
@@ -105,6 +107,10 @@ export interface PortfolioActions {
   closeAddAsset: () => void;
   openAssistant: () => void;
   closeAssistant: () => void;
+  openAddWatchItem: () => void;
+  closeAddWatchItem: () => void;
+  openEditWatchItem: (item: WatchlistItem) => void;
+  closeEditWatchItem: () => void;
 }
 
 export interface PortfolioContextValue {

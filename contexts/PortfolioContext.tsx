@@ -5,6 +5,7 @@ import {
   Currency,
   ExchangeRates,
   AllocationTargets,
+  WatchlistItem,
 } from '../types';
 import { PortfolioContextValue, UIState } from '../types/store';
 import { usePortfolioData } from '../hooks/usePortfolioData';
@@ -109,6 +110,8 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [isBulkUploadModalOpen, setIsBulkUploadModalOpen] = useState<boolean>(false);
   const [isAddAssetModalOpen, setIsAddAssetModalOpen] = useState<boolean>(false);
   const [isAssistantOpen, setIsAssistantOpen] = useState<boolean>(false);
+  const [editingWatchItem, setEditingWatchItem] = useState<WatchlistItem | null>(null);
+  const [isAddWatchItemOpen, setIsAddWatchItemOpen] = useState<boolean>(false);
 
   const isLoading = isAuthLoading || isMarketLoading || isActionLoading;
   const isInitializing = false;
@@ -195,6 +198,8 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       bulkUploadOpen: isBulkUploadModalOpen,
       addAssetOpen: isAddAssetModalOpen,
       assistantOpen: isAssistantOpen,
+      editingWatchItem,
+      addWatchItemOpen: isAddWatchItemOpen,
     },
     derived: {
       totalValue,
@@ -258,6 +263,10 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       closeAddAsset: () => setIsAddAssetModalOpen(false),
       openAssistant: () => setIsAssistantOpen(true),
       closeAssistant: () => setIsAssistantOpen(false),
+      openAddWatchItem: () => setIsAddWatchItemOpen(true),
+      closeAddWatchItem: () => setIsAddWatchItemOpen(false),
+      openEditWatchItem: (item: WatchlistItem) => setEditingWatchItem(item),
+      closeEditWatchItem: () => setEditingWatchItem(null),
     },
   };
 

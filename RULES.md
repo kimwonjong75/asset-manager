@@ -71,7 +71,7 @@
 | 파일 | 책임 | 수정 시 영향 범위 |
 |------|------|------------------|
 | `portfolioCalculations.ts` | 포트폴리오 계산 유틸 | 전역 (계산 결과 변경) |
-| `historyUtils.ts` | 히스토리 보간/백필/기존 스냅샷 종가 교정 | `usePortfolioData` |
+| `historyUtils.ts` | 히스토리 보간/백필/기존 스냅샷 종가 교정/오염 데이터 교정 | `usePortfolioData` |
 | `maCalculations.ts` | SMA/RSI 계산, 차트 데이터 빌드 | `AssetTrendChart`, `useEnrichedIndicators`, `geminiService` |
 | `signalUtils.ts` | 신호/RSI 배지 렌더링 | `PortfolioTableRow`, `WatchlistPage` |
 | `smartFilterLogic.ts` | 스마트 필터 매칭 (그룹 내 OR, 그룹 간 AND), enriched 지표 참조 | `PortfolioTable`, `useEnrichedIndicators` |
@@ -232,8 +232,9 @@ interface AssetSnapshot {
   name: string;              // 자산명
   currentValue: number;      // 현재가치 (KRW)
   purchaseValue: number;     // 매수가치 (KRW)
-  unitPrice?: number;        // 1주당 단가 (KRW)
+  unitPrice?: number;        // 1주당 단가 (KRW) — 없으면 백필 교정 스킵됨
   unitPriceOriginal?: number; // 외화 원본 단가 (차트용)
+  currency?: Currency;        // 통화 정보
 }
 ```
 
@@ -293,8 +294,16 @@ const getPurchaseValueInKRW = (asset: Asset, exchangeRates: ExchangeRates): numb
 - **주식/ETF**: `/history` 엔드포인트 (FinanceDataReader)
 - **암호화폐**: `/upbit/history` 엔드포인트 (Upbit Candles API)
 - **기존 스냅샷 교정**: 장중 업데이트로 기록된 가격을 실제 종가로 소급 교정 (오늘 제외)
+- **unitPrice 없는 스냅샷**: 수량 역산 불가하므로 교정 스킵 (오염 방지)
 - **90일 초과**: 최근 90일만 교정/백필 (API 부하 방지)
 - **API 실패**: `fillAllMissingDates()`로 폴백 (마지막 데이터 복사)
+
+### 오염 스냅샷 자동 교정 (`repairCorruptedSnapshots`)
+- **실행 시점**: Google Drive 로드 직후, 보간/백필 전에 실행
+- **감지 기준**: `currentValue / purchaseValue` 비율이 10배(1,000%) 이상인 자산
+- **교정 방식**: 정상 스냅샷(최신→과거 탐색)에서 `purchaseValuePerUnit`을 역산 → 오염 자산의 수량을 복원하여 `currentValue` 재계산
+- **원인**: 과거 `unitPrice` 미저장 스냅샷에서 `currentValue / 1`로 수량이 역산되어 발생
+- **데이터 저장**: 교정 후 백필→자동 저장으로 Google Drive에 반영
 
 ---
 
@@ -366,8 +375,11 @@ console.error('[priceService] 시세 조회 실패:', error);
 
 ### 데이터 무결성
 - **마이그레이션**: `migrateData.ts`에서 이전 버전 데이터 자동 변환
+- **마이그레이션 멱등성**: 필드 이름 변경 시 기존 값 보존 필수 (`??` 연산자 사용, `=` 덮어쓰기 금지)
 - **구조 검증**: 필수 필드 존재 여부 확인 후 로드
 - **스냅샷 우선**: 매도 통계에서 스냅샷 필드(`originalPurchasePrice` 등) 우선 사용
+- **스냅샷 수량 역산**: `currentValue / unitPrice`로 수량을 역산할 때, `unitPrice`가 0이나 undefined이면 반드시 스킵 (fallback 1 사용 금지 — 데이터 오염의 원인)
+- **로드 파이프라인 순서**: `repairCorruptedSnapshots` → `fillAllMissingDates` → `backfillWithRealPrices` (repair가 반드시 먼저)
 
 ### 매도 기록 이중 저장 구조
 - **저장 위치가 2곳**: 매도 시 동일한 거래가 `sellHistory[]`(글로벌)와 `asset.sellTransactions[]`(자산 내부) **양쪽에 저장**됨

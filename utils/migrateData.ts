@@ -30,12 +30,10 @@ export const runMigrationIfNeeded = (data: { exchangeRates?: ExchangeRates; asse
       const purchasePrice = asset.purchasePrice || 0;
       const currentPrice = asset.currentPrice || 0;
       const priceOriginal = asset.priceOriginal || 0;
-      const yesterdayPrice = asset.yesterdayPrice || 0;
-      
-      // ✅ Rename yesterdayPrice to previousClosePrice
+      // ✅ Rename yesterdayPrice to previousClosePrice (기존 값이 있으면 유지)
       const migratedAsset = {
         ...asset,
-        previousClosePrice: yesterdayPrice,
+        previousClosePrice: asset.previousClosePrice ?? asset.yesterdayPrice ?? 0,
       };
       delete (migratedAsset as any).yesterdayPrice;
 

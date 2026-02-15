@@ -3,7 +3,7 @@ import { Asset, PortfolioSnapshot, SellRecord, WatchlistItem, ExchangeRates, All
 import { useGoogleDriveSync } from './useGoogleDriveSync';
 import { runMigrationIfNeeded } from '../utils/migrateData';
 import { mapToNewAssetStructure } from '../utils/portfolioCalculations';
-import { fillAllMissingDates, backfillWithRealPrices, getMissingDateRange } from '../utils/historyUtils';
+import { fillAllMissingDates, backfillWithRealPrices, getMissingDateRange, repairCorruptedSnapshots } from '../utils/historyUtils';
 
 export const usePortfolioData = () => {
   const [error, setError] = useState<string | null>(null);
@@ -32,18 +32,19 @@ export const usePortfolioData = () => {
         setAssets(driveAssets);
         
         if (Array.isArray(data.portfolioHistory)) {
-          // 먼저 기존 보간 방식으로 빠르게 로드 (UX 향상)
-          const filledHistory = fillAllMissingDates(data.portfolioHistory);
+          // 오염된 스냅샷 교정 후 보간
+          const repairedHistory = repairCorruptedSnapshots(data.portfolioHistory);
+          const filledHistory = fillAllMissingDates(repairedHistory);
           setPortfolioHistory(filledHistory);
 
           // 백필이 필요한지 확인
-          const missingRange = getMissingDateRange(data.portfolioHistory);
+          const missingRange = getMissingDateRange(repairedHistory);
           if (missingRange && driveAssets.length > 0) {
             console.log(`[Backfill] ${missingRange.missingDates.length}일 누락 감지, 실제 시세 조회 시작...`);
 
-            // 비동기로 백필 수행 (기존 보간 데이터는 이미 표시됨)
+            // 비동기로 백필 수행 (교정된 데이터 기반)
             const rates = data.exchangeRates || { USD: 1450, JPY: 9.5 };
-            backfillWithRealPrices(data.portfolioHistory, driveAssets, rates)
+            backfillWithRealPrices(repairedHistory, driveAssets, rates)
               .then(backfilledHistory => {
                 // 백필된 히스토리로 업데이트
                 setPortfolioHistory(backfilledHistory);

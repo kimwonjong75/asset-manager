@@ -125,8 +125,6 @@ export interface WatchlistItem {
   category: AssetCategory;
   monitoringEnabled: boolean;
   notes?: string;
-  buyZoneMin?: number;
-  buyZoneMax?: number;
   dropFromHighThreshold?: number;
   currentPrice?: number;
   priceOriginal?: number;
@@ -134,7 +132,7 @@ export interface WatchlistItem {
   previousClosePrice?: number; // Renamed from yesterdayPrice
   highestPrice?: number;
   lastSignalAt?: string;
-  lastSignalType?: 'BUY_ZONE' | 'DROP_FROM_HIGH' | 'DAILY_DROP' | null;
+  lastSignalType?: 'DROP_FROM_HIGH' | 'DAILY_DROP' | null;
   changeRate?: number;
   indicators?: Indicators;
 }
@@ -240,6 +238,7 @@ export interface LegacyAssetShape {
   priceOriginal?: number;
   highestPrice?: number;
   yesterdayPrice?: number; // Keep for migration
+  previousClosePrice?: number; // Keep for migration
   sellAlertDropRate?: number;
   memo?: string;
   region?: string;

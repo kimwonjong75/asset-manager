@@ -158,6 +158,82 @@ export const getMissingDateRange = (history: PortfolioSnapshot[]): { startDate: 
 };
 
 /**
+ * 백필 과정에서 unitPrice 누락으로 오염된 스냅샷 데이터를 교정
+ * - currentValue가 purchaseValue 대비 비정상적으로 큰 자산을 감지
+ * - 정상 스냅샷에서 수량 기준 데이터를 역산하여 교정
+ */
+export const repairCorruptedSnapshots = (history: PortfolioSnapshot[]): PortfolioSnapshot[] => {
+  if (history.length === 0) return history;
+
+  const sorted = [...history].sort((a, b) => a.date.localeCompare(b.date));
+
+  // 1단계: 정상 스냅샷에서 자산별 기준 데이터 수집 (최신 → 과거 순으로 탐색)
+  const assetRefMap = new Map<string, { quantity: number; purchaseValuePerUnit: number }>();
+
+  for (let i = sorted.length - 1; i >= 0; i--) {
+    for (const asset of sorted[i].assets) {
+      if (assetRefMap.has(asset.id)) continue;
+      if (!asset.unitPrice || asset.unitPrice <= 0 || asset.purchaseValue <= 0) continue;
+
+      const ratio = Math.abs(asset.currentValue / asset.purchaseValue);
+      // 수익률 1,000% 미만이면 정상 데이터로 판단
+      if (ratio > 0 && ratio < 10) {
+        const quantity = asset.currentValue / asset.unitPrice;
+        if (quantity > 0) {
+          assetRefMap.set(asset.id, {
+            quantity,
+            purchaseValuePerUnit: asset.purchaseValue / quantity,
+          });
+        }
+      }
+    }
+  }
+
+  if (assetRefMap.size === 0) return sorted;
+
+  // 2단계: 오염된 스냅샷 자산 교정
+  let repairedCount = 0;
+  const repaired = sorted.map(snapshot => {
+    let hasCorruption = false;
+
+    const fixedAssets = snapshot.assets.map(asset => {
+      if (asset.purchaseValue <= 0) return asset;
+
+      const ratio = Math.abs(asset.currentValue / asset.purchaseValue);
+      if (ratio < 10) return asset; // 정상 범위 (수익률 1,000% 미만)
+
+      // 오염 감지 — 기준 데이터로 교정 시도
+      const ref = assetRefMap.get(asset.id);
+      if (!ref || !asset.unitPrice || asset.unitPrice <= 0) {
+        // unitPrice도 없으면 purchaseValue로 대체 (최소한 차트 폭발 방지)
+        if (ratio >= 10) {
+          hasCorruption = true;
+          repairedCount++;
+          return { ...asset, currentValue: asset.purchaseValue };
+        }
+        return asset;
+      }
+
+      // purchaseValue 비례로 수량 복원
+      const quantity = asset.purchaseValue / ref.purchaseValuePerUnit;
+      const correctedValue = quantity * asset.unitPrice;
+
+      hasCorruption = true;
+      repairedCount++;
+      return { ...asset, currentValue: correctedValue };
+    });
+
+    return hasCorruption ? { ...snapshot, assets: fixedAssets } : snapshot;
+  });
+
+  if (repairedCount > 0) {
+    console.log(`[Repair] ${repairedCount}개 오염된 스냅샷 자산 교정됨`);
+  }
+
+  return repaired;
+};
+
+/**
  * 실제 과거 시세로 히스토리 백필 + 기존 스냅샷 종가 교정
  *
  * - 누락된 날짜: 새 스냅샷 생성 (기존 동작)
@@ -274,7 +350,12 @@ export const backfillWithRealPrices = async (
           }
         }
 
-        const quantity = snapshotAsset.currentValue / (snapshotAsset.unitPrice || 1);
+        // unitPrice가 없는 오래된 스냅샷은 quantity 역산이 불가능하므로 교정 스킵
+        if (!snapshotAsset.unitPrice || snapshotAsset.unitPrice <= 0) {
+          return { ...snapshotAsset };
+        }
+
+        const quantity = snapshotAsset.currentValue / snapshotAsset.unitPrice;
         const newCurrentValue = newUnitPrice > 0 ? quantity * newUnitPrice : snapshotAsset.currentValue;
 
         return { ...snapshotAsset, unitPrice: newUnitPrice, unitPriceOriginal: newUnitPriceOriginal, currentValue: newCurrentValue };

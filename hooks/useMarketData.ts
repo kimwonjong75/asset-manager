@@ -136,10 +136,44 @@ export const useMarketData = ({
 
         setAssets(updatedAssets);
         setFailedAssetIds(new Set(failedIds));
-        triggerAutoSave(updatedAssets, portfolioHistory, sellHistory, watchlist, newRates);
-        
+
+        // 관심종목도 함께 갱신
+        let updatedWatchlist = watchlist;
+        if (watchlist.length > 0) {
+            try {
+                const wlGeneral = watchlist.filter(item => !shouldUseUpbitAPI(item.exchange));
+                const wlUpbit = watchlist.filter(item => shouldUseUpbitAPI(item.exchange));
+                const wlToFetch = wlGeneral.map(item => ({ ticker: item.ticker, exchange: item.exchange, id: item.id, category: item.category, currency: item.currency }));
+                const wlUpbitSymbols = wlUpbit.map(item => item.ticker);
+
+                const [wlPriceMap, wlUpbitPriceMap] = await Promise.all([
+                    wlToFetch.length > 0 ? fetchBatchAssetPricesNew(wlToFetch) : Promise.resolve(new Map()),
+                    wlUpbitSymbols.length > 0 ? fetchUpbitPricesBatch(wlUpbitSymbols) : Promise.resolve(new Map())
+                ]);
+
+                updatedWatchlist = watchlist.map(item => {
+                    if (shouldUseUpbitAPI(item.exchange)) {
+                        const data = wlUpbitPriceMap.get(item.ticker.toUpperCase()) || wlUpbitPriceMap.get(`KRW-${item.ticker.toUpperCase()}`);
+                        if (data) return { ...item, currentPrice: data.trade_price, priceOriginal: data.trade_price, currency: Currency.KRW, previousClosePrice: data.prev_closing_price, changeRate: data.signed_change_rate };
+                        return item;
+                    }
+                    const d = wlPriceMap.get(item.id);
+                    if (d && !d.isMocked) {
+                        const newCurrent = (item.currency === Currency.KRW) ? d.priceKRW : d.priceOriginal;
+                        return { ...item, currentPrice: newCurrent, priceOriginal: d.priceOriginal, currency: (item.currency || d.currency) as Currency, previousClosePrice: d.previousClosePrice, changeRate: d.changeRate, indicators: d.indicators };
+                    }
+                    return item;
+                });
+                setWatchlist(updatedWatchlist);
+            } catch (wlErr) {
+                console.error('관심종목 갱신 실패:', wlErr);
+            }
+        }
+
+        triggerAutoSave(updatedAssets, portfolioHistory, sellHistory, updatedWatchlist, newRates);
+
         if (failedTickers.length > 0) setError(`갱신 실패: ${failedTickers.join(', ')}`);
-        else setSuccessMessage('시세 업데이트 완료');
+        else setSuccessMessage(watchlist.length > 0 ? '시세 업데이트 완료 (관심종목 포함)' : '시세 업데이트 완료');
         setTimeout(() => { setError(null); setSuccessMessage(null); }, 3000);
 
     } catch (error) {
