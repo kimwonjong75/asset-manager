@@ -71,36 +71,47 @@ export const useMarketData = ({
     }
 
     try {
-        const [usdRate, jpyRate] = await Promise.all([
+        // 자산 분류
+        const cashAssets = assets.filter(a => a.category === AssetCategory.CASH);
+        const upbitAssets = assets.filter(a => a.category !== AssetCategory.CASH && shouldUseUpbitAPI(a.exchange));
+        const generalAssets = assets.filter(a => a.category !== AssetCategory.CASH && !shouldUseUpbitAPI(a.exchange));
+
+        const assetsToFetch = generalAssets.map(a => ({ ticker: a.ticker, exchange: a.exchange, id: a.id, category: a.category, currency: a.currency }));
+        const upbitSymbols = upbitAssets.map(a => a.ticker);
+
+        // 관심종목 분류
+        const wlGeneral = watchlist.filter(item => !shouldUseUpbitAPI(item.exchange));
+        const wlUpbit = watchlist.filter(item => shouldUseUpbitAPI(item.exchange));
+        const wlToFetch = wlGeneral.map(item => ({ ticker: item.ticker, exchange: item.exchange, id: item.id, category: item.category, currency: item.currency }));
+        const wlUpbitSymbols = wlUpbit.map(item => item.ticker);
+
+        // 환율 + 포트폴리오 + 관심종목 모든 fetch를 병렬 실행
+        const [
+            usdRate, jpyRate,
+            batchPriceMap, upbitPriceMap,
+            wlPriceMap, wlUpbitPriceMap,
+        ] = await Promise.all([
             fetchExchangeRate().catch(() => 1450),
-            fetchExchangeRateJPY().catch(() => 9.5)
+            fetchExchangeRateJPY().catch(() => 9.5),
+            assetsToFetch.length > 0 ? fetchBatchAssetPricesNew(assetsToFetch) : Promise.resolve(new Map()),
+            upbitSymbols.length > 0 ? fetchUpbitPricesBatch(upbitSymbols) : Promise.resolve(new Map()),
+            wlToFetch.length > 0 ? fetchBatchAssetPricesNew(wlToFetch) : Promise.resolve(new Map()),
+            wlUpbitSymbols.length > 0 ? fetchUpbitPricesBatch(wlUpbitSymbols) : Promise.resolve(new Map()),
         ]);
-        
+
         const newRates = {
             USD: usdRate > 1000 ? usdRate : (exchangeRates.USD || 1450),
             JPY: jpyRate > 5 ? jpyRate : (exchangeRates.JPY || 9.5)
         };
         setExchangeRates(newRates);
 
-        const cashAssets = assets.filter(a => a.category === AssetCategory.CASH);
-        const upbitAssets = assets.filter(a => a.category !== AssetCategory.CASH && shouldUseUpbitAPI(a.exchange));
-        const generalAssets = assets.filter(a => a.category !== AssetCategory.CASH && !shouldUseUpbitAPI(a.exchange));
-
-        const cashPromises = cashAssets.map(asset => 
+        // 현금 자산 환율 처리 (USD/JPY는 이미 조회 완료, 기타 통화만 추가 fetch)
+        const cashResults = await Promise.allSettled(cashAssets.map(asset =>
           (asset.currency === Currency.USD ? Promise.resolve(newRates.USD) : asset.currency === Currency.JPY ? Promise.resolve(newRates.JPY) : fetchCurrentExchangeRate(asset.currency, Currency.KRW))
           .then(rate => ({
             id: asset.id, priceKRW: rate * asset.priceOriginal, priceOriginal: asset.priceOriginal, currency: asset.currency, previousClosePrice: rate * asset.priceOriginal
           }))
-        );
-
-        const assetsToFetch = generalAssets.map(a => ({ ticker: a.ticker, exchange: a.exchange, id: a.id, category: a.category, currency: a.currency }));
-        const upbitSymbols = upbitAssets.map(a => a.ticker);
-
-        const [cashResults, batchPriceMap, upbitPriceMap] = await Promise.all([
-          Promise.allSettled(cashPromises),
-          assetsToFetch.length > 0 ? fetchBatchAssetPricesNew(assetsToFetch) : Promise.resolve(new Map()),
-          upbitSymbols.length > 0 ? fetchUpbitPricesBatch(upbitSymbols) : Promise.resolve(new Map())
-        ]);
+        ));
 
         const failedTickers: string[] = [];
         const failedIds: string[] = [];
@@ -117,7 +128,7 @@ export const useMarketData = ({
             if (upbitData) {
               const newCurrent = upbitData.trade_price;
               const apiHigh = upbitData.highest_52_week_price || newCurrent;
-              const newHighest = Math.max(asset.highestPrice, apiHigh, newCurrent); // 업비트는 KRW라 보정 불필요
+              const newHighest = Math.max(asset.highestPrice, apiHigh, newCurrent);
               return { ...asset, previousClosePrice: upbitData.prev_closing_price, currentPrice: newCurrent, priceOriginal: newCurrent, currency: Currency.KRW, highestPrice: newHighest, changeRate: upbitData.signed_change_rate };
             }
             failedTickers.push(asset.ticker); failedIds.push(asset.id); return asset;
@@ -127,7 +138,7 @@ export const useMarketData = ({
           if (priceData && !priceData.isMocked) {
              const newCurrency = (asset.category === AssetCategory.CRYPTOCURRENCY) ? asset.currency : (priceData.currency as Currency);
              const newCurrentPrice = (asset.currency === Currency.KRW) ? priceData.priceKRW : priceData.priceOriginal;
-             const finalHighest = fixHighestPrice(asset, newCurrentPrice, priceData.highestPrice); // 보정 함수 적용
+             const finalHighest = fixHighestPrice(asset, newCurrentPrice, priceData.highestPrice);
 
              return { ...asset, currentPrice: newCurrentPrice, priceOriginal: priceData.priceOriginal, previousClosePrice: priceData.previousClosePrice, currency: newCurrency, highestPrice: finalHighest, changeRate: priceData.changeRate, indicators: priceData.indicators };
           }
@@ -137,37 +148,23 @@ export const useMarketData = ({
         setAssets(updatedAssets);
         setFailedAssetIds(new Set(failedIds));
 
-        // 관심종목도 함께 갱신
+        // 관심종목 결과 처리 (fetch는 이미 완료)
         let updatedWatchlist = watchlist;
         if (watchlist.length > 0) {
-            try {
-                const wlGeneral = watchlist.filter(item => !shouldUseUpbitAPI(item.exchange));
-                const wlUpbit = watchlist.filter(item => shouldUseUpbitAPI(item.exchange));
-                const wlToFetch = wlGeneral.map(item => ({ ticker: item.ticker, exchange: item.exchange, id: item.id, category: item.category, currency: item.currency }));
-                const wlUpbitSymbols = wlUpbit.map(item => item.ticker);
-
-                const [wlPriceMap, wlUpbitPriceMap] = await Promise.all([
-                    wlToFetch.length > 0 ? fetchBatchAssetPricesNew(wlToFetch) : Promise.resolve(new Map()),
-                    wlUpbitSymbols.length > 0 ? fetchUpbitPricesBatch(wlUpbitSymbols) : Promise.resolve(new Map())
-                ]);
-
-                updatedWatchlist = watchlist.map(item => {
-                    if (shouldUseUpbitAPI(item.exchange)) {
-                        const data = wlUpbitPriceMap.get(item.ticker.toUpperCase()) || wlUpbitPriceMap.get(`KRW-${item.ticker.toUpperCase()}`);
-                        if (data) return { ...item, currentPrice: data.trade_price, priceOriginal: data.trade_price, currency: Currency.KRW, previousClosePrice: data.prev_closing_price, changeRate: data.signed_change_rate };
-                        return item;
-                    }
-                    const d = wlPriceMap.get(item.id);
-                    if (d && !d.isMocked) {
-                        const newCurrent = (item.currency === Currency.KRW) ? d.priceKRW : d.priceOriginal;
-                        return { ...item, currentPrice: newCurrent, priceOriginal: d.priceOriginal, currency: (item.currency || d.currency) as Currency, previousClosePrice: d.previousClosePrice, changeRate: d.changeRate, indicators: d.indicators };
-                    }
+            updatedWatchlist = watchlist.map(item => {
+                if (shouldUseUpbitAPI(item.exchange)) {
+                    const data = wlUpbitPriceMap.get(item.ticker.toUpperCase()) || wlUpbitPriceMap.get(`KRW-${item.ticker.toUpperCase()}`);
+                    if (data) return { ...item, currentPrice: data.trade_price, priceOriginal: data.trade_price, currency: Currency.KRW, previousClosePrice: data.prev_closing_price, changeRate: data.signed_change_rate };
                     return item;
-                });
-                setWatchlist(updatedWatchlist);
-            } catch (wlErr) {
-                console.error('관심종목 갱신 실패:', wlErr);
-            }
+                }
+                const d = wlPriceMap.get(item.id);
+                if (d && !d.isMocked) {
+                    const newCurrent = (item.currency === Currency.KRW) ? d.priceKRW : d.priceOriginal;
+                    return { ...item, currentPrice: newCurrent, priceOriginal: d.priceOriginal, currency: (item.currency || d.currency) as Currency, previousClosePrice: d.previousClosePrice, changeRate: d.changeRate, indicators: d.indicators };
+                }
+                return item;
+            });
+            setWatchlist(updatedWatchlist);
         }
 
         triggerAutoSave(updatedAssets, portfolioHistory, sellHistory, updatedWatchlist, newRates);

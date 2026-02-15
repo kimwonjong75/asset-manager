@@ -136,19 +136,20 @@ App.tsx
 ```
 useMarketData.ts → handleRefreshAllPrices()
     │
-    ├─ [1단계] 보유 자산 갱신
-    │   ├─ shouldUseUpbitAPI() 판단
-    │   │   ├─ true  → upbitService.ts → Cloud Run /upbit
-    │   │   └─ false → priceService.ts → Cloud Run /
-    │   └─ 결과 병합 → setAssets()
-    │
-    ├─ [2단계] 관심종목 갱신 (watchlist.length > 0일 때)
-    │   ├─ 동일한 shouldUseUpbitAPI() 분기 적용
-    │   └─ 결과 병합 → setWatchlist()
-    │
-    └─ triggerAutoSave(updatedAssets, updatedWatchlist)
+    └─ Promise.all() ── 6개 fetch 동시 실행
+         ├─ fetchExchangeRate()       → /exchange-rate (USD/KRW, 5분 캐시)
+         ├─ fetchExchangeRateJPY()    → /exchange-rate (JPY/KRW, 5분 캐시)
+         ├─ 보유자산(일반)             → priceService.ts → Cloud Run /
+         ├─ 보유자산(암호화폐)         → upbitService.ts → Cloud Run /upbit
+         ├─ 관심종목(일반)             → priceService.ts → Cloud Run /
+         └─ 관심종목(암호화폐)         → upbitService.ts → Cloud Run /upbit
+              │
+              └─ 모든 fetch 완료 후 결과 매핑
+                   ├─ 현금 자산: 환율 결과로 즉시 계산
+                   ├─ setAssets() + setWatchlist()
+                   └─ triggerAutoSave()
 ```
-> **주의**: `handleRefreshAllPrices`가 보유 자산과 관심종목을 **한 번에** 갱신함. 관심종목 별도 갱신 버튼 없음.
+> **주의**: `handleRefreshAllPrices`가 환율·보유자산·관심종목을 **하나의 Promise.all로 병렬 실행**함. 새 fetch를 추가할 때 이 Promise.all에 포함해야 함.
 
 ### 글로벌 기간 선택 흐름
 ```
@@ -376,8 +377,8 @@ try {
 ### 시세 API 관련
 | 항목 | 주의사항 |
 |------|---------|
-| **청크 크기** | 20개씩 요청 (API 제한) |
-| **재시도** | 실패 시 1회 재시도, 1초 대기 |
+| **청크 크기** | 20개씩 요청 (API 제한), 청크 간 500ms 대기 (마지막 청크 후에는 대기 없음) |
+| **환율 조회** | `fetchExchangeRate()`/`fetchExchangeRateJPY()`는 전용 `/exchange-rate` 엔드포인트 사용 (5분 캐시, 배치 API 경유하지 않음) |
 | **모킹 데이터** | API 실패 시 `isMocked: true` 플래그와 함께 기본값 제공 |
 | **부분 성공** | 일부 자산 실패해도 성공한 자산만 업데이트 |
 

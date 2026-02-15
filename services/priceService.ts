@@ -128,7 +128,7 @@ export async function fetchBatchAssetPrices(
     } catch (e) {
       console.error('[priceService] Batch fetch failed:', e);
     }
-    await sleep(CHUNK_DELAY_MS);
+    if (i + CHUNK_SIZE < assets.length) await sleep(CHUNK_DELAY_MS);
   }
 
   // 데이터가 없는 자산들 처리 (Mock)
@@ -157,13 +157,11 @@ export async function fetchAssetData(asset: { ticker: string; exchange: string; 
 }
 
 export async function fetchExchangeRate(): Promise<number> {
-    const map = await fetchBatchAssetPrices([{ ticker: 'USD/KRW', exchange: 'KRX', id: 'usd', category: AssetCategory.KOREAN_STOCK, currency: Currency.KRW }]);
-    return map.get('usd')?.priceOriginal || 0;
+    return fetchCurrentExchangeRate(Currency.USD, Currency.KRW);
 }
 
 export async function fetchExchangeRateJPY(): Promise<number> {
-    const map = await fetchBatchAssetPrices([{ ticker: 'JPY/KRW', exchange: 'KRX', id: 'jpy', category: AssetCategory.KOREAN_STOCK, currency: Currency.KRW }]);
-    return map.get('jpy')?.priceOriginal || 0;
+    return fetchCurrentExchangeRate(Currency.JPY, Currency.KRW);
 }
 
 // 기본 환율 (폴백용)
