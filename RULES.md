@@ -49,7 +49,7 @@
 | 파일 | 책임 | 의존 | 수정 시 확인 |
 |------|------|------|-------------|
 | `usePortfolioData.ts` | 핵심 데이터 상태, Google Drive 동기화 | `useGoogleDriveSync`, `historyUtils` | `PortfolioContext` |
-| `useMarketData.ts` | 시세/환율 업데이트, 암호화폐 분기 | `priceService`, `upbitService` | `PortfolioContext` |
+| `useMarketData.ts` | 시세/환율 업데이트, 암호화폐 분기, **관심종목 시세도 함께 갱신** | `priceService`, `upbitService` | `PortfolioContext` |
 | `useAssetActions.ts` | 자산 CRUD, 매도/매수/CSV 처리 | `priceService`, `geminiService` | 모달 컴포넌트들 |
 | `usePortfolioCalculator.ts` | 수익률/손익 계산 (구매 환율 기준) | `types/index` | 대시보드, 통계 |
 | `useHistoricalPriceData.ts` | 차트용 과거 종가 데이터 (MA 여부 무관, 캐시 내장) | `historicalPriceService`, `maCalculations` | `AssetTrendChart` |
@@ -92,6 +92,15 @@
 | `columnDescriptions.ts` | 포트폴리오 테이블 컬럼 툴팁 텍스트 | `PortfolioTable`, `PortfolioTableRow` |
 | `smartFilterChips.ts` | 스마트 필터 칩 정의 (17개 칩, 동적 라벨, 색상) | `SmartFilterPanel` |
 
+### components/ (관심종목 모달)
+| 파일 | 책임 | 의존 |
+|------|------|------|
+| `WatchlistAddModal.tsx` | 관심종목 추가 모달 | `PortfolioContext` (`addWatchItemOpen`, `addWatchItem`) |
+| `WatchlistEditModal.tsx` | 관심종목 수정/삭제 모달 | `PortfolioContext` (`editingWatchItem`, `updateWatchItem`, `deleteWatchItem`) |
+| `WatchlistPage.tsx` | 관심종목 테이블 (행별 액션 메뉴 + 차트 확장) | `AssetTrendChart`, `signalUtils` |
+
+> `WatchlistView.tsx`에서 세 컴포넌트를 함께 렌더링
+
 ### contexts/
 | 파일 | 책임 | 수정 시 영향 범위 |
 |------|------|------------------|
@@ -117,16 +126,21 @@ App.tsx
 
 ### 시세 조회 분기 흐름
 ```
-useMarketData.ts
+useMarketData.ts → handleRefreshAllPrices()
     │
-    ├─ shouldUseUpbitAPI() 판단
-    │   ├─ true: Upbit/Bithumb 또는 한글거래소+암호화폐
-    │   │         └─ upbitService.ts → Cloud Run /upbit
-    │   └─ false: 그 외
-    │             └─ priceService.ts → Cloud Run /
+    ├─ [1단계] 보유 자산 갱신
+    │   ├─ shouldUseUpbitAPI() 판단
+    │   │   ├─ true  → upbitService.ts → Cloud Run /upbit
+    │   │   └─ false → priceService.ts → Cloud Run /
+    │   └─ 결과 병합 → setAssets()
     │
-    └─ 결과 병합 → UI 반영
+    ├─ [2단계] 관심종목 갱신 (watchlist.length > 0일 때)
+    │   ├─ 동일한 shouldUseUpbitAPI() 분기 적용
+    │   └─ 결과 병합 → setWatchlist()
+    │
+    └─ triggerAutoSave(updatedAssets, updatedWatchlist)
 ```
+> **주의**: `handleRefreshAllPrices`가 보유 자산과 관심종목을 **한 번에** 갱신함. 관심종목 별도 갱신 버튼 없음.
 
 ### 차트 데이터 흐름
 ```
@@ -357,6 +371,12 @@ try {
 - **자동 저장 디바운스**: 2초 (빈번한 저장 방지)
 - **토큰 갱신**: 만료 5분 전 자동 갱신
 - **공유 폴더 파라미터**: 새 Drive API 호출 시 `supportsAllDrives`, `includeItemsFromAllDrives` 필수
+
+### 관심종목 (WatchlistItem)
+- **매수존(buyZone) 필드 삭제됨** — `buyZoneMin`, `buyZoneMax` 없음
+- **관심종목 UI는 모달 기반** — 인라인 폼 없음, `WatchlistAddModal`/`WatchlistEditModal` 사용
+- **관심종목 가격 갱신은 포트폴리오와 통합** — `handleRefreshAllPrices`에서 자동 처리, 별도 새로고침 버튼 없음
+- **차트 확장**: `AssetTrendChart`를 `history={[]}`로 호출 (스냅샷 없이 API 과거 시세만 사용)
 
 ### 자동 시세 업데이트 (하루 1회)
 - **판단 기준**: Google Drive의 `lastUpdateDate` + `localStorage`의 `lastAutoUpdateDate` **이중 체크**
