@@ -17,8 +17,9 @@ import DashboardView from './components/layouts/DashboardView';
 import PortfolioView from './components/layouts/PortfolioView';
 import AnalyticsView from './components/layouts/AnalyticsView';
 import WatchlistView from './components/layouts/WatchlistView';
+import InvestmentGuideView from './components/layouts/InvestmentGuideView';
 
-type ActiveTab = 'dashboard' | 'portfolio' | 'analytics' | 'watchlist';
+type ActiveTab = 'dashboard' | 'portfolio' | 'analytics' | 'watchlist' | 'guide';
 
 const AppContent: React.FC = () => {
   const { data, status, ui, modal, actions, derived } = usePortfolio();
@@ -135,8 +136,11 @@ const AppContent: React.FC = () => {
                   <TabButton tabId="portfolio" onClick={() => actions.setActiveTab('portfolio')}>포트폴리오 상세</TabButton>
                   <TabButton tabId="watchlist" onClick={() => actions.setActiveTab('watchlist')}>관심종목</TabButton>
                   <TabButton tabId="analytics" onClick={() => actions.setActiveTab('analytics')}>수익 통계</TabButton>
+                  <TabButton tabId="guide" onClick={() => actions.setActiveTab('guide')}>투자 가이드</TabButton>
                 </nav>
-                <PeriodSelector value={ui.globalPeriod} onChange={actions.setGlobalPeriod} />
+                {ui.activeTab !== 'guide' && (
+                  <PeriodSelector value={ui.globalPeriod} onChange={actions.setGlobalPeriod} />
+                )}
               </div>
             </div>
 
@@ -155,6 +159,10 @@ const AppContent: React.FC = () => {
               
               {ui.activeTab === 'watchlist' && (
                 <WatchlistView />
+              )}
+
+              {ui.activeTab === 'guide' && (
+                <InvestmentGuideView />
               )}
             </main>
             

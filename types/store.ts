@@ -25,7 +25,7 @@ export interface PortfolioStatus {
 }
 
 export interface UIState {
-  activeTab: 'dashboard' | 'portfolio' | 'analytics' | 'watchlist';
+  activeTab: 'dashboard' | 'portfolio' | 'analytics' | 'watchlist' | 'guide';
   globalPeriod: GlobalPeriod;
   dashboardFilterCategory: AssetCategory | 'ALL';
   filterCategory: AssetCategory | 'ALL';

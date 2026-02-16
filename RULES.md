@@ -83,15 +83,24 @@
 |------|------|------------------|
 | `index.ts` | 핵심 타입 (`Asset`, `Currency`, `AssetCategory` 등) | **전역** - 거의 모든 파일 |
 | `api.ts` | API 응답 타입 (`PriceItem`, `Indicators` 등) | `services/`, `hooks/` |
-| `store.ts` | 상태 관리 타입 (`PortfolioContextValue`, `GlobalPeriod` 등) | `contexts/`, `hooks/`, `components/common/PeriodSelector` |
+| `store.ts` | 상태 관리 타입 (`PortfolioContextValue`, `GlobalPeriod`, `UIState.activeTab` 등) | `contexts/`, `hooks/`, `App.tsx`, `components/common/PeriodSelector`, `SmartFilterPanel` |
 | `ui.ts` | UI 컴포넌트 Props 타입 | `components/` |
-| `smartFilter.ts` | 스마트 필터 타입 (17개 키, MA 기간 설정 포함), 그룹 매핑, 초기값 | `utils/smartFilterLogic`, `SmartFilterPanel`, `PortfolioTable` |
+| `smartFilter.ts` | 스마트 필터 타입 (17개 키, MA 기간 설정 포함), 그룹 매핑, 초기값 | `utils/smartFilterLogic`, `SmartFilterPanel`(+ `PortfolioContext` 의존), `PortfolioTable` |
 
 ### constants/ (상수 정의)
 | 파일 | 책임 | 수정 시 영향 범위 |
 |------|------|------------------|
 | `columnDescriptions.ts` | 포트폴리오 테이블 컬럼 툴팁 텍스트 | `PortfolioTable`, `PortfolioTableRow` |
 | `smartFilterChips.ts` | 스마트 필터 칩 정의 (17개 칩, 동적 라벨, 색상) | `SmartFilterPanel` |
+
+### components/layouts/ (탭별 뷰)
+| 파일 | 책임 | 의존 |
+|------|------|------|
+| `DashboardView.tsx` | 대시보드 탭 | `PortfolioContext`, `useGlobalPeriodDays` |
+| `PortfolioView.tsx` | 포트폴리오 상세 탭 | `PortfolioContext`, `PortfolioTable` |
+| `AnalyticsView.tsx` | 수익 통계 탭 | `PortfolioContext`, `useGlobalPeriodDays` |
+| `WatchlistView.tsx` | 관심종목 탭 | `PortfolioContext`, `WatchlistPage` |
+| `InvestmentGuideView.tsx` | 투자 가이드 탭 (순수 UI, 외부 의존 없음) | - |
 
 ### components/common/ (공용 컴포넌트)
 | 파일 | 책임 | 의존 |
@@ -163,7 +172,7 @@ PeriodSelector (App.tsx 탭 바 우측)
          ├─ AnalyticsView → SellAnalyticsPage(periodStartDate, periodEndDate)
          └─ WatchlistPage → AssetTrendChart (동일)
 ```
-- **탭 순서**: 대시보드 | 포트폴리오 상세 | **관심종목** | **수익 통계** (관심종목이 수익통계보다 앞)
+- **탭 순서**: 대시보드 | 포트폴리오 상세 | 관심종목 | 수익 통계 | **투자 가이드** (가이드 탭에서는 PeriodSelector 숨김)
 - **수익 통계 기간**: 자체 date input 삭제됨, 글로벌 기간 props로 전달받음
 
 ### 차트 데이터 흐름

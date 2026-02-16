@@ -26,6 +26,7 @@ KIM'S 퀀트자산관리는 계량적 투자 전략을 기반으로 한 종합 �
 - **차트 MA 오버레이**: 자산 차트에 사용자 커스텀 이동평균선(MA5~MA200) 오버레이
 - **서버 신호 표시**: 서버 제공 매수/매도 신호 및 RSI 상태 배지 표시
 - **AI 어시스턴트 (스트리밍)**: 포트폴리오 AI 분석 — 스트리밍 응답으로 실시간 표시, 기술적 질문 시 이미 계산된 지표(enrichedMap) 재활용으로 추가 API 호출 없이 즉시 분석
+- **투자 가이드**: 매매 시그널 점수 체계, MA/RSI 해석법, 스마트 필터 조합 전략, 실전 활용 시나리오를 목차형 별도 탭으로 제공
 
 ---
 
@@ -195,7 +196,7 @@ asset-manager/
 ├── components/           # React 컴포넌트
 │   ├── common/          # 공용 컴포넌트 (PeriodSelector, Toggle, Tooltip)
 │   ├── dashboard/       # 대시보드 전용 컴포넌트
-│   ├── layouts/         # 탭별 뷰 (Dashboard, Portfolio, Analytics, Watchlist)
+│   ├── layouts/         # 탭별 뷰 (Dashboard, Portfolio, Analytics, Watchlist, InvestmentGuide)
 │   └── portfolio-table/ # 포트폴리오 테이블 컴포넌트
 ├── hooks/               # 커스텀 훅 (데이터, 시세, 액션 관리)
 ├── services/            # 외부 API 연동 (시세, Google Drive, Gemini)

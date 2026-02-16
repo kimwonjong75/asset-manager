@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React from 'react';
 import type { SmartFilterState, SmartFilterKey } from '../../types/smartFilter';
 import { SMART_FILTER_CHIPS, SMART_FILTER_GROUP_LABELS } from '../../constants/smartFilterChips';
+import { usePortfolio } from '../../contexts/PortfolioContext';
 
 interface SmartFilterPanelProps {
   filter: SmartFilterState;
@@ -23,67 +24,6 @@ const GROUPS = ['ma', 'rsi', 'signal', 'portfolio'] as const;
 const MA_SHORT_OPTIONS = [10, 20, 60];
 const MA_LONG_OPTIONS = [60, 120, 200];
 
-const FILTER_HELP_SECTIONS = [
-  {
-    title: '필터 조합 규칙',
-    items: [
-      '같은 그룹 내: OR (하나라도 해당되면 표시)',
-      '다른 그룹 간: AND (모든 그룹 조건 충족 시 표시)',
-      '예: [골든크로스] + [RSI 반등] → 추세 전환 + 과매도 탈출 종목만 표시',
-    ],
-  },
-  {
-    title: '이동평균 (MA) — 기간 선택',
-    items: [
-      '현재가>MA 칩의 드롭다운에서 단기(10/20/60)·장기(60/120/200) 기간 선택',
-      '현재가>단기MA / 현재가>장기MA: 가격이 해당 이동평균선 위에 있는 종목',
-      '정배열: 단기MA > 장기MA — 상승 추세 (보유 유지 또는 매수 고려)',
-      '역배열: 단기MA < 장기MA — 하락 추세 (매도 고려 또는 매수 보류)',
-    ],
-  },
-  {
-    title: '이동평균 — 추세 전환 감지',
-    items: [
-      '골든크로스: 전일 역배열 → 금일 정배열 전환 (매수 시점 탐색)',
-      '데드크로스: 전일 정배열 → 금일 역배열 전환 (매도 시점 탐색)',
-      '※ 과거 종가 데이터 기반 계산 — 로딩 완료 후 활성화',
-    ],
-  },
-  {
-    title: 'RSI (상대강도지수)',
-    items: [
-      '14일 RSI 기준, 최근 상승/하락 힘의 비율 (0~100)',
-      '과매수 (RSI ≥ 70): 과열 구간 — 추가 매수 주의, 분할 매도 고려',
-      '과매도 (RSI ≤ 30): 침체 구간 — 반등 가능성, 분할 매수 고려',
-      'RSI 반등↑: 전일 ≤30 → 금일 >30 (과매도 탈출 — 매수 시점 탐색)',
-      'RSI 과열진입↓: 전일 <70 → 금일 ≥70 (과매수 진입 — 매도 시점 탐색)',
-    ],
-  },
-  {
-    title: '투자 시점 잡기 — 필터 조합 예시',
-    items: [
-      '매수 기회: [골든크로스] + [RSI 반등↑] → 상승 전환 + 과매도 탈출',
-      '매수 기회: [정배열] + [과매도] → 상승 추세에서 일시 조정 중',
-      '매도 시점: [데드크로스] + [RSI 과열진입↓] → 하락 전환 + 과매수 진입',
-      '매도 시점: [역배열] + [과매수] → 하락 추세에서 반짝 반등 (빠져나올 타이밍)',
-      '관망: [역배열] + [과매도] → 하락 추세 + 계속 하락 중 (매수 금지)',
-      '※ 지표는 100% 예측 도구가 아닌 확률적 참고 도구입니다',
-      '※ 항상 분할 매수/매도를 권장합니다',
-    ],
-  },
-  {
-    title: '매매신호 / 포트폴리오',
-    items: [
-      '매매신호: 서버 기술적 분석 기반 매수/매도 추천 강도',
-      '수익중/손실중: 현재 보유 자산의 손익 상태',
-      '고점대비 하락: 52주 최고가 대비 설정 비율(%) 이상 하락 종목',
-    ],
-  },
-  {
-    title: '매도알림',
-    items: ['52주 최고가 대비 설정 비율(%) 이상 하락 시 경고 표시'],
-  },
-];
 
 const SmartFilterPanel: React.FC<SmartFilterPanelProps> = ({
   filter,
@@ -100,8 +40,8 @@ const SmartFilterPanel: React.FC<SmartFilterPanelProps> = ({
   onFilterAlertsChange,
   isEnrichedLoading = false,
 }) => {
+  const { actions } = usePortfolio();
   const hasActiveFilters = filter.activeFilters.size > 0;
-  const [showHelp, setShowHelp] = useState(false);
 
   const handleSellAlertRateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value === '' ? 0 : parseInt(e.target.value, 10);
@@ -274,53 +214,16 @@ const SmartFilterPanel: React.FC<SmartFilterPanelProps> = ({
           </>
         )}
         <button
-          onClick={() => setShowHelp(true)}
-          className="text-gray-500 hover:text-gray-300 transition"
+          onClick={() => actions.setActiveTab('guide')}
+          className="text-gray-500 hover:text-gray-300 transition flex items-center gap-1"
+          title="투자 가이드 보기"
         >
           <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
+          <span className="text-[10px]">가이드</span>
         </button>
       </div>
-
-      {/* 필터 도움말 모달 */}
-      {showHelp && (
-        <div
-          className="fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center z-50"
-          onClick={() => setShowHelp(false)}
-          role="dialog"
-          aria-modal="true"
-        >
-          <div
-            className="bg-gray-800 rounded-lg shadow-xl w-full max-w-md mx-4 p-5"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-bold text-white">스마트 필터 사용법</h3>
-              <button
-                onClick={() => setShowHelp(false)}
-                className="text-gray-400 hover:text-white transition"
-              >
-                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-            <div className="space-y-3 text-sm">
-              {FILTER_HELP_SECTIONS.map((section, i) => (
-                <div key={i}>
-                  <h4 className="text-xs font-semibold text-gray-300 mb-1">{section.title}</h4>
-                  <ul className="space-y-0.5">
-                    {section.items.map((item, j) => (
-                      <li key={j} className="text-xs text-gray-400 pl-2">· {item}</li>
-                    ))}
-                  </ul>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
