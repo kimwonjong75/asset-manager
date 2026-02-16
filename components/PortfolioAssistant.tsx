@@ -1,13 +1,10 @@
-import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { Asset } from '../types';
-import { askPortfolioQuestion } from '../services/geminiService';
+import React, { useState, useRef, useEffect } from 'react';
+import { askPortfolioQuestionStream } from '../services/geminiService';
 import ReactMarkdown, { type Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
 import { usePortfolio } from '../contexts/PortfolioContext';
-
-
-interface PortfolioAssistantProps {}
+import { useEnrichedIndicators } from '../hooks/useEnrichedIndicators';
 
 interface Message {
     role: 'user' | 'model';
@@ -16,7 +13,7 @@ interface Message {
 
 const ASSISTANT_HISTORY_KEY = 'quant-assistant-history';
 
-const PortfolioAssistant: React.FC<PortfolioAssistantProps> = () => {
+const PortfolioAssistant: React.FC = () => {
     const { modal, actions, data } = usePortfolio();
     const isOpen = modal.assistantOpen;
     const onClose = actions.closeAssistant;
@@ -62,17 +59,43 @@ const PortfolioAssistant: React.FC<PortfolioAssistantProps> = () => {
 
         const userMessage: Message = { role: 'user', content: input };
         setMessages(prev => [...prev, userMessage]);
+        const question = input;
         setInput('');
         setIsLoading(true);
 
+        let firstChunk = true;
+
         try {
-            const modelResponse = await askPortfolioQuestion(assets, input);
-            const assistantMessage: Message = { role: 'model', content: modelResponse };
-            setMessages(prev => [...prev, assistantMessage]);
+            await askPortfolioQuestionStream(
+                assets,
+                question,
+                (fullText) => {
+                    if (firstChunk) {
+                        firstChunk = false;
+                        setIsLoading(false);
+                        setMessages(prev => [...prev, { role: 'model', content: fullText }]);
+                    } else {
+                        setMessages(prev => {
+                            const updated = [...prev];
+                            updated[updated.length - 1] = { ...updated[updated.length - 1], content: fullText };
+                            return updated;
+                        });
+                    }
+                },
+                enrichedMap
+            );
         } catch (error) {
             console.error("Error asking portfolio question:", error);
             const errorMessage: Message = { role: 'model', content: "죄송합니다, 답변을 생성하는 중에 오류가 발생했습니다. 잠시 후 다시 시도해주세요." };
-            setMessages(prev => [...prev, errorMessage]);
+            if (firstChunk) {
+                setMessages(prev => [...prev, errorMessage]);
+            } else {
+                setMessages(prev => {
+                    const updated = [...prev];
+                    updated[updated.length - 1] = errorMessage;
+                    return updated;
+                });
+            }
         } finally {
             setIsLoading(false);
         }
@@ -90,25 +113,15 @@ const PortfolioAssistant: React.FC<PortfolioAssistantProps> = () => {
         inputRef.current?.focus();
     };
 
+    // 이미 계산된 기술적 지표 재활용 (Zero-Fetch: Cloud Run 중복 호출 제거)
+    const { enrichedMap } = useEnrichedIndicators(assets);
+
     const handleClearHistory = () => {
         if (window.confirm('대화 기록을 정말 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.')) {
             setMessages([]);
             localStorage.removeItem(ASSISTANT_HISTORY_KEY);
         }
     };
-
-    // 자산 데이터 캐싱 (속도 개선)
-    const assetsSnapshot = useMemo(() => {
-        return JSON.stringify(assets.map(asset => ({
-            name: asset.customName ?? asset.name,
-            category: asset.category,
-            quantity: asset.quantity,
-            purchase_price_original: asset.purchasePrice,
-            current_price_krw: asset.currentPrice,
-            currency: asset.currency,
-            current_value_krw: asset.currentPrice * asset.quantity,
-        })));
-    }, [assets]);
 
     const markdownComponents: Components = {
         table: ({...props}) => <table className="table-auto w-full my-4 text-sm border-collapse border border-gray-600" {...props} />,

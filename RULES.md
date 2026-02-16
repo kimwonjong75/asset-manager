@@ -54,7 +54,7 @@
 | `usePortfolioCalculator.ts` | 수익률/손익 계산 (구매 환율 기준) | `types/index` | 대시보드, 통계 |
 | `useHistoricalPriceData.ts` | 차트용 과거 종가 데이터 (MA 여부 무관, 캐시 내장, `displayDays` 기반 기간 제어) | `historicalPriceService`, `maCalculations` | `AssetTrendChart` |
 | `useGlobalPeriodDays.ts` | 글로벌 기간(`GlobalPeriod`) → `{ startDate, endDate, days }` 변환 유틸 훅 | `types/store` | `AssetTrendChart`, `DashboardView`, `AnalyticsView` |
-| `useEnrichedIndicators.ts` | 전 종목 배치 과거 데이터 조회 → MA 전 기간(5~200) + RSI(금일/전일) 계산 | `historicalPriceService`, `maCalculations` | `PortfolioTable` (스마트 필터) |
+| `useEnrichedIndicators.ts` | 전 종목 배치 과거 데이터 조회 → MA 전 기간(5~200) + RSI(금일/전일) 계산 | `historicalPriceService`, `maCalculations` | `PortfolioTable` (스마트 필터), `PortfolioAssistant` (AI 기술적 분석용 지표 재활용) |
 | `usePortfolioHistory.ts` | 포트폴리오 스냅샷 저장 | `types/index` | 차트 데이터 |
 | `useRebalancing.ts` | 리밸런싱 계산 및 저장 | `PortfolioContext` | `RebalancingTable` |
 | `useGoogleDriveSync.ts` | Google Drive 저장/로드, 토큰 갱신 | `googleDriveService`, `lz-string` | `usePortfolioData` |
@@ -66,7 +66,7 @@
 | `upbitService.ts` | 암호화폐 시세 | Cloud Run `/upbit` | `useMarketData` |
 | `historicalPriceService.ts` | 과거 시세 (백필/차트용/AI분석용) | Cloud Run `/history`, `/upbit/history` | `useHistoricalPriceData`, `historyUtils`, `geminiService` |
 | `googleDriveService.ts` | 클라우드 저장/로드 | Google Drive API | `useGoogleDriveSync` |
-| `geminiService.ts` | 종목 검색, AI 분석 (기술적 질문 시 과거 시세 fetch+지표 계산 포함) | Gemini API, `historicalPriceService`, `maCalculations` | `useAssetActions`, `PortfolioAssistant` |
+| `geminiService.ts` | 종목 검색, AI 분석 (스트리밍 응답, 기술적 질문 시 enrichedMap 재활용 우선 → 폴백으로 직접 fetch) | Gemini API, `historicalPriceService`, `maCalculations`, `useEnrichedIndicators`(타입만) | `useAssetActions`, `PortfolioAssistant` |
 
 ### utils/ (순수 함수)
 | 파일 | 책임 | 수정 시 영향 범위 |
@@ -199,22 +199,26 @@ PortfolioTable.tsx
 ```
 PortfolioAssistant.tsx
     │
-    └─ geminiService.ts → askPortfolioQuestion()
+    ├─ useEnrichedIndicators(assets) → enrichedMap (모듈 캐시 히트, API 0회)
+    │
+    └─ geminiService.ts → askPortfolioQuestionStream()
          │
          ├─ containsTechnicalKeywords() → 기술적 질문 감지
          │   (이평선, 정배열, RSI, 골든크로스, 기술적, 추세 등)
          │
-         ├─ [기술적 질문일 때] fetchTechnicalIndicators()
-         │     ├─ historicalPriceService.ts → /history, /upbit/history
-         │     ├─ maCalculations.ts → calculateSMA() (5/10/20/60/120/200)
-         │     ├─ maCalculations.ts → calculateRSI() (14일)
-         │     └─ 결과: MA값, RSI, 정배열/역배열, 골든/데드크로스
+         ├─ [기술적 질문일 때] enrichedMap 재활용 (Zero-Fetch)
+         │     └─ 폴백: enrichedMap 없으면 fetchTechnicalIndicators() 직접 호출
          │
-         └─ 프롬프트에 포트폴리오 + 기술 지표 포함 → Gemini API
+         ├─ buildPortfolioPrompt() → 압축 JSON (pretty-print 제거)
+         │
+         └─ generateContentStream() → 스트리밍 응답 → onChunk 콜백 → UI 실시간 갱신
 ```
-- **일반 질문**: 기본 포트폴리오 데이터만 전송 (토큰 절약)
-- **기술적 질문**: 과거 시세 fetch → 지표 계산 → 프롬프트에 포함
+- **Zero-Fetch**: `PortfolioTable`이 이미 로드한 `useEnrichedIndicators` 모듈 캐시를 재활용 → Cloud Run `/history` 중복 호출 제거
+- **스트리밍**: `generateContentStream` 사용 → 첫 토큰부터 UI에 표시 (체감 TTFT 0.3~0.5초)
+- **JSON 압축**: `JSON.stringify(data)` (pretty-print 제거로 토큰 ~30% 절감)
+- **프롬프트 빌더**: `buildPortfolioPrompt()` 공용 헬퍼로 분리 (스트리밍/비스트리밍 공유)
 - **현금 자산**: 기술적 분석에서 자동 제외
+- **폴백 안전장치**: enrichedMap이 비어있으면 기존 `fetchTechnicalIndicators`로 폴백
 
 ### 수정 시 확인해야 할 의존관계
 
@@ -228,7 +232,7 @@ PortfolioAssistant.tsx
 | `usePortfolioData.ts` | `PortfolioContext.tsx` |
 | `useGoogleDriveSync.ts` | `usePortfolioData.ts`, `usePortfolioExport.ts` |
 | `maCalculations.ts` | `AssetTrendChart`, `useEnrichedIndicators`, `useHistoricalPriceData`, `geminiService` |
-| `useEnrichedIndicators.ts` | `PortfolioTable` (스마트 필터 enriched 데이터) |
+| `useEnrichedIndicators.ts` | `PortfolioTable` (스마트 필터 enriched 데이터), `PortfolioAssistant` (AI 기술적 분석), `geminiService` (타입만) |
 | `useGlobalPeriodDays.ts` | `AssetTrendChart`, `DashboardView`, `AnalyticsView` |
 | `PortfolioContext.tsx` | `App.tsx`, 모든 Context 소비 컴포넌트 |
 

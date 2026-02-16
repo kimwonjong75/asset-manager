@@ -8,6 +8,7 @@ import {
   isCryptoExchange,
 } from './historicalPriceService';
 import { calculateSMA, calculateRSI, getRequiredHistoryDays } from '../utils/maCalculations';
+import type { EnrichedIndicatorData } from '../hooks/useEnrichedIndicators';
 
 // =================================================================
 // 1. 설정 및 초기화
@@ -458,17 +459,10 @@ function containsTechnicalKeywords(question: string): boolean {
 const MA_PERIODS = [5, 10, 20, 60, 120, 200];
 const RSI_PERIOD = 14;
 
-interface TechnicalIndicators {
-  ma: Record<number, number | null>;
-  prevMa: Record<number, number | null>;
-  rsi: number | null;
-  prevRsi: number | null;
-}
-
 async function fetchTechnicalIndicators(
   assets: Asset[]
-): Promise<Map<string, TechnicalIndicators>> {
-  const result = new Map<string, TechnicalIndicators>();
+): Promise<Map<string, EnrichedIndicatorData>> {
+  const result = new Map<string, EnrichedIndicatorData>();
   if (assets.length === 0) return result;
 
   try {
@@ -537,21 +531,15 @@ async function fetchTechnicalIndicators(
   return result;
 }
 
-export const askPortfolioQuestion = async (
+// =================================================================
+// 8-1. 프롬프트 빌더 (공용)
+// =================================================================
+function buildPortfolioPrompt(
   assets: Asset[],
-  question: string
-): Promise<string> => {
-  if (!ai) return "API 키가 설정되지 않았습니다.";
-
-  const isTechnicalQuestion = containsTechnicalKeywords(question);
-
-  // 기술적 질문이면 과거 시세를 직접 fetch하여 지표 계산
-  let enrichedMap: Map<string, TechnicalIndicators> | null = null;
-  if (isTechnicalQuestion) {
-    enrichedMap = await fetchTechnicalIndicators(assets);
-  }
-
-  const hasTechnicalData = enrichedMap && enrichedMap.size > 0;
+  question: string,
+  indicatorMap: Map<string, EnrichedIndicatorData> | null
+): string {
+  const hasTechnicalData = indicatorMap !== null && indicatorMap.size > 0;
 
   const simplifiedAssets = assets.map(asset => {
     const base: Record<string, unknown> = {
@@ -570,9 +558,8 @@ export const askPortfolioQuestion = async (
       yesterday_price_krw: asset.previousClosePrice ?? null,
     };
 
-    // 기술적 질문 시 enriched 지표 추가
     if (hasTechnicalData) {
-      const enriched = enrichedMap!.get(asset.ticker);
+      const enriched = indicatorMap!.get(asset.ticker);
       if (enriched) {
         const ma = enriched.ma;
         const prevMa = enriched.prevMa;
@@ -584,14 +571,12 @@ export const askPortfolioQuestion = async (
         base.ma_200 = ma[200] ?? null;
         base.rsi = enriched.rsi ?? null;
 
-        // 정배열/역배열 (단기MA > 장기MA)
         const shortMa = ma[20];
         const longMa = ma[60];
         if (typeof shortMa === 'number' && typeof longMa === 'number') {
           base.ma_alignment = shortMa > longMa ? '정배열' : '역배열';
         }
 
-        // 골든크로스/데드크로스
         const prevShort = prevMa[20];
         const prevLong = prevMa[60];
         if (typeof shortMa === 'number' && typeof longMa === 'number' &&
@@ -603,7 +588,6 @@ export const askPortfolioQuestion = async (
           }
         }
 
-        // 현재가 vs 주요 이평선 위치
         const priceForMa = asset.priceOriginal || asset.currentPrice;
         if (typeof shortMa === 'number') {
           base.price_vs_ma20 = priceForMa > shortMa ? '위' : '아래';
@@ -617,7 +601,7 @@ export const askPortfolioQuestion = async (
     return base;
   });
 
-  const portfolioJson = JSON.stringify(simplifiedAssets, null, 2);
+  const portfolioJson = JSON.stringify(simplifiedAssets);
 
   const technicalGuide = hasTechnicalData
     ? `\n\n각 종목에는 기술적 지표가 포함되어 있습니다:
@@ -629,7 +613,7 @@ export const askPortfolioQuestion = async (
 이 지표들을 적극 활용하여 기술적 관점에서 분석해주세요.`
     : '';
 
-  const prompt = `당신은 사용자의 자산 포트폴리오를 분석하고 질문에 답변하는 전문 금융 어시스턴트입니다.
+  return `당신은 사용자의 자산 포트폴리오를 분석하고 질문에 답변하는 전문 금융 어시스턴트입니다.
 
 다음은 사용자의 현재 포트폴리오 데이터입니다 (JSON 형식). 각 항목에는 현재가와 함께 어제 종가가 포함될 수 있으므로, "어제 대비" 변동을 계산할 때는 \`yesterday_price_krw\`를 사용하세요. 날짜 메타가 없으면 제공된 값만으로 판단하세요:${technicalGuide}
 \`\`\`json
@@ -639,6 +623,75 @@ ${portfolioJson}
 위 데이터를 기반으로 다음 사용자의 질문에 대해 명확하고 간결하게 답변해주세요. 답변은 한국어로 작성하고, 마크다운 형식을 사용하여 가독성을 높여주세요. 외부 정보는 사용하지 말고, 제공된 포트폴리오 데이터만을 근거로 분석해야 합니다.
 
 사용자 질문: "${question}"`;
+}
+
+// =================================================================
+// 8-2. 스트리밍 AI 채팅 (PortfolioAssistant 전용)
+// =================================================================
+export const askPortfolioQuestionStream = async (
+  assets: Asset[],
+  question: string,
+  onChunk: (fullText: string) => void,
+  enrichedIndicators?: Map<string, EnrichedIndicatorData>
+): Promise<string> => {
+  if (!ai) {
+    const msg = "API 키가 설정되지 않았습니다.";
+    onChunk(msg);
+    return msg;
+  }
+
+  const isTechnicalQuestion = containsTechnicalKeywords(question);
+
+  // enrichedIndicators가 제공되면 재활용 (Zero-Fetch), 없으면 기존 방식 폴백
+  let indicatorMap: Map<string, EnrichedIndicatorData> | null = null;
+  if (isTechnicalQuestion) {
+    if (enrichedIndicators && enrichedIndicators.size > 0) {
+      indicatorMap = enrichedIndicators;
+    } else {
+      indicatorMap = await fetchTechnicalIndicators(assets);
+    }
+  }
+
+  const prompt = buildPortfolioPrompt(assets, question, indicatorMap);
+
+  try {
+    const response = await ai.models.generateContentStream({
+      model: 'gemini-2.5-flash',
+      contents: prompt,
+    });
+
+    let fullText = '';
+    for await (const chunk of response) {
+      const text = chunk.text || '';
+      if (text) {
+        fullText += text;
+        onChunk(fullText);
+      }
+    }
+
+    return fullText || "죄송합니다. 답변을 생성할 수 없습니다.";
+  } catch (error) {
+    console.error('Portfolio question stream error:', error);
+    throw error;
+  }
+};
+
+// =================================================================
+// 8-3. 비스트리밍 AI 채팅 (레거시 호환)
+// =================================================================
+export const askPortfolioQuestion = async (
+  assets: Asset[],
+  question: string
+): Promise<string> => {
+  if (!ai) return "API 키가 설정되지 않았습니다.";
+
+  const isTechnicalQuestion = containsTechnicalKeywords(question);
+  let indicatorMap: Map<string, EnrichedIndicatorData> | null = null;
+  if (isTechnicalQuestion) {
+    indicatorMap = await fetchTechnicalIndicators(assets);
+  }
+
+  const prompt = buildPortfolioPrompt(assets, question, indicatorMap);
 
   try {
     const response = await callGeminiBasic(prompt);
