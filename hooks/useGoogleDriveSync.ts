@@ -36,6 +36,14 @@ export function useGoogleDriveSync(options: UseGoogleDriveSyncOptions = {}) {
       try {
         const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
         if (clientId) {
+          // 인증 상태 변경 콜백 등록 (401 재인증 실패 시 자동 로그아웃)
+          googleDriveService.setAuthStateChangeCallback((signedIn) => {
+            if (!signedIn) {
+              setIsSignedIn(false);
+              setGoogleUser(null);
+              optionsRef.current.onError?.('세션이 만료되었습니다. 다시 로그인해주세요.');
+            }
+          });
           await googleDriveService.initialize(clientId);
           if (googleDriveService.isSignedIn()) {
             setIsSignedIn(true);

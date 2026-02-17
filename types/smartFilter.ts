@@ -5,6 +5,8 @@ export type SmartFilterKey =
   // 이동평균 (MA) — 선택 기간 기반
   | 'PRICE_ABOVE_SHORT_MA'
   | 'PRICE_ABOVE_LONG_MA'
+  | 'PRICE_BELOW_SHORT_MA'
+  | 'PRICE_BELOW_LONG_MA'
   | 'MA_BULLISH_ALIGN'
   | 'MA_BEARISH_ALIGN'
   | 'MA_GOLDEN_CROSS'
@@ -31,6 +33,8 @@ export type SmartFilterGroup = 'ma' | 'rsi' | 'signal' | 'portfolio';
 export const FILTER_KEY_TO_GROUP: Record<SmartFilterKey, SmartFilterGroup> = {
   PRICE_ABOVE_SHORT_MA: 'ma',
   PRICE_ABOVE_LONG_MA: 'ma',
+  PRICE_BELOW_SHORT_MA: 'ma',
+  PRICE_BELOW_LONG_MA: 'ma',
   MA_BULLISH_ALIGN: 'ma',
   MA_BEARISH_ALIGN: 'ma',
   MA_GOLDEN_CROSS: 'ma',
@@ -66,6 +70,10 @@ export interface SmartFilterChipDef {
   colorClass: string;
   /** enriched 데이터 필요 여부 (true면 로딩 중 반투명 처리) */
   needsEnriched?: boolean;
+  /** 반대 방향 필터 키 (tri-state 토글용: off → key → pairKey → off) */
+  pairKey?: SmartFilterKey;
+  /** pairKey 활성 시 사용할 색상 */
+  pairColorClass?: string;
 }
 
 /** 초기 필터 상태 */

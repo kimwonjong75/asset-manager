@@ -26,6 +26,13 @@ class GoogleDriveService {
   private tokenClient: google.accounts.oauth2.TokenClient | null = null;
   private isInitialized = false;
   private folderId: string | null = DRIVE_FOLDER_ID;
+  private refreshTimer: ReturnType<typeof setTimeout> | null = null;
+  private onAuthStateChange: ((signedIn: boolean) => void) | null = null;
+
+  // UI 레이어에서 인증 상태 변경 콜백 등록
+  setAuthStateChangeCallback(callback: (signedIn: boolean) => void): void {
+    this.onAuthStateChange = callback;
+  }
 
   // Google Identity Services 초기화
   async initialize(clientId: string): Promise<void> {
@@ -52,12 +59,8 @@ class GoogleDriveService {
       // 토큰이 만료되지 않았고 유효한 경우
       if (expiryTime > now && await this.validateToken()) {
         this.isInitialized = true;
-        // 만료 5분 전에 자동 갱신 스케줄
-        const timeUntilExpiry = expiryTime - now;
-        const refreshTime = Math.max(0, timeUntilExpiry - 5 * 60 * 1000); // 5분 전
-        setTimeout(() => {
-          this.refreshTokenSilently();
-        }, refreshTime);
+        // 만료 전 자동 갱신 스케줄
+        this.scheduleTokenRefresh(expiryTime - now);
         return;
       } else {
         // 토큰이 만료된 경우 - 자동 갱신 시도 (시간 제한 없이)
@@ -78,6 +81,7 @@ class GoogleDriveService {
         localStorage.removeItem('google_drive_access_token');
         localStorage.removeItem('google_drive_user');
         localStorage.removeItem('google_drive_token_expiry');
+        // 초기화 시에는 onAuthStateChange 콜백을 호출하지 않음 (아직 UI가 마운트 전일 수 있음)
       }
     }
     
@@ -163,12 +167,9 @@ class GoogleDriveService {
             localStorage.setItem('google_drive_access_token', this.accessToken);
             localStorage.setItem('google_drive_user', JSON.stringify(userInfo));
             
-            // 만료 5분 전에 자동 갱신 스케줄
-            const refreshTime = Math.max(0, expiresIn - 5 * 60 * 1000); // 5분 전
-            setTimeout(() => {
-              this.refreshTokenSilently();
-            }, refreshTime);
-            
+            // 만료 전 자동 갱신 스케줄
+            this.scheduleTokenRefresh(expiresIn);
+
             resolve(userInfo);
           } catch (error: unknown) {
             console.error('Failed to get user info:', error);
@@ -257,50 +258,145 @@ class GoogleDriveService {
     }
   }
 
-  // 토큰 자동 갱신 (조용히)
-  private async refreshTokenSilently(): Promise<void> {
-    if (!this.clientId || !this.user) return;
-    
-    try {
-      this.tokenClient = window.google.accounts.oauth2.initTokenClient({
-        client_id: this.clientId!,
-        scope: 'https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile openid',
-        callback: async (response: google.accounts.oauth2.TokenResponse) => {
-          if (response.error) {
-            console.log('Token refresh failed:', response.error);
-            return;
-          }
-          
-          this.accessToken = response.access_token;
-          const expiresIn = response.expires_in ? response.expires_in * 1000 : 3600 * 1000;
-          const expiryTime = Date.now() + expiresIn;
-          localStorage.setItem('google_drive_access_token', this.accessToken);
-          localStorage.setItem('google_drive_token_expiry', expiryTime.toString());
-          
-          // 다음 갱신 스케줄
-          const refreshTime = Math.max(0, expiresIn - 5 * 60 * 1000);
-          setTimeout(() => {
-            this.refreshTokenSilently();
-          }, refreshTime);
-        },
-      });
-      
-      // prompt: 'none'으로 조용히 갱신 시도
-      this.tokenClient.requestAccessToken({ prompt: 'none' });
-    } catch (error) {
-      console.log('Silent token refresh error:', error);
+  // 토큰 자동 갱신 (조용히) - Promise로 콜백 완료까지 대기
+  private refreshTokenSilently(): Promise<void> {
+    if (!this.clientId || !this.user) return Promise.reject(new Error('No client or user'));
+
+    return new Promise((resolve, reject) => {
+      try {
+        this.tokenClient = window.google.accounts.oauth2.initTokenClient({
+          client_id: this.clientId!,
+          scope: 'https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile openid',
+          callback: (response: google.accounts.oauth2.TokenResponse) => {
+            if (response.error) {
+              console.log('Token refresh failed:', response.error);
+              reject(new Error(response.error));
+              return;
+            }
+
+            this.accessToken = response.access_token;
+            const expiresIn = response.expires_in ? response.expires_in * 1000 : 3600 * 1000;
+            const expiryTime = Date.now() + expiresIn;
+            localStorage.setItem('google_drive_access_token', this.accessToken);
+            localStorage.setItem('google_drive_token_expiry', expiryTime.toString());
+
+            // 다음 갱신 스케줄
+            this.scheduleTokenRefresh(expiresIn);
+            resolve();
+          },
+        });
+
+        // prompt: 'none'으로 조용히 갱신 시도
+        this.tokenClient.requestAccessToken({ prompt: 'none' });
+      } catch (error) {
+        console.log('Silent token refresh error:', error);
+        reject(error);
+      }
+    });
+  }
+
+  // 토큰 만료 전 갱신 스케줄링
+  private scheduleTokenRefresh(expiresInMs: number): void {
+    if (this.refreshTimer) {
+      clearTimeout(this.refreshTimer);
     }
+    const refreshTime = Math.max(0, expiresInMs - 5 * 60 * 1000); // 5분 전
+    this.refreshTimer = setTimeout(() => {
+      this.refreshTokenSilently().catch(() => {
+        console.log('Scheduled token refresh failed');
+      });
+    }, refreshTime);
+  }
+
+  // 401 시 재인증: silent refresh → 실패 시 popup 재로그인
+  private reAuthenticate(): Promise<void> {
+    // 1차: silent refresh 시도
+    return this.refreshTokenSilently().catch(() => {
+      // 2차: popup 재로그인 (사용자 인터랙션 필요)
+      console.log('Silent refresh failed, attempting popup re-login...');
+      return new Promise<void>((resolve, reject) => {
+        if (!this.clientId) {
+          reject(new Error('No client ID'));
+          return;
+        }
+
+        this.tokenClient = window.google.accounts.oauth2.initTokenClient({
+          client_id: this.clientId!,
+          scope: 'https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile openid',
+          callback: (response: google.accounts.oauth2.TokenResponse) => {
+            if (response.error) {
+              // 팝업도 실패 — 완전히 로그아웃 처리
+              this.clearAuth();
+              reject(new Error('Re-authentication failed'));
+              return;
+            }
+
+            this.accessToken = response.access_token;
+            const expiresIn = response.expires_in ? response.expires_in * 1000 : 3600 * 1000;
+            const expiryTime = Date.now() + expiresIn;
+            localStorage.setItem('google_drive_access_token', this.accessToken);
+            localStorage.setItem('google_drive_token_expiry', expiryTime.toString());
+            this.scheduleTokenRefresh(expiresIn);
+            resolve();
+          },
+        });
+
+        const hint = this.user?.email;
+        this.tokenClient.requestAccessToken({
+          prompt: '',
+          login_hint: hint
+        });
+      });
+    });
+  }
+
+  // 인증 정보 제거
+  private clearAuth(): void {
+    this.accessToken = null;
+    this.user = null;
+    localStorage.removeItem('google_drive_access_token');
+    localStorage.removeItem('google_drive_user');
+    localStorage.removeItem('google_drive_token_expiry');
+    if (this.refreshTimer) {
+      clearTimeout(this.refreshTimer);
+      this.refreshTimer = null;
+    }
+    this.onAuthStateChange?.(false);
+  }
+
+  // 401 자동 재시도 fetch 래퍼
+  private async authenticatedFetch(url: string, options: RequestInit = {}): Promise<Response> {
+    if (!this.accessToken) {
+      throw new Error('Not authenticated');
+    }
+
+    const doFetch = () => fetch(url, {
+      ...options,
+      headers: {
+        ...options.headers,
+        Authorization: `Bearer ${this.accessToken}`,
+      },
+    });
+
+    const response = await doFetch();
+
+    if (response.status === 401) {
+      console.log('Got 401, attempting re-authentication...');
+      await this.reAuthenticate();
+      // 재인증 성공 — 원래 요청 재시도
+      return doFetch();
+    }
+
+    return response;
   }
 
   // 로그아웃
   signOut(): void {
     if (this.accessToken) {
-      window.google.accounts.oauth2.revoke(this.accessToken, () => {
-        this.accessToken = null;
-        this.user = null;
-        localStorage.removeItem('google_drive_access_token');
-        localStorage.removeItem('google_drive_user');
-        localStorage.removeItem('google_drive_token_expiry');
+      const token = this.accessToken;
+      this.clearAuth();
+      window.google.accounts.oauth2.revoke(token, () => {
+        // revoke 완료
       });
     }
   }
@@ -347,13 +443,8 @@ class GoogleDriveService {
       includeItemsFromAllDrives: 'true',
     });
 
-    const response = await fetch(
-      `https://www.googleapis.com/drive/v3/files?${searchParams.toString()}`,
-      {
-        headers: {
-          Authorization: `Bearer ${this.accessToken}`,
-        },
-      }
+    const response = await this.authenticatedFetch(
+      `https://www.googleapis.com/drive/v3/files?${searchParams.toString()}`
     );
 
     if (!response.ok) {
@@ -386,13 +477,8 @@ class GoogleDriveService {
       includeItemsFromAllDrives: 'true',
     });
 
-    const response = await fetch(
-      `https://www.googleapis.com/drive/v3/files?${searchParams.toString()}`,
-      {
-        headers: {
-          Authorization: `Bearer ${this.accessToken}`,
-        },
-      }
+    const response = await this.authenticatedFetch(
+      `https://www.googleapis.com/drive/v3/files?${searchParams.toString()}`
     );
 
     if (!response.ok) {
@@ -427,15 +513,9 @@ class GoogleDriveService {
       form.append('metadata', new Blob([JSON.stringify(baseMetadata)], { type: 'application/json' }));
       form.append('file', fileContent);
 
-      const response = await fetch(
+      const response = await this.authenticatedFetch(
         `https://www.googleapis.com/upload/drive/v3/files/${existingFile.id}?uploadType=multipart&supportsAllDrives=true`,
-        {
-          method: 'PATCH',
-          headers: {
-            Authorization: `Bearer ${this.accessToken}`,
-          },
-          body: form,
-        }
+        { method: 'PATCH', body: form }
       );
 
       if (!response.ok) {
@@ -451,15 +531,9 @@ class GoogleDriveService {
       form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
       form.append('file', fileContent);
 
-      const response = await fetch(
+      const response = await this.authenticatedFetch(
         'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true',
-        {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${this.accessToken}`,
-          },
-          body: form,
-        }
+        { method: 'POST', body: form }
       );
 
       if (!response.ok) {
@@ -481,13 +555,8 @@ class GoogleDriveService {
       return null;
     }
 
-    const response = await fetch(
-      `https://www.googleapis.com/drive/v3/files/${file.id}?alt=media&supportsAllDrives=true`,
-      {
-        headers: {
-          Authorization: `Bearer ${this.accessToken}`,
-        },
-      }
+    const response = await this.authenticatedFetch(
+      `https://www.googleapis.com/drive/v3/files/${file.id}?alt=media&supportsAllDrives=true`
     );
 
     if (!response.ok) {

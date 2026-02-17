@@ -34,6 +34,20 @@ const matchesSingleFilter = (
       if (maLongPeriod === 60 && typeof ind?.ma60 === 'number') return asset.priceOriginal > ind.ma60;
       return false;
     }
+    case 'PRICE_BELOW_SHORT_MA': {
+      const maVal = enriched?.ma[maShortPeriod];
+      if (typeof maVal === 'number') return asset.priceOriginal < maVal;
+      if (maShortPeriod === 20 && typeof ind?.ma20 === 'number') return asset.priceOriginal < ind.ma20;
+      if (maShortPeriod === 60 && typeof ind?.ma60 === 'number') return asset.priceOriginal < ind.ma60;
+      return false;
+    }
+    case 'PRICE_BELOW_LONG_MA': {
+      const maVal = enriched?.ma[maLongPeriod];
+      if (typeof maVal === 'number') return asset.priceOriginal < maVal;
+      if (maLongPeriod === 20 && typeof ind?.ma20 === 'number') return asset.priceOriginal < ind.ma20;
+      if (maLongPeriod === 60 && typeof ind?.ma60 === 'number') return asset.priceOriginal < ind.ma60;
+      return false;
+    }
     case 'MA_BULLISH_ALIGN': {
       const shortMa = enriched?.ma[maShortPeriod];
       const longMa = enriched?.ma[maLongPeriod];

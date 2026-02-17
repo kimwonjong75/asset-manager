@@ -57,7 +57,7 @@
 | `useEnrichedIndicators.ts` | 전 종목 배치 과거 데이터 조회 → MA 전 기간(5~200) + RSI(금일/전일) 계산 | `historicalPriceService`, `maCalculations` | `PortfolioTable` (스마트 필터), `PortfolioAssistant` (AI 기술적 분석용 지표 재활용) |
 | `usePortfolioHistory.ts` | 포트폴리오 스냅샷 저장 | `types/index` | 차트 데이터 |
 | `useRebalancing.ts` | 리밸런싱 계산 및 저장 | `PortfolioContext` | `RebalancingTable` |
-| `useGoogleDriveSync.ts` | Google Drive 저장/로드, 토큰 갱신 | `googleDriveService`, `lz-string` | `usePortfolioData` |
+| `useGoogleDriveSync.ts` | Google Drive 저장/로드, 토큰 갱신, **인증 상태 변경 콜백 등록** | `googleDriveService`, `lz-string` | `usePortfolioData` |
 
 ### services/ (외부 API 연동)
 | 파일 | 책임 | API 엔드포인트 | 수정 시 확인 |
@@ -65,7 +65,7 @@
 | `priceService.ts` | 주식/ETF 시세, 환율 | Cloud Run `/`, `/exchange-rate` | `useMarketData`, `useAssetActions` |
 | `upbitService.ts` | 암호화폐 시세 | Cloud Run `/upbit` | `useMarketData` |
 | `historicalPriceService.ts` | 과거 시세 (백필/차트용/AI분석용) | Cloud Run `/history`, `/upbit/history` | `useHistoricalPriceData`, `historyUtils`, `geminiService` |
-| `googleDriveService.ts` | 클라우드 저장/로드 | Google Drive API | `useGoogleDriveSync` |
+| `googleDriveService.ts` | 클라우드 저장/로드, **401 자동 재인증** (`authenticatedFetch` 래퍼) | Google Drive API | `useGoogleDriveSync` |
 | `geminiService.ts` | 종목 검색, AI 분석 (스트리밍 응답, 기술적 질문 시 enrichedMap 재활용 우선 → 폴백으로 직접 fetch) | Gemini API, `historicalPriceService`, `maCalculations`, `useEnrichedIndicators`(타입만) | `useAssetActions`, `PortfolioAssistant` |
 
 ### utils/ (순수 함수)
@@ -75,7 +75,7 @@
 | `historyUtils.ts` | 히스토리 보간/백필/기존 스냅샷 종가 교정/오염 데이터 교정 | `usePortfolioData` |
 | `maCalculations.ts` | SMA/RSI 계산, 차트 데이터 빌드 | `AssetTrendChart`, `useEnrichedIndicators`, `geminiService` |
 | `signalUtils.ts` | 신호/RSI 배지 렌더링 | `PortfolioTableRow`, `WatchlistPage` |
-| `smartFilterLogic.ts` | 스마트 필터 매칭 (그룹 내 OR, 그룹 간 AND), enriched 지표 참조 | `PortfolioTable`, `useEnrichedIndicators` |
+| `smartFilterLogic.ts` | 스마트 필터 매칭 (그룹 내 OR, 그룹 간 AND), enriched 지표 참조, `PRICE_BELOW_*` 판정 포함 | `PortfolioTable`, `useEnrichedIndicators` |
 | `migrateData.ts` | 데이터 마이그레이션 | 로드 시 자동 실행 |
 
 ### types/ (타입 정의)
@@ -85,13 +85,13 @@
 | `api.ts` | API 응답 타입 (`PriceItem`, `Indicators` 등) | `services/`, `hooks/` |
 | `store.ts` | 상태 관리 타입 (`PortfolioContextValue`, `GlobalPeriod`, `UIState.activeTab` 등) | `contexts/`, `hooks/`, `App.tsx`, `components/common/PeriodSelector`, `SmartFilterPanel` |
 | `ui.ts` | UI 컴포넌트 Props 타입 | `components/` |
-| `smartFilter.ts` | 스마트 필터 타입 (17개 키, MA 기간 설정 포함), 그룹 매핑, 초기값 | `utils/smartFilterLogic`, `SmartFilterPanel`(+ `PortfolioContext` 의존), `PortfolioTable` |
+| `smartFilter.ts` | 스마트 필터 타입 (19개 키, MA 기간 설정 포함), 그룹 매핑, 칩 정의(`pairKey`/`pairColorClass` tri-state 지원), 초기값 | `utils/smartFilterLogic`, `SmartFilterPanel`(+ `PortfolioContext` 의존), `PortfolioTable` |
 
 ### constants/ (상수 정의)
 | 파일 | 책임 | 수정 시 영향 범위 |
 |------|------|------------------|
 | `columnDescriptions.ts` | 포트폴리오 테이블 컬럼 툴팁 텍스트 | `PortfolioTable`, `PortfolioTableRow` |
-| `smartFilterChips.ts` | 스마트 필터 칩 정의 (17개 칩, 동적 라벨, 색상) | `SmartFilterPanel` |
+| `smartFilterChips.ts` | 스마트 필터 칩 정의 (17개 칩, 동적 라벨, 색상). MA 현재가 칩 2개는 `pairKey`로 ABOVE↔BELOW tri-state 토글 (off→>→<→off 순환, 칩 하나로 2개 필터 키 제어) | `SmartFilterPanel` |
 
 ### components/layouts/ (탭별 뷰)
 | 파일 | 책임 | 의존 |
@@ -408,7 +408,10 @@ try {
 
 ### Google Drive 동기화
 - **자동 저장 디바운스**: 2초 (빈번한 저장 방지)
-- **토큰 갱신**: 만료 5분 전 자동 갱신
+- **토큰 갱신**: 만료 5분 전 자동 갱신 (`scheduleTokenRefresh`)
+- **401 자동 재인증**: 모든 Drive API 호출은 `authenticatedFetch()` 래퍼를 경유 — 401 응답 시 silent refresh → 실패 시 Google 로그인 팝업 자동 표시 → 성공하면 원래 요청 재시도, 팝업도 거부 시 `clearAuth()` → UI 자동 로그아웃
+- **인증 상태 콜백**: `setAuthStateChangeCallback()`으로 UI 레이어(`useGoogleDriveSync`)가 인증 해제를 구독 — 재인증 완전 실패 시 React 상태 자동 동기화
+- **새 Drive API fetch 추가 시**: 반드시 `this.authenticatedFetch()` 사용 (raw `fetch` 직접 호출 금지 — 401 복구 경로 누락됨)
 - **공유 폴더 파라미터**: 새 Drive API 호출 시 `supportsAllDrives`, `includeItemsFromAllDrives` 필수
 
 ### 글로벌 기간 선택기 (GlobalPeriod)

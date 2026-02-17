@@ -5,7 +5,7 @@ import { usePortfolio } from '../../contexts/PortfolioContext';
 
 interface SmartFilterPanelProps {
   filter: SmartFilterState;
-  onToggleFilter: (key: SmartFilterKey) => void;
+  onToggleFilter: (key: SmartFilterKey, deactivateKey?: SmartFilterKey) => void;
   onClearAll: () => void;
   onDropThresholdChange: (value: number) => void;
   onMaShortPeriodChange: (period: number) => void;
@@ -74,22 +74,44 @@ const SmartFilterPanel: React.FC<SmartFilterPanelProps> = ({
 
   const renderChip = (chip: typeof SMART_FILTER_CHIPS[number]) => {
     const isActive = filter.activeFilters.has(chip.key);
+    const isPairActive = chip.pairKey ? filter.activeFilters.has(chip.pairKey) : false;
+    const isAnyActive = isActive || isPairActive;
     const isLoadingChip = chip.needsEnriched && isEnrichedLoading;
     const isMaPeriodChip = chip.key === 'PRICE_ABOVE_SHORT_MA' || chip.key === 'PRICE_ABOVE_LONG_MA';
+
+    // tri-state 칩: 클릭 시 off → above(>) → below(<) → off 순환
+    const handleTriStateClick = () => {
+      if (!chip.pairKey) return;
+      if (!isActive && !isPairActive) {
+        // off → above
+        onToggleFilter(chip.key);
+      } else if (isActive) {
+        // above → below
+        onToggleFilter(chip.pairKey, chip.key);
+      } else {
+        // below → off
+        onToggleFilter(chip.pairKey);
+      }
+    };
+
+    // tri-state 칩의 활성 색상 결정
+    const activeColorClass = isPairActive ? chip.pairColorClass ?? chip.colorClass : chip.colorClass;
+    // tri-state 칩의 방향 기호
+    const directionSymbol = isActive ? '>' : isPairActive ? '<' : '↕';
 
     return (
       <button
         key={chip.key}
-        onClick={() => onToggleFilter(chip.key)}
+        onClick={isMaPeriodChip ? handleTriStateClick : () => onToggleFilter(chip.key)}
         className={`
           px-2 py-0.5 rounded-full text-xs font-medium transition-all flex items-center gap-0.5
-          ${isActive
-            ? `${chip.colorClass} text-white shadow-sm`
+          ${isAnyActive
+            ? `${activeColorClass} text-white shadow-sm`
             : 'bg-gray-700 text-gray-400 hover:bg-gray-600 hover:text-gray-200'}
-          ${isLoadingChip && isActive ? 'opacity-60' : ''}
+          ${isLoadingChip && isAnyActive ? 'opacity-60' : ''}
         `}
       >
-        {isLoadingChip && isActive && (
+        {isLoadingChip && isAnyActive && (
           <svg className="animate-spin h-3 w-3" viewBox="0 0 24 24" fill="none">
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
@@ -97,13 +119,13 @@ const SmartFilterPanel: React.FC<SmartFilterPanelProps> = ({
         )}
         {isMaPeriodChip ? (
           <>
-            <span>현재가&gt;</span>
+            <span>현재가{directionSymbol}</span>
             <select
               value={chip.key === 'PRICE_ABOVE_SHORT_MA' ? filter.maShortPeriod : filter.maLongPeriod}
               onChange={chip.key === 'PRICE_ABOVE_SHORT_MA' ? handleShortPeriodChange : handleLongPeriodChange}
               onClick={(e) => e.stopPropagation()}
               className={`bg-transparent text-xs font-bold focus:outline-none cursor-pointer
-                ${isActive ? 'text-white' : 'text-gray-300'}`}
+                ${isAnyActive ? 'text-white' : 'text-gray-300'}`}
             >
               {(chip.key === 'PRICE_ABOVE_SHORT_MA' ? MA_SHORT_OPTIONS : MA_LONG_OPTIONS).map(p => (
                 <option

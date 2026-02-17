@@ -78,9 +78,10 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
     return enrichedAndSortedAssets.filter(a => matchesSmartFilter(a, smartFilter, enrichedMap));
   }, [enrichedAndSortedAssets, smartFilter, enrichedMap]);
 
-  const handleToggleFilter = (key: SmartFilterKey) => {
+  const handleToggleFilter = (key: SmartFilterKey, deactivateKey?: SmartFilterKey) => {
     setSmartFilter(prev => {
       const next = new Set(prev.activeFilters);
+      if (deactivateKey) next.delete(deactivateKey);
       if (next.has(key)) next.delete(key);
       else next.add(key);
       return { ...prev, activeFilters: next };
