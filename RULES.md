@@ -101,7 +101,7 @@
 | 파일 | 책임 | 의존 |
 |------|------|------|
 | `DashboardView.tsx` | 대시보드 탭 | `PortfolioContext`, `useGlobalPeriodDays` |
-| `PortfolioView.tsx` | 포트폴리오 상세 탭 | `PortfolioContext`, `PortfolioTable` |
+| `PortfolioView.tsx` | 포트폴리오 탭 | `PortfolioContext`, `PortfolioTable` |
 | `AnalyticsView.tsx` | 수익 통계 탭 | `PortfolioContext`, `useGlobalPeriodDays` |
 | `WatchlistView.tsx` | 관심종목 탭 | `PortfolioContext`, `WatchlistPage` |
 | `InvestmentGuideView.tsx` | 투자 가이드 탭 (순수 UI, 외부 의존 없음) | - |
@@ -112,6 +112,7 @@
 | 파일 | 책임 | 의존 |
 |------|------|------|
 | `PeriodSelector.tsx` | 글로벌 기간 선택 버튼 (3개월/6개월/1년/2년/전체) | `types/store` (`GlobalPeriod`) |
+| `ActionMenu.tsx` | Portal 기반 액션 메뉴 — 데스크탑: `createPortal`로 body에 드롭다운 렌더링(공간 부족 시 위로 열림), 모바일(<768px): 바텀시트 | `react-dom/createPortal` |
 | `AlertPopup.tsx` | "오늘의 투자 브리핑" 모달 — severity별 스타일, 매도/매수 섹션 분리, 매칭 자산 상세 표시 | `types/alertRules` (`AlertResult`) |
 | `Toggle.tsx` | 토글 스위치 | - |
 | `Tooltip.tsx` | 툴팁 | - |
@@ -186,7 +187,7 @@ PeriodSelector (App.tsx 탭 바 우측)
          ├─ AnalyticsView → SellAnalyticsPage(periodStartDate, periodEndDate)
          └─ WatchlistPage → AssetTrendChart (동일)
 ```
-- **탭 순서**: 대시보드 | 포트폴리오 상세 | 관심종목 | 수익 통계 | 투자 가이드 | **설정** (가이드·설정 탭에서는 PeriodSelector 숨김)
+- **탭 순서**: 대시보드 | 포트폴리오 | 관심종목 | 수익 통계 | 투자 가이드 | **설정** (가이드·설정 탭에서는 PeriodSelector 숨김)
 - **수익 통계 기간**: 자체 date input 삭제됨, 글로벌 기간 props로 전달받음
 
 ### 차트 데이터 흐름
@@ -285,6 +286,8 @@ PortfolioAssistant.tsx
 | `constants/alertRules.ts` | `useAutoAlert`, `AlertSettingsPage` |
 | `useGlobalPeriodDays.ts` | `AssetTrendChart`, `DashboardView`, `AnalyticsView` |
 | `PortfolioContext.tsx` | `App.tsx`, 모든 Context 소비 컴포넌트 |
+| `ActionMenu.tsx` | `PortfolioTableRow`, `PortfolioMobileCard`, `WatchlistPage` (드롭다운 메뉴 사용처) |
+| `PortfolioTableRow.tsx` 컬럼 추가 | `PortfolioMobileCard`에도 반영 필요 (데스크탑/모바일 뷰 동기화) |
 
 ---
 
@@ -484,6 +487,13 @@ try {
 - **프리셋 → 스마트필터 변환**: `PortfolioTable`의 `handleApplyPreset()`이 `AlertRule`의 `filters`+`filterConfig`를 `SmartFilterState`로 변환하여 적용
 - **새 알림 규칙 추가 시**: `constants/alertRules.ts`의 `DEFAULT_ALERT_RULES`에 추가, 필요한 필터가 없으면 `smartFilter.ts`/`smartFilterChips.ts`/`smartFilterLogic.ts`에 칩 추가 필요
 - **`matchesSingleFilter` 시그니처 변경 시**: `smartFilterLogic.ts`(스마트 필터)와 `alertChecker.ts`(알림) **양쪽 모두** 영향 확인 필수
+
+### 레이아웃 및 반응형 제약사항
+- **전체 레이아웃**: `App.tsx`는 `h-screen flex flex-col overflow-hidden`. 탭바만 `flex-shrink-0`으로 최상단 고정, Header와 콘텐츠는 `<main className="flex-1 overflow-y-auto">`에서 함께 스크롤
+- **포트폴리오 테이블 sticky thead**: `<thead>`의 `sticky top-0`이 `<main>` 스크롤 컨테이너 기준으로 동작. **`<main>`과 `<thead>` 사이에 `overflow` CSS 속성을 가진 wrapper를 추가하면 sticky가 깨짐** — 새 wrapper div 추가 시 overflow 속성 금지
+- **드롭다운 메뉴**: 인라인 `absolute` 포지션 메뉴 사용 금지 → `ActionMenu` 컴포넌트 사용 (`createPortal`로 body에 렌더링). 데스크탑: 버튼 위치 기반 드롭다운(공간 부족 시 위로 열림), 모바일(<768px): 바텀시트
+- **데스크탑/모바일 뷰 분기**: `PortfolioTable`에서 `hidden md:block`(데스크탑 테이블) / `block md:hidden`(모바일 카드 뷰)로 분기. **테이블에 새 기능 추가 시 모바일 카드 뷰(`PortfolioMobileCard`)에도 반영 필요**
+- **`PortfolioMobileCard`**: 종목명+현재가+수익률+평가액+고가대비/전일대비를 카드 형태로 표시, 탭하면 차트 펼침, 관리 메뉴는 `ActionMenu`(바텀시트) 사용
 
 ### 디버깅 로그 패턴
 ```typescript
