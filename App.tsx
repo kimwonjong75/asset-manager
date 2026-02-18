@@ -76,21 +76,8 @@ const AppContent: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-900 font-sans p-4 sm:p-6 lg:p-8">
-      <div className="max-w-7xl mx-auto">
-        <Header 
-          onSave={actions.saveToDrive} 
-          onImport={actions.importJsonPrompt}
-          onExport={() => actions.exportJson()}
-          onExportToCsv={actions.exportCsv}
-          onOpenBulkUploadModal={actions.openBulkUpload}
-          onOpenAddAssetModal={actions.openAddAsset}
-          onSignIn={actions.signIn}
-          onSignOut={actions.signOut}
-          isSignedIn={status.isSignedIn}
-          userEmail={status.userEmail}
-        />
-        
+    <div className="h-screen bg-gray-900 font-sans flex flex-col overflow-hidden">
+      <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 flex flex-col flex-1 overflow-hidden">
         {/* Update Notification & Messages */}
         <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 w-[90%] max-w-xl space-y-3 pointer-events-none">
           {updateAvailable && (
@@ -131,11 +118,11 @@ const AppContent: React.FC = () => {
 
         {status.isSignedIn ? (
           <>
-            <div className="border-b border-gray-700">
+            <div className="flex-shrink-0 border-b border-gray-700">
               <div className="flex items-center justify-between">
-                <nav className="-mb-px flex space-x-8" aria-label="Tabs">
+                <nav className="-mb-px flex space-x-8 overflow-x-auto" aria-label="Tabs">
                   <TabButton tabId="dashboard" onClick={() => actions.setActiveTab('dashboard')}>대시보드</TabButton>
-                  <TabButton tabId="portfolio" onClick={() => actions.setActiveTab('portfolio')}>포트폴리오 상세</TabButton>
+                  <TabButton tabId="portfolio" onClick={() => actions.setActiveTab('portfolio')}>포트폴리오</TabButton>
                   <TabButton tabId="watchlist" onClick={() => actions.setActiveTab('watchlist')}>관심종목</TabButton>
                   <TabButton tabId="analytics" onClick={() => actions.setActiveTab('analytics')}>수익 통계</TabButton>
                   <TabButton tabId="guide" onClick={() => actions.setActiveTab('guide')}>투자 가이드</TabButton>
@@ -155,30 +142,29 @@ const AppContent: React.FC = () => {
               </div>
             </div>
 
-            <main className="mt-8">
-              {ui.activeTab === 'dashboard' && (
-                <DashboardView />
-              )}
-
-              {ui.activeTab === 'portfolio' && (
-                <PortfolioView />
-              )}
-
-              {ui.activeTab === 'analytics' && (
-                <AnalyticsView />
-              )}
-              
-              {ui.activeTab === 'watchlist' && (
-                <WatchlistView />
-              )}
-
-              {ui.activeTab === 'guide' && (
-                <InvestmentGuideView />
-              )}
-
-              {ui.activeTab === 'settings' && (
-                <AlertSettingsPage />
-              )}
+            <main className="flex-1 overflow-y-auto min-h-0">
+              <div className="pt-4 sm:pt-6">
+                <Header
+                  onSave={actions.saveToDrive}
+                  onImport={actions.importJsonPrompt}
+                  onExport={() => actions.exportJson()}
+                  onExportToCsv={actions.exportCsv}
+                  onOpenBulkUploadModal={actions.openBulkUpload}
+                  onOpenAddAssetModal={actions.openAddAsset}
+                  onSignIn={actions.signIn}
+                  onSignOut={actions.signOut}
+                  isSignedIn={status.isSignedIn}
+                  userEmail={status.userEmail}
+                />
+              </div>
+              <div className="mt-4">
+                {ui.activeTab === 'dashboard' && <DashboardView />}
+                {ui.activeTab === 'portfolio' && <PortfolioView />}
+                {ui.activeTab === 'analytics' && <AnalyticsView />}
+                {ui.activeTab === 'watchlist' && <WatchlistView />}
+                {ui.activeTab === 'guide' && <InvestmentGuideView />}
+                {ui.activeTab === 'settings' && <AlertSettingsPage />}
+              </div>
             </main>
             
             <EditAssetModal />
@@ -208,12 +194,28 @@ const AppContent: React.FC = () => {
             )}
           </>
         ) : (
-          <div className="mt-12 bg-gray-800 border border-gray-700 rounded-lg p-8 text-center text-gray-200">
-            <h2 className="text-2xl font-semibold mb-4">Google Drive 로그인 필요</h2>
-            <p className="text-gray-400">
-              포트폴리오 데이터는 Google Drive에만 저장됩니다. 상단의 로그인 버튼을 눌러 계정에 연결한 뒤 이용해주세요.
-            </p>
-          </div>
+          <main className="flex-1 overflow-y-auto min-h-0">
+            <div className="pt-4 sm:pt-6">
+              <Header
+                onSave={actions.saveToDrive}
+                onImport={actions.importJsonPrompt}
+                onExport={() => actions.exportJson()}
+                onExportToCsv={actions.exportCsv}
+                onOpenBulkUploadModal={actions.openBulkUpload}
+                onOpenAddAssetModal={actions.openAddAsset}
+                onSignIn={actions.signIn}
+                onSignOut={actions.signOut}
+                isSignedIn={status.isSignedIn}
+                userEmail={status.userEmail}
+              />
+            </div>
+            <div className="mt-12 bg-gray-800 border border-gray-700 rounded-lg p-8 text-center text-gray-200">
+              <h2 className="text-2xl font-semibold mb-4">Google Drive 로그인 필요</h2>
+              <p className="text-gray-400">
+                포트폴리오 데이터는 Google Drive에만 저장됩니다. 상단의 로그인 버튼을 눌러 계정에 연결한 뒤 이용해주세요.
+              </p>
+            </div>
+          </main>
         )}
       </div>
 

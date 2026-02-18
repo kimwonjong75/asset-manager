@@ -4,6 +4,7 @@ import { useOnClickOutside } from '../hooks/useOnClickOutside';
 import { PortfolioTableProps, SortKey, SortDirection } from '../types/ui';
 import { usePortfolioData } from './portfolio-table/usePortfolioData';
 import PortfolioTableRow from './portfolio-table/PortfolioTableRow';
+import PortfolioMobileCard from './portfolio-table/PortfolioMobileCard';
 import Tooltip from './common/Tooltip';
 import { COLUMN_DESCRIPTIONS } from '../constants/columnDescriptions';
 import type { SmartFilterState, SmartFilterKey } from '../types/smartFilter';
@@ -151,6 +152,12 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
     }
     prevLoadingRef.current = isLoading;
   }, [isLoading, lastRunWasFullUpdate, failedIds]);
+
+  const emptyMessage = smartFilter.activeFilters.size > 0
+    ? '필터 조건에 맞는 자산이 없습니다.'
+    : filterAlerts
+      ? '알림 기준을 초과한 자산이 없습니다.'
+      : '자산이 없습니다.';
 
   const thClasses = "px-4 py-3 cursor-pointer hover:bg-gray-600 transition-colors sticky top-0 bg-gray-700 z-10 whitespace-nowrap";
   const thContentClasses = "flex items-center gap-2";
@@ -349,8 +356,8 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
         isEnrichedLoading={isEnrichedLoading}
       />
 
-      {/* 테이블 영역 */}
-      <div className="overflow-x-auto overflow-y-auto max-h-[70vh] relative">
+      {/* 데스크탑: 테이블 — overflow 없음, thead가 main 스크롤 기준 sticky */}
+      <div className="hidden md:block">
         <table className="w-full text-sm">
           <thead className="bg-gray-700 text-gray-300 uppercase text-xs">
             <tr>
@@ -440,15 +447,28 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
               />
             )) : (
               <tr><td colSpan={13} className="text-center py-8 text-gray-500">
-                  {smartFilter.activeFilters.size > 0
-                    ? '필터 조건에 맞는 자산이 없습니다.'
-                    : filterAlerts
-                      ? '알림 기준을 초과한 자산이 없습니다.'
-                      : '자산이 없습니다.'}
+                  {emptyMessage}
               </td></tr>
             )}
           </tbody>
         </table>
+      </div>
+
+      {/* 모바일: 카드 뷰 */}
+      <div className="block md:hidden">
+        {filteredAssets.length > 0 ? filteredAssets.map(asset => (
+          <PortfolioMobileCard
+            key={asset.id}
+            asset={asset}
+            history={history}
+            onEdit={onEdit}
+            onSell={onSell}
+            onBuy={onBuy}
+            exchangeRates={exchangeRates}
+          />
+        )) : (
+          <div className="text-center py-8 text-gray-500">{emptyMessage}</div>
+        )}
       </div>
     </div>
   );

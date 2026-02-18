@@ -3,10 +3,10 @@ import { Asset, Currency, PortfolioSnapshot, ExchangeRates } from '../../types';
 import { EnrichedAsset } from '../../types/ui';
 import AssetTrendChart from '../AssetTrendChart';
 import { MoreHorizontal } from 'lucide-react';
-import { useOnClickOutside } from '../../hooks/useOnClickOutside';
 import { formatNumber, formatOriginalCurrency, formatKRW, formatProfitLoss, getChangeColor } from './utils';
 import Tooltip from '../common/Tooltip';
 import { COLUMN_DESCRIPTIONS } from '../../constants/columnDescriptions';
+import ActionMenu from '../common/ActionMenu';
 
 // ----------------------------------------------------------------------
 // [추가된 컴포넌트] 퀀트 신호 배지
@@ -93,10 +93,8 @@ const PortfolioTableRow: React.FC<PortfolioTableRowProps> = ({
   exchangeRates
 }) => {
   const [expandedAssetId, setExpandedAssetId] = useState<string | null>(null);
-  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
-  const menuRef = useRef<HTMLDivElement | null>(null);
-
-  useOnClickOutside(menuRef, () => setOpenMenuId(null), !!openMenuId);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuAnchorRef = useRef<HTMLButtonElement>(null);
 
   const handleToggleExpand = (assetId: string) => {
     setExpandedAssetId(prevId => (prevId === assetId ? null : assetId));
@@ -241,24 +239,28 @@ const PortfolioTableRow: React.FC<PortfolioTableRowProps> = ({
             </div>
           </Tooltip>
         </td>
-        <td className="px-4 py-4 text-center relative">
+        <td className="px-4 py-4 text-center">
           <div className="flex items-center justify-center gap-1">
             <Tooltip content="차트" position="left">
               <button onClick={() => handleToggleExpand(asset.id)} className="p-2 text-gray-300 hover:text-white">
                   <ChartBarIcon />
               </button>
             </Tooltip>
-            <button onClick={() => setOpenMenuId(openMenuId === asset.id ? null : asset.id)} className="p-2 text-gray-300 hover:text-white">
+            <button ref={menuAnchorRef} onClick={() => setMenuOpen(!menuOpen)} className="p-2 text-gray-300 hover:text-white">
                 <MoreHorizontal className="h-5 w-5" />
             </button>
           </div>
-          {openMenuId === asset.id && (
-            <div ref={menuRef} className="absolute right-0 mt-2 w-44 bg-gray-800 border border-gray-700 rounded-md shadow-lg z-30 text-sm">
-               <button onClick={() => { setOpenMenuId(null); onEdit(asset); }} className="block w-full text-left px-3 py-2 hover:bg-gray-700 text-white">수정</button>
-               {onBuy && <button onClick={() => { setOpenMenuId(null); onBuy(asset); }} className="block w-full text-left px-3 py-2 text-green-400 hover:bg-gray-700">매수</button>}
-               {onSell && <button onClick={() => { setOpenMenuId(null); onSell(asset); }} className="block w-full text-left px-3 py-2 text-red-400 hover:bg-gray-700">매도</button>}
-               <button onClick={() => { setOpenMenuId(null); handleToggleExpand(asset.id); }} className="block w-full text-left px-3 py-2 text-gray-200 hover:bg-gray-700">차트 보기</button>
-            </div>
+          {menuOpen && (
+            <ActionMenu
+              anchorRef={menuAnchorRef}
+              onClose={() => setMenuOpen(false)}
+              items={[
+                { label: '수정', onClick: () => onEdit(asset) },
+                ...(onBuy ? [{ label: '매수', onClick: () => onBuy(asset), colorClass: 'text-green-400' }] : []),
+                ...(onSell ? [{ label: '매도', onClick: () => onSell(asset), colorClass: 'text-red-400' }] : []),
+                { label: '차트 보기', onClick: () => handleToggleExpand(asset.id), colorClass: 'text-gray-200' },
+              ]}
+            />
           )}
         </td>
       </tr>

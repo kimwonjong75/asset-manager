@@ -29,7 +29,7 @@ const PortfolioView: React.FC = () => {
   }, [assets, filterCategory, searchQuery]);
 
   return (
-    <div className="space-y-6">
+    <div>
         <PortfolioTable
           assets={filteredAssets}
           history={portfolioHistory}
