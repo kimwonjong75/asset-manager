@@ -35,7 +35,7 @@ const SELL_RULES: AlertRule[] = [
   {
     id: 'trend-break',
     name: '추세 이탈',
-    description: '현재가가 단기 이평선 아래 + 손실 중',
+    description: '현재가가 선택 이평선 아래 + 손실 중',
     severity: 'warning',
     action: 'sell',
     enabled: true,

@@ -98,13 +98,13 @@ const AlertSettingsPage: React.FC = () => {
             )}
             {config.maShortPeriod !== undefined && (
               <div className="flex items-center gap-1 text-xs text-gray-300">
-                <span>단기</span>
+                <span>{config.maLongPeriod !== undefined ? '단기' : '이평선'}</span>
                 <select
                   value={config.maShortPeriod}
                   onChange={(e) => updateRuleConfig(rule.id, 'maShortPeriod', parseInt(e.target.value))}
                   className="bg-gray-700 border border-gray-600 rounded px-1 py-0.5 text-white text-xs"
                 >
-                  {[5, 10, 20, 60].map(p => (
+                  {(config.maLongPeriod !== undefined ? [5, 10, 20, 60] : [5, 10, 20, 60, 120, 200]).map(p => (
                     <option key={p} value={p} disabled={config.maLongPeriod !== undefined && p >= config.maLongPeriod}>MA{p}</option>
                   ))}
                 </select>
