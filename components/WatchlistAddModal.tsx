@@ -18,7 +18,6 @@ const WatchlistAddModal: React.FC = () => {
 
   const [category, setCategory] = useState<AssetCategory>(AssetCategory.US_STOCK);
   const [exchange, setExchange] = useState<string>('NASDAQ');
-  const [dropFromHighThreshold, setDropFromHighThreshold] = useState('');
   const [notes, setNotes] = useState('');
 
   const clearForm = useCallback(() => {
@@ -28,7 +27,6 @@ const WatchlistAddModal: React.FC = () => {
     setSearchResults([]);
     setCategory(AssetCategory.US_STOCK);
     setExchange('NASDAQ');
-    setDropFromHighThreshold('');
     setNotes('');
     setDuplicateError(null);
   }, []);
@@ -100,9 +98,7 @@ const WatchlistAddModal: React.FC = () => {
       exchange,
       name: selectedName || ticker,
       category,
-      monitoringEnabled: true,
       notes: notes || undefined,
-      dropFromHighThreshold: dropFromHighThreshold ? parseFloat(dropFromHighThreshold) : undefined,
     });
     onClose();
   };
@@ -172,10 +168,6 @@ const WatchlistAddModal: React.FC = () => {
                 ))}
               </ul>
             )}
-          </div>
-          <div>
-            <label className={labelClasses}>최고가대비 하락 알림 (%)</label>
-            <input type="number" value={dropFromHighThreshold} onChange={(e) => setDropFromHighThreshold(e.target.value)} placeholder="예: 20" className={inputClasses} min="0" step="1" />
           </div>
           <div>
             <label className={labelClasses}>메모</label>

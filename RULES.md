@@ -75,7 +75,7 @@
 | `portfolioCalculations.ts` | 포트폴리오 계산 유틸 | 전역 (계산 결과 변경) |
 | `historyUtils.ts` | 히스토리 보간/백필/기존 스냅샷 종가 교정/오염 데이터 교정 | `usePortfolioData` |
 | `maCalculations.ts` | SMA/RSI 계산, 차트 데이터 빌드 | `AssetTrendChart`, `useEnrichedIndicators`, `geminiService` |
-| `signalUtils.ts` | 신호/RSI 배지 렌더링 | `PortfolioTableRow`, `WatchlistPage` |
+| `signalUtils.ts` | 신호/RSI 배지 렌더링 | `PortfolioTableRow` |
 | `smartFilterLogic.ts` | 스마트 필터 매칭 (그룹 내 OR, 그룹 간 AND), enriched 지표 참조, `PRICE_BELOW_*` 판정 포함. **`matchesSingleFilter()` export** — 알림 규칙 체커에서도 재활용 | `PortfolioTable`, `alertChecker.ts` |
 | `alertChecker.ts` | 알림 규칙별 자산 매칭 (규칙 내 필터 AND 조합), 매칭 상세 문자열 생성 | `smartFilterLogic.matchesSingleFilter`, `types/alertRules` | `useAutoAlert`, 프리셋 버튼 |
 | `migrateData.ts` | 데이터 마이그레이션 | 로드 시 자동 실행 |
@@ -126,7 +126,7 @@
 |------|------|------|
 | `WatchlistAddModal.tsx` | 관심종목 추가 모달 | `PortfolioContext` (`addWatchItemOpen`, `addWatchItem`) |
 | `WatchlistEditModal.tsx` | 관심종목 수정/삭제 모달 | `PortfolioContext` (`editingWatchItem`, `updateWatchItem`, `deleteWatchItem`) |
-| `WatchlistPage.tsx` | 관심종목 테이블 (행별 액션 메뉴 + 차트 확장) | `AssetTrendChart`, `signalUtils` |
+| `WatchlistPage.tsx` | 관심종목 테이블 (행별 액션 메뉴 + 차트 확장, 종목명 hover 시 메모 툴팁) | `AssetTrendChart`, `Tooltip` |
 
 > `WatchlistView.tsx`에서 세 컴포넌트를 함께 렌더링
 
@@ -464,10 +464,12 @@ try {
 - **수익 통계 탭**: 자체 date input이 **삭제됨** — 반드시 `periodStartDate`/`periodEndDate` props로 전달받아야 함
 
 ### 관심종목 (WatchlistItem)
-- **매수존(buyZone) 필드 삭제됨** — `buyZoneMin`, `buyZoneMax` 없음
+- **삭제된 필드/기능**: `monitoringEnabled`, `dropFromHighThreshold`, `lastSignalAt`, `lastSignalType`, 모니터링 토글, 최고가대비 하락 알림, 신호 배지(최고가대비/일중하락/매도/RSI) — `WatchlistItem` 타입에 해당 필드 없음
+- **메모 표시**: 종목명에 마우스 hover 시 `Tooltip` 컴포넌트로 표시 (포트폴리오 테이블과 동일 방식)
 - **관심종목 UI는 모달 기반** — 인라인 폼 없음, `WatchlistAddModal`/`WatchlistEditModal` 사용
 - **관심종목 가격 갱신은 포트폴리오와 통합** — `handleRefreshAllPrices`에서 자동 처리, 별도 새로고침 버튼 없음
 - **차트 확장**: `AssetTrendChart`를 `history={[]}`로 호출 (스냅샷 없이 API 과거 시세만 사용)
+- **테이블 컬럼**: 체크박스 | 종목명 | 현재가 | 어제대비 | 최고가대비 | 액션
 
 ### 자동 시세 업데이트 (하루 1회)
 - **판단 기준**: Google Drive의 `lastUpdateDate` + `localStorage`의 `lastAutoUpdateDate` **이중 체크**

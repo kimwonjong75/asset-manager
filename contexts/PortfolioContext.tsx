@@ -90,7 +90,6 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     handleDeleteWatchItem,
     handleBulkDeleteWatchItems,
     handleAddAssetsToWatchlist,
-    handleToggleWatchMonitoring,
   } = useAssetActions({
     assets, setAssets,
     watchlist, setWatchlist,
@@ -279,7 +278,6 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       addWatchItem: handleAddWatchItem,
       updateWatchItem: handleUpdateWatchItem,
       deleteWatchItem: handleDeleteWatchItem,
-      toggleWatchMonitoring: handleToggleWatchMonitoring,
       bulkDeleteWatchItems: handleBulkDeleteWatchItems,
       uploadCsv: handleCsvFileUpload,
       updateAlertSettings,

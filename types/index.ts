@@ -123,16 +123,12 @@ export interface WatchlistItem {
   exchange: string;
   name: string;
   category: AssetCategory;
-  monitoringEnabled: boolean;
   notes?: string;
-  dropFromHighThreshold?: number;
   currentPrice?: number;
   priceOriginal?: number;
   currency?: Currency;
-  previousClosePrice?: number; // Renamed from yesterdayPrice
+  previousClosePrice?: number;
   highestPrice?: number;
-  lastSignalAt?: string;
-  lastSignalType?: 'DROP_FROM_HIGH' | 'DAILY_DROP' | null;
   changeRate?: number;
   indicators?: Indicators;
 }

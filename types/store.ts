@@ -84,10 +84,9 @@ export interface PortfolioActions {
   addSelectedToWatchlist: (assets: Asset[]) => void;
 
   // 관심종목
-  addWatchItem: (item: Omit<WatchlistItem, 'id' | 'currentPrice' | 'priceOriginal' | 'currency' | 'previousClosePrice' | 'highestPrice' | 'lastSignalAt' | 'lastSignalType'>) => void;
+  addWatchItem: (item: Omit<WatchlistItem, 'id' | 'currentPrice' | 'priceOriginal' | 'currency' | 'previousClosePrice' | 'highestPrice'>) => void;
   updateWatchItem: (item: WatchlistItem) => void;
   deleteWatchItem: (id: string) => void;
-  toggleWatchMonitoring: (id: string, enabled: boolean) => void;
   bulkDeleteWatchItems: (ids: string[]) => void;
 
   // 메시지

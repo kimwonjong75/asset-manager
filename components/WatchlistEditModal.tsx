@@ -13,9 +13,7 @@ const WatchlistEditModal: React.FC = () => {
   const [exchange, setExchange] = useState('');
   const [name, setName] = useState('');
   const [category, setCategory] = useState<AssetCategory>(AssetCategory.US_STOCK);
-  const [dropFromHighThreshold, setDropFromHighThreshold] = useState('');
   const [notes, setNotes] = useState('');
-  const [monitoringEnabled, setMonitoringEnabled] = useState(true);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<{ ticker: string; name: string; exchange: string }[]>([]);
@@ -27,9 +25,7 @@ const WatchlistEditModal: React.FC = () => {
       setExchange(item.exchange);
       setName(item.name);
       setCategory(item.category);
-      setDropFromHighThreshold(item.dropFromHighThreshold !== undefined ? String(item.dropFromHighThreshold) : '');
       setNotes(item.notes || '');
-      setMonitoringEnabled(item.monitoringEnabled);
       setSearchQuery('');
       setSearchResults([]);
     }
@@ -79,9 +75,7 @@ const WatchlistEditModal: React.FC = () => {
       exchange,
       name,
       category,
-      monitoringEnabled,
       notes: notes || undefined,
-      dropFromHighThreshold: dropFromHighThreshold ? parseFloat(dropFromHighThreshold) : undefined,
     };
     actions.updateWatchItem(updated);
     onClose();
@@ -141,20 +135,6 @@ const WatchlistEditModal: React.FC = () => {
                 )}
               </div>
             </div>
-          </div>
-          <div>
-            <label className={labelClasses}>최고가대비 하락 알림 (%)</label>
-            <input type="number" value={dropFromHighThreshold} onChange={(e) => setDropFromHighThreshold(e.target.value)} placeholder="예: 20" className={inputClasses} min="0" step="1" />
-          </div>
-          <div>
-            <label className={labelClasses}>모니터링</label>
-            <label className="inline-flex items-center cursor-pointer mt-1">
-              <input type="checkbox" className="sr-only" checked={monitoringEnabled} onChange={() => setMonitoringEnabled(!monitoringEnabled)} />
-              <span className={`w-10 h-6 ${monitoringEnabled ? 'bg-green-600' : 'bg-gray-600'} rounded-full relative inline-block`}>
-                <span className={`absolute left-1 top-1 w-4 h-4 rounded-full ${monitoringEnabled ? 'bg-green-500 translate-x-full' : 'bg-white'} transition-transform duration-300`}></span>
-              </span>
-              <span className="ml-2 text-sm text-gray-300">{monitoringEnabled ? 'ON' : 'OFF'}</span>
-            </label>
           </div>
           <div>
             <label className={labelClasses}>메모</label>

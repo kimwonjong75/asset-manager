@@ -544,7 +544,7 @@ export const useAssetActions = ({
   }, [isSignedIn, portfolioHistory, sellHistory, watchlist, exchangeRates, triggerAutoSave, setAssets]);
 
   // 관심종목 추가
-  const handleAddWatchItem = useCallback((payload: Omit<WatchlistItem, 'id' | 'currentPrice' | 'priceOriginal' | 'currency' | 'yesterdayPrice' | 'highestPrice' | 'lastSignalAt' | 'lastSignalType'>) => {
+  const handleAddWatchItem = useCallback((payload: Omit<WatchlistItem, 'id' | 'currentPrice' | 'priceOriginal' | 'currency' | 'previousClosePrice' | 'highestPrice'>) => {
     const id = `${Date.now()}`;
     const item: WatchlistItem = { ...payload, id } as WatchlistItem;
     setWatchlist(prev => {
@@ -597,7 +597,6 @@ export const useAssetActions = ({
             exchange: a.exchange,
             name: a.customName?.trim() || a.name,
             category: a.category,
-            monitoringEnabled: true,
           });
         }
       });
@@ -605,11 +604,6 @@ export const useAssetActions = ({
       return next;
     });
   }, [assets, portfolioHistory, sellHistory, exchangeRates, triggerAutoSave, setWatchlist]);
-
-  // 관심종목 모니터링 토글
-  const handleToggleWatchMonitoring = useCallback((id: string, enabled: boolean) => {
-    setWatchlist(prev => prev.map(w => (w.id === id ? { ...w, monitoringEnabled: enabled } : w)));
-  }, [setWatchlist]);
 
   return {
     isLoading,
@@ -630,6 +624,5 @@ export const useAssetActions = ({
     handleDeleteWatchItem,
     handleBulkDeleteWatchItems,
     handleAddAssetsToWatchlist,
-    handleToggleWatchMonitoring
   };
 };

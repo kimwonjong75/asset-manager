@@ -11,7 +11,6 @@ const WatchlistView: React.FC = () => {
       <WatchlistPage
         watchlist={data.watchlist}
         onDelete={actions.deleteWatchItem}
-        onToggleMonitoring={actions.toggleWatchMonitoring}
         onOpenAddModal={actions.openAddWatchItem}
         onOpenEditModal={actions.openEditWatchItem}
         isLoading={status.isLoading}

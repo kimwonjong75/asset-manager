@@ -1,15 +1,13 @@
 import React, { useMemo, useState, useEffect, Fragment, useRef } from 'react';
 import { Filter, MoreHorizontal } from 'lucide-react';
-import Toggle from './common/Toggle';
+import Tooltip from './common/Tooltip';
 import { AssetCategory, Currency, CURRENCY_SYMBOLS, ALLOWED_CATEGORIES, WatchlistItem, ExchangeRates } from '../types';
-import { getSignalBadge, getRsiBadge } from '../utils/signalUtils';
 import AssetTrendChart from './AssetTrendChart';
 import { useOnClickOutside } from '../hooks/useOnClickOutside';
 
 interface WatchlistPageProps {
   watchlist: WatchlistItem[];
   onDelete: (id: string) => void;
-  onToggleMonitoring: (id: string, enabled: boolean) => void;
   onOpenAddModal: () => void;
   onOpenEditModal: (item: WatchlistItem) => void;
   isLoading: boolean;
@@ -24,10 +22,9 @@ const ChartBarIcon: React.FC = () => (
   </svg>
 );
 
-const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, onDelete, onToggleMonitoring, onOpenAddModal, onOpenEditModal, isLoading, onBulkDelete, exchangeRates }) => {
+const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, onDelete, onOpenAddModal, onOpenEditModal, isLoading, onBulkDelete, exchangeRates }) => {
   const [filterCategory, setFilterCategory] = useState<AssetCategory | 'ALL'>('ALL');
   const [search, setSearch] = useState('');
-  const [monitoringOnly, setMonitoringOnly] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [openFilterOptions, setOpenFilterOptions] = useState<boolean>(false);
   const [expandedItemId, setExpandedItemId] = useState<string | null>(null);
@@ -44,7 +41,6 @@ const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, onDelete, onTo
   const filtered = useMemo(() => {
     return watchlist
       .filter(w => (filterCategory === 'ALL' ? true : w.category === filterCategory))
-      .filter(w => (monitoringOnly ? w.monitoringEnabled : true))
       .filter(w => {
         if (!search) return true;
         const s = search.toLowerCase();
@@ -54,10 +50,8 @@ const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, onDelete, onTo
         ...w,
         dropFromHigh: w.highestPrice && w.currentPrice ? ((w.currentPrice - w.highestPrice) / w.highestPrice) * 100 : 0,
         yesterdayChange: w.previousClosePrice && w.currentPrice ? ((w.currentPrice - w.previousClosePrice) / w.previousClosePrice) * 100 : 0,
-        serverSignalBadge: getSignalBadge(w.indicators?.signal),
-        rsiBadge: getRsiBadge(w.indicators?.rsi_status, w.indicators?.rsi),
       }));
-  }, [watchlist, filterCategory, monitoringOnly, search]);
+  }, [watchlist, filterCategory, search]);
 
   useEffect(() => {
     setSelectedIds(prev => {
@@ -148,11 +142,6 @@ const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, onDelete, onTo
                       </div>
                     </div>
                   </div>
-                  <Toggle
-                    label="모니터링 ON만"
-                    checked={monitoringOnly}
-                    onChange={(next) => setMonitoringOnly(next)}
-                  />
                 </div>
               </div>
             )}
@@ -178,17 +167,12 @@ const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, onDelete, onTo
               <th className="px-4 py-3 text-right">현재가</th>
               <th className="px-4 py-3 text-right">어제대비</th>
               <th className="px-4 py-3 text-right">최고가대비</th>
-              <th className="px-4 py-3 text-center">신호</th>
-              <th className="px-4 py-3 text-center">모니터링</th>
               <th className="px-4 py-3 text-center">액션</th>
             </tr>
           </thead>
           <tbody>
             {filtered.length > 0 ? filtered.map(w => {
               const isNonKRW = w.currency !== undefined && w.currency !== Currency.KRW;
-              const signalDrop = w.dropFromHighThreshold !== undefined && (w.dropFromHigh || 0) <= -(w.dropFromHighThreshold || 0);
-              const signalDailyDrop = (w.yesterdayChange || 0) < -2;
-              const hasSignal = signalDrop || signalDailyDrop;
               const derivedExchangeRate = getExchangeRate(w.currency);
               return (
                 <Fragment key={w.id}>
@@ -202,16 +186,29 @@ const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, onDelete, onTo
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex flex-col">
-                        <a
-                          href={`https://www.google.com/search?q=${encodeURIComponent(w.ticker + ' 주가')}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="font-bold hover:underline text-primary-light cursor-pointer"
+                        <Tooltip
+                          content={w.notes ? (
+                            <div className="space-y-0.5">
+                              {w.notes.split('\n').map((line, i) => (
+                                <p key={i} className={line.startsWith('-') || line.startsWith('·') ? 'pl-2 text-gray-300' : ''}>
+                                  {line || '\u00A0'}
+                                </p>
+                              ))}
+                            </div>
+                          ) : null}
+                          position="right"
+                          wrap
                         >
-                          {w.name}
-                        </a>
+                          <a
+                            href={`https://www.google.com/search?q=${encodeURIComponent(w.ticker + ' 주가')}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="font-bold hover:underline text-primary-light cursor-pointer"
+                          >
+                            {w.name}
+                          </a>
+                        </Tooltip>
                         <span className="text-xs text-gray-500">{w.ticker} | {w.exchange} | {w.category}</span>
-                        {w.notes && <span className="text-xs text-gray-500 mt-0.5 truncate max-w-[200px]" title={w.notes}>{w.notes}</span>}
                       </div>
                     </td>
                     <td className="px-4 py-3 text-right">
@@ -222,27 +219,6 @@ const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, onDelete, onTo
                     </td>
                     <td className={`px-4 py-3 text-right ${getChangeColor(w.yesterdayChange || 0)}`}>{w.yesterdayChange !== undefined ? `${(w.yesterdayChange || 0).toFixed(2)}%` : '-'}</td>
                     <td className={`px-4 py-3 text-right ${getChangeColor(w.dropFromHigh || 0)}`}>{w.dropFromHigh !== undefined ? `${(w.dropFromHigh || 0).toFixed(2)}%` : '-'}</td>
-                    <td className="px-4 py-3 text-center">
-                      <div className="flex justify-center gap-2">
-                        {w.serverSignalBadge ? <span className={w.serverSignalBadge.className}>{w.serverSignalBadge.label}</span> : null}
-                        {w.rsiBadge ? <span className={w.rsiBadge.className}>{w.rsiBadge.label}</span> : null}
-                        {hasSignal ? (
-                          <>
-                            {signalDrop && <span className="px-2 py-1 rounded bg-blue-500/20 text-blue-400 text-xs">최고가대비</span>}
-                            {signalDailyDrop && <span className="px-2 py-1 rounded bg-danger/20 text-danger text-xs">일중하락</span>}
-                          </>
-                        ) : null}
-                        {!w.serverSignalBadge && !w.rsiBadge && !hasSignal ? <span className="text-gray-500">-</span> : null}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      <label className="inline-flex items-center cursor-pointer">
-                        <input type="checkbox" className="sr-only" checked={w.monitoringEnabled} onChange={() => onToggleMonitoring(w.id, !w.monitoringEnabled)} />
-                        <span className={`w-10 h-6 ${w.monitoringEnabled ? 'bg-green-600' : 'bg-gray-600'} rounded-full relative inline-block`}>
-                          <span className={`absolute left-1 top-1 w-4 h-4 rounded-full ${w.monitoringEnabled ? 'bg-green-500 translate-x-full' : 'bg-white'} transition-transform duration-300`}></span>
-                        </span>
-                      </label>
-                    </td>
                     <td className="px-4 py-3 text-center relative">
                       <div className="flex items-center justify-center gap-1">
                         <button onClick={() => handleToggleExpand(w.id)} className="p-2 text-gray-300 hover:text-white" title="차트">
@@ -266,7 +242,7 @@ const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, onDelete, onTo
                   </tr>
                   {expandedItemId === w.id && (
                     <tr className="bg-gray-900/50">
-                      <td colSpan={8} className="p-0 sm:p-2">
+                      <td colSpan={6} className="p-0 sm:p-2">
                         <AssetTrendChart
                           history={[]}
                           assetId={w.id}
@@ -286,7 +262,7 @@ const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, onDelete, onTo
               );
             }) : (
               <tr>
-                <td colSpan={8} className="text-center py-8 text-gray-500">관심 종목을 추가해주세요.</td>
+                <td colSpan={6} className="text-center py-8 text-gray-500">관심 종목을 추가해주세요.</td>
               </tr>
             )}
           </tbody>
