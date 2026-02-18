@@ -8,6 +8,7 @@ interface SmartFilterPanelProps {
   onToggleFilter: (key: SmartFilterKey, deactivateKey?: SmartFilterKey) => void;
   onClearAll: () => void;
   onDropThresholdChange: (value: number) => void;
+  onLossThresholdChange: (value: number) => void;
   onMaShortPeriodChange: (period: number) => void;
   onMaLongPeriodChange: (period: number) => void;
   matchCount: number;
@@ -21,7 +22,7 @@ interface SmartFilterPanelProps {
 
 const GROUPS = ['ma', 'rsi', 'signal', 'portfolio'] as const;
 
-const MA_SHORT_OPTIONS = [10, 20, 60];
+const MA_SHORT_OPTIONS = [5, 10, 20, 60];
 const MA_LONG_OPTIONS = [60, 120, 200];
 
 
@@ -30,6 +31,7 @@ const SmartFilterPanel: React.FC<SmartFilterPanelProps> = ({
   onToggleFilter,
   onClearAll,
   onDropThresholdChange,
+  onLossThresholdChange,
   onMaShortPeriodChange,
   onMaLongPeriodChange,
   matchCount,
@@ -152,6 +154,21 @@ const SmartFilterPanel: React.FC<SmartFilterPanelProps> = ({
               type="number"
               value={filter.dropFromHighThreshold}
               onChange={(e) => onDropThresholdChange(
+                Math.max(0, parseInt(e.target.value) || 0)
+              )}
+              onClick={(e) => e.stopPropagation()}
+              className="w-10 bg-gray-900 border border-gray-600 rounded px-1 text-white text-xs text-center"
+              min="0"
+            />
+            <span>%</span>
+          </>
+        )}
+        {chip.key === 'LOSS_THRESHOLD' && isActive && (
+          <>
+            <input
+              type="number"
+              value={filter.lossThreshold}
+              onChange={(e) => onLossThresholdChange(
                 Math.max(0, parseInt(e.target.value) || 0)
               )}
               onClick={(e) => e.stopPropagation()}

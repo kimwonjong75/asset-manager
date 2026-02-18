@@ -14,6 +14,9 @@ import { useAssetActions } from '../hooks/useAssetActions';
 import { usePortfolioStats } from '../hooks/usePortfolioStats';
 import { usePortfolioHistory } from '../hooks/usePortfolioHistory';
 import { usePortfolioExport } from '../hooks/usePortfolioExport';
+import { useEnrichedIndicators } from '../hooks/useEnrichedIndicators';
+import { useAutoAlert } from '../hooks/useAutoAlert';
+import { usePortfolioCalculator } from '../hooks/usePortfolioCalculator';
 
 const PortfolioContext = createContext<PortfolioContextValue | null>(null);
 
@@ -135,6 +138,32 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     sellAlertDropRate
   });
 
+  // enriched 지표 (Context 레벨에서 한 번만 계산)
+  const { enrichedMap, isLoading: isEnrichedLoading } = useEnrichedIndicators(assets);
+
+  // EnrichedAsset 목록 생성 (알림 체크용)
+  const { calculateAssetMetrics, calculatePortfolioStats } = usePortfolioCalculator();
+  const enrichedAssets = useMemo(() => {
+    const stats = calculatePortfolioStats(assets, exchangeRates);
+    return assets.map(a => calculateAssetMetrics(a, exchangeRates, stats.totalValue));
+  }, [assets, exchangeRates, calculatePortfolioStats, calculateAssetMetrics]);
+
+  // 자동 알림
+  const {
+    alertSettings,
+    updateAlertSettings,
+    alertResults,
+    showAlertPopup,
+    dismissAlertPopup,
+    showBriefingPopup,
+  } = useAutoAlert({
+    enrichedAssets,
+    enrichedMap,
+    isEnrichedLoading,
+    hasAutoUpdated,
+    isMarketLoading,
+  });
+
   const showExchangeRateWarning = useMemo(() => {
     const hasUSD = assets.some(a => a.currency === Currency.USD);
     const hasJPY = assets.some(a => a.currency === Currency.JPY);
@@ -202,6 +231,7 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       filterAlerts,
       searchQuery,
       sellAlertDropRate,
+      alertSettings,
     },
     modal: {
       editingAsset,
@@ -216,6 +246,10 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     derived: {
       totalValue,
       alertCount,
+      enrichedMap,
+      isEnrichedLoading,
+      alertResults,
+      showAlertPopup,
     },
     actions: {
       saveToDrive,
@@ -248,6 +282,9 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       toggleWatchMonitoring: handleToggleWatchMonitoring,
       bulkDeleteWatchItems: handleBulkDeleteWatchItems,
       uploadCsv: handleCsvFileUpload,
+      updateAlertSettings,
+      dismissAlertPopup,
+      showBriefingPopup,
       clearError: () => setError(null),
       clearSuccessMessage: () => setSuccessMessage(null),
       setActiveTab: handleTabChange,

@@ -24,7 +24,9 @@ export type SmartFilterKey =
   // 포트폴리오 지표
   | 'PROFIT_POSITIVE'
   | 'PROFIT_NEGATIVE'
-  | 'DROP_FROM_HIGH';
+  | 'DROP_FROM_HIGH'
+  | 'DAILY_DROP'
+  | 'LOSS_THRESHOLD';
 
 /** 필터 그룹 */
 export type SmartFilterGroup = 'ma' | 'rsi' | 'signal' | 'portfolio';
@@ -50,12 +52,15 @@ export const FILTER_KEY_TO_GROUP: Record<SmartFilterKey, SmartFilterGroup> = {
   PROFIT_POSITIVE: 'portfolio',
   PROFIT_NEGATIVE: 'portfolio',
   DROP_FROM_HIGH: 'portfolio',
+  DAILY_DROP: 'portfolio',
+  LOSS_THRESHOLD: 'portfolio',
 };
 
 /** 스마트 필터 전체 상태 */
 export interface SmartFilterState {
   activeFilters: Set<SmartFilterKey>;
   dropFromHighThreshold: number;
+  lossThreshold: number;
   maShortPeriod: number;
   maLongPeriod: number;
 }
@@ -80,6 +85,7 @@ export interface SmartFilterChipDef {
 export const EMPTY_SMART_FILTER: SmartFilterState = {
   activeFilters: new Set(),
   dropFromHighThreshold: 20,
+  lossThreshold: 5,
   maShortPeriod: 20,
   maLongPeriod: 60,
 };

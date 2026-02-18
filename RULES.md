@@ -54,7 +54,8 @@
 | `usePortfolioCalculator.ts` | 수익률/손익 계산 (구매 환율 기준) | `types/index` | 대시보드, 통계 |
 | `useHistoricalPriceData.ts` | 차트용 과거 종가 데이터 (MA 여부 무관, 캐시 내장, `displayDays` 기반 기간 제어) | `historicalPriceService`, `maCalculations` | `AssetTrendChart` |
 | `useGlobalPeriodDays.ts` | 글로벌 기간(`GlobalPeriod`) → `{ startDate, endDate, days }` 변환 유틸 훅 | `types/store` | `AssetTrendChart`, `DashboardView`, `AnalyticsView` |
-| `useEnrichedIndicators.ts` | 전 종목 배치 과거 데이터 조회 → MA 전 기간(5~200) + RSI(금일/전일) 계산 | `historicalPriceService`, `maCalculations` | `PortfolioTable` (스마트 필터), `PortfolioAssistant` (AI 기술적 분석용 지표 재활용) |
+| `useEnrichedIndicators.ts` | 전 종목 배치 과거 데이터 조회 → MA 전 기간(5~200) + RSI(금일/전일) 계산 | `historicalPriceService`, `maCalculations` | **`PortfolioContext`** (Context 레벨에서 호출, enrichedMap을 전역 공유), `geminiService` (타입만) |
+| `useAutoAlert.ts` | 자동 알림 트리거 + AlertSettings localStorage 영속 | `alertChecker`, `types/alertRules` | `PortfolioContext` (derived/actions에 노출) |
 | `usePortfolioHistory.ts` | 포트폴리오 스냅샷 저장 | `types/index` | 차트 데이터 |
 | `useRebalancing.ts` | 리밸런싱 계산 및 저장 | `PortfolioContext` | `RebalancingTable` |
 | `useGoogleDriveSync.ts` | Google Drive 저장/로드, 토큰 갱신, **인증 상태 변경 콜백 등록** | `googleDriveService`, `lz-string` | `usePortfolioData` |
@@ -66,7 +67,7 @@
 | `upbitService.ts` | 암호화폐 시세 | Cloud Run `/upbit` | `useMarketData` |
 | `historicalPriceService.ts` | 과거 시세 (백필/차트용/AI분석용) | Cloud Run `/history`, `/upbit/history` | `useHistoricalPriceData`, `historyUtils`, `geminiService` |
 | `googleDriveService.ts` | 클라우드 저장/로드, **401 자동 재인증** (`authenticatedFetch` 래퍼) | Google Drive API | `useGoogleDriveSync` |
-| `geminiService.ts` | 종목 검색, AI 분석 (스트리밍 응답, 기술적 질문 시 enrichedMap 재활용 우선 → 폴백으로 직접 fetch) | Gemini API, `historicalPriceService`, `maCalculations`, `useEnrichedIndicators`(타입만) | `useAssetActions`, `PortfolioAssistant` |
+| `geminiService.ts` | 종목 검색, AI 분석 (스트리밍 응답, 기술적 질문 시 Context의 enrichedMap 재활용 우선 → 폴백으로 직접 fetch) | Gemini API, `historicalPriceService`, `maCalculations`, `useEnrichedIndicators`(타입만) | `useAssetActions`, `PortfolioAssistant` |
 
 ### utils/ (순수 함수)
 | 파일 | 책임 | 수정 시 영향 범위 |
@@ -75,7 +76,8 @@
 | `historyUtils.ts` | 히스토리 보간/백필/기존 스냅샷 종가 교정/오염 데이터 교정 | `usePortfolioData` |
 | `maCalculations.ts` | SMA/RSI 계산, 차트 데이터 빌드 | `AssetTrendChart`, `useEnrichedIndicators`, `geminiService` |
 | `signalUtils.ts` | 신호/RSI 배지 렌더링 | `PortfolioTableRow`, `WatchlistPage` |
-| `smartFilterLogic.ts` | 스마트 필터 매칭 (그룹 내 OR, 그룹 간 AND), enriched 지표 참조, `PRICE_BELOW_*` 판정 포함 | `PortfolioTable`, `useEnrichedIndicators` |
+| `smartFilterLogic.ts` | 스마트 필터 매칭 (그룹 내 OR, 그룹 간 AND), enriched 지표 참조, `PRICE_BELOW_*` 판정 포함. **`matchesSingleFilter()` export** — 알림 규칙 체커에서도 재활용 | `PortfolioTable`, `alertChecker.ts` |
+| `alertChecker.ts` | 알림 규칙별 자산 매칭 (규칙 내 필터 AND 조합), 매칭 상세 문자열 생성 | `smartFilterLogic.matchesSingleFilter`, `types/alertRules` | `useAutoAlert`, 프리셋 버튼 |
 | `migrateData.ts` | 데이터 마이그레이션 | 로드 시 자동 실행 |
 
 ### types/ (타입 정의)
@@ -83,15 +85,17 @@
 |------|------|------------------|
 | `index.ts` | 핵심 타입 (`Asset`, `Currency`, `AssetCategory` 등) | **전역** - 거의 모든 파일 |
 | `api.ts` | API 응답 타입 (`PriceItem`, `Indicators` 등) | `services/`, `hooks/` |
-| `store.ts` | 상태 관리 타입 (`PortfolioContextValue`, `GlobalPeriod`, `UIState.activeTab` 등) | `contexts/`, `hooks/`, `App.tsx`, `components/common/PeriodSelector`, `SmartFilterPanel` |
+| `store.ts` | 상태 관리 타입 (`PortfolioContextValue`, `GlobalPeriod`, `UIState.activeTab` 등). `ActiveTab`에 `'settings'` 포함, `UIState`에 `alertSettings`, `DerivedState`에 `enrichedMap`/`alertResults`/`showAlertPopup` | `contexts/`, `hooks/`, `App.tsx`, `components/common/PeriodSelector`, `SmartFilterPanel`, `AlertSettingsPage` |
 | `ui.ts` | UI 컴포넌트 Props 타입 | `components/` |
-| `smartFilter.ts` | 스마트 필터 타입 (19개 키, MA 기간 설정 포함), 그룹 매핑, 칩 정의(`pairKey`/`pairColorClass` tri-state 지원), 초기값 | `utils/smartFilterLogic`, `SmartFilterPanel`(+ `PortfolioContext` 의존), `PortfolioTable` |
+| `smartFilter.ts` | 스마트 필터 타입 (21개 키, MA 기간 설정 + `lossThreshold` 포함), 그룹 매핑, 칩 정의(`pairKey`/`pairColorClass` tri-state 지원), 초기값 | `utils/smartFilterLogic`, `SmartFilterPanel`(+ `PortfolioContext` 의존), `PortfolioTable`, `alertChecker` |
+| `alertRules.ts` | 알림 규칙 타입 (`AlertRule`, `AlertResult`, `AlertSettings`, `AlertMatchedAsset`) | `constants/alertRules`, `utils/alertChecker`, `hooks/useAutoAlert`, `AlertSettingsPage`, `AlertPopup` |
 
 ### constants/ (상수 정의)
 | 파일 | 책임 | 수정 시 영향 범위 |
 |------|------|------------------|
 | `columnDescriptions.ts` | 포트폴리오 테이블 컬럼 툴팁 텍스트 | `PortfolioTable`, `PortfolioTableRow` |
-| `smartFilterChips.ts` | 스마트 필터 칩 정의 (17개 칩, 동적 라벨, 색상). MA 현재가 칩 2개는 `pairKey`로 ABOVE↔BELOW tri-state 토글 (off→>→<→off 순환, 칩 하나로 2개 필터 키 제어) | `SmartFilterPanel` |
+| `smartFilterChips.ts` | 스마트 필터 칩 정의 (19개 칩, 동적 라벨, 색상). MA 현재가 칩 2개는 `pairKey`로 ABOVE↔BELOW tri-state 토글 (off→>→<→off 순환, 칩 하나로 2개 필터 키 제어). `DAILY_DROP`/`LOSS_THRESHOLD` 추가 | `SmartFilterPanel` |
+| `alertRules.ts` | 기본 알림 규칙 8개 (매도 5 + 매수 3), `DEFAULT_ALERT_SETTINGS` | `useAutoAlert`, `AlertSettingsPage` |
 
 ### components/layouts/ (탭별 뷰)
 | 파일 | 책임 | 의존 |
@@ -102,12 +106,20 @@
 | `WatchlistView.tsx` | 관심종목 탭 | `PortfolioContext`, `WatchlistPage` |
 | `InvestmentGuideView.tsx` | 투자 가이드 탭 (순수 UI, 외부 의존 없음) | - |
 
+> 설정 탭(`AlertSettingsPage`)은 layouts/ 하위가 아닌 `components/AlertSettingsPage.tsx`에 직접 위치
+
 ### components/common/ (공용 컴포넌트)
 | 파일 | 책임 | 의존 |
 |------|------|------|
 | `PeriodSelector.tsx` | 글로벌 기간 선택 버튼 (3개월/6개월/1년/2년/전체) | `types/store` (`GlobalPeriod`) |
+| `AlertPopup.tsx` | "오늘의 투자 브리핑" 모달 — severity별 스타일, 매도/매수 섹션 분리, 매칭 자산 상세 표시 | `types/alertRules` (`AlertResult`) |
 | `Toggle.tsx` | 토글 스위치 | - |
 | `Tooltip.tsx` | 툴팁 | - |
+
+### components/ (알림 설정)
+| 파일 | 책임 | 의존 |
+|------|------|------|
+| `AlertSettingsPage.tsx` | 설정 탭 — 알림 규칙별 활성/비활성 토글, 임계값 인라인 편집, 자동 팝업 on/off | `PortfolioContext` (`ui.alertSettings`, `actions.updateAlertSettings`), `constants/alertRules` |
 
 ### components/ (관심종목 모달)
 | 파일 | 책임 | 의존 |
@@ -138,7 +150,9 @@ App.tsx
        │                            └─ upbitService.ts (암호화폐)
        ├─ useAssetActions.ts ───────┬─ priceService.ts
        │                            └─ geminiService.ts
-       └─ usePortfolioCalculator.ts ── types/index.ts
+       ├─ usePortfolioCalculator.ts ── types/index.ts
+       ├─ useEnrichedIndicators.ts ── historicalPriceService, maCalculations
+       └─ useAutoAlert.ts ─────────── alertChecker.ts → smartFilterLogic.ts
 ```
 
 ### 시세 조회 분기 흐름
@@ -172,7 +186,7 @@ PeriodSelector (App.tsx 탭 바 우측)
          ├─ AnalyticsView → SellAnalyticsPage(periodStartDate, periodEndDate)
          └─ WatchlistPage → AssetTrendChart (동일)
 ```
-- **탭 순서**: 대시보드 | 포트폴리오 상세 | 관심종목 | 수익 통계 | **투자 가이드** (가이드 탭에서는 PeriodSelector 숨김)
+- **탭 순서**: 대시보드 | 포트폴리오 상세 | 관심종목 | 수익 통계 | 투자 가이드 | **설정** (가이드·설정 탭에서는 PeriodSelector 숨김)
 - **수익 통계 기간**: 자체 date input 삭제됨, 글로벌 기간 props로 전달받음
 
 ### 차트 데이터 흐름
@@ -191,24 +205,49 @@ AssetTrendChart.tsx
 
 ### 스마트 필터 확장 지표 흐름
 ```
-PortfolioTable.tsx
+PortfolioContext.tsx (Context 레벨에서 호출)
     │
     └─ useEnrichedIndicators.ts (전 종목 배치)
          ├─ historicalPriceService.ts → /history, /upbit/history (330일)
          ├─ maCalculations.ts → calculateSMA() (5/10/20/60/120/200)
          ├─ maCalculations.ts → calculateRSI() (14일)
          └─ 결과: Map<ticker, { ma, prevMa, rsi, prevRsi }>
-              └─ smartFilterLogic.ts → 골든크로스/데드크로스/RSI전환 판정
+              ├─ PortfolioTable → smartFilterLogic.ts (스마트 필터)
+              ├─ useAutoAlert → alertChecker.ts (알림 규칙 체크)
+              └─ PortfolioAssistant → geminiService.ts (AI 분석)
 ```
+- **enrichedMap 위치**: `PortfolioContext.derived.enrichedMap`으로 전역 공유 (이전: PortfolioTable 로컬)
 - **데이터 소스**: 차트와 동일한 과거 종가 API 사용 (10분 캐시)
 - **계산 위치**: 프론트엔드 로컬 계산 (백엔드 수정 불필요)
 - **폴백**: enriched 데이터 로딩 전 → 백엔드 `indicators.ma20/ma60/rsi` 사용
+
+### 투자 시그널 알림 흐름
+```
+앱 접속 → 시세 업데이트 완료 → enrichedMap 로드 완료
+    │
+    └─ useAutoAlert.ts
+         ├─ 조건 체크: enableAutoPopup && 오늘 미표시 && 데이터 준비 완료
+         ├─ checkAlertRules(enrichedAssets, enrichedMap, rules)
+         │    └─ alertChecker.ts → matchesSingleFilter() 재활용 (AND 조합)
+         ├─ 결과 있으면 → AlertPopup 표시
+         └─ localStorage('asset-manager-alert-popup-date')에 오늘 날짜 기록
+```
+```
+프리셋 버튼 (PortfolioTable.tsx)
+    │
+    ├─ 프리셋 선택 → AlertRule.filters + filterConfig → SmartFilterState로 변환 → 스마트필터 적용
+    ├─ "브리핑 다시 보기" → showBriefingPopup() (오늘 날짜 제한 무시)
+    └─ "알림 설정" → setActiveTab('settings')
+```
+- **알림 규칙 vs 스마트 필터**: 알림 규칙은 필터를 **순수 AND** 조합 (스마트 필터의 그룹 내 OR과 다름)
+- **설정 저장**: `localStorage('asset-manager-alert-settings')` — Google Drive 파이프라인 미사용
+- **팝업 1일 1회**: `localStorage('asset-manager-alert-popup-date')`로 중복 방지, 수동 "브리핑 다시 보기"는 제한 없음
 
 ### AI 어시스턴트 기술적 분석 흐름
 ```
 PortfolioAssistant.tsx
     │
-    ├─ useEnrichedIndicators(assets) → enrichedMap (모듈 캐시 히트, API 0회)
+    ├─ PortfolioContext.derived.enrichedMap (Context에서 공유, API 0회)
     │
     └─ geminiService.ts → askPortfolioQuestionStream()
          │
@@ -222,7 +261,7 @@ PortfolioAssistant.tsx
          │
          └─ generateContentStream() → 스트리밍 응답 → onChunk 콜백 → UI 실시간 갱신
 ```
-- **Zero-Fetch**: `PortfolioTable`이 이미 로드한 `useEnrichedIndicators` 모듈 캐시를 재활용 → Cloud Run `/history` 중복 호출 제거
+- **Zero-Fetch**: `PortfolioContext`가 로드한 `enrichedMap`을 재활용 → Cloud Run `/history` 중복 호출 제거
 - **스트리밍**: `generateContentStream` 사용 → 첫 토큰부터 UI에 표시 (체감 TTFT 0.3~0.5초)
 - **JSON 압축**: `JSON.stringify(data)` (pretty-print 제거로 토큰 ~30% 절감)
 - **프롬프트 빌더**: `buildPortfolioPrompt()` 공용 헬퍼로 분리 (스트리밍/비스트리밍 공유)
@@ -241,7 +280,9 @@ PortfolioAssistant.tsx
 | `usePortfolioData.ts` | `PortfolioContext.tsx` |
 | `useGoogleDriveSync.ts` | `usePortfolioData.ts`, `usePortfolioExport.ts` |
 | `maCalculations.ts` | `AssetTrendChart`, `useEnrichedIndicators`, `useHistoricalPriceData`, `geminiService` |
-| `useEnrichedIndicators.ts` | `PortfolioTable` (스마트 필터 enriched 데이터), `PortfolioAssistant` (AI 기술적 분석), `geminiService` (타입만) |
+| `useEnrichedIndicators.ts` | **`PortfolioContext`** (enrichedMap 전역 공유), `geminiService` (타입만) |
+| `alertChecker.ts` | `useAutoAlert`, 프리셋 버튼 (`PortfolioTable`) |
+| `constants/alertRules.ts` | `useAutoAlert`, `AlertSettingsPage` |
 | `useGlobalPeriodDays.ts` | `AssetTrendChart`, `DashboardView`, `AnalyticsView` |
 | `PortfolioContext.tsx` | `App.tsx`, 모든 Context 소비 컴포넌트 |
 
@@ -433,6 +474,14 @@ try {
 - **실행 흐름**: `usePortfolioData` → `shouldAutoUpdate` 플래그 → `PortfolioContext` useEffect → `handleRefreshAllPrices(true)`
 - **중복 방지**: `localStorage`에 즉시 기록하여 Drive 저장 지연/새로고침 시에도 재실행 차단
 - **수정 시 확인**: `usePortfolioData.ts` (플래그 설정), `PortfolioContext.tsx` (실행), `useGoogleDriveSync.ts` (날짜 저장)
+
+### 투자 시그널 알림 시스템
+- **알림 규칙 조합**: `alertChecker.ts`는 규칙의 filters를 **AND**로만 결합 (스마트 필터의 그룹 내 OR과 다름). `matchesSingleFilter()`를 `smartFilterLogic.ts`에서 import하여 재활용
+- **설정 저장 위치**: `localStorage` (`asset-manager-alert-settings`) — Google Drive 저장 파이프라인 **미포함** (복잡도 회피)
+- **enrichedMap 승격**: `useEnrichedIndicators`는 이제 `PortfolioContext`에서 호출. `PortfolioTable`/`PortfolioAssistant`는 Context에서 가져옴 (자체 호출 제거)
+- **프리셋 → 스마트필터 변환**: `PortfolioTable`의 `handleApplyPreset()`이 `AlertRule`의 `filters`+`filterConfig`를 `SmartFilterState`로 변환하여 적용
+- **새 알림 규칙 추가 시**: `constants/alertRules.ts`의 `DEFAULT_ALERT_RULES`에 추가, 필요한 필터가 없으면 `smartFilter.ts`/`smartFilterChips.ts`/`smartFilterLogic.ts`에 칩 추가 필요
+- **`matchesSingleFilter` 시그니처 변경 시**: `smartFilterLogic.ts`(스마트 필터)와 `alertChecker.ts`(알림) **양쪽 모두** 영향 확인 필수
 
 ### 디버깅 로그 패턴
 ```typescript

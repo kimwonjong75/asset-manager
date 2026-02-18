@@ -6,13 +6,14 @@ import type { EnrichedIndicatorData } from '../hooks/useEnrichedIndicators';
 /**
  * 단일 필터 키에 대해 자산이 조건을 충족하는지 판정
  */
-const matchesSingleFilter = (
+export const matchesSingleFilter = (
   asset: EnrichedAsset,
   key: SmartFilterKey,
   dropFromHighThreshold: number,
   maShortPeriod: number,
   maLongPeriod: number,
-  enriched?: EnrichedIndicatorData
+  enriched?: EnrichedIndicatorData,
+  lossThreshold: number = 5
 ): boolean => {
   const ind = asset.indicators;
   const m = asset.metrics;
@@ -130,6 +131,10 @@ const matchesSingleFilter = (
       return m.returnPercentage < 0;
     case 'DROP_FROM_HIGH':
       return m.dropFromHigh <= -dropFromHighThreshold;
+    case 'DAILY_DROP':
+      return (asset.changeRate ?? 0) < 0;
+    case 'LOSS_THRESHOLD':
+      return m.returnPercentage <= -lossThreshold;
 
     default:
       return false;
@@ -146,7 +151,7 @@ export const matchesSmartFilter = (
   filter: SmartFilterState,
   enrichedMap?: Map<string, EnrichedIndicatorData>
 ): boolean => {
-  const { activeFilters, dropFromHighThreshold, maShortPeriod, maLongPeriod } = filter;
+  const { activeFilters, dropFromHighThreshold, maShortPeriod, maLongPeriod, lossThreshold } = filter;
   if (activeFilters.size === 0) return true;
 
   const enriched = enrichedMap?.get(asset.ticker);
@@ -166,7 +171,7 @@ export const matchesSmartFilter = (
   // 각 그룹별 OR, 그룹 간 AND
   for (const [, keys] of groupedFilters) {
     const groupPassed = keys.some(key =>
-      matchesSingleFilter(asset, key, dropFromHighThreshold, maShortPeriod, maLongPeriod, enriched)
+      matchesSingleFilter(asset, key, dropFromHighThreshold, maShortPeriod, maLongPeriod, enriched, lossThreshold)
     );
     if (!groupPassed) return false;
   }

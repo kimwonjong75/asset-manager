@@ -43,6 +43,8 @@ export const SMART_FILTER_CHIPS: SmartFilterChipDef[] = [
   { key: 'PROFIT_POSITIVE', label: '수익중', group: 'portfolio', colorClass: 'bg-green-500' },
   { key: 'PROFIT_NEGATIVE', label: '손실중', group: 'portfolio', colorClass: 'bg-red-500' },
   { key: 'DROP_FROM_HIGH', label: '고점대비 하락', group: 'portfolio', colorClass: 'bg-orange-600' },
+  { key: 'DAILY_DROP', label: '당일 하락', group: 'portfolio', colorClass: 'bg-rose-600' },
+  { key: 'LOSS_THRESHOLD', label: '손실률 초과', labelFn: (s) => `손실≥${s.lossThreshold}%`, group: 'portfolio', colorClass: 'bg-red-700' },
 ];
 
 export const SMART_FILTER_GROUP_LABELS: Record<string, string> = {

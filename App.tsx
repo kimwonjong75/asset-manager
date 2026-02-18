@@ -8,6 +8,8 @@ import BulkUploadModal from './components/BulkUploadModal';
 import AddNewAssetModal from './components/AddNewAssetModal';
 import PortfolioAssistant from './components/PortfolioAssistant';
 import PeriodSelector from './components/common/PeriodSelector';
+import AlertPopup from './components/common/AlertPopup';
+import AlertSettingsPage from './components/AlertSettingsPage';
 
 // Hooks
 import { PortfolioProvider, usePortfolio } from './contexts/PortfolioContext';
@@ -19,7 +21,7 @@ import AnalyticsView from './components/layouts/AnalyticsView';
 import WatchlistView from './components/layouts/WatchlistView';
 import InvestmentGuideView from './components/layouts/InvestmentGuideView';
 
-type ActiveTab = 'dashboard' | 'portfolio' | 'analytics' | 'watchlist' | 'guide';
+type ActiveTab = 'dashboard' | 'portfolio' | 'analytics' | 'watchlist' | 'guide' | 'settings';
 
 const AppContent: React.FC = () => {
   const { data, status, ui, modal, actions, derived } = usePortfolio();
@@ -137,8 +139,17 @@ const AppContent: React.FC = () => {
                   <TabButton tabId="watchlist" onClick={() => actions.setActiveTab('watchlist')}>관심종목</TabButton>
                   <TabButton tabId="analytics" onClick={() => actions.setActiveTab('analytics')}>수익 통계</TabButton>
                   <TabButton tabId="guide" onClick={() => actions.setActiveTab('guide')}>투자 가이드</TabButton>
+                  <TabButton tabId="settings" onClick={() => actions.setActiveTab('settings')}>
+                    <span className="flex items-center gap-1">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                      설정
+                    </span>
+                  </TabButton>
                 </nav>
-                {ui.activeTab !== 'guide' && (
+                {ui.activeTab !== 'guide' && ui.activeTab !== 'settings' && (
                   <PeriodSelector value={ui.globalPeriod} onChange={actions.setGlobalPeriod} />
                 )}
               </div>
@@ -164,6 +175,10 @@ const AppContent: React.FC = () => {
               {ui.activeTab === 'guide' && (
                 <InvestmentGuideView />
               )}
+
+              {ui.activeTab === 'settings' && (
+                <AlertSettingsPage />
+              )}
             </main>
             
             <EditAssetModal />
@@ -183,6 +198,14 @@ const AppContent: React.FC = () => {
             </button>
 
             <PortfolioAssistant />
+
+            {/* 투자 브리핑 팝업 */}
+            {derived.showAlertPopup && (
+              <AlertPopup
+                results={derived.alertResults}
+                onClose={actions.dismissAlertPopup}
+              />
+            )}
           </>
         ) : (
           <div className="mt-12 bg-gray-800 border border-gray-700 rounded-lg p-8 text-center text-gray-200">

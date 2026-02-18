@@ -10,7 +10,8 @@ import type { SmartFilterState, SmartFilterKey } from '../types/smartFilter';
 import { EMPTY_SMART_FILTER } from '../types/smartFilter';
 import { matchesSmartFilter } from '../utils/smartFilterLogic';
 import SmartFilterPanel from './portfolio-table/SmartFilterPanel';
-import { useEnrichedIndicators } from '../hooks/useEnrichedIndicators';
+import { usePortfolio } from '../contexts/PortfolioContext';
+import type { AlertRule } from '../types/alertRules';
 
 const SortIcon = ({ sortKey, sortConfig }: { sortKey: SortKey, sortConfig: { key: SortKey; direction: SortDirection } | null }) => {
   if (!sortConfig || sortConfig.key !== sortKey) return <span className="opacity-30">↕</span>;
@@ -69,8 +70,34 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
     failedIds
   });
 
-  // 확장 지표 (MA 전 기간 + RSI 전일값) 배치 조회
-  const { enrichedMap, isLoading: isEnrichedLoading } = useEnrichedIndicators(assets);
+  // Context에서 가져오기
+  const { derived, ui, actions } = usePortfolio();
+  const { enrichedMap, isEnrichedLoading } = derived;
+  const [presetOpen, setPresetOpen] = useState(false);
+  const [activePreset, setActivePreset] = useState<string | null>(null);
+  const presetRef = useRef<HTMLDivElement | null>(null);
+  useOnClickOutside(presetRef, () => setPresetOpen(false), presetOpen);
+
+  // 프리셋 적용
+  const handleApplyPreset = (rule: AlertRule) => {
+    const newFilters = new Set<SmartFilterKey>(rule.filters);
+    setSmartFilter({
+      ...EMPTY_SMART_FILTER,
+      activeFilters: newFilters,
+      maShortPeriod: rule.filterConfig.maShortPeriod ?? 20,
+      maLongPeriod: rule.filterConfig.maLongPeriod ?? 60,
+      dropFromHighThreshold: rule.filterConfig.dropFromHighThreshold ?? 20,
+      lossThreshold: rule.filterConfig.lossThreshold ?? 5,
+    });
+    setActivePreset(rule.id);
+    setPresetOpen(false);
+  };
+
+  const handleClearPreset = () => {
+    handleClearAllFilters();
+    setActivePreset(null);
+    setPresetOpen(false);
+  };
 
   // 스마트 필터 적용 (usePortfolioData 미수정, 별도 useMemo)
   const filteredAssets = useMemo(() => {
@@ -102,6 +129,10 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
 
   const handleMaLongPeriodChange = (period: number) => {
     setSmartFilter(prev => ({ ...prev, maLongPeriod: period }));
+  };
+
+  const handleLossThresholdChange = (value: number) => {
+    setSmartFilter(prev => ({ ...prev, lossThreshold: value }));
   };
 
   const allSelected = filteredAssets.length > 0 && filteredAssets.every(a => selectedIds.has(a.id));
@@ -156,6 +187,97 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
               {selectedIds.size}개 선택됨
             </span>
           )}
+
+          {/* 프리셋 드롭다운 */}
+          <div className="relative" ref={presetRef}>
+            <button
+              onClick={() => setPresetOpen(!presetOpen)}
+              className={`py-2 px-3 rounded-md text-sm font-medium transition flex items-center gap-1 ${
+                activePreset
+                  ? 'bg-primary text-white'
+                  : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+              }`}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+              </svg>
+              <span className="hidden sm:inline">
+                {activePreset
+                  ? ui.alertSettings.rules.find(r => r.id === activePreset)?.name ?? '프리셋'
+                  : '프리셋'}
+              </span>
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            {presetOpen && (
+              <div className="absolute right-0 top-full mt-1 w-56 bg-gray-800 border border-gray-600 rounded-lg shadow-xl z-30 py-1">
+                {/* 매도 감지 */}
+                <div className="px-3 py-1.5 text-[10px] text-red-400 font-semibold uppercase tracking-wider">매도 감지</div>
+                {ui.alertSettings.rules.filter(r => r.action === 'sell' && r.enabled).map(rule => (
+                  <button
+                    key={rule.id}
+                    onClick={() => handleApplyPreset(rule)}
+                    className={`w-full text-left px-3 py-1.5 text-sm hover:bg-gray-700 transition flex items-center gap-2 ${
+                      activePreset === rule.id ? 'text-primary' : 'text-gray-300'
+                    }`}
+                  >
+                    <span className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                      rule.severity === 'critical' ? 'bg-red-500' : 'bg-amber-500'
+                    }`} />
+                    {rule.name}
+                  </button>
+                ))}
+                {/* 매수 기회 */}
+                <div className="px-3 py-1.5 text-[10px] text-blue-400 font-semibold uppercase tracking-wider mt-1 border-t border-gray-700">매수 기회</div>
+                {ui.alertSettings.rules.filter(r => r.action === 'buy' && r.enabled).map(rule => (
+                  <button
+                    key={rule.id}
+                    onClick={() => handleApplyPreset(rule)}
+                    className={`w-full text-left px-3 py-1.5 text-sm hover:bg-gray-700 transition flex items-center gap-2 ${
+                      activePreset === rule.id ? 'text-primary' : 'text-gray-300'
+                    }`}
+                  >
+                    <span className="w-2 h-2 rounded-full bg-blue-500 flex-shrink-0" />
+                    {rule.name}
+                  </button>
+                ))}
+                {/* 구분선 + 추가 메뉴 */}
+                <div className="border-t border-gray-700 mt-1 pt-1">
+                  <button
+                    onClick={() => { actions.setActiveTab('settings'); setPresetOpen(false); }}
+                    className="w-full text-left px-3 py-1.5 text-sm text-gray-400 hover:bg-gray-700 hover:text-white transition flex items-center gap-2"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    알림 설정
+                  </button>
+                  <button
+                    onClick={() => { actions.showBriefingPopup(); setPresetOpen(false); }}
+                    className="w-full text-left px-3 py-1.5 text-sm text-gray-400 hover:bg-gray-700 hover:text-white transition flex items-center gap-2"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                    </svg>
+                    브리핑 다시 보기
+                  </button>
+                  {activePreset && (
+                    <button
+                      onClick={handleClearPreset}
+                      className="w-full text-left px-3 py-1.5 text-sm text-gray-400 hover:bg-gray-700 hover:text-white transition flex items-center gap-2"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                      필터 초기화
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
 
           <button
             onClick={() => {
@@ -215,6 +337,7 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
         onToggleFilter={handleToggleFilter}
         onClearAll={handleClearAllFilters}
         onDropThresholdChange={handleDropThresholdChange}
+        onLossThresholdChange={handleLossThresholdChange}
         onMaShortPeriodChange={handleMaShortPeriodChange}
         onMaLongPeriodChange={handleMaLongPeriodChange}
         matchCount={filteredAssets.length}

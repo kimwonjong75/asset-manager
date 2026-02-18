@@ -1,4 +1,6 @@
 import { Asset, PortfolioSnapshot, SellRecord, WatchlistItem, ExchangeRates, AssetCategory, Currency, BulkUploadResult, AllocationTargets } from './index';
+import type { AlertSettings, AlertResult } from './alertRules';
+import type { EnrichedIndicatorData } from '../hooks/useEnrichedIndicators';
 
 export type PortfolioHistory = PortfolioSnapshot[];
 
@@ -25,13 +27,14 @@ export interface PortfolioStatus {
 }
 
 export interface UIState {
-  activeTab: 'dashboard' | 'portfolio' | 'analytics' | 'watchlist' | 'guide';
+  activeTab: 'dashboard' | 'portfolio' | 'analytics' | 'watchlist' | 'guide' | 'settings';
   globalPeriod: GlobalPeriod;
   dashboardFilterCategory: AssetCategory | 'ALL';
   filterCategory: AssetCategory | 'ALL';
   filterAlerts: boolean;
   searchQuery: string;
   sellAlertDropRate: number;
+  alertSettings: AlertSettings;
 }
 
 export interface ModalState {
@@ -48,6 +51,10 @@ export interface ModalState {
 export interface DerivedState {
   totalValue: number;
   alertCount: number;
+  enrichedMap: Map<string, EnrichedIndicatorData>;
+  isEnrichedLoading: boolean;
+  alertResults: AlertResult[];
+  showAlertPopup: boolean;
 }
 
 export interface PortfolioActions {
@@ -91,6 +98,9 @@ export interface PortfolioActions {
   uploadCsv: (file: File) => Promise<BulkUploadResult>;
 
   // UI/모달
+  updateAlertSettings: (settings: AlertSettings) => void;
+  dismissAlertPopup: () => void;
+  showBriefingPopup: () => void;
   setActiveTab: (tab: UIState['activeTab']) => void;
   setGlobalPeriod: (p: GlobalPeriod) => void;
   setDashboardFilterCategory: (c: UIState['dashboardFilterCategory']) => void;
