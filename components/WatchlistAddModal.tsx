@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { AssetCategory, SymbolSearchResult, ALLOWED_CATEGORIES, inferCategoryFromExchange, normalizeExchange } from '../types';
+import { SymbolSearchResult, normalizeExchange } from '../types';
+import { getAllowedCategories, inferCategoryIdFromExchange, getCategoryBaseType } from '../types/category';
 import { searchSymbols } from '../services/geminiService';
 import { usePortfolio } from '../contexts/PortfolioContext';
 
 const WatchlistAddModal: React.FC = () => {
   const { modal, actions, data } = usePortfolio();
+  const categories = data.categoryStore.categories;
   const isOpen = modal.addWatchItemOpen;
   const onClose = actions.closeAddWatchItem;
 
@@ -16,7 +18,7 @@ const WatchlistAddModal: React.FC = () => {
   const [isFocused, setIsFocused] = useState(false);
   const [duplicateError, setDuplicateError] = useState<string | null>(null);
 
-  const [category, setCategory] = useState<AssetCategory>(AssetCategory.US_STOCK);
+  const [category, setCategory] = useState<number>(2);
   const [exchange, setExchange] = useState<string>('NASDAQ');
   const [notes, setNotes] = useState('');
 
@@ -25,7 +27,7 @@ const WatchlistAddModal: React.FC = () => {
     setSearchQuery('');
     setSelectedName('');
     setSearchResults([]);
-    setCategory(AssetCategory.US_STOCK);
+    setCategory(2);
     setExchange('NASDAQ');
     setNotes('');
     setDuplicateError(null);
@@ -75,15 +77,16 @@ const WatchlistAddModal: React.FC = () => {
     setSelectedName(result.name);
     const ex = normalizeExchange(result.exchange);
     setExchange(ex);
-    setCategory(inferCategoryFromExchange(ex));
+    setCategory(inferCategoryIdFromExchange(ex, categories));
     setSearchResults([]);
   };
 
   useEffect(() => {
-    if (category === AssetCategory.KOREAN_STOCK) setExchange('KRX (코스피/코스닥)');
-    else if (category === AssetCategory.US_STOCK) setExchange('NASDAQ');
-    else if (category === AssetCategory.CRYPTOCURRENCY) setExchange('주요 거래소 (종합)');
-  }, [category]);
+    const baseType = getCategoryBaseType(category, categories);
+    if (baseType === 'KOREAN_STOCK') setExchange('KRX (코스피/코스닥)');
+    else if (baseType === 'US_STOCK') setExchange('NASDAQ');
+    else if (baseType === 'CRYPTOCURRENCY') setExchange('주요 거래소 (종합)');
+  }, [category, categories]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -97,7 +100,7 @@ const WatchlistAddModal: React.FC = () => {
       ticker,
       exchange,
       name: selectedName || ticker,
-      category,
+      categoryId: category,
       notes: notes || undefined,
     });
     onClose();
@@ -123,9 +126,9 @@ const WatchlistAddModal: React.FC = () => {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className={labelClasses}>자산 구분</label>
-            <select value={category} onChange={(e) => setCategory(e.target.value as AssetCategory)} className={inputClasses}>
-              {ALLOWED_CATEGORIES.map((cat) => (
-                <option key={cat} value={cat}>{cat}</option>
+            <select value={category} onChange={(e) => setCategory(Number(e.target.value))} className={inputClasses}>
+              {getAllowedCategories(categories).map((cat) => (
+                <option key={cat.id} value={cat.id}>{cat.name}</option>
               ))}
             </select>
           </div>

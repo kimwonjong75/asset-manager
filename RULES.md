@@ -49,7 +49,7 @@
 | 파일 | 책임 | 의존 | 수정 시 확인 |
 |------|------|------|-------------|
 | `usePortfolioData.ts` | 핵심 데이터 상태, Google Drive 동기화 | `useGoogleDriveSync`, `historyUtils` | `PortfolioContext` |
-| `useMarketData.ts` | 시세/환율 업데이트, 암호화폐 분기, **관심종목 시세도 함께 갱신** | `priceService`, `upbitService` | `PortfolioContext` |
+| `useMarketData.ts` | 시세/환율 업데이트, 암호화폐 분기, **관심종목 시세도 함께 갱신**, 관심종목 전용 갱신(52주 최고가 히스토리 기반 계산) | `priceService`, `upbitService`, `historicalPriceService` | `PortfolioContext` |
 | `useAssetActions.ts` | 자산 CRUD, 매도/매수/CSV 처리 | `priceService`, `geminiService` | 모달 컴포넌트들 |
 | `usePortfolioCalculator.ts` | 수익률/손익 계산 (구매 환율 기준) | `types/index` | 대시보드, 통계 |
 | `useHistoricalPriceData.ts` | 차트용 과거 종가 데이터 (MA 여부 무관, 캐시 내장, `displayDays` 기반 기간 제어) | `historicalPriceService`, `maCalculations` | `AssetTrendChart` |
@@ -127,7 +127,7 @@
 |------|------|------|
 | `WatchlistAddModal.tsx` | 관심종목 추가 모달 | `PortfolioContext` (`addWatchItemOpen`, `addWatchItem`) |
 | `WatchlistEditModal.tsx` | 관심종목 수정/삭제 모달 | `PortfolioContext` (`editingWatchItem`, `updateWatchItem`, `deleteWatchItem`) |
-| `WatchlistPage.tsx` | 관심종목 테이블 (행별 액션 메뉴 + 차트 확장, 종목명 hover 시 메모 툴팁) | `AssetTrendChart`, `Tooltip` |
+| `WatchlistPage.tsx` | 관심종목 테이블 (행별 액션 메뉴 + 차트 확장, 종목명 hover 시 메모 툴팁, 전용 시세 업데이트 버튼) | `AssetTrendChart`, `Tooltip`, `onRefresh` prop from `WatchlistView` |
 
 > `WatchlistView.tsx`에서 세 컴포넌트를 함께 렌더링
 
@@ -148,7 +148,8 @@ App.tsx
        │                            ├─ historyUtils.ts
        │                            └─ migrateData.ts
        ├─ useMarketData.ts ─────────┬─ priceService.ts (주식/ETF/환율)
-       │                            └─ upbitService.ts (암호화폐)
+       │                            ├─ upbitService.ts (암호화폐)
+       │                            └─ historicalPriceService.ts (관심종목 52주 최고가)
        ├─ useAssetActions.ts ───────┬─ priceService.ts
        │                            └─ geminiService.ts
        ├─ usePortfolioCalculator.ts ── types/index.ts
@@ -174,6 +175,18 @@ useMarketData.ts → handleRefreshAllPrices()
                    └─ triggerAutoSave()
 ```
 > **주의**: `handleRefreshAllPrices`가 환율·보유자산·관심종목을 **하나의 Promise.all로 병렬 실행**함. 새 fetch를 추가할 때 이 Promise.all에 포함해야 함.
+
+```
+useMarketData.ts → handleRefreshWatchlistPrices() (관심종목 전용)
+    │
+    └─ Promise.all() ── 4개 fetch 동시 실행
+         ├─ 관심종목(일반)             → priceService.ts → Cloud Run /
+         ├─ 관심종목(암호화폐)         → upbitService.ts → Cloud Run /upbit
+         ├─ 1년 히스토리(일반)         → historicalPriceService.ts → Cloud Run /history
+         └─ 1년 히스토리(암호화폐)     → historicalPriceService.ts → Cloud Run /upbit/history
+              │
+              └─ 히스토리에서 52주 최고가 계산 → highestPrice 갱신
+```
 
 ### 글로벌 기간 선택 흐름
 ```
@@ -470,7 +483,11 @@ try {
 - **삭제된 필드/기능**: `monitoringEnabled`, `dropFromHighThreshold`, `lastSignalAt`, `lastSignalType`, 모니터링 토글, 최고가대비 하락 알림, 신호 배지(최고가대비/일중하락/매도/RSI) — `WatchlistItem` 타입에 해당 필드 없음
 - **메모 표시**: 종목명에 마우스 hover 시 `Tooltip` 컴포넌트로 표시 (포트폴리오 테이블과 동일 방식)
 - **관심종목 UI는 모달 기반** — 인라인 폼 없음, `WatchlistAddModal`/`WatchlistEditModal` 사용
-- **관심종목 가격 갱신은 포트폴리오와 통합** — `handleRefreshAllPrices`에서 자동 처리, 별도 새로고침 버튼 없음
+- **관심종목 가격 갱신 2가지 경로**:
+  - `handleRefreshAllPrices`: 포트폴리오와 함께 자동 처리 (현재가/전일종가/지표 갱신, `highestPrice`도 갱신)
+  - `handleRefreshWatchlistPrices` (전용 업데이트 버튼): 현재가 + **1년 히스토리 조회로 52주 최고가 계산** (`historicalPriceService` 사용)
+- **52주 최고가(`highestPrice`) 계산**: 관심종목 전용 갱신 시 `fetchStockHistoricalPrices`/`fetchCryptoHistoricalPrices`로 1년 히스토리를 가져와 `Math.max(...prices)`로 산출. 백엔드 시세 API가 `high52w`를 제공하지 않는 종목도 커버
+- **최고가대비 표시**: `highestPrice`가 미설정(`undefined`)이면 `0.00%`가 아닌 `-` 표시
 - **차트 확장**: `AssetTrendChart`를 `history={[]}`로 호출 (스냅샷 없이 API 과거 시세만 사용)
 - **테이블 컬럼**: 체크박스 | 종목명 | 현재가 | 어제대비 | 최고가대비 | 액션
 

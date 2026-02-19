@@ -1,11 +1,13 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Asset, AssetCategory, Currency, ALL_EXCHANGES, inferCategoryFromExchange, ALLOWED_CATEGORIES, normalizeExchange } from '../types';
+import { Asset, Currency, normalizeExchange } from '../types';
+import { getAllowedCategories, inferCategoryIdFromExchange } from '../types/category';
 import { searchSymbols } from '../services/geminiService';
 import { usePortfolio } from '../contexts/PortfolioContext';
 
 const EditAssetModal: React.FC = () => {
-  const { modal, actions, status } = usePortfolio();
+  const { modal, actions, status, data } = usePortfolio();
+  const categories = data.categoryStore.categories;
   const asset = modal.editingAsset;
   const isOpen = !!modal.editingAsset;
   const onClose = actions.closeEditModal;
@@ -17,11 +19,13 @@ const EditAssetModal: React.FC = () => {
   const [searchResults, setSearchResults] = useState<{ ticker: string; name: string; exchange: string }[]>([]);
   const [isSearching, setIsSearching] = useState<boolean>(false);
   const categoryOptions = useMemo(() => {
-    if (!formData) return ALLOWED_CATEGORIES;
-    return ALLOWED_CATEGORIES.includes(formData.category)
-      ? ALLOWED_CATEGORIES
-      : [formData.category, ...ALLOWED_CATEGORIES];
-  }, [formData]);
+    const allowed = getAllowedCategories(categories);
+    if (!formData) return allowed;
+    const allowedIds = new Set(allowed.map(c => c.id));
+    if (allowedIds.has(formData.categoryId)) return allowed;
+    const extra = categories.find(c => c.id === formData.categoryId);
+    return extra ? [extra, ...allowed] : allowed;
+  }, [formData, categories]);
 
   useEffect(() => {
     if (asset) {
@@ -42,7 +46,7 @@ const EditAssetModal: React.FC = () => {
     setFormData(prev => {
         if (!prev) return null;
 
-        let newValue: string | number | Currency | AssetCategory | undefined = value;
+        let newValue: string | number | Currency | undefined = value;
         if (name === 'quantity' || name === 'purchasePrice') {
             newValue = parseFloat(value) || 0;
         } else if (name === 'sellAlertDropRate') {
@@ -50,8 +54,8 @@ const EditAssetModal: React.FC = () => {
             newValue = typeof parsed === 'number' && !isNaN(parsed) ? parsed : undefined;
         } else if (name === 'currency') {
             newValue = value as Currency;
-        } else if (name === 'category') {
-            newValue = value as AssetCategory;
+        } else if (name === 'categoryId') {
+            newValue = Number(value);
         }
 
         return { ...prev, [name]: newValue };
@@ -85,14 +89,14 @@ const EditAssetModal: React.FC = () => {
 
   const applySymbol = (r: { ticker: string; name: string; exchange: string }) => {
     const ex = normalizeExchange(r.exchange);
-    const cat = inferCategoryFromExchange(ex);
+    const catId = inferCategoryIdFromExchange(ex, categories);
     setFormData(prev => {
       if (!prev) return null;
       const current = (prev.ticker || '').trim();
       let nextTicker = current;
       const ok = window.confirm(`티커를 '${current || '(비어있음)'}'에서 '${r.ticker}'로 변경하시겠습니까?`);
       if (ok) nextTicker = r.ticker;
-      return { ...prev, ticker: nextTicker, name: r.name, exchange: ex, category: cat };
+      return { ...prev, ticker: nextTicker, name: r.name, exchange: ex, categoryId: catId };
     });
     setSearchQuery('');
     setSearchResults([]);
@@ -114,9 +118,9 @@ const EditAssetModal: React.FC = () => {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label htmlFor="category-edit" className={labelClasses}>자산 구분</label>
-            <select id="category-edit" name="category" value={formData.category} onChange={handleChange} className={inputClasses}>
+            <select id="category-edit" name="categoryId" value={formData.categoryId} onChange={handleChange} className={inputClasses}>
               {categoryOptions.map((cat) => (
-                <option key={cat} value={cat}>{cat}</option>
+                <option key={cat.id} value={cat.id}>{cat.name}</option>
               ))}
             </select>
           </div>

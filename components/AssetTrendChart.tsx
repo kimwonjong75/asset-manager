@@ -1,5 +1,6 @@
 import React, { useMemo, useState, useCallback } from 'react';
-import { PortfolioSnapshot, Currency, AssetCategory } from '../types';
+import { PortfolioSnapshot, Currency } from '../types';
+import { isBaseType, getCategoryName, DEFAULT_CATEGORIES } from '../types/category';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { useHistoricalPriceData } from '../hooks/useHistoricalPriceData';
 import { DEFAULT_MA_CONFIGS, MALineConfig, buildChartDataWithMA } from '../utils/maCalculations';
@@ -39,7 +40,7 @@ interface AssetTrendChartProps {
   exchangeRate?: number;      // 환율 (KRW 변환용)
   ticker?: string;
   exchange?: string;
-  category?: AssetCategory;
+  categoryId?: number;
 }
 
 const AssetTrendChart: React.FC<AssetTrendChartProps> = ({
@@ -52,26 +53,27 @@ const AssetTrendChart: React.FC<AssetTrendChartProps> = ({
   exchangeRate = 1,
   ticker,
   exchange,
-  category,
+  categoryId,
 }) => {
   const [showInKRW, setShowInKRW] = useState<boolean>(false);
   const [maConfigs, setMAConfigs] = useState<MALineConfig[]>(loadMAConfigs);
 
-  const isCash = category === AssetCategory.CASH;
+  const isCash = categoryId ? isBaseType(categoryId, 'CASH') : false;
   const enabledConfigs = maConfigs.filter(c => c.enabled);
   const enabledPeriods = enabledConfigs.map(c => c.period);
   const maxMAPeriod = enabledPeriods.length > 0 ? Math.max(...enabledPeriods) : 0;
-  const hasMASupport = !!ticker && !!exchange && !!category && !isCash;
+  const hasMASupport = !!ticker && !!exchange && !!categoryId && !isCash;
 
   const { ui } = usePortfolio();
   const displayDays = getGlobalPeriodDays(ui.globalPeriod);
 
   // 과거 시세 fetch (차트 열릴 때 항상 — 종가 기반 정확도 보장)
   // MA 비활성이어도 hook 내부에서 기본 기간으로 종가 데이터를 가져옴
+  const categoryName = categoryId ? getCategoryName(categoryId, DEFAULT_CATEGORIES) : undefined;
   const { historicalPrices, isLoading: maLoading, error: maError } = useHistoricalPriceData({
     ticker: ticker || '',
     exchange: exchange || '',
-    category: category || AssetCategory.KOREAN_STOCK,
+    category: categoryName,
     isExpanded: true,
     maxMAPeriod: hasMASupport ? maxMAPeriod : 0,
     displayDays,

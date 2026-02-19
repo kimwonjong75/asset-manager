@@ -1,15 +1,17 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Asset, AssetCategory, ExchangeRates, Currency, AllocationTargets } from '../types';
+import { Asset, ExchangeRates, Currency, AllocationTargets } from '../types';
+import { getCategoryName, type CategoryDefinition } from '../types/category';
 
 interface UseRebalancingProps {
   assets: Asset[];
   exchangeRates: ExchangeRates;
   allocationTargets: AllocationTargets;
   onSave: (targets: AllocationTargets) => void;
+  categories: CategoryDefinition[];
 }
 
 export interface CategoryData {
-  category: AssetCategory;
+  category: string;
   currentValue: number;
   currentWeight: number;
   targetWeight: number;
@@ -17,7 +19,7 @@ export interface CategoryData {
   difference: number;
 }
 
-export const useRebalancing = ({ assets, exchangeRates, allocationTargets, onSave }: UseRebalancingProps) => {
+export const useRebalancing = ({ assets, exchangeRates, allocationTargets, onSave, categories }: UseRebalancingProps) => {
   // --- 1. Calculate Current Values & Weights ---
   const { categoryValues, totalCurrentValue } = useMemo(() => {
     const values: Record<string, number> = {};
@@ -26,7 +28,7 @@ export const useRebalancing = ({ assets, exchangeRates, allocationTargets, onSav
     assets.forEach((asset) => {
       const rate = asset.currency === Currency.KRW ? 1 : (exchangeRates[asset.currency] || 0);
       const val = asset.currentPrice * asset.quantity * rate;
-      values[asset.category] = (values[asset.category] || 0) + val;
+      values[asset.categoryId] = (values[asset.categoryId] || 0) + val;
       total += val;
     });
 
@@ -68,20 +70,20 @@ export const useRebalancing = ({ assets, exchangeRates, allocationTargets, onSav
 
   // --- 3. Calculate Table Data ---
   const tableData: CategoryData[] = useMemo(() => {
-    const categories = Array.from(new Set([
+    const categoryKeys = Array.from(new Set([
         ...Object.keys(categoryValues),
         ...Object.keys(targetWeights)
-    ])) as AssetCategory[];
+    ]));
 
-    return categories.map(category => {
-        const currentValue = categoryValues[category] || 0;
+    return categoryKeys.map(key => {
+        const currentValue = categoryValues[key] || 0;
         const currentWeight = totalCurrentValue > 0 ? (currentValue / totalCurrentValue) * 100 : 0;
-        const targetWeight = targetWeights[category] || 0;
+        const targetWeight = targetWeights[key] || 0;
         const targetValue = (targetTotalAmount * targetWeight) / 100;
         const difference = targetValue - currentValue;
 
         return {
-            category,
+            category: getCategoryName(Number(key), categories),
             currentValue,
             currentWeight,
             targetWeight,
@@ -89,7 +91,7 @@ export const useRebalancing = ({ assets, exchangeRates, allocationTargets, onSav
             difference
         };
     }).sort((a, b) => b.currentValue - a.currentValue);
-  }, [categoryValues, totalCurrentValue, targetTotalAmount, targetWeights]);
+  }, [categoryValues, totalCurrentValue, targetTotalAmount, targetWeights, categories]);
 
   // Calculate totals
   const totalTargetWeight = tableData.reduce((sum, item) => sum + item.targetWeight, 0);

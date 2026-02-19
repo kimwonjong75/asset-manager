@@ -1,5 +1,7 @@
 import React, { useMemo } from 'react';
-import { Asset, AssetCategory, ExchangeRates, Currency } from '../../types';
+import { Asset, ExchangeRates, Currency } from '../../types';
+import { getCategoryName } from '../../types/category';
+import { usePortfolio } from '../../contexts/PortfolioContext';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 
 interface AllocationChartProps {
@@ -10,7 +12,7 @@ interface AllocationChartProps {
 const COLORS = ['#6366F1', '#10B981', '#F59E0B', '#EF4444', '#3B82F6', '#8B5CF6', '#EC4899', '#F97316', '#84CC16'];
 
 interface ChartData {
-  name: AssetCategory;
+  name: string;
   value: number;
 }
 
@@ -40,17 +42,20 @@ const CustomTooltip: React.FC<CustomTooltipProps> = ({ active, payload, totalVal
 };
 
 const AllocationChart: React.FC<AllocationChartProps> = ({ assets, exchangeRates }) => {
+  const { data } = usePortfolio();
+  const categories = data.categoryStore.categories;
+
   const chartData = useMemo(() => {
-    const categoryTotals = new Map<AssetCategory, number>();
+    const categoryTotals = new Map<number, number>();
     assets.forEach(asset => {
       // [수정] 환율 적용하여 원화 가치로 변환
       const rate = asset.currency === Currency.KRW ? 1 : (exchangeRates[asset.currency] || 0);
       const value = asset.currentPrice * asset.quantity * rate;
-      
-      categoryTotals.set(asset.category, (categoryTotals.get(asset.category) || 0) + value);
+
+      categoryTotals.set(asset.categoryId, (categoryTotals.get(asset.categoryId) || 0) + value);
     });
-    return Array.from(categoryTotals.entries()).map(([name, value]) => ({ name, value }));
-  }, [assets, exchangeRates]);
+    return Array.from(categoryTotals.entries()).map(([id, value]) => ({ name: getCategoryName(id, categories), value }));
+  }, [assets, exchangeRates, categories]);
 
   const totalValue = useMemo(() => chartData.reduce((sum, entry) => sum + entry.value, 0), [chartData]);
 

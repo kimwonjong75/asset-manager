@@ -277,7 +277,7 @@ const PortfolioTableRow: React.FC<PortfolioTableRowProps> = ({
               exchangeRate={derivedExchangeRate}
               ticker={asset.ticker}
               exchange={asset.exchange}
-              category={asset.category}
+              categoryId={asset.categoryId}
             />
           </td>
         </tr>

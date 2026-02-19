@@ -15,7 +15,7 @@ const PortfolioView: React.FC = () => {
   const filteredAssets = useMemo(() => {
     let filtered = assets;
     if (filterCategory !== 'ALL') {
-      filtered = filtered.filter(asset => asset.category === filterCategory);
+      filtered = filtered.filter(asset => asset.categoryId === filterCategory);
     }
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase().trim();

@@ -1,7 +1,8 @@
 import React, { useMemo, useState, useEffect, Fragment, useRef } from 'react';
-import { Filter, MoreHorizontal } from 'lucide-react';
+import { Filter, MoreHorizontal, RefreshCw } from 'lucide-react';
 import Tooltip from './common/Tooltip';
-import { AssetCategory, Currency, CURRENCY_SYMBOLS, ALLOWED_CATEGORIES, WatchlistItem, ExchangeRates } from '../types';
+import { Currency, CURRENCY_SYMBOLS, WatchlistItem, ExchangeRates } from '../types';
+import { getAllowedCategories, getCategoryName, type CategoryDefinition } from '../types/category';
 import AssetTrendChart from './AssetTrendChart';
 import { useOnClickOutside } from '../hooks/useOnClickOutside';
 
@@ -13,6 +14,8 @@ interface WatchlistPageProps {
   isLoading: boolean;
   onBulkDelete?: (ids: string[]) => void;
   exchangeRates: ExchangeRates;
+  onRefresh?: () => Promise<void>;
+  categories: CategoryDefinition[];
 }
 
 // 차트 아이콘
@@ -22,8 +25,8 @@ const ChartBarIcon: React.FC = () => (
   </svg>
 );
 
-const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, onDelete, onOpenAddModal, onOpenEditModal, isLoading, onBulkDelete, exchangeRates }) => {
-  const [filterCategory, setFilterCategory] = useState<AssetCategory | 'ALL'>('ALL');
+const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, onDelete, onOpenAddModal, onOpenEditModal, isLoading, onBulkDelete, exchangeRates, onRefresh, categories }) => {
+  const [filterCategory, setFilterCategory] = useState<number | 'ALL'>('ALL');
   const [search, setSearch] = useState('');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [openFilterOptions, setOpenFilterOptions] = useState<boolean>(false);
@@ -34,13 +37,16 @@ const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, onDelete, onOp
   useOnClickOutside(menuRef, () => setOpenMenuId(null), !!openMenuId);
 
   const categoryOptions = useMemo(() => {
-    const extras = Array.from(new Set(watchlist.map(w => w.category))).filter(cat => !ALLOWED_CATEGORIES.includes(cat));
-    return [...ALLOWED_CATEGORIES, ...extras];
-  }, [watchlist]);
+    const allowed = getAllowedCategories(categories);
+    const allowedIds = new Set(allowed.map(c => c.id));
+    const watchCatIds = new Set(watchlist.map(w => w.categoryId));
+    const extras = categories.filter(c => watchCatIds.has(c.id) && !allowedIds.has(c.id));
+    return [...allowed, ...extras];
+  }, [watchlist, categories]);
 
   const filtered = useMemo(() => {
     return watchlist
-      .filter(w => (filterCategory === 'ALL' ? true : w.category === filterCategory))
+      .filter(w => (filterCategory === 'ALL' ? true : w.categoryId === filterCategory))
       .filter(w => {
         if (!search) return true;
         const s = search.toLowerCase();
@@ -48,7 +54,7 @@ const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, onDelete, onOp
       })
       .map(w => ({
         ...w,
-        dropFromHigh: w.highestPrice && w.currentPrice ? ((w.currentPrice - w.highestPrice) / w.highestPrice) * 100 : 0,
+        dropFromHigh: (w.highestPrice && w.highestPrice > 0 && w.currentPrice) ? ((w.currentPrice - w.highestPrice) / w.highestPrice) * 100 : null,
         yesterdayChange: w.previousClosePrice && w.currentPrice ? ((w.currentPrice - w.previousClosePrice) / w.previousClosePrice) * 100 : 0,
       }));
   }, [watchlist, filterCategory, search]);
@@ -110,6 +116,15 @@ const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, onDelete, onOp
           }} disabled={selectedIds.size === 0} className="border border-gray-600 text-red-400 hover:bg-gray-700 font-medium py-2 px-4 rounded-md transition duration-300 disabled:text-gray-500 disabled:border-gray-700 disabled:cursor-not-allowed">
             선택 삭제
           </button>
+          <button
+            onClick={onRefresh}
+            disabled={isLoading || !onRefresh}
+            className="border border-gray-600 text-gray-300 hover:bg-gray-700 hover:text-white font-medium py-2 px-3 rounded-md transition duration-300 disabled:text-gray-500 disabled:border-gray-700 disabled:cursor-not-allowed flex items-center gap-1"
+            title="시세 업데이트"
+          >
+            <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+            <span className="hidden sm:inline">업데이트</span>
+          </button>
           <button onClick={onOpenAddModal} className="bg-primary hover:bg-primary-dark text-white font-medium py-2 px-4 rounded-md transition duration-300 flex items-center">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -131,10 +146,10 @@ const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, onDelete, onOp
                   <div>
                     <div className="text-xs text-gray-400 mb-1">카테고리</div>
                     <div className="relative">
-                      <select value={filterCategory} onChange={e => setFilterCategory(e.target.value as AssetCategory | 'ALL')} className="bg-gray-700 border border-gray-600 rounded-md py-2 pl-3 pr-8 text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary appearance-none w-full">
+                      <select value={filterCategory} onChange={e => { const v = e.target.value; setFilterCategory(v === 'ALL' ? 'ALL' : Number(v)); }} className="bg-gray-700 border border-gray-600 rounded-md py-2 pl-3 pr-8 text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary appearance-none w-full">
                         <option value="ALL">전체</option>
                         {categoryOptions.map(cat => (
-                          <option key={cat} value={cat}>{cat}</option>
+                          <option key={cat.id} value={cat.id}>{cat.name}</option>
                         ))}
                       </select>
                       <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-400">
@@ -208,7 +223,7 @@ const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, onDelete, onOp
                             {w.name}
                           </a>
                         </Tooltip>
-                        <span className="text-xs text-gray-500">{w.ticker} | {w.exchange} | {w.category}</span>
+                        <span className="text-xs text-gray-500">{w.ticker} | {w.exchange} | {getCategoryName(w.categoryId, categories)}</span>
                       </div>
                     </td>
                     <td className="px-4 py-3 text-right">
@@ -218,7 +233,7 @@ const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, onDelete, onOp
                       )}
                     </td>
                     <td className={`px-4 py-3 text-right ${getChangeColor(w.yesterdayChange || 0)}`}>{w.yesterdayChange !== undefined ? `${(w.yesterdayChange || 0).toFixed(2)}%` : '-'}</td>
-                    <td className={`px-4 py-3 text-right ${getChangeColor(w.dropFromHigh || 0)}`}>{w.dropFromHigh !== undefined ? `${(w.dropFromHigh || 0).toFixed(2)}%` : '-'}</td>
+                    <td className={`px-4 py-3 text-right ${w.dropFromHigh != null ? getChangeColor(w.dropFromHigh) : 'text-gray-400'}`}>{w.dropFromHigh != null ? `${w.dropFromHigh.toFixed(2)}%` : '-'}</td>
                     <td className="px-4 py-3 text-center relative">
                       <div className="flex items-center justify-center gap-1">
                         <button onClick={() => handleToggleExpand(w.id)} className="p-2 text-gray-300 hover:text-white" title="차트">
@@ -253,7 +268,7 @@ const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, onDelete, onOp
                           exchangeRate={derivedExchangeRate}
                           ticker={w.ticker}
                           exchange={w.exchange}
-                          category={w.category}
+                          categoryId={w.categoryId}
                         />
                       </td>
                     </tr>

@@ -1,4 +1,5 @@
-import { PortfolioSnapshot, SellRecord, Asset, AssetSnapshot, AssetCategory, Currency } from '../types';
+import { PortfolioSnapshot, SellRecord, Asset, AssetSnapshot, Currency } from '../types';
+import { isBaseType } from '../types/category';
 import {
   fetchStockHistoricalPrices,
   fetchCryptoHistoricalPrices,
@@ -264,7 +265,7 @@ export const backfillWithRealPrices = async (
   const cryptoSymbols: string[] = [];
 
   assetInfoMap.forEach((asset) => {
-    if (asset.category === AssetCategory.CASH) return;
+    if (isBaseType(asset.categoryId, 'CASH')) return;
     const ticker = convertTickerForAPI(asset.ticker, asset.exchange, asset.category);
     if (isCryptoExchange(asset.exchange)) {
       if (!cryptoSymbols.includes(asset.ticker)) cryptoSymbols.push(asset.ticker);
@@ -318,7 +319,7 @@ export const backfillWithRealPrices = async (
     const correctAssets = (snapshotAssets: AssetSnapshot[], date: string, dayExchangeRate: number): AssetSnapshot[] => {
       return snapshotAssets.map(snapshotAsset => {
         const assetInfo = assetInfoMap.get(snapshotAsset.id);
-        if (!assetInfo || assetInfo.category === AssetCategory.CASH) {
+        if (!assetInfo || isBaseType(assetInfo.categoryId, 'CASH')) {
           return { ...snapshotAsset };
         }
 

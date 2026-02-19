@@ -471,7 +471,7 @@ class GoogleDriveService {
     const searchParams = new URLSearchParams({
       q: query,
       spaces: 'drive',
-      fields: 'files(id,name),nextPageToken',
+      fields: 'files(id,name,createdTime),nextPageToken',
       pageSize: '100',
       supportsAllDrives: 'true',
       includeItemsFromAllDrives: 'true',
@@ -578,6 +578,32 @@ class GoogleDriveService {
     }
 
     // 압축되지 않은 레거시 데이터 그대로 반환
+    return rawContent;
+  }
+  // 파일 ID로 직접 삭제
+  async deleteFileById(fileId: string): Promise<void> {
+    if (!this.accessToken) throw new Error('Not authenticated');
+    const response = await this.authenticatedFetch(
+      `https://www.googleapis.com/drive/v3/files/${fileId}?supportsAllDrives=true`,
+      { method: 'DELETE' }
+    );
+    if (!response.ok && response.status !== 404) {
+      throw new Error(`Failed to delete file (${response.status})`);
+    }
+  }
+
+  // 파일 ID로 직접 로드 (백업 복원용)
+  async loadFileById(fileId: string): Promise<string | null> {
+    if (!this.accessToken) throw new Error('Not authenticated');
+    const response = await this.authenticatedFetch(
+      `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media&supportsAllDrives=true`
+    );
+    if (!response.ok) return null;
+    const rawContent = await response.text();
+    try {
+      const decompressed = LZString.decompressFromUTF16(rawContent);
+      if (decompressed && decompressed.startsWith('{')) return decompressed;
+    } catch { /* fallback */ }
     return rawContent;
   }
 }

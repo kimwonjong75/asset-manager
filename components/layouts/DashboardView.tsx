@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
-import { AssetCategory } from '../../types';
 import { usePortfolio } from '../../contexts/PortfolioContext';
+import { getCategoryName } from '../../types/category';
 import { usePortfolioCalculator } from '../../hooks/usePortfolioCalculator';
 import { useGlobalPeriodDays } from '../../hooks/useGlobalPeriodDays';
 
@@ -41,7 +41,7 @@ const DashboardView: React.FC = () => {
       if (dashboardFilterCategory === 'ALL') {
           return assets;
       }
-      return assets.filter(asset => asset.category === dashboardFilterCategory);
+      return assets.filter(asset => asset.categoryId === dashboardFilterCategory);
   }, [assets, dashboardFilterCategory]);
 
   // Use hook for dashboard specific stats (filtered)
@@ -55,18 +55,18 @@ const DashboardView: React.FC = () => {
   // Use hook for sold stats (global)
   const soldAssetsStats = useMemo(() => calculateSoldAssetsStats(sellHistory, assets), [sellHistory, assets, calculateSoldAssetsStats]);
 
-  const profitLossChartTitle = useMemo(() => (
-      dashboardFilterCategory === 'ALL'
-      ? '손익 추이 분석'
-      : `${dashboardFilterCategory} 손익 추이 분석`
-  ), [dashboardFilterCategory]);
+  const profitLossChartTitle = useMemo(() => {
+      if (dashboardFilterCategory === 'ALL') return '손익 추이 분석';
+      const catName = getCategoryName(dashboardFilterCategory, data.categoryStore.categories);
+      return `${catName} 손익 추이 분석`;
+  }, [dashboardFilterCategory, data.categoryStore.categories]);
 
   return (
     <div className="space-y-6">
       <DashboardControls 
         assets={assets}
         filterCategory={dashboardFilterCategory}
-        onFilterChange={(cat) => setDashboardFilterCategory(cat as AssetCategory | 'ALL')}
+        onFilterChange={(cat) => setDashboardFilterCategory(cat)}
         exchangeRates={exchangeRates}
         onRatesChange={onRatesChange}
         showExchangeRateWarning={showExchangeRateWarning}

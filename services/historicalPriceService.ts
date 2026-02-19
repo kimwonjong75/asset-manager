@@ -1,7 +1,7 @@
 // services/historicalPriceService.ts
 // 과거 시세 백필(Backfill)용 API 서비스
 
-import { AssetCategory } from '../types';
+// AssetCategory import removed — category param is now optional string
 
 const API_BASE_URL = 'https://asset-manager-887842923289.asia-northeast3.run.app';
 
@@ -124,7 +124,7 @@ export async function fetchExchangeRateHistory(
 export function convertTickerForAPI(
   ticker: string,
   exchange: string,
-  category: AssetCategory
+  category?: string
 ): string {
   const t = ticker.trim().toUpperCase();
 

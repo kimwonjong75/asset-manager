@@ -1,4 +1,5 @@
 import { AssetCategory, Currency, normalizeExchange } from '../types';
+import { isBaseType } from '../types/category';
 import { AssetDataResult, PriceAPIResponse, PriceItem } from '../types/api';
 
 const STOCK_API_URL = 'https://asset-manager-887842923289.asia-northeast3.run.app';
@@ -13,7 +14,7 @@ function toNumber(v: unknown, fallback = 0): number {
 
 // 배치 조회 함수
 export async function fetchBatchAssetPrices(
-  assets: { ticker: string; exchange: string; id: string; category?: AssetCategory; currency?: Currency }[],
+  assets: { ticker: string; exchange: string; id: string; category?: AssetCategory; categoryId?: number; currency?: Currency }[],
 ): Promise<Map<string, AssetDataResult>> {
   const resultMap = new Map<string, AssetDataResult>();
   if (assets.length === 0) return resultMap;
@@ -86,7 +87,7 @@ export async function fetchBatchAssetPrices(
 
             // 통화 처리
             const currencyFromServer = String(item.currency ?? matched.currency ?? Currency.USD);
-            const keepOriginalCurrency = matched.category === AssetCategory.CRYPTOCURRENCY;
+            const keepOriginalCurrency = matched.category === AssetCategory.CRYPTOCURRENCY || (matched.categoryId != null && isBaseType(matched.categoryId, 'CRYPTOCURRENCY'));
             const currencyStr = keepOriginalCurrency ? String(matched.currency ?? currencyFromServer) : currencyFromServer;
             let currency: Currency = [Currency.KRW, Currency.USD, Currency.JPY, Currency.CNY].includes(currencyStr as Currency)
               ? (currencyStr as Currency)
@@ -151,7 +152,7 @@ export async function fetchBatchAssetPrices(
 }
 
 // 단일 조회 함수 (배치 함수 재사용)
-export async function fetchAssetData(asset: { ticker: string; exchange: string; category?: AssetCategory; currency?: Currency }): Promise<AssetDataResult> {
+export async function fetchAssetData(asset: { ticker: string; exchange: string; category?: AssetCategory; categoryId?: number; currency?: Currency }): Promise<AssetDataResult> {
     const map = await fetchBatchAssetPrices([{ ...asset, id: 'temp-id' }]);
     return map.get('temp-id') as AssetDataResult;
 }

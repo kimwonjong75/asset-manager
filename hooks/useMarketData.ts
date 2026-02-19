@@ -1,8 +1,10 @@
 import { useCallback, useState } from 'react';
-import { Asset, AssetCategory, Currency, ExchangeRates, PortfolioSnapshot, SellRecord, WatchlistItem } from '../types';
+import { Asset, Currency, ExchangeRates, PortfolioSnapshot, SellRecord, WatchlistItem } from '../types';
+import { isBaseType } from '../types/category';
 // [수정] fetchAssetData import 복구 (단일 갱신 시 필요)
 import { fetchBatchAssetPrices as fetchBatchAssetPricesNew, fetchAssetData as fetchAssetDataNew, fetchExchangeRate, fetchExchangeRateJPY, fetchCurrentExchangeRate } from '../services/priceService';
 import { fetchUpbitPricesBatch } from '../services/upbitService';
+import { fetchStockHistoricalPrices, fetchCryptoHistoricalPrices, isCryptoExchange } from '../services/historicalPriceService';
 
 interface UseMarketDataProps {
   assets: Asset[];
@@ -72,9 +74,9 @@ export const useMarketData = ({
 
     try {
         // 자산 분류
-        const cashAssets = assets.filter(a => a.category === AssetCategory.CASH);
-        const upbitAssets = assets.filter(a => a.category !== AssetCategory.CASH && shouldUseUpbitAPI(a.exchange));
-        const generalAssets = assets.filter(a => a.category !== AssetCategory.CASH && !shouldUseUpbitAPI(a.exchange));
+        const cashAssets = assets.filter(a => isBaseType(a.categoryId, 'CASH'));
+        const upbitAssets = assets.filter(a => !isBaseType(a.categoryId, 'CASH') && shouldUseUpbitAPI(a.exchange));
+        const generalAssets = assets.filter(a => !isBaseType(a.categoryId, 'CASH') && !shouldUseUpbitAPI(a.exchange));
 
         const assetsToFetch = generalAssets.map(a => ({ ticker: a.ticker, exchange: a.exchange, id: a.id, category: a.category, currency: a.currency }));
         const upbitSymbols = upbitAssets.map(a => a.ticker);
@@ -117,7 +119,7 @@ export const useMarketData = ({
         const failedIds: string[] = [];
 
         const updatedAssets = assets.map((asset) => {
-          if (asset.category === AssetCategory.CASH) {
+          if (isBaseType(asset.categoryId, 'CASH')) {
             const result = cashResults[cashAssets.findIndex(ca => ca.id === asset.id)];
             if (result && result.status === 'fulfilled') return { ...asset, currentPrice: result.value.priceKRW, previousClosePrice: result.value.priceKRW };
             return asset;
@@ -136,7 +138,7 @@ export const useMarketData = ({
 
           const priceData = batchPriceMap.get(asset.id);
           if (priceData && !priceData.isMocked) {
-             const newCurrency = (asset.category === AssetCategory.CRYPTOCURRENCY) ? asset.currency : (priceData.currency as Currency);
+             const newCurrency = isBaseType(asset.categoryId, 'CRYPTOCURRENCY') ? asset.currency : (priceData.currency as Currency);
              const newCurrentPrice = (asset.currency === Currency.KRW) ? priceData.priceKRW : priceData.priceOriginal;
              const finalHighest = fixHighestPrice(asset, newCurrentPrice, priceData.highestPrice);
 
@@ -154,13 +156,18 @@ export const useMarketData = ({
             updatedWatchlist = watchlist.map(item => {
                 if (shouldUseUpbitAPI(item.exchange)) {
                     const data = wlUpbitPriceMap.get(item.ticker.toUpperCase()) || wlUpbitPriceMap.get(`KRW-${item.ticker.toUpperCase()}`);
-                    if (data) return { ...item, currentPrice: data.trade_price, priceOriginal: data.trade_price, currency: Currency.KRW, previousClosePrice: data.prev_closing_price, changeRate: data.signed_change_rate };
+                    if (data) {
+                        const apiHigh = data.highest_52_week_price || data.trade_price;
+                        const newHighest = Math.max(item.highestPrice || 0, apiHigh, data.trade_price);
+                        return { ...item, currentPrice: data.trade_price, priceOriginal: data.trade_price, currency: Currency.KRW, previousClosePrice: data.prev_closing_price, changeRate: data.signed_change_rate, highestPrice: newHighest };
+                    }
                     return item;
                 }
                 const d = wlPriceMap.get(item.id);
                 if (d && !d.isMocked) {
                     const newCurrent = (item.currency === Currency.KRW) ? d.priceKRW : d.priceOriginal;
-                    return { ...item, currentPrice: newCurrent, priceOriginal: d.priceOriginal, currency: (item.currency || d.currency) as Currency, previousClosePrice: d.previousClosePrice, changeRate: d.changeRate, indicators: d.indicators };
+                    const newHighest = Math.max(item.highestPrice || 0, d.highestPrice || 0, newCurrent);
+                    return { ...item, currentPrice: newCurrent, priceOriginal: d.priceOriginal, currency: (item.currency || d.currency) as Currency, previousClosePrice: d.previousClosePrice, changeRate: d.changeRate, indicators: d.indicators, highestPrice: newHighest };
                 }
                 return item;
             });
@@ -193,8 +200,8 @@ export const useMarketData = ({
         // 여기서는 코드 안정성을 위해, 선택된 ID가 포함된 전체 리스트를 다시 계산하는 방식이 가장 안전함 (부분 업데이트보다)
         // 하지만 성능을 위해 필요한 부분만 fetch 하도록 구현
         
-        const generalAssets = targetAssets.filter(a => !shouldUseUpbitAPI(a.exchange) && a.category !== AssetCategory.CASH);
-        const upbitAssets = targetAssets.filter(a => shouldUseUpbitAPI(a.exchange) && a.category !== AssetCategory.CASH);
+        const generalAssets = targetAssets.filter(a => !shouldUseUpbitAPI(a.exchange) && !isBaseType(a.categoryId, 'CASH'));
+        const upbitAssets = targetAssets.filter(a => shouldUseUpbitAPI(a.exchange) && !isBaseType(a.categoryId, 'CASH'));
         
         const assetsToFetch = generalAssets.map(a => ({ ticker: a.ticker, exchange: a.exchange, id: a.id, category: a.category, currency: a.currency }));
         const upbitSymbols = upbitAssets.map(a => a.ticker);
@@ -206,7 +213,7 @@ export const useMarketData = ({
 
         const updatedAssets = assets.map(asset => {
             if (!idSet.has(asset.id)) return asset;
-            if (asset.category === AssetCategory.CASH) return asset; // 현금은 전체 갱신 때만
+            if (isBaseType(asset.categoryId, 'CASH')) return asset; // 현금은 전체 갱신 때만
 
             if (shouldUseUpbitAPI(asset.exchange)) {
                 const upbitData = upbitPriceMap.get(asset.ticker.toUpperCase()) || upbitPriceMap.get(`KRW-${asset.ticker.toUpperCase()}`);
@@ -221,7 +228,7 @@ export const useMarketData = ({
 
             const priceData = batchPriceMap.get(asset.id);
             if (priceData && !priceData.isMocked) {
-                 const newCurrency = (asset.category === AssetCategory.CRYPTOCURRENCY) ? asset.currency : (priceData.currency as Currency);
+                 const newCurrency = isBaseType(asset.categoryId, 'CRYPTOCURRENCY') ? asset.currency : (priceData.currency as Currency);
                  const newCurrentPrice = (asset.currency === Currency.KRW) ? priceData.priceKRW : priceData.priceOriginal;
                  const finalHighest = fixHighestPrice(asset, newCurrentPrice, priceData.highestPrice);
                  return { ...asset, currentPrice: newCurrentPrice, priceOriginal: priceData.priceOriginal, previousClosePrice: priceData.previousClosePrice, currency: newCurrency, highestPrice: finalHighest, changeRate: priceData.changeRate, indicators: priceData.indicators };
@@ -256,7 +263,7 @@ export const useMarketData = ({
         } else throw new Error('업비트 조회 실패');
       } else {
         const d = await fetchAssetDataNew({ ticker: target.ticker, exchange: target.exchange, category: target.category, currency: target.currency });
-        const newCurrency = (target.category === AssetCategory.CRYPTOCURRENCY) ? target.currency : (d.currency as Currency);
+        const newCurrency = isBaseType(target.categoryId, 'CRYPTOCURRENCY') ? target.currency : (d.currency as Currency);
         const newCurrentPrice = (target.currency === Currency.KRW) ? d.priceKRW : d.priceOriginal;
         const finalHighest = fixHighestPrice(target, newCurrentPrice, d.highestPrice);
         
@@ -279,21 +286,60 @@ export const useMarketData = ({
         const itemsToFetch = generalItems.map(item => ({ ticker: item.ticker, exchange: item.exchange, id: item.id, category: item.category, currency: item.currency }));
         const upbitSymbols = upbitItems.map(item => item.ticker);
 
-        const [priceMap, upbitPriceMap] = await Promise.all([
+        // 52주 최고가 계산용 1년 히스토리 병렬 fetch
+        const oneYearAgo = new Date();
+        oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+        const startDate = oneYearAgo.toISOString().slice(0, 10);
+        const endDate = new Date().toISOString().slice(0, 10);
+        const generalTickers = [...new Set(generalItems.map(item => item.ticker.toUpperCase()))];
+        const cryptoItems = upbitItems.filter(item => isCryptoExchange(item.exchange));
+        const cryptoSymbols = [...new Set(cryptoItems.map(item => item.ticker))];
+
+        const [priceMap, upbitPriceMap, stockHistory, cryptoHistory] = await Promise.all([
             itemsToFetch.length > 0 ? fetchBatchAssetPricesNew(itemsToFetch) : Promise.resolve(new Map()),
-            upbitSymbols.length > 0 ? fetchUpbitPricesBatch(upbitSymbols) : Promise.resolve(new Map())
+            upbitSymbols.length > 0 ? fetchUpbitPricesBatch(upbitSymbols) : Promise.resolve(new Map()),
+            generalTickers.length > 0 ? fetchStockHistoricalPrices(generalTickers, startDate, endDate) : Promise.resolve({}),
+            cryptoSymbols.length > 0 ? fetchCryptoHistoricalPrices(cryptoSymbols, startDate, endDate) : Promise.resolve({}),
         ]);
+
+        // 히스토리에서 52주 최고가 계산
+        const histHighMap = new Map<string, number>();
+        for (const [ticker, result] of Object.entries(stockHistory) as [string, { data?: Record<string, number> }][]) {
+            if (result?.data) {
+                const prices = Object.values(result.data).filter((v): v is number => typeof v === 'number');
+                if (prices.length > 0) {
+                    const maxPrice = Math.max(...prices);
+                    if (maxPrice > 0) histHighMap.set(ticker.toUpperCase(), maxPrice);
+                }
+            }
+        }
+        for (const [ticker, result] of Object.entries(cryptoHistory) as [string, { data?: Record<string, number> }][]) {
+            if (result?.data) {
+                const prices = Object.values(result.data).filter((v): v is number => typeof v === 'number');
+                if (prices.length > 0) {
+                    const maxPrice = Math.max(...prices);
+                    if (maxPrice > 0) histHighMap.set(ticker.toUpperCase(), maxPrice);
+                }
+            }
+        }
 
         const updated = watchlist.map(item => {
             if (shouldUseUpbitAPI(item.exchange)) {
                 const data = upbitPriceMap.get(item.ticker.toUpperCase()) || upbitPriceMap.get(`KRW-${item.ticker.toUpperCase()}`);
-                if (data) return { ...item, currentPrice: data.trade_price, priceOriginal: data.trade_price, currency: Currency.KRW, previousClosePrice: data.prev_closing_price, changeRate: data.signed_change_rate };
+                if (data) {
+                    const apiHigh = data.highest_52_week_price || data.trade_price;
+                    const histHigh = histHighMap.get(item.ticker.toUpperCase()) || 0;
+                    const newHighest = Math.max(item.highestPrice || 0, apiHigh, histHigh, data.trade_price);
+                    return { ...item, currentPrice: data.trade_price, priceOriginal: data.trade_price, currency: Currency.KRW, previousClosePrice: data.prev_closing_price, changeRate: data.signed_change_rate, highestPrice: newHighest };
+                }
                 return item;
             }
             const d = priceMap.get(item.id);
             if (d && !d.isMocked) {
                 const newCurrent = (item.currency === Currency.KRW) ? d.priceKRW : d.priceOriginal;
-                return { ...item, currentPrice: newCurrent, priceOriginal: d.priceOriginal, currency: (item.currency || d.currency) as Currency, previousClosePrice: d.previousClosePrice, changeRate: d.changeRate, indicators: d.indicators };
+                const histHigh = histHighMap.get(item.ticker.toUpperCase()) || 0;
+                const newHighest = Math.max(item.highestPrice || 0, d.highestPrice || 0, histHigh, newCurrent);
+                return { ...item, currentPrice: newCurrent, priceOriginal: d.priceOriginal, currency: (item.currency || d.currency) as Currency, previousClosePrice: d.previousClosePrice, changeRate: d.changeRate, indicators: d.indicators, highestPrice: newHighest };
             }
             return item;
         });

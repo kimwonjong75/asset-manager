@@ -9,6 +9,7 @@ import {
   convertTickerForAPI,
   isCryptoExchange,
 } from '../services/historicalPriceService';
+import { getCategoryName, DEFAULT_CATEGORIES } from '../types/category';
 import { calculateSMA, calculateRSI, getRequiredHistoryDays } from '../utils/maCalculations';
 
 /** 종목별 확장 지표 데이터 */
@@ -78,7 +79,7 @@ export function useEnrichedIndicators(assets: Asset[]): {
         const cryptoTickers: { asset: Asset; apiTicker: string }[] = [];
 
         for (const asset of assets) {
-          const apiTicker = convertTickerForAPI(asset.ticker, asset.exchange, asset.category);
+          const apiTicker = convertTickerForAPI(asset.ticker, asset.exchange, getCategoryName(asset.categoryId, DEFAULT_CATEGORIES));
           if (isCryptoExchange(asset.exchange)) {
             cryptoTickers.push({ asset, apiTicker });
           } else {

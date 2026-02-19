@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { AssetCategory } from './types';
 import Header from './components/Header';
 import EditAssetModal from './components/EditAssetModal';
 import SellAssetModal from './components/SellAssetModal';
@@ -9,7 +8,7 @@ import AddNewAssetModal from './components/AddNewAssetModal';
 import PortfolioAssistant from './components/PortfolioAssistant';
 import PeriodSelector from './components/common/PeriodSelector';
 import AlertPopup from './components/common/AlertPopup';
-import AlertSettingsPage from './components/AlertSettingsPage';
+import SettingsPage from './components/SettingsPage';
 
 // Hooks
 import { PortfolioProvider, usePortfolio } from './contexts/PortfolioContext';
@@ -163,7 +162,7 @@ const AppContent: React.FC = () => {
                 {ui.activeTab === 'analytics' && <AnalyticsView />}
                 {ui.activeTab === 'watchlist' && <WatchlistView />}
                 {ui.activeTab === 'guide' && <InvestmentGuideView />}
-                {ui.activeTab === 'settings' && <AlertSettingsPage />}
+                {ui.activeTab === 'settings' && <SettingsPage />}
               </div>
             </main>
             

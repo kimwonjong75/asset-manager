@@ -1,6 +1,8 @@
-import { Asset, PortfolioSnapshot, SellRecord, WatchlistItem, ExchangeRates, AssetCategory, Currency, BulkUploadResult, AllocationTargets } from './index';
+import { Asset, PortfolioSnapshot, SellRecord, WatchlistItem, ExchangeRates, Currency, BulkUploadResult, AllocationTargets } from './index';
 import type { AlertSettings, AlertResult } from './alertRules';
 import type { EnrichedIndicatorData } from '../hooks/useEnrichedIndicators';
+import type { BackupInfo, BackupSettings } from './backup';
+import type { CategoryStore, CategoryBaseType } from './category';
 
 export type PortfolioHistory = PortfolioSnapshot[];
 
@@ -13,6 +15,7 @@ export interface PortfolioData {
   watchlist: WatchlistItem[];
   exchangeRates: ExchangeRates;
   allocationTargets: AllocationTargets;
+  categoryStore: CategoryStore;
 }
 
 export interface PortfolioStatus {
@@ -29,8 +32,8 @@ export interface PortfolioStatus {
 export interface UIState {
   activeTab: 'dashboard' | 'portfolio' | 'analytics' | 'watchlist' | 'guide' | 'settings';
   globalPeriod: GlobalPeriod;
-  dashboardFilterCategory: AssetCategory | 'ALL';
-  filterCategory: AssetCategory | 'ALL';
+  dashboardFilterCategory: number | 'ALL';
+  filterCategory: number | 'ALL';
   filterAlerts: boolean;
   searchQuery: string;
   sellAlertDropRate: number;
@@ -55,6 +58,10 @@ export interface DerivedState {
   isEnrichedLoading: boolean;
   alertResults: AlertResult[];
   showAlertPopup: boolean;
+  // 백업
+  backupList: BackupInfo[];
+  backupSettings: BackupSettings;
+  isBackingUp: boolean;
 }
 
 export interface PortfolioActions {
@@ -124,6 +131,18 @@ export interface PortfolioActions {
   closeAddWatchItem: () => void;
   openEditWatchItem: (item: WatchlistItem) => void;
   closeEditWatchItem: () => void;
+
+  // 카테고리 관리
+  addCategory: (name: string, baseType: CategoryBaseType) => void;
+  renameCategory: (id: number, newName: string) => void;
+  deleteCategory: (id: number, reassignToId: number) => void;
+
+  // 백업
+  performBackup: () => Promise<void>;
+  loadBackupList: () => Promise<void>;
+  restoreBackup: (fileId: string) => Promise<void>;
+  deleteBackup: (fileId: string) => Promise<void>;
+  updateBackupSettings: (settings: BackupSettings) => void;
 }
 
 export interface PortfolioContextValue {

@@ -1,5 +1,6 @@
 import { GoogleGenAI } from '@google/genai';
 import { Asset, Currency, SymbolSearchResult, normalizeExchange } from '../types';
+import { isBaseType, getCategoryName, DEFAULT_CATEGORIES } from '../types/category';
 import { AssetDataResult } from '../types/api';
 import {
   fetchStockHistoricalPrices,
@@ -477,8 +478,8 @@ async function fetchTechnicalIndicators(
 
     for (const asset of assets) {
       // 현금은 기술적 분석 불필요
-      if (asset.category === '현금') continue;
-      const apiTicker = convertTickerForAPI(asset.ticker, asset.exchange, asset.category);
+      if (isBaseType(asset.categoryId, 'CASH')) continue;
+      const apiTicker = convertTickerForAPI(asset.ticker, asset.exchange, getCategoryName(asset.categoryId, DEFAULT_CATEGORIES));
       if (isCryptoExchange(asset.exchange)) {
         cryptoTickers.push({ asset, apiTicker });
       } else {
@@ -546,7 +547,7 @@ function buildPortfolioPrompt(
       name: asset.customName ?? asset.name,
       ticker: asset.ticker,
       exchange: asset.exchange,
-      category: asset.category,
+      category: getCategoryName(asset.categoryId, DEFAULT_CATEGORIES),
       quantity: asset.quantity,
       purchase_price_original: asset.purchasePrice,
       purchase_date: asset.purchaseDate,

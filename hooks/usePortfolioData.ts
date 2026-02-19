@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Asset, PortfolioSnapshot, SellRecord, WatchlistItem, ExchangeRates, AllocationTargets } from '../types';
 import { useGoogleDriveSync } from './useGoogleDriveSync';
-import { runMigrationIfNeeded } from '../utils/migrateData';
+import { runMigrationIfNeeded, migrateCategorySystem } from '../utils/migrateData';
+import { CategoryStore, DEFAULT_CATEGORY_STORE, CategoryBaseType } from '../types/category';
 import { mapToNewAssetStructure } from '../utils/portfolioCalculations';
 import { fillAllMissingDates, backfillWithRealPrices, getMissingDateRange, repairCorruptedSnapshots } from '../utils/historyUtils';
 
@@ -17,6 +18,7 @@ export const usePortfolioData = () => {
   const [exchangeRates, setExchangeRates] = useState<ExchangeRates>({ USD: 1450, JPY: 9.5 });
   const [allocationTargets, setAllocationTargets] = useState<AllocationTargets>({ weights: {} });
   const [sellAlertDropRate, setSellAlertDropRate] = useState<number>(15);
+  const [categoryStore, setCategoryStore] = useState<CategoryStore>(DEFAULT_CATEGORY_STORE);
   const [hasAutoUpdated, setHasAutoUpdated] = useState<boolean>(false);
   const [shouldAutoUpdate, setShouldAutoUpdate] = useState<boolean>(false);
   const [lastUpdateDate, setLastUpdateDate] = useState<string | null>(null);
@@ -27,7 +29,8 @@ export const usePortfolioData = () => {
     try {
       const loaded = await hookLoadFromGoogleDrive();
       if (loaded) {
-        const data = runMigrationIfNeeded(loaded);
+        const data1 = runMigrationIfNeeded(loaded);
+        const data = migrateCategorySystem(data1);
         const driveAssets = Array.isArray(data.assets) ? data.assets.map(mapToNewAssetStructure) : [];
         setAssets(driveAssets);
         
@@ -100,6 +103,13 @@ export const usePortfolioData = () => {
           setSellAlertDropRate(loaded.sellAlertDropRate);
         }
 
+        // categoryStore 로드
+        if ((data as any).categoryStore?.categories?.length) {
+          setCategoryStore((data as any).categoryStore);
+        } else {
+          setCategoryStore(DEFAULT_CATEGORY_STORE);
+        }
+
         // 마지막 업데이트 날짜 확인 및 자동 업데이트 플래그 설정
         const today = new Date().toISOString().slice(0, 10);
         const savedLastUpdate = (loaded as { lastUpdateDate?: string }).lastUpdateDate;
@@ -159,12 +169,13 @@ export const usePortfolioData = () => {
     newWatchlist: WatchlistItem[],
     newRates: ExchangeRates,
     newAllocationTargets?: AllocationTargets,
-    newSellAlertDropRate?: number
+    newSellAlertDropRate?: number,
+    newCategoryStore?: CategoryStore
   ) => {
     if (isSignedIn) {
-      hookAutoSave(newAssets, newHistory, newSells, newWatchlist, newRates, newAllocationTargets || allocationTargets, newSellAlertDropRate ?? sellAlertDropRate);
+      hookAutoSave(newAssets, newHistory, newSells, newWatchlist, newRates, newAllocationTargets || allocationTargets, newSellAlertDropRate ?? sellAlertDropRate, newCategoryStore || categoryStore);
     }
-  }, [isSignedIn, hookAutoSave, allocationTargets, sellAlertDropRate]);
+  }, [isSignedIn, hookAutoSave, allocationTargets, sellAlertDropRate, categoryStore]);
 
   const handleSignOut = useCallback(() => {
     hookSignOut();
@@ -174,6 +185,7 @@ export const usePortfolioData = () => {
     setWatchlist([]);
     setAllocationTargets({ weights: {} });
     setSellAlertDropRate(15);
+    setCategoryStore(DEFAULT_CATEGORY_STORE);
     setHasAutoUpdated(false);
   }, [hookSignOut]);
 
@@ -206,6 +218,7 @@ export const usePortfolioData = () => {
     exchangeRates, setExchangeRates,
     allocationTargets, setAllocationTargets,
     sellAlertDropRate, setSellAlertDropRate,
+    categoryStore, setCategoryStore,
     isSignedIn, googleUser,
     isInitializing,
     isLoading: isInitializing, // Alias for legacy support

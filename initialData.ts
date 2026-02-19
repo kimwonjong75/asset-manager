@@ -4,6 +4,7 @@ export const initialAssets: Asset[] = [
   {
     id: '1',
     category: AssetCategory.US_STOCK,
+    categoryId: 2,
     ticker: 'AAPL',
     exchange: 'NASDAQ',
     name: 'Apple Inc.',
@@ -19,6 +20,7 @@ export const initialAssets: Asset[] = [
   {
     id: '2',
     category: AssetCategory.KOREAN_STOCK,
+    categoryId: 1,
     ticker: '005930',
     exchange: 'KRX (코스피/코스닥)',
     name: '삼성전자',
@@ -34,6 +36,7 @@ export const initialAssets: Asset[] = [
   {
     id: '3',
     category: AssetCategory.CRYPTOCURRENCY,
+    categoryId: 8,
     ticker: 'BTC',
     exchange: '주요 거래소 (종합)',
     name: '비트코인',
@@ -49,6 +52,7 @@ export const initialAssets: Asset[] = [
    {
     id: '4',
     category: AssetCategory.PHYSICAL_ASSET,
+    categoryId: 7,
     ticker: 'KR7079120004',
     exchange: 'KRX 금시장',
     name: 'KRX 금현물',

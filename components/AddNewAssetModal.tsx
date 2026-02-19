@@ -1,13 +1,15 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Asset, AssetCategory, NewAssetForm, EXCHANGE_MAP, Currency, SymbolSearchResult, ALL_EXCHANGES, inferCategoryFromExchange, ALLOWED_CATEGORIES, normalizeExchange } from '../types';
+import { Currency, SymbolSearchResult, normalizeExchange } from '../types';
+import { getAllowedCategories, inferCategoryIdFromExchange, getCategoryBaseType } from '../types/category';
 import { searchSymbols } from '../services/geminiService';
 import { usePortfolio } from '../contexts/PortfolioContext';
 
 const AddNewAssetModal: React.FC = () => {
   const { modal, actions, status, data } = usePortfolio();
+  const categories = data.categoryStore.categories;
   const isOpen = modal.addAssetOpen;
   const onClose = actions.closeAddAsset;
-  const onAddAsset = actions.addAsset as unknown as (asset: NewAssetForm & { name?: string }) => void;
+  const onAddAsset = actions.addAsset as unknown as (asset: any) => void;
   const isLoading = status.isLoading;
   const assets = data.assets;
   const [ticker, setTicker] = useState('');
@@ -22,9 +24,8 @@ const AddNewAssetModal: React.FC = () => {
   const [quantity, setQuantity] = useState('');
   const [purchasePrice, setPurchasePrice] = useState('');
   const [purchaseDate, setPurchaseDate] = useState(new Date().toISOString().slice(0, 10));
-  const [category, setCategory] = useState<AssetCategory>(AssetCategory.US_STOCK);
-  const initialExchange = EXCHANGE_MAP[AssetCategory.US_STOCK]?.[0] || ALL_EXCHANGES[0] || '';
-  const [exchange, setExchange] = useState<string>(initialExchange);
+  const [category, setCategory] = useState<number>(2);
+  const [exchange, setExchange] = useState<string>('NASDAQ');
   const [currency, setCurrency] = useState<Currency>(Currency.USD);
 
   const clearForm = useCallback(() => {
@@ -34,12 +35,12 @@ const AddNewAssetModal: React.FC = () => {
     setQuantity('');
     setPurchasePrice('');
     setSearchResults([]);
-    setCategory(AssetCategory.US_STOCK);
-    setExchange(initialExchange);
+    setCategory(2);
+    setExchange('NASDAQ');
     setPurchaseDate(new Date().toISOString().slice(0, 10));
     setCurrency(Currency.USD);
     setDuplicateError(null);
-  }, [initialExchange]);
+  }, []);
 
   useEffect(() => {
     if (!isOpen) {
@@ -107,21 +108,18 @@ const AddNewAssetModal: React.FC = () => {
     setExchange(normalizeExchange(result.exchange));
 
     // 거래소에서 자산구분 자동 추론
-    const inferredCategory = inferCategoryFromExchange(normalizeExchange(result.exchange));
-    setCategory(inferredCategory);
+    const inferredCategoryId = inferCategoryIdFromExchange(normalizeExchange(result.exchange), categories);
+    setCategory(inferredCategoryId);
     
     setSearchResults([]);
   };
 
   useEffect(() => {
-    if (category === AssetCategory.KOREAN_STOCK) {
-      setExchange('KRX (코스피/코스닥)');
-    } else if (category === AssetCategory.US_STOCK) {
-      setExchange('NASDAQ');
-    } else if (category === AssetCategory.CRYPTOCURRENCY) {
-      setExchange('주요 거래소 (종합)');
-    }
-  }, [category]);
+    const baseType = getCategoryBaseType(category, categories);
+    if (baseType === 'KOREAN_STOCK') setExchange('KRX (코스피/코스닥)');
+    else if (baseType === 'US_STOCK') setExchange('NASDAQ');
+    else if (baseType === 'CRYPTOCURRENCY') setExchange('주요 거래소 (종합)');
+  }, [category, categories]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -147,7 +145,7 @@ const AddNewAssetModal: React.FC = () => {
       quantity: parseFloat(quantity),
       purchasePrice: parseFloat(purchasePrice),
       purchaseDate,
-      category,
+      categoryId: category,
       exchange,
       currency,
       name: selectedName || undefined, // [추가] 검색에서 선택한 이름 전달
@@ -177,12 +175,12 @@ const AddNewAssetModal: React.FC = () => {
                 <select 
                   id="category" 
                   value={category} 
-                  onChange={(e) => setCategory(e.target.value as AssetCategory)} 
+                  onChange={(e) => setCategory(Number(e.target.value))}
                   className={inputClasses} 
                   title="자산의 구분을 선택하세요. 거래소 선택 시 자동으로 설정되며 수동으로 변경할 수 있습니다."
                 >
-                  {ALLOWED_CATEGORIES.map((cat) => (
-                    <option key={cat} value={cat}>{cat}</option>
+                  {getAllowedCategories(categories).map((cat) => (
+                    <option key={cat.id} value={cat.id}>{cat.name}</option>
                   ))}
                 </select>
             </div>

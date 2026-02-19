@@ -16,6 +16,8 @@ const WatchlistView: React.FC = () => {
         isLoading={status.isLoading}
         onBulkDelete={actions.bulkDeleteWatchItems}
         exchangeRates={data.exchangeRates}
+        onRefresh={actions.refreshWatchlistPrices}
+        categories={data.categoryStore.categories}
       />
       <WatchlistAddModal />
       <WatchlistEditModal />

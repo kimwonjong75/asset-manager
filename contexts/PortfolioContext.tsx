@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useState, useMemo, useEffect } from 'react';
 import {
   Asset,
-  AssetCategory,
   Currency,
   ExchangeRates,
   AllocationTargets,
@@ -17,6 +16,9 @@ import { usePortfolioExport } from '../hooks/usePortfolioExport';
 import { useEnrichedIndicators } from '../hooks/useEnrichedIndicators';
 import { useAutoAlert } from '../hooks/useAutoAlert';
 import { usePortfolioCalculator } from '../hooks/usePortfolioCalculator';
+import { useBackup } from '../hooks/useBackup';
+import { CategoryBaseType } from '../types/category';
+import type { CategoryStore } from '../types/category';
 
 const PortfolioContext = createContext<PortfolioContextValue | null>(null);
 
@@ -31,6 +33,7 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     allocationTargets, setAllocationTargets,
     sellAlertDropRate: persistedSellAlertDropRate,
     setSellAlertDropRate: setPersistedSellAlertDropRate,
+    categoryStore, setCategoryStore,
     isSignedIn, googleUser,
     isLoading: isAuthLoading,
     error, setError,
@@ -62,6 +65,9 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     setSuccessMessage,
   });
 
+  // 백업 훅
+  const backup = useBackup({ isSignedIn });
+
   // 앱 시작 시 자동 업데이트 (오늘 아직 업데이트 안 했으면)
   useEffect(() => {
     if (shouldAutoUpdate && assets.length > 0 && !hasAutoUpdated && !isMarketLoading) {
@@ -70,8 +76,10 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       setShouldAutoUpdate(false);
       // 자동 업데이트 실행 (isAutoUpdate=true로 호출)
       handleRefreshAllPrices(true);
+      // 시세 갱신 시점에 1일 1회 자동 백업
+      backup.performBackup();
     }
-  }, [shouldAutoUpdate, assets.length, hasAutoUpdated, isMarketLoading, handleRefreshAllPrices, setHasAutoUpdated, setShouldAutoUpdate]);
+  }, [shouldAutoUpdate, assets.length, hasAutoUpdated, isMarketLoading, handleRefreshAllPrices, setHasAutoUpdated, setShouldAutoUpdate, backup.performBackup]);
 
   // 자산/관심종목 액션 훅
   const {
@@ -115,8 +123,8 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     try { localStorage.setItem('asset-manager-global-period', p); } catch { /* ignore */ }
   };
   const [activeTab, setActiveTab] = useState<UIState['activeTab']>('dashboard');
-  const [dashboardFilterCategory, setDashboardFilterCategory] = useState<AssetCategory | 'ALL'>('ALL');
-  const [filterCategory, setFilterCategory] = useState<AssetCategory | 'ALL'>('ALL');
+  const [dashboardFilterCategory, setDashboardFilterCategory] = useState<number | 'ALL'>('ALL');
+  const [filterCategory, setFilterCategory] = useState<number | 'ALL'>('ALL');
   const sellAlertDropRate = persistedSellAlertDropRate;
   const [filterAlerts, setFilterAlerts] = useState(false);
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -211,6 +219,7 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       watchlist,
       exchangeRates,
       allocationTargets,
+      categoryStore,
     },
     status: {
       isLoading,
@@ -249,6 +258,9 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       isEnrichedLoading,
       alertResults,
       showAlertPopup,
+      backupList: backup.backupList,
+      backupSettings: backup.backupSettings,
+      isBackingUp: backup.isBackingUp,
     },
     actions: {
       saveToDrive,
@@ -315,6 +327,73 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       closeAddWatchItem: () => setIsAddWatchItemOpen(false),
       openEditWatchItem: (item: WatchlistItem) => setEditingWatchItem(item),
       closeEditWatchItem: () => setEditingWatchItem(null),
+      // 카테고리 관리
+      addCategory: (name: string, baseType: CategoryBaseType) => {
+        const newCat = {
+          id: categoryStore.nextId,
+          name,
+          baseType,
+          isDefault: false,
+          sortOrder: categoryStore.categories.length + 1,
+        };
+        const updated: CategoryStore = {
+          categories: [...categoryStore.categories, newCat],
+          nextId: categoryStore.nextId + 1,
+        };
+        setCategoryStore(updated);
+        triggerAutoSave(assets, portfolioHistory, sellHistory, watchlist, exchangeRates, undefined, undefined, updated);
+      },
+      renameCategory: (id: number, newName: string) => {
+        const updated: CategoryStore = {
+          ...categoryStore,
+          categories: categoryStore.categories.map(c =>
+            c.id === id ? { ...c, name: newName } : c
+          ),
+        };
+        setCategoryStore(updated);
+        triggerAutoSave(assets, portfolioHistory, sellHistory, watchlist, exchangeRates, undefined, undefined, updated);
+      },
+      deleteCategory: (id: number, reassignToId: number) => {
+        // 자산/관심종목/매도내역 재할당
+        const newAssets = assets.map(a => a.categoryId === id ? { ...a, categoryId: reassignToId } : a);
+        const newWatchlist = watchlist.map(w => w.categoryId === id ? { ...w, categoryId: reassignToId } : w);
+        const newSellHistory = sellHistory.map(s => s.categoryId === id ? { ...s, categoryId: reassignToId } : s);
+        const updated: CategoryStore = {
+          ...categoryStore,
+          categories: categoryStore.categories.filter(c => c.id !== id),
+        };
+        setAssets(newAssets);
+        setWatchlist(newWatchlist);
+        setSellHistory(newSellHistory);
+        setCategoryStore(updated);
+        triggerAutoSave(newAssets, portfolioHistory, newSellHistory, newWatchlist, exchangeRates, undefined, undefined, updated);
+      },
+      // 백업
+      performBackup: () => backup.performBackup(),
+      loadBackupList: backup.loadBackupList,
+      restoreBackup: async (fileId: string) => {
+        const content = await backup.restoreBackup(fileId);
+        if (content) {
+          try {
+            const parsed = JSON.parse(content);
+            updateAllData(
+              Array.isArray(parsed.assets) ? parsed.assets : [],
+              Array.isArray(parsed.portfolioHistory) ? parsed.portfolioHistory : [],
+              Array.isArray(parsed.sellHistory) ? parsed.sellHistory : [],
+              Array.isArray(parsed.watchlist) ? parsed.watchlist : [],
+              parsed.exchangeRates,
+              parsed.allocationTargets,
+            );
+            setSuccessMessage('백업에서 데이터가 복원되었습니다.');
+            setTimeout(() => setSuccessMessage(null), 3000);
+          } catch {
+            setError('백업 데이터 파싱에 실패했습니다.');
+            setTimeout(() => setError(null), 3000);
+          }
+        }
+      },
+      deleteBackup: backup.deleteBackup,
+      updateBackupSettings: backup.updateSettings,
     },
   };
 

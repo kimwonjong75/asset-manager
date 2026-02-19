@@ -1,12 +1,14 @@
 import { useMemo, useState } from 'react';
-import { Asset, ExchangeRates, ALLOWED_CATEGORIES, AssetCategory } from '../../types';
+import { Asset, ExchangeRates } from '../../types';
 import { Currency } from '../../types';
+import { getAllowedCategories, type CategoryDefinition } from '../../types/category';
 import { PortfolioTableProps, SortKey, SortDirection, AssetMetrics, EnrichedAsset } from '../../types/ui';
 import { usePortfolioCalculator } from '../../hooks/usePortfolioCalculator';
 
 interface UsePortfolioDataProps {
   assets: Asset[];
   exchangeRates: ExchangeRates;
+  categories: CategoryDefinition[];
   filterAlerts: boolean;
   sellAlertDropRate: number;
   showFailedOnly: boolean;
@@ -16,6 +18,7 @@ interface UsePortfolioDataProps {
 export const usePortfolioData = ({
   assets,
   exchangeRates,
+  categories,
   filterAlerts,
   sellAlertDropRate,
   showFailedOnly,
@@ -30,11 +33,12 @@ export const usePortfolioData = ({
   }, [assets, exchangeRates, calculatePortfolioStats]);
 
   const categoryOptions = useMemo(() => {
-    const extras = Array.from(new Set(assets.map(asset => asset.category))).filter(
-      (cat) => !ALLOWED_CATEGORIES.includes(cat) && cat !== AssetCategory.FOREIGN_STOCK
-    );
-    return [...ALLOWED_CATEGORIES, ...extras];
-  }, [assets]);
+    const allowed = getAllowedCategories(categories);
+    const allowedIds = new Set(allowed.map(c => c.id));
+    const assetCatIds = new Set(assets.map(a => a.categoryId));
+    const extras = categories.filter(c => assetCatIds.has(c.id) && !allowedIds.has(c.id));
+    return [...allowed, ...extras];
+  }, [assets, categories]);
 
   const enrichedAndSortedAssets = useMemo(() => {
     let enriched: EnrichedAsset[] = assets.map(asset => {

@@ -1,4 +1,4 @@
-import { Asset, PortfolioSnapshot, AssetCategory, ExchangeRates } from './index';
+import { Asset, PortfolioSnapshot, ExchangeRates } from './index';
 
 export interface PortfolioTableProps {
   assets: Asset[];
@@ -12,8 +12,8 @@ export interface PortfolioTableProps {
   isLoading: boolean;
   sellAlertDropRate: number;
   onSellAlertDropRateChange?: (value: number) => void;
-  filterCategory: AssetCategory | 'ALL';
-  onFilterChange: (category: AssetCategory | 'ALL') => void;
+  filterCategory: number | 'ALL';
+  onFilterChange: (category: number | 'ALL') => void;
   filterAlerts: boolean;
   onFilterAlertsChange: (isActive: boolean) => void;
   searchQuery?: string;

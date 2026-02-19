@@ -26,7 +26,8 @@ const RebalancingTable: React.FC<RebalancingTableProps> = ({ assets, exchangeRat
       assets,
       exchangeRates,
       allocationTargets: data.allocationTargets,
-      onSave: actions.updateAllocationTargets
+      onSave: actions.updateAllocationTargets,
+      categories: data.categoryStore.categories
   });
 
   // --- Helpers ---

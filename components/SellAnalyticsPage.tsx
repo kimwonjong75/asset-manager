@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
-import { Asset, Currency, SellRecord, AssetCategory, ALLOWED_CATEGORIES } from '../types';
+import { Asset, Currency, SellRecord } from '../types';
+import { getAllowedCategories, type CategoryDefinition } from '../types/category';
 import StatCard from './StatCard';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar, Cell } from 'recharts';
 
@@ -8,17 +9,18 @@ interface SellAnalyticsPageProps {
   sellHistory: SellRecord[];
   periodStartDate: string;
   periodEndDate: string;
+  categories: CategoryDefinition[];
 }
 
 type Grouping = 'daily' | 'weekly' | 'monthly' | 'quarterly';
 
-const SellAnalyticsPage: React.FC<SellAnalyticsPageProps> = ({ assets, sellHistory, periodStartDate, periodEndDate }) => {
+const SellAnalyticsPage: React.FC<SellAnalyticsPageProps> = ({ assets, sellHistory, periodStartDate, periodEndDate, categories }) => {
   const [grouping, setGrouping] = useState<Grouping>('monthly');
   const [search, setSearch] = useState<string>('');
-  const [category, setCategory] = useState<AssetCategory | 'ALL'>('ALL');
+  const [category, setCategory] = useState<number | 'ALL'>('ALL');
 
   const [pendingSearch, setPendingSearch] = useState<string>('');
-  const [pendingCategory, setPendingCategory] = useState<AssetCategory | 'ALL'>('ALL');
+  const [pendingCategory, setPendingCategory] = useState<number | 'ALL'>('ALL');
 
   const allSellRecords: SellRecord[] = useMemo(() => {
     const sellHistoryIds = new Set(sellHistory.map(r => r.id));
@@ -31,7 +33,7 @@ const SellAnalyticsPage: React.FC<SellAnalyticsPageProps> = ({ assets, sellHisto
               assetId: a.id,
               ticker: a.ticker,
               name: a.name,
-              category: a.category,
+              categoryId: a.categoryId,
               ...t,
             });
           }
@@ -47,7 +49,7 @@ const SellAnalyticsPage: React.FC<SellAnalyticsPageProps> = ({ assets, sellHisto
       const inStart = !periodStartDate || d >= periodStartDate;
       const inEnd = !periodEndDate || d <= periodEndDate;
       const inSearch = !search || r.name.toLowerCase().includes(search.toLowerCase()) || r.ticker.toLowerCase().includes(search.toLowerCase());
-      const inCategory = category === 'ALL' || r.category === category;
+      const inCategory = category === 'ALL' || r.categoryId === category;
       return inStart && inEnd && inSearch && inCategory;
     });
   }, [allSellRecords, periodStartDate, periodEndDate, search, category]);
@@ -175,10 +177,10 @@ const SellAnalyticsPage: React.FC<SellAnalyticsPageProps> = ({ assets, sellHisto
             </div>
           </div>
           <div className="relative">
-            <select value={pendingCategory} onChange={e => setPendingCategory(e.target.value as AssetCategory | 'ALL')} className="bg-gray-700 border border-gray-600 rounded-md py-2 pl-3 pr-8 text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary appearance-none">
+            <select value={pendingCategory} onChange={e => { const v = e.target.value; setPendingCategory(v === 'ALL' ? 'ALL' : Number(v)); }} className="bg-gray-700 border border-gray-600 rounded-md py-2 pl-3 pr-8 text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary appearance-none">
               <option value="ALL">전체 카테고리</option>
-              {ALLOWED_CATEGORIES.map(cat => (
-                <option key={cat} value={cat}>{cat}</option>
+              {getAllowedCategories(categories).map(cat => (
+                <option key={cat.id} value={cat.id}>{cat.name}</option>
               ))}
             </select>
             <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-400">

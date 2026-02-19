@@ -2,7 +2,6 @@
 // 차트용 과거 시세 데이터 fetching hook (종가 기반)
 
 import { useState, useEffect, useRef } from 'react';
-import { AssetCategory } from '../types';
 import {
   HistoricalPriceData,
   fetchStockHistoricalPrices,
@@ -15,7 +14,7 @@ import { getRequiredHistoryDays } from '../utils/maCalculations';
 interface UseHistoricalPriceDataProps {
   ticker: string;
   exchange: string;
-  category: AssetCategory;
+  category?: string;
   isExpanded: boolean;
   maxMAPeriod: number;
   displayDays?: number | null; // 글로벌 기간 (null = ALL)

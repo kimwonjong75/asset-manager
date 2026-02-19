@@ -1,5 +1,7 @@
 import React, { useMemo } from 'react';
-import { Asset, AssetCategory, Currency, ExchangeRates } from '../../types';
+import { Asset, Currency, ExchangeRates } from '../../types';
+import { getCategoryName } from '../../types/category';
+import { usePortfolio } from '../../contexts/PortfolioContext';
 
 interface CategorySummaryTableProps {
     assets: Asset[];
@@ -8,7 +10,7 @@ interface CategorySummaryTableProps {
 }
 
 interface SummaryData {
-    category: AssetCategory;
+    category: string;
     totalValue: number;
     totalProfitLoss: number;
     totalReturn: number;
@@ -16,14 +18,17 @@ interface SummaryData {
 }
 
 const CategorySummaryTable: React.FC<CategorySummaryTableProps> = ({ assets, totalPortfolioValue, exchangeRates }) => {
+    const { data: portfolioData } = usePortfolio();
+    const categories = portfolioData.categoryStore.categories;
+
     const summaryData = useMemo((): SummaryData[] => {
-        const categoryMap = new Map<AssetCategory, { totalValue: number; totalPurchaseValue: number }>();
+        const categoryMap = new Map<number, { totalValue: number; totalPurchaseValue: number }>();
 
         assets.forEach(asset => {
-            if (!categoryMap.has(asset.category)) {
-                categoryMap.set(asset.category, { totalValue: 0, totalPurchaseValue: 0 });
+            if (!categoryMap.has(asset.categoryId)) {
+                categoryMap.set(asset.categoryId, { totalValue: 0, totalPurchaseValue: 0 });
             }
-            const data = categoryMap.get(asset.category)!;
+            const data = categoryMap.get(asset.categoryId)!;
 
             // [수정] 현재가 환율 적용
             const rate = asset.currency === Currency.KRW ? 1 : (exchangeRates[asset.currency] || 0);
@@ -47,22 +52,22 @@ const CategorySummaryTable: React.FC<CategorySummaryTableProps> = ({ assets, tot
         });
 
         const result: SummaryData[] = [];
-        for (const [category, data] of categoryMap.entries()) {
+        for (const [categoryId, data] of categoryMap.entries()) {
             const totalProfitLoss = data.totalValue - data.totalPurchaseValue;
             const totalReturn = data.totalPurchaseValue === 0 ? 0 : (totalProfitLoss / data.totalPurchaseValue) * 100;
             const allocation = totalPortfolioValue > 0 ? (data.totalValue / totalPortfolioValue) * 100 : 0;
             result.push({
-                category,
+                category: getCategoryName(categoryId, categories),
                 totalValue: data.totalValue,
                 totalProfitLoss,
                 totalReturn,
                 allocation,
             });
         }
-        
+
         return result.sort((a, b) => b.totalValue - a.totalValue);
 
-    }, [assets, totalPortfolioValue, exchangeRates]);
+    }, [assets, totalPortfolioValue, exchangeRates, categories]);
 
     const formatKRW = (num: number) => {
         return new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW', maximumFractionDigits: 0 }).format(num);

@@ -119,7 +119,7 @@ const PortfolioMobileCard: React.FC<PortfolioMobileCardProps> = ({
             exchangeRate={derivedExchangeRate}
             ticker={asset.ticker}
             exchange={asset.exchange}
-            category={asset.category}
+            categoryId={asset.categoryId}
           />
         </div>
       )}

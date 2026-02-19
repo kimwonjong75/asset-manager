@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react';
-import { Asset, AssetCategory, BulkUploadResult, Currency, ExchangeRates, NewAssetForm, PortfolioSnapshot, SellRecord, WatchlistItem, ALLOWED_CATEGORIES, normalizeExchange } from '../types';
+import { Asset, AssetCategory, BulkUploadResult, Currency, ExchangeRates, NewAssetForm, PortfolioSnapshot, SellRecord, WatchlistItem, normalizeExchange } from '../types';
+import { isBaseType, DEFAULT_CATEGORIES, getCategoryIdByName } from '../types/category';
 import { fetchAssetData as fetchAssetDataNew, fetchExchangeRate, fetchExchangeRateJPY, fetchHistoricalExchangeRate, fetchCurrentExchangeRate } from '../services/priceService';
 
 interface UseAssetActionsProps {
@@ -47,7 +48,7 @@ export const useAssetActions = ({
     setError(null);
     try {
       let newAsset: Omit<Asset, 'id'>;
-      if (newAssetData.category === AssetCategory.CASH) {
+      if (isBaseType(newAssetData.categoryId, 'CASH')) {
         const [purchaseExchangeRate, currentExchangeRate] = await Promise.all([
           fetchHistoricalExchangeRate(newAssetData.purchaseDate, newAssetData.currency, Currency.KRW),
           (newAssetData.currency === Currency.USD 
@@ -137,7 +138,7 @@ export const useAssetActions = ({
     try {
       let finalAsset = { ...updatedAsset };
       
-      if (updatedAsset.category === AssetCategory.CASH) {
+      if (isBaseType(updatedAsset.categoryId, 'CASH')) {
           const dateOrCurrencyChanged = originalAsset.purchaseDate !== updatedAsset.purchaseDate ||
                                       originalAsset.currency !== updatedAsset.currency;
 
@@ -266,6 +267,7 @@ export const useAssetActions = ({
         ticker: asset.ticker,
         name: asset.customName?.trim() || asset.name,
         category: asset.category,
+        categoryId: asset.categoryId,
         originalPurchasePrice: asset.purchasePrice,
         originalPurchaseExchangeRate: asset.purchaseExchangeRate,
         originalCurrency: asset.currency,
@@ -440,7 +442,8 @@ export const useAssetActions = ({
                         return { error: '필수 필드 누락', ticker: ticker || '알 수 없음' };
                     }
 
-                    if (!ALLOWED_CATEGORIES.includes(categoryStr as AssetCategory)) {
+                    const allCatNames = DEFAULT_CATEGORIES.map(c => c.name);
+                    if (!allCatNames.includes(categoryStr)) {
                         return { error: `유효하지 않은 카테고리: ${categoryStr}`, ticker };
                     }
 
@@ -448,6 +451,7 @@ export const useAssetActions = ({
                         return { error: `유효하지 않은 통화: ${currencyStr}`, ticker };
                     }
                     
+                    const catId = getCategoryIdByName(categoryStr, DEFAULT_CATEGORIES) ?? 4; // fallback: 기타해외주식
                     const form: NewAssetForm & { sellAlertDropRate?: number } = {
                         ticker,
                         exchange,
@@ -455,6 +459,7 @@ export const useAssetActions = ({
                         purchasePrice: parseFloat(priceStr),
                         purchaseDate: dateStr,
                         category: categoryStr as AssetCategory,
+                        categoryId: catId,
                         currency: currencyStr as Currency,
                     };
 
@@ -597,6 +602,7 @@ export const useAssetActions = ({
             exchange: a.exchange,
             name: a.customName?.trim() || a.name,
             category: a.category,
+            categoryId: a.categoryId,
           });
         }
       });

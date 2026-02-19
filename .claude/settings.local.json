@@ -12,7 +12,13 @@
       "Bash(python3:*)",
       "Bash(npm install:*)",
       "Bash(tree:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(wc:*)",
+      "Bash(ls:*)",
+      "Bash(node:*)",
+      "Bash(kill:*)",
+      "Bash(tee:*)",
+      "Bash(echo:*)"
     ],
     "additionalDirectories": [
       "C:\\Users\\beari\\Downloads"

@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { AssetCategory, WatchlistItem, ALLOWED_CATEGORIES, inferCategoryFromExchange, normalizeExchange } from '../types';
+import { WatchlistItem, normalizeExchange } from '../types';
+import { getAllowedCategories, inferCategoryIdFromExchange } from '../types/category';
 import { searchSymbols } from '../services/geminiService';
 import { usePortfolio } from '../contexts/PortfolioContext';
 
 const WatchlistEditModal: React.FC = () => {
-  const { modal, actions } = usePortfolio();
+  const { modal, actions, data } = usePortfolio();
+  const categories = data.categoryStore.categories;
   const item = modal.editingWatchItem;
   const isOpen = !!item;
   const onClose = actions.closeEditWatchItem;
@@ -12,7 +14,7 @@ const WatchlistEditModal: React.FC = () => {
   const [ticker, setTicker] = useState('');
   const [exchange, setExchange] = useState('');
   const [name, setName] = useState('');
-  const [category, setCategory] = useState<AssetCategory>(AssetCategory.US_STOCK);
+  const [category, setCategory] = useState<number>(2);
   const [notes, setNotes] = useState('');
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -24,7 +26,7 @@ const WatchlistEditModal: React.FC = () => {
       setTicker(item.ticker);
       setExchange(item.exchange);
       setName(item.name);
-      setCategory(item.category);
+      setCategory(item.categoryId);
       setNotes(item.notes || '');
       setSearchQuery('');
       setSearchResults([]);
@@ -53,13 +55,13 @@ const WatchlistEditModal: React.FC = () => {
 
   const applySymbol = (r: { ticker: string; name: string; exchange: string }) => {
     const ex = normalizeExchange(r.exchange);
-    const cat = inferCategoryFromExchange(ex);
+    const catId = inferCategoryIdFromExchange(ex, categories);
     const ok = window.confirm(`티커를 '${ticker || '(비어있음)'}'에서 '${r.ticker}'로 변경하시겠습니까?`);
     if (ok) {
       setTicker(r.ticker);
       setName(r.name);
       setExchange(ex);
-      setCategory(cat);
+      setCategory(catId);
     }
     setSearchQuery('');
     setSearchResults([]);
@@ -74,7 +76,7 @@ const WatchlistEditModal: React.FC = () => {
       ticker,
       exchange,
       name,
-      category,
+      categoryId: category,
       notes: notes || undefined,
     };
     actions.updateWatchItem(updated);
@@ -105,9 +107,9 @@ const WatchlistEditModal: React.FC = () => {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className={labelClasses}>자산 구분</label>
-            <select value={category} onChange={(e) => setCategory(e.target.value as AssetCategory)} className={inputClasses}>
-              {ALLOWED_CATEGORIES.map((cat) => (
-                <option key={cat} value={cat}>{cat}</option>
+            <select value={category} onChange={(e) => setCategory(Number(e.target.value))} className={inputClasses}>
+              {getAllowedCategories(categories).map((cat) => (
+                <option key={cat.id} value={cat.id}>{cat.name}</option>
               ))}
             </select>
           </div>

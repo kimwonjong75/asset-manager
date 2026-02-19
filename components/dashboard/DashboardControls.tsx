@@ -1,12 +1,14 @@
 import React, { useMemo } from 'react';
-import { Asset, AssetCategory, ALLOWED_CATEGORIES, ExchangeRates } from '../../types';
+import { Asset, ExchangeRates } from '../../types';
+import { getAllowedCategories } from '../../types/category';
+import { usePortfolio } from '../../contexts/PortfolioContext';
 import ExchangeRateInput from '../ExchangeRateInput';
 import StatCard from '../StatCard';
 
 interface DashboardControlsProps {
     assets: Asset[];
-    filterCategory: AssetCategory | 'ALL';
-    onFilterChange: (category: AssetCategory | 'ALL') => void;
+    filterCategory: number | 'ALL';
+    onFilterChange: (category: number | 'ALL') => void;
     exchangeRates: ExchangeRates;
     onRatesChange: (rates: ExchangeRates) => void;
     showExchangeRateWarning: boolean;
@@ -24,12 +26,16 @@ const DashboardControls: React.FC<DashboardControlsProps> = ({
     alertCount,
     onAlertClick
 }) => {
+    const { data } = usePortfolio();
+    const cats = data.categoryStore.categories;
+
     const categoryOptions = useMemo(() => {
-        const extras = Array.from(new Set(assets.map(asset => asset.category))).filter(
-            (cat) => !ALLOWED_CATEGORIES.includes(cat)
-        );
-        return [...ALLOWED_CATEGORIES, ...extras];
-    }, [assets]);
+        const allowed = getAllowedCategories(cats);
+        const assetCatIds = new Set(assets.map(a => a.categoryId));
+        const allowedIds = new Set(allowed.map(c => c.id));
+        const extras = cats.filter(c => assetCatIds.has(c.id) && !allowedIds.has(c.id));
+        return [...allowed, ...extras];
+    }, [assets, cats]);
 
     return (
         <div className="bg-gray-800 p-4 rounded-lg shadow-lg flex items-center justify-between flex-wrap gap-4">
@@ -41,12 +47,12 @@ const DashboardControls: React.FC<DashboardControlsProps> = ({
                     <select
                         id="dashboard-filter"
                         value={filterCategory}
-                        onChange={(e) => onFilterChange(e.target.value as AssetCategory | 'ALL')}
+                        onChange={(e) => { const v = e.target.value; onFilterChange(v === 'ALL' ? 'ALL' : Number(v)); }}
                         className="bg-gray-700 border border-gray-600 rounded-md py-2 pl-3 pr-8 text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent appearance-none"
                     >
                         <option value="ALL">전체 포트폴리오</option>
                         {categoryOptions.map((cat) => (
-                            <option key={cat} value={cat}>{cat}</option>
+                            <option key={cat.id} value={cat.id}>{cat.name}</option>
                         ))}
                     </select>
                     <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-400">

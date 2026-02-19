@@ -1,5 +1,6 @@
 import { useCallback } from 'react';
 import { Asset, Currency, ExchangeRates, PortfolioSnapshot, SellRecord, WatchlistItem, AllocationTargets } from '../types';
+import { getCategoryName, DEFAULT_CATEGORIES } from '../types/category';
 
 interface UsePortfolioExportProps {
   assets: Asset[];
@@ -172,7 +173,7 @@ export const usePortfolioExport = ({
           (asset.customName?.trim() || asset.name),
           asset.ticker,
           asset.exchange,
-          asset.category,
+          getCategoryName(asset.categoryId, DEFAULT_CATEGORIES),
           asset.quantity,
           asset.purchasePrice,
           asset.purchaseExchangeRate ?? '',

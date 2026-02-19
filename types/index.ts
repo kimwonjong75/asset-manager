@@ -122,7 +122,8 @@ export interface WatchlistItem {
   ticker: string;
   exchange: string;
   name: string;
-  category: AssetCategory;
+  categoryId: number;
+  category?: AssetCategory; // deprecated: 마이그레이션 호환용
   notes?: string;
   currentPrice?: number;
   priceOriginal?: number;
@@ -148,7 +149,8 @@ export interface SellRecord extends SellTransaction {
   assetId: string;
   ticker: string;
   name: string;
-  category: AssetCategory;
+  categoryId: number;
+  category?: AssetCategory; // deprecated: 마이그레이션 호환용
   originalPurchasePrice?: number;
   originalPurchaseExchangeRate?: number;
   originalCurrency?: Currency;
@@ -156,7 +158,8 @@ export interface SellRecord extends SellTransaction {
 
 export interface Asset {
   id: string;
-  category: AssetCategory;
+  categoryId: number;
+  category?: AssetCategory; // deprecated: 마이그레이션 호환용
   ticker: string;
   exchange: string;
   name: string;
@@ -220,7 +223,8 @@ export interface AllocationTargets {
 
 export interface LegacyAssetShape {
   id?: string;
-  category: AssetCategory | string;
+  categoryId?: number;
+  category: AssetCategory | string; // still required for legacy data parsing
   ticker: string;
   exchange?: string;
   name: string;

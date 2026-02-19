@@ -1,9 +1,12 @@
 import React, { useState, useRef, useCallback } from 'react';
-import { AssetCategory, Currency, EXCHANGE_MAP, BulkUploadResult, ALLOWED_CATEGORIES } from '../types';
+import { Currency, BulkUploadResult } from '../types';
 import { usePortfolio } from '../contexts/PortfolioContext';
+import { getAllowedCategories, EXCHANGE_MAP_BY_BASE_TYPE, BASE_TYPE_LABELS } from '../types/category';
 
 const BulkUploadModal: React.FC = () => {
-  const { modal, actions } = usePortfolio();
+  const { modal, actions, data } = usePortfolio();
+  const categories = data.categoryStore.categories;
+  const allowedCats = getAllowedCategories(categories);
   const isOpen = modal.bulkUploadOpen;
   const onClose = actions.closeBulkUpload;
   const onFileUpload = actions.uploadCsv;
@@ -43,7 +46,7 @@ const BulkUploadModal: React.FC = () => {
 
   const handleDownloadTemplate = () => {
     const csvHeader = "ticker,exchange,quantity,purchasePrice,purchaseDate,category,currency\n";
-    const csvExample = `AAPL,NASDAQ,10,150,2023-01-15,${AssetCategory.US_STOCK},${Currency.USD}\n005930,"KRX (코스피/코스닥)",20,70000,2023-03-22,${AssetCategory.KOREAN_STOCK},${Currency.KRW}\n`;
+    const csvExample = `AAPL,NASDAQ,10,150,2023-01-15,미국주식,${Currency.USD}\n005930,"KRX (코스피/코스닥)",20,70000,2023-03-22,한국주식,${Currency.KRW}\n`;
     const csvContent = csvHeader + csvExample;
     const blob = new Blob([`\uFEFF${csvContent}`], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -72,15 +75,15 @@ const BulkUploadModal: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                 <div className="text-sm text-gray-400 space-y-2">
                     <p><strong className="text-gray-200">필수 헤더:</strong> <code>ticker, exchange, quantity, purchasePrice, purchaseDate, category, currency</code> 순서로 작성해야 합니다.</p>
-                    <p><strong className="text-gray-200">category 값:</strong> <code>{ALLOWED_CATEGORIES.join(', ')}</code> 중 하나여야 합니다.</p>
+                    <p><strong className="text-gray-200">category 값:</strong> <code>{allowedCats.map(c => c.name).join(', ')}</code> 중 하나여야 합니다.</p>
                     <p><strong className="text-gray-200">currency 값:</strong> <code>{Object.values(Currency).join(', ')}</code> 중 하나여야 합니다.</p>
                 </div>
                 <div className="text-sm">
                     <strong className="text-gray-200">사용 가능한 Exchange 값:</strong>
                     <div className="max-h-32 overflow-y-auto bg-gray-900 p-2 mt-1 rounded-md text-gray-400 text-xs">
-                        {Object.entries(EXCHANGE_MAP).map(([category, exchanges]) => (
-                            <div key={category} className="mb-1">
-                                <span className="font-semibold text-gray-300">{category}:</span>
+                        {Object.entries(EXCHANGE_MAP_BY_BASE_TYPE).map(([baseType, exchanges]) => (
+                            <div key={baseType} className="mb-1">
+                                <span className="font-semibold text-gray-300">{BASE_TYPE_LABELS[baseType as keyof typeof BASE_TYPE_LABELS]}:</span>
                                 <span className="font-mono ml-2">{exchanges.join(', ')}</span>
                             </div>
                         ))}

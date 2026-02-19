@@ -9,7 +9,7 @@ const AnalyticsView: React.FC = () => {
   const sellHistory = data.sellHistory;
   const { startDate, endDate } = useGlobalPeriodDays(ui.globalPeriod);
   return (
-    <SellAnalyticsPage assets={assets} sellHistory={sellHistory} periodStartDate={startDate} periodEndDate={endDate} />
+    <SellAnalyticsPage assets={assets} sellHistory={sellHistory} periodStartDate={startDate} periodEndDate={endDate} categories={data.categoryStore.categories} />
   );
 };
 
