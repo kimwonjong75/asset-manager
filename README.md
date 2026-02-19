@@ -6,9 +6,11 @@ KIM'S 퀀트자산관리는 계량적 투자 전략을 기반으로 한 종합 �
 
 ### 핵심 기능
 - **멀티 자산 지원**: 한국주식, 미국주식, 해외주식, 채권, 암호화폐, 실물자산, 현금
+- **편집 가능한 자산 카테고리**: 기본 9개 카테고리 이름 변경 + 사용자 정의 카테고리 추가/삭제 (ID 기반, baseType으로 거래소 매핑 유지)
 - **실시간 시세 업데이트**: 외부 API를 통한 실시간 가격 정보
 - **환율 자동 반영**: USD, JPY 등 주요 통화 환율 자동 적용
 - **Google Drive 동기화**: 안전한 클라우드 저장소 연동 (LZ-String 압축 적용)
+- **자동 백업**: 1일 1회 시세 업데이트 시 자동 백업 (Google Drive, Rolling 최대 10개), 수동 백업/복원/삭제 지원
 - **앱 시작 시 자동 시세 업데이트**: 오늘 업데이트 안 했으면 자동 갱신
 - **히스토리 백필 + 종가 교정**: 앱을 안 열었던 날의 실제 과거 시세 채움 + 장중 기록된 가격을 종가로 교정
 - **포트폴리오 분석**: 자산 배분, 수익률, 손익 추이 분석
@@ -167,10 +169,11 @@ npm run dev
 
 ### Google Drive 동기화
 1. **저장**: 변경 발생 → 2초 디바운스 → LZ-String 압축 → Google Drive 업로드
-2. **로드**: Google Drive 다운로드 → 압축 해제 → 데이터 마이그레이션 → 상태 반영
+2. **로드**: Google Drive 다운로드 → 압축 해제 → 데이터 마이그레이션(카테고리 ID 변환 포함) → 상태 반영
 3. **토큰 갱신**: 만료 5분 전 자동 갱신
 4. **401 자동 복구**: 토큰 만료 상태에서 API 호출 시 → silent refresh 시도 → 실패 시 Google 로그인 팝업 자동 표시 → 원래 요청 재시도
 5. **공유 폴더**: 다른 계정과 동일 데이터 공유 가능 (`drive` scope 사용)
+6. **자동 백업**: 시세 업데이트 완료 후 1일 1회 `portfolio_backup_YYYY-MM-DD.json` 자동 생성, Rolling N개 유지(초과분 자동 삭제)
 
 ### 히스토리 백필 + 종가 교정
 앱을 안 열었던 날의 데이터를 **실제 과거 종가**로 채우고, 기존 스냅샷도 교정:
@@ -203,14 +206,14 @@ npm run dev
 ```
 asset-manager/
 ├── components/           # React 컴포넌트
-│   ├── common/          # 공용 컴포넌트 (PeriodSelector, Toggle, Tooltip)
+│   ├── common/          # 공용 컴포넌트 (PeriodSelector, Toggle, Tooltip, ActionMenu, AlertPopup)
 │   ├── dashboard/       # 대시보드 전용 컴포넌트
-│   ├── layouts/         # 탭별 뷰 (Dashboard, Portfolio, Analytics, Watchlist, InvestmentGuide, AlertSettings)
+│   ├── layouts/         # 탭별 뷰 (Dashboard, Portfolio, Analytics, Watchlist, InvestmentGuide)
 │   └── portfolio-table/ # 포트폴리오 테이블 컴포넌트
-├── hooks/               # 커스텀 훅 (데이터, 시세, 액션 관리)
+├── hooks/               # 커스텀 훅 (데이터, 시세, 액션, 백업 관리)
 ├── services/            # 외부 API 연동 (시세, Google Drive, Gemini)
 ├── utils/               # 유틸리티 함수 (계산, 마이그레이션)
-├── types/               # TypeScript 타입 정의
+├── types/               # TypeScript 타입 정의 (category.ts, backup.ts 포함)
 ├── contexts/            # React Context (전역 상태)
 ├── constants/           # 상수 정의
 ├── App.tsx              # 메인 애플리케이션
@@ -284,33 +287,6 @@ base: '/asset-manager/'  // GitHub Pages 경로
 
 ---
 
-## 주요 변경 이력
-
-> 전체 변경 이력: [CHANGELOG.md](./CHANGELOG.md)
-
-### 최근 변경사항
-
-| 날짜 | 변경 내용 |
-|------|----------|
-| 2026-02-16 | AI 어시스턴트 속도 최적화: 스트리밍 응답(generateContentStream), enrichedMap 재활용(Zero-Fetch), JSON 압축, 프롬프트 빌더 분리 |
-| 2026-02-09 | AI 어시스턴트 기술적 분석 기능 추가: 기술적 질문 시 과거 시세 자동 조회 → MA/RSI/정배열/골든크로스 지표 계산 → 프롬프트에 포함 |
-| 2026-02-08 | 스마트 필터 고도화: MA 기간 선택(10~200), 골든크로스/데드크로스, RSI 반등/과열진입, 투자시점 가이드 |
-| 2026-02-08 | 스마트 필터 UI 개선 (그리드 레이아웃, 필터 도움말 모달), 툴팁 가독성 개선, 컬럼 설명 보강 |
-| 2026-02-08 | 스마트 필터 기능 추가 (MA/RSI/신호/수익률 기반 필터링), 매도 알림을 스마트 필터에 통합 |
-| 2026-02-07 | 차트 종가 기반 통일, 백필 스냅샷 교정, 어제대비 계산 수정 |
-| 2026-02-05 | 차트 MA 오버레이 기능 추가 (MA5~MA200) |
-| 2026-02-02 | 포트폴리오 테이블 툴팁 기능 추가 |
-| 2026-02-02 | 히스토리 백필(Backfill) 기능 구현 |
-| 2026-02-02 | 환율 조회를 Gemini API에서 Cloud Run으로 이전 |
-| 2026-01-31 | Google Drive 저장 최적화 (LZ-String 압축) |
-| 2026-01-30 | Google Drive 공유 폴더 지원 추가 |
-| 2026-01-28 | 보유 종목 추가매수 기능 추가 |
-| 2026-01-27 | 매도 알림 설정 영구 저장 |
-| 2026-01-19 | 매도 자산 통계 및 수익률 계산 개선 |
-| 2026-01-15 | 리밸런싱 목표 금액 저장 기능 추가 |
-
----
-
 ## 개발 문서
 
 - **개발 규칙 및 의존관계**: [RULES.md](./RULES.md)
@@ -319,4 +295,3 @@ base: '/asset-manager/'  // GitHub Pages 경로
   - 핵심 로직 상세
   - 수정 시 체크리스트
   - 확장 가이드
-- **전체 변경 이력**: [CHANGELOG.md](./CHANGELOG.md)

@@ -1,5 +1,5 @@
 import React from 'react';
-import type { AlertResult } from '../../types/alertRules';
+import type { AlertResult, AlertMatchedAsset } from '../../types/alertRules';
 
 interface AlertPopupProps {
   results: AlertResult[];
@@ -12,6 +12,18 @@ const SEVERITY_STYLES: Record<string, { bg: string; border: string; badge: strin
   info: { bg: 'bg-blue-950/30', border: 'border-blue-800/40', badge: 'bg-blue-600' },
 };
 
+const fmtPct = (v: number | undefined): string => {
+  if (v == null) return '-';
+  return `${v >= 0 ? '+' : ''}${v.toFixed(1)}%`;
+};
+
+const pctColor = (v: number | undefined): string => {
+  if (v == null) return 'text-gray-500';
+  if (v > 0) return 'text-red-400';
+  if (v < 0) return 'text-blue-400';
+  return 'text-gray-400';
+};
+
 const AlertPopup: React.FC<AlertPopupProps> = ({ results, onClose }) => {
   const today = new Date().toLocaleDateString('ko-KR', {
     year: 'numeric', month: 'long', day: 'numeric', weekday: 'short'
@@ -21,15 +33,60 @@ const AlertPopup: React.FC<AlertPopupProps> = ({ results, onClose }) => {
   const buyResults = results.filter(r => r.rule.action === 'buy');
   const hasResults = results.length > 0;
 
+  const renderAssetTable = (assets: AlertMatchedAsset[]) => (
+    <table className="w-full text-xs">
+      <thead>
+        <tr className="text-gray-500 border-b border-gray-700/50">
+          <th className="text-left py-1.5 pr-2 font-medium">종목</th>
+          <th className="text-right py-1.5 px-2 font-medium w-16">당일</th>
+          <th className="text-right py-1.5 px-2 font-medium w-16">수익률</th>
+          <th className="text-right py-1.5 px-2 font-medium w-16">고점대비</th>
+          <th className="text-right py-1.5 pl-2 font-medium w-14">RSI</th>
+        </tr>
+      </thead>
+      <tbody>
+        {assets.map(asset => (
+          <tr key={asset.assetId} className="border-b border-gray-800/30 last:border-b-0">
+            <td className="py-1.5 pr-2">
+              <div className="flex items-center gap-1.5">
+                <span className="text-white font-medium truncate max-w-[120px]">{asset.assetName}</span>
+                <span className="text-gray-600 text-[10px] shrink-0">{asset.ticker}</span>
+              </div>
+            </td>
+            <td className={`text-right py-1.5 px-2 tabular-nums ${pctColor(asset.dailyChange)}`}>
+              {fmtPct(asset.dailyChange)}
+            </td>
+            <td className={`text-right py-1.5 px-2 tabular-nums ${pctColor(asset.returnPct)}`}>
+              {fmtPct(asset.returnPct)}
+            </td>
+            <td className={`text-right py-1.5 px-2 tabular-nums ${asset.dropFromHigh != null ? 'text-blue-400' : 'text-gray-500'}`}>
+              {asset.dropFromHigh != null ? `${asset.dropFromHigh.toFixed(1)}%` : '-'}
+            </td>
+            <td className={`text-right py-1.5 pl-2 tabular-nums ${
+              asset.rsi != null
+                ? asset.rsi < 30 ? 'text-blue-400' : asset.rsi > 70 ? 'text-red-400' : 'text-gray-300'
+                : 'text-gray-500'
+            }`}>
+              {asset.rsi != null ? asset.rsi.toFixed(1) : '-'}
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+
   const renderSection = (sectionResults: AlertResult[], title: string, icon: React.ReactNode, titleColor: string) => {
     if (sectionResults.length === 0) return null;
     return (
       <div>
-        <h3 className={`text-sm font-semibold ${titleColor} mb-2 flex items-center gap-2`}>
+        <h3 className={`text-sm font-semibold ${titleColor} mb-2.5 flex items-center gap-2`}>
           {icon}
           {title}
+          <span className="text-gray-500 text-xs font-normal">
+            ({sectionResults.reduce((sum, r) => sum + r.matchedAssets.length, 0)}종목)
+          </span>
         </h3>
-        <div className="space-y-2">
+        <div className="space-y-3">
           {sectionResults.map(({ rule, matchedAssets }) => {
             const styles = SEVERITY_STYLES[rule.severity];
             return (
@@ -40,17 +97,7 @@ const AlertPopup: React.FC<AlertPopupProps> = ({ results, onClose }) => {
                   </span>
                   <span className="text-gray-400 text-xs">{rule.description}</span>
                 </div>
-                <div className="space-y-1">
-                  {matchedAssets.map(asset => (
-                    <div key={asset.assetId} className="flex items-center justify-between text-sm">
-                      <div className="flex items-center gap-2">
-                        <span className="text-white font-medium">{asset.assetName}</span>
-                        <span className="text-gray-500 text-xs">{asset.ticker}</span>
-                      </div>
-                      <span className="text-gray-400 text-xs">{asset.details}</span>
-                    </div>
-                  ))}
-                </div>
+                {renderAssetTable(matchedAssets)}
               </div>
             );
           })}
@@ -65,11 +112,11 @@ const AlertPopup: React.FC<AlertPopupProps> = ({ results, onClose }) => {
       onClick={onClose}
     >
       <div
-        className="bg-gray-900 border border-gray-700 rounded-xl shadow-2xl w-[95%] max-w-lg max-h-[80vh] overflow-hidden flex flex-col"
+        className="bg-gray-900 border border-gray-700 rounded-xl shadow-2xl w-[95%] max-w-2xl max-h-[85vh] overflow-hidden flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         {/* 헤더 */}
-        <div className="px-5 py-4 border-b border-gray-700 flex items-center justify-between">
+        <div className="px-6 py-4 border-b border-gray-700 flex items-center justify-between">
           <div>
             <h2 className="text-lg font-bold text-white">오늘의 투자 브리핑</h2>
             <p className="text-gray-400 text-xs mt-0.5">{today}</p>
@@ -85,7 +132,7 @@ const AlertPopup: React.FC<AlertPopupProps> = ({ results, onClose }) => {
         </div>
 
         {/* 본문 */}
-        <div className="px-5 py-4 overflow-y-auto space-y-4 flex-1">
+        <div className="px-6 py-4 overflow-y-auto space-y-5 flex-1">
           {hasResults ? (
             <>
               {renderSection(
@@ -117,7 +164,7 @@ const AlertPopup: React.FC<AlertPopupProps> = ({ results, onClose }) => {
         </div>
 
         {/* 푸터 */}
-        <div className="px-5 py-3 border-t border-gray-700 flex justify-end">
+        <div className="px-6 py-3 border-t border-gray-700 flex justify-end">
           <button
             onClick={onClose}
             className="bg-primary hover:bg-primary-dark text-white text-sm font-medium px-4 py-2 rounded-md transition"

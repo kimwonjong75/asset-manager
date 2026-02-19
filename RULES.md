@@ -59,6 +59,7 @@
 | `usePortfolioHistory.ts` | 포트폴리오 스냅샷 저장 | `types/index` | 차트 데이터 |
 | `useRebalancing.ts` | 리밸런싱 계산 및 저장 | `PortfolioContext` | `RebalancingTable` |
 | `useGoogleDriveSync.ts` | Google Drive 저장/로드, 토큰 갱신, **인증 상태 변경 콜백 등록** | `googleDriveService`, `lz-string` | `usePortfolioData` |
+| `useBackup.ts` | 1일 1회 자동 백업, 수동 백업/복원/삭제, retention 관리 | `googleDriveService` | `PortfolioContext` |
 
 ### services/ (외부 API 연동)
 | 파일 | 책임 | API 엔드포인트 | 수정 시 확인 |
@@ -66,7 +67,7 @@
 | `priceService.ts` | 주식/ETF 시세, 환율 | Cloud Run `/`, `/exchange-rate` | `useMarketData`, `useAssetActions` |
 | `upbitService.ts` | 암호화폐 시세 | Cloud Run `/upbit` | `useMarketData` |
 | `historicalPriceService.ts` | 과거 시세 (백필/차트용/AI분석용) | Cloud Run `/history`, `/upbit/history` | `useHistoricalPriceData`, `historyUtils`, `geminiService` |
-| `googleDriveService.ts` | 클라우드 저장/로드, **401 자동 재인증** (`authenticatedFetch` 래퍼) | Google Drive API | `useGoogleDriveSync` |
+| `googleDriveService.ts` | 클라우드 저장/로드, **401 자동 재인증** (`authenticatedFetch` 래퍼), 백업 파일 관리(`deleteFileById`, `loadFileById`, `listFilesByPattern`) | Google Drive API | `useGoogleDriveSync`, `useBackup` |
 | `geminiService.ts` | 종목 검색, AI 분석 (스트리밍 응답, 기술적 질문 시 Context의 enrichedMap 재활용 우선 → 폴백으로 직접 fetch) | Gemini API, `historicalPriceService`, `maCalculations`, `useEnrichedIndicators`(타입만) | `useAssetActions`, `PortfolioAssistant` |
 
 ### utils/ (순수 함수)
@@ -77,15 +78,17 @@
 | `maCalculations.ts` | SMA/RSI 계산, 차트 데이터 빌드 | `AssetTrendChart`, `useEnrichedIndicators`, `geminiService` |
 | `signalUtils.ts` | 신호/RSI 배지 렌더링 | `PortfolioTableRow` |
 | `smartFilterLogic.ts` | 스마트 필터 매칭 (그룹 내 OR, 그룹 간 AND), enriched 지표 참조, `PRICE_BELOW_*` 판정 포함. **`matchesSingleFilter()` export** — 알림 규칙 체커에서도 재활용 | `PortfolioTable`, `alertChecker.ts` |
-| `alertChecker.ts` | 알림 규칙별 자산 매칭 (규칙 내 필터 AND 조합), 매칭 상세 문자열 생성 | `smartFilterLogic.matchesSingleFilter`, `types/alertRules` | `useAutoAlert`, 프리셋 버튼 |
-| `migrateData.ts` | 데이터 마이그레이션 | 로드 시 자동 실행 |
+| `alertChecker.ts` | 알림 규칙별 자산 매칭 (규칙 내 필터 AND 조합), 매칭 결과 구조화 반환 (`dailyChange`/`returnPct`/`dropFromHigh`/`rsi` + `details` 문자열). **당일 변동률은 `asset.metrics.yesterdayChange` 사용** (`changeRate` 사용 금지) | `smartFilterLogic.matchesSingleFilter`, `types/alertRules` | `useAutoAlert`, 프리셋 버튼 |
+| `migrateData.ts` | 데이터 마이그레이션 (기존 형식 변환 + 카테고리 ID 변환) | 로드 시 자동 실행 |
 
 ### types/ (타입 정의)
 | 파일 | 책임 | 수정 시 영향 범위 |
 |------|------|------------------|
-| `index.ts` | 핵심 타입 (`Asset`, `Currency`, `AssetCategory` 등) | **전역** - 거의 모든 파일 |
+| `index.ts` | 핵심 타입 (`Asset`, `Currency`, `AssetCategory`(deprecated) 등) | **전역** - 거의 모든 파일 |
+| `category.ts` | **카테고리 시스템 핵심** — `CategoryDefinition`, `CategoryStore`, `CategoryBaseType`, `DEFAULT_CATEGORIES`, `EXCHANGE_MAP_BY_BASE_TYPE`, 유틸(`isBaseType`, `getCategoryName`, `inferCategoryIdFromExchange`, `getAllowedCategories`) | **전역** — 모든 카테고리 참조 컴포넌트/훅 |
+| `backup.ts` | 백업 타입 (`BackupInfo`, `BackupSettings`, `RETENTION_OPTIONS`) | `hooks/useBackup`, `BackupSettingsSection` |
 | `api.ts` | API 응답 타입 (`PriceItem`, `Indicators` 등) | `services/`, `hooks/` |
-| `store.ts` | 상태 관리 타입 (`PortfolioContextValue`, `GlobalPeriod`, `UIState.activeTab` 등). `ActiveTab`에 `'settings'` 포함, `UIState`에 `alertSettings`, `DerivedState`에 `enrichedMap`/`alertResults`/`showAlertPopup` | `contexts/`, `hooks/`, `App.tsx`, `components/common/PeriodSelector`, `SmartFilterPanel`, `AlertSettingsPage` |
+| `store.ts` | 상태 관리 타입 (`PortfolioContextValue`, `GlobalPeriod`, `UIState.activeTab` 등). `PortfolioData`에 `categoryStore`, `DerivedState`에 `backupList`/`isBackingUp` 포함 | `contexts/`, `hooks/`, `App.tsx`, `components/common/PeriodSelector`, `SmartFilterPanel`, `AlertSettingsPage` |
 | `ui.ts` | UI 컴포넌트 Props 타입 | `components/` |
 | `smartFilter.ts` | 스마트 필터 타입 (21개 키, MA 기간 설정 + `lossThreshold` 포함), 그룹 매핑, 칩 정의(`pairKey`/`pairColorClass` tri-state 지원), 초기값 | `utils/smartFilterLogic`, `SmartFilterPanel`(+ `PortfolioContext` 의존), `PortfolioTable`, `alertChecker` |
 | `alertRules.ts` | 알림 규칙 타입 (`AlertRule`, `AlertResult`, `AlertSettings`, `AlertMatchedAsset`) | `constants/alertRules`, `utils/alertChecker`, `hooks/useAutoAlert`, `AlertSettingsPage`, `AlertPopup` |
@@ -106,14 +109,14 @@
 | `WatchlistView.tsx` | 관심종목 탭 | `PortfolioContext`, `WatchlistPage` |
 | `InvestmentGuideView.tsx` | 투자 가이드 탭 (순수 UI, 외부 의존 없음) | - |
 
-> 설정 탭(`AlertSettingsPage`)은 layouts/ 하위가 아닌 `components/AlertSettingsPage.tsx`에 직접 위치
+> 설정 탭은 `components/SettingsPage.tsx`가 래핑하며 3개 섹션으로 구성: `AlertSettingsPage` (알림), `BackupSettingsSection` (백업), `CategorySettingsSection` (카테고리 관리)
 
 ### components/common/ (공용 컴포넌트)
 | 파일 | 책임 | 의존 |
 |------|------|------|
 | `PeriodSelector.tsx` | 글로벌 기간 선택 버튼 (3개월/6개월/1년/2년/전체) | `types/store` (`GlobalPeriod`) |
 | `ActionMenu.tsx` | Portal 기반 액션 메뉴 — 데스크탑: `createPortal`로 body에 드롭다운 렌더링(공간 부족 시 위로 열림), 모바일(<768px): 바텀시트 | `react-dom/createPortal` |
-| `AlertPopup.tsx` | "오늘의 투자 브리핑" 모달 — severity별 스타일, 매도/매수 섹션 분리, 매칭 자산 상세 표시 | `types/alertRules` (`AlertResult`) |
+| `AlertPopup.tsx` | "오늘의 투자 브리핑" 모달 (`max-w-2xl`) — severity별 스타일, 매도/매수 섹션 분리, **표 형식**(종목·당일·수익률·고점대비·RSI 컬럼) | `types/alertRules` (`AlertResult`, `AlertMatchedAsset`) |
 | `Toggle.tsx` | 토글 스위치 | - |
 | `Tooltip.tsx` | 툴팁 | - |
 
@@ -144,9 +147,9 @@
 ```
 App.tsx
   └─ PortfolioContext.tsx
-       ├─ usePortfolioData.ts ──────┬─ useGoogleDriveSync.ts
+       ├─ usePortfolioData.ts ──────┬─ useGoogleDriveSync.ts (categoryStore 포함 저장/로드)
        │                            ├─ historyUtils.ts
-       │                            └─ migrateData.ts
+       │                            └─ migrateData.ts (runMigrationIfNeeded + migrateCategorySystem)
        ├─ useMarketData.ts ─────────┬─ priceService.ts (주식/ETF/환율)
        │                            ├─ upbitService.ts (암호화폐)
        │                            └─ historicalPriceService.ts (관심종목 52주 최고가)
@@ -154,7 +157,8 @@ App.tsx
        │                            └─ geminiService.ts
        ├─ usePortfolioCalculator.ts ── types/index.ts
        ├─ useEnrichedIndicators.ts ── historicalPriceService, maCalculations
-       └─ useAutoAlert.ts ─────────── alertChecker.ts → smartFilterLogic.ts
+       ├─ useAutoAlert.ts ─────────── alertChecker.ts → smartFilterLogic.ts
+       └─ useBackup.ts ────────────── googleDriveService (자동 백업/복원/삭제)
 ```
 
 ### 시세 조회 분기 흐름
@@ -287,7 +291,8 @@ PortfolioAssistant.tsx
 | 수정 대상 | 반드시 확인할 파일 |
 |-----------|-------------------|
 | `types/index.ts`의 `Asset` | `hooks/*`, `components/*`, `utils/portfolioCalculations.ts` |
-| `types/index.ts`의 `Currency`/`AssetCategory` | `hooks/*`, `components/*`, `utils/*` |
+| `types/index.ts`의 `Currency` | `hooks/*`, `components/*`, `utils/*` |
+| `types/category.ts` | **전역** — 카테고리 ID·이름·baseType 참조하는 모든 파일. 비즈니스 로직은 `isBaseType()`, UI는 `getCategoryName()` 사용 |
 | `priceService.ts` | `useMarketData.ts`, `useAssetActions.ts` |
 | `upbitService.ts` | `useMarketData.ts` |
 | `historyUtils.ts` | `usePortfolioData.ts` |
@@ -310,7 +315,8 @@ PortfolioAssistant.tsx
 ```typescript
 interface Asset {
   id: string;                    // 고유 식별자
-  category: AssetCategory;       // 자산 카테고리 (한국주식, 미국주식, 암호화폐 등)
+  categoryId: number;            // 카테고리 ID (types/category.ts의 CategoryDefinition.id 참조)
+  category?: AssetCategory;      // [deprecated] 레거시 호환용, 새 코드에서 사용 금지
   ticker: string;                // 티커 심볼 (005930, AAPL, BTC)
   exchange: string;              // 거래소 (KRX, NASDAQ, Upbit)
   name: string;                  // 자산명
@@ -353,6 +359,8 @@ interface AssetSnapshot {
 interface SellRecord {
   id: string;
   assetId: string;
+  categoryId: number;            // 카테고리 ID
+  category?: AssetCategory;      // [deprecated] 레거시 호환용
   date: string;
   quantity: number;
   price: number;               // 매도 단가
@@ -370,15 +378,15 @@ interface SellRecord {
 ### 암호화폐 분기 판단 (`shouldUseUpbitAPI`)
 ```typescript
 // hooks/useMarketData.ts
-const shouldUseUpbitAPI = (exchange: string, category?: AssetCategory): boolean => {
+const shouldUseUpbitAPI = (exchange: string, categoryId?: number): boolean => {
   const normalized = (exchange || '').toLowerCase();
 
   // 명확하게 Upbit/Bithumb인 경우
   if (normalized === 'upbit' || normalized === 'bithumb') return true;
 
-  // 한글 거래소명 + 암호화폐 카테고리
+  // 한글 거래소명 + 암호화폐 카테고리 (isBaseType으로 판정)
   const hasKorean = /[ㄱ-ㅎ|ㅏ-ㅣ|가-힣]/.test(exchange);
-  if (hasKorean && category === AssetCategory.CRYPTOCURRENCY) return true;
+  if (hasKorean && categoryId != null && isBaseType(categoryId, 'CRYPTOCURRENCY')) return true;
 
   return false;
 };
@@ -458,6 +466,11 @@ try {
   - 수익률 계산 시 환율 변환 불필요
 - **CORS 우회 필수**: 클라이언트에서 업비트 직접 호출 불가 → Cloud Run 프록시 경유
 
+### 당일 변동률 표시 주의
+- **`asset.changeRate`**: API 원본 비율값 (0.05 = 5%). **UI에 직접 `%` 표기 금지** (곱하기 100 누락 시 항상 0.0%로 보임)
+- **`asset.metrics.yesterdayChange`**: `usePortfolioCalculator`에서 `((현재가 - 전일종가) / 전일종가) * 100`으로 계산된 % 값. **UI 표시에는 이 값 사용**
+- **원칙**: 변동률을 UI에 보여줄 때는 반드시 `metrics.yesterdayChange` 사용, `changeRate`는 내부 계산용으로만 참조
+
 ### 환율 처리
 - **기본값**: USD 1450, JPY 9.5 (API 실패 시)
 - **유효성 검사**: USD > 100, JPY > 1
@@ -470,6 +483,28 @@ try {
 - **인증 상태 콜백**: `setAuthStateChangeCallback()`으로 UI 레이어(`useGoogleDriveSync`)가 인증 해제를 구독 — 재인증 완전 실패 시 React 상태 자동 동기화
 - **새 Drive API fetch 추가 시**: 반드시 `this.authenticatedFetch()` 사용 (raw `fetch` 직접 호출 금지 — 401 복구 경로 누락됨)
 - **공유 폴더 파라미터**: 새 Drive API 호출 시 `supportsAllDrives`, `includeItemsFromAllDrives` 필수
+
+### 카테고리 시스템 (ID 기반)
+- **핵심 원칙**: 자산 카테고리는 숫자 ID(`categoryId: number`)로 참조. 문자열 `category` 필드는 **deprecated** (마이그레이션 호환용으로만 남아있음)
+- **기본 카테고리 ID 매핑**: 1=한국주식, 2=미국주식, 3=해외주식, 4=기타해외주식, 5=한국채권, 6=미국채권, 7=실물자산, 8=암호화폐, 9=현금
+- **baseType**: 각 카테고리에 고정된 `CategoryBaseType` — 거래소 매핑(`EXCHANGE_MAP_BY_BASE_TYPE`), 시세 분기(`shouldUseUpbitAPI`), 환율 처리 등의 비즈니스 로직 결정. 사용자가 카테고리 이름을 바꿔도 baseType은 불변
+- **비즈니스 로직에서 카테고리 판정**: `isBaseType(asset.categoryId, 'CASH')` 사용 (`asset.category === AssetCategory.CASH` 사용 금지)
+- **표시 이름 조회**: `getCategoryName(categoryId, categories)` — `categories`는 `data.categoryStore.categories`에서 전달
+- **새 카테고리 추가**: 사용자가 설정 탭에서 이름 + baseType 선택하여 추가. 코드 수정 불필요
+- **카테고리 삭제**: 기본 카테고리(isDefault=true)는 삭제 불가. 삭제 시 소속 자산을 다른 카테고리로 재할당
+- **필터 타입**: 카테고리 필터는 `number | 'ALL'` (이전의 `AssetCategory | 'ALL'` 아님)
+- **드롭다운 옵션**: `getAllowedCategories(categories)` 사용 (CASH와 FOREIGN_STOCK 제외)
+- **CategoryStore 저장**: Google Drive JSON에 `categoryStore` 필드로 함께 저장됨 (autoSave 파이프라인에 포함)
+- **마이그레이션**: `migrateCategorySystem()`이 로드 시 자동 실행 — 기존 `category` 문자열을 `categoryId` 숫자로 변환, `categoryStore` 없으면 기본값 주입
+
+### 자동 백업 시스템
+- **트리거**: `PortfolioContext`의 자동 시세 업데이트 완료 후 `performBackup()` 호출 (1일 1회, `localStorage('asset-manager-last-backup-date')` 기준)
+- **파일명**: `portfolio_backup_YYYY-MM-DD.json` (Google Drive 같은 폴더)
+- **보관**: Rolling N개 (기본 10개), 초과 시 `createdTime` 기준 오래된 것 자동 삭제
+- **설정**: `localStorage('asset-manager-backup-settings')` — `{ enabled, retentionCount }`
+- **복원**: `loadFileById()` → 전체 데이터 교체 → `updateAllData()` + autoSave (현재 데이터 덮어쓰기)
+- **백업 실패 시**: 앱 동작에 영향 없음 (try-catch, console.error만)
+- **관련 파일**: `hooks/useBackup.ts`, `components/BackupSettingsSection.tsx`, `types/backup.ts`, `googleDriveService.ts`
 
 ### 글로벌 기간 선택기 (GlobalPeriod)
 - **상태 위치**: `PortfolioContext.ui.globalPeriod` (타입: `'3M' | '6M' | '1Y' | '2Y' | 'ALL'`)
@@ -580,16 +615,19 @@ console.error('[priceService] 시세 조회 실패:', error);
 ## 10. 확장 가이드
 
 ### 새로운 자산 카테고리 추가
-1. `types/index.ts`의 `AssetCategory` enum에 추가
-2. `EXCHANGE_MAP`에 거래소 매핑
-3. `inferCategoryFromExchange` 로직 업데이트
-4. 관련 컴포넌트 UI 업데이트
+사용자가 **설정 탭 → 카테고리 관리**에서 직접 추가 가능 (코드 수정 불필요). 단, 새 baseType이 필요한 경우:
+1. `types/category.ts`의 `CategoryBaseType`에 추가
+2. `EXCHANGE_MAP_BY_BASE_TYPE`에 거래소 매핑
+3. `BASE_TYPE_LABELS`에 표시 이름
+4. `inferBaseTypeFromExchange()` 로직 업데이트
+5. 필요 시 `isBaseType()` 호출부에 새 분기 추가
 
 ### 새로운 거래소 추가
 1. `COMMON_EXCHANGES` 또는 `ALL_EXCHANGES`에 추가
-2. 카테고리 추론 로직 업데이트
-3. 시세 API 지원 확인
-4. **암호화폐 거래소인 경우**: `shouldUseUpbitAPI()` 함수에 조건 추가
+2. `types/category.ts`의 `EXCHANGE_MAP_BY_BASE_TYPE`에 해당 baseType으로 추가
+3. `inferBaseTypeFromExchange()` 로직 업데이트
+4. 시세 API 지원 확인
+5. **암호화폐 거래소인 경우**: `shouldUseUpbitAPI()` 함수에 조건 추가
 
 ### 통화 추가
 1. `types/index.ts`의 `Currency` enum에 추가

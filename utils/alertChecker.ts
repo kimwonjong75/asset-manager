@@ -24,43 +24,37 @@ const matchesRule = (
 };
 
 /**
- * 매칭된 자산의 상세 정보 문자열 생성
+ * 매칭된 자산의 상세 정보 (구조화 + 문자열)
  */
-const buildDetails = (
+const buildAssetInfo = (
   asset: EnrichedAsset,
   rule: AlertRule,
   enriched?: EnrichedIndicatorData
-): string => {
-  const parts: string[] = [];
+): Omit<AlertMatchedAsset, 'assetId' | 'assetName' | 'ticker'> => {
   const rsi = enriched?.rsi ?? asset.indicators?.rsi;
+  const dailyChange = asset.metrics.yesterdayChange;
+  const returnPct = asset.metrics.returnPercentage;
+  const dropFromHigh = asset.metrics.dropFromHigh;
 
-  if (typeof rsi === 'number') {
-    parts.push(`RSI ${rsi.toFixed(1)}`);
-  }
+  // 기존 details 문자열도 유지 (하위호환)
+  const parts: string[] = [];
+  if (typeof rsi === 'number') parts.push(`RSI ${rsi.toFixed(1)}`);
+  if (dailyChange !== 0) parts.push(`당일 ${dailyChange >= 0 ? '+' : ''}${dailyChange.toFixed(1)}%`);
+  if (returnPct !== 0) parts.push(`수익률 ${returnPct >= 0 ? '+' : ''}${returnPct.toFixed(1)}%`);
+  if (dropFromHigh < 0) parts.push(`고점대비 ${dropFromHigh.toFixed(1)}%`);
 
-  if (typeof asset.changeRate === 'number' && asset.changeRate !== 0) {
-    parts.push(`당일 ${asset.changeRate >= 0 ? '+' : ''}${asset.changeRate.toFixed(1)}%`);
-  }
-
-  if (asset.metrics.returnPercentage !== 0) {
-    parts.push(`수익률 ${asset.metrics.returnPercentage >= 0 ? '+' : ''}${asset.metrics.returnPercentage.toFixed(1)}%`);
-  }
-
-  if (asset.metrics.dropFromHigh < 0) {
-    parts.push(`고점대비 ${asset.metrics.dropFromHigh.toFixed(1)}%`);
-  }
-
-  // MA 관련 정보
   const maShort = rule.filterConfig.maShortPeriod;
   const maLong = rule.filterConfig.maLongPeriod;
-  if (maShort && enriched?.ma[maShort] != null) {
-    parts.push(`MA${maShort} ${enriched.ma[maShort]!.toLocaleString()}`);
-  }
-  if (maLong && enriched?.ma[maLong] != null) {
-    parts.push(`MA${maLong} ${enriched.ma[maLong]!.toLocaleString()}`);
-  }
+  if (maShort && enriched?.ma[maShort] != null) parts.push(`MA${maShort} ${enriched.ma[maShort]!.toLocaleString()}`);
+  if (maLong && enriched?.ma[maLong] != null) parts.push(`MA${maLong} ${enriched.ma[maLong]!.toLocaleString()}`);
 
-  return parts.join(' · ');
+  return {
+    details: parts.join(' · '),
+    dailyChange: dailyChange || undefined,
+    returnPct: returnPct || undefined,
+    dropFromHigh: dropFromHigh < 0 ? dropFromHigh : undefined,
+    rsi: typeof rsi === 'number' ? rsi : undefined,
+  };
 };
 
 /**
@@ -86,7 +80,7 @@ export const checkAlertRules = (
           assetId: asset.id,
           assetName: asset.name,
           ticker: asset.ticker,
-          details: buildDetails(asset, rule, enriched),
+          ...buildAssetInfo(asset, rule, enriched),
         });
       }
     }

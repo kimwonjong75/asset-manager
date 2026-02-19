@@ -26,6 +26,14 @@ export interface AlertMatchedAsset {
   assetName: string;
   ticker: string;
   details: string;
+  /** 당일 등락률 (%) */
+  dailyChange?: number;
+  /** 수익률 (%) */
+  returnPct?: number;
+  /** 고점대비 (%) */
+  dropFromHigh?: number;
+  /** RSI */
+  rsi?: number;
 }
 
 /** 규칙별 알림 결과 */
