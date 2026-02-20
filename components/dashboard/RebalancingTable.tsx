@@ -99,7 +99,7 @@ const RebalancingTable: React.FC<RebalancingTableProps> = ({ assets, exchangeRat
                                 max="100"
                                 step="0.1"
                                 value={row.targetWeight}
-                                onChange={(e) => handleWeightChange(row.category, e.target.value)}
+                                onChange={(e) => handleWeightChange(row.categoryKey, e.target.value)}
                                 className="bg-gray-700 border border-gray-600 rounded px-2 py-1 text-right text-white w-20 focus:outline-none focus:ring-1 focus:ring-blue-500"
                             />
                         </td>

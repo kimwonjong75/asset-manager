@@ -11,7 +11,8 @@ interface UseRebalancingProps {
 }
 
 export interface CategoryData {
-  category: string;
+  categoryKey: string;   // categoryId as string key (for state lookup)
+  category: string;      // display name
   currentValue: number;
   currentWeight: number;
   targetWeight: number;
@@ -83,6 +84,7 @@ export const useRebalancing = ({ assets, exchangeRates, allocationTargets, onSav
         const difference = targetValue - currentValue;
 
         return {
+            categoryKey: key,
             category: getCategoryName(Number(key), categories),
             currentValue,
             currentWeight,

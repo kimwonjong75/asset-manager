@@ -18,7 +18,8 @@
       "Bash(node:*)",
       "Bash(kill:*)",
       "Bash(tee:*)",
-      "Bash(echo:*)"
+      "Bash(echo:*)",
+      "Bash(test:*)"
     ],
     "additionalDirectories": [
       "C:\\Users\\beari\\Downloads"

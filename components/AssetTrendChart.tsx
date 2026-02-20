@@ -1,7 +1,7 @@
-import React, { useMemo, useState, useCallback } from 'react';
+import React, { useMemo, useState, useCallback, useRef } from 'react';
 import { PortfolioSnapshot, Currency } from '../types';
 import { isBaseType, getCategoryName, DEFAULT_CATEGORIES } from '../types/category';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 import { useHistoricalPriceData } from '../hooks/useHistoricalPriceData';
 import { DEFAULT_MA_CONFIGS, MALineConfig, buildChartDataWithMA } from '../utils/maCalculations';
 import { usePortfolio } from '../contexts/PortfolioContext';
@@ -41,6 +41,7 @@ interface AssetTrendChartProps {
   ticker?: string;
   exchange?: string;
   categoryId?: number;
+  purchasePrice?: number;   // 매수평균가 (원화자산=KRW, 외화자산=원본통화)
 }
 
 const AssetTrendChart: React.FC<AssetTrendChartProps> = ({
@@ -54,6 +55,7 @@ const AssetTrendChart: React.FC<AssetTrendChartProps> = ({
   ticker,
   exchange,
   categoryId,
+  purchasePrice,
 }) => {
   const [showInKRW, setShowInKRW] = useState<boolean>(false);
   const [maConfigs, setMAConfigs] = useState<MALineConfig[]>(loadMAConfigs);
@@ -136,9 +138,9 @@ const AssetTrendChart: React.FC<AssetTrendChartProps> = ({
       return {
         date: new Date(snapshot.date).toLocaleDateString('ko-KR', { month: '2-digit', day: '2-digit' }),
         fullDate: snapshot.date,
-        '가격': price,
+        '현재가': price,
       };
-    }).filter(d => d['가격'] > 0);
+    }).filter(d => d['현재가'] > 0);
 
     if (currentPrice > 0) {
       const today = new Date();
@@ -151,13 +153,13 @@ const AssetTrendChart: React.FC<AssetTrendChartProps> = ({
 
       const lastItem = data[data.length - 1];
       if (lastItem && (lastItem.date === todayStr || lastItem.fullDate === todayISO)) {
-        lastItem['가격'] = displayCurrentPrice;
+        lastItem['현재가'] = displayCurrentPrice;
       }
       else {
         data.push({
           date: todayStr,
           fullDate: todayISO,
-          '가격': displayCurrentPrice
+          '현재가': displayCurrentPrice
         });
       }
     }
@@ -199,12 +201,12 @@ const AssetTrendChart: React.FC<AssetTrendChartProps> = ({
 
       const lastItem = data[data.length - 1];
       if (lastItem && (lastItem.date === todayStr || lastItem.fullDate === todayISO)) {
-        lastItem['가격'] = displayCurrentPrice;
+        lastItem['현재가'] = displayCurrentPrice;
       } else {
         const newPoint: Record<string, string | number | undefined> = {
           date: todayStr,
           fullDate: todayISO,
-          '가격': displayCurrentPrice,
+          '현재가': displayCurrentPrice,
         };
         // MA 값은 오늘자 데이터에서는 계산 불가이므로 마지막 MA값을 이어서 표시
         for (const period of enabledPeriods) {
@@ -221,6 +223,19 @@ const AssetTrendChart: React.FC<AssetTrendChartProps> = ({
   }, [useHistoricalData, historicalPrices, enabledPeriods, currentPrice, currency, exchangeRate, showInKRW]);
 
   const chartData = useHistoricalData ? historicalChartData : snapshotChartData;
+
+  // X축 연도 표시: 렌더된 tick 중 첫 등장 연도만 표시하기 위한 ref
+  const renderedYearsRef = useRef(new Set<string>());
+  // 각 렌더 사이클 시작 시 reset (tick 함수 호출 전에 실행됨)
+  renderedYearsRef.current = new Set<string>();
+
+  // 각 데이터 인덱스의 연도 미리 계산
+  const yearByIndex = useMemo(() => {
+    return chartData.map(d => {
+      const fd = d.fullDate as string | undefined;
+      return fd ? fd.substring(0, 4) : '';
+    });
+  }, [chartData]);
 
   // 통화 기호 표시 헬퍼 함수
   const getCurrencySymbol = (curr: string) => {
@@ -257,6 +272,15 @@ const AssetTrendChart: React.FC<AssetTrendChartProps> = ({
     return value.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 });
   };
 
+  // 매수평균가 표시 (통화 토글에 따라 변환)
+  const displayPurchasePrice = useMemo(() => {
+    if (!purchasePrice || purchasePrice <= 0) return null;
+    if (showInKRW && currency !== Currency.KRW) {
+      return purchasePrice * exchangeRate;
+    }
+    return purchasePrice;
+  }, [purchasePrice, showInKRW, currency, exchangeRate]);
+
   // MA 토글 영역 높이 보정: MA 토글이 보이면 차트 높이 조정
   const hasMAToggle = hasMASupport;
 
@@ -279,7 +303,7 @@ const AssetTrendChart: React.FC<AssetTrendChartProps> = ({
           )}
       </div>
 
-      {/* MA 토글 칩 (현금 제외) */}
+      {/* MA 토글 칩 + 범례 */}
       {hasMAToggle && (
         <div className="flex items-center gap-1.5 mb-2 flex-wrap">
           <span className="text-[10px] text-gray-500 mr-0.5">MA</span>
@@ -299,17 +323,51 @@ const AssetTrendChart: React.FC<AssetTrendChartProps> = ({
           ))}
           {maLoading && <span className="text-[10px] text-gray-500 ml-1">불러오는 중...</span>}
           {maError && !maLoading && <span className="text-[10px] text-red-400 ml-1">{maError}</span>}
+          {/* 범례 (오른쪽 정렬) */}
+          <div className="flex items-center gap-2 ml-auto">
+            <span className="flex items-center gap-1 text-[10px] text-gray-300">
+              <span className="inline-block w-3 h-0.5 rounded" style={{ backgroundColor: '#818CF8' }} />현재가
+            </span>
+            {enabledConfigs.map(config => (
+              <span key={config.period} className="flex items-center gap-1 text-[10px] text-gray-300">
+                <span className="inline-block w-3 h-0.5 rounded" style={{ backgroundColor: config.color }} />MA{config.period}
+              </span>
+            ))}
+            {displayPurchasePrice != null && (
+              <span className="flex items-center gap-1 text-[10px] text-gray-300">
+                <span className="inline-block w-3 h-0.5 rounded border-t border-dashed" style={{ borderColor: '#FFD700' }} />매수평균
+              </span>
+            )}
+          </div>
         </div>
       )}
 
       {chartData.length > 0 ? (
         <ResponsiveContainer width="100%" height="85%">
-          <LineChart data={chartData} margin={{ top: 5, right: 30, left: 10, bottom: 5 }}>
+          <LineChart data={chartData} margin={{ top: 5, right: 30, left: 10, bottom: 18 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#4A5568" />
             <XAxis
               dataKey="date"
               stroke="#A0AEC0"
               fontSize={12}
+              tick={({ x, y, payload }: { x: number; y: number; payload: { value: string; index?: number } }) => {
+                const dataIndex = payload.index ?? 0;
+                const year = yearByIndex[dataIndex] || '';
+                const showYear = year !== '' && !renderedYearsRef.current.has(year);
+                if (showYear) renderedYearsRef.current.add(year);
+                return (
+                  <g transform={`translate(${x},${y})`}>
+                    <text x={0} y={0} dy={14} textAnchor="middle" fill="#A0AEC0" fontSize={12}>
+                      {payload.value}
+                    </text>
+                    {showYear && (
+                      <text x={0} y={0} dy={28} textAnchor="middle" fill="#8B9BB4" fontSize={10} fontWeight="bold">
+                        {year}
+                      </text>
+                    )}
+                  </g>
+                );
+              }}
             />
             <YAxis
               stroke="#A0AEC0"
@@ -324,16 +382,34 @@ const AssetTrendChart: React.FC<AssetTrendChartProps> = ({
               labelStyle={{ color: '#E2E8F0' }}
               itemStyle={{ fontWeight: 'bold' }}
             />
-            <Legend wrapperStyle={{fontSize: "12px", bottom: -10}} />
             <Line
               type="monotone"
-              dataKey="가격"
+              dataKey="현재가"
               stroke="#818CF8"
               strokeWidth={2}
               dot={{ r: enabledPeriods.length > 0 ? 0 : 3 }}
               activeDot={{ r: 6 }}
               isAnimationActive={false}
             />
+            {/* 매수평균선 */}
+            {displayPurchasePrice != null && (
+              <ReferenceLine
+                y={displayPurchasePrice}
+                stroke="#FFD700"
+                strokeDasharray="6 3"
+                strokeWidth={1.5}
+                label={({ viewBox }: { viewBox: { x: number; y: number; width: number } }) => {
+                  const x = (viewBox.x ?? 0) + (viewBox.width ?? 0) + 4;
+                  const y = viewBox.y ?? 0;
+                  return (
+                    <text x={x} y={y} fill="#FFD700" fontSize={10} dominantBaseline="auto">
+                      <tspan x={x} dy="-2">매수</tspan>
+                      <tspan x={x} dy="11">평균</tspan>
+                    </text>
+                  );
+                }}
+              />
+            )}
             {/* 활성 MA 라인 동적 렌더링 */}
             {enabledConfigs.map(config => (
               <Line

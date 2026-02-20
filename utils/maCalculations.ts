@@ -53,7 +53,7 @@ export function calculateSMA(
 export interface MAChartDataPoint {
   date: string;
   fullDate: string;
-  가격: number;
+  현재가: number;
   [key: string]: string | number | undefined;
 }
 
@@ -74,7 +74,7 @@ export function calculateRSI(
     return sortedPrices.map(() => null);
   }
 
-  // 가격 변동 배열 (index 0은 null — 이전 가격 없음)
+  // 현재가 변동 배열 (index 0은 null — 이전 현재가 없음)
   const changes: number[] = [];
   for (let i = 1; i < sortedPrices.length; i++) {
     changes.push(sortedPrices[i].price - sortedPrices[i - 1].price);
@@ -147,7 +147,7 @@ export function buildChartDataWithMA(
     const point: MAChartDataPoint = {
       date: formatDateForChart(sortedPrices[i].date),
       fullDate: sortedPrices[i].date,
-      가격: sortedPrices[i].price,
+      현재가: sortedPrices[i].price,
     };
 
     for (const period of enabledPeriods) {

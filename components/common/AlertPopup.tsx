@@ -49,7 +49,7 @@ const AlertPopup: React.FC<AlertPopupProps> = ({ results, onClose }) => {
           <tr key={asset.assetId} className="border-b border-gray-800/30 last:border-b-0">
             <td className="py-1.5 pr-2">
               <div className="flex items-center gap-1.5">
-                <span className="text-white font-medium truncate max-w-[120px]">{asset.assetName}</span>
+                <span className="text-white font-medium truncate max-w-[400px]">{asset.assetName}</span>
                 <span className="text-gray-600 text-[10px] shrink-0">{asset.ticker}</span>
               </div>
             </td>
@@ -112,7 +112,7 @@ const AlertPopup: React.FC<AlertPopupProps> = ({ results, onClose }) => {
       onClick={onClose}
     >
       <div
-        className="bg-gray-900 border border-gray-700 rounded-xl shadow-2xl w-[95%] max-w-2xl max-h-[85vh] overflow-hidden flex flex-col"
+        className="bg-gray-900 border border-gray-700 rounded-xl shadow-2xl w-[95%] max-w-3xl max-h-[85vh] overflow-hidden flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         {/* 헤더 */}
