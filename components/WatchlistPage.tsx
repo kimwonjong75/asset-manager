@@ -55,7 +55,7 @@ const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, onDelete, onOp
       .map(w => ({
         ...w,
         dropFromHigh: (w.highestPrice && w.highestPrice > 0 && w.currentPrice) ? ((w.currentPrice - w.highestPrice) / w.highestPrice) * 100 : null,
-        yesterdayChange: w.previousClosePrice && w.currentPrice ? ((w.currentPrice - w.previousClosePrice) / w.previousClosePrice) * 100 : 0,
+        yesterdayChange: w.yesterdayChange ?? (w.previousClosePrice && w.currentPrice ? ((w.currentPrice - w.previousClosePrice) / w.previousClosePrice) * 100 : 0),
       }));
   }, [watchlist, filterCategory, search]);
 

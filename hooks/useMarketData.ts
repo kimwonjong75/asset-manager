@@ -159,7 +159,8 @@ export const useMarketData = ({
                     if (data) {
                         const apiHigh = data.highest_52_week_price || data.trade_price;
                         const newHighest = Math.max(item.highestPrice || 0, apiHigh, data.trade_price);
-                        return { ...item, currentPrice: data.trade_price, priceOriginal: data.trade_price, currency: Currency.KRW, previousClosePrice: data.prev_closing_price, changeRate: data.signed_change_rate, highestPrice: newHighest };
+                        const cr = data.signed_change_rate;
+                        return { ...item, currentPrice: data.trade_price, priceOriginal: data.trade_price, currency: Currency.KRW, previousClosePrice: data.prev_closing_price, changeRate: cr, highestPrice: newHighest, yesterdayChange: cr != null ? cr * 100 : (data.prev_closing_price > 0 ? ((data.trade_price - data.prev_closing_price) / data.prev_closing_price) * 100 : 0) };
                     }
                     return item;
                 }
@@ -167,7 +168,8 @@ export const useMarketData = ({
                 if (d && !d.isMocked) {
                     const newCurrent = (item.currency === Currency.KRW) ? d.priceKRW : d.priceOriginal;
                     const newHighest = Math.max(item.highestPrice || 0, d.highestPrice || 0, newCurrent);
-                    return { ...item, currentPrice: newCurrent, priceOriginal: d.priceOriginal, currency: (item.currency || d.currency) as Currency, previousClosePrice: d.previousClosePrice, changeRate: d.changeRate, indicators: d.indicators, highestPrice: newHighest };
+                    const cr = d.changeRate;
+                    return { ...item, currentPrice: newCurrent, priceOriginal: d.priceOriginal, currency: (item.currency || d.currency) as Currency, previousClosePrice: d.previousClosePrice, changeRate: cr, indicators: d.indicators, highestPrice: newHighest, yesterdayChange: cr != null ? cr * 100 : (d.previousClosePrice > 0 ? ((newCurrent - d.previousClosePrice) / d.previousClosePrice) * 100 : 0) };
                 }
                 return item;
             });
@@ -256,7 +258,7 @@ export const useMarketData = ({
         if (upbitData) {
              const newCurrent = upbitData.trade_price;
              const newHighest = Math.max(target.highestPrice, upbitData.highest_52_week_price || 0, newCurrent);
-             const updated = assets.map(a => a.id === assetId ? { ...a, previousClosePrice: upbitData.prev_closing_price, currentPrice: newCurrent, priceOriginal: newCurrent, currency: Currency.KRW, highestPrice: newHighest } : a);
+             const updated = assets.map(a => a.id === assetId ? { ...a, previousClosePrice: upbitData.prev_closing_price, currentPrice: newCurrent, priceOriginal: newCurrent, currency: Currency.KRW, highestPrice: newHighest, changeRate: upbitData.signed_change_rate } : a);
              setAssets(updated);
              triggerAutoSave(updated, portfolioHistory, sellHistory, watchlist, exchangeRates);
              setSuccessMessage('업데이트 완료');
@@ -267,7 +269,7 @@ export const useMarketData = ({
         const newCurrentPrice = (target.currency === Currency.KRW) ? d.priceKRW : d.priceOriginal;
         const finalHighest = fixHighestPrice(target, newCurrentPrice, d.highestPrice);
         
-        const updated = assets.map(a => a.id === assetId ? { ...a, previousClosePrice: d.previousClosePrice, currentPrice: newCurrentPrice, currency: newCurrency, highestPrice: finalHighest } : a);
+        const updated = assets.map(a => a.id === assetId ? { ...a, previousClosePrice: d.previousClosePrice, currentPrice: newCurrentPrice, currency: newCurrency, highestPrice: finalHighest, changeRate: d.changeRate } : a);
         setAssets(updated);
         triggerAutoSave(updated, portfolioHistory, sellHistory, watchlist, exchangeRates);
         setSuccessMessage('업데이트 완료');
@@ -330,7 +332,8 @@ export const useMarketData = ({
                     const apiHigh = data.highest_52_week_price || data.trade_price;
                     const histHigh = histHighMap.get(item.ticker.toUpperCase()) || 0;
                     const newHighest = Math.max(item.highestPrice || 0, apiHigh, histHigh, data.trade_price);
-                    return { ...item, currentPrice: data.trade_price, priceOriginal: data.trade_price, currency: Currency.KRW, previousClosePrice: data.prev_closing_price, changeRate: data.signed_change_rate, highestPrice: newHighest };
+                    const cr = data.signed_change_rate;
+                    return { ...item, currentPrice: data.trade_price, priceOriginal: data.trade_price, currency: Currency.KRW, previousClosePrice: data.prev_closing_price, changeRate: cr, highestPrice: newHighest, yesterdayChange: cr != null ? cr * 100 : (data.prev_closing_price > 0 ? ((data.trade_price - data.prev_closing_price) / data.prev_closing_price) * 100 : 0) };
                 }
                 return item;
             }
@@ -339,7 +342,8 @@ export const useMarketData = ({
                 const newCurrent = (item.currency === Currency.KRW) ? d.priceKRW : d.priceOriginal;
                 const histHigh = histHighMap.get(item.ticker.toUpperCase()) || 0;
                 const newHighest = Math.max(item.highestPrice || 0, d.highestPrice || 0, histHigh, newCurrent);
-                return { ...item, currentPrice: newCurrent, priceOriginal: d.priceOriginal, currency: (item.currency || d.currency) as Currency, previousClosePrice: d.previousClosePrice, changeRate: d.changeRate, indicators: d.indicators, highestPrice: newHighest };
+                const cr = d.changeRate;
+                return { ...item, currentPrice: newCurrent, priceOriginal: d.priceOriginal, currency: (item.currency || d.currency) as Currency, previousClosePrice: d.previousClosePrice, changeRate: cr, indicators: d.indicators, highestPrice: newHighest, yesterdayChange: cr != null ? cr * 100 : (d.previousClosePrice > 0 ? ((newCurrent - d.previousClosePrice) / d.previousClosePrice) * 100 : 0) };
             }
             return item;
         });

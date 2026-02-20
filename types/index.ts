@@ -131,6 +131,7 @@ export interface WatchlistItem {
   previousClosePrice?: number;
   highestPrice?: number;
   changeRate?: number;
+  yesterdayChange?: number;   // 어제대비 변동률 (%), hooks에서 사전 계산
   indicators?: Indicators;
 }
 

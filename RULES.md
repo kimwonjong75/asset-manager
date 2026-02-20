@@ -39,7 +39,7 @@
 ### API 연동 원칙
 - 외부 API 호출은 `hooks/useMarketData.ts` 등 전용 훅에서만 수행
 - API 실패 시 `try-catch`와 `fallback` 데이터 필수 (부분 성공 허용)
-- 변동률(어제대비) 계산은 `usePortfolioCalculator`의 `yesterdayChange` 사용 (현재가-전일종가 기반 직접 계산)
+- 변동률(어제대비) 계산은 `usePortfolioCalculator`의 `yesterdayChange` 사용 (API `changeRate` 우선, 없을 때 현재가-전일종가 폴백)
 
 ---
 
@@ -49,7 +49,7 @@
 | 파일 | 책임 | 의존 | 수정 시 확인 |
 |------|------|------|-------------|
 | `usePortfolioData.ts` | 핵심 데이터 상태, Google Drive 동기화 | `useGoogleDriveSync`, `historyUtils` | `PortfolioContext` |
-| `useMarketData.ts` | 시세/환율 업데이트, 암호화폐 분기, **관심종목 시세도 함께 갱신**, 관심종목 전용 갱신(52주 최고가 히스토리 기반 계산) | `priceService`, `upbitService`, `historicalPriceService` | `PortfolioContext` |
+| `useMarketData.ts` | 시세/환율 업데이트, 암호화폐 분기, **관심종목 시세도 함께 갱신** (어제대비 `yesterdayChange` 선계산 포함), 관심종목 전용 갱신(52주 최고가 히스토리 기반 계산) | `priceService`, `upbitService`, `historicalPriceService` | `PortfolioContext` |
 | `useAssetActions.ts` | 자산 CRUD, 매도/매수/CSV 처리 | `priceService`, `geminiService` | 모달 컴포넌트들 |
 | `usePortfolioCalculator.ts` | 수익률/손익 계산 (구매 환율 기준) | `types/index` | 대시보드, 통계 |
 | `useHistoricalPriceData.ts` | 차트용 과거 종가 데이터 (MA 여부 무관, 캐시 내장, `displayDays` 기반 기간 제어) | `historicalPriceService`, `maCalculations` | `AssetTrendChart` |
@@ -330,6 +330,7 @@ interface Asset {
   priceOriginal: number;         // 외화 원본 가격 (항상 원본통화)
   highestPrice: number;          // 52주 최고가
   previousClosePrice?: number;   // 전일 종가
+  changeRate?: number;           // API 원본 등락률 (비율, 0.05=5%). usePortfolioCalculator에서 yesterdayChange 계산의 1차 소스
   sellAlertDropRate?: number;    // 매도 알림 하락률
   memo?: string;                 // 메모
   sellTransactions?: SellTransaction[]; // 매도 이력
@@ -468,7 +469,7 @@ try {
 
 ### 당일 변동률 표시 주의
 - **`asset.changeRate`**: API 원본 비율값 (0.05 = 5%). **UI에 직접 `%` 표기 금지** (곱하기 100 누락 시 항상 0.0%로 보임)
-- **`asset.metrics.yesterdayChange`**: `usePortfolioCalculator`에서 `((현재가 - 전일종가) / 전일종가) * 100`으로 계산된 % 값. **UI 표시에는 이 값 사용**
+- **`asset.metrics.yesterdayChange`**: `usePortfolioCalculator`에서 `changeRate * 100` (API 원본, 우선) 또는 `((현재가 - 전일종가) / 전일종가) * 100` (폴백)으로 계산된 % 값. **UI 표시에는 이 값 사용**
 - **원칙**: 변동률을 UI에 보여줄 때는 반드시 `metrics.yesterdayChange` 사용, `changeRate`는 내부 계산용으로만 참조
 
 ### 환율 처리
@@ -524,6 +525,7 @@ try {
 - **52주 최고가(`highestPrice`) 계산**: 관심종목 전용 갱신 시 `fetchStockHistoricalPrices`/`fetchCryptoHistoricalPrices`로 1년 히스토리를 가져와 `Math.max(...prices)`로 산출. 백엔드 시세 API가 `high52w`를 제공하지 않는 종목도 커버
 - **최고가대비 표시**: `highestPrice`가 미설정(`undefined`)이면 `0.00%`가 아닌 `-` 표시
 - **차트 확장**: `AssetTrendChart`를 `history={[]}`로 호출 (스냅샷 없이 API 과거 시세만 사용)
+- **어제대비(`yesterdayChange`) 선계산**: `useMarketData.ts`에서 시세 갱신 시 `changeRate * 100`으로 사전 계산하여 `WatchlistItem.yesterdayChange`에 저장. `WatchlistPage.tsx`는 이 값을 렌더링만 함 (UI에서 직접 계산 금지). `changeRate`가 없는 레거시 데이터는 `??`로 폴백
 - **테이블 컬럼**: 체크박스 | 종목명 | 현재가 | 어제대비 | 최고가대비 | 액션
 
 ### 자동 시세 업데이트 (하루 1회)

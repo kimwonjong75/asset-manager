@@ -56,28 +56,37 @@ export const usePortfolioCalculator = () => {
     const purchaseValue = asset.purchasePrice * asset.quantity;
     const profitLoss = currentValue - purchaseValue;
 
-    // 3. Calculate Yesterday Price in KRW
-    const yesterdayPrice = asset.previousClosePrice || 0;
-    let yesterdayPriceKRW: number;
+    // 3. Calculate Yesterday Change (Daily Return)
+    // API changeRate 우선 사용 (0은 유효값, undefined/null일 때만 폴백)
+    let yesterdayChange: number;
+    let diffFromYesterday: number;
 
-    if (isKRWExchange) {
-      if (asset.currency === Currency.USD) {
-        yesterdayPriceKRW = yesterdayPrice * (exchangeRates.USD || 1);
-      } else {
-        yesterdayPriceKRW = yesterdayPrice;
-      }
+    if (asset.changeRate != null) {
+      yesterdayChange = asset.changeRate * 100;
+      const rate = asset.changeRate;
+      diffFromYesterday = (1 + rate) !== 0
+        ? currentPriceKRW * (rate / (1 + rate))
+        : 0;
     } else {
-      yesterdayPriceKRW = getValueInKRW(yesterdayPrice, asset.currency, exchangeRates);
+      // 폴백: changeRate 없는 레거시 데이터
+      const yesterdayPrice = asset.previousClosePrice || 0;
+      let yesterdayPriceKRW: number;
+      if (isKRWExchange) {
+        if (asset.currency === Currency.USD) {
+          yesterdayPriceKRW = yesterdayPrice * (exchangeRates.USD || 1);
+        } else {
+          yesterdayPriceKRW = yesterdayPrice;
+        }
+      } else {
+        yesterdayPriceKRW = getValueInKRW(yesterdayPrice, asset.currency, exchangeRates);
+      }
+      yesterdayChange = yesterdayPriceKRW > 0
+        ? ((currentPriceKRW - yesterdayPriceKRW) / yesterdayPriceKRW) * 100
+        : 0;
+      diffFromYesterday = yesterdayPriceKRW > 0
+        ? currentPriceKRW - yesterdayPriceKRW
+        : 0;
     }
-
-    // 4. Calculate Yesterday Change (Daily Return)
-    const yesterdayChange = yesterdayPriceKRW > 0 
-      ? ((currentPriceKRW - yesterdayPriceKRW) / yesterdayPriceKRW) * 100 
-      : 0;
-      
-    const diffFromYesterday = yesterdayPriceKRW > 0 
-      ? currentPriceKRW - yesterdayPriceKRW 
-      : 0;
 
     const allocation = totalPortfolioValue === 0 ? 0 : (currentValueKRW / totalPortfolioValue) * 100;
     const dropFromHigh = asset.highestPrice === 0 ? 0 : ((asset.currentPrice - asset.highestPrice) / asset.highestPrice) * 100;

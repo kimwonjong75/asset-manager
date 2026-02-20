@@ -100,7 +100,7 @@ export async function fetchBatchAssetPrices(
 
             const priceKRW = typeof item.priceKRW === 'number'
               ? item.priceKRW
-              : (currency === Currency.KRW ? priceOrig : priceOrig); 
+              : priceOrig;
 
             // [수정됨] 최고가 매핑 로직 개선
             // 백엔드에서 high52w, high_52_week_price 등을 보내준다면 우선 사용
