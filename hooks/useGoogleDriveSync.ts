@@ -136,8 +136,10 @@ export function useGoogleDriveSync(options: UseGoogleDriveSyncOptions = {}) {
         await googleDriveService.saveFile(portfolioJSON);
         lastSavedDataRef.current = portfolioJSON;
         optionsRef.current.onSuccessMessage?.('Google Drive에 자동 저장되었습니다.');
+        setTimeout(() => optionsRef.current.onSuccessMessage?.(null as unknown as string), 3000);
       } catch (error) {
         optionsRef.current.onError?.('자동 저장에 실패했습니다.');
+        setTimeout(() => optionsRef.current.onError?.(null as unknown as string), 3000);
       } finally {
         isSavingRef.current = false;
       }

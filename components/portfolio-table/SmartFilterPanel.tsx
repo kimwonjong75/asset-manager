@@ -20,7 +20,7 @@ interface SmartFilterPanelProps {
   isEnrichedLoading?: boolean;
 }
 
-const GROUPS = ['ma', 'rsi', 'signal', 'portfolio', 'volume'] as const;
+const GROUPS = ['ma', 'rsi', 'signal', 'portfolio'] as const;
 
 const MA_SHORT_OPTIONS = [5, 10, 20, 60];
 const MA_LONG_OPTIONS = [60, 120, 200];
@@ -185,7 +185,7 @@ const SmartFilterPanel: React.FC<SmartFilterPanelProps> = ({
   return (
     <div className="px-4 sm:px-6 py-2.5 border-b border-gray-700 bg-gray-800/50">
       {/* 필터 그리드 */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-2">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
         {GROUPS.map(group => {
           const chips = SMART_FILTER_CHIPS.filter(c => c.group === group);
           return (
@@ -200,6 +200,19 @@ const SmartFilterPanel: React.FC<SmartFilterPanelProps> = ({
               <div className="flex flex-wrap gap-1.5">
                 {chips.map(renderChip)}
               </div>
+              {/* 매매신호 그룹: 거래량 칩 병합 */}
+              {group === 'signal' && (
+                <div className="mt-1.5 pt-1.5 border-t border-gray-600/30">
+                  <div className="flex items-center gap-1.5 mb-1.5">
+                    <span className="text-[11px] text-gray-400 font-medium">
+                      {SMART_FILTER_GROUP_LABELS['volume']}
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {SMART_FILTER_CHIPS.filter(c => c.group === 'volume').map(renderChip)}
+                  </div>
+                </div>
+              )}
               {/* 포트폴리오 그룹: 매도알림 섹션 */}
               {group === 'portfolio' && (
                 <div className="mt-2 pt-1.5 border-t border-gray-600/30">
