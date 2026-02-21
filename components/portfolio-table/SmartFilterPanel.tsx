@@ -20,7 +20,7 @@ interface SmartFilterPanelProps {
   isEnrichedLoading?: boolean;
 }
 
-const GROUPS = ['ma', 'rsi', 'signal', 'portfolio'] as const;
+const GROUPS = ['ma', 'rsi', 'signal', 'portfolio', 'volume'] as const;
 
 const MA_SHORT_OPTIONS = [5, 10, 20, 60];
 const MA_LONG_OPTIONS = [60, 120, 200];
@@ -185,7 +185,7 @@ const SmartFilterPanel: React.FC<SmartFilterPanelProps> = ({
   return (
     <div className="px-4 sm:px-6 py-2.5 border-b border-gray-700 bg-gray-800/50">
       {/* 필터 그리드 */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-2">
         {GROUPS.map(group => {
           const chips = SMART_FILTER_CHIPS.filter(c => c.group === group);
           return (

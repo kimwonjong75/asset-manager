@@ -44,4 +44,7 @@ export interface Indicators {
   rsi?: number;
   rsi_status?: RSIStatus;
   signal?: SignalType;
+  volume?: number;           // 당일 거래량
+  volume_avg20?: number;     // 20일 평균 거래량
+  volume_ratio?: number;     // 당일/20일평균 비율
 }

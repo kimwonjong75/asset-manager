@@ -136,6 +136,14 @@ export const matchesSingleFilter = (
     case 'LOSS_THRESHOLD':
       return m.returnPercentage <= -lossThreshold;
 
+    // ── 거래량 ──
+    case 'VOLUME_SURGE':
+      return typeof ind?.volume_ratio === 'number' && ind.volume_ratio >= 2.0;
+    case 'VOLUME_HIGH':
+      return typeof ind?.volume_ratio === 'number' && ind.volume_ratio >= 1.5;
+    case 'VOLUME_LOW':
+      return typeof ind?.volume_ratio === 'number' && ind.volume_ratio < 0.5;
+
     default:
       return false;
   }

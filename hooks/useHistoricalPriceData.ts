@@ -22,12 +22,14 @@ interface UseHistoricalPriceDataProps {
 
 interface UseHistoricalPriceDataResult {
   historicalPrices: HistoricalPriceData | null;
+  historicalVolumes: HistoricalPriceData | null;
   isLoading: boolean;
   error: string | null;
 }
 
 interface CacheEntry {
   data: HistoricalPriceData;
+  volume: HistoricalPriceData | null;
   fetchedAt: number;
   totalDays: number;
 }
@@ -48,6 +50,7 @@ export function useHistoricalPriceData({
   displayDays,
 }: UseHistoricalPriceDataProps): UseHistoricalPriceDataResult {
   const [historicalPrices, setHistoricalPrices] = useState<HistoricalPriceData | null>(null);
+  const [historicalVolumes, setHistoricalVolumes] = useState<HistoricalPriceData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const abortRef = useRef(false);
@@ -80,6 +83,7 @@ export function useHistoricalPriceData({
     const cached = cache.get(cacheKey);
     if (cached && (now - cached.fetchedAt) < CACHE_TTL_MS && cached.totalDays >= totalDays) {
       setHistoricalPrices(cached.data);
+      setHistoricalVolumes(cached.volume);
       setError(null);
       return;
     }
@@ -99,15 +103,18 @@ export function useHistoricalPriceData({
         const isCrypto = isCryptoExchange(exchange);
 
         let priceData: HistoricalPriceData | undefined;
+        let volumeData: HistoricalPriceData | undefined;
 
         if (isCrypto) {
           const result = await fetchCryptoHistoricalPrices([apiTicker], startDate, endDate);
           const entry = result[apiTicker] || result[Object.keys(result)[0]];
           priceData = entry?.data;
+          volumeData = entry?.volume;
         } else {
           const result = await fetchStockHistoricalPrices([apiTicker], startDate, endDate);
           const entry = result[apiTicker] || result[Object.keys(result)[0]];
           priceData = entry?.data;
+          volumeData = entry?.volume;
         }
 
         if (abortRef.current) return;
@@ -115,10 +122,12 @@ export function useHistoricalPriceData({
         if (priceData && Object.keys(priceData).length > 0) {
           cache.set(cacheKey, {
             data: priceData,
+            volume: volumeData ?? null,
             fetchedAt: Date.now(),
             totalDays,
           });
           setHistoricalPrices(priceData);
+          setHistoricalVolumes(volumeData ?? null);
           setError(null);
         } else {
           setError('과거 시세 데이터가 없습니다.');
@@ -141,5 +150,5 @@ export function useHistoricalPriceData({
     };
   }, [ticker, exchange, category, isExpanded, maxMAPeriod, displayDays]);
 
-  return { historicalPrices, isLoading, error };
+  return { historicalPrices, historicalVolumes, isLoading, error };
 }

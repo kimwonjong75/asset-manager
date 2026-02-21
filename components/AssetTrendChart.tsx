@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useCallback, useRef } from 'react';
 import { PortfolioSnapshot, Currency } from '../types';
 import { isBaseType, getCategoryName, DEFAULT_CATEGORIES } from '../types/category';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
+import { ComposedChart, Line, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 import { useHistoricalPriceData } from '../hooks/useHistoricalPriceData';
 import { DEFAULT_MA_CONFIGS, MALineConfig, buildChartDataWithMA } from '../utils/maCalculations';
 import { usePortfolio } from '../contexts/PortfolioContext';
@@ -44,6 +44,14 @@ interface AssetTrendChartProps {
   purchasePrice?: number;   // 매수평균가 (원화자산=KRW, 외화자산=원본통화)
 }
 
+/** 거래량 포맷 (1234567 → "123.5만", 1234567890 → "12.3억") */
+function formatVolume(vol: number): string {
+  if (vol >= 1_0000_0000) return `${(vol / 1_0000_0000).toFixed(1)}억`;
+  if (vol >= 1_0000) return `${(vol / 1_0000).toFixed(1)}만`;
+  if (vol >= 1000) return `${(vol / 1000).toFixed(1)}K`;
+  return vol.toLocaleString();
+}
+
 const AssetTrendChart: React.FC<AssetTrendChartProps> = ({
   history,
   assetId,
@@ -59,6 +67,7 @@ const AssetTrendChart: React.FC<AssetTrendChartProps> = ({
 }) => {
   const [showInKRW, setShowInKRW] = useState<boolean>(false);
   const [maConfigs, setMAConfigs] = useState<MALineConfig[]>(loadMAConfigs);
+  const [showVolume, setShowVolume] = useState<boolean>(true);
 
   const isCash = categoryId ? isBaseType(categoryId, 'CASH') : false;
   const enabledConfigs = maConfigs.filter(c => c.enabled);
@@ -72,7 +81,7 @@ const AssetTrendChart: React.FC<AssetTrendChartProps> = ({
   // 과거 시세 fetch (차트 열릴 때 항상 — 종가 기반 정확도 보장)
   // MA 비활성이어도 hook 내부에서 기본 기간으로 종가 데이터를 가져옴
   const categoryName = categoryId ? getCategoryName(categoryId, DEFAULT_CATEGORIES) : undefined;
-  const { historicalPrices, isLoading: maLoading, error: maError } = useHistoricalPriceData({
+  const { historicalPrices, historicalVolumes, isLoading: maLoading, error: maError } = useHistoricalPriceData({
     ticker: ticker || '',
     exchange: exchange || '',
     category: categoryName,
@@ -167,7 +176,7 @@ const AssetTrendChart: React.FC<AssetTrendChartProps> = ({
     return data;
   }, [history, assetId, currentQuantity, currentPrice, currency, exchangeRate, showInKRW, displayDays]);
 
-  // 과거 종가 기반 차트 데이터 (+ MA 오버레이)
+  // 과거 종가 기반 차트 데이터 (+ MA 오버레이 + 거래량)
   const historicalChartData = useMemo(() => {
     if (!useHistoricalData || !historicalPrices) return [];
 
@@ -179,7 +188,7 @@ const AssetTrendChart: React.FC<AssetTrendChartProps> = ({
         )
       : historicalPrices;
 
-    let data = buildChartDataWithMA(processedPrices, enabledPeriods);
+    let data = buildChartDataWithMA(processedPrices, enabledPeriods, historicalVolumes);
 
     // 글로벌 기간으로 표시 범위 제한 (MA warm-up 구간 제거)
     if (displayDays !== null && data.length > 0) {
@@ -220,9 +229,14 @@ const AssetTrendChart: React.FC<AssetTrendChartProps> = ({
     }
 
     return data;
-  }, [useHistoricalData, historicalPrices, enabledPeriods, currentPrice, currency, exchangeRate, showInKRW]);
+  }, [useHistoricalData, historicalPrices, historicalVolumes, enabledPeriods, currentPrice, currency, exchangeRate, showInKRW, displayDays]);
 
   const chartData = useHistoricalData ? historicalChartData : snapshotChartData;
+
+  // 거래량 데이터 존재 여부
+  const hasVolumeData = useMemo(() => {
+    return chartData.some(d => d['거래량'] !== undefined && (d['거래량'] as number) > 0);
+  }, [chartData]);
 
   // X축 연도 표시: 렌더된 tick 중 첫 등장 연도만 표시하기 위한 ref
   const renderedYearsRef = useRef(new Set<string>());
@@ -253,6 +267,9 @@ const AssetTrendChart: React.FC<AssetTrendChartProps> = ({
 
   // 툴팁 포맷터
   const formatTooltip = (value: number, name: string) => {
+    if (name === '거래량') {
+      return [formatVolume(value), '거래량'];
+    }
     const symbol = getCurrencySymbol(currency);
     const formattedValue = displayCurrency === Currency.KRW
       ? value.toLocaleString('ko-KR')
@@ -321,6 +338,19 @@ const AssetTrendChart: React.FC<AssetTrendChartProps> = ({
               {config.period}
             </button>
           ))}
+          {/* VOL 토글 */}
+          {hasVolumeData && (
+            <button
+              onClick={() => setShowVolume(!showVolume)}
+              className={`text-[10px] px-1.5 py-0.5 rounded-full border transition-colors ml-1 ${
+                showVolume
+                  ? 'text-white bg-gray-600 border-gray-500'
+                  : 'text-gray-400 border-gray-600 bg-transparent hover:border-gray-500'
+              }`}
+            >
+              VOL
+            </button>
+          )}
           {maLoading && <span className="text-[10px] text-gray-500 ml-1">불러오는 중...</span>}
           {maError && !maLoading && <span className="text-[10px] text-red-400 ml-1">{maError}</span>}
           {/* 범례 (오른쪽 정렬) */}
@@ -344,7 +374,7 @@ const AssetTrendChart: React.FC<AssetTrendChartProps> = ({
 
       {chartData.length > 0 ? (
         <ResponsiveContainer width="100%" height="85%">
-          <LineChart data={chartData} margin={{ top: 5, right: 30, left: 10, bottom: 18 }}>
+          <ComposedChart data={chartData} margin={{ top: 5, right: 30, left: 10, bottom: 18 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#4A5568" />
             <XAxis
               dataKey="date"
@@ -369,20 +399,44 @@ const AssetTrendChart: React.FC<AssetTrendChartProps> = ({
                 );
               }}
             />
+            {/* 가격 Y축 (좌측) */}
             <YAxis
+              yAxisId="price"
               stroke="#A0AEC0"
               fontSize={12}
               tickFormatter={formatYAxis}
               domain={['auto', 'auto']}
               width={60}
             />
+            {/* 거래량 Y축 (숨김 — 하단 1/4에 표시되도록 domain 조정) */}
+            {showVolume && hasVolumeData && (
+              <YAxis
+                yAxisId="volume"
+                orientation="right"
+                stroke="transparent"
+                tick={false}
+                width={0}
+                domain={[0, (dataMax: number) => dataMax * 4]}
+              />
+            )}
             <Tooltip
               formatter={formatTooltip}
               contentStyle={{ backgroundColor: '#2D3748', border: '1px solid #4A5568', borderRadius: '0.5rem' }}
               labelStyle={{ color: '#E2E8F0' }}
               itemStyle={{ fontWeight: 'bold' }}
             />
+            {/* 거래량 막대 (가격 라인 뒤에 렌더) */}
+            {showVolume && hasVolumeData && (
+              <Bar
+                yAxisId="volume"
+                dataKey="거래량"
+                fill="#4A5568"
+                opacity={0.3}
+                isAnimationActive={false}
+              />
+            )}
             <Line
+              yAxisId="price"
               type="monotone"
               dataKey="현재가"
               stroke="#818CF8"
@@ -394,6 +448,7 @@ const AssetTrendChart: React.FC<AssetTrendChartProps> = ({
             {/* 매수평균선 */}
             {displayPurchasePrice != null && (
               <ReferenceLine
+                yAxisId="price"
                 y={displayPurchasePrice}
                 stroke="#FFD700"
                 strokeDasharray="6 3"
@@ -413,6 +468,7 @@ const AssetTrendChart: React.FC<AssetTrendChartProps> = ({
             {/* 활성 MA 라인 동적 렌더링 */}
             {enabledConfigs.map(config => (
               <Line
+                yAxisId="price"
                 key={config.period}
                 type="monotone"
                 dataKey={`MA${config.period}`}
@@ -424,7 +480,7 @@ const AssetTrendChart: React.FC<AssetTrendChartProps> = ({
                 connectNulls={false}
               />
             ))}
-          </LineChart>
+          </ComposedChart>
         </ResponsiveContainer>
       ) : (
         <div className="flex items-center justify-center h-full">

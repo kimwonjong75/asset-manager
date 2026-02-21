@@ -43,7 +43,7 @@ const SignalBadge = ({ signal }: { signal?: string }) => {
 // ----------------------------------------------------------------------
 const RSIIndicator = ({ rsi, status }: { rsi?: number, status?: string }) => {
   if (typeof rsi !== 'number') return null;
-  
+
   let colorClass = 'text-gray-400';
   if (status === 'OVERBOUGHT' || rsi >= 70) colorClass = 'text-red-400'; // 과매수
   else if (status === 'OVERSOLD' || rsi <= 30) colorClass = 'text-blue-400'; // 과매도
@@ -51,6 +51,26 @@ const RSIIndicator = ({ rsi, status }: { rsi?: number, status?: string }) => {
   return (
     <div className="text-[10px] mt-0.5">
       <span className="text-gray-500">RSI:</span> <span className={colorClass}>{rsi.toFixed(1)}</span>
+    </div>
+  );
+};
+
+// ----------------------------------------------------------------------
+// [추가된 컴포넌트] 거래량 지표
+// ----------------------------------------------------------------------
+const VolumeIndicator = ({ ratio }: { ratio?: number }) => {
+  if (typeof ratio !== 'number') return null;
+
+  let colorClass = 'text-gray-400';
+  let label = '';
+  if (ratio >= 2.0) { colorClass = 'text-orange-400'; label = '!!'; }
+  else if (ratio >= 1.5) { colorClass = 'text-yellow-400'; label = '!'; }
+  else if (ratio < 0.5) { colorClass = 'text-gray-500'; label = '~'; }
+
+  return (
+    <div className="text-[10px] mt-0.5">
+      <span className="text-gray-500">VOL:</span>{' '}
+      <span className={colorClass}>{ratio.toFixed(1)}x{label && ` ${label}`}</span>
     </div>
   );
 };
@@ -182,6 +202,7 @@ const PortfolioTableRow: React.FC<PortfolioTableRowProps> = ({
               <div className="font-semibold text-white">{formatOriginalCurrency(asset.currentPrice, asset.currency)}</div>
               {isNonKRW && <div className="text-xs text-gray-500">≈ {formatKRW(asset.metrics.currentPriceKRW)}</div>}
               <RSIIndicator rsi={asset.indicators?.rsi} status={asset.indicators?.rsi_status} />
+              <VolumeIndicator ratio={asset.indicators?.volume_ratio} />
             </div>
           </Tooltip>
         </td>

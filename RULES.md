@@ -52,12 +52,12 @@
 | `useMarketData.ts` | 시세/환율 업데이트, 암호화폐 분기, **관심종목 시세도 함께 갱신** (어제대비 `yesterdayChange` 선계산 포함), 관심종목 전용 갱신(52주 최고가 히스토리 기반 계산) | `priceService`, `upbitService`, `historicalPriceService` | `PortfolioContext` |
 | `useAssetActions.ts` | 자산 CRUD, 매도/매수/CSV 처리 | `priceService`, `geminiService` | 모달 컴포넌트들 |
 | `usePortfolioCalculator.ts` | 수익률/손익 계산 (구매 환율 기준) | `types/index` | 대시보드, 통계 |
-| `useHistoricalPriceData.ts` | 차트용 과거 종가 데이터 (MA 여부 무관, 캐시 내장, `displayDays` 기반 기간 제어) | `historicalPriceService`, `maCalculations` | `AssetTrendChart` |
+| `useHistoricalPriceData.ts` | 차트용 과거 종가+거래량 데이터 (MA 여부 무관, 캐시 내장, `displayDays` 기반 기간 제어). 반환값: `{ historicalPrices, historicalVolumes, isLoading, error }` | `historicalPriceService`, `maCalculations` | `AssetTrendChart` |
 | `useGlobalPeriodDays.ts` | 글로벌 기간(`GlobalPeriod`) → `{ startDate, endDate, days }` 변환 유틸 훅 | `types/store` | `AssetTrendChart`, `DashboardView`, `AnalyticsView` |
 | `useEnrichedIndicators.ts` | 전 종목 배치 과거 데이터 조회 → MA 전 기간(5~200) + RSI(금일/전일) 계산 | `historicalPriceService`, `maCalculations` | **`PortfolioContext`** (Context 레벨에서 호출, enrichedMap을 전역 공유), `geminiService` (타입만) |
 | `useAutoAlert.ts` | 자동 알림 트리거 + AlertSettings localStorage 영속 | `alertChecker`, `types/alertRules` | `PortfolioContext` (derived/actions에 노출) |
 | `usePortfolioHistory.ts` | 포트폴리오 스냅샷 저장 | `types/index` | 차트 데이터 |
-| `useRebalancing.ts` | 리밸런싱 계산 및 저장 | `PortfolioContext` | `RebalancingTable` |
+| `useRebalancing.ts` | 리밸런싱 계산 및 저장. `CategoryData`에 `categoryKey`(ID 문자열)와 `category`(표시명)를 분리 — 가중치 변경 핸들러에는 `categoryKey` 전달 필수 | `PortfolioContext` | `RebalancingTable` |
 | `useGoogleDriveSync.ts` | Google Drive 저장/로드, 토큰 갱신, **인증 상태 변경 콜백 등록** | `googleDriveService`, `lz-string` | `usePortfolioData` |
 | `useBackup.ts` | 1일 1회 자동 백업, 수동 백업/복원/삭제, retention 관리 | `googleDriveService` | `PortfolioContext` |
 
@@ -66,7 +66,7 @@
 |------|------|----------------|-------------|
 | `priceService.ts` | 주식/ETF 시세, 환율 | Cloud Run `/`, `/exchange-rate` | `useMarketData`, `useAssetActions` |
 | `upbitService.ts` | 암호화폐 시세 | Cloud Run `/upbit` | `useMarketData` |
-| `historicalPriceService.ts` | 과거 시세 (백필/차트용/AI분석용) | Cloud Run `/history`, `/upbit/history` | `useHistoricalPriceData`, `historyUtils`, `geminiService` |
+| `historicalPriceService.ts` | 과거 시세+거래량 (백필/차트용/AI분석용). `HistoricalPriceResult`에 optional `volume` 필드 포함 | Cloud Run `/history`, `/upbit/history` | `useHistoricalPriceData`, `historyUtils`, `geminiService` |
 | `googleDriveService.ts` | 클라우드 저장/로드, **401 자동 재인증** (`authenticatedFetch` 래퍼), 백업 파일 관리(`deleteFileById`, `loadFileById`, `listFilesByPattern`) | Google Drive API | `useGoogleDriveSync`, `useBackup` |
 | `geminiService.ts` | 종목 검색, AI 분석 (스트리밍 응답, 기술적 질문 시 Context의 enrichedMap 재활용 우선 → 폴백으로 직접 fetch) | Gemini API, `historicalPriceService`, `maCalculations`, `useEnrichedIndicators`(타입만) | `useAssetActions`, `PortfolioAssistant` |
 
@@ -75,9 +75,9 @@
 |------|------|------------------|
 | `portfolioCalculations.ts` | 포트폴리오 계산 유틸 | 전역 (계산 결과 변경) |
 | `historyUtils.ts` | 히스토리 보간/백필/기존 스냅샷 종가 교정/오염 데이터 교정 | `usePortfolioData` |
-| `maCalculations.ts` | SMA/RSI 계산, 차트 데이터 빌드 | `AssetTrendChart`, `useEnrichedIndicators`, `geminiService` |
+| `maCalculations.ts` | SMA/RSI 계산, 차트 데이터 빌드. `MAChartDataPoint`의 가격 키는 `'현재가'` (이전 `'가격'` 아님). `buildChartDataWithMA()`는 3번째 파라미터로 `volumeData`를 받아 `'거래량'` 키에 매핑 | `AssetTrendChart`, `useEnrichedIndicators`, `geminiService` |
 | `signalUtils.ts` | 신호/RSI 배지 렌더링 | `PortfolioTableRow` |
-| `smartFilterLogic.ts` | 스마트 필터 매칭 (그룹 내 OR, 그룹 간 AND), enriched 지표 참조, `PRICE_BELOW_*` 판정 포함. **`matchesSingleFilter()` export** — 알림 규칙 체커에서도 재활용 | `PortfolioTable`, `alertChecker.ts` |
+| `smartFilterLogic.ts` | 스마트 필터 매칭 (그룹 내 OR, 그룹 간 AND), enriched 지표 참조, `PRICE_BELOW_*` 판정 포함. 거래량 필터(`VOLUME_SURGE/HIGH/LOW`)는 `indicators.volume_ratio` 사용. **`matchesSingleFilter()` export** — 알림 규칙 체커에서도 재활용 | `PortfolioTable`, `alertChecker.ts` |
 | `alertChecker.ts` | 알림 규칙별 자산 매칭 (규칙 내 필터 AND 조합), 매칭 결과 구조화 반환 (`dailyChange`/`returnPct`/`dropFromHigh`/`rsi` + `details` 문자열). **당일 변동률은 `asset.metrics.yesterdayChange` 사용** (`changeRate` 사용 금지) | `smartFilterLogic.matchesSingleFilter`, `types/alertRules` | `useAutoAlert`, 프리셋 버튼 |
 | `migrateData.ts` | 데이터 마이그레이션 (기존 형식 변환 + 카테고리 ID 변환) | 로드 시 자동 실행 |
 
@@ -87,17 +87,17 @@
 | `index.ts` | 핵심 타입 (`Asset`, `Currency`, `AssetCategory`(deprecated) 등) | **전역** - 거의 모든 파일 |
 | `category.ts` | **카테고리 시스템 핵심** — `CategoryDefinition`, `CategoryStore`, `CategoryBaseType`, `DEFAULT_CATEGORIES`, `EXCHANGE_MAP_BY_BASE_TYPE`, 유틸(`isBaseType`, `getCategoryName`, `inferCategoryIdFromExchange`, `getAllowedCategories`) | **전역** — 모든 카테고리 참조 컴포넌트/훅 |
 | `backup.ts` | 백업 타입 (`BackupInfo`, `BackupSettings`, `RETENTION_OPTIONS`) | `hooks/useBackup`, `BackupSettingsSection` |
-| `api.ts` | API 응답 타입 (`PriceItem`, `Indicators` 등) | `services/`, `hooks/` |
+| `api.ts` | API 응답 타입 (`PriceItem`, `Indicators` 등). `Indicators`에 거래량 3필드 포함: `volume`(당일), `volume_avg20`(20일 평균), `volume_ratio`(비율) | `services/`, `hooks/` |
 | `store.ts` | 상태 관리 타입 (`PortfolioContextValue`, `GlobalPeriod`, `UIState.activeTab` 등). `PortfolioData`에 `categoryStore`, `DerivedState`에 `backupList`/`isBackingUp` 포함 | `contexts/`, `hooks/`, `App.tsx`, `components/common/PeriodSelector`, `SmartFilterPanel`, `AlertSettingsPage` |
 | `ui.ts` | UI 컴포넌트 Props 타입 | `components/` |
-| `smartFilter.ts` | 스마트 필터 타입 (21개 키, MA 기간 설정 + `lossThreshold` 포함), 그룹 매핑, 칩 정의(`pairKey`/`pairColorClass` tri-state 지원), 초기값 | `utils/smartFilterLogic`, `SmartFilterPanel`(+ `PortfolioContext` 의존), `PortfolioTable`, `alertChecker` |
+| `smartFilter.ts` | 스마트 필터 타입 (24개 키, 5개 그룹: ma/rsi/signal/portfolio/volume, MA 기간 설정 + `lossThreshold` 포함), 그룹 매핑, 칩 정의(`pairKey`/`pairColorClass` tri-state 지원), 초기값 | `utils/smartFilterLogic`, `SmartFilterPanel`(+ `PortfolioContext` 의존), `PortfolioTable`, `alertChecker` |
 | `alertRules.ts` | 알림 규칙 타입 (`AlertRule`, `AlertResult`, `AlertSettings`, `AlertMatchedAsset`) | `constants/alertRules`, `utils/alertChecker`, `hooks/useAutoAlert`, `AlertSettingsPage`, `AlertPopup` |
 
 ### constants/ (상수 정의)
 | 파일 | 책임 | 수정 시 영향 범위 |
 |------|------|------------------|
 | `columnDescriptions.ts` | 포트폴리오 테이블 컬럼 툴팁 텍스트 | `PortfolioTable`, `PortfolioTableRow` |
-| `smartFilterChips.ts` | 스마트 필터 칩 정의 (19개 칩, 동적 라벨, 색상). MA 현재가 칩 2개는 `pairKey`로 ABOVE↔BELOW tri-state 토글 (off→>→<→off 순환, 칩 하나로 2개 필터 키 제어). `DAILY_DROP`/`LOSS_THRESHOLD` 추가 | `SmartFilterPanel` |
+| `smartFilterChips.ts` | 스마트 필터 칩 정의 (22개 칩, 동적 라벨, 색상). MA 현재가 칩 2개는 `pairKey`로 ABOVE↔BELOW tri-state 토글 (off→>→<→off 순환, 칩 하나로 2개 필터 키 제어). `DAILY_DROP`/`LOSS_THRESHOLD` 추가. 거래량 그룹 3개 칩: `VOLUME_SURGE`(급증≥2x), `VOLUME_HIGH`(증가≥1.5x), `VOLUME_LOW`(감소<0.5x) | `SmartFilterPanel` |
 | `alertRules.ts` | 기본 알림 규칙 8개 (매도 5 + 매수 3), `DEFAULT_ALERT_SETTINGS` | `useAutoAlert`, `AlertSettingsPage` |
 
 ### components/layouts/ (탭별 뷰)
@@ -116,7 +116,7 @@
 |------|------|------|
 | `PeriodSelector.tsx` | 글로벌 기간 선택 버튼 (3개월/6개월/1년/2년/전체) | `types/store` (`GlobalPeriod`) |
 | `ActionMenu.tsx` | Portal 기반 액션 메뉴 — 데스크탑: `createPortal`로 body에 드롭다운 렌더링(공간 부족 시 위로 열림), 모바일(<768px): 바텀시트 | `react-dom/createPortal` |
-| `AlertPopup.tsx` | "오늘의 투자 브리핑" 모달 (`max-w-2xl`) — severity별 스타일, 매도/매수 섹션 분리, **표 형식**(종목·당일·수익률·고점대비·RSI 컬럼) | `types/alertRules` (`AlertResult`, `AlertMatchedAsset`) |
+| `AlertPopup.tsx` | "오늘의 투자 브리핑" 모달 (`max-w-3xl`) — severity별 스타일, 매도/매수 섹션 분리, **표 형식**(종목·당일·수익률·고점대비·RSI 컬럼) | `types/alertRules` (`AlertResult`, `AlertMatchedAsset`) |
 | `Toggle.tsx` | 토글 스위치 | - |
 | `Tooltip.tsx` | 툴팁 | - |
 
@@ -209,17 +209,25 @@ PeriodSelector (App.tsx 탭 바 우측)
 
 ### 차트 데이터 흐름
 ```
-AssetTrendChart.tsx
+AssetTrendChart.tsx (ComposedChart — Line+Bar 동시 지원)
     │
     ├─ ticker/exchange 있는 자산 (주식, 코인 등)
     │   └─ useHistoricalPriceData.ts (displayDays + MA warm-up 합산 fetch)
     │        └─ historicalPriceService.ts → /history 또는 /upbit/history
-    │             └─ 실제 종가 기반 차트 + MA 오버레이 (활성 시)
+    │             ├─ historicalPrices → buildChartDataWithMA() → Line 차트 + MA 오버레이
+    │             └─ historicalVolumes → buildChartDataWithMA(volumeData) → Bar 차트 (하단 1/4)
     │                  └─ displayDays 기준으로 표시 범위 slice (MA warm-up 구간 제거)
     │
     └─ 현금 등 ticker 없는 자산
         └─ PortfolioSnapshot 기반 (폴백, 글로벌 기간으로 필터)
 ```
+- **차트 컴포넌트**: Recharts `ComposedChart` 사용 (이전 `LineChart` 아님). 가격 `<Line>`과 거래량 `<Bar>`를 동시 렌더링
+- **이중 Y축**: 좌측 `yAxisId="price"` (가격), 우측 `yAxisId="volume"` (거래량, 숨김, `domain=[0, max*4]`로 하단 1/4에 표시)
+- **차트 dataKey**: `'현재가'` (가격 Line), `'거래량'` (거래량 Bar) — `MAChartDataPoint` 키와 일치 필수
+- **VOL 토글**: MA 토글 영역에 거래량 표시/숨김 버튼 추가 (기본: 표시)
+- **매수평균선**: `purchasePrice` prop → `ReferenceLine` (금색 점선, 통화 토글 연동). 관심종목(WatchlistPage)은 `purchasePrice` 없으므로 자동 생략
+- **범례 위치**: Recharts `<Legend>` 미사용 → MA 토글 칩 라인 오른쪽에 커스텀 HTML 범례 (현재가 + 활성 MA + 매수평균)
+- **X축 연도 표기**: 커스텀 tick 함수에서 `payload.index`(데이터 배열 인덱스) 사용 필수. **top-level `index`는 렌더된 tick 순번이므로 사용 금지**. `renderedYearsRef`로 각 연도 첫 등장 tick에만 표시
 
 ### 스마트 필터 확장 지표 흐름
 ```
@@ -238,6 +246,7 @@ PortfolioContext.tsx (Context 레벨에서 호출)
 - **데이터 소스**: 차트와 동일한 과거 종가 API 사용 (10분 캐시)
 - **계산 위치**: 프론트엔드 로컬 계산 (백엔드 수정 불필요)
 - **폴백**: enriched 데이터 로딩 전 → 백엔드 `indicators.ma20/ma60/rsi` 사용
+- **거래량 필터**: enrichedMap이 아닌 백엔드 `indicators.volume_ratio`를 직접 사용 (프론트 계산 불필요)
 
 ### 투자 시그널 알림 흐름
 ```
@@ -541,6 +550,11 @@ try {
 - **프리셋 → 스마트필터 변환**: `PortfolioTable`의 `handleApplyPreset()`이 `AlertRule`의 `filters`+`filterConfig`를 `SmartFilterState`로 변환하여 적용
 - **새 알림 규칙 추가 시**: `constants/alertRules.ts`의 `DEFAULT_ALERT_RULES`에 추가, 필요한 필터가 없으면 `smartFilter.ts`/`smartFilterChips.ts`/`smartFilterLogic.ts`에 칩 추가 필요
 - **`matchesSingleFilter` 시그니처 변경 시**: `smartFilterLogic.ts`(스마트 필터)와 `alertChecker.ts`(알림) **양쪽 모두** 영향 확인 필수
+
+### 거래량 지표 관련
+- **`volume_ratio` 가용 범위**: 주식/ETF에만 `volume_avg20`과 `volume_ratio` 제공. 암호화폐(Upbit)는 당일 `volume`만 제공 (20일 평균/비율은 null) → 스마트 필터 거래량 칩은 주식/ETF에만 매칭됨
+- **차트 거래량 막대**: `historicalVolumes`가 없거나 빈 객체이면 거래량 Bar 자동 생략 (VOL 토글도 숨김)
+- **`historicalPriceService.ts`의 `HistoricalPriceResult`**: `volume` 필드는 optional — 백엔드가 거래량 데이터를 포함하지 않는 경우(레거시 응답)에도 하위호환
 
 ### 레이아웃 및 반응형 제약사항
 - **전체 레이아웃**: `App.tsx`는 `h-screen flex flex-col overflow-hidden`. 탭바만 `flex-shrink-0`으로 최상단 고정, Header와 콘텐츠는 `<main className="flex-1 overflow-y-auto">`에서 함께 스크롤

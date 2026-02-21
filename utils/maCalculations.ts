@@ -54,6 +54,7 @@ export interface MAChartDataPoint {
   date: string;
   fullDate: string;
   현재가: number;
+  거래량?: number;
   [key: string]: string | number | undefined;
 }
 
@@ -119,7 +120,8 @@ export function calculateRSI(
 
 export function buildChartDataWithMA(
   historicalPrices: HistoricalPriceData,
-  enabledPeriods: number[]
+  enabledPeriods: number[],
+  volumeData?: HistoricalPriceData | null
 ): MAChartDataPoint[] {
   // 날짜 오름차순 정렬
   const sortedDates = Object.keys(historicalPrices).sort();
@@ -149,6 +151,14 @@ export function buildChartDataWithMA(
       fullDate: sortedPrices[i].date,
       현재가: sortedPrices[i].price,
     };
+
+    // 거래량 데이터 매핑
+    if (volumeData) {
+      const vol = volumeData[sortedPrices[i].date];
+      if (vol !== undefined && vol > 0) {
+        point['거래량'] = vol;
+      }
+    }
 
     for (const period of enabledPeriods) {
       const maValue = maResults[`MA${period}`][i];

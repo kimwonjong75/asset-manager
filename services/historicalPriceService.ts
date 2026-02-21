@@ -11,6 +11,7 @@ export interface HistoricalPriceData {
 
 export interface HistoricalPriceResult {
   data?: HistoricalPriceData;
+  volume?: HistoricalPriceData;  // 거래량 시계열 { "YYYY-MM-DD": volume }
   error?: string;
   ticker?: string;
   market?: string;

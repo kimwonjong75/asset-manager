@@ -26,10 +26,14 @@ export type SmartFilterKey =
   | 'PROFIT_NEGATIVE'
   | 'DROP_FROM_HIGH'
   | 'DAILY_DROP'
-  | 'LOSS_THRESHOLD';
+  | 'LOSS_THRESHOLD'
+  // 거래량
+  | 'VOLUME_SURGE'
+  | 'VOLUME_HIGH'
+  | 'VOLUME_LOW';
 
 /** 필터 그룹 */
-export type SmartFilterGroup = 'ma' | 'rsi' | 'signal' | 'portfolio';
+export type SmartFilterGroup = 'ma' | 'rsi' | 'signal' | 'portfolio' | 'volume';
 
 /** 각 필터 키가 속한 그룹 매핑 */
 export const FILTER_KEY_TO_GROUP: Record<SmartFilterKey, SmartFilterGroup> = {
@@ -54,6 +58,9 @@ export const FILTER_KEY_TO_GROUP: Record<SmartFilterKey, SmartFilterGroup> = {
   DROP_FROM_HIGH: 'portfolio',
   DAILY_DROP: 'portfolio',
   LOSS_THRESHOLD: 'portfolio',
+  VOLUME_SURGE: 'volume',
+  VOLUME_HIGH: 'volume',
+  VOLUME_LOW: 'volume',
 };
 
 /** 스마트 필터 전체 상태 */

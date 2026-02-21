@@ -45,6 +45,11 @@ export const SMART_FILTER_CHIPS: SmartFilterChipDef[] = [
   { key: 'DROP_FROM_HIGH', label: '고점대비 하락', group: 'portfolio', colorClass: 'bg-orange-600' },
   { key: 'DAILY_DROP', label: '당일 하락', group: 'portfolio', colorClass: 'bg-rose-600' },
   { key: 'LOSS_THRESHOLD', label: '손실률 초과', labelFn: (s) => `손실≥${s.lossThreshold}%`, group: 'portfolio', colorClass: 'bg-red-700' },
+
+  // 거래량
+  { key: 'VOLUME_SURGE', label: '거래량 급증(2x)', group: 'volume', colorClass: 'bg-orange-500' },
+  { key: 'VOLUME_HIGH', label: '거래량 증가(1.5x)', group: 'volume', colorClass: 'bg-yellow-500' },
+  { key: 'VOLUME_LOW', label: '거래량 감소(<0.5x)', group: 'volume', colorClass: 'bg-gray-500' },
 ];
 
 export const SMART_FILTER_GROUP_LABELS: Record<string, string> = {
@@ -52,4 +57,5 @@ export const SMART_FILTER_GROUP_LABELS: Record<string, string> = {
   rsi: 'RSI',
   signal: '매매신호',
   portfolio: '포트폴리오',
+  volume: '거래량',
 };
