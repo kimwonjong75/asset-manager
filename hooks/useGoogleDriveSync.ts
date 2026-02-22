@@ -23,6 +23,7 @@ export function useGoogleDriveSync(options: UseGoogleDriveSyncOptions = {}) {
   const [isSignedIn, setIsSignedIn] = useState<boolean>(false);
   const [googleUser, setGoogleUser] = useState<GoogleUser | null>(null);
   const [isInitializing, setIsInitializing] = useState<boolean>(true);
+  const [needsReAuth, setNeedsReAuth] = useState<boolean>(false);
   const timeoutIdRef = useRef<NodeJS.Timeout | null>(null);
   const isSavingRef = useRef<boolean>(false);
   const lastSavedDataRef = useRef<string | null>(null);
@@ -38,11 +39,11 @@ export function useGoogleDriveSync(options: UseGoogleDriveSyncOptions = {}) {
       try {
         const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
         if (clientId) {
-          // 인증 상태 변경 콜백 등록 (401 재인증 실패 시 자동 로그아웃)
+          // 인증 상태 변경 콜백 등록 (401 재인증 실패 시 데이터 유지 + 재로그인 배너)
           googleDriveService.setAuthStateChangeCallback((signedIn) => {
             if (!signedIn) {
-              setIsSignedIn(false);
-              setGoogleUser(null);
+              setNeedsReAuth(true);
+              // isSignedIn은 유지 → 데이터와 UI를 보존
               optionsRef.current.onError?.('세션이 만료되었습니다. 다시 로그인해주세요.');
             }
           });
@@ -70,6 +71,7 @@ export function useGoogleDriveSync(options: UseGoogleDriveSyncOptions = {}) {
     const user = await googleDriveService.signIn();
     setIsSignedIn(true);
     setGoogleUser(user);
+    setNeedsReAuth(false);
     optionsRef.current.onSuccessMessage?.(`${user.email} 계정으로 로그인되었습니다.`);
     return user;
   }, []);
@@ -106,8 +108,8 @@ export function useGoogleDriveSync(options: UseGoogleDriveSyncOptions = {}) {
   }, []);
 
   const autoSave = useCallback(async (assetsToSave: Asset[], history: PortfolioSnapshot[], sells: SellRecord[], watchlist: WatchlistItem[], exchangeRates?: ExchangeRates, allocationTargets?: AllocationTargets, sellAlertDropRate?: number, categoryStore?: CategoryStore) => {
-    if (!isSignedIn) {
-      optionsRef.current.onError?.('Google Drive 로그인 후 저장할 수 있습니다.');
+    if (!isSignedIn || needsReAuth) {
+      if (!isSignedIn) optionsRef.current.onError?.('Google Drive 로그인 후 저장할 수 있습니다.');
       return;
     }
     if (timeoutIdRef.current) {
@@ -144,12 +146,13 @@ export function useGoogleDriveSync(options: UseGoogleDriveSyncOptions = {}) {
         isSavingRef.current = false;
       }
     }, 2000);
-  }, [isSignedIn]);
+  }, [isSignedIn, needsReAuth]);
 
   return {
     isSignedIn,
     googleUser,
     isInitializing,
+    needsReAuth,
     handleSignIn,
     handleSignOut,
     loadFromGoogleDrive,

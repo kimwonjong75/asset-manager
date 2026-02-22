@@ -1,5 +1,5 @@
 // Google Drive API 서비스
-// Google Identity Services를 사용한 OAuth 인증 및 Drive API 연동
+// Authorization Code Flow + Backend JWT를 사용한 OAuth 인증 및 Drive API 연동
 
 import LZString from 'lz-string';
 
@@ -18,15 +18,17 @@ export interface DriveFile {
 }
 
 const DRIVE_FOLDER_ID = '10O5cGNd9QVoAAxR8NdojqI9AD7wj0Q_g';
+const AUTH_API_URL = 'https://asset-manager-887842923289.asia-northeast3.run.app';
 
 class GoogleDriveService {
   private accessToken: string | null = null;
+  private jwtToken: string | null = null;
   private user: GoogleUser | null = null;
   private clientId: string | null = null;
-  private tokenClient: google.accounts.oauth2.TokenClient | null = null;
   private isInitialized = false;
   private folderId: string | null = DRIVE_FOLDER_ID;
   private refreshTimer: ReturnType<typeof setTimeout> | null = null;
+  private refreshPromise: Promise<void> | null = null;
   private onAuthStateChange: ((signedIn: boolean) => void) | null = null;
 
   // UI 레이어에서 인증 상태 변경 콜백 등록
@@ -37,61 +39,58 @@ class GoogleDriveService {
   // Google Identity Services 초기화
   async initialize(clientId: string): Promise<void> {
     if (this.isInitialized) return;
-    
+
     this.clientId = clientId;
-    
-    // Google API 스크립트 로드
+
+    // Google Identity Services 스크립트 로드
     await this.loadGoogleScripts();
-    
+
     // 저장된 토큰 확인
+    const savedJwt = localStorage.getItem('google_drive_jwt');
     const savedToken = localStorage.getItem('google_drive_access_token');
     const savedUser = localStorage.getItem('google_drive_user');
     const savedTokenExpiry = localStorage.getItem('google_drive_token_expiry');
-    
-    if (savedToken && savedUser) {
-      this.accessToken = savedToken;
+
+    if (savedJwt && savedUser) {
+      this.jwtToken = savedJwt;
       this.user = JSON.parse(savedUser);
-      
-      // 토큰 만료 시간 확인
+
       const now = Date.now();
       const expiryTime = savedTokenExpiry ? parseInt(savedTokenExpiry, 10) : 0;
-      
-      // 토큰이 만료되지 않았고 유효한 경우
-      if (expiryTime > now && await this.validateToken()) {
-        this.isInitialized = true;
-        // 만료 전 자동 갱신 스케줄
+
+      if (savedToken && expiryTime > now) {
+        // Access Token이 아직 유효
+        this.accessToken = savedToken;
         this.scheduleTokenRefresh(expiryTime - now);
+        this.isInitialized = true;
         return;
-      } else {
-        // 토큰이 만료된 경우 - 자동 갱신 시도 (시간 제한 없이)
-        if (savedUser) {
-          try {
-            await this.refreshTokenSilently();
-            if (this.accessToken) {
-              this.isInitialized = true;
-              return;
-            }
-          } catch (error) {
-            console.log('Silent token refresh failed, user needs to sign in again');
-          }
-        }
-        // silent refresh 실패 시 토큰 정리
-        this.accessToken = null;
-        this.user = null;
-        localStorage.removeItem('google_drive_access_token');
-        localStorage.removeItem('google_drive_user');
-        localStorage.removeItem('google_drive_token_expiry');
-        // 초기화 시에는 onAuthStateChange 콜백을 호출하지 않음 (아직 UI가 마운트 전일 수 있음)
       }
+
+      // Access Token 만료 → 백엔드로 갱신 시도
+      try {
+        await this.refreshTokenViaBackend();
+        this.isInitialized = true;
+        return;
+      } catch {
+        console.log('Backend token refresh failed, user needs to sign in again');
+      }
+
+      // 갱신 실패 → 토큰 정리 (초기화 시에는 onAuthStateChange 호출하지 않음)
+      this.jwtToken = null;
+      this.user = null;
+      this.accessToken = null;
+      localStorage.removeItem('google_drive_jwt');
+      localStorage.removeItem('google_drive_access_token');
+      localStorage.removeItem('google_drive_user');
+      localStorage.removeItem('google_drive_token_expiry');
     }
-    
+
     this.isInitialized = true;
   }
 
   private loadGoogleScripts(): Promise<void> {
     return new Promise((resolve, reject) => {
-      // Google Identity Services 스크립트 로드
-      if (window.google?.accounts) {
+      if (window.google?.accounts?.oauth2) {
         resolve();
         return;
       }
@@ -100,199 +99,114 @@ class GoogleDriveService {
       script.src = 'https://accounts.google.com/gsi/client';
       script.async = true;
       script.defer = true;
-      script.onload = () => {
-        // Google API 클라이언트 라이브러리 로드
-        const apiScript = document.createElement('script');
-        apiScript.src = 'https://apis.google.com/js/api.js';
-        apiScript.async = true;
-        apiScript.defer = true;
-        apiScript.onload = () => {
-          window.gapi.load('client', () => {
-            window.gapi.client.init({
-              discoveryDocs: [
-                'https://www.googleapis.com/discovery/v1/apis/drive/v3/rest',
-                'https://www.googleapis.com/discovery/v1/apis/oauth2/v2/rest'
-              ],
-            }).then(() => {
-              resolve();
-            }).catch(reject);
-          });
-        };
-        apiScript.onerror = reject;
-        document.head.appendChild(apiScript);
-      };
+      script.onload = () => resolve();
       script.onerror = reject;
       document.head.appendChild(script);
     });
   }
 
-  // Google 로그인
+  // Google 로그인 (Authorization Code Flow)
   async signIn(): Promise<GoogleUser> {
     if (!this.clientId) {
       throw new Error('Google Drive service not initialized. Please provide client ID.');
     }
-    return new Promise((resolve, reject) => {
-      console.log('=== Google Sign In 시작 ===');
-      console.log('Client ID:', this.clientId);
-      console.log('Requested scope:', 'https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile openid');
 
-      this.tokenClient = window.google.accounts.oauth2.initTokenClient({
+    return new Promise((resolve, reject) => {
+      const codeClient = window.google.accounts.oauth2.initCodeClient({
         client_id: this.clientId!,
         scope: 'https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile openid',
-        callback: async (response: google.accounts.oauth2.TokenResponse) => {
-          console.log('=== OAuth Callback 실행됨 ===');
-          console.log('Response:', response);
-          
+        ux_mode: 'popup',
+        callback: async (response: google.accounts.oauth2.CodeResponse) => {
           if (response.error) {
-            console.error('OAuth error:', response.error);
+            console.error('OAuth code error:', response.error);
             reject(new Error(response.error));
             return;
           }
-    
-          this.accessToken = response.access_token;
-          console.log('Access token received');
-          console.log('Received scope:', response.scope);
-          console.log('Scope includes userinfo.email:', response.scope?.includes('userinfo.email'));
-          console.log('Scope includes userinfo.profile:', response.scope?.includes('userinfo.profile'));
-          
-          // 토큰 만료 시간 저장 (기본 1시간, expires_in이 있으면 사용)
-          const expiresIn = response.expires_in ? response.expires_in * 1000 : 3600 * 1000;
-          const expiryTime = Date.now() + expiresIn;
-          localStorage.setItem('google_drive_token_expiry', expiryTime.toString());
-          
-          // 사용자 정보 가져오기
-          try {
-            const userInfo = await this.getUserInfo();
-            this.user = userInfo;
-            localStorage.setItem('google_drive_access_token', this.accessToken);
-            localStorage.setItem('google_drive_user', JSON.stringify(userInfo));
-            
-            // 만료 전 자동 갱신 스케줄
-            this.scheduleTokenRefresh(expiresIn);
 
-            resolve(userInfo);
-          } catch (error: unknown) {
-            console.error('Failed to get user info:', error);
-            if (error instanceof Error) {
-              console.error('Error details:', error.message, error.stack);
+          try {
+            // Authorization Code를 백엔드로 전송 → JWT + Access Token 수신
+            const authResponse = await fetch(`${AUTH_API_URL}/auth/callback`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ code: response.code }),
+            });
+
+            if (!authResponse.ok) {
+              const errorData = await authResponse.json().catch(() => ({ error: 'Auth callback failed' }));
+              throw new Error(errorData.error || 'Auth callback failed');
             }
-            // 토큰은 받았지만 사용자 정보를 가져오지 못한 경우, 토큰을 저장하지 않음
-            this.accessToken = null;
+
+            const data = await authResponse.json();
+
+            this.jwtToken = data.jwt;
+            this.accessToken = data.access_token;
+            this.user = data.user;
+
+            const expiresIn = (data.expires_in || 3600) * 1000;
+            const expiryTime = Date.now() + expiresIn;
+
+            localStorage.setItem('google_drive_jwt', this.jwtToken!);
+            localStorage.setItem('google_drive_access_token', this.accessToken!);
+            localStorage.setItem('google_drive_user', JSON.stringify(this.user));
+            localStorage.setItem('google_drive_token_expiry', expiryTime.toString());
+
+            this.scheduleTokenRefresh(expiresIn);
+            resolve(this.user!);
+          } catch (error) {
+            console.error('Auth callback error:', error);
             reject(error);
           }
         },
-      });
-    
-      // 이전 로그인 계정이 있으면 힌트 제공
-      const savedUser = localStorage.getItem('google_drive_user');
-      const hint = savedUser ? JSON.parse(savedUser).email : undefined;
-
-      console.log('Requesting access token with prompt: select_account');
-      this.tokenClient.requestAccessToken({
-        prompt: 'select_account',
-        login_hint: hint
-      });
-    });
-  }
-
-  // 사용자 정보 가져오기
-  private async getUserInfo(): Promise<GoogleUser> {
-    if (!this.accessToken) {
-      throw new Error('Not authenticated');
-    }
-
-    try {
-      // 방법 1: OAuth2 userinfo API 시도
-      const response = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
-        headers: {
-          Authorization: `Bearer ${this.accessToken}`,
+        error_callback: (error: { type: string }) => {
+          if (error.type === 'popup_closed') {
+            reject(new Error('로그인이 취소되었습니다.'));
+          } else {
+            reject(new Error(`로그인 팝업 오류: ${error.type}`));
+          }
         },
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        
-        if (data.email) {
-          return {
-            email: data.email,
-            name: data.name || data.email.split('@')[0],
-            picture: data.picture,
-          };
-        }
-      }
-
-      // 방법 2: Google API 클라이언트 사용 (대안)
-      if (window.gapi?.client && window.gapi.client.setToken) {
-        try {
-          // 토큰 설정
-          window.gapi.client.setToken({ access_token: this.accessToken });
-          await window.gapi.client.load('oauth2', 'v2');
-          const userInfo = await window.gapi.client.oauth2.userinfo.get();
-          if (userInfo.result && userInfo.result.email) {
-            return {
-              email: userInfo.result.email,
-              name: userInfo.result.name || userInfo.result.email.split('@')[0],
-              picture: userInfo.result.picture,
-            };
-          }
-        } catch (gapiError) {
-          console.error('GAPI userinfo error:', gapiError);
-        }
-      }
-
-      // 두 방법 모두 실패한 경우
-      const errorText = await response.text().catch(() => 'Unknown error');
-      console.error('User info API error:', response.status, errorText);
-      
-      // 더 자세한 에러 메시지
-      if (response.status === 401) {
-        throw new Error('인증 실패: Google Cloud Console의 OAuth 동의 화면에서 userinfo.email과 userinfo.profile scope를 추가했는지 확인하세요.');
-      } else if (response.status === 403) {
-        throw new Error('권한 없음: 사용자 정보에 접근할 권한이 없습니다. scope 설정을 확인하세요.');
-      } else {
-        throw new Error(`사용자 정보를 가져올 수 없습니다 (${response.status}): ${errorText}`);
-      }
-    } catch (error: unknown) {
-      console.error('getUserInfo error:', error);
-      throw error;
-    }
+      codeClient.requestCode();
+    });
   }
 
-  // 토큰 자동 갱신 (조용히) - Promise로 콜백 완료까지 대기
-  private refreshTokenSilently(): Promise<void> {
-    if (!this.clientId || !this.user) return Promise.reject(new Error('No client or user'));
+  // 백엔드를 통한 Access Token 갱신 (Refresh Token 사용)
+  private refreshTokenViaBackend(): Promise<void> {
+    // 동시 갱신 요청 중복 방지
+    if (this.refreshPromise) return this.refreshPromise;
 
-    return new Promise((resolve, reject) => {
-      try {
-        this.tokenClient = window.google.accounts.oauth2.initTokenClient({
-          client_id: this.clientId!,
-          scope: 'https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile openid',
-          callback: (response: google.accounts.oauth2.TokenResponse) => {
-            if (response.error) {
-              console.log('Token refresh failed:', response.error);
-              reject(new Error(response.error));
-              return;
-            }
-
-            this.accessToken = response.access_token;
-            const expiresIn = response.expires_in ? response.expires_in * 1000 : 3600 * 1000;
-            const expiryTime = Date.now() + expiresIn;
-            localStorage.setItem('google_drive_access_token', this.accessToken);
-            localStorage.setItem('google_drive_token_expiry', expiryTime.toString());
-
-            // 다음 갱신 스케줄
-            this.scheduleTokenRefresh(expiresIn);
-            resolve();
-          },
-        });
-
-        // prompt: 'none'으로 조용히 갱신 시도
-        this.tokenClient.requestAccessToken({ prompt: 'none' });
-      } catch (error) {
-        console.log('Silent token refresh error:', error);
-        reject(error);
-      }
+    this.refreshPromise = this.doRefreshToken().finally(() => {
+      this.refreshPromise = null;
     });
+
+    return this.refreshPromise;
+  }
+
+  private async doRefreshToken(): Promise<void> {
+    if (!this.jwtToken) throw new Error('No JWT token');
+
+    const response = await fetch(`${AUTH_API_URL}/auth/refresh`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${this.jwtToken}`,
+      },
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: 'Token refresh failed' }));
+      throw new Error(errorData.error || 'Token refresh failed');
+    }
+
+    const data = await response.json();
+    this.accessToken = data.access_token;
+    const expiresIn = (data.expires_in || 3600) * 1000;
+    const expiryTime = Date.now() + expiresIn;
+
+    localStorage.setItem('google_drive_access_token', this.accessToken!);
+    localStorage.setItem('google_drive_token_expiry', expiryTime.toString());
+
+    this.scheduleTokenRefresh(expiresIn);
   }
 
   // 토큰 만료 전 갱신 스케줄링
@@ -302,59 +216,30 @@ class GoogleDriveService {
     }
     const refreshTime = Math.max(0, expiresInMs - 5 * 60 * 1000); // 5분 전
     this.refreshTimer = setTimeout(() => {
-      this.refreshTokenSilently().catch(() => {
+      this.refreshTokenViaBackend().catch(() => {
         console.log('Scheduled token refresh failed');
+        this.clearAuth();
       });
     }, refreshTime);
   }
 
-  // 401 시 재인증: silent refresh → 실패 시 popup 재로그인
-  private reAuthenticate(): Promise<void> {
-    // 1차: silent refresh 시도
-    return this.refreshTokenSilently().catch(() => {
-      // 2차: popup 재로그인 (사용자 인터랙션 필요)
-      console.log('Silent refresh failed, attempting popup re-login...');
-      return new Promise<void>((resolve, reject) => {
-        if (!this.clientId) {
-          reject(new Error('No client ID'));
-          return;
-        }
-
-        this.tokenClient = window.google.accounts.oauth2.initTokenClient({
-          client_id: this.clientId!,
-          scope: 'https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile openid',
-          callback: (response: google.accounts.oauth2.TokenResponse) => {
-            if (response.error) {
-              // 팝업도 실패 — 완전히 로그아웃 처리
-              this.clearAuth();
-              reject(new Error('Re-authentication failed'));
-              return;
-            }
-
-            this.accessToken = response.access_token;
-            const expiresIn = response.expires_in ? response.expires_in * 1000 : 3600 * 1000;
-            const expiryTime = Date.now() + expiresIn;
-            localStorage.setItem('google_drive_access_token', this.accessToken);
-            localStorage.setItem('google_drive_token_expiry', expiryTime.toString());
-            this.scheduleTokenRefresh(expiresIn);
-            resolve();
-          },
-        });
-
-        const hint = this.user?.email;
-        this.tokenClient.requestAccessToken({
-          prompt: '',
-          login_hint: hint
-        });
-      });
-    });
+  // 401 시 재인증: 백엔드를 통한 토큰 갱신 시도
+  private async reAuthenticate(): Promise<void> {
+    try {
+      await this.refreshTokenViaBackend();
+    } catch {
+      this.clearAuth();
+      throw new Error('Re-authentication failed');
+    }
   }
 
   // 인증 정보 제거
   private clearAuth(): void {
     this.accessToken = null;
+    this.jwtToken = null;
     this.user = null;
     localStorage.removeItem('google_drive_access_token');
+    localStorage.removeItem('google_drive_jwt');
     localStorage.removeItem('google_drive_user');
     localStorage.removeItem('google_drive_token_expiry');
     if (this.refreshTimer) {
@@ -392,13 +277,24 @@ class GoogleDriveService {
 
   // 로그아웃
   signOut(): void {
-    if (this.accessToken) {
-      const token = this.accessToken;
-      this.clearAuth();
-      window.google.accounts.oauth2.revoke(token, () => {
-        // revoke 완료
-      });
+    // 백엔드에 Refresh Token 폐기 요청
+    if (this.jwtToken) {
+      fetch(`${AUTH_API_URL}/auth/revoke`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${this.jwtToken}`,
+        },
+      }).catch(() => {});
     }
+
+    // Google Access Token revoke
+    if (this.accessToken && window.google?.accounts?.oauth2?.revoke) {
+      const token = this.accessToken;
+      window.google.accounts.oauth2.revoke(token, () => {});
+    }
+
+    this.clearAuth();
   }
 
   // 로그인 상태 확인
@@ -409,18 +305,6 @@ class GoogleDriveService {
   // 현재 사용자 정보
   getCurrentUser(): GoogleUser | null {
     return this.user;
-  }
-
-  // 토큰 유효성 검사
-  private async validateToken(): Promise<boolean> {
-    if (!this.accessToken) return false;
-
-    try {
-      const response = await fetch('https://www.googleapis.com/oauth2/v1/tokeninfo?access_token=' + this.accessToken);
-      return response.ok;
-    } catch {
-      return false;
-    }
   }
 
   // 파일 목록 가져오기 (기본: portfolio.json)
@@ -617,27 +501,16 @@ declare global {
     google: {
       accounts: {
         oauth2: {
-          initTokenClient: (config: {
+          initCodeClient: (config: {
             client_id: string;
             scope: string;
-            callback: (response: google.accounts.oauth2.TokenResponse) => void;
-          }) => google.accounts.oauth2.TokenClient;
+            ux_mode: 'popup' | 'redirect';
+            callback: (response: google.accounts.oauth2.CodeResponse) => void;
+            error_callback?: (error: { type: string }) => void;
+            login_hint?: string;
+            redirect_uri?: string;
+          }) => google.accounts.oauth2.CodeClient;
           revoke: (token: string, callback: () => void) => void;
-        };
-      };
-    };
-    gapi: {
-      load: (api: string, callback: () => void) => void;
-      client: {
-        init: (config: {
-          discoveryDocs: string[];
-        }) => Promise<void>;
-        setToken: (token: { access_token: string }) => void;
-        load: (apiName: string, version: string) => Promise<void>;
-        oauth2: {
-          userinfo: {
-            get: () => Promise<{ result: { email?: string; name?: string; picture?: string } }>;
-          };
         };
       };
     };
@@ -646,15 +519,15 @@ declare global {
   namespace google {
     namespace accounts {
       namespace oauth2 {
-        interface TokenClient {
-          requestAccessToken: (options?: { prompt?: string; login_hint?: string }) => void;
+        interface CodeClient {
+          requestCode: () => void;
         }
-        interface TokenResponse {
-          access_token: string;
-          expires_in: number;
+        interface CodeResponse {
+          code: string;
           scope: string;
-          token_type: string;
           error?: string;
+          error_description?: string;
+          error_uri?: string;
         }
       }
     }

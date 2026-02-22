@@ -58,7 +58,7 @@
 | `useAutoAlert.ts` | 자동 알림 트리거 + AlertSettings localStorage 영속 | `alertChecker`, `types/alertRules` | `PortfolioContext` (derived/actions에 노출) |
 | `usePortfolioHistory.ts` | 포트폴리오 스냅샷 저장 | `types/index` | 차트 데이터 |
 | `useRebalancing.ts` | 리밸런싱 계산 및 저장. `CategoryData`에 `categoryKey`(ID 문자열)와 `category`(표시명)를 분리 — 가중치 변경 핸들러에는 `categoryKey` 전달 필수 | `PortfolioContext` | `RebalancingTable` |
-| `useGoogleDriveSync.ts` | Google Drive 저장/로드, 토큰 갱신, **인증 상태 변경 콜백 등록** | `googleDriveService`, `lz-string` | `usePortfolioData` |
+| `useGoogleDriveSync.ts` | Google Drive 저장/로드, **`needsReAuth` 상태 관리**(세션 만료 시 데이터 유지+배너), 인증 상태 변경 콜백 등록 | `googleDriveService`, `lz-string` | `usePortfolioData` |
 | `useBackup.ts` | 1일 1회 자동 백업, 수동 백업/복원/삭제, retention 관리 | `googleDriveService` | `PortfolioContext` |
 
 ### services/ (외부 API 연동)
@@ -67,7 +67,7 @@
 | `priceService.ts` | 주식/ETF 시세, 환율 | Cloud Run `/`, `/exchange-rate` | `useMarketData`, `useAssetActions` |
 | `upbitService.ts` | 암호화폐 시세 | Cloud Run `/upbit` | `useMarketData` |
 | `historicalPriceService.ts` | 과거 시세+거래량 (백필/차트용/AI분석용). `HistoricalPriceResult`에 optional `volume` 필드 포함 | Cloud Run `/history`, `/upbit/history` | `useHistoricalPriceData`, `historyUtils`, `geminiService` |
-| `googleDriveService.ts` | 클라우드 저장/로드, **401 자동 재인증** (`authenticatedFetch` 래퍼), 백업 파일 관리(`deleteFileById`, `loadFileById`, `listFilesByPattern`) | Google Drive API | `useGoogleDriveSync`, `useBackup` |
+| `googleDriveService.ts` | 클라우드 저장/로드, **Authorization Code Flow + Backend JWT 기반 인증**, `authenticatedFetch` 래퍼(401 시 백엔드 `/auth/refresh`로 갱신), 백업 파일 관리(`deleteFileById`, `loadFileById`, `listFilesByPattern`) | Google Drive API, Cloud Run `/auth/*` | `useGoogleDriveSync`, `useBackup` |
 | `geminiService.ts` | 종목 검색, AI 분석 (스트리밍 응답, 기술적 질문 시 Context의 enrichedMap 재활용 우선 → 폴백으로 직접 fetch) | Gemini API, `historicalPriceService`, `maCalculations`, `useEnrichedIndicators`(타입만) | `useAssetActions`, `PortfolioAssistant` |
 
 ### utils/ (순수 함수)
@@ -88,7 +88,7 @@
 | `category.ts` | **카테고리 시스템 핵심** — `CategoryDefinition`, `CategoryStore`, `CategoryBaseType`, `DEFAULT_CATEGORIES`, `EXCHANGE_MAP_BY_BASE_TYPE`, 유틸(`isBaseType`, `getCategoryName`, `inferCategoryIdFromExchange`, `getAllowedCategories`) | **전역** — 모든 카테고리 참조 컴포넌트/훅 |
 | `backup.ts` | 백업 타입 (`BackupInfo`, `BackupSettings`, `RETENTION_OPTIONS`) | `hooks/useBackup`, `BackupSettingsSection` |
 | `api.ts` | API 응답 타입 (`PriceItem`, `Indicators` 등). `Indicators`에 거래량 3필드 포함: `volume`(당일), `volume_avg20`(20일 평균), `volume_ratio`(비율) | `services/`, `hooks/` |
-| `store.ts` | 상태 관리 타입 (`PortfolioContextValue`, `GlobalPeriod`, `UIState.activeTab` 등). `PortfolioData`에 `categoryStore`, `DerivedState`에 `backupList`/`isBackingUp` 포함 | `contexts/`, `hooks/`, `App.tsx`, `components/common/PeriodSelector`, `SmartFilterPanel`, `AlertSettingsPage` |
+| `store.ts` | 상태 관리 타입 (`PortfolioContextValue`, `GlobalPeriod`, `UIState.activeTab` 등). `PortfolioData`에 `categoryStore`, `PortfolioStatus`에 `needsReAuth`, `DerivedState`에 `backupList`/`isBackingUp` 포함 | `contexts/`, `hooks/`, `App.tsx`, `components/common/PeriodSelector`, `SmartFilterPanel`, `AlertSettingsPage` |
 | `ui.ts` | UI 컴포넌트 Props 타입 | `components/` |
 | `smartFilter.ts` | 스마트 필터 타입 (24개 키, 5개 그룹: ma/rsi/signal/portfolio/volume, MA 기간 설정 + `lossThreshold` 포함), 그룹 매핑, 칩 정의(`pairKey`/`pairColorClass` tri-state 지원), 초기값 | `utils/smartFilterLogic`, `SmartFilterPanel`(+ `PortfolioContext` 의존), `PortfolioTable`, `alertChecker` |
 | `alertRules.ts` | 알림 규칙 타입 (`AlertRule`, `AlertResult`, `AlertSettings`, `AlertMatchedAsset`) | `constants/alertRules`, `utils/alertChecker`, `hooks/useAutoAlert`, `AlertSettingsPage`, `AlertPopup` |
@@ -145,9 +145,10 @@
 
 ### 핵심 데이터 흐름
 ```
-App.tsx
+App.tsx (needsReAuth 배너 포함)
   └─ PortfolioContext.tsx
-       ├─ usePortfolioData.ts ──────┬─ useGoogleDriveSync.ts (categoryStore 포함 저장/로드)
+       ├─ usePortfolioData.ts ──────┬─ useGoogleDriveSync.ts (categoryStore 포함 저장/로드, needsReAuth 상태)
+       │                            │   └─ googleDriveService.ts (initCodeClient → /auth/callback → JWT+AccessToken)
        │                            ├─ historyUtils.ts
        │                            └─ migrateData.ts (runMigrationIfNeeded + migrateCategorySystem)
        ├─ useMarketData.ts ─────────┬─ priceService.ts (주식/ETF/환율)
@@ -486,13 +487,20 @@ try {
 - **유효성 검사**: USD > 100, JPY > 1
 - **현재가 vs 매수가**: 현재가는 실시간 환율, 매수가는 구매 당시 환율 사용
 
-### Google Drive 동기화
-- **자동 저장 디바운스**: 2초 (빈번한 저장 방지)
-- **토큰 갱신**: 만료 5분 전 자동 갱신 (`scheduleTokenRefresh`)
-- **401 자동 재인증**: 모든 Drive API 호출은 `authenticatedFetch()` 래퍼를 경유 — 401 응답 시 silent refresh → 실패 시 Google 로그인 팝업 자동 표시 → 성공하면 원래 요청 재시도, 팝업도 거부 시 `clearAuth()` → UI 자동 로그아웃
-- **인증 상태 콜백**: `setAuthStateChangeCallback()`으로 UI 레이어(`useGoogleDriveSync`)가 인증 해제를 구독 — 재인증 완전 실패 시 React 상태 자동 동기화
+### Google Drive 동기화 및 인증
+- **인증 방식**: Authorization Code Flow — 프론트에서 `initCodeClient`로 code 획득 → 백엔드 `/auth/callback`에서 Access Token + Refresh Token 교환 → JWT(30일) 발급
+- **토큰 구조**: JWT(30일, localStorage) + Access Token(1시간, localStorage) + Refresh Token(영구, Firestore — 백엔드만 접근)
+- **토큰 갱신**: Access Token 만료 5분 전 자동 갱신 (`scheduleTokenRefresh` → `/auth/refresh`)
+- **401 자동 재인증**: 모든 Drive API 호출은 `authenticatedFetch()` 래퍼를 경유 — 401 응답 시 백엔드 `/auth/refresh` 호출 → 실패 시 `clearAuth()` → `needsReAuth` 배너 표시 (데이터 유지)
+- **세션 만료 UX**: `needsReAuth=true` 시 App.tsx에 amber 배너 표시 + "다시 로그인" 버튼. `isSignedIn`은 유지되어 데이터/UI 보존. 재로그인 성공 시 `needsReAuth=false`
+- **자동 저장 중단**: `needsReAuth=true`이면 `autoSave` 스킵 (Access Token 없으므로)
+- **로그아웃**: 백엔드 `/auth/revoke`로 Refresh Token 폐기 + Firestore 삭제 + 로컬 JWT/Access Token 정리
+- **동시 갱신 방지**: `refreshPromise`로 병렬 401 재시도 시 단일 갱신만 수행
 - **새 Drive API fetch 추가 시**: 반드시 `this.authenticatedFetch()` 사용 (raw `fetch` 직접 호출 금지 — 401 복구 경로 누락됨)
 - **공유 폴더 파라미터**: 새 Drive API 호출 시 `supportsAllDrives`, `includeItemsFromAllDrives` 필수
+- **인증 상태 콜백**: `setAuthStateChangeCallback()`으로 UI 레이어(`useGoogleDriveSync`)가 인증 해제를 구독 — `needsReAuth` 플래그 설정
+- **gapi 제거**: Google API Client Library(gapi) 미사용 — GIS `initCodeClient`만 로드. 사용자 정보는 백엔드에서 조회
+- **자동 저장 디바운스**: 2초 (빈번한 저장 방지)
 
 ### 카테고리 시스템 (ID 기반)
 - **핵심 원칙**: 자산 카테고리는 숫자 ID(`categoryId: number`)로 참조. 문자열 `category` 필드는 **deprecated** (마이그레이션 호환용으로만 남아있음)

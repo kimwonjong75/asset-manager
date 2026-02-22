@@ -117,6 +117,18 @@ const AppContent: React.FC = () => {
 
         {status.isSignedIn ? (
           <>
+            {/* 세션 만료 재로그인 배너 */}
+            {status.needsReAuth && (
+              <div className="flex-shrink-0 bg-amber-600/90 text-white px-4 py-3 flex items-center justify-between">
+                <span className="text-sm font-medium">세션이 만료되었습니다. 데이터는 유지되지만 저장/불러오기가 일시 중단됩니다.</span>
+                <button
+                  onClick={actions.signIn}
+                  className="ml-4 bg-white text-amber-700 font-semibold px-4 py-1.5 rounded-md text-sm hover:bg-amber-50 transition flex-shrink-0"
+                >
+                  다시 로그인
+                </button>
+              </div>
+            )}
             <div className="flex-shrink-0 border-b border-gray-700">
               <div className="flex items-center justify-between">
                 <nav className="-mb-px flex space-x-8 overflow-x-auto" aria-label="Tabs">

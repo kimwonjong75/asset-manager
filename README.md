@@ -167,13 +167,14 @@ npm run dev
 - 자산 추가 시 해당 날짜의 환율이 자동 저장됨
 - 대시보드와 손익 차트의 수익률이 동일한 기준으로 계산됨
 
-### Google Drive 동기화
-1. **저장**: 변경 발생 → 2초 디바운스 → LZ-String 압축 → Google Drive 업로드
-2. **로드**: Google Drive 다운로드 → 압축 해제 → 데이터 마이그레이션(카테고리 ID 변환 포함) → 상태 반영
-3. **토큰 갱신**: 만료 5분 전 자동 갱신
-4. **401 자동 복구**: 토큰 만료 상태에서 API 호출 시 → silent refresh 시도 → 실패 시 Google 로그인 팝업 자동 표시 → 원래 요청 재시도
-5. **공유 폴더**: 다른 계정과 동일 데이터 공유 가능 (`drive` scope 사용)
-6. **자동 백업**: 시세 업데이트 완료 후 1일 1회 `portfolio_backup_YYYY-MM-DD.json` 자동 생성, Rolling N개 유지(초과분 자동 삭제)
+### Google Drive 동기화 및 인증
+1. **인증 방식**: Authorization Code Flow (GIS `initCodeClient`) → Cloud Run 백엔드에서 토큰 교환 → JWT(30일) 발급
+2. **토큰 관리**: Access Token은 백엔드 `/auth/refresh`로 갱신, Refresh Token은 Firestore에 서버 사이드 보관 (프론트 노출 없음)
+3. **세션 만료 복구**: 401 발생 시 백엔드 refresh 시도 → 실패 시 `needsReAuth=true` → 데이터 유지 + 앰버 배너로 재로그인 유도
+4. **저장**: 변경 발생 → 2초 디바운스 → LZ-String 압축 → Google Drive 업로드
+5. **로드**: Google Drive 다운로드 → 압축 해제 → 데이터 마이그레이션(카테고리 ID 변환 포함) → 상태 반영
+6. **공유 폴더**: 다른 계정과 동일 데이터 공유 가능 (`drive` scope 사용)
+7. **자동 백업**: 시세 업데이트 완료 후 1일 1회 `portfolio_backup_YYYY-MM-DD.json` 자동 생성, Rolling N개 유지(초과분 자동 삭제)
 
 ### 히스토리 백필 + 종가 교정
 앱을 안 열었던 날의 데이터를 **실제 과거 종가**로 채우고, 기존 스냅샷도 교정:
@@ -233,6 +234,9 @@ asset-manager/
 | `/history` | POST | 주식/ETF 과거 시세 (백필용) |
 | `/upbit/history` | POST | 암호화폐 과거 시세 (백필용) |
 | `/exchange-rate` | POST | 환율 조회 (현재/과거) |
+| `/auth/callback` | POST | Authorization Code → Access Token + Refresh Token 교환, JWT 발급 |
+| `/auth/refresh` | POST | JWT 검증 후 Refresh Token으로 새 Access Token 발급 |
+| `/auth/revoke` | POST | Refresh Token 폐기 + Firestore 삭제 (로그아웃) |
 
 ---
 
@@ -259,16 +263,25 @@ cd cloud-run
 gcloud run deploy asset-manager \
   --source . \
   --region asia-northeast3 \
-  --allow-unauthenticated
+  --allow-unauthenticated \
+  --set-env-vars "GOOGLE_CLIENT_ID=your_client_id,GOOGLE_CLIENT_SECRET=your_client_secret,JWT_SECRET=your_jwt_secret"
 ```
+> **참고**: `requirements.txt`에 `PyJWT`, `google-cloud-firestore` 의존성 필요
 
 ---
 
 ## 환경 변수 설정
 
-### 필수 환경 변수 (.env.local)
+### 프론트엔드 환경 변수 (.env.local)
 ```env
 VITE_GOOGLE_CLIENT_ID=your_google_client_id
+```
+
+### Cloud Run 백엔드 환경 변수
+```env
+GOOGLE_CLIENT_ID=your_google_client_id
+GOOGLE_CLIENT_SECRET=your_google_client_secret
+JWT_SECRET=your_jwt_secret_key
 ```
 
 ### 빌드 설정 (vite.config.ts)
@@ -277,13 +290,20 @@ base: '/asset-manager/'  // GitHub Pages 경로
 ```
 
 ### Google Cloud Console 설정
-1. OAuth 2.0 클라이언트 ID 생성
-2. 승인된 리디렉션 URI 설정:
+1. OAuth 2.0 클라이언트 ID 생성 (웹 애플리케이션 유형)
+2. **클라이언트 보안 비밀번호**(Client Secret) 확인 → Cloud Run 환경 변수로 설정
+3. 승인된 리디렉션 URI 설정:
    - 개발: `http://localhost:5173`
    - 프로덕션: `https://your-username.github.io/asset-manager`
-3. 필요한 API 활성화:
+4. 필요한 API 활성화:
    - Google Drive API
    - Google OAuth 2.0
+5. **Firestore 데이터베이스 생성** (Refresh Token 저장용):
+   ```bash
+   gcloud firestore databases create --location=asia-northeast3
+   ```
+   - Cloud Run과 **동일 GCP 프로젝트**에 생성해야 별도 인증 없이 접근 가능
+   - 컬렉션: `auth_tokens` (자동 생성됨)
 
 ---
 

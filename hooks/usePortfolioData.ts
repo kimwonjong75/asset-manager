@@ -23,7 +23,7 @@ export const usePortfolioData = () => {
   const [shouldAutoUpdate, setShouldAutoUpdate] = useState<boolean>(false);
   const [lastUpdateDate, setLastUpdateDate] = useState<string | null>(null);
 
-  const { isSignedIn, googleUser, isInitializing, handleSignIn, handleSignOut: hookSignOut, loadFromGoogleDrive: hookLoadFromGoogleDrive, autoSave: hookAutoSave } = useGoogleDriveSync({ onError: setError, onSuccessMessage: setSuccessMessage });
+  const { isSignedIn, googleUser, isInitializing, needsReAuth, handleSignIn, handleSignOut: hookSignOut, loadFromGoogleDrive: hookLoadFromGoogleDrive, autoSave: hookAutoSave } = useGoogleDriveSync({ onError: setError, onSuccessMessage: setSuccessMessage });
 
   const loadFromGoogleDrive = useCallback(async () => {
     try {
@@ -220,7 +220,7 @@ export const usePortfolioData = () => {
     sellAlertDropRate, setSellAlertDropRate,
     categoryStore, setCategoryStore,
     isSignedIn, googleUser,
-    isInitializing,
+    isInitializing, needsReAuth,
     isLoading: isInitializing, // Alias for legacy support
     error, setError,
     successMessage, setSuccessMessage,

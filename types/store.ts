@@ -22,6 +22,7 @@ export interface PortfolioStatus {
   isLoading: boolean;
   failedAssetIds: Set<string>;
   isSignedIn: boolean;
+  needsReAuth: boolean;
   userEmail: string | null;
   isInitializing: boolean;
   error: string | null;
