@@ -207,7 +207,7 @@ npm run dev
 ```
 asset-manager/
 ├── components/           # React 컴포넌트
-│   ├── common/          # 공용 컴포넌트 (PeriodSelector, Toggle, Tooltip, ActionMenu, AlertPopup)
+│   ├── common/          # 공용 컴포넌트 (PeriodSelector, Toggle, Tooltip, MemoTooltip, ActionMenu, AlertPopup)
 │   ├── dashboard/       # 대시보드 전용 컴포넌트
 │   ├── layouts/         # 탭별 뷰 (Dashboard, Portfolio, Analytics, Watchlist, InvestmentGuide)
 │   └── portfolio-table/ # 포트폴리오 테이블 컴포넌트

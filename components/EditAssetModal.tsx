@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Asset, Currency, normalizeExchange } from '../types';
 import { getAllowedCategories, inferCategoryIdFromExchange } from '../types/category';
 import { searchSymbols } from '../services/geminiService';
@@ -39,8 +39,36 @@ const EditAssetModal: React.FC = () => {
     }
   }, [asset]);
 
+  // 변경사항 감지
+  const isDirty = useMemo(() => {
+    if (!asset || !formData) return false;
+    const normalizedDate = new Date(asset.purchaseDate).toISOString().slice(0, 10);
+    return (
+      formData.customName !== asset.customName ||
+      formData.ticker !== asset.ticker ||
+      formData.quantity !== asset.quantity ||
+      formData.purchasePrice !== asset.purchasePrice ||
+      formData.currency !== asset.currency ||
+      formData.purchaseDate !== normalizedDate ||
+      formData.categoryId !== asset.categoryId ||
+      formData.sellAlertDropRate !== asset.sellAlertDropRate ||
+      (formData.memo || '') !== (asset.memo || '')
+    );
+  }, [asset, formData]);
+
+  // 변경사항 있을 때 닫기 전 확인
+  const handleClose = useCallback(() => {
+    if (isDirty) {
+      if (window.confirm('수정 중인 내용이 있습니다. 저장하지 않고 닫으시겠습니까?')) {
+        onClose();
+      }
+    } else {
+      onClose();
+    }
+  }, [isDirty, onClose]);
+
   if (!isOpen || !formData) return null;
-  
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData(prev => {
@@ -112,7 +140,7 @@ const EditAssetModal: React.FC = () => {
   const labelClasses = "block text-sm font-medium text-gray-300 mb-1";
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center z-50" onClick={onClose} role="dialog" aria-modal="true">
+    <div className="fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center z-50" onClick={handleClose} role="dialog" aria-modal="true">
       <div className="bg-gray-800 p-6 rounded-lg shadow-xl w-full max-w-lg" onClick={(e) => e.stopPropagation()}>
         <h2 className="text-2xl font-bold text-white mb-6">자산 수정: {(asset?.customName?.trim() || asset?.name)}</h2>
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -226,7 +254,7 @@ const EditAssetModal: React.FC = () => {
               삭제
             </button>
             <div className="flex space-x-4">
-              <button type="button" onClick={onClose} className="bg-gray-600 hover:bg-gray-500 text-white font-medium py-2 px-4 rounded-md transition duration-300">
+              <button type="button" onClick={handleClose} className="bg-gray-600 hover:bg-gray-500 text-white font-medium py-2 px-4 rounded-md transition duration-300">
                 취소
               </button>
               <button type="submit" disabled={isLoading} className="bg-primary hover:bg-primary-dark text-white font-bold py-2 px-4 rounded-md disabled:bg-gray-600 disabled:cursor-not-allowed transition duration-300 flex items-center justify-center">

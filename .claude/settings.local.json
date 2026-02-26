@@ -19,7 +19,9 @@
       "Bash(kill:*)",
       "Bash(tee:*)",
       "Bash(echo:*)",
-      "Bash(test:*)"
+      "Bash(test:*)",
+      "Bash(git ls-tree:*)",
+      "Bash(git config:*)"
     ],
     "additionalDirectories": [
       "C:\\Users\\beari\\Downloads"

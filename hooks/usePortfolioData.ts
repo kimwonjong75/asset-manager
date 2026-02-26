@@ -26,6 +26,7 @@ export const usePortfolioData = () => {
   const { isSignedIn, googleUser, isInitializing, needsReAuth, handleSignIn, handleSignOut: hookSignOut, loadFromGoogleDrive: hookLoadFromGoogleDrive, autoSave: hookAutoSave } = useGoogleDriveSync({ onError: setError, onSuccessMessage: setSuccessMessage });
 
   const loadFromGoogleDrive = useCallback(async () => {
+    setSuccessMessage('자동으로 데이터를 불러오는 중...');
     try {
       const loaded = await hookLoadFromGoogleDrive();
       if (loaded) {

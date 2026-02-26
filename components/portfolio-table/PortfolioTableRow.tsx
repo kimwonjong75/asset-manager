@@ -5,6 +5,7 @@ import AssetTrendChart from '../AssetTrendChart';
 import { MoreHorizontal } from 'lucide-react';
 import { formatNumber, formatOriginalCurrency, formatKRW, formatProfitLoss, getChangeColor } from './utils';
 import Tooltip from '../common/Tooltip';
+import MemoTooltip from '../common/MemoTooltip';
 import { COLUMN_DESCRIPTIONS } from '../../constants/columnDescriptions';
 import ActionMenu from '../common/ActionMenu';
 
@@ -151,15 +152,7 @@ const PortfolioTableRow: React.FC<PortfolioTableRowProps> = ({
         <td className="px-4 py-4 font-medium text-white break-words">
           <div className="flex flex-col">
              <div className="flex items-center gap-2">
-               <Tooltip content={asset.memo ? (
-                 <div className="space-y-0.5">
-                   {asset.memo.split('\n').map((line, i) => (
-                     <p key={i} className={line.startsWith('-') || line.startsWith('·') ? 'pl-2 text-gray-300' : ''}>
-                       {line || '\u00A0'}
-                     </p>
-                   ))}
-                 </div>
-               ) : null} position="right" wrap>
+               <MemoTooltip memo={asset.memo}>
                  <a
                    href={`https://www.google.com/search?q=${encodeURIComponent(asset.ticker + ' 주가')}`}
                    target="_blank"
@@ -168,7 +161,8 @@ const PortfolioTableRow: React.FC<PortfolioTableRowProps> = ({
                  >
                    {(asset.customName?.trim() || asset.name)}
                  </a>
-               </Tooltip>
+                 {asset.memo && <span className="text-[10px] ml-0.5 opacity-60">📝</span>}
+               </MemoTooltip>
                <SignalBadge signal={asset.indicators?.signal} />
                {isAlertTriggered && (
                  <Tooltip content="알림 조건 도달" position="right">
@@ -196,13 +190,19 @@ const PortfolioTableRow: React.FC<PortfolioTableRowProps> = ({
             </Tooltip>
           </td>
         )}
-        <td className="px-4 py-4 text-right">
+        <td className="px-4 py-4">
           <Tooltip content={COLUMN_DESCRIPTIONS.currentPrice} position="top" wrap>
-            <div>
-              <div className="font-semibold text-white">{formatOriginalCurrency(asset.currentPrice, asset.currency)}</div>
-              {isNonKRW && <div className="text-xs text-gray-500">≈ {formatKRW(asset.metrics.currentPriceKRW)}</div>}
-              <RSIIndicator rsi={asset.indicators?.rsi} status={asset.indicators?.rsi_status} />
-              <VolumeIndicator ratio={asset.indicators?.volume_ratio} />
+            <div className="flex items-start justify-between gap-3">
+              <div className="text-right">
+                <div className="font-semibold text-white">{formatOriginalCurrency(asset.currentPrice, asset.currency)}</div>
+                {isNonKRW && <div className="text-xs text-gray-500">≈ {formatKRW(asset.metrics.currentPriceKRW)}</div>}
+              </div>
+              {(asset.indicators?.rsi != null || asset.indicators?.volume_ratio != null) && (
+                <div className="text-right shrink-0">
+                  <RSIIndicator rsi={asset.indicators?.rsi} status={asset.indicators?.rsi_status} />
+                  <VolumeIndicator ratio={asset.indicators?.volume_ratio} />
+                </div>
+              )}
             </div>
           </Tooltip>
         </td>

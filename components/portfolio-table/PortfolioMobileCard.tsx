@@ -61,6 +61,7 @@ const PortfolioMobileCard: React.FC<PortfolioMobileCardProps> = ({
             <span className="font-bold text-primary-light text-sm truncate max-w-[160px]">
               {asset.customName?.trim() || asset.name}
             </span>
+            {asset.memo && <span className="text-[10px] opacity-60">📝</span>}
             <SignalBadgeMini signal={asset.indicators?.signal} />
           </div>
           <div className="text-[11px] text-gray-500 mt-0.5">{asset.ticker} | {asset.exchange}</div>
