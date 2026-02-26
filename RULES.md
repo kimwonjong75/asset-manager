@@ -60,6 +60,7 @@
 | `useRebalancing.ts` | 리밸런싱 계산 및 저장. `CategoryData`에 `categoryKey`(ID 문자열)와 `category`(표시명)를 분리 — 가중치 변경 핸들러에는 `categoryKey` 전달 필수 | `PortfolioContext` | `RebalancingTable` |
 | `useGoogleDriveSync.ts` | Google Drive 저장/로드, **`needsReAuth` 상태 관리**(세션 만료 시 데이터 유지+배너), 인증 상태 변경 콜백 등록 | `googleDriveService`, `lz-string` | `usePortfolioData` |
 | `useBackup.ts` | 1일 1회 자동 백업, 수동 백업/복원/삭제, retention 관리 | `googleDriveService` | `PortfolioContext` |
+| `useGoldPremium.ts` | 금 김치 프리미엄 상태 관리. `PortfolioContext.data.exchangeRates.USD`를 환율로 사용 (별도 환율 API 호출 없음) | `goldPremiumService` | `GoldPremiumWidget` |
 
 ### services/ (외부 API 연동)
 | 파일 | 책임 | API 엔드포인트 | 수정 시 확인 |
@@ -69,6 +70,7 @@
 | `historicalPriceService.ts` | 과거 시세+거래량 (백필/차트용/AI분석용). `HistoricalPriceResult`에 optional `volume` 필드 포함 | Cloud Run `/history`, `/upbit/history` | `useHistoricalPriceData`, `historyUtils`, `geminiService` |
 | `googleDriveService.ts` | 클라우드 저장/로드, **Authorization Code Flow + Backend JWT 기반 인증**, `authenticatedFetch` 래퍼(401 시 백엔드 `/auth/refresh`로 갱신), 백업 파일 관리(`deleteFileById`, `loadFileById`, `listFilesByPattern`) | Google Drive API, Cloud Run `/auth/*` | `useGoogleDriveSync`, `useBackup` |
 | `geminiService.ts` | 종목 검색, AI 분석 (스트리밍 응답, 기술적 질문 시 Context의 enrichedMap 재활용 우선 → 폴백으로 직접 fetch) | Gemini API, `historicalPriceService`, `maCalculations`, `useEnrichedIndicators`(타입만) | `useAssetActions`, `PortfolioAssistant` |
+| `goldPremiumService.ts` | 금 김치 프리미엄 계산. `KRX-GOLD`(KRW/g)와 `GC=F`(USD/oz) 시세를 `fetchBatchAssetPrices()`로 조회 → `usdKrwRate`로 환산 → 프리미엄 계산 | Cloud Run `/` (기존 엔드포인트 재사용) | `useGoldPremium` |
 
 ### utils/ (순수 함수)
 | 파일 | 책임 | 수정 시 영향 범위 |
@@ -103,7 +105,7 @@
 ### components/layouts/ (탭별 뷰)
 | 파일 | 책임 | 의존 |
 |------|------|------|
-| `DashboardView.tsx` | 대시보드 탭 | `PortfolioContext`, `useGlobalPeriodDays` |
+| `DashboardView.tsx` | 대시보드 탭 | `PortfolioContext`, `useGlobalPeriodDays`, `GoldPremiumWidget` |
 | `PortfolioView.tsx` | 포트폴리오 탭 | `PortfolioContext`, `PortfolioTable` |
 | `AnalyticsView.tsx` | 수익 통계 탭 | `PortfolioContext`, `useGlobalPeriodDays` |
 | `WatchlistView.tsx` | 관심종목 탭 | `PortfolioContext`, `WatchlistPage` |
@@ -560,6 +562,13 @@ try {
 - **프리셋 → 스마트필터 변환**: `PortfolioTable`의 `handleApplyPreset()`이 `AlertRule`의 `filters`+`filterConfig`를 `SmartFilterState`로 변환하여 적용
 - **새 알림 규칙 추가 시**: `constants/alertRules.ts`의 `DEFAULT_ALERT_RULES`에 추가, 필요한 필터가 없으면 `smartFilter.ts`/`smartFilterChips.ts`/`smartFilterLogic.ts`에 칩 추가 필요
 - **`matchesSingleFilter` 시그니처 변경 시**: `smartFilterLogic.ts`(스마트 필터)와 `alertChecker.ts`(알림) **양쪽 모두** 영향 확인 필수
+
+### 금 김치 프리미엄
+- **KRX-GOLD 단위**: KRX 금시장 가격은 `KRW/g`으로 반환됨
+- **GC=F 단위**: COMEX 금선물은 `USD/troy oz` → 환산: `USD/oz × USD/KRW ÷ 31.1035 = KRW/g`
+- **GC=F 지원 미확인**: FinanceDataReader가 `GC=F`(Yahoo Finance 티커)를 처리하지 못하면 `isMocked: true` 반환 → 위젯에 `-` 표시. 실패 시 백엔드 신규 엔드포인트 필요
+- **포트폴리오 자산 독립**: 금 자산 미보유 시에도 작동 (포트폴리오 자산 목록과 무관)
+- **환율 중복 호출 방지**: `PortfolioContext.data.exchangeRates.USD` 재사용 (환율 API 별도 호출 없음)
 
 ### 거래량 지표 관련
 - **`volume_ratio` 가용 범위**: 주식/ETF에만 `volume_avg20`과 `volume_ratio` 제공. 암호화폐(Upbit)는 당일 `volume`만 제공 (20일 평균/비율은 null) → 스마트 필터 거래량 칩은 주식/ETF에만 매칭됨

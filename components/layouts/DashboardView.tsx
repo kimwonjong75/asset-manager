@@ -13,6 +13,7 @@ import AllocationChart from '../dashboard/AllocationChart';
 import CategorySummaryTable from '../dashboard/CategorySummaryTable';
 import TopBottomAssets from '../dashboard/TopBottomAssets';
 import RebalancingTable from '../dashboard/RebalancingTable';
+import GoldPremiumWidget from '../GoldPremiumWidget';
 
 const DashboardView: React.FC = () => {
   const { data, ui, actions, status, derived } = usePortfolio();
@@ -74,12 +75,14 @@ const DashboardView: React.FC = () => {
         onAlertClick={onAlertClick}
       />
 
-      <DashboardStats 
+      <DashboardStats
         totalValue={dashboardTotalValue}
         totalPurchaseValue={dashboardTotalPurchaseValue}
         totalGainLoss={dashboardTotalGainLoss}
         totalReturn={dashboardTotalReturn}
       />
+
+      <GoldPremiumWidget />
 
       <SoldAssetsStats stats={soldAssetsStats} />
 
