@@ -119,7 +119,7 @@
 | `PeriodSelector.tsx` | 글로벌 기간 선택 버튼 (3개월/6개월/1년/2년/전체) | `types/store` (`GlobalPeriod`) |
 | `ActionMenu.tsx` | Portal 기반 액션 메뉴 — 데스크탑: `createPortal`로 body에 드롭다운 렌더링(공간 부족 시 위로 열림), 모바일(<768px): 바텀시트 | `react-dom/createPortal` |
 | `AlertPopup.tsx` | "오늘의 투자 브리핑" 모달 (`max-w-3xl`) — severity별 스타일, 매도/매수 섹션 분리, **표 형식**(종목·당일·수익률·고점대비·RSI 컬럼) | `types/alertRules` (`AlertResult`, `AlertMatchedAsset`) |
-| `MemoTooltip.tsx` | 메모 전용 마우스 추적 툴팁 — Portal 기반(`document.body`), 마우스 커서 추적(`onMouseMove`), `maxWidth: 500px`, 뷰포트 경계 자동 반전. `Tooltip.tsx`와 독립된 별도 컴포넌트 | `react-dom/createPortal` |
+| `MemoTooltip.tsx` | 메모 전용 마우스 추적 툴팁 — Portal 기반(`document.body`), 마우스 커서 추적(`onMouseMove`), `maxWidth: 500px`, 뷰포트 경계 자동 반전. `Tooltip.tsx`와 독립된 별도 컴포넌트 | `react-dom/createPortal` | `PortfolioTableRow`, `WatchlistPage` (메모 표시) |
 | `Toggle.tsx` | 토글 스위치 | - |
 | `Tooltip.tsx` | 범용 CSS hover 툴팁 (고정 위치, `position` prop). 메모 이외 용도에 사용 | - |
 
@@ -133,7 +133,7 @@
 |------|------|------|
 | `WatchlistAddModal.tsx` | 관심종목 추가 모달 | `PortfolioContext` (`addWatchItemOpen`, `addWatchItem`) |
 | `WatchlistEditModal.tsx` | 관심종목 수정/삭제 모달 | `PortfolioContext` (`editingWatchItem`, `updateWatchItem`, `deleteWatchItem`) |
-| `WatchlistPage.tsx` | 관심종목 테이블 (행별 액션 메뉴 + 차트 확장, 종목명 hover 시 메모 툴팁, 전용 시세 업데이트 버튼). **메모 툴팁은 `Tooltip` 사용** (포트폴리오 테이블의 `MemoTooltip`과 다름 — 통일 필요 시 `MemoTooltip`으로 교체) | `AssetTrendChart`, `Tooltip`, `onRefresh` prop from `WatchlistView` |
+| `WatchlistPage.tsx` | 관심종목 테이블 (행별 액션 메뉴 + 차트 확장, 종목명 hover 시 메모 툴팁, 전용 시세 업데이트 버튼). **메모 툴팁은 `MemoTooltip` 사용** (포트폴리오 테이블과 동일 — Portal 기반, 마우스 추적). 메모가 있는 종목명 옆 📝 아이콘 표시 | `AssetTrendChart`, `MemoTooltip`, `onRefresh` prop from `WatchlistView` |
 
 > `WatchlistView.tsx`에서 세 컴포넌트를 함께 렌더링
 
@@ -318,7 +318,7 @@ PortfolioAssistant.tsx
 | `useGlobalPeriodDays.ts` | `AssetTrendChart`, `DashboardView`, `AnalyticsView` |
 | `PortfolioContext.tsx` | `App.tsx`, 모든 Context 소비 컴포넌트 |
 | `ActionMenu.tsx` | `PortfolioTableRow`, `PortfolioMobileCard`, `WatchlistPage` (드롭다운 메뉴 사용처) |
-| `MemoTooltip.tsx` | `PortfolioTableRow` (메모 표시). 관심종목(`WatchlistPage`)은 아직 `Tooltip` 사용 |
+| `MemoTooltip.tsx` | `PortfolioTableRow`, `WatchlistPage` (메모 표시) |
 | `PortfolioTableRow.tsx` 컬럼 추가 | `PortfolioMobileCard`에도 반영 필요 (데스크탑/모바일 뷰 동기화) |
 
 ---
@@ -538,7 +538,7 @@ try {
 
 ### 관심종목 (WatchlistItem)
 - **삭제된 필드/기능**: `monitoringEnabled`, `dropFromHighThreshold`, `lastSignalAt`, `lastSignalType`, 모니터링 토글, 최고가대비 하락 알림, 신호 배지(최고가대비/일중하락/매도/RSI) — `WatchlistItem` 타입에 해당 필드 없음
-- **메모 표시**: 종목명에 마우스 hover 시 `Tooltip` 컴포넌트로 표시 (포트폴리오 테이블과 동일 방식)
+- **메모 표시**: 종목명에 마우스 hover 시 `MemoTooltip` 컴포넌트로 표시 (Portal 기반, 마우스 추적). 메모가 있는 종목 옆 📝 아이콘 표시. `WatchlistItem.notes` → `MemoTooltip`의 `memo` prop으로 전달
 - **관심종목 UI는 모달 기반** — 인라인 폼 없음, `WatchlistAddModal`/`WatchlistEditModal` 사용
 - **관심종목 가격 갱신 2가지 경로**:
   - `handleRefreshAllPrices`: 포트폴리오와 함께 자동 처리 (현재가/전일종가/지표 갱신, `highestPrice`도 갱신)
@@ -582,12 +582,14 @@ try {
 - **데스크탑/모바일 뷰 분기**: `PortfolioTable`에서 `hidden md:block`(데스크탑 테이블) / `block md:hidden`(모바일 카드 뷰)로 분기. **테이블에 새 기능 추가 시 모바일 카드 뷰(`PortfolioMobileCard`)에도 반영 필요**
 - **`PortfolioMobileCard`**: 종목명+현재가+수익률+평가액+고가대비/전일대비를 카드 형태로 표시, 탭하면 차트 펼침, 관리 메뉴는 `ActionMenu`(바텀시트) 사용
 
-### 모달 닫기 보호 (EditAssetModal)
-- **미저장 변경 감지**: `isDirty` (useMemo)로 원본 asset과 formData의 모든 필드를 비교
-- **overlay 클릭/취소 버튼**: 변경사항이 있으면 `window.confirm('수정 중인 내용이 있습니다...')` 확인 후 닫기. 변경 없으면 즉시 닫기
-- **저장 버튼**: 확인 없이 `onSave(formData)` → 모달 자동 닫힘
-- **삭제 버튼**: 기존 `window.confirm` 유지 (별도 흐름)
-- **새 모달 추가 시**: 동일 패턴 적용 권장 — `isDirty` 감지 + `handleClose` 래퍼
+### 모달 닫기 보호 (EditAssetModal, WatchlistEditModal)
+- **적용 대상**: `EditAssetModal`(포트폴리오), `WatchlistEditModal`(관심종목) 모두 동일 패턴 적용
+- **미저장 변경 감지**: `isDirty` (useMemo) + `initialRef`(useRef)로 모달 열릴 때 초기값 저장 → 현재 상태와 비교
+- **overlay 클릭/취소 버튼/X 버튼**: 변경사항이 있으면 `window.confirm(...)` 확인 후 닫기. 변경 없으면 즉시 닫기. `handleClose` 래퍼로 통일
+- **저장 버튼**: 확인 없이 저장 → 모달 자동 닫힘 (`onClose` 직접 호출)
+- **삭제 버튼**: 기존 `window.confirm` 유지 (별도 흐름, `handleClose` 경유하지 않음)
+- **`WatchlistEditModal`의 추적 필드**: `ticker`, `name`, `category`(categoryId), `notes`
+- **새 모달 추가 시**: 동일 패턴 적용 권장 — `useRef`로 초기값 캡처 + `isDirty` useMemo + `handleClose` 래퍼
 
 ### 디버깅 로그 패턴
 ```typescript

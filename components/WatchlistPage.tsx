@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect, Fragment, useRef } from 'react';
 import { Filter, MoreHorizontal, RefreshCw } from 'lucide-react';
-import Tooltip from './common/Tooltip';
+import MemoTooltip from './common/MemoTooltip';
 import { Currency, CURRENCY_SYMBOLS, WatchlistItem, ExchangeRates } from '../types';
 import { getAllowedCategories, getCategoryName, type CategoryDefinition } from '../types/category';
 import AssetTrendChart from './AssetTrendChart';
@@ -201,19 +201,7 @@ const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, onDelete, onOp
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex flex-col">
-                        <Tooltip
-                          content={w.notes ? (
-                            <div className="space-y-0.5">
-                              {w.notes.split('\n').map((line, i) => (
-                                <p key={i} className={line.startsWith('-') || line.startsWith('·') ? 'pl-2 text-gray-300' : ''}>
-                                  {line || '\u00A0'}
-                                </p>
-                              ))}
-                            </div>
-                          ) : null}
-                          position="right"
-                          wrap
-                        >
+                        <MemoTooltip memo={w.notes}>
                           <a
                             href={`https://www.google.com/search?q=${encodeURIComponent(w.ticker + ' 주가')}`}
                             target="_blank"
@@ -222,7 +210,8 @@ const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, onDelete, onOp
                           >
                             {w.name}
                           </a>
-                        </Tooltip>
+                          {w.notes && <span className="text-[10px] ml-0.5 opacity-60">📝</span>}
+                        </MemoTooltip>
                         <span className="text-xs text-gray-500">{w.ticker} | {w.exchange} | {getCategoryName(w.categoryId, categories)}</span>
                       </div>
                     </td>

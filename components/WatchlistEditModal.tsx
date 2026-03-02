@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { WatchlistItem, normalizeExchange } from '../types';
 import { getAllowedCategories, inferCategoryIdFromExchange } from '../types/category';
 import { searchSymbols } from '../services/geminiService';
@@ -21,6 +21,8 @@ const WatchlistEditModal: React.FC = () => {
   const [searchResults, setSearchResults] = useState<{ ticker: string; name: string; exchange: string }[]>([]);
   const [isSearching, setIsSearching] = useState(false);
 
+  const initialRef = useRef({ ticker: '', name: '', category: 0, notes: '' });
+
   useEffect(() => {
     if (item) {
       setTicker(item.ticker);
@@ -30,8 +32,26 @@ const WatchlistEditModal: React.FC = () => {
       setNotes(item.notes || '');
       setSearchQuery('');
       setSearchResults([]);
+      initialRef.current = {
+        ticker: item.ticker,
+        name: item.name,
+        category: item.categoryId,
+        notes: item.notes || '',
+      };
     }
   }, [item]);
+
+  const isDirty = useMemo(() => (
+    ticker !== initialRef.current.ticker ||
+    name !== initialRef.current.name ||
+    category !== initialRef.current.category ||
+    notes !== initialRef.current.notes
+  ), [ticker, name, category, notes]);
+
+  const handleClose = () => {
+    if (isDirty && !window.confirm('변경사항이 저장되지 않습니다. 닫으시겠습니까?')) return;
+    onClose();
+  };
 
   if (!isOpen || !item) return null;
 
@@ -94,11 +114,11 @@ const WatchlistEditModal: React.FC = () => {
   const labelClasses = "block text-sm font-medium text-gray-300 mb-1";
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center z-50" onClick={onClose} role="dialog" aria-modal="true">
+    <div className="fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center z-50" onClick={handleClose} role="dialog" aria-modal="true">
       <div className="bg-gray-800 p-6 rounded-lg shadow-xl w-full max-w-lg" onClick={(e) => e.stopPropagation()}>
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-2xl font-bold text-white">관심종목 수정: {item.name}</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-white transition">
+          <button onClick={handleClose} className="text-gray-400 hover:text-white transition">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
@@ -148,7 +168,7 @@ const WatchlistEditModal: React.FC = () => {
               삭제
             </button>
             <div className="flex space-x-4">
-              <button type="button" onClick={onClose} className="bg-gray-600 hover:bg-gray-500 text-white font-medium py-2 px-4 rounded-md transition duration-300">
+              <button type="button" onClick={handleClose} className="bg-gray-600 hover:bg-gray-500 text-white font-medium py-2 px-4 rounded-md transition duration-300">
                 취소
               </button>
               <button type="submit" className="bg-primary hover:bg-primary-dark text-white font-bold py-2 px-4 rounded-md transition duration-300">
