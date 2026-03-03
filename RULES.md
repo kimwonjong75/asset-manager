@@ -90,7 +90,7 @@
 | `category.ts` | **카테고리 시스템 핵심** — `CategoryDefinition`, `CategoryStore`, `CategoryBaseType`, `DEFAULT_CATEGORIES`, `EXCHANGE_MAP_BY_BASE_TYPE`, 유틸(`isBaseType`, `getCategoryName`, `inferCategoryIdFromExchange`, `getAllowedCategories`) | **전역** — 모든 카테고리 참조 컴포넌트/훅 |
 | `backup.ts` | 백업 타입 (`BackupInfo`, `BackupSettings`, `RETENTION_OPTIONS`) | `hooks/useBackup`, `BackupSettingsSection` |
 | `api.ts` | API 응답 타입 (`PriceItem`, `Indicators` 등). `Indicators`에 거래량 3필드 포함: `volume`(당일), `volume_avg20`(20일 평균), `volume_ratio`(비율) | `services/`, `hooks/` |
-| `store.ts` | 상태 관리 타입 (`PortfolioContextValue`, `GlobalPeriod`, `UIState.activeTab` 등). `PortfolioData`에 `categoryStore`, `PortfolioStatus`에 `needsReAuth`, `DerivedState`에 `backupList`/`isBackingUp` 포함 | `contexts/`, `hooks/`, `App.tsx`, `components/common/PeriodSelector`, `SmartFilterPanel`, `AlertSettingsPage` |
+| `store.ts` | 상태 관리 타입 (`PortfolioContextValue`, `GlobalPeriod`, `UIState.activeTab` 등). `PortfolioData`에 `categoryStore`, `PortfolioStatus`에 `needsReAuth`, `DerivedState`에 `backupList`/`isBackingUp` 포함. `UIState`에 `focusedAssetId: string \| null` 포함 (브리핑 패널 클릭-투-포커스용). `PortfolioActions`에 `setFocusedAssetId` 포함 | `contexts/`, `hooks/`, `App.tsx`, `components/common/PeriodSelector`, `SmartFilterPanel`, `AlertSettingsPage` |
 | `ui.ts` | UI 컴포넌트 Props 타입 | `components/` |
 | `smartFilter.ts` | 스마트 필터 타입 (24개 키, 5개 그룹: ma/rsi/signal/portfolio/volume, MA 기간 설정 + `lossThreshold` 포함), 그룹 매핑, 칩 정의(`pairKey`/`pairColorClass` tri-state 지원), 초기값 | `utils/smartFilterLogic`, `SmartFilterPanel`(+ `PortfolioContext` 의존), `PortfolioTable`, `alertChecker` |
 | `alertRules.ts` | 알림 규칙 타입 (`AlertRule`, `AlertResult`, `AlertSettings`, `AlertMatchedAsset`) | `constants/alertRules`, `utils/alertChecker`, `hooks/useAutoAlert`, `AlertSettingsPage`, `AlertPopup` |
@@ -118,7 +118,7 @@
 |------|------|------|
 | `PeriodSelector.tsx` | 글로벌 기간 선택 버튼 (3개월/6개월/1년/2년/전체) | `types/store` (`GlobalPeriod`) |
 | `ActionMenu.tsx` | Portal 기반 액션 메뉴 — 데스크탑: `createPortal`로 body에 드롭다운 렌더링(공간 부족 시 위로 열림), 모바일(<768px): 바텀시트 | `react-dom/createPortal` |
-| `AlertPopup.tsx` | "오늘의 투자 브리핑" 모달 (`max-w-3xl`) — severity별 스타일, 매도/매수 섹션 분리, **표 형식**(종목·당일·수익률·고점대비·RSI 컬럼) | `types/alertRules` (`AlertResult`, `AlertMatchedAsset`) |
+| `AlertPopup.tsx` | "오늘의 투자 브리핑" **플로팅 패널** (`fixed bottom-4 right-4 w-96`) — 전체화면 오버레이 없음, severity별 스타일, 매도/매수 섹션 분리, **표 형식**(종목·당일·수익률·RSI 컬럼), 최소화/복원 토글(타이틀 클릭), `onAssetClick` prop으로 종목 클릭 시 포트폴리오 포커스 요청 | `types/alertRules` (`AlertResult`, `AlertMatchedAsset`) |
 | `MemoTooltip.tsx` | 메모 전용 마우스 추적 툴팁 — Portal 기반(`document.body`), 마우스 커서 추적(`onMouseMove`), `maxWidth: 500px`, 뷰포트 경계 자동 반전. `Tooltip.tsx`와 독립된 별도 컴포넌트 | `react-dom/createPortal` | `PortfolioTableRow`, `WatchlistPage` (메모 표시) |
 | `Toggle.tsx` | 토글 스위치 | - |
 | `Tooltip.tsx` | 범용 CSS hover 툴팁 (고정 위치, `position` prop). 메모 이외 용도에 사용 | - |
@@ -260,8 +260,19 @@ PortfolioContext.tsx (Context 레벨에서 호출)
          ├─ 조건 체크: enableAutoPopup && 오늘 미표시 && 데이터 준비 완료
          ├─ checkAlertRules(enrichedAssets, enrichedMap, rules)
          │    └─ alertChecker.ts → matchesSingleFilter() 재활용 (AND 조합)
-         ├─ 결과 있으면 → AlertPopup 표시
+         ├─ 결과 있으면 → AlertPopup 표시 (우하단 플로팅 패널)
          └─ localStorage('asset-manager-alert-popup-date')에 오늘 날짜 기록
+```
+```
+AlertPopup (플로팅 패널) → 종목 클릭
+    │
+    └─ App.tsx의 onAssetClick 콜백
+         ├─ actions.setActiveTab('portfolio')   — 포트폴리오 탭 전환
+         └─ actions.setFocusedAssetId(assetId)  — UIState.focusedAssetId 설정
+              └─ PortfolioTableRow.tsx (isFocused 감지)
+                   ├─ setExpandedAssetId(asset.id)  — 차트 자동 펼침
+                   ├─ rowRef.scrollIntoView()        — 스크롤 이동 (100ms 후)
+                   └─ setFocusedAssetId(null)        — 2.5초 후 하이라이트 해제
 ```
 ```
 프리셋 버튼 (PortfolioTable.tsx)
@@ -273,6 +284,8 @@ PortfolioContext.tsx (Context 레벨에서 호출)
 - **알림 규칙 vs 스마트 필터**: 알림 규칙은 필터를 **순수 AND** 조합 (스마트 필터의 그룹 내 OR과 다름)
 - **설정 저장**: `localStorage('asset-manager-alert-settings')` — Google Drive 파이프라인 미사용
 - **팝업 1일 1회**: `localStorage('asset-manager-alert-popup-date')`로 중복 방지, 수동 "브리핑 다시 보기"는 제한 없음
+- **플로팅 패널 위치**: `fixed bottom-4 right-4 z-[60]` — 전체화면 오버레이 없음, 포트폴리오 테이블과 동시 열람 가능
+- **AI 어시스턴트 FAB 위치**: `fixed bottom-8 left-8` (브리핑 패널과 겹침 방지를 위해 좌측으로 이동)
 
 ### AI 어시스턴트 기술적 분석 흐름
 ```
@@ -320,6 +333,7 @@ PortfolioAssistant.tsx
 | `ActionMenu.tsx` | `PortfolioTableRow`, `PortfolioMobileCard`, `WatchlistPage` (드롭다운 메뉴 사용처) |
 | `MemoTooltip.tsx` | `PortfolioTableRow`, `WatchlistPage` (메모 표시) |
 | `PortfolioTableRow.tsx` 컬럼 추가 | `PortfolioMobileCard`에도 반영 필요 (데스크탑/모바일 뷰 동기화) |
+| `PortfolioTableRow.tsx` | **`usePortfolio()` 직접 사용** — `ui.focusedAssetId` + `actions.setFocusedAssetId`로 브리핑 패널 클릭-투-포커스 구현. `rowRef`(HTMLTableRowElement)로 `scrollIntoView` 수행 |
 
 ---
 

@@ -1,4 +1,5 @@
-import React, { Fragment, useRef, useState } from 'react';
+import React, { Fragment, useEffect, useRef, useState } from 'react';
+import { usePortfolio } from '../../contexts/PortfolioContext';
 import { Asset, Currency, PortfolioSnapshot, ExchangeRates } from '../../types';
 import { EnrichedAsset } from '../../types/ui';
 import AssetTrendChart from '../AssetTrendChart';
@@ -116,6 +117,18 @@ const PortfolioTableRow: React.FC<PortfolioTableRowProps> = ({
   const [expandedAssetId, setExpandedAssetId] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuAnchorRef = useRef<HTMLButtonElement>(null);
+  const rowRef = useRef<HTMLTableRowElement>(null);
+
+  const { ui, actions } = usePortfolio();
+  const isFocused = ui.focusedAssetId === asset.id;
+
+  useEffect(() => {
+    if (isFocused) {
+      setExpandedAssetId(asset.id);
+      setTimeout(() => rowRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
+      setTimeout(() => actions.setFocusedAssetId(null), 2500);
+    }
+  }, [isFocused]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleToggleExpand = (assetId: string) => {
     setExpandedAssetId(prevId => (prevId === assetId ? null : assetId));
@@ -145,7 +158,7 @@ const PortfolioTableRow: React.FC<PortfolioTableRowProps> = ({
 
   return (
     <Fragment>
-      <tr className={`border-b border-gray-700 transition-colors duration-200 hover:bg-gray-700/50`}>
+      <tr ref={rowRef} className={`border-b border-gray-700 transition-colors duration-200 hover:bg-gray-700/50 ${isFocused ? 'ring-2 ring-inset ring-blue-500 bg-blue-900/20' : ''}`}>
         <td className="px-4 py-4 text-center">
           <input type="checkbox" checked={selectedIds.has(asset.id)} onChange={(e) => onSelect(asset.id, e.target.checked)} />
         </td>

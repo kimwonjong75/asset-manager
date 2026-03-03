@@ -39,6 +39,7 @@ export interface UIState {
   searchQuery: string;
   sellAlertDropRate: number;
   alertSettings: AlertSettings;
+  focusedAssetId: string | null;
 }
 
 export interface ModalState {
@@ -109,6 +110,7 @@ export interface PortfolioActions {
   dismissAlertPopup: () => void;
   showBriefingPopup: () => void;
   setActiveTab: (tab: UIState['activeTab']) => void;
+  setFocusedAssetId: (id: string | null) => void;
   setGlobalPeriod: (p: GlobalPeriod) => void;
   setDashboardFilterCategory: (c: UIState['dashboardFilterCategory']) => void;
   setFilterCategory: (c: UIState['filterCategory']) => void;

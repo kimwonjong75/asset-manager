@@ -147,9 +147,23 @@ const AppContent: React.FC = () => {
                     </span>
                   </TabButton>
                 </nav>
-                {ui.activeTab !== 'guide' && ui.activeTab !== 'settings' && (
-                  <PeriodSelector value={ui.globalPeriod} onChange={actions.setGlobalPeriod} />
-                )}
+                <div className="flex items-center gap-2">
+                  {derived.alertResults.length > 0 && !derived.showAlertPopup && (
+                    <button
+                      onClick={actions.showBriefingPopup}
+                      className="flex items-center gap-1.5 text-xs text-amber-400 hover:text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 px-2.5 py-1.5 rounded-md transition-colors border border-amber-500/30"
+                      title="투자 브리핑 다시 보기"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                      </svg>
+                      브리핑 {derived.alertResults.reduce((s, r) => s + r.matchedAssets.length, 0)}건
+                    </button>
+                  )}
+                  {ui.activeTab !== 'guide' && ui.activeTab !== 'settings' && (
+                    <PeriodSelector value={ui.globalPeriod} onChange={actions.setGlobalPeriod} />
+                  )}
+                </div>
               </div>
             </div>
 
@@ -186,7 +200,7 @@ const AppContent: React.FC = () => {
 
             <button
               onClick={actions.openAssistant}
-              className="fixed bottom-8 right-8 bg-primary hover:bg-primary-dark text-white rounded-full p-4 shadow-lg transition-transform transform hover:scale-110 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 focus:ring-primary"
+              className="fixed bottom-8 left-8 bg-primary hover:bg-primary-dark text-white rounded-full p-4 shadow-lg transition-transform transform hover:scale-110 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 focus:ring-primary"
               title="포트폴리오 어시스턴트 열기"
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" viewBox="0 0 24 24" fill="currentColor">
@@ -201,6 +215,10 @@ const AppContent: React.FC = () => {
               <AlertPopup
                 results={derived.alertResults}
                 onClose={actions.dismissAlertPopup}
+                onAssetClick={(assetId) => {
+                  actions.setActiveTab('portfolio');
+                  actions.setFocusedAssetId(assetId);
+                }}
               />
             )}
           </>

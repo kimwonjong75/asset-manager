@@ -133,6 +133,7 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [isAssistantOpen, setIsAssistantOpen] = useState<boolean>(false);
   const [editingWatchItem, setEditingWatchItem] = useState<WatchlistItem | null>(null);
   const [isAddWatchItemOpen, setIsAddWatchItemOpen] = useState<boolean>(false);
+  const [focusedAssetId, setFocusedAssetId] = useState<string | null>(null);
 
   const isLoading = isAuthLoading || isMarketLoading || isActionLoading;
   const isInitializing = false;
@@ -241,6 +242,7 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       searchQuery,
       sellAlertDropRate,
       alertSettings,
+      focusedAssetId,
     },
     modal: {
       editingAsset,
@@ -299,6 +301,7 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       clearError: () => setError(null),
       clearSuccessMessage: () => setSuccessMessage(null),
       setActiveTab: handleTabChange,
+      setFocusedAssetId,
       setGlobalPeriod: handleSetGlobalPeriod,
       setDashboardFilterCategory,
       setFilterCategory,
