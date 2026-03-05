@@ -120,6 +120,7 @@
 | `ActionMenu.tsx` | Portal 기반 액션 메뉴 — 데스크탑: `createPortal`로 body에 드롭다운 렌더링(공간 부족 시 위로 열림), 모바일(<768px): 바텀시트 | `react-dom/createPortal` |
 | `AlertPopup.tsx` | "오늘의 투자 브리핑" **플로팅 패널** (`fixed bottom-4 right-4 w-96`) — 전체화면 오버레이 없음, severity별 스타일, 매도/매수 섹션 분리, **표 형식**(종목·당일·수익률·RSI 컬럼), 최소화/복원 토글(타이틀 클릭), `onAssetClick` prop으로 종목 클릭 시 포트폴리오 포커스 요청 | `types/alertRules` (`AlertResult`, `AlertMatchedAsset`) |
 | `MemoTooltip.tsx` | 메모 전용 마우스 추적 툴팁 — Portal 기반(`document.body`), 마우스 커서 추적(`onMouseMove`), `maxWidth: 500px`, 뷰포트 경계 자동 반전. `Tooltip.tsx`와 독립된 별도 컴포넌트 | `react-dom/createPortal` | `PortfolioTableRow`, `WatchlistPage` (메모 표시) |
+| `UpdateStatusIndicator.tsx` | 시세 업데이트 상태 인라인 표시 — 탭바 우측에 배치. 로딩 중: 스피너+파란색 텍스트, 완료: 체크마크+초록색 텍스트(5초 후 소멸), idle: null 반환. **성공 메시지는 플로팅 토스트가 아닌 이 컴포넌트로 표시** (에러는 기존 플로팅 토스트 유지) | `PortfolioContext` (`status.isLoading`, `status.successMessage`) | `App.tsx` (탭바 영역) |
 | `Toggle.tsx` | 토글 스위치 | - |
 | `Tooltip.tsx` | 범용 CSS hover 툴팁 (고정 위치, `position` prop). 메모 이외 용도에 사용 | - |
 
@@ -473,6 +474,8 @@ try {
 - `isMocked: true` 플래그로 모킹 데이터 여부 표시
 
 ### 사용자 알림
+- **시세 업데이트 상태**: 탭바 우측 인라인 `UpdateStatusIndicator` 컴포넌트로 표시 (플로팅 토스트 아님). 모든 업데이트 핸들러에서 "~중..." 메시지 즉시 표시 → 완료 후 5초간 "완료" 메시지 유지. **성공 메시지를 플로팅 토스트로 추가하지 말 것**
+- 에러 메시지: 상단 플로팅 토스트 (`fixed top-4 left-1/2`, 닫기 버튼 포함)
 - 치명적 오류: `alert()` 또는 Toast
 - 경고성 오류: `console.warn()` + UI 상태 표시
 - 디버그 정보: `console.log()` (프로덕션에서 제거 고려)
@@ -510,6 +513,8 @@ try {
 - **토큰 구조**: JWT(30일, localStorage) + Access Token(1시간, localStorage) + Refresh Token(영구, Firestore — 백엔드만 접근)
 - **토큰 갱신**: Access Token 만료 5분 전 자동 갱신 (`scheduleTokenRefresh` → `/auth/refresh`)
 - **401 자동 재인증**: 모든 Drive API 호출은 `authenticatedFetch()` 래퍼를 경유 — 401 응답 시 백엔드 `/auth/refresh` 호출 → 실패 시 `clearAuth()` → `needsReAuth` 배너 표시 (데이터 유지)
+- **초기화 로딩 화면**: App.tsx는 3분기 렌더링 — `isInitializing ? 로딩스피너("로그인 확인 중...") : isSignedIn ? 메인앱 : 로그인화면`. 초기화 중에는 로그인 버튼이 노출되지 않아 중복 로그인 시도 방지
+- **`isInitializing` 전달 경로**: `useGoogleDriveSync` → `usePortfolioData`(`isInitializing`) → `PortfolioContext`(`isAuthInitializing` → `isInitializing`) → `App.tsx`(`status.isInitializing`). Context에서 하드코딩하지 말 것
 - **세션 만료 UX**: `needsReAuth=true` 시 App.tsx에 amber 배너 표시 + "다시 로그인" 버튼. `isSignedIn`은 유지되어 데이터/UI 보존. 재로그인 성공 시 `needsReAuth=false`
 - **자동 저장 중단**: `needsReAuth=true`이면 `autoSave` 스킵 (Access Token 없으므로)
 - **로그아웃**: 백엔드 `/auth/revoke`로 Refresh Token 폐기 + Firestore 삭제 + 로컬 JWT/Access Token 정리

@@ -66,11 +66,7 @@ export const useMarketData = ({
     setError(null);
     setFailedAssetIds(new Set());
     
-    if (isAutoUpdate || isScheduled) {
-        setSuccessMessage('최신 시세를 불러오는 중입니다...');
-    } else {
-        setSuccessMessage(null);
-    }
+    setSuccessMessage('시세 업데이트 중...');
 
     try {
         // 자산 분류
@@ -180,7 +176,7 @@ export const useMarketData = ({
 
         if (failedTickers.length > 0) setError(`갱신 실패: ${failedTickers.join(', ')}`);
         else setSuccessMessage(watchlist.length > 0 ? '시세 업데이트 완료 (관심종목 포함)' : '시세 업데이트 완료');
-        setTimeout(() => { setError(null); setSuccessMessage(null); }, 3000);
+        setTimeout(() => { setError(null); setSuccessMessage(null); }, 5000);
 
     } catch (error) {
         console.error('Refresh Error:', error);
@@ -194,6 +190,7 @@ export const useMarketData = ({
   const handleRefreshSelectedPrices = useCallback(async (ids: string[]) => {
     if (ids.length === 0) return;
     setIsLoading(true); setError(null);
+    setSuccessMessage('선택 항목 업데이트 중...');
     const idSet = new Set(ids);
     const targetAssets = assets.filter(a => idSet.has(a.id));
     
@@ -242,7 +239,7 @@ export const useMarketData = ({
         triggerAutoSave(updatedAssets, portfolioHistory, sellHistory, watchlist, exchangeRates);
         setSuccessMessage('선택 항목 업데이트 완료');
     } catch(e) { setError('선택 항목 업데이트 실패'); }
-    finally { setIsLoading(false); setTimeout(() => setSuccessMessage(null), 2000); }
+    finally { setIsLoading(false); setTimeout(() => setSuccessMessage(null), 5000); }
   }, [assets, portfolioHistory, sellHistory, watchlist, exchangeRates, triggerAutoSave, setAssets, setError, setSuccessMessage]);
 
   // 3. 단일 자산 갱신 (완전 구현)
@@ -250,6 +247,7 @@ export const useMarketData = ({
     const target = assets.find(a => a.id === assetId);
     if (!target) return;
     setIsLoading(true); setError(null);
+    setSuccessMessage('업데이트 중...');
 
     try {
       if (shouldUseUpbitAPI(target.exchange)) {
@@ -275,13 +273,14 @@ export const useMarketData = ({
         setSuccessMessage('업데이트 완료');
       }
     } catch (e) { setError('갱신 실패'); }
-    finally { setIsLoading(false); setTimeout(() => setSuccessMessage(null), 2000); }
+    finally { setIsLoading(false); setTimeout(() => setSuccessMessage(null), 5000); }
   }, [assets, portfolioHistory, sellHistory, watchlist, exchangeRates, triggerAutoSave, setAssets, setError, setSuccessMessage]);
 
   // 4. 관심종목 갱신
   const handleRefreshWatchlistPrices = useCallback(async () => {
     if (watchlist.length === 0) return;
     setIsLoading(true); setError(null);
+    setSuccessMessage('관심종목 업데이트 중...');
     try {
         const generalItems = watchlist.filter(item => !shouldUseUpbitAPI(item.exchange));
         const upbitItems = watchlist.filter(item => shouldUseUpbitAPI(item.exchange));
@@ -351,7 +350,7 @@ export const useMarketData = ({
         triggerAutoSave(assets, portfolioHistory, sellHistory, updated, exchangeRates);
         setSuccessMessage('관심종목 업데이트 완료');
     } catch (e) { setError('관심종목 갱신 실패'); }
-    finally { setIsLoading(false); setTimeout(() => setSuccessMessage(null), 2000); }
+    finally { setIsLoading(false); setTimeout(() => setSuccessMessage(null), 5000); }
   }, [watchlist, assets, portfolioHistory, sellHistory, exchangeRates, triggerAutoSave, setWatchlist, setError, setSuccessMessage]);
 
   return {

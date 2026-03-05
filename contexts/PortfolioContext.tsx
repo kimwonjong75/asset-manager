@@ -35,6 +35,7 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     setSellAlertDropRate: setPersistedSellAlertDropRate,
     categoryStore, setCategoryStore,
     isSignedIn, googleUser, needsReAuth,
+    isInitializing: isAuthInitializing,
     isLoading: isAuthLoading,
     error, setError,
     successMessage, setSuccessMessage,
@@ -136,7 +137,7 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [focusedAssetId, setFocusedAssetId] = useState<string | null>(null);
 
   const isLoading = isAuthLoading || isMarketLoading || isActionLoading;
-  const isInitializing = false;
+  const isInitializing = isAuthInitializing;
 
   // 통계/파생 데이터 훅
   const { totalValue, alertCount } = usePortfolioStats({
