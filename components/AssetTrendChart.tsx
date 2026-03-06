@@ -405,7 +405,14 @@ const AssetTrendChart: React.FC<AssetTrendChartProps> = ({
               stroke="#A0AEC0"
               fontSize={12}
               tickFormatter={formatYAxis}
-              domain={['auto', 'auto']}
+              domain={[
+                (dataMin: number) => displayPurchasePrice != null
+                  ? Math.min(dataMin, displayPurchasePrice) * 0.98
+                  : dataMin,
+                (dataMax: number) => displayPurchasePrice != null
+                  ? Math.max(dataMax, displayPurchasePrice) * 1.02
+                  : dataMax,
+              ]}
               width={60}
             />
             {/* 거래량 Y축 (숨김 — 하단 1/4에 표시되도록 domain 조정) */}
