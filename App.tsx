@@ -6,7 +6,6 @@ import BuyMoreAssetModal from './components/BuyMoreAssetModal';
 import BulkUploadModal from './components/BulkUploadModal';
 import AddNewAssetModal from './components/AddNewAssetModal';
 import PortfolioAssistant from './components/PortfolioAssistant';
-import PeriodSelector from './components/common/PeriodSelector';
 import AlertPopup from './components/common/AlertPopup';
 import UpdateStatusIndicator from './components/common/UpdateStatusIndicator';
 import SettingsPage from './components/SettingsPage';
@@ -188,9 +187,6 @@ const AppContent: React.FC = () => {
                     )}
                     <span className="hidden sm:inline">{status.isLoading ? '중...' : '업데이트'}</span>
                   </button>
-                  {ui.activeTab !== 'guide' && ui.activeTab !== 'settings' && ui.activeTab !== 'analytics' && (
-                    <PeriodSelector value={ui.globalPeriod} onChange={actions.setGlobalPeriod} />
-                  )}
                 </div>
               </div>
             </div>

@@ -7,7 +7,7 @@ import type { GoldPremiumResult } from '../services/goldPremiumService';
 
 export type PortfolioHistory = PortfolioSnapshot[];
 
-export type GlobalPeriod = '3M' | '6M' | '1Y' | '2Y' | 'ALL';
+export type GlobalPeriod = 'THIS_MONTH' | 'LAST_MONTH' | '1M' | '3M' | '6M' | '1Y' | '2Y' | 'ALL';
 
 export interface PortfolioData {
   assets: Asset[];

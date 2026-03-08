@@ -19,10 +19,10 @@ const DashboardView: React.FC = () => {
   const { data, ui, actions, status, derived } = usePortfolio();
   const assets = data.assets;
   const sellHistory = data.sellHistory;
-  const { startDate: periodStart } = useGlobalPeriodDays(ui.globalPeriod);
+  const { startDate: periodStart, endDate: periodEnd } = useGlobalPeriodDays(ui.globalPeriod);
   const portfolioHistory = useMemo(
-    () => data.portfolioHistory.filter(s => s.date >= periodStart),
-    [data.portfolioHistory, periodStart]
+    () => data.portfolioHistory.filter(s => s.date >= periodStart && s.date <= periodEnd),
+    [data.portfolioHistory, periodStart, periodEnd]
   );
   const exchangeRates = data.exchangeRates;
   const dashboardFilterCategory = ui.dashboardFilterCategory;
@@ -47,10 +47,32 @@ const DashboardView: React.FC = () => {
     totalReturn: dashboardTotalReturn 
   } = useMemo(() => calculatePortfolioStats(dashboardFilteredAssets, exchangeRates), [dashboardFilteredAssets, exchangeRates, calculatePortfolioStats]);
 
-  // Use hook for sold stats (기간 필터 적용)
+  // sellHistory + 인라인 sellTransactions 병합 (수익통계와 동일한 데이터 소스)
+  const allSellRecords = useMemo(() => {
+    const sellHistoryIds = new Set(sellHistory.map(r => r.id));
+    const inlineRecords: typeof sellHistory = [];
+    assets.forEach(a => {
+      if (a.sellTransactions && a.sellTransactions.length > 0) {
+        a.sellTransactions.forEach(t => {
+          if (!sellHistoryIds.has(t.id)) {
+            inlineRecords.push({
+              assetId: a.id,
+              ticker: a.ticker,
+              name: a.name,
+              categoryId: a.categoryId,
+              ...t,
+            });
+          }
+        });
+      }
+    });
+    return [...sellHistory, ...inlineRecords];
+  }, [sellHistory, assets]);
+
+  // 기간 필터 적용
   const filteredSellHistory = useMemo(
-    () => sellHistory.filter(r => r.sellDate >= periodStart),
-    [sellHistory, periodStart]
+    () => allSellRecords.filter(r => r.sellDate >= periodStart && r.sellDate <= periodEnd),
+    [allSellRecords, periodStart, periodEnd]
   );
   const soldAssetsStats = useMemo(() => calculateSoldAssetsStats(filteredSellHistory, assets), [filteredSellHistory, assets, calculateSoldAssetsStats]);
 
@@ -80,9 +102,9 @@ const DashboardView: React.FC = () => {
 
       <GoldPremiumWidget />
 
-      <SoldAssetsStats stats={soldAssetsStats} />
+      <SoldAssetsStats stats={soldAssetsStats} globalPeriod={ui.globalPeriod} onPeriodChange={actions.setGlobalPeriod} />
 
-      <ProfitLossChart history={portfolioHistory} assetsToDisplay={dashboardFilteredAssets} title={profitLossChartTitle} />
+      <ProfitLossChart history={portfolioHistory} assetsToDisplay={dashboardFilteredAssets} title={profitLossChartTitle} globalPeriod={ui.globalPeriod} onPeriodChange={actions.setGlobalPeriod} />
       
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="lg:col-span-1">

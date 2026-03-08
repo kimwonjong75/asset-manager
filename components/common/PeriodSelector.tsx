@@ -7,6 +7,9 @@ interface PeriodSelectorProps {
 }
 
 const PERIOD_OPTIONS: { value: GlobalPeriod; label: string }[] = [
+  { value: 'THIS_MONTH', label: '금월' },
+  { value: 'LAST_MONTH', label: '전월' },
+  { value: '1M', label: '1개월' },
   { value: '3M', label: '3개월' },
   { value: '6M', label: '6개월' },
   { value: '1Y', label: '1년' },

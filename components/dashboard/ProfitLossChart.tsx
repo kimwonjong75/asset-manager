@@ -1,14 +1,18 @@
 import React, { useMemo } from 'react';
 import { Asset, PortfolioSnapshot } from '../../types';
+import { GlobalPeriod } from '../../types/store';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import PeriodSelector from '../common/PeriodSelector';
 
 interface ProfitLossChartProps {
   history: PortfolioSnapshot[];
   assetsToDisplay: Asset[];
   title: string;
+  globalPeriod: GlobalPeriod;
+  onPeriodChange: (period: GlobalPeriod) => void;
 }
 
-const ProfitLossChart: React.FC<ProfitLossChartProps> = ({ history, assetsToDisplay, title }) => {
+const ProfitLossChart: React.FC<ProfitLossChartProps> = ({ history, assetsToDisplay, title, globalPeriod, onPeriodChange }) => {
   const chartData = useMemo(() => {
     if (!history || history.length === 0) {
       return [];
@@ -71,7 +75,10 @@ const ProfitLossChart: React.FC<ProfitLossChartProps> = ({ history, assetsToDisp
   
   return (
     <div className="bg-gray-800 p-6 rounded-lg shadow-lg h-96 mb-6" title="포트폴리오의 평가 손익 추이를 보여줍니다.">
-      <h2 className="text-xl font-bold text-white mb-4">{title}</h2>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-xl font-bold text-white">{title}</h2>
+        <PeriodSelector value={globalPeriod} onChange={onPeriodChange} />
+      </div>
       {chartData.length > 1 ? (
         <ResponsiveContainer width="100%" height="90%">
           <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>

@@ -11,10 +11,10 @@ interface SellAnalyticsPageProps {
 }
 
 type Grouping = 'daily' | 'weekly' | 'monthly' | 'quarterly';
-type PeriodPreset = '3M' | '6M' | '1Y' | '2Y';
+type PeriodPreset = 'THIS_MONTH' | 'LAST_MONTH' | '1M' | '3M' | '6M' | '1Y' | '2Y';
 
-const PERIOD_DAYS: Record<PeriodPreset, number> = { '3M': 90, '6M': 180, '1Y': 365, '2Y': 730 };
-const PERIOD_LABELS: Record<PeriodPreset, string> = { '3M': '3개월', '6M': '6개월', '1Y': '1년', '2Y': '2년' };
+const PERIOD_DAYS: Record<PeriodPreset, number | null> = { 'THIS_MONTH': null, 'LAST_MONTH': null, '1M': 30, '3M': 90, '6M': 180, '1Y': 365, '2Y': 730 };
+const PERIOD_LABELS: Record<PeriodPreset, string> = { 'THIS_MONTH': '금월', 'LAST_MONTH': '전월', '1M': '1개월', '3M': '3개월', '6M': '6개월', '1Y': '1년', '2Y': '2년' };
 
 const formatDateStr = (d: Date): string => {
   const y = d.getFullYear();
@@ -26,8 +26,19 @@ const formatDateStr = (d: Date): string => {
 const getPresetRange = (preset: PeriodPreset): { start: string; end: string } => {
   const today = new Date();
   const end = formatDateStr(today);
+
+  if (preset === 'THIS_MONTH') {
+    const start = new Date(today.getFullYear(), today.getMonth(), 1);
+    return { start: formatDateStr(start), end };
+  }
+  if (preset === 'LAST_MONTH') {
+    const lastMonthStart = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+    const lastMonthEnd = new Date(today.getFullYear(), today.getMonth(), 0);
+    return { start: formatDateStr(lastMonthStart), end: formatDateStr(lastMonthEnd) };
+  }
+
   const startD = new Date(today);
-  startD.setDate(startD.getDate() - PERIOD_DAYS[preset]);
+  startD.setDate(startD.getDate() - (PERIOD_DAYS[preset] ?? 0));
   return { start: formatDateStr(startD), end };
 };
 
