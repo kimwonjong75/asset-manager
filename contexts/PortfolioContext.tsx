@@ -17,6 +17,7 @@ import { useEnrichedIndicators } from '../hooks/useEnrichedIndicators';
 import { useAutoAlert } from '../hooks/useAutoAlert';
 import { usePortfolioCalculator } from '../hooks/usePortfolioCalculator';
 import { useBackup } from '../hooks/useBackup';
+import { useGoldPremium } from '../hooks/useGoldPremium';
 import { CategoryBaseType } from '../types/category';
 import type { CategoryStore } from '../types/category';
 
@@ -69,6 +70,17 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   // 백업 훅
   const backup = useBackup({ isSignedIn });
 
+  // 금 김치프리미엄 훅 (앱 레벨)
+  const {
+    data: goldPremiumData,
+    loading: isGoldPremiumLoading,
+    error: goldPremiumError,
+    refresh: refreshGoldPremium,
+  } = useGoldPremium({
+    usdKrwRate: exchangeRates.USD,
+    enableVisibilityRefresh: true,
+  });
+
   // 앱 시작 시 자동 업데이트 (오늘 아직 업데이트 안 했으면)
   useEffect(() => {
     if (shouldAutoUpdate && assets.length > 0 && !hasAutoUpdated && !isMarketLoading) {
@@ -77,10 +89,19 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       setShouldAutoUpdate(false);
       // 자동 업데이트 실행 (isAutoUpdate=true로 호출)
       handleRefreshAllPrices(true);
+      refreshGoldPremium();
       // 시세 갱신 시점에 1일 1회 자동 백업
       backup.performBackup();
     }
-  }, [shouldAutoUpdate, assets.length, hasAutoUpdated, isMarketLoading, handleRefreshAllPrices, setHasAutoUpdated, setShouldAutoUpdate, backup.performBackup]);
+  }, [shouldAutoUpdate, assets.length, hasAutoUpdated, isMarketLoading, handleRefreshAllPrices, refreshGoldPremium, setHasAutoUpdated, setShouldAutoUpdate, backup.performBackup]);
+
+  // 금 프리미엄 초기 fetch (auto-update 여부와 무관, 세션당 1회)
+  useEffect(() => {
+    if (exchangeRates.USD > 0 && !goldPremiumData && !isGoldPremiumLoading) {
+      refreshGoldPremium();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [exchangeRates.USD]);
 
   // 자산/관심종목 액션 훅
   const {
@@ -266,6 +287,9 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       backupList: backup.backupList,
       backupSettings: backup.backupSettings,
       isBackingUp: backup.isBackingUp,
+      goldPremium: goldPremiumData,
+      isGoldPremiumLoading,
+      goldPremiumError,
     },
     actions: {
       saveToDrive,
@@ -275,7 +299,10 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       signIn: async () => { await handleSignIn(); },
       signOut: async () => { handleSignOut(); },
       setExchangeRates: handleExchangeRatesChange,
-      refreshAllPrices: async (force?: boolean) => handleRefreshAllPrices(!!force),
+      refreshAllPrices: async (force?: boolean) => {
+        handleRefreshAllPrices(!!force);
+        refreshGoldPremium();
+      },
       refreshSelectedPrices: handleRefreshSelectedPrices,
       refreshOnePrice: handleRefreshOnePrice,
       refreshWatchlistPrices: handleRefreshWatchlistPrices,
@@ -388,6 +415,8 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         setCategoryStore(updated);
         triggerAutoSave(newAssets, portfolioHistory, newSellHistory, newWatchlist, exchangeRates, undefined, undefined, updated);
       },
+      // 금 김치프리미엄
+      refreshGoldPremium,
       // 백업
       performBackup: () => backup.performBackup(),
       loadBackupList: backup.loadBackupList,

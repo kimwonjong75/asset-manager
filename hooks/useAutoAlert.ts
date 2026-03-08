@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import type { AlertSettings, AlertResult } from '../types/alertRules';
+import type { AlertRule, AlertSettings, AlertResult } from '../types/alertRules';
 import type { EnrichedAsset } from '../types/ui';
 import type { EnrichedIndicatorData } from './useEnrichedIndicators';
 import type { WatchlistItem } from '../types';
@@ -9,13 +9,23 @@ import { checkAlertRules, checkBuyRulesForWatchlist } from '../utils/alertChecke
 const STORAGE_KEY = 'asset-manager-alert-settings';
 const POPUP_DATE_KEY = 'asset-manager-alert-popup-date';
 
-/** localStorage에서 AlertSettings 로드 */
+/** localStorage에서 AlertSettings 로드 (신규 규칙 자동 병합) */
 const loadAlertSettings = (): AlertSettings => {
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored) {
       const parsed = JSON.parse(stored);
-      return { ...DEFAULT_ALERT_SETTINGS, ...parsed };
+      const settings: AlertSettings = { ...DEFAULT_ALERT_SETTINGS, ...parsed };
+
+      // 기존 사용자에게 새 규칙 자동 추가 (기존 커스터마이징 보존)
+      const existingIds = new Set(settings.rules.map((r: AlertRule) => r.id));
+      for (const defaultRule of DEFAULT_ALERT_SETTINGS.rules) {
+        if (!existingIds.has(defaultRule.id)) {
+          settings.rules.push(defaultRule);
+        }
+      }
+
+      return settings;
     }
   } catch { /* ignore */ }
   return DEFAULT_ALERT_SETTINGS;

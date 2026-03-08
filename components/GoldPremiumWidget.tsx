@@ -1,5 +1,5 @@
 import React from 'react';
-import { useGoldPremium } from '../hooks/useGoldPremium';
+import { usePortfolio } from '../contexts/PortfolioContext';
 
 function formatKRW(value: number): string {
   return value > 0
@@ -20,7 +20,11 @@ function formatTime(isoString: string): string {
 }
 
 const GoldPremiumWidget: React.FC = () => {
-  const { data, loading, error, refresh } = useGoldPremium();
+  const { derived, actions } = usePortfolio();
+  const data = derived.goldPremium;
+  const loading = derived.isGoldPremiumLoading;
+  const error = derived.goldPremiumError;
+  const refresh = actions.refreshGoldPremium;
 
   const hasData = data && data.domesticPriceKRW > 0 && data.internationalPriceKRW > 0;
 

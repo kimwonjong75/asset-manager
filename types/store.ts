@@ -3,6 +3,7 @@ import type { AlertSettings, AlertResult } from './alertRules';
 import type { EnrichedIndicatorData } from '../hooks/useEnrichedIndicators';
 import type { BackupInfo, BackupSettings } from './backup';
 import type { CategoryStore, CategoryBaseType } from './category';
+import type { GoldPremiumResult } from '../services/goldPremiumService';
 
 export type PortfolioHistory = PortfolioSnapshot[];
 
@@ -64,6 +65,10 @@ export interface DerivedState {
   backupList: BackupInfo[];
   backupSettings: BackupSettings;
   isBackingUp: boolean;
+  // 금 김치프리미엄
+  goldPremium: GoldPremiumResult | null;
+  isGoldPremiumLoading: boolean;
+  goldPremiumError: string | null;
 }
 
 export interface PortfolioActions {
@@ -141,6 +146,9 @@ export interface PortfolioActions {
   addCategory: (name: string, baseType: CategoryBaseType) => void;
   renameCategory: (id: number, newName: string) => void;
   deleteCategory: (id: number, reassignToId: number) => void;
+
+  // 금 김치프리미엄
+  refreshGoldPremium: () => Promise<void>;
 
   // 백업
   performBackup: () => Promise<void>;

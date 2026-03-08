@@ -24,8 +24,11 @@ export type SmartFilterKey =
   // 포트폴리오 지표
   | 'PROFIT_POSITIVE'
   | 'PROFIT_NEGATIVE'
+  | 'PROFIT_TARGET'
   | 'DROP_FROM_HIGH'
   | 'DAILY_DROP'
+  | 'DAILY_SURGE'
+  | 'DAILY_CRASH'
   | 'LOSS_THRESHOLD'
   // 거래량
   | 'VOLUME_SURGE'
@@ -55,8 +58,11 @@ export const FILTER_KEY_TO_GROUP: Record<SmartFilterKey, SmartFilterGroup> = {
   SIGNAL_STRONG_SELL: 'signal',
   PROFIT_POSITIVE: 'portfolio',
   PROFIT_NEGATIVE: 'portfolio',
+  PROFIT_TARGET: 'portfolio',
   DROP_FROM_HIGH: 'portfolio',
   DAILY_DROP: 'portfolio',
+  DAILY_SURGE: 'portfolio',
+  DAILY_CRASH: 'portfolio',
   LOSS_THRESHOLD: 'portfolio',
   VOLUME_SURGE: 'volume',
   VOLUME_HIGH: 'volume',
@@ -70,6 +76,9 @@ export interface SmartFilterState {
   lossThreshold: number;
   maShortPeriod: number;
   maLongPeriod: number;
+  profitTargetThreshold?: number;
+  dailySurgeThreshold?: number;
+  dailyCrashThreshold?: number;
 }
 
 /** 필터 칩 UI 정의 */

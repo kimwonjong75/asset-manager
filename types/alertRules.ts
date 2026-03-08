@@ -6,6 +6,9 @@ export interface AlertRuleFilterConfig {
   maLongPeriod?: number;
   lossThreshold?: number;
   dropFromHighThreshold?: number;
+  profitTargetThreshold?: number;
+  dailySurgeThreshold?: number;
+  dailyCrashThreshold?: number;
 }
 
 /** 개별 알림 규칙 */

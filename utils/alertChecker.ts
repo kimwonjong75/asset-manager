@@ -4,6 +4,7 @@ import type { EnrichedIndicatorData } from '../hooks/useEnrichedIndicators';
 import type { WatchlistItem } from '../types';
 import { Currency } from '../types';
 import { matchesSingleFilter } from './smartFilterLogic';
+import type { ExtraFilterConfig } from './smartFilterLogic';
 
 /**
  * 단일 규칙에 대해 자산 매칭 여부 판정
@@ -19,9 +20,14 @@ const matchesRule = (
   const maLong = filterConfig.maLongPeriod ?? 60;
   const dropThreshold = filterConfig.dropFromHighThreshold ?? 20;
   const lossThreshold = filterConfig.lossThreshold ?? 5;
+  const extraConfig: ExtraFilterConfig = {
+    profitTargetThreshold: filterConfig.profitTargetThreshold,
+    dailySurgeThreshold: filterConfig.dailySurgeThreshold,
+    dailyCrashThreshold: filterConfig.dailyCrashThreshold,
+  };
 
   return filters.every(filterKey =>
-    matchesSingleFilter(asset, filterKey, dropThreshold, maShort, maLong, enriched, lossThreshold)
+    matchesSingleFilter(asset, filterKey, dropThreshold, maShort, maLong, enriched, lossThreshold, extraConfig)
   );
 };
 

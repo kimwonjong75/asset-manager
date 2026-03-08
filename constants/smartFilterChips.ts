@@ -49,6 +49,9 @@ export const SMART_FILTER_CHIPS: SmartFilterChipDef[] = [
   { key: 'PROFIT_NEGATIVE', label: '손실중', group: 'portfolio', colorClass: 'bg-red-500' },
   { key: 'DROP_FROM_HIGH', label: '고점대비 하락', group: 'portfolio', colorClass: 'bg-orange-600' },
   { key: 'DAILY_DROP', label: '당일 하락', group: 'portfolio', colorClass: 'bg-rose-600' },
+  { key: 'PROFIT_TARGET', label: '수익률 도달', labelFn: (s) => `수익≥${s.profitTargetThreshold ?? 20}%`, group: 'portfolio', colorClass: 'bg-emerald-600' },
+  { key: 'DAILY_SURGE', label: '당일 급등', labelFn: (s) => `급등≥${s.dailySurgeThreshold ?? 5}%`, group: 'portfolio', colorClass: 'bg-red-500' },
+  { key: 'DAILY_CRASH', label: '당일 급락', labelFn: (s) => `급락≥${s.dailyCrashThreshold ?? 5}%`, group: 'portfolio', colorClass: 'bg-blue-700' },
   { key: 'LOSS_THRESHOLD', label: '손실률 초과', labelFn: (s) => `손실≥${s.lossThreshold}%`, group: 'portfolio', colorClass: 'bg-red-700' },
 ];
 

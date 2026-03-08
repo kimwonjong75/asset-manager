@@ -137,6 +137,45 @@ const AlertSettingsPage: React.FC = () => {
                 <span>%</span>
               </div>
             )}
+            {config.profitTargetThreshold !== undefined && (
+              <div className="flex items-center gap-1 text-xs text-gray-300">
+                <span>목표 수익률</span>
+                <input
+                  type="number"
+                  value={config.profitTargetThreshold}
+                  onChange={(e) => updateRuleConfig(rule.id, 'profitTargetThreshold', Math.max(0, parseInt(e.target.value) || 0))}
+                  className="w-12 bg-gray-700 border border-gray-600 rounded px-1 py-0.5 text-white text-xs text-center"
+                  min="0"
+                />
+                <span>%</span>
+              </div>
+            )}
+            {config.dailySurgeThreshold !== undefined && (
+              <div className="flex items-center gap-1 text-xs text-gray-300">
+                <span>급등률</span>
+                <input
+                  type="number"
+                  value={config.dailySurgeThreshold}
+                  onChange={(e) => updateRuleConfig(rule.id, 'dailySurgeThreshold', Math.max(0, parseInt(e.target.value) || 0))}
+                  className="w-12 bg-gray-700 border border-gray-600 rounded px-1 py-0.5 text-white text-xs text-center"
+                  min="0"
+                />
+                <span>%</span>
+              </div>
+            )}
+            {config.dailyCrashThreshold !== undefined && (
+              <div className="flex items-center gap-1 text-xs text-gray-300">
+                <span>급락률</span>
+                <input
+                  type="number"
+                  value={config.dailyCrashThreshold}
+                  onChange={(e) => updateRuleConfig(rule.id, 'dailyCrashThreshold', Math.max(0, parseInt(e.target.value) || 0))}
+                  className="w-12 bg-gray-700 border border-gray-600 rounded px-1 py-0.5 text-white text-xs text-center"
+                  min="0"
+                />
+                <span>%</span>
+              </div>
+            )}
           </div>
         </div>
       </div>

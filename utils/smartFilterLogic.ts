@@ -6,6 +6,12 @@ import type { EnrichedIndicatorData } from '../hooks/useEnrichedIndicators';
 /**
  * 단일 필터 키에 대해 자산이 조건을 충족하는지 판정
  */
+export interface ExtraFilterConfig {
+  profitTargetThreshold?: number;
+  dailySurgeThreshold?: number;
+  dailyCrashThreshold?: number;
+}
+
 export const matchesSingleFilter = (
   asset: EnrichedAsset,
   key: SmartFilterKey,
@@ -13,7 +19,8 @@ export const matchesSingleFilter = (
   maShortPeriod: number,
   maLongPeriod: number,
   enriched?: EnrichedIndicatorData,
-  lossThreshold: number = 5
+  lossThreshold: number = 5,
+  extraConfig?: ExtraFilterConfig
 ): boolean => {
   const ind = asset.indicators;
   const m = asset.metrics;
@@ -133,6 +140,12 @@ export const matchesSingleFilter = (
       return m.dropFromHigh <= -dropFromHighThreshold;
     case 'DAILY_DROP':
       return (asset.changeRate ?? 0) < 0;
+    case 'PROFIT_TARGET':
+      return m.returnPercentage >= (extraConfig?.profitTargetThreshold ?? 20);
+    case 'DAILY_SURGE':
+      return m.yesterdayChange >= (extraConfig?.dailySurgeThreshold ?? 5);
+    case 'DAILY_CRASH':
+      return m.yesterdayChange <= -(extraConfig?.dailyCrashThreshold ?? 5);
     case 'LOSS_THRESHOLD':
       return m.returnPercentage <= -lossThreshold;
 
@@ -163,6 +176,11 @@ export const matchesSmartFilter = (
   if (activeFilters.size === 0) return true;
 
   const enriched = enrichedMap?.get(asset.ticker);
+  const extraConfig: ExtraFilterConfig = {
+    profitTargetThreshold: filter.profitTargetThreshold ?? 20,
+    dailySurgeThreshold: filter.dailySurgeThreshold ?? 5,
+    dailyCrashThreshold: filter.dailyCrashThreshold ?? 5,
+  };
 
   // 활성 필터를 그룹별로 분류
   const groupedFilters = new Map<SmartFilterGroup, SmartFilterKey[]>();
@@ -179,7 +197,7 @@ export const matchesSmartFilter = (
   // 각 그룹별 OR, 그룹 간 AND
   for (const [, keys] of groupedFilters) {
     const groupPassed = keys.some(key =>
-      matchesSingleFilter(asset, key, dropFromHighThreshold, maShortPeriod, maLongPeriod, enriched, lossThreshold)
+      matchesSingleFilter(asset, key, dropFromHighThreshold, maShortPeriod, maLongPeriod, enriched, lossThreshold, extraConfig)
     );
     if (!groupPassed) return false;
   }
