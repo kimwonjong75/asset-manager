@@ -21,7 +21,8 @@
       "Bash(echo:*)",
       "Bash(test:*)",
       "Bash(git ls-tree:*)",
-      "Bash(git config:*)"
+      "Bash(git config:*)",
+      "Bash(xargs grep -l \"showAlertPopup\\\\|dismissAlertPopup\")"
     ],
     "additionalDirectories": [
       "C:\\Users\\beari\\Downloads"

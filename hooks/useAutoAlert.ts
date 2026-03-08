@@ -114,7 +114,14 @@ export const useAutoAlert = ({
     setShowAlertPopup(true);
   }, [enrichedAssets, runAlertCheck]);
 
-  // 자동 알림 트리거: 시세 업데이트 + enriched 로드 완료 시
+  // alertResults를 데이터 준비 즉시 계산 (팝업 트리거와 무관하게 상단 버튼 표시용)
+  useEffect(() => {
+    if (isEnrichedLoading || enrichedAssets.length === 0) return;
+    const results = runAlertCheck();
+    setAlertResults(results);
+  }, [isEnrichedLoading, enrichedAssets, runAlertCheck]);
+
+  // 자동 알림 트리거: 시세 업데이트 + enriched 로드 완료 시 (팝업만 제어)
   useEffect(() => {
     if (hasTriggeredRef.current) return;
     if (!hasAutoUpdated || isMarketLoading || isEnrichedLoading) return;
@@ -128,15 +135,12 @@ export const useAutoAlert = ({
 
     hasTriggeredRef.current = true;
 
-    const results = runAlertCheck();
-    setAlertResults(results);
-
-    if (results.length > 0) {
+    if (alertResults.length > 0) {
       setShowAlertPopup(true);
     }
 
     localStorage.setItem(POPUP_DATE_KEY, today);
-  }, [hasAutoUpdated, isMarketLoading, isEnrichedLoading, enrichedAssets, enrichedMap, alertSettings, runAlertCheck]);
+  }, [hasAutoUpdated, isMarketLoading, isEnrichedLoading, enrichedAssets, alertSettings, alertResults, runAlertCheck]);
 
   return {
     alertSettings,

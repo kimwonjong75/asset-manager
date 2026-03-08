@@ -47,8 +47,12 @@ const DashboardView: React.FC = () => {
     totalReturn: dashboardTotalReturn 
   } = useMemo(() => calculatePortfolioStats(dashboardFilteredAssets, exchangeRates), [dashboardFilteredAssets, exchangeRates, calculatePortfolioStats]);
 
-  // Use hook for sold stats (global)
-  const soldAssetsStats = useMemo(() => calculateSoldAssetsStats(sellHistory, assets), [sellHistory, assets, calculateSoldAssetsStats]);
+  // Use hook for sold stats (기간 필터 적용)
+  const filteredSellHistory = useMemo(
+    () => sellHistory.filter(r => r.sellDate >= periodStart),
+    [sellHistory, periodStart]
+  );
+  const soldAssetsStats = useMemo(() => calculateSoldAssetsStats(filteredSellHistory, assets), [filteredSellHistory, assets, calculateSoldAssetsStats]);
 
   const profitLossChartTitle = useMemo(() => {
       if (dashboardFilterCategory === 'ALL') return '손익 추이 분석';

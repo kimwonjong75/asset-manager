@@ -154,7 +154,7 @@ const AppContent: React.FC = () => {
                 </nav>
                 <div className="flex items-center gap-2">
                   <UpdateStatusIndicator isLoading={status.isLoading} successMessage={status.successMessage} />
-                  {derived.alertResults.length > 0 && !derived.showAlertPopup && (
+                  {derived.alertResults.length > 0 && (
                     <button
                       onClick={actions.showBriefingPopup}
                       className="flex items-center gap-1.5 text-xs text-amber-400 hover:text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 px-2.5 py-1.5 rounded-md transition-colors border border-amber-500/30"
@@ -188,7 +188,7 @@ const AppContent: React.FC = () => {
                     )}
                     <span className="hidden sm:inline">{status.isLoading ? '중...' : '업데이트'}</span>
                   </button>
-                  {ui.activeTab !== 'guide' && ui.activeTab !== 'settings' && (
+                  {ui.activeTab !== 'guide' && ui.activeTab !== 'settings' && ui.activeTab !== 'analytics' && (
                     <PeriodSelector value={ui.globalPeriod} onChange={actions.setGlobalPeriod} />
                   )}
                 </div>

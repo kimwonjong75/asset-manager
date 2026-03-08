@@ -7,17 +7,48 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsi
 interface SellAnalyticsPageProps {
   assets: Asset[];
   sellHistory: SellRecord[];
-  periodStartDate: string;
-  periodEndDate: string;
   categories: CategoryDefinition[];
 }
 
 type Grouping = 'daily' | 'weekly' | 'monthly' | 'quarterly';
+type PeriodPreset = '3M' | '6M' | '1Y' | '2Y';
 
-const SellAnalyticsPage: React.FC<SellAnalyticsPageProps> = ({ assets, sellHistory, periodStartDate, periodEndDate, categories }) => {
+const PERIOD_DAYS: Record<PeriodPreset, number> = { '3M': 90, '6M': 180, '1Y': 365, '2Y': 730 };
+const PERIOD_LABELS: Record<PeriodPreset, string> = { '3M': '3개월', '6M': '6개월', '1Y': '1년', '2Y': '2년' };
+
+const formatDateStr = (d: Date): string => {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+};
+
+const getPresetRange = (preset: PeriodPreset): { start: string; end: string } => {
+  const today = new Date();
+  const end = formatDateStr(today);
+  const startD = new Date(today);
+  startD.setDate(startD.getDate() - PERIOD_DAYS[preset]);
+  return { start: formatDateStr(startD), end };
+};
+
+const SellAnalyticsPage: React.FC<SellAnalyticsPageProps> = ({ assets, sellHistory, categories }) => {
   const [grouping, setGrouping] = useState<Grouping>('monthly');
   const [search, setSearch] = useState<string>('');
   const [category, setCategory] = useState<number | 'ALL'>('ALL');
+  const [selectedPreset, setSelectedPreset] = useState<PeriodPreset | null>('1Y');
+  const [customStartDate, setCustomStartDate] = useState<string>('');
+  const [customEndDate, setCustomEndDate] = useState<string>('');
+
+  const { periodStartDate, periodEndDate } = useMemo(() => {
+    if (customStartDate || customEndDate) {
+      return { periodStartDate: customStartDate, periodEndDate: customEndDate || formatDateStr(new Date()) };
+    }
+    if (selectedPreset) {
+      const { start, end } = getPresetRange(selectedPreset);
+      return { periodStartDate: start, periodEndDate: end };
+    }
+    return { periodStartDate: '', periodEndDate: '' };
+  }, [selectedPreset, customStartDate, customEndDate]);
 
   const [pendingSearch, setPendingSearch] = useState<string>('');
   const [pendingCategory, setPendingCategory] = useState<number | 'ALL'>('ALL');
@@ -163,48 +194,79 @@ const SellAnalyticsPage: React.FC<SellAnalyticsPageProps> = ({ assets, sellHisto
 
   return (
     <div className="space-y-6">
-      <div className="bg-gray-800 p-4 rounded-lg shadow-lg flex items-center justify-between flex-wrap gap-4">
-        <div className="flex items-center gap-4 flex-wrap">
-          <div className="relative">
-            <select value={grouping} onChange={e => setGrouping(e.target.value as Grouping)} className="bg-gray-700 border border-gray-600 rounded-md py-2 pl-3 pr-8 text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary appearance-none">
-              <option value="daily">일별</option>
-              <option value="weekly">주별</option>
-              <option value="monthly">월별</option>
-              <option value="quarterly">분기별</option>
-            </select>
-            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-400">
-              <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
-            </div>
+      <div className="bg-gray-800 p-4 rounded-lg shadow-lg space-y-3">
+        {/* 기간 선택 */}
+        <div className="flex items-center gap-3 flex-wrap">
+          <div className="flex items-center gap-1.5">
+            <input
+              type="date"
+              value={customStartDate || periodStartDate}
+              onChange={e => { setCustomStartDate(e.target.value); setSelectedPreset(null); }}
+              className="bg-gray-700 border border-gray-600 rounded-md py-1.5 px-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+            <span className="text-gray-400 text-sm">~</span>
+            <input
+              type="date"
+              value={customEndDate || periodEndDate}
+              onChange={e => { setCustomEndDate(e.target.value); setSelectedPreset(null); }}
+              className="bg-gray-700 border border-gray-600 rounded-md py-1.5 px-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+            />
           </div>
-          <div className="relative">
-            <select value={pendingCategory} onChange={e => { const v = e.target.value; setPendingCategory(v === 'ALL' ? 'ALL' : Number(v)); }} className="bg-gray-700 border border-gray-600 rounded-md py-2 pl-3 pr-8 text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary appearance-none">
-              <option value="ALL">전체 카테고리</option>
-              {getAllowedCategories(categories).map(cat => (
-                <option key={cat.id} value={cat.id}>{cat.name}</option>
-              ))}
-            </select>
-            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-400">
-              <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
-            </div>
-          </div>
-          <div className="relative">
-            <input type="text" value={pendingSearch} onChange={e => setPendingSearch(e.target.value)} placeholder="종목명/티커 검색" className="bg-gray-700 border border-gray-600 rounded-md py-2 pl-10 pr-10 text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary w-64" />
-            <svg className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
+          <div className="flex gap-1">
+            {(Object.keys(PERIOD_DAYS) as PeriodPreset[]).map(preset => (
+              <button
+                key={preset}
+                onClick={() => { setSelectedPreset(preset); setCustomStartDate(''); setCustomEndDate(''); }}
+                className={`px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                  selectedPreset === preset
+                    ? 'bg-primary text-white'
+                    : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                }`}
+              >
+                {PERIOD_LABELS[preset]}
+              </button>
+            ))}
           </div>
         </div>
-        <div>
-          <button
-            onClick={() => {
-              setSearch(pendingSearch);
-              setCategory(pendingCategory);
-            }}
-            className="bg-primary hover:bg-primary-dark text-white font-medium py-2 px-4 rounded-md transition duration-300 mr-2"
-            title="선택된 조건으로 데이터를 조회합니다."
-          >
-            검색
-          </button>
+        {/* 필터 */}
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
+            <div className="relative">
+              <select value={grouping} onChange={e => setGrouping(e.target.value as Grouping)} className="bg-gray-700 border border-gray-600 rounded-md py-1.5 pl-3 pr-8 text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary appearance-none">
+                <option value="daily">일별</option>
+                <option value="weekly">주별</option>
+                <option value="monthly">월별</option>
+                <option value="quarterly">분기별</option>
+              </select>
+              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-400">
+                <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+              </div>
+            </div>
+            <div className="relative">
+              <select value={pendingCategory} onChange={e => { const v = e.target.value; setPendingCategory(v === 'ALL' ? 'ALL' : Number(v)); }} className="bg-gray-700 border border-gray-600 rounded-md py-1.5 pl-3 pr-8 text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary appearance-none">
+                <option value="ALL">전체 카테고리</option>
+                {getAllowedCategories(categories).map(cat => (
+                  <option key={cat.id} value={cat.id}>{cat.name}</option>
+                ))}
+              </select>
+              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-400">
+                <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+              </div>
+            </div>
+            <div className="relative">
+              <input type="text" value={pendingSearch} onChange={e => setPendingSearch(e.target.value)} placeholder="종목명/티커 검색" className="bg-gray-700 border border-gray-600 rounded-md py-1.5 pl-9 pr-3 text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary w-48" onKeyDown={e => { if (e.key === 'Enter') { setSearch(pendingSearch); setCategory(pendingCategory); } }} />
+              <svg className="absolute left-2.5 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </div>
+            <button
+              onClick={() => { setSearch(pendingSearch); setCategory(pendingCategory); }}
+              className="bg-primary hover:bg-primary-dark text-white font-medium py-1.5 px-3 rounded-md text-sm transition duration-300"
+              title="선택된 조건으로 데이터를 조회합니다."
+            >
+              검색
+            </button>
+          </div>
           <button
             onClick={() => {
               const header = ['sellDate','name','ticker','sellQuantity','sellPriceKRW','purchaseKRW','realized','returnPct'];
@@ -220,7 +282,7 @@ const SellAnalyticsPage: React.FC<SellAnalyticsPageProps> = ({ assets, sellHisto
               document.body.removeChild(a);
               URL.revokeObjectURL(url);
             }}
-            className="bg-primary hover:bg-primary-dark text-white font-medium py-2 px-4 rounded-md transition duration-300"
+            className="bg-gray-700 hover:bg-gray-600 text-gray-300 font-medium py-1.5 px-3 rounded-md text-sm transition duration-300"
             title="현재 필터 기준의 매도 통계 데이터를 CSV로 내보냅니다."
           >
             CSV 내보내기
