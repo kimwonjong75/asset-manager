@@ -2,7 +2,7 @@
 // 포트폴리오 전체 종목의 과거 종가를 배치 조회하여 확장 지표(MA 전 기간, RSI 전일값 등) 계산
 
 import { useState, useEffect, useRef, useMemo } from 'react';
-import type { Asset } from '../types';
+import type { Asset, WatchlistItem } from '../types';
 import {
   fetchStockHistoricalPrices,
   fetchCryptoHistoricalPrices,
@@ -24,6 +24,13 @@ export interface EnrichedIndicatorData {
   prevRsi: number | null;
 }
 
+/** enriched 지표 계산에 필요한 최소 종목 정보 */
+interface TickerItem {
+  ticker: string;
+  exchange: string;
+  categoryId: number;
+}
+
 const MA_PERIODS = [5, 10, 20, 60, 120, 200];
 const RSI_PERIOD = 14;
 const CACHE_TTL_MS = 10 * 60 * 1000; // 10분
@@ -36,11 +43,14 @@ interface CacheEntry {
 
 let cache: CacheEntry | null = null;
 
-function buildTickerKey(assets: Asset[]): string {
-  return assets.map(a => `${a.ticker}|${a.exchange}`).sort().join(',');
+function buildTickerKey(items: TickerItem[]): string {
+  return items.map(a => `${a.ticker}|${a.exchange}`).sort().join(',');
 }
 
-export function useEnrichedIndicators(assets: Asset[]): {
+export function useEnrichedIndicators(
+  assets: Asset[],
+  watchlistItems?: WatchlistItem[]
+): {
   enrichedMap: Map<string, EnrichedIndicatorData>;
   isLoading: boolean;
 } {
@@ -48,10 +58,28 @@ export function useEnrichedIndicators(assets: Asset[]): {
   const [isLoading, setIsLoading] = useState(false);
   const abortRef = useRef(false);
 
-  const tickerKey = useMemo(() => buildTickerKey(assets), [assets]);
+  // 포트폴리오 + 관심종목 ticker 통합 (중복 제거)
+  const allTickerItems: TickerItem[] = useMemo(() => {
+    const items: TickerItem[] = assets.map(a => ({
+      ticker: a.ticker,
+      exchange: a.exchange,
+      categoryId: a.categoryId,
+    }));
+    if (watchlistItems && watchlistItems.length > 0) {
+      const existingTickers = new Set(assets.map(a => a.ticker));
+      for (const w of watchlistItems) {
+        if (!existingTickers.has(w.ticker)) {
+          items.push({ ticker: w.ticker, exchange: w.exchange, categoryId: w.categoryId });
+        }
+      }
+    }
+    return items;
+  }, [assets, watchlistItems]);
+
+  const tickerKey = useMemo(() => buildTickerKey(allTickerItems), [allTickerItems]);
 
   useEffect(() => {
-    if (assets.length === 0) {
+    if (allTickerItems.length === 0) {
       setEnrichedMap(new Map());
       return;
     }
@@ -75,15 +103,15 @@ export function useEnrichedIndicators(assets: Asset[]): {
         const startDate = startD.toISOString().split('T')[0];
 
         // stock/crypto 분류
-        const stockTickers: { asset: Asset; apiTicker: string }[] = [];
-        const cryptoTickers: { asset: Asset; apiTicker: string }[] = [];
+        const stockTickers: { item: TickerItem; apiTicker: string }[] = [];
+        const cryptoTickers: { item: TickerItem; apiTicker: string }[] = [];
 
-        for (const asset of assets) {
-          const apiTicker = convertTickerForAPI(asset.ticker, asset.exchange, getCategoryName(asset.categoryId, DEFAULT_CATEGORIES));
-          if (isCryptoExchange(asset.exchange)) {
-            cryptoTickers.push({ asset, apiTicker });
+        for (const item of allTickerItems) {
+          const apiTicker = convertTickerForAPI(item.ticker, item.exchange, getCategoryName(item.categoryId, DEFAULT_CATEGORIES));
+          if (isCryptoExchange(item.exchange)) {
+            cryptoTickers.push({ item, apiTicker });
           } else {
-            stockTickers.push({ asset, apiTicker });
+            stockTickers.push({ item, apiTicker });
           }
         }
 
@@ -115,7 +143,7 @@ export function useEnrichedIndicators(assets: Asset[]): {
           ...cryptoTickers.map(t => ({ ...t, results: cryptoResults })),
         ];
 
-        for (const { asset, apiTicker, results } of allItems) {
+        for (const { item, apiTicker, results } of allItems) {
           const entry = results[apiTicker] || results[Object.keys(results).find(k => k === apiTicker) || ''];
           const priceData = entry?.data;
 
@@ -146,8 +174,8 @@ export function useEnrichedIndicators(assets: Asset[]): {
           const rsi = lastRsiIdx >= 0 ? rsiValues[lastRsiIdx] : null;
           const prevRsi = lastRsiIdx >= 1 ? rsiValues[lastRsiIdx - 1] : null;
 
-          // ticker 기준으로 저장 (asset.ticker)
-          result.set(asset.ticker, { ma, prevMa, rsi, prevRsi });
+          // ticker 기준으로 저장
+          result.set(item.ticker, { ma, prevMa, rsi, prevRsi });
         }
 
         if (abortRef.current) return;
@@ -174,7 +202,7 @@ export function useEnrichedIndicators(assets: Asset[]): {
     return () => {
       abortRef.current = true;
     };
-  }, [assets, tickerKey]);
+  }, [allTickerItems, tickerKey]);
 
   return { enrichedMap, isLoading };
 }

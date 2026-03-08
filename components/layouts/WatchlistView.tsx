@@ -10,6 +10,7 @@ const WatchlistView: React.FC = () => {
     <>
       <WatchlistPage
         watchlist={data.watchlist}
+        portfolioAssets={data.assets}
         onDelete={actions.deleteWatchItem}
         onOpenAddModal={actions.openAddWatchItem}
         onOpenEditModal={actions.openEditWatchItem}
@@ -18,6 +19,7 @@ const WatchlistView: React.FC = () => {
         exchangeRates={data.exchangeRates}
         onRefresh={actions.refreshWatchlistPrices}
         categories={data.categoryStore.categories}
+        onTogglePin={actions.togglePinWatchItem}
       />
       <WatchlistAddModal />
       <WatchlistEditModal />

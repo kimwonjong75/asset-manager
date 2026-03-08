@@ -3,7 +3,6 @@ import { Asset, ExchangeRates } from '../../types';
 import { getAllowedCategories } from '../../types/category';
 import { usePortfolio } from '../../contexts/PortfolioContext';
 import ExchangeRateInput from '../ExchangeRateInput';
-import StatCard from '../StatCard';
 
 interface DashboardControlsProps {
     assets: Asset[];
@@ -12,8 +11,6 @@ interface DashboardControlsProps {
     exchangeRates: ExchangeRates;
     onRatesChange: (rates: ExchangeRates) => void;
     showExchangeRateWarning: boolean;
-    alertCount: number;
-    onAlertClick: () => void;
 }
 
 const DashboardControls: React.FC<DashboardControlsProps> = ({
@@ -23,8 +20,6 @@ const DashboardControls: React.FC<DashboardControlsProps> = ({
     exchangeRates,
     onRatesChange,
     showExchangeRateWarning,
-    alertCount,
-    onAlertClick
 }) => {
     const { data } = usePortfolio();
     const cats = data.categoryStore.categories;
@@ -60,18 +55,10 @@ const DashboardControls: React.FC<DashboardControlsProps> = ({
                     </div>
                 </div>
             </div>
-            <ExchangeRateInput 
-                rates={exchangeRates} 
-                onRatesChange={onRatesChange} 
-                showWarning={showExchangeRateWarning} 
-            />
-            <StatCard 
-                title="매도 알림 발생" 
-                value={`${alertCount}개`}
-                tooltip="설정된 하락률 기준을 초과한 자산의 수입니다. 클릭하여 필터링된 목록을 확인하세요."
-                onClick={onAlertClick}
-                isAlert={alertCount > 0}
-                size="small"
+            <ExchangeRateInput
+                rates={exchangeRates}
+                onRatesChange={onRatesChange}
+                showWarning={showExchangeRateWarning}
             />
         </div>
     );

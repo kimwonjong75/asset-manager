@@ -4,7 +4,7 @@ import type { AlertResult, AlertMatchedAsset } from '../../types/alertRules';
 interface AlertPopupProps {
   results: AlertResult[];
   onClose: () => void;
-  onAssetClick: (assetId: string) => void;
+  onAssetClick: (assetId: string, source?: 'portfolio' | 'watchlist') => void;
 }
 
 const SEVERITY_STYLES: Record<string, { bg: string; border: string; badge: string }> = {
@@ -37,39 +37,47 @@ const AlertPopup: React.FC<AlertPopupProps> = ({ results, onClose, onAssetClick 
   const hasResults = results.length > 0;
   const totalCount = results.reduce((sum, r) => sum + r.matchedAssets.length, 0);
 
-  const renderAssetRow = (asset: AlertMatchedAsset) => (
-    <tr
-      key={asset.assetId}
-      className="border-b border-gray-800/30 last:border-b-0 cursor-pointer hover:bg-white/5 transition-colors"
-      onClick={() => onAssetClick(asset.assetId)}
-      title="클릭하면 포트폴리오에서 해당 종목으로 이동합니다"
-    >
-      <td className="py-1.5 pr-2">
-        <div className="flex items-center gap-1.5">
-          <span className="text-white font-medium truncate max-w-[140px]">{asset.assetName}</span>
-          <span className="text-gray-600 text-[10px] shrink-0">{asset.ticker}</span>
-        </div>
-      </td>
-      <td className={`text-right py-1.5 px-2 tabular-nums ${pctColor(asset.dailyChange)}`}>
-        {fmtPct(asset.dailyChange)}
-      </td>
-      <td className={`text-right py-1.5 px-2 tabular-nums ${pctColor(asset.returnPct)}`}>
-        {fmtPct(asset.returnPct)}
-      </td>
-      <td className={`text-right py-1.5 pl-2 tabular-nums ${
-        asset.rsi != null
-          ? asset.rsi < 30 ? 'text-blue-400' : asset.rsi > 70 ? 'text-red-400' : 'text-gray-300'
-          : 'text-gray-500'
-      }`}>
-        {asset.rsi != null ? asset.rsi.toFixed(1) : '-'}
-      </td>
-      <td className="py-1.5 pl-2 w-5">
-        <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-        </svg>
-      </td>
-    </tr>
-  );
+  const renderAssetRow = (asset: AlertMatchedAsset) => {
+    const isWatchlist = asset.source === 'watchlist';
+    return (
+      <tr
+        key={`${asset.assetId}-${asset.source || 'p'}`}
+        className="border-b border-gray-800/30 last:border-b-0 cursor-pointer hover:bg-white/5 transition-colors"
+        onClick={() => onAssetClick(asset.assetId, asset.source)}
+        title={isWatchlist ? '클릭하면 관심종목으로 이동합니다' : '클릭하면 포트폴리오에서 해당 종목으로 이동합니다'}
+      >
+        <td className="py-1.5 pr-2">
+          <div className="flex items-center gap-1.5">
+            {isWatchlist && (
+              <span className="text-[9px] px-1 py-0.5 rounded bg-teal-600/30 text-teal-400 font-medium shrink-0">
+                관심
+              </span>
+            )}
+            <span className="text-white font-medium truncate max-w-[140px]">{asset.assetName}</span>
+            <span className="text-gray-600 text-[10px] shrink-0">{asset.ticker}</span>
+          </div>
+        </td>
+        <td className={`text-right py-1.5 px-2 tabular-nums ${pctColor(asset.dailyChange)}`}>
+          {fmtPct(asset.dailyChange)}
+        </td>
+        <td className={`text-right py-1.5 px-2 tabular-nums ${pctColor(asset.returnPct)}`}>
+          {fmtPct(asset.returnPct)}
+        </td>
+        <td className={`text-right py-1.5 pl-2 tabular-nums ${
+          asset.rsi != null
+            ? asset.rsi < 30 ? 'text-blue-400' : asset.rsi > 70 ? 'text-red-400' : 'text-gray-300'
+            : 'text-gray-500'
+        }`}>
+          {asset.rsi != null ? asset.rsi.toFixed(1) : '-'}
+        </td>
+        <td className="py-1.5 pl-2 w-5">
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+          </svg>
+        </td>
+      </tr>
+    );
+  };
 
   const renderSection = (sectionResults: AlertResult[], title: string, icon: React.ReactNode, titleColor: string) => {
     if (sectionResults.length === 0) return null;
@@ -185,7 +193,7 @@ const AlertPopup: React.FC<AlertPopupProps> = ({ results, onClose, onAssetClick 
                   </svg>,
                   'text-blue-400'
                 )}
-                <p className="text-gray-600 text-[10px] text-center pb-1">종목을 클릭하면 포트폴리오에서 해당 종목으로 이동합니다</p>
+                <p className="text-gray-600 text-[10px] text-center pb-1">종목을 클릭하면 해당 탭으로 이동합니다</p>
               </>
             ) : (
               <div className="text-center py-6">

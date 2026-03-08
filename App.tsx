@@ -166,6 +166,28 @@ const AppContent: React.FC = () => {
                       브리핑 {derived.alertResults.reduce((s, r) => s + r.matchedAssets.length, 0)}건
                     </button>
                   )}
+                  <button
+                    onClick={() => {
+                      if (window.confirm('전체 종목을 업데이트 하시겠습니까?')) {
+                        actions.refreshAllPrices(false);
+                      }
+                    }}
+                    disabled={status.isLoading}
+                    className="flex items-center gap-1.5 text-xs text-gray-300 hover:text-white bg-gray-700 hover:bg-gray-600 px-2.5 py-1.5 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    title="시세 업데이트"
+                  >
+                    {status.isLoading ? (
+                      <svg className="animate-spin h-3.5 w-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                    ) : (
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h5M20 20v-5h-5M4 4l1.5 1.5A9 9 0 0120.5 10M20 20l-1.5-1.5A9 9 0 003.5 14" />
+                      </svg>
+                    )}
+                    <span className="hidden sm:inline">{status.isLoading ? '중...' : '업데이트'}</span>
+                  </button>
                   {ui.activeTab !== 'guide' && ui.activeTab !== 'settings' && (
                     <PeriodSelector value={ui.globalPeriod} onChange={actions.setGlobalPeriod} />
                   )}
@@ -221,9 +243,13 @@ const AppContent: React.FC = () => {
               <AlertPopup
                 results={derived.alertResults}
                 onClose={actions.dismissAlertPopup}
-                onAssetClick={(assetId) => {
-                  actions.setActiveTab('portfolio');
-                  actions.setFocusedAssetId(assetId);
+                onAssetClick={(assetId, source) => {
+                  if (source === 'watchlist') {
+                    actions.setActiveTab('watchlist');
+                  } else {
+                    actions.setActiveTab('portfolio');
+                    actions.setFocusedAssetId(assetId);
+                  }
                 }}
               />
             )}

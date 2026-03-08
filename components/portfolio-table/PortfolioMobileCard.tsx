@@ -13,6 +13,8 @@ interface PortfolioMobileCardProps {
   onSell?: (asset: Asset) => void;
   onBuy?: (asset: Asset) => void;
   exchangeRates?: ExchangeRates;
+  onTogglePin?: (id: string) => void;
+  onMemoEdit?: (asset: Asset) => void;
 }
 
 const SignalBadgeMini = ({ signal }: { signal?: string }) => {
@@ -35,6 +37,8 @@ const PortfolioMobileCard: React.FC<PortfolioMobileCardProps> = ({
   onSell,
   onBuy,
   exchangeRates,
+  onTogglePin,
+  onMemoEdit,
 }) => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [expanded, setExpanded] = useState(false);
@@ -58,10 +62,21 @@ const PortfolioMobileCard: React.FC<PortfolioMobileCardProps> = ({
         {/* Left: name + info */}
         <div className="flex-1 min-w-0" onClick={() => setExpanded(!expanded)}>
           <div className="flex items-center gap-2 flex-wrap">
+            {onTogglePin && (
+              <button
+                onClick={(e) => { e.stopPropagation(); onTogglePin(asset.id); }}
+                className={`text-lg leading-none transition-colors flex-shrink-0 ${asset.pinned ? 'text-yellow-400' : 'text-gray-600 hover:text-yellow-400/60'}`}
+              >
+                {asset.pinned ? '★' : '☆'}
+              </button>
+            )}
             <span className="font-bold text-primary-light text-sm truncate max-w-[160px]">
               {asset.customName?.trim() || asset.name}
             </span>
-            {asset.memo && <span className="text-[10px] opacity-60">📝</span>}
+            <span
+              className={`text-lg leading-none cursor-pointer transition-opacity flex-shrink-0 ${asset.memo ? 'opacity-60 hover:opacity-100' : 'opacity-20 hover:opacity-50'}`}
+              onClick={(e) => { e.stopPropagation(); onMemoEdit?.(asset); }}
+            >📝</span>
             <SignalBadgeMini signal={asset.indicators?.signal} />
           </div>
           <div className="text-[11px] text-gray-500 mt-0.5">{asset.ticker} | {asset.exchange}</div>

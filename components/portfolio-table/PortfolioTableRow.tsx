@@ -87,12 +87,12 @@ interface PortfolioTableRowProps {
   selectedIds: Set<string>;
   onSelect: (id: string, checked: boolean) => void;
   showHiddenColumns: boolean;
-  sellAlertDropRate: number;
   onEdit: (asset: Asset) => void;
   onSell?: (asset: Asset) => void;
   onBuy?: (asset: Asset) => void;
-  filterAlerts: boolean;
-  exchangeRates?: ExchangeRates; // [추가] 환율 정보
+  exchangeRates?: ExchangeRates;
+  onTogglePin?: (id: string) => void;
+  onMemoEdit?: (asset: Asset) => void;
 }
 
 const ChartBarIcon: React.FC = () => (
@@ -107,12 +107,12 @@ const PortfolioTableRow: React.FC<PortfolioTableRowProps> = ({
   selectedIds,
   onSelect,
   showHiddenColumns,
-  sellAlertDropRate,
   onEdit,
   onSell,
   onBuy,
-  filterAlerts,
-  exchangeRates
+  exchangeRates,
+  onTogglePin,
+  onMemoEdit
 }) => {
   const [expandedAssetId, setExpandedAssetId] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -135,9 +135,7 @@ const PortfolioTableRow: React.FC<PortfolioTableRowProps> = ({
   };
 
   const { purchaseValue, currentValue, purchaseValueKRW, currentValueKRW, returnPercentage, allocation, dropFromHigh, profitLoss, profitLossKRW, diffFromHigh, yesterdayChange, diffFromYesterday } = asset.metrics;
-  
-  const alertRate = asset.sellAlertDropRate ?? sellAlertDropRate;
-  const isAlertTriggered = dropFromHigh <= -alertRate;
+
   const isNonKRW = asset.currency !== Currency.KRW;
   const investmentColor = getChangeColor(returnPercentage);
 
@@ -165,6 +163,15 @@ const PortfolioTableRow: React.FC<PortfolioTableRowProps> = ({
         <td className="px-4 py-4 font-medium text-white break-words">
           <div className="flex flex-col">
              <div className="flex items-center gap-2">
+               {onTogglePin && (
+                 <button
+                   onClick={(e) => { e.stopPropagation(); onTogglePin(asset.id); }}
+                   className={`text-lg leading-none transition-colors flex-shrink-0 ${asset.pinned ? 'text-yellow-400' : 'text-gray-600 hover:text-yellow-400/60'}`}
+                   title={asset.pinned ? '중요 해제' : '중요 표시'}
+                 >
+                   {asset.pinned ? '★' : '☆'}
+                 </button>
+               )}
                <MemoTooltip memo={asset.memo}>
                  <a
                    href={`https://www.google.com/search?q=${encodeURIComponent(asset.ticker + ' 주가')}`}
@@ -174,14 +181,13 @@ const PortfolioTableRow: React.FC<PortfolioTableRowProps> = ({
                  >
                    {(asset.customName?.trim() || asset.name)}
                  </a>
-                 {asset.memo && <span className="text-[10px] ml-0.5 opacity-60">📝</span>}
                </MemoTooltip>
+               <span
+                 className={`text-xl leading-none cursor-pointer transition-opacity flex-shrink-0 ${asset.memo ? 'opacity-60 hover:opacity-100' : 'opacity-20 hover:opacity-50'}`}
+                 onClick={(e) => { e.stopPropagation(); onMemoEdit?.(asset); }}
+                 title={asset.memo ? '메모 수정' : '메모 추가'}
+               >📝</span>
                <SignalBadge signal={asset.indicators?.signal} />
-               {isAlertTriggered && (
-                 <Tooltip content="알림 조건 도달" position="right">
-                   <span className="text-xs">⚠️</span>
-                 </Tooltip>
-               )}
              </div>
             <span className="text-xs text-gray-500 break-all">{asset.ticker} | {asset.exchange}</span>
           </div>

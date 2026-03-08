@@ -87,6 +87,7 @@ export interface PortfolioActions {
   // 자산
   addAsset: (asset: Asset) => Promise<void>;
   updateAsset: (asset: Asset) => Promise<void>;
+  togglePinAsset: (id: string) => void;
   deleteAsset: (id: string) => void;
   confirmSell: (id: string, sellDate: string, sellPrice: number, sellQuantity: number, currency: Currency) => Promise<void>;
   confirmBuyMore: (id: string, buyDate: string, buyPrice: number, buyQuantity: number) => Promise<void>;
@@ -97,6 +98,7 @@ export interface PortfolioActions {
   updateWatchItem: (item: WatchlistItem) => void;
   deleteWatchItem: (id: string) => void;
   bulkDeleteWatchItems: (ids: string[]) => void;
+  togglePinWatchItem: (id: string) => void;
 
   // 메시지
   clearError: () => void;

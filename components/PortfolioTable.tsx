@@ -1,9 +1,11 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useOnClickOutside } from '../hooks/useOnClickOutside';
+import type { Asset } from '../types';
 import { PortfolioTableProps, SortKey, SortDirection } from '../types/ui';
 import { usePortfolioData } from './portfolio-table/usePortfolioData';
 import PortfolioTableRow from './portfolio-table/PortfolioTableRow';
 import PortfolioMobileCard from './portfolio-table/PortfolioMobileCard';
+import MemoEditPopup from './common/MemoEditPopup';
 import Tooltip from './common/Tooltip';
 import { COLUMN_DESCRIPTIONS } from '../constants/columnDescriptions';
 import type { SmartFilterState, SmartFilterKey } from '../types/smartFilter';
@@ -18,17 +20,9 @@ const SortIcon = ({ sortKey, sortConfig }: { sortKey: SortKey, sortConfig: { key
   return sortConfig.direction === 'descending' ? <span>▼</span> : <span>▲</span>;
 };
 
-const RefreshIcon: React.FC<{className?: string}> = ({className}) => (
-  <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 ${className}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h5M20 20v-5h-5M4 4l1.5 1.5A9 9 0 0120.5 10M20 20l-1.5-1.5A9 9 0 003.5 14" />
-  </svg>
-);
-
-const PortfolioTable: React.FC<PortfolioTableProps> = ({ 
-  assets, 
-  history, 
-  onRefreshAll, 
-  onRefreshSelected, 
+const PortfolioTable: React.FC<PortfolioTableProps> = ({
+  assets,
+  history,
   onEdit,
   onSell,
   onBuy,
@@ -50,8 +44,9 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const prevLoadingRef = useRef<boolean>(false);
-  const [lastRunWasFullUpdate, setLastRunWasFullUpdate] = useState<boolean>(false);
   const [smartFilter, setSmartFilter] = useState<SmartFilterState>({ ...EMPTY_SMART_FILTER, activeFilters: new Set() });
+  const [showPinnedOnly, setShowPinnedOnly] = useState(false);
+  const [memoEditAsset, setMemoEditAsset] = useState<Asset | null>(null);
 
   useOnClickOutside(menuRef, () => setOpenMenuId(null), !!openMenuId);
 
@@ -100,11 +95,17 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
     setPresetOpen(false);
   };
 
-  // 스마트 필터 적용 (usePortfolioData 미수정, 별도 useMemo)
+  // 스마트 필터 + 핀 필터 적용
   const filteredAssets = useMemo(() => {
-    if (smartFilter.activeFilters.size === 0) return enrichedAndSortedAssets;
-    return enrichedAndSortedAssets.filter(a => matchesSmartFilter(a, smartFilter, enrichedMap));
-  }, [enrichedAndSortedAssets, smartFilter, enrichedMap]);
+    let result = enrichedAndSortedAssets;
+    if (showPinnedOnly) {
+      result = result.filter(a => a.pinned);
+    }
+    if (smartFilter.activeFilters.size > 0) {
+      result = result.filter(a => matchesSmartFilter(a, smartFilter, enrichedMap));
+    }
+    return result;
+  }, [enrichedAndSortedAssets, smartFilter, enrichedMap, showPinnedOnly]);
 
   const handleToggleFilter = (key: SmartFilterKey, deactivateKey?: SmartFilterKey) => {
     setSmartFilter(prev => {
@@ -146,12 +147,12 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
   };
 
   useEffect(() => {
-    if (!isLoading && prevLoadingRef.current && lastRunWasFullUpdate && failedIds && failedIds.size > 0) {
+    if (!isLoading && prevLoadingRef.current && failedIds && failedIds.size > 0) {
       const ok = window.confirm('업데이트에 실패한 항목이 있습니다. 실패한 리스트만 보시겠습니까?');
       if (ok) setShowFailedOnly(true);
     }
     prevLoadingRef.current = isLoading;
-  }, [isLoading, lastRunWasFullUpdate, failedIds]);
+  }, [isLoading, failedIds]);
 
   const emptyMessage = smartFilter.activeFilters.size > 0
     ? '필터 조건에 맞는 자산이 없습니다.'
@@ -187,6 +188,17 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
               )}
             </div>
           )}
+          <button
+            onClick={() => setShowPinnedOnly(!showPinnedOnly)}
+            className={`text-xl leading-none py-2 px-2 rounded-md transition-colors ${
+              showPinnedOnly
+                ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/50'
+                : 'text-gray-500 hover:text-yellow-400/60 border border-transparent'
+            }`}
+            title={showPinnedOnly ? '전체 보기' : '중요 종목만 보기'}
+          >
+            {showPinnedOnly ? '★' : '☆'}
+          </button>
         </div>
         <div className="flex items-center gap-2">
           {selectedIds.size > 0 && (
@@ -286,31 +298,6 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
             )}
           </div>
 
-          <button
-            onClick={() => {
-              const ids = Array.from(selectedIds);
-              if (ids.length > 0) {
-                setLastRunWasFullUpdate(false);
-                onRefreshSelected ? onRefreshSelected(ids) : onRefreshAll();
-              } else {
-                if (window.confirm('전체 종목을 업데이트 하시겠습니까?')) {
-                  setLastRunWasFullUpdate(true);
-                  onRefreshAll();
-                }
-              }
-            }}
-            disabled={isLoading}
-            className="bg-primary hover:bg-primary-dark text-white font-medium py-2 px-3 sm:px-4 rounded-md transition duration-300 flex items-center disabled:bg-gray-600"
-          >
-            {isLoading ? (
-              <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
-            ) : <RefreshIcon className="-ml-1 mr-2 h-4 w-4"/>}
-            <span>{isLoading ? '중...' : '업데이트'}</span>
-          </button>
-          
           <div className="flex items-center gap-2">
             <div className="relative hidden sm:block">
               <select
@@ -438,12 +425,12 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
                   setSelectedIds(next);
                 }}
                 showHiddenColumns={showHiddenColumns}
-                sellAlertDropRate={sellAlertDropRate}
                 onEdit={onEdit}
                 onSell={onSell}
                 onBuy={onBuy}
-                filterAlerts={filterAlerts}
                 exchangeRates={exchangeRates}
+                onTogglePin={actions.togglePinAsset}
+                onMemoEdit={(asset) => setMemoEditAsset(asset)}
               />
             )) : (
               <tr><td colSpan={13} className="text-center py-8 text-gray-500">
@@ -465,11 +452,21 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
             onSell={onSell}
             onBuy={onBuy}
             exchangeRates={exchangeRates}
+            onTogglePin={actions.togglePinAsset}
+            onMemoEdit={(asset) => setMemoEditAsset(asset)}
           />
         )) : (
           <div className="text-center py-8 text-gray-500">{emptyMessage}</div>
         )}
       </div>
+
+      {/* 메모 편집 팝업 */}
+      {memoEditAsset && (
+        <MemoEditPopup
+          asset={memoEditAsset}
+          onClose={() => setMemoEditAsset(null)}
+        />
+      )}
     </div>
   );
 };

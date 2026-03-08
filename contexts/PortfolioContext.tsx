@@ -147,8 +147,8 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     sellAlertDropRate
   });
 
-  // enriched 지표 (Context 레벨에서 한 번만 계산)
-  const { enrichedMap, isLoading: isEnrichedLoading } = useEnrichedIndicators(assets);
+  // enriched 지표 (Context 레벨에서 한 번만 계산, 관심종목 포함)
+  const { enrichedMap, isLoading: isEnrichedLoading } = useEnrichedIndicators(assets, watchlist);
 
   // EnrichedAsset 목록 생성 (알림 체크용)
   const { calculateAssetMetrics, calculatePortfolioStats } = usePortfolioCalculator();
@@ -171,6 +171,7 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     isEnrichedLoading,
     hasAutoUpdated,
     isMarketLoading,
+    watchlistItems: watchlist,
   });
 
   const showExchangeRateWarning = useMemo(() => {
@@ -280,6 +281,13 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       refreshWatchlistPrices: handleRefreshWatchlistPrices,
       addAsset: handleAddAsset,
       updateAsset: handleUpdateAsset,
+      togglePinAsset: (id: string) => {
+        const newAssets = assets.map(a =>
+          a.id === id ? { ...a, pinned: !a.pinned } : a
+        );
+        setAssets(newAssets);
+        triggerAutoSave(newAssets, portfolioHistory, sellHistory, watchlist, exchangeRates);
+      },
       deleteAsset: handleDeleteAsset,
       confirmSell: async (id: string, sellDate: string, sellPrice: number, sellQuantity: number, currency: Currency) => {
         // [수정] Context의 인터페이스와 useAssetActions 구현체의 파라미터 순서 불일치 해결
@@ -295,6 +303,13 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       updateWatchItem: handleUpdateWatchItem,
       deleteWatchItem: handleDeleteWatchItem,
       bulkDeleteWatchItems: handleBulkDeleteWatchItems,
+      togglePinWatchItem: (id: string) => {
+        const newWatchlist = watchlist.map(w =>
+          w.id === id ? { ...w, pinned: !w.pinned } : w
+        );
+        setWatchlist(newWatchlist);
+        triggerAutoSave(assets, portfolioHistory, sellHistory, newWatchlist, exchangeRates);
+      },
       uploadCsv: handleCsvFileUpload,
       updateAlertSettings,
       dismissAlertPopup,

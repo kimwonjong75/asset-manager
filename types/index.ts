@@ -125,6 +125,7 @@ export interface WatchlistItem {
   categoryId: number;
   category?: AssetCategory; // deprecated: 마이그레이션 호환용
   notes?: string;
+  pinned?: boolean;
   currentPrice?: number;
   priceOriginal?: number;
   currency?: Currency;
@@ -176,6 +177,7 @@ export interface Asset {
   previousClosePrice?: number; // Renamed from yesterdayPrice
   sellAlertDropRate?: number;
   memo?: string;
+  pinned?: boolean;
   sellTransactions?: SellTransaction[];
   changeRate?: number;
   indicators?: Indicators;

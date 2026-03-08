@@ -1,6 +1,8 @@
 import type { AlertRule, AlertResult, AlertMatchedAsset } from '../types/alertRules';
 import type { EnrichedAsset } from '../types/ui';
 import type { EnrichedIndicatorData } from '../hooks/useEnrichedIndicators';
+import type { WatchlistItem } from '../types';
+import { Currency } from '../types';
 import { matchesSingleFilter } from './smartFilterLogic';
 
 /**
@@ -81,6 +83,93 @@ export const checkAlertRules = (
           assetName: asset.name,
           ticker: asset.ticker,
           ...buildAssetInfo(asset, rule, enriched),
+        });
+      }
+    }
+
+    if (matchedAssets.length > 0) {
+      results.push({ rule, matchedAssets });
+    }
+  }
+
+  return results;
+};
+
+/**
+ * 관심종목을 pseudo-EnrichedAsset으로 변환 (매수 규칙 체크용)
+ */
+const watchlistToPseudoAsset = (w: WatchlistItem): EnrichedAsset => ({
+  id: w.id,
+  categoryId: w.categoryId,
+  ticker: w.ticker,
+  exchange: w.exchange,
+  name: w.name,
+  quantity: 0,
+  purchasePrice: 0,
+  purchaseDate: '',
+  currency: w.currency || Currency.KRW,
+  currentPrice: w.currentPrice || 0,
+  priceOriginal: w.priceOriginal || w.currentPrice || 0,
+  highestPrice: w.highestPrice || 0,
+  changeRate: w.changeRate,
+  indicators: w.indicators,
+  metrics: {
+    purchasePrice: 0,
+    currentPrice: w.currentPrice || 0,
+    currentPriceKRW: w.currentPrice || 0,
+    purchasePriceKRW: 0,
+    purchaseValue: 0,
+    currentValue: 0,
+    purchaseValueKRW: 0,
+    currentValueKRW: 0,
+    returnPercentage: 0,
+    allocation: 0,
+    dropFromHigh: 0,
+    profitLoss: 0,
+    profitLossKRW: 0,
+    diffFromHigh: 0,
+    yesterdayChange: w.yesterdayChange || 0,
+    diffFromYesterday: 0,
+  },
+});
+
+/**
+ * 관심종목에 대해 매수 규칙만 실행
+ * @param portfolioTickers 포트폴리오에 이미 있는 ticker (중복 방지)
+ */
+export const checkBuyRulesForWatchlist = (
+  watchlistItems: WatchlistItem[],
+  enrichedMap: Map<string, EnrichedIndicatorData>,
+  rules: AlertRule[],
+  portfolioTickers: Set<string>
+): AlertResult[] => {
+  const buyRules = rules.filter(r => r.action === 'buy' && r.enabled);
+  const results: AlertResult[] = [];
+
+  for (const rule of buyRules) {
+    const matchedAssets: AlertMatchedAsset[] = [];
+
+    for (const item of watchlistItems) {
+      if (portfolioTickers.has(item.ticker)) continue;
+
+      const enriched = enrichedMap.get(item.ticker);
+      const pseudoAsset = watchlistToPseudoAsset(item);
+
+      if (matchesRule(pseudoAsset, rule, enriched)) {
+        const rsi = enriched?.rsi ?? item.indicators?.rsi;
+        const dailyChange = item.yesterdayChange || 0;
+        const parts: string[] = [];
+        if (typeof rsi === 'number') parts.push(`RSI ${rsi.toFixed(1)}`);
+        if (dailyChange !== 0) parts.push(`당일 ${dailyChange >= 0 ? '+' : ''}${dailyChange.toFixed(1)}%`);
+
+        matchedAssets.push({
+          assetId: item.id,
+          assetName: item.name,
+          ticker: item.ticker,
+          details: parts.join(' · '),
+          dailyChange: dailyChange || undefined,
+          rsi: typeof rsi === 'number' ? rsi : undefined,
+          source: 'watchlist',
         });
       }
     }

@@ -34,6 +34,8 @@ export interface AlertMatchedAsset {
   dropFromHigh?: number;
   /** RSI */
   rsi?: number;
+  /** 출처 (포트폴리오 vs 관심종목) */
+  source?: 'portfolio' | 'watchlist';
 }
 
 /** 규칙별 알림 결과 */

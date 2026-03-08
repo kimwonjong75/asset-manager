@@ -27,14 +27,8 @@ const DashboardView: React.FC = () => {
   const exchangeRates = data.exchangeRates;
   const dashboardFilterCategory = ui.dashboardFilterCategory;
   const setDashboardFilterCategory = actions.setDashboardFilterCategory;
-  const alertCount = derived.alertCount;
-  
   const { calculatePortfolioStats, calculateSoldAssetsStats } = usePortfolioCalculator();
 
-  const onAlertClick = () => {
-    actions.setActiveTab('portfolio');
-    actions.setFilterAlerts(true);
-  };
   const onRatesChange = actions.setExchangeRates;
   const showExchangeRateWarning = status.showExchangeRateWarning;
 
@@ -71,8 +65,6 @@ const DashboardView: React.FC = () => {
         exchangeRates={exchangeRates}
         onRatesChange={onRatesChange}
         showExchangeRateWarning={showExchangeRateWarning}
-        alertCount={alertCount}
-        onAlertClick={onAlertClick}
       />
 
       <DashboardStats

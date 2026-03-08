@@ -1,13 +1,14 @@
 import React, { useMemo, useState, useEffect, Fragment, useRef } from 'react';
 import { Filter, MoreHorizontal, RefreshCw } from 'lucide-react';
 import MemoTooltip from './common/MemoTooltip';
-import { Currency, CURRENCY_SYMBOLS, WatchlistItem, ExchangeRates } from '../types';
+import { Asset, Currency, CURRENCY_SYMBOLS, WatchlistItem, ExchangeRates } from '../types';
 import { getAllowedCategories, getCategoryName, type CategoryDefinition } from '../types/category';
 import AssetTrendChart from './AssetTrendChart';
 import { useOnClickOutside } from '../hooks/useOnClickOutside';
 
 interface WatchlistPageProps {
   watchlist: WatchlistItem[];
+  portfolioAssets: Asset[];
   onDelete: (id: string) => void;
   onOpenAddModal: () => void;
   onOpenEditModal: (item: WatchlistItem) => void;
@@ -16,6 +17,7 @@ interface WatchlistPageProps {
   exchangeRates: ExchangeRates;
   onRefresh?: () => Promise<void>;
   categories: CategoryDefinition[];
+  onTogglePin?: (id: string) => void;
 }
 
 // 차트 아이콘
@@ -25,13 +27,14 @@ const ChartBarIcon: React.FC = () => (
   </svg>
 );
 
-const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, onDelete, onOpenAddModal, onOpenEditModal, isLoading, onBulkDelete, exchangeRates, onRefresh, categories }) => {
+const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, portfolioAssets, onDelete, onOpenAddModal, onOpenEditModal, isLoading, onBulkDelete, exchangeRates, onRefresh, categories, onTogglePin }) => {
   const [filterCategory, setFilterCategory] = useState<number | 'ALL'>('ALL');
   const [search, setSearch] = useState('');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [openFilterOptions, setOpenFilterOptions] = useState<boolean>(false);
   const [expandedItemId, setExpandedItemId] = useState<string | null>(null);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [showPinnedOnly, setShowPinnedOnly] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
 
   useOnClickOutside(menuRef, () => setOpenMenuId(null), !!openMenuId);
@@ -44,8 +47,13 @@ const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, onDelete, onOp
     return [...allowed, ...extras];
   }, [watchlist, categories]);
 
+  const portfolioTickers = useMemo(() => {
+    return new Set(portfolioAssets.map(a => a.ticker.toUpperCase()));
+  }, [portfolioAssets]);
+
   const filtered = useMemo(() => {
     return watchlist
+      .filter(w => !showPinnedOnly || w.pinned)
       .filter(w => (filterCategory === 'ALL' ? true : w.categoryId === filterCategory))
       .filter(w => {
         if (!search) return true;
@@ -57,7 +65,7 @@ const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, onDelete, onOp
         dropFromHigh: (w.highestPrice && w.highestPrice > 0 && w.currentPrice) ? ((w.currentPrice - w.highestPrice) / w.highestPrice) * 100 : null,
         yesterdayChange: w.yesterdayChange ?? (w.previousClosePrice && w.currentPrice ? ((w.currentPrice - w.previousClosePrice) / w.previousClosePrice) * 100 : 0),
       }));
-  }, [watchlist, filterCategory, search]);
+  }, [watchlist, filterCategory, search, showPinnedOnly]);
 
   useEffect(() => {
     setSelectedIds(prev => {
@@ -96,6 +104,19 @@ const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, onDelete, onOp
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
           </div>
+          {onTogglePin && (
+            <button
+              onClick={() => setShowPinnedOnly(!showPinnedOnly)}
+              className={`text-xl leading-none py-2 px-2 rounded-md transition-colors ${
+                showPinnedOnly
+                  ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/50'
+                  : 'text-gray-500 hover:text-yellow-400/60 border border-transparent'
+              }`}
+              title={showPinnedOnly ? '전체 보기' : '중요 종목만 보기'}
+            >
+              {showPinnedOnly ? '★' : '☆'}
+            </button>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <button onClick={() => {
@@ -200,19 +221,37 @@ const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, onDelete, onOp
                       }} />
                     </td>
                     <td className="px-4 py-3">
-                      <div className="flex flex-col">
-                        <MemoTooltip memo={w.notes}>
-                          <a
-                            href={`https://www.google.com/search?q=${encodeURIComponent(w.ticker + ' 주가')}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="font-bold hover:underline text-primary-light cursor-pointer"
+                      <div className="flex items-start gap-1">
+                        {onTogglePin && (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); onTogglePin(w.id); }}
+                            className={`text-lg leading-none transition-colors flex-shrink-0 mt-0.5 ${
+                              w.pinned ? 'text-yellow-400' : 'text-gray-600 hover:text-yellow-400/60'
+                            }`}
+                            title={w.pinned ? '중요 해제' : '중요 표시'}
                           >
-                            {w.name}
-                          </a>
-                          {w.notes && <span className="text-[10px] ml-0.5 opacity-60">📝</span>}
-                        </MemoTooltip>
-                        <span className="text-xs text-gray-500">{w.ticker} | {w.exchange} | {getCategoryName(w.categoryId, categories)}</span>
+                            {w.pinned ? '★' : '☆'}
+                          </button>
+                        )}
+                        <div className="flex flex-col">
+                          <MemoTooltip memo={w.notes}>
+                            <span className="flex items-center gap-1">
+                              {portfolioTickers.has(w.ticker.toUpperCase()) && (
+                                <span className="text-[10px] px-1 py-0.5 rounded bg-blue-500/20 text-blue-400 flex-shrink-0" title="보유중">보유</span>
+                              )}
+                              <a
+                                href={`https://www.google.com/search?q=${encodeURIComponent(w.ticker + ' 주가')}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="font-bold hover:underline text-primary-light cursor-pointer"
+                              >
+                                {w.name}
+                              </a>
+                            </span>
+                            {w.notes && <span className="text-[10px] ml-0.5 opacity-60">📝</span>}
+                          </MemoTooltip>
+                          <span className="text-xs text-gray-500">{w.ticker} | {w.exchange} | {getCategoryName(w.categoryId, categories)}</span>
+                        </div>
                       </div>
                     </td>
                     <td className="px-4 py-3 text-right">
