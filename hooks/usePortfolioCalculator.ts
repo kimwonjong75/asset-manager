@@ -2,6 +2,27 @@ import { useCallback } from 'react';
 import { Asset, Currency, ExchangeRates, SellRecord } from '../types';
 import { AssetMetrics, EnrichedAsset } from '../types/ui';
 
+const MAX_REASONABLE_EXCHANGE_RATES: Partial<Record<Currency, number>> = {
+  [Currency.USD]: 3000,
+  [Currency.JPY]: 50,
+  [Currency.CNY]: 400,
+};
+
+function getSellAmountKRW(record: SellRecord, exchangeRates: ExchangeRates): number {
+  const currency = record.settlementCurrency;
+  if (currency && currency !== Currency.KRW && record.sellPriceOriginal && record.sellPriceOriginal > 0) {
+    const maxRate = MAX_REASONABLE_EXCHANGE_RATES[currency];
+    if (maxRate && record.sellExchangeRate && record.sellExchangeRate > maxRate) {
+      const currentRate = currency === Currency.USD ? (exchangeRates.USD || 0)
+        : currency === Currency.JPY ? (exchangeRates.JPY || 0) : 0;
+      if (currentRate > 0) {
+        return record.sellPriceOriginal * currentRate * record.sellQuantity;
+      }
+    }
+  }
+  return record.sellPrice * record.sellQuantity;
+}
+
 export const usePortfolioCalculator = () => {
   
   const getValueInKRW = useCallback((value: number, currency: Currency, exchangeRates: ExchangeRates): number => {
@@ -132,15 +153,15 @@ export const usePortfolioCalculator = () => {
     };
   }, [calculateAssetMetrics]);
 
-  const calculateSoldAssetsStats = useCallback((sellHistory: SellRecord[], assets: Asset[]) => {
+  const calculateSoldAssetsStats = useCallback((sellHistory: SellRecord[], assets: Asset[], exchangeRates: ExchangeRates = { USD: 1450, JPY: 9.5 }) => {
     let totalSoldAmount = 0;
     let totalSoldPurchaseValue = 0;
     let totalSoldProfit = 0;
     let soldCount = 0;
 
     sellHistory.forEach(record => {
-      // 매도 금액 합산 (이미 KRW 환산된 값으로 가정)
-      const sellAmount = record.sellPrice * record.sellQuantity;
+      // 매도 금액 합산 (비정상 환율 보정 포함)
+      const sellAmount = getSellAmountKRW(record, exchangeRates);
       totalSoldAmount += sellAmount;
       soldCount += 1;
       

@@ -23,8 +23,8 @@ export const usePortfolioStats = ({ assets, sellHistory, exchangeRates, sellAler
   );
 
   const soldAssetsStats = useMemo(
-    () => calculateSoldAssetsStats(sellHistory, assets),
-    [sellHistory, assets, calculateSoldAssetsStats]
+    () => calculateSoldAssetsStats(sellHistory, assets, exchangeRates),
+    [sellHistory, assets, exchangeRates, calculateSoldAssetsStats]
   );
 
   return {

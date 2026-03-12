@@ -3,6 +3,12 @@ import { Asset, AssetCategory, BulkUploadResult, Currency, ExchangeRates, NewAss
 import { isBaseType, DEFAULT_CATEGORIES, getCategoryIdByName } from '../types/category';
 import { fetchAssetData as fetchAssetDataNew, fetchExchangeRate, fetchExchangeRateJPY, fetchHistoricalExchangeRate, fetchCurrentExchangeRate } from '../services/priceService';
 
+const MAX_REASONABLE_EXCHANGE_RATES: Partial<Record<Currency, number>> = {
+  [Currency.USD]: 3000,
+  [Currency.JPY]: 50,
+  [Currency.CNY]: 400,
+};
+
 interface UseAssetActionsProps {
   assets: Asset[];
   setAssets: React.Dispatch<React.SetStateAction<Asset[]>>;
@@ -243,6 +249,11 @@ export const useAssetActions = ({
 
       if (finalSettlementCurrency !== Currency.KRW) {
         sellExchangeRate = await fetchHistoricalExchangeRate(sellDate, finalSettlementCurrency, Currency.KRW);
+        const maxRate = MAX_REASONABLE_EXCHANGE_RATES[finalSettlementCurrency];
+        if (maxRate && sellExchangeRate > maxRate) {
+          console.warn(`[매도 경고] 비정상적인 역사적 환율 감지: ${finalSettlementCurrency}/KRW = ${sellExchangeRate}. 현재 앱 환율로 대체합니다.`);
+          sellExchangeRate = (finalSettlementCurrency === Currency.USD ? exchangeRates.USD : exchangeRates.JPY) || sellExchangeRate;
+        }
       }
 
       const sellPriceSettlement = sellPrice;

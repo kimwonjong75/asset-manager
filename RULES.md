@@ -50,8 +50,8 @@
 |------|------|------|-------------|
 | `usePortfolioData.ts` | 핵심 데이터 상태, Google Drive 동기화 | `useGoogleDriveSync`, `historyUtils` | `PortfolioContext` |
 | `useMarketData.ts` | 시세/환율 업데이트, 암호화폐 분기, **관심종목 시세도 함께 갱신** (어제대비 `yesterdayChange` 선계산 포함), 관심종목 전용 갱신(52주 최고가 히스토리 기반 계산) | `priceService`, `upbitService`, `historicalPriceService` | `PortfolioContext` |
-| `useAssetActions.ts` | 자산 CRUD, 매도/매수/CSV 처리 | `priceService`, `geminiService` | 모달 컴포넌트들 |
-| `usePortfolioCalculator.ts` | 수익률/손익 계산 (구매 환율 기준) | `types/index` | 대시보드, 통계 |
+| `useAssetActions.ts` | 자산 CRUD, 매도/매수/CSV 처리. **매도 시 `fetchHistoricalExchangeRate` 결과 유효성 검증** (USD>3000, JPY>50, CNY>400이면 앱 현재 환율로 자동 대체) | `priceService`, `geminiService` | 모달 컴포넌트들 |
+| `usePortfolioCalculator.ts` | 수익률/손익 계산 (구매 환율 기준). **`getSellAmountKRW(record, exchangeRates)`** 모듈 레벨 헬퍼로 비정상 환율 감지 후 KRW 매도금액 보정. `calculateSoldAssetsStats(sellHistory, assets, exchangeRates)` — `exchangeRates` 세 번째 파라미터 추가 (기본값 `{ USD: 1450, JPY: 9.5 }`) | `types/index` | 대시보드, 통계 |
 | `useHistoricalPriceData.ts` | 차트용 과거 종가+거래량 데이터 (MA 여부 무관, 캐시 내장, `displayDays` 기반 기간 제어). 반환값: `{ historicalPrices, historicalVolumes, isLoading, error }` | `historicalPriceService`, `maCalculations` | `AssetTrendChart` |
 | `useGlobalPeriodDays.ts` | 글로벌 기간(`GlobalPeriod`) → `{ startDate, endDate, days }` 변환 유틸 훅 | `types/store` | `AssetTrendChart`, `DashboardView`, `AnalyticsView` |
 | `useEnrichedIndicators.ts` | 전 종목 배치 과거 데이터 조회 → MA 전 기간(5~200) + RSI(금일/전일) 계산. **포트폴리오 + 관심종목 통합**: `useEnrichedIndicators(assets, watchlistItems?)` — 관심종목 ticker도 중복 제거 후 배치 조회에 포함 | `historicalPriceService`, `maCalculations` | **`PortfolioContext`** (Context 레벨에서 호출, enrichedMap을 전역 공유), `geminiService` (타입만) |

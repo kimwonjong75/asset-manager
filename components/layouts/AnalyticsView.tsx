@@ -5,7 +5,7 @@ import SellAnalyticsPage from '../SellAnalyticsPage';
 const AnalyticsView: React.FC = () => {
   const { data } = usePortfolio();
   return (
-    <SellAnalyticsPage assets={data.assets} sellHistory={data.sellHistory} categories={data.categoryStore.categories} />
+    <SellAnalyticsPage assets={data.assets} sellHistory={data.sellHistory} categories={data.categoryStore.categories} exchangeRates={data.exchangeRates} />
   );
 };
 

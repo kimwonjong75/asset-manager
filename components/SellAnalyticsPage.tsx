@@ -1,13 +1,20 @@
 import React, { useMemo, useState } from 'react';
-import { Asset, Currency, SellRecord } from '../types';
+import { Asset, Currency, ExchangeRates, SellRecord } from '../types';
 import { getAllowedCategories, type CategoryDefinition } from '../types/category';
 import StatCard from './StatCard';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar, Cell } from 'recharts';
+
+const MAX_REASONABLE_EXCHANGE_RATES: Partial<Record<Currency, number>> = {
+  [Currency.USD]: 3000,
+  [Currency.JPY]: 50,
+  [Currency.CNY]: 400,
+};
 
 interface SellAnalyticsPageProps {
   assets: Asset[];
   sellHistory: SellRecord[];
   categories: CategoryDefinition[];
+  exchangeRates?: ExchangeRates;
 }
 
 type Grouping = 'daily' | 'weekly' | 'monthly' | 'quarterly';
@@ -42,7 +49,23 @@ const getPresetRange = (preset: PeriodPreset): { start: string; end: string } =>
   return { start: formatDateStr(startD), end };
 };
 
-const SellAnalyticsPage: React.FC<SellAnalyticsPageProps> = ({ assets, sellHistory, categories }) => {
+const SellAnalyticsPage: React.FC<SellAnalyticsPageProps> = ({ assets, sellHistory, categories, exchangeRates }) => {
+
+  const getSellTotalKRW = (r: SellRecord): number => {
+    const currency = r.settlementCurrency;
+    if (currency && currency !== Currency.KRW && r.sellPriceOriginal && r.sellPriceOriginal > 0) {
+      const maxRate = MAX_REASONABLE_EXCHANGE_RATES[currency];
+      if (maxRate && r.sellExchangeRate && r.sellExchangeRate > maxRate) {
+        const currentRate = currency === Currency.USD ? (exchangeRates?.USD || 0)
+          : currency === Currency.JPY ? (exchangeRates?.JPY || 0) : 0;
+        if (currentRate > 0) {
+          console.warn(`[SellAnalytics] 비정상 환율 감지(${r.ticker}): ${r.sellExchangeRate} → 현재 환율(${currentRate}) 사용`);
+          return r.sellPriceOriginal * currentRate * r.sellQuantity;
+        }
+      }
+    }
+    return r.sellPrice * r.sellQuantity;
+  };
   const [grouping, setGrouping] = useState<Grouping>('monthly');
   const [search, setSearch] = useState<string>('');
   const [category, setCategory] = useState<number | 'ALL'>('ALL');
@@ -127,14 +150,15 @@ const SellAnalyticsPage: React.FC<SellAnalyticsPageProps> = ({ assets, sellHisto
       const purchaseKRW = snapshotPurchase > 0
         ? snapshotPurchase
         : (a ? toKRWPurchaseUnit(a, r.sellQuantity) : 0);
-      const realized = r.sellPrice * r.sellQuantity - purchaseKRW;
+      const sellTotalKRW = getSellTotalKRW(r);
+      const realized = sellTotalKRW - purchaseKRW;
       const returnPct = purchaseKRW === 0 ? 0 : (realized / purchaseKRW) * 100;
-      return { ...r, purchaseKRW, realized, returnPct };
+      return { ...r, purchaseKRW, realized, returnPct, sellTotalKRW };
     });
   }, [filteredRecords, assets]);
 
   const overview = useMemo(() => {
-    const totalSoldAmount = recordWithCalc.reduce((s, r) => s + r.sellPrice * r.sellQuantity, 0);
+    const totalSoldAmount = recordWithCalc.reduce((s, r) => s + r.sellTotalKRW, 0);
     const totalPurchase = recordWithCalc.reduce((s, r) => s + r.purchaseKRW, 0);
     const totalProfit = totalSoldAmount - totalPurchase;
     const totalReturn = totalPurchase === 0 ? 0 : (totalProfit / totalPurchase) * 100;
@@ -281,7 +305,7 @@ const SellAnalyticsPage: React.FC<SellAnalyticsPageProps> = ({ assets, sellHisto
           <button
             onClick={() => {
               const header = ['sellDate','name','ticker','sellQuantity','sellPriceKRW','purchaseKRW','realized','returnPct'];
-              const rows = recordWithCalc.map(r => [r.sellDate, r.name, r.ticker, r.sellQuantity, Math.round(r.sellPrice * r.sellQuantity), Math.round(r.purchaseKRW), Math.round(r.realized), r.returnPct.toFixed(2)]);
+              const rows = recordWithCalc.map(r => [r.sellDate, r.name, r.ticker, r.sellQuantity, Math.round(r.sellTotalKRW), Math.round(r.purchaseKRW), Math.round(r.realized), r.returnPct.toFixed(2)]);
               const csv = [header.join(','), ...rows.map(row => row.join(','))].join('\n');
               const blob = new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8;' });
               const url = URL.createObjectURL(blob);
@@ -391,7 +415,7 @@ const SellAnalyticsPage: React.FC<SellAnalyticsPageProps> = ({ assets, sellHisto
                   .slice()
                   .sort((a, b) => b.sellDate.localeCompare(a.sellDate))
                   .map((r, idx) => {
-                    const sellTotal = r.sellPrice * r.sellQuantity;
+                    const sellTotal = r.sellTotalKRW;
                     const isProfit = r.realized >= 0;
                     return (
                       <tr key={r.id || idx} className="border-b border-gray-700/50 hover:bg-gray-700/30 transition-colors">
