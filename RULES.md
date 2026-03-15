@@ -94,7 +94,7 @@
 | `category.ts` | **카테고리 시스템 핵심** — `CategoryDefinition`, `CategoryStore`, `CategoryBaseType`, `DEFAULT_CATEGORIES`, `EXCHANGE_MAP_BY_BASE_TYPE`, 유틸(`isBaseType`, `getCategoryName`, `inferCategoryIdFromExchange`, `getAllowedCategories`) | **전역** — 모든 카테고리 참조 컴포넌트/훅 |
 | `backup.ts` | 백업 타입 (`BackupInfo`, `BackupSettings`, `RETENTION_OPTIONS`) | `hooks/useBackup`, `BackupSettingsSection` |
 | `api.ts` | API 응답 타입 (`PriceItem`, `Indicators` 등). `Indicators`에 거래량 3필드 포함: `volume`(당일), `volume_avg20`(20일 평균), `volume_ratio`(비율) | `services/`, `hooks/` |
-| `store.ts` | 상태 관리 타입 (`PortfolioContextValue`, `GlobalPeriod`, `UIState.activeTab` 등). `PortfolioData`에 `categoryStore`, `PortfolioStatus`에 `needsReAuth`, `DerivedState`에 `backupList`/`isBackingUp` 포함. `UIState`에 `focusedAssetId: string \| null` 포함 (브리핑 패널 클릭-투-포커스용). `PortfolioActions`에 `setFocusedAssetId`, `togglePinAsset` 포함 | `contexts/`, `hooks/`, `App.tsx`, `components/common/PeriodSelector`, `SmartFilterPanel`, `AlertSettingsPage` |
+| `store.ts` | 상태 관리 타입 (`PortfolioContextValue`, `GlobalPeriod`, `UIState.activeTab` 등). **`GlobalPeriod = 'THIS_MONTH' \| 'LAST_MONTH' \| '1M' \| '3M' \| '6M' \| '1Y' \| '2Y' \| 'ALL'`** (금월/전월/1개월 추가). `PortfolioData`에 `categoryStore`, `PortfolioStatus`에 `needsReAuth`, `DerivedState`에 `backupList`/`isBackingUp` 포함. `UIState`에 `focusedAssetId: string \| null` 포함 (브리핑 패널 클릭-투-포커스용). `PortfolioActions`에 `setFocusedAssetId`, `togglePinAsset` 포함 | `contexts/`, `hooks/`, `App.tsx`, `components/common/PeriodSelector`, `SmartFilterPanel`, `AlertSettingsPage` |
 | `ui.ts` | UI 컴포넌트 Props 타입 | `components/` |
 | `smartFilter.ts` | 스마트 필터 타입 (24개 키, 5개 그룹: ma/rsi/signal/portfolio/volume, MA 기간 설정 + `lossThreshold` 포함), 그룹 매핑, 칩 정의(`pairKey`/`pairColorClass` tri-state 지원), 초기값 | `utils/smartFilterLogic`, `SmartFilterPanel`(+ `PortfolioContext` 의존), `PortfolioTable`, `alertChecker` |
 | `alertRules.ts` | 알림 규칙 타입 (`AlertRule`, `AlertResult`, `AlertSettings`, `AlertMatchedAsset`). `AlertMatchedAsset`에 `source?: 'portfolio' \| 'watchlist'` 필드 포함 | `constants/alertRules`, `utils/alertChecker`, `hooks/useAutoAlert`, `AlertSettingsPage`, `AlertPopup` |
@@ -120,7 +120,7 @@
 ### components/common/ (공용 컴포넌트)
 | 파일 | 책임 | 의존 |
 |------|------|------|
-| `PeriodSelector.tsx` | 글로벌 기간 선택 버튼 (3개월/6개월/1년/2년/전체) | `types/store` (`GlobalPeriod`) |
+| `PeriodSelector.tsx` | 글로벌 기간 선택 버튼 (금월/전월/1개월/3개월/6개월/1년/2년/전체, 8개 옵션) | `types/store` (`GlobalPeriod`) |
 | `ActionMenu.tsx` | Portal 기반 액션 메뉴 — 데스크탑: `createPortal`로 body에 드롭다운 렌더링(공간 부족 시 위로 열림), 모바일(<768px): 바텀시트 | `react-dom/createPortal` |
 | `AlertPopup.tsx` | "오늘의 투자 브리핑" **플로팅 패널** (`fixed bottom-4 right-4 w-96`) — 전체화면 오버레이 없음, severity별 스타일, 매도/매수 섹션 분리, **표 형식**(종목·당일·수익률·RSI 컬럼), 최소화/복원 토글(타이틀 클릭). **관심종목 구분**: `source === 'watchlist'`인 종목에 teal `[관심]` 배지 표시. `onAssetClick(assetId, source?)` — source에 따라 포트폴리오/관심종목 탭 전환 | `types/alertRules` (`AlertResult`, `AlertMatchedAsset`) |
 | `MemoEditPopup.tsx` | 경량 메모 편집 팝업 — Portal 기반(`document.body`), Ctrl+Enter 저장, Esc 닫기, 미저장 변경 `confirm` 보호. `PortfolioTableRow`/`PortfolioMobileCard`의 메모 아이콘 클릭 시 열림 | `PortfolioContext` (`actions.updateAsset`), `react-dom/createPortal` |
@@ -175,7 +175,7 @@
 | `DashboardControls.tsx` | 카테고리 필터 드롭다운 + 환율 입력 | `ExchangeRateInput`, `getAllowedCategories` |
 | `AllocationChart.tsx` | 카테고리별 자산 배분 파이 차트 | `Asset`, `ExchangeRates`, `getCategoryName`, Recharts |
 | `CategorySummaryTable.tsx` | 카테고리별 합계/수익률/비중 테이블 | `Asset`, `ExchangeRates`, `getCategoryName` |
-| `ProfitLossChart.tsx` | 포트폴리오 손익 추이 라인 차트 (자산 필터 지원) | `Asset`, `PortfolioSnapshot`, Recharts |
+| `ProfitLossChart.tsx` | 포트폴리오 손익 추이 라인 차트 (자산 필터 지원, `globalPeriod`/`onPeriodChange` props로 PeriodSelector 내장) | `Asset`, `PortfolioSnapshot`, `GlobalPeriod`, `PeriodSelector`, Recharts |
 | `RebalancingTable.tsx` | 리밸런싱 목표 가중치 편집 테이블 (현재 vs 목표, 차이) | `useRebalancing`, `PortfolioContext` |
 | `TopBottomAssets.tsx` | 수익률 상위/하위 5개 종목 리스트 | `useTopBottomAssets`, `PortfolioContext` |
 | `GoldPremiumWidget.tsx` | 금 김치 프리미엄 표시 위젯 (KRX vs COMEX 비교) | `useGoldPremium`, `PortfolioContext` |
@@ -253,18 +253,21 @@ useMarketData.ts → handleRefreshWatchlistPrices() (관심종목 전용)
 
 ### 글로벌 기간 선택 흐름
 ```
-PeriodSelector (App.tsx 탭 바 우측)
+PeriodSelector (App.tsx 탭 바 우측 + SoldAssetsStats/ProfitLossChart 타이틀 우측)
     │
-    └─ PortfolioContext.globalPeriod (3M/6M/1Y/2Y/ALL, 기본 1Y)
+    └─ PortfolioContext.globalPeriod (THIS_MONTH/LAST_MONTH/1M/3M/6M/1Y/2Y/ALL, 기본 1Y)
          │   └─ localStorage 영속 ('asset-manager-global-period')
          │
-         ├─ DashboardView → portfolioHistory 필터 → ProfitLossChart
+         ├─ DashboardView → useGlobalPeriodDays(startDate+endDate) → portfolioHistory/filteredSellHistory 필터
+         │    ├─ SoldAssetsStats (수익통계, PeriodSelector 내장)
+         │    └─ ProfitLossChart (PeriodSelector 내장)
          ├─ AssetTrendChart → useHistoricalPriceData(displayDays) + 차트 데이터 slice
          ├─ AnalyticsView → SellAnalyticsPage(periodStartDate, periodEndDate)
          └─ WatchlistPage → AssetTrendChart (동일)
 ```
 - **탭 순서**: 대시보드 | 포트폴리오 | 관심종목 | 수익 통계 | 투자 가이드 | **설정** (가이드·설정 탭에서는 PeriodSelector 숨김)
 - **수익 통계 기간**: 자체 date input 삭제됨, 글로벌 기간 props로 전달받음
+- **`LAST_MONTH` 기간 필터**: `endDate`가 전월 말일이므로, 기간 필터 시 반드시 `startDate`와 `endDate` 모두 적용해야 함 (startDate만 체크하면 이번 달 데이터까지 포함됨)
 
 ### 차트 데이터 흐름
 ```
@@ -615,9 +618,9 @@ try {
 - **관련 파일**: `hooks/useBackup.ts`, `components/BackupSettingsSection.tsx`, `types/backup.ts`, `googleDriveService.ts`
 
 ### 글로벌 기간 선택기 (GlobalPeriod)
-- **상태 위치**: `PortfolioContext.ui.globalPeriod` (타입: `'3M' | '6M' | '1Y' | '2Y' | 'ALL'`)
+- **상태 위치**: `PortfolioContext.ui.globalPeriod` (타입: `'THIS_MONTH' | 'LAST_MONTH' | '1M' | '3M' | '6M' | '1Y' | '2Y' | 'ALL'`)
 - **기본값**: `'1Y'`, localStorage에 영속 (`'asset-manager-global-period'`)
-- **영향 범위**: 모든 탭에 일관 적용 — 대시보드(ProfitLossChart 필터), 차트(AssetTrendChart fetch 기간), 수익 통계(매도 기록 필터)
+- **영향 범위**: 모든 탭에 일관 적용 — 대시보드(수익통계 SoldAssetsStats + ProfitLossChart 필터, `endDate`도 필터 적용), 차트(AssetTrendChart fetch 기간), 수익 통계(매도 기록 필터)
 - **차트 fetch 계산**: `totalDays = displayDays + MA warm-up days` (MA200 + 2년 = 730 + 330 = 1060일 fetch)
 - **`ALL` 선택 시**: 최대 10년(3650일) fetch, 날짜 필터는 `'2000-01-01'`부터
 - **수익 통계 탭**: 자체 date input이 **삭제됨** — 반드시 `periodStartDate`/`periodEndDate` props로 전달받아야 함
@@ -704,7 +707,7 @@ console.error('[priceService] 시세 조회 실패:', error);
 - **마이그레이션**: `migrateData.ts`에서 이전 버전 데이터 자동 변환
 - **마이그레이션 멱등성**: 필드 이름 변경 시 기존 값 보존 필수 (`??` 연산자 사용, `=` 덮어쓰기 금지)
 - **구조 검증**: 필수 필드 존재 여부 확인 후 로드
-- **스냅샷 우선**: 매도 통계에서 스냅샷 필드(`originalPurchasePrice` 등) 우선 사용
+- **스냅샷 우선**: 수익통계에서 스냅샷 필드(`originalPurchasePrice` 등) 우선 사용
 - **스냅샷 수량 역산**: `currentValue / unitPrice`로 수량을 역산할 때, `unitPrice`가 0이나 undefined이면 반드시 스킵 (fallback 1 사용 금지 — 데이터 오염의 원인)
 - **로드 파이프라인 순서**: `repairCorruptedSnapshots` → `fillAllMissingDates` → `backfillWithRealPrices` (repair가 반드시 먼저)
 

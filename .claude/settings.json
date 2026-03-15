@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find /c/Users/beari/Desktop/dev/asset_manager -type f \\\\\\(-name *.py -o -name requirements.txt -o -name app.py -o -name main.py \\\\\\))",
+      "Bash(grep -r \"fetchBatchAssetPrices\\\\|/POST\\\\|POST.*tickers\" /c/Users/beari/Desktop/dev/asset_manager/services --include=*.ts)"
+    ]
+  }
+}
