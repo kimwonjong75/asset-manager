@@ -5,6 +5,37 @@
 
 const API_BASE_URL = 'https://asset-manager-887842923289.asia-northeast3.run.app';
 
+/** 백엔드 NaN → null 치환 후 파싱하는 헬퍼 */
+async function parseJsonSafe(response: Response): Promise<unknown> {
+  const rawText = await response.text();
+  return JSON.parse(rawText.replace(/\bNaN\b/g, 'null'));
+}
+
+/** HistoricalPriceData에서 null/비숫자 값 제거 */
+function stripNullPrices(data: Record<string, unknown>): Record<string, number> {
+  const clean: Record<string, number> = {};
+  for (const [date, val] of Object.entries(data)) {
+    if (typeof val === 'number' && isFinite(val)) {
+      clean[date] = val;
+    }
+  }
+  return clean;
+}
+
+/** HistoricalPriceResult 내부의 data/volume에서 null 제거 */
+function sanitizeResult(raw: Record<string, any>): Record<string, HistoricalPriceResult> {
+  const result: Record<string, HistoricalPriceResult> = {};
+  for (const [ticker, entry] of Object.entries(raw)) {
+    if (!entry || typeof entry !== 'object') continue;
+    result[ticker] = {
+      ...entry,
+      data: entry.data ? stripNullPrices(entry.data) : undefined,
+      volume: entry.volume ? stripNullPrices(entry.volume) : undefined,
+    };
+  }
+  return result;
+}
+
 export interface HistoricalPriceData {
   [date: string]: number; // { "2024-01-15": 72500, "2024-01-16": 73000, ... }
 }
@@ -43,8 +74,8 @@ export async function fetchStockHistoricalPrices(
       return {};
     }
 
-    const data = await response.json();
-    return data as Record<string, HistoricalPriceResult>;
+    const data = await parseJsonSafe(response);
+    return sanitizeResult(data as Record<string, any>);
   } catch (error) {
     console.error('[HistoricalPrice] Stock fetch error:', error);
     return {};
@@ -77,8 +108,8 @@ export async function fetchCryptoHistoricalPrices(
       return {};
     }
 
-    const data = await response.json();
-    return data as Record<string, HistoricalPriceResult>;
+    const data = await parseJsonSafe(response);
+    return sanitizeResult(data as Record<string, any>);
   } catch (error) {
     console.error('[HistoricalPrice] Crypto fetch error:', error);
     return {};
@@ -107,9 +138,9 @@ export async function fetchExchangeRateHistory(
       return {};
     }
 
-    const data = await response.json();
-    const result = data['USD/KRW'];
-    return result?.data || {};
+    const data = await parseJsonSafe(response);
+    const result = (data as Record<string, any>)['USD/KRW'];
+    return result?.data ? stripNullPrices(result.data) : {};
   } catch (error) {
     console.error('[HistoricalPrice] Exchange rate fetch error:', error);
     return {};

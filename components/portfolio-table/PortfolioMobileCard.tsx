@@ -12,6 +12,7 @@ interface PortfolioMobileCardProps {
   onEdit: (asset: Asset) => void;
   onSell?: (asset: Asset) => void;
   onBuy?: (asset: Asset) => void;
+  onRefreshOne?: (id: string) => void | Promise<void>;
   exchangeRates?: ExchangeRates;
   onTogglePin?: (id: string) => void;
   onMemoEdit?: (asset: Asset) => void;
@@ -36,6 +37,7 @@ const PortfolioMobileCard: React.FC<PortfolioMobileCardProps> = ({
   onEdit,
   onSell,
   onBuy,
+  onRefreshOne,
   exchangeRates,
   onTogglePin,
   onMemoEdit,
@@ -113,6 +115,7 @@ const PortfolioMobileCard: React.FC<PortfolioMobileCardProps> = ({
             anchorRef={menuAnchorRef}
             onClose={() => setMenuOpen(false)}
             items={[
+              ...(onRefreshOne ? [{ label: '가격 업데이트', onClick: () => onRefreshOne(asset.id), colorClass: 'text-blue-400' }] : []),
               { label: '수정', onClick: () => onEdit(asset) },
               ...(onBuy ? [{ label: '매수', onClick: () => onBuy(asset), colorClass: 'text-green-400' }] : []),
               ...(onSell ? [{ label: '매도', onClick: () => onSell(asset), colorClass: 'text-red-400' }] : []),

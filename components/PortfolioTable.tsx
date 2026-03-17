@@ -27,6 +27,8 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
   onSell,
   onBuy,
   isLoading,
+  onRefreshSelected,
+  onRefreshOne,
   sellAlertDropRate,
   onSellAlertDropRateChange,
   filterCategory,
@@ -202,9 +204,20 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
         </div>
         <div className="flex items-center gap-2">
           {selectedIds.size > 0 && (
-            <span className="bg-primary/20 text-primary px-2 py-1 rounded text-xs font-bold hidden sm:inline-block">
-              {selectedIds.size}개 선택됨
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="bg-primary/20 text-primary px-2 py-1 rounded text-xs font-bold hidden sm:inline-block">
+                {selectedIds.size}개 선택됨
+              </span>
+              {onRefreshSelected && (
+                <button
+                  onClick={() => onRefreshSelected(Array.from(selectedIds))}
+                  disabled={isLoading}
+                  className="bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white px-3 py-1 rounded text-xs font-medium transition"
+                >
+                  {isLoading ? '업데이트 중...' : '선택 업데이트'}
+                </button>
+              )}
+            </div>
           )}
 
           {/* 프리셋 드롭다운 */}
@@ -428,6 +441,7 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
                 onEdit={onEdit}
                 onSell={onSell}
                 onBuy={onBuy}
+                onRefreshOne={onRefreshOne}
                 exchangeRates={exchangeRates}
                 onTogglePin={actions.togglePinAsset}
                 onMemoEdit={(asset) => setMemoEditAsset(asset)}
@@ -451,6 +465,7 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
             onEdit={onEdit}
             onSell={onSell}
             onBuy={onBuy}
+            onRefreshOne={onRefreshOne}
             exchangeRates={exchangeRates}
             onTogglePin={actions.togglePinAsset}
             onMemoEdit={(asset) => setMemoEditAsset(asset)}

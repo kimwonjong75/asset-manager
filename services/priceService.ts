@@ -39,8 +39,10 @@ export async function fetchBatchAssetPrices(
       });
 
       if (!response.ok) throw new Error(`API Error: ${response.status}`);
-      
-      const data = await response.json();
+
+      // 백엔드가 NaN을 반환할 수 있으므로 텍스트로 받아 치환 후 파싱
+      const rawText = await response.text();
+      const data = JSON.parse(rawText.replace(/\bNaN\b/g, 'null'));
 
       // 응답 데이터를 평탄화 (Flat List)
       const items: any[] = []; 
