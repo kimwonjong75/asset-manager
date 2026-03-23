@@ -124,7 +124,7 @@ const AlertPopup: React.FC<AlertPopupProps> = ({ results, onClose, onAssetClick 
   };
 
   return (
-    <div className="fixed bottom-4 right-4 z-[60] w-96 flex flex-col shadow-2xl rounded-xl border border-gray-700 overflow-hidden">
+    <div className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-4 z-[60] w-auto sm:w-96 flex flex-col shadow-2xl rounded-xl border border-gray-700 overflow-hidden">
       {/* 헤더 — 클릭으로 최소화/복원 토글 */}
       <div
         className="bg-gray-900 px-4 py-3 flex items-center justify-between border-b border-gray-700 shrink-0 cursor-pointer select-none hover:bg-gray-800/60 transition-colors"

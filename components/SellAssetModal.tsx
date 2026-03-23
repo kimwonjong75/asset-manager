@@ -89,16 +89,16 @@ const SellAssetModal: React.FC = () => {
 
   return (
     <div 
-      className="fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center z-50" 
-      onClick={onClose} 
-      role="dialog" 
+      className="fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center z-50 p-4"
+      onClick={onClose}
+      role="dialog"
       aria-modal="true"
     >
-      <div 
-        className="bg-gray-800 p-6 rounded-lg shadow-xl w-full max-w-lg" 
+      <div
+        className="bg-gray-800 p-4 sm:p-6 rounded-lg shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 className="text-2xl font-bold text-white mb-6">
+        <h2 className="text-xl sm:text-2xl font-bold text-white mb-4 sm:mb-6">
           매도: {asset.customName?.trim() || asset.name}
         </h2>
         

@@ -68,7 +68,7 @@ const AppContent: React.FC = () => {
     return (
         <button
           onClick={onClick}
-          className={`py-4 px-1 text-center border-b-2 font-medium text-sm focus:outline-none transition-colors duration-300 ${isActive ? activeClasses : inactiveClasses}`}
+          className={`py-3 sm:py-4 px-1 text-center border-b-2 font-medium text-xs sm:text-sm whitespace-nowrap focus:outline-none transition-colors duration-300 ${isActive ? activeClasses : inactiveClasses}`}
         >
           {children}
         </button>
@@ -124,8 +124,8 @@ const AppContent: React.FC = () => {
           <>
             {/* 세션 만료 재로그인 배너 */}
             {status.needsReAuth && (
-              <div className="flex-shrink-0 bg-amber-600/90 text-white px-4 py-3 flex items-center justify-between">
-                <span className="text-sm font-medium">세션이 만료되었습니다. 데이터는 유지되지만 저장/불러오기가 일시 중단됩니다.</span>
+              <div className="flex-shrink-0 bg-amber-600/90 text-white px-3 sm:px-4 py-2 sm:py-3 flex items-center justify-between gap-2">
+                <span className="text-xs sm:text-sm font-medium">세션이 만료되었습니다. <span className="hidden sm:inline">데이터는 유지되지만 </span>저장/불러오기가 중단됩니다.</span>
                 <button
                   onClick={actions.signIn}
                   className="ml-4 bg-white text-amber-700 font-semibold px-4 py-1.5 rounded-md text-sm hover:bg-amber-50 transition flex-shrink-0"
@@ -136,24 +136,24 @@ const AppContent: React.FC = () => {
             )}
             <div className="flex-shrink-0 border-b border-gray-700">
               <div className="flex items-center justify-between">
-                <nav className="-mb-px flex space-x-8 overflow-x-auto" aria-label="Tabs">
+                <nav className="-mb-px flex space-x-3 sm:space-x-8 overflow-x-auto scrollbar-hide" aria-label="Tabs">
                   <TabButton tabId="dashboard" onClick={() => actions.setActiveTab('dashboard')}>대시보드</TabButton>
                   <TabButton tabId="portfolio" onClick={() => actions.setActiveTab('portfolio')}>포트폴리오</TabButton>
                   <TabButton tabId="watchlist" onClick={() => actions.setActiveTab('watchlist')}>관심종목</TabButton>
-                  <TabButton tabId="analytics" onClick={() => actions.setActiveTab('analytics')}>수익 통계</TabButton>
+                  <TabButton tabId="analytics" onClick={() => actions.setActiveTab('analytics')}><span className="sm:hidden">통계</span><span className="hidden sm:inline">수익 통계</span></TabButton>
                 </nav>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5 sm:gap-2">
                   <UpdateStatusIndicator isLoading={status.isLoading} successMessage={status.successMessage} />
                   {derived.alertResults.length > 0 && (
                     <button
                       onClick={actions.showBriefingPopup}
-                      className="flex items-center gap-1.5 text-xs text-amber-400 hover:text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 px-2.5 py-1.5 rounded-md transition-colors border border-amber-500/30"
+                      className="flex items-center gap-1 sm:gap-1.5 text-xs text-amber-400 hover:text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 px-1.5 sm:px-2.5 py-1.5 rounded-md transition-colors border border-amber-500/30"
                       title="투자 브리핑 다시 보기"
                     >
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
                       </svg>
-                      브리핑 {derived.alertResults.reduce((s, r) => s + r.matchedAssets.length, 0)}건
+                      <span className="hidden sm:inline">브리핑</span> {derived.alertResults.reduce((s, r) => s + r.matchedAssets.length, 0)}<span className="hidden sm:inline">건</span>
                     </button>
                   )}
                   <button
@@ -163,7 +163,7 @@ const AppContent: React.FC = () => {
                       }
                     }}
                     disabled={status.isLoading}
-                    className="flex items-center gap-1.5 text-xs text-gray-300 hover:text-white bg-gray-700 hover:bg-gray-600 px-2.5 py-1.5 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex items-center gap-1.5 text-xs text-gray-300 hover:text-white bg-gray-700 hover:bg-gray-600 px-1.5 sm:px-2.5 py-1.5 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     title="시세 업데이트"
                   >
                     {status.isLoading ? (
@@ -178,9 +178,11 @@ const AppContent: React.FC = () => {
                     )}
                     <span className="hidden sm:inline">{status.isLoading ? '중...' : '업데이트'}</span>
                   </button>
-                  {ui.activeTab !== 'guide' && ui.activeTab !== 'settings' && ui.activeTab !== 'analytics' && (
-                    <PeriodSelector value={ui.globalPeriod} onChange={actions.setGlobalPeriod} />
-                  )}
+                  <div className="hidden sm:flex items-center">
+                    {ui.activeTab !== 'guide' && ui.activeTab !== 'settings' && ui.activeTab !== 'analytics' && (
+                      <PeriodSelector value={ui.globalPeriod} onChange={actions.setGlobalPeriod} />
+                    )}
+                  </div>
                   <div className="flex items-center gap-1.5 border-l border-gray-700 pl-2 ml-1">
                     <button
                       onClick={() => actions.setActiveTab('guide')}
@@ -212,6 +214,12 @@ const AppContent: React.FC = () => {
                   </div>
                 </div>
               </div>
+              {/* 모바일 PeriodSelector - 탭바 아래 별도 행 */}
+              {ui.activeTab !== 'guide' && ui.activeTab !== 'settings' && ui.activeTab !== 'analytics' && (
+                <div className="sm:hidden py-2 overflow-x-auto scrollbar-hide">
+                  <PeriodSelector value={ui.globalPeriod} onChange={actions.setGlobalPeriod} />
+                </div>
+              )}
             </div>
 
             <main className="flex-1 overflow-y-auto min-h-0">

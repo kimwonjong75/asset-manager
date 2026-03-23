@@ -33,8 +33,8 @@ const DashboardControls: React.FC<DashboardControlsProps> = ({
     }, [assets, cats]);
 
     return (
-        <div className="bg-gray-800 p-4 rounded-lg shadow-lg flex items-center justify-between flex-wrap gap-4">
-            <div className="flex items-center gap-4" title="대시보드에 표시될 자산의 종류를 선택합니다.">
+        <div className="bg-gray-800 p-3 sm:p-4 rounded-lg shadow-lg flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
+            <div className="flex items-center gap-2 sm:gap-4" title="대시보드에 표시될 자산의 종류를 선택합니다.">
                 <label htmlFor="dashboard-filter" className="text-sm font-medium text-gray-300">
                     자산 구분 필터:
                 </label>

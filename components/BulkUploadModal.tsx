@@ -62,8 +62,8 @@ const BulkUploadModal: React.FC = () => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center z-50" onClick={resetModal} role="dialog" aria-modal="true">
-      <div className="bg-gray-800 p-6 rounded-lg shadow-xl w-full max-w-3xl" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center z-50 p-4" onClick={resetModal} role="dialog" aria-modal="true">
+      <div className="bg-gray-800 p-4 sm:p-6 rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         {view === 'instructions' && (
           <div>
             <h2 className="text-2xl font-bold text-white mb-4">CSV 일괄 등록</h2>

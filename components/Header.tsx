@@ -34,17 +34,17 @@ const Header: React.FC<HeaderProps> = ({
   }, [isSignedIn]);
 
   return (
-    <header className="mb-8">
+    <header className="mb-4 sm:mb-8">
       <div className="flex justify-between items-start sm:items-center flex-col sm:flex-row">
         <div>
-          <h1 className="text-4xl font-bold text-white tracking-tight" title="나의 자산 포트폴리오를 관리하는 대시보드입니다.">
+          <h1 className="text-2xl sm:text-4xl font-bold text-white tracking-tight" title="나의 자산 포트폴리오를 관리하는 대시보드입니다.">
             KIM'S 퀸트자산관리
           </h1>
-          <p className="text-gray-400 mt-2" title="계량적 투자 전략을 기반으로 자산을 분석하고 추적합니다.">
+          <p className="text-gray-400 mt-1 sm:mt-2 text-sm sm:text-base hidden sm:block" title="계량적 투자 전략을 기반으로 자산을 분석하고 추적합니다.">
             퀀트 투자를 위한 포트폴리오 대시보드
           </p>
         </div>
-        <div className="flex items-center justify-end flex-wrap gap-2 mt-4 sm:mt-0">
+        <div className="flex items-center justify-end flex-wrap gap-2 mt-2 sm:mt-0">
           {isSignedIn ? (
             <div className="flex items-center gap-2">
               <span className="text-sm text-gray-400" title={`Google 계정으로 로그인됨: ${userEmail}`}>
@@ -77,27 +77,30 @@ const Header: React.FC<HeaderProps> = ({
             <>
               <button
                 onClick={onOpenAddAssetModal}
-                className="bg-primary hover:bg-primary-dark text-white font-bold py-2 px-4 rounded-md transition duration-300"
+                className="bg-primary hover:bg-primary-dark text-white font-bold py-1.5 px-3 sm:py-2 sm:px-4 rounded-md transition duration-300 text-sm sm:text-base"
                 title="새로운 자산을 포트폴리오에 추가합니다."
               >
-                신규 자산 추가
+                <span className="sm:hidden">추가</span>
+                <span className="hidden sm:inline">신규 자산 추가</span>
               </button>
               <button
                 onClick={onSave}
-                className="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-2 px-4 rounded-md transition duration-300"
+                className="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-1.5 px-3 sm:py-2 sm:px-4 rounded-md transition duration-300 text-sm sm:text-base"
                 title="현재 포트폴리오를 Google Drive에 즉시 저장합니다."
               >
-                즉시 저장
+                <span className="sm:hidden">저장</span>
+                <span className="hidden sm:inline">즉시 저장</span>
               </button>
               
               {/* 고급 기능 드롭다운 메뉴 */}
               <div className="relative">
                 <button
                   onClick={() => setShowAdvancedMenu(!showAdvancedMenu)}
-                  className="bg-gray-700 hover:bg-gray-600 text-white font-medium py-2 px-4 rounded-md transition duration-300 flex items-center gap-1"
+                  className="bg-gray-700 hover:bg-gray-600 text-white font-medium py-1.5 px-3 sm:py-2 sm:px-4 rounded-md transition duration-300 flex items-center gap-1 text-sm sm:text-base"
                   title="백업 및 일괄 등록 기능 메뉴"
                 >
-                  고급 기능
+                  <span className="sm:hidden">더보기</span>
+                  <span className="hidden sm:inline">고급 기능</span>
                   <svg className={`w-4 h-4 transition-transform ${showAdvancedMenu ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                   </svg>

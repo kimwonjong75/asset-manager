@@ -5,6 +5,7 @@ import { Asset, Currency, CURRENCY_SYMBOLS, WatchlistItem, ExchangeRates } from 
 import { getAllowedCategories, getCategoryName, type CategoryDefinition } from '../types/category';
 import AssetTrendChart from './AssetTrendChart';
 import { useOnClickOutside } from '../hooks/useOnClickOutside';
+import WatchlistMobileCard from './watchlist/WatchlistMobileCard';
 
 interface WatchlistPageProps {
   watchlist: WatchlistItem[];
@@ -96,10 +97,10 @@ const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, portfolioAsset
   return (
     <div className="space-y-6">
       {/* 툴바 */}
-      <div className="bg-gray-800 p-4 rounded-lg shadow-lg flex items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <div className="relative">
-            <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="이름/티커/메모 검색" className="bg-gray-700 border border-gray-600 rounded-md py-2 pl-10 pr-10 text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary w-64" />
+      <div className="bg-gray-800 p-3 sm:p-4 rounded-lg shadow-lg flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
+        <div className="flex items-center gap-2 sm:gap-4">
+          <div className="relative flex-1 sm:flex-none">
+            <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="이름/티커/메모 검색" className="bg-gray-700 border border-gray-600 rounded-md py-2 pl-10 pr-10 text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary w-full sm:w-64" />
             <svg className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
@@ -107,7 +108,7 @@ const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, portfolioAsset
           {onTogglePin && (
             <button
               onClick={() => setShowPinnedOnly(!showPinnedOnly)}
-              className={`text-xl leading-none py-2 px-2 rounded-md transition-colors ${
+              className={`text-xl leading-none py-2 px-2 rounded-md transition-colors flex-shrink-0 ${
                 showPinnedOnly
                   ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/50'
                   : 'text-gray-500 hover:text-yellow-400/60 border border-transparent'
@@ -118,7 +119,7 @@ const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, portfolioAsset
             </button>
           )}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto scrollbar-hide">
           <button onClick={() => {
             if (filtered.length === 0) return;
             const ids = filtered.map(w => w.id);
@@ -126,7 +127,7 @@ const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, portfolioAsset
             const selectAll = !(filtered.every(w => selectedIds.has(w.id)));
             if (selectAll) ids.forEach(id => next.add(id)); else ids.forEach(id => next.delete(id));
             setSelectedIds(next);
-          }} className="border border-gray-600 text-gray-300 hover:bg-gray-700 hover:text-white font-medium py-2 px-3 rounded-md transition duration-300">
+          }} className="border border-gray-600 text-gray-300 hover:bg-gray-700 hover:text-white font-medium py-2 px-2 sm:px-3 rounded-md transition duration-300 text-xs sm:text-sm whitespace-nowrap">
             {allSelected ? '전체 해제' : '전체 선택'}
           </button>
           <button onClick={() => {
@@ -134,28 +135,29 @@ const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, portfolioAsset
             if (ids.length === 0) return;
             if (onBulkDelete) onBulkDelete(ids); else ids.forEach(id => onDelete(id));
             setSelectedIds(new Set());
-          }} disabled={selectedIds.size === 0} className="border border-gray-600 text-red-400 hover:bg-gray-700 font-medium py-2 px-4 rounded-md transition duration-300 disabled:text-gray-500 disabled:border-gray-700 disabled:cursor-not-allowed">
-            선택 삭제
+          }} disabled={selectedIds.size === 0} className="border border-gray-600 text-red-400 hover:bg-gray-700 font-medium py-2 px-2 sm:px-4 rounded-md transition duration-300 disabled:text-gray-500 disabled:border-gray-700 disabled:cursor-not-allowed text-xs sm:text-sm whitespace-nowrap">
+            <span className="sm:hidden">삭제</span>
+            <span className="hidden sm:inline">선택 삭제</span>
           </button>
           <button
             onClick={onRefresh}
             disabled={isLoading || !onRefresh}
-            className="border border-gray-600 text-gray-300 hover:bg-gray-700 hover:text-white font-medium py-2 px-3 rounded-md transition duration-300 disabled:text-gray-500 disabled:border-gray-700 disabled:cursor-not-allowed flex items-center gap-1"
+            className="border border-gray-600 text-gray-300 hover:bg-gray-700 hover:text-white font-medium py-2 px-2 sm:px-3 rounded-md transition duration-300 disabled:text-gray-500 disabled:border-gray-700 disabled:cursor-not-allowed flex items-center gap-1"
             title="시세 업데이트"
           >
             <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
             <span className="hidden sm:inline">업데이트</span>
           </button>
-          <button onClick={onOpenAddModal} className="bg-primary hover:bg-primary-dark text-white font-medium py-2 px-4 rounded-md transition duration-300 flex items-center">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <button onClick={onOpenAddModal} className="bg-primary hover:bg-primary-dark text-white font-medium py-2 px-2 sm:px-4 rounded-md transition duration-300 flex items-center whitespace-nowrap">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 sm:mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
             </svg>
-            <span>종목추가</span>
+            <span className="hidden sm:inline">종목추가</span>
           </button>
           <div className="relative">
             <button
               onClick={() => setOpenFilterOptions(prev => !prev)}
-              className="border border-gray-600 text-gray-300 hover:bg-gray-700 hover:text-white font-medium py-2 px-3 rounded-md transition duration-300 flex items-center gap-2"
+              className="border border-gray-600 text-gray-300 hover:bg-gray-700 hover:text-white font-medium py-2 px-2 sm:px-3 rounded-md transition duration-300 flex items-center gap-2"
               title="필터"
             >
               <Filter className="h-4 w-4" />
@@ -185,8 +187,8 @@ const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, portfolioAsset
         </div>
       </div>
 
-      {/* 테이블 */}
-      <div className="w-full px-0 sm:px-0">
+      {/* 데스크톱 테이블 */}
+      <div className="hidden md:block w-full">
         <table className="w-full text-sm text-left text-gray-400 table-auto">
           <thead className="text-xs text-gray-300 uppercase bg-gray-700 select-none sticky top-0 z-10">
             <tr>
@@ -310,6 +312,30 @@ const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, portfolioAsset
             )}
           </tbody>
         </table>
+      </div>
+
+      {/* 모바일 카드 뷰 */}
+      <div className="block md:hidden bg-gray-800 rounded-lg shadow-lg overflow-hidden">
+        {filtered.length > 0 ? filtered.map(w => (
+          <WatchlistMobileCard
+            key={w.id}
+            item={w}
+            isSelected={selectedIds.has(w.id)}
+            onToggleSelect={(id) => {
+              const next = new Set<string>(selectedIds);
+              if (next.has(id)) next.delete(id); else next.add(id);
+              setSelectedIds(next);
+            }}
+            onDelete={onDelete}
+            onOpenEditModal={onOpenEditModal}
+            onTogglePin={onTogglePin}
+            categories={categories}
+            exchangeRates={exchangeRates}
+            isPortfolioHeld={portfolioTickers.has(w.ticker.toUpperCase())}
+          />
+        )) : (
+          <div className="text-center py-8 text-gray-500">관심 종목을 추가해주세요.</div>
+        )}
       </div>
     </div>
   );

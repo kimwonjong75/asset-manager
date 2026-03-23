@@ -11,6 +11,8 @@
   body {
     @apply bg-gray-900 text-gray-200 min-h-screen;
     margin: 0;
+    overscroll-behavior: contain;
+    -webkit-tap-highlight-color: transparent;
   }
 
   #root {
@@ -25,4 +27,25 @@
 
 .animate-slide-up {
   animation: slide-up 0.2s ease-out;
+}
+
+/* 모바일 수평 스크롤 시 스크롤바 숨김 */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* 모바일 input focus 시 자동 확대 방지 (Android) */
+@media (max-width: 640px) {
+  input[type="text"],
+  input[type="number"],
+  input[type="date"],
+  input[type="search"],
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
 }

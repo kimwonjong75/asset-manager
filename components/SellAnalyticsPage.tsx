@@ -229,30 +229,30 @@ const SellAnalyticsPage: React.FC<SellAnalyticsPageProps> = ({ assets, sellHisto
 
   return (
     <div className="space-y-6">
-      <div className="bg-gray-800 p-4 rounded-lg shadow-lg space-y-3">
+      <div className="bg-gray-800 p-3 sm:p-4 rounded-lg shadow-lg space-y-3">
         {/* 기간 선택 */}
-        <div className="flex items-center gap-3 flex-wrap">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
           <div className="flex items-center gap-1.5">
             <input
               type="date"
               value={customStartDate || periodStartDate}
               onChange={e => { setCustomStartDate(e.target.value); setSelectedPreset(null); }}
-              className="bg-gray-700 border border-gray-600 rounded-md py-1.5 px-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              className="bg-gray-700 border border-gray-600 rounded-md py-1.5 px-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary flex-1 sm:flex-none"
             />
             <span className="text-gray-400 text-sm">~</span>
             <input
               type="date"
               value={customEndDate || periodEndDate}
               onChange={e => { setCustomEndDate(e.target.value); setSelectedPreset(null); }}
-              className="bg-gray-700 border border-gray-600 rounded-md py-1.5 px-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              className="bg-gray-700 border border-gray-600 rounded-md py-1.5 px-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary flex-1 sm:flex-none"
             />
           </div>
-          <div className="flex gap-1">
+          <div className="flex gap-1 overflow-x-auto scrollbar-hide">
             {(Object.keys(PERIOD_DAYS) as PeriodPreset[]).map(preset => (
               <button
                 key={preset}
                 onClick={() => { setSelectedPreset(preset); setCustomStartDate(''); setCustomEndDate(''); }}
-                className={`px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                className={`px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors whitespace-nowrap ${
                   selectedPreset === preset
                     ? 'bg-primary text-white'
                     : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
@@ -264,8 +264,8 @@ const SellAnalyticsPage: React.FC<SellAnalyticsPageProps> = ({ assets, sellHisto
           </div>
         </div>
         {/* 필터 */}
-        <div className="flex items-center justify-between flex-wrap gap-3">
-          <div className="flex items-center gap-3 flex-wrap">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
             <div className="relative">
               <select value={grouping} onChange={e => setGrouping(e.target.value as Grouping)} className="bg-gray-700 border border-gray-600 rounded-md py-1.5 pl-3 pr-8 text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary appearance-none">
                 <option value="daily">일별</option>
@@ -288,8 +288,8 @@ const SellAnalyticsPage: React.FC<SellAnalyticsPageProps> = ({ assets, sellHisto
                 <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
               </div>
             </div>
-            <div className="relative">
-              <input type="text" value={pendingSearch} onChange={e => setPendingSearch(e.target.value)} placeholder="종목명/티커 검색" className="bg-gray-700 border border-gray-600 rounded-md py-1.5 pl-9 pr-3 text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary w-48" onKeyDown={e => { if (e.key === 'Enter') { setSearch(pendingSearch); setCategory(pendingCategory); } }} />
+            <div className="relative flex-1 sm:flex-none">
+              <input type="text" value={pendingSearch} onChange={e => setPendingSearch(e.target.value)} placeholder="종목명/티커 검색" className="bg-gray-700 border border-gray-600 rounded-md py-1.5 pl-9 pr-3 text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary w-full sm:w-48" onKeyDown={e => { if (e.key === 'Enter') { setSearch(pendingSearch); setCategory(pendingCategory); } }} />
               <svg className="absolute left-2.5 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
@@ -317,7 +317,7 @@ const SellAnalyticsPage: React.FC<SellAnalyticsPageProps> = ({ assets, sellHisto
               document.body.removeChild(a);
               URL.revokeObjectURL(url);
             }}
-            className="bg-gray-700 hover:bg-gray-600 text-gray-300 font-medium py-1.5 px-3 rounded-md text-sm transition duration-300"
+            className="bg-gray-700 hover:bg-gray-600 text-gray-300 font-medium py-1.5 px-3 rounded-md text-sm transition duration-300 whitespace-nowrap"
             title="현재 필터 기준의 매도 통계 데이터를 CSV로 내보냅니다."
           >
             CSV 내보내기
@@ -332,8 +332,8 @@ const SellAnalyticsPage: React.FC<SellAnalyticsPageProps> = ({ assets, sellHisto
         <StatCard title="매도 횟수" value={String(overview.soldCount)} tooltip="거래 수" />
       </div>
 
-      <div className="bg-gray-800 p-6 rounded-lg shadow-lg h-96">
-        <h3 className="text-xl font-bold text-white mb-4">기간별 수익 추이</h3>
+      <div className="bg-gray-800 p-4 sm:p-6 rounded-lg shadow-lg h-72 sm:h-96">
+        <h3 className="text-lg sm:text-xl font-bold text-white mb-3 sm:mb-4">기간별 수익 추이</h3>
         {trendData.length > 0 ? (
           <ResponsiveContainer width="100%" height="85%">
             <LineChart data={trendData} margin={{ top: 5, right: 20, left: 20, bottom: 5 }}>
@@ -353,8 +353,8 @@ const SellAnalyticsPage: React.FC<SellAnalyticsPageProps> = ({ assets, sellHisto
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-gray-800 p-6 rounded-lg shadow-lg">
-          <h3 className="text-xl font-bold text-white mb-4">종목별 수익률 순위(상위 10)</h3>
+        <div className="bg-gray-800 p-4 sm:p-6 rounded-lg shadow-lg">
+          <h3 className="text-lg sm:text-xl font-bold text-white mb-3 sm:mb-4">종목별 수익률 순위(상위 10)</h3>
           {rankingData.length > 0 ? (
             <ResponsiveContainer width="100%" height={300}>
               <BarChart data={rankingData} layout="vertical" margin={{ left: 40, right: 20 }}>
@@ -374,8 +374,8 @@ const SellAnalyticsPage: React.FC<SellAnalyticsPageProps> = ({ assets, sellHisto
           )}
         </div>
 
-        <div className="bg-gray-800 p-6 rounded-lg shadow-lg">
-          <h3 className="text-xl font-bold text-white mb-4">손익 분포(히스토그램)</h3>
+        <div className="bg-gray-800 p-4 sm:p-6 rounded-lg shadow-lg">
+          <h3 className="text-lg sm:text-xl font-bold text-white mb-3 sm:mb-4">손익 분포(히스토그램)</h3>
           {histogramData.length > 0 ? (
             <ResponsiveContainer width="100%" height={300}>
               <BarChart data={histogramData}>
@@ -393,21 +393,21 @@ const SellAnalyticsPage: React.FC<SellAnalyticsPageProps> = ({ assets, sellHisto
       </div>
 
       {/* 매도 기록 리스트 */}
-      <div className="bg-gray-800 p-6 rounded-lg shadow-lg">
-        <h3 className="text-xl font-bold text-white mb-4">매도 기록</h3>
+      <div className="bg-gray-800 p-4 sm:p-6 rounded-lg shadow-lg">
+        <h3 className="text-lg sm:text-xl font-bold text-white mb-3 sm:mb-4">매도 기록</h3>
         {recordWithCalc.length > 0 ? (
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-left">
               <thead>
                 <tr className="border-b border-gray-700 text-gray-400">
-                  <th className="py-3 px-3">매도일</th>
-                  <th className="py-3 px-3">종목명</th>
-                  <th className="py-3 px-3">티커</th>
-                  <th className="py-3 px-3 text-right">수량</th>
-                  <th className="py-3 px-3 text-right">매도금액</th>
-                  <th className="py-3 px-3 text-right">매수금액</th>
-                  <th className="py-3 px-3 text-right">실현손익</th>
-                  <th className="py-3 px-3 text-right">수익률</th>
+                  <th className="py-3 px-2 sm:px-3">매도일</th>
+                  <th className="py-3 px-2 sm:px-3">종목명</th>
+                  <th className="py-3 px-3 hidden sm:table-cell">티커</th>
+                  <th className="py-3 px-3 text-right hidden sm:table-cell">수량</th>
+                  <th className="py-3 px-3 text-right hidden sm:table-cell">매도금액</th>
+                  <th className="py-3 px-3 text-right hidden sm:table-cell">매수금액</th>
+                  <th className="py-3 px-2 sm:px-3 text-right">실현손익</th>
+                  <th className="py-3 px-2 sm:px-3 text-right">수익률</th>
                 </tr>
               </thead>
               <tbody>
@@ -419,16 +419,16 @@ const SellAnalyticsPage: React.FC<SellAnalyticsPageProps> = ({ assets, sellHisto
                     const isProfit = r.realized >= 0;
                     return (
                       <tr key={r.id || idx} className="border-b border-gray-700/50 hover:bg-gray-700/30 transition-colors">
-                        <td className="py-3 px-3 text-gray-300">{r.sellDate}</td>
-                        <td className="py-3 px-3 text-white font-medium">{r.name}</td>
-                        <td className="py-3 px-3 text-gray-400">{r.ticker}</td>
-                        <td className="py-3 px-3 text-right text-gray-300">{r.sellQuantity.toLocaleString()}</td>
-                        <td className="py-3 px-3 text-right text-gray-300">{formatKRW(sellTotal)}</td>
-                        <td className="py-3 px-3 text-right text-gray-300">{r.purchaseKRW > 0 ? formatKRW(r.purchaseKRW) : '-'}</td>
-                        <td className={`py-3 px-3 text-right font-semibold ${isProfit ? 'text-green-400' : 'text-red-400'}`}>
+                        <td className="py-3 px-2 sm:px-3 text-gray-300 text-xs sm:text-sm">{r.sellDate}</td>
+                        <td className="py-3 px-2 sm:px-3 text-white font-medium text-xs sm:text-sm">{r.name}</td>
+                        <td className="py-3 px-3 text-gray-400 hidden sm:table-cell">{r.ticker}</td>
+                        <td className="py-3 px-3 text-right text-gray-300 hidden sm:table-cell">{r.sellQuantity.toLocaleString()}</td>
+                        <td className="py-3 px-3 text-right text-gray-300 hidden sm:table-cell">{formatKRW(sellTotal)}</td>
+                        <td className="py-3 px-3 text-right text-gray-300 hidden sm:table-cell">{r.purchaseKRW > 0 ? formatKRW(r.purchaseKRW) : '-'}</td>
+                        <td className={`py-3 px-2 sm:px-3 text-right font-semibold text-xs sm:text-sm ${isProfit ? 'text-green-400' : 'text-red-400'}`}>
                           {r.purchaseKRW > 0 ? formatKRW(r.realized) : '-'}
                         </td>
-                        <td className={`py-3 px-3 text-right font-semibold ${isProfit ? 'text-green-400' : 'text-red-400'}`}>
+                        <td className={`py-3 px-2 sm:px-3 text-right font-semibold text-xs sm:text-sm ${isProfit ? 'text-green-400' : 'text-red-400'}`}>
                           {r.purchaseKRW > 0 ? `${r.returnPct.toFixed(2)}%` : '-'}
                         </td>
                       </tr>

@@ -140,9 +140,9 @@ const EditAssetModal: React.FC = () => {
   const labelClasses = "block text-sm font-medium text-gray-300 mb-1";
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center z-50" onClick={handleClose} role="dialog" aria-modal="true">
-      <div className="bg-gray-800 p-6 rounded-lg shadow-xl w-full max-w-lg" onClick={(e) => e.stopPropagation()}>
-        <h2 className="text-2xl font-bold text-white mb-6">자산 수정: {(asset?.customName?.trim() || asset?.name)}</h2>
+    <div className="fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center z-50 p-4" onClick={handleClose} role="dialog" aria-modal="true">
+      <div className="bg-gray-800 p-4 sm:p-6 rounded-lg shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+        <h2 className="text-xl sm:text-2xl font-bold text-white mb-4 sm:mb-6">자산 수정: {(asset?.customName?.trim() || asset?.name)}</h2>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label htmlFor="category-edit" className={labelClasses}>자산 구분</label>
@@ -165,7 +165,7 @@ const EditAssetModal: React.FC = () => {
             />
             <p className="text-xs text-gray-400 mt-1">티커/거래소·가격 계산에는 영향이 없고 화면 표시 및 내보내기에만 적용됩니다.</p>
           </div>
-           <div className="grid grid-cols-2 gap-4">
+           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className={labelClasses}>거래소/시장</label>
               <input value={formData.exchange} readOnly className="w-full bg-gray-600 border border-gray-500 rounded-md py-2 px-3 text-gray-300 cursor-not-allowed" />
@@ -208,7 +208,7 @@ const EditAssetModal: React.FC = () => {
               </select>
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label htmlFor="purchaseDate-edit" className={labelClasses}>매수일</label>
               <input id="purchaseDate-edit" name="purchaseDate" type="date" value={formData.purchaseDate} onChange={handleChange} className={inputClasses} required />
