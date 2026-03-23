@@ -81,7 +81,7 @@
 |------|------|------------------|
 | `portfolioCalculations.ts` | 포트폴리오 계산 유틸 | 전역 (계산 결과 변경) |
 | `historyUtils.ts` | 히스토리 보간/백필/기존 스냅샷 종가 교정/오염 데이터 교정 | `usePortfolioData` |
-| `maCalculations.ts` | SMA/RSI 계산, 차트 데이터 빌드. `MAChartDataPoint`의 가격 키는 `'현재가'` (이전 `'가격'` 아님). `buildChartDataWithMA()`는 3번째 파라미터로 `volumeData`를 받아 `'거래량'` 키에 매핑 | `AssetTrendChart`, `useEnrichedIndicators`, `geminiService` |
+| `maCalculations.ts` | SMA/RSI 계산. `calculateSMA(sortedPrices, period)` — 날짜 오름차순 `{date, price}[]`과 기간을 받아 `(number|null)[]` 반환. `buildChartDataWithMA()`는 Recharts 전용 데이터 빌더로 현재 미사용 (Lightweight Charts 전환으로 AssetTrendChart가 `calculateSMA` 직접 호출) | `AssetTrendChart`(`calculateSMA`), `useEnrichedIndicators`, `geminiService` |
 | `signalUtils.ts` | 신호/RSI 배지 렌더링 | `PortfolioTableRow` |
 | `smartFilterLogic.ts` | 스마트 필터 매칭 (그룹 내 OR, 그룹 간 AND), enriched 지표 참조, `PRICE_BELOW_*` 판정 포함. 거래량 필터(`VOLUME_SURGE/HIGH/LOW`)는 `indicators.volume_ratio` 사용. **`matchesSingleFilter()` export** — 알림 규칙 체커에서도 재활용 | `PortfolioTable`, `alertChecker.ts` |
 | `alertChecker.ts` | 알림 규칙별 자산 매칭 (규칙 내 필터 AND 조합), 매칭 결과 구조화 반환 (`dailyChange`/`returnPct`/`dropFromHigh`/`rsi` + `details` 문자열). **당일 변동률은 `asset.metrics.yesterdayChange` 사용** (`changeRate` 사용 금지). **`checkBuyRulesForWatchlist()` export**: 관심종목을 pseudo-EnrichedAsset으로 변환(`watchlistToPseudoAsset`)하여 매수 규칙만 실행, 결과에 `source: 'watchlist'` 표시 | `smartFilterLogic.matchesSingleFilter`, `types/alertRules`, `types/index`(WatchlistItem, Currency) | `useAutoAlert`, 프리셋 버튼 |
@@ -152,7 +152,7 @@
 | 파일 | 책임 | 의존 |
 |------|------|------|
 | `PortfolioTable.tsx` | 포트폴리오 메인 테이블 — 정렬, 검색, 스마트 필터, 핀 필터, 메모 편집 통합. `memoEditAsset` 로컬 상태 관리. 프리셋 버튼으로 AlertRule→SmartFilterState 변환. `onRefreshSelected`(선택 업데이트 버튼)·`onRefreshOne`(개별 행 전달) props 수신 | `portfolio-table/*`, `SmartFilterPanel`, `MemoEditPopup`, `PortfolioContext` |
-| `AssetTrendChart.tsx` | Recharts ComposedChart — 가격 Line + MA 오버레이 + 거래량 Bar + 매수평균선, localStorage 기반 MA/VOL 토글 | `useHistoricalPriceData`, `maCalculations`, `PortfolioSnapshot` |
+| `AssetTrendChart.tsx` | **Lightweight Charts (Canvas)** — 가격 LineSeries + MA 오버레이 + 거래량 HistogramSeries + 매수평균선(createPriceLine), localStorage 기반 MA/VOL 토글. 모바일 핀치 줌·드래그 팬·마우스 휠 줌 내장. ResizeObserver로 반응형. 커스텀 HTML 툴팁(subscribeCrosshairMove). MA는 `calculateSMA` 직접 호출 | `useHistoricalPriceData`, `maCalculations`(`calculateSMA`), `PortfolioSnapshot` |
 | `SellAnalyticsPage.tsx` | 매도 기록 분석 대시보드 (기간별 집계, 카테고리 필터). `sellHistory[]`와 `asset.sellTransactions[]` 합산 시 `id` 기반 중복 제거. **모바일 대응**: 필터 `flex-col sm:flex-row`, 프리셋 버튼 `overflow-x-auto`, 차트 `h-72 sm:h-96`, 매도 기록 테이블 4컬럼(티커/수량/매도금액/매수금액) `hidden sm:table-cell` | `SellRecord`, `CategoryDefinition`, Recharts |
 | `PortfolioAssistant.tsx` | AI 어시스턴트 FAB + 채팅 패널 (Gemini 스트리밍 응답) | `geminiService`, `PortfolioContext.derived.enrichedMap` |
 
@@ -276,25 +276,28 @@ PeriodSelector (App.tsx 탭 바 우측(데스크탑) / 탭 바 아래 별도 행
 
 ### 차트 데이터 흐름
 ```
-AssetTrendChart.tsx (ComposedChart — Line+Bar 동시 지원)
+AssetTrendChart.tsx (Lightweight Charts — Canvas 기반, 핀치 줌/드래그 팬 내장)
     │
     ├─ ticker/exchange 있는 자산 (주식, 코인 등)
     │   └─ useHistoricalPriceData.ts (displayDays + MA warm-up 합산 fetch)
     │        └─ historicalPriceService.ts → /history 또는 /upbit/history
-    │             ├─ historicalPrices → buildChartDataWithMA() → Line 차트 + MA 오버레이
-    │             └─ historicalVolumes → buildChartDataWithMA(volumeData) → Bar 차트 (하단 1/4)
+    │             ├─ historicalPrices → calculateSMA() 직접 호출 → LineSeries + MA LineSeries
+    │             └─ historicalVolumes → HistogramSeries (별도 priceScale, 하단 20%)
     │                  └─ displayDays 기준으로 표시 범위 slice (MA warm-up 구간 제거)
     │
     └─ 현금 등 ticker 없는 자산
         └─ PortfolioSnapshot 기반 (폴백, 글로벌 기간으로 필터)
 ```
-- **차트 컴포넌트**: Recharts `ComposedChart` 사용 (이전 `LineChart` 아님). 가격 `<Line>`과 거래량 `<Bar>`를 동시 렌더링
-- **이중 Y축**: 좌측 `yAxisId="price"` (가격), 우측 `yAxisId="volume"` (거래량, 숨김, `domain=[0, max*4]`로 하단 1/4에 표시)
-- **차트 dataKey**: `'현재가'` (가격 Line), `'거래량'` (거래량 Bar) — `MAChartDataPoint` 키와 일치 필수
-- **VOL 토글**: MA 토글 영역에 거래량 표시/숨김 버튼 추가 (기본: 표시)
-- **매수평균선**: `purchasePrice` prop → `ReferenceLine` (금색 점선, 통화 토글 연동). 관심종목(WatchlistPage)은 `purchasePrice` 없으므로 자동 생략
-- **범례 위치**: Recharts `<Legend>` 미사용 → MA 토글 칩 라인 오른쪽에 커스텀 HTML 범례 (현재가 + 활성 MA + 매수평균)
-- **X축 연도 표기**: 커스텀 tick 함수에서 `payload.index`(데이터 배열 인덱스) 사용 필수. **top-level `index`는 렌더된 tick 순번이므로 사용 금지**. `renderedYearsRef`로 각 연도 첫 등장 tick에만 표시
+- **차트 라이브러리**: `lightweight-charts` (TradingView 오픈소스, Canvas 렌더링). 이전 Recharts(SVG) 대비 대량 데이터 성능 우수
+- **터치/마우스 인터랙션**: 핀치 줌(`handleScale.pinch`), 드래그 팬(`handleScroll.horzTouchDrag`), 마우스 휠 줌(`handleScale.mouseWheel`) — 모두 내장, zero-config
+- **시리즈 구조**: 가격 `LineSeries` + MA별 `LineSeries` + 거래량 `HistogramSeries`(별도 `priceScaleId='volume'`, `scaleMargins: {top:0.8, bottom:0}`)
+- **차트 인스턴스 생명주기**: `showVolume`, `enabledConfigs`, `displayCurrency` 변경 시 차트 재생성 (useEffect cleanup → `chart.remove()`). 데이터만 변경 시 `series.setData()`로 업데이트 (재생성 없음)
+- **VOL 토글**: MA 토글 영역에 거래량 표시/숨김 버튼 (기본: 표시). 토글 시 차트 인스턴스 재생성
+- **매수평균선**: `purchasePrice` prop → `priceSeries.createPriceLine()` (금색 점선, 통화 토글 연동). 관심종목은 `purchasePrice` 없으므로 자동 생략
+- **커스텀 툴팁**: `subscribeCrosshairMove` → 절대 위치 HTML div (pointer-events-none). 뷰포트 경계 보정 포함
+- **범례 위치**: MA 토글 칩 라인 오른쪽에 커스텀 HTML 범례 (현재가 + 활성 MA + 매수평균)
+- **리사이즈 대응**: `ResizeObserver`로 컨테이너 크기 변경 감지 → `chart.applyOptions({width, height})`
+- **모바일 레이아웃**: 차트 래퍼 패딩 최소화 (`pb-2`, 좌우 패딩 없음) → 가로 풀와이드
 
 ### 스마트 필터 확장 지표 흐름
 ```
