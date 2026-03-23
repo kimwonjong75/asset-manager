@@ -95,6 +95,8 @@ export interface SmartFilterChipDef {
   pairKey?: SmartFilterKey;
   /** pairKey 활성 시 사용할 색상 */
   pairColorClass?: string;
+  /** 툴팁 설명 */
+  description?: string;
 }
 
 /** 초기 필터 상태 */

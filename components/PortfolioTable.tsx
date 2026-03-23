@@ -478,7 +478,9 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
       {/* 메모 편집 팝업 */}
       {memoEditAsset && (
         <MemoEditPopup
-          asset={memoEditAsset}
+          title={memoEditAsset.customName?.trim() || memoEditAsset.name}
+          memo={memoEditAsset.memo || ''}
+          onSave={(memo) => actions.updateAsset({ ...memoEditAsset, memo: memo || undefined })}
           onClose={() => setMemoEditAsset(null)}
         />
       )}

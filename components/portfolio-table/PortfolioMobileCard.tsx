@@ -5,6 +5,7 @@ import { formatOriginalCurrency, formatKRW, formatProfitLoss, getChangeColor } f
 import ActionMenu from '../common/ActionMenu';
 import { MoreHorizontal } from 'lucide-react';
 import AssetTrendChart from '../AssetTrendChart';
+import Tooltip from '../common/Tooltip';
 
 interface PortfolioMobileCardProps {
   asset: EnrichedAsset;
@@ -18,6 +19,13 @@ interface PortfolioMobileCardProps {
   onMemoEdit?: (asset: Asset) => void;
 }
 
+const SIGNAL_DESCRIPTIONS: Record<string, string> = {
+  STRONG_BUY: 'RSI·MA·거래량 복합 강력 매수 신호',
+  BUY: '기술적 지표 기반 매수 신호',
+  SELL: '기술적 지표 기반 매도 신호',
+  STRONG_SELL: 'RSI·MA·거래량 복합 강력 매도 신호',
+};
+
 const SignalBadgeMini = ({ signal }: { signal?: string }) => {
   if (!signal || signal === 'NEUTRAL') return null;
   const map: Record<string, { bg: string; text: string }> = {
@@ -28,7 +36,11 @@ const SignalBadgeMini = ({ signal }: { signal?: string }) => {
   };
   const s = map[signal];
   if (!s) return null;
-  return <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold text-white ${s.bg}`}>{s.text}</span>;
+  return (
+    <Tooltip content={SIGNAL_DESCRIPTIONS[signal]} position="top">
+      <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold text-white ${s.bg}`}>{s.text}</span>
+    </Tooltip>
+  );
 };
 
 const PortfolioMobileCard: React.FC<PortfolioMobileCardProps> = ({
@@ -127,7 +139,7 @@ const PortfolioMobileCard: React.FC<PortfolioMobileCardProps> = ({
 
       {/* Expanded chart */}
       {expanded && (
-        <div className="px-2 pb-3">
+        <div className="pb-2">
           <AssetTrendChart
             history={history}
             assetId={asset.id}

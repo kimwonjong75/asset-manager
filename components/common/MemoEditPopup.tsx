@@ -1,17 +1,16 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { Asset } from '../../types';
-import { usePortfolio } from '../../contexts/PortfolioContext';
 
 interface MemoEditPopupProps {
-  asset: Asset;
+  title: string;
+  memo: string;
+  onSave: (memo: string) => void;
   onClose: () => void;
 }
 
-const MemoEditPopup: React.FC<MemoEditPopupProps> = ({ asset, onClose }) => {
-  const { actions } = usePortfolio();
-  const [memo, setMemo] = useState(asset.memo || '');
-  const initialMemo = useRef(asset.memo || '');
+const MemoEditPopup: React.FC<MemoEditPopupProps> = ({ title, memo: initialMemoValue, onSave, onClose }) => {
+  const [memo, setMemo] = useState(initialMemoValue);
+  const initialMemo = useRef(initialMemoValue);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const isDirty = memo !== initialMemo.current;
@@ -31,9 +30,9 @@ const MemoEditPopup: React.FC<MemoEditPopupProps> = ({ asset, onClose }) => {
   }, [isDirty, onClose]);
 
   const handleSave = useCallback(() => {
-    actions.updateAsset({ ...asset, memo: memo.trim() || undefined });
+    onSave(memo.trim());
     onClose();
-  }, [actions, asset, memo, onClose]);
+  }, [onSave, memo, onClose]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Escape') {
@@ -58,7 +57,7 @@ const MemoEditPopup: React.FC<MemoEditPopupProps> = ({ asset, onClose }) => {
       >
         <div className="px-4 py-3 border-b border-gray-700 flex items-center justify-between">
           <h3 className="text-sm font-semibold text-white truncate">
-            {asset.customName?.trim() || asset.name} 메모
+            {title} 메모
           </h3>
           <button
             onClick={handleClose}

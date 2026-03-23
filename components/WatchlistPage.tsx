@@ -1,11 +1,13 @@
 import React, { useMemo, useState, useEffect, Fragment, useRef } from 'react';
 import { Filter, MoreHorizontal, RefreshCw } from 'lucide-react';
 import MemoTooltip from './common/MemoTooltip';
+import MemoEditPopup from './common/MemoEditPopup';
 import { Asset, Currency, CURRENCY_SYMBOLS, WatchlistItem, ExchangeRates } from '../types';
 import { getAllowedCategories, getCategoryName, type CategoryDefinition } from '../types/category';
 import AssetTrendChart from './AssetTrendChart';
 import { useOnClickOutside } from '../hooks/useOnClickOutside';
 import WatchlistMobileCard from './watchlist/WatchlistMobileCard';
+import { usePortfolio } from '../contexts/PortfolioContext';
 
 interface WatchlistPageProps {
   watchlist: WatchlistItem[];
@@ -29,6 +31,7 @@ const ChartBarIcon: React.FC = () => (
 );
 
 const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, portfolioAssets, onDelete, onOpenAddModal, onOpenEditModal, isLoading, onBulkDelete, exchangeRates, onRefresh, categories, onTogglePin }) => {
+  const { actions } = usePortfolio();
   const [filterCategory, setFilterCategory] = useState<number | 'ALL'>('ALL');
   const [search, setSearch] = useState('');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -36,6 +39,7 @@ const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, portfolioAsset
   const [expandedItemId, setExpandedItemId] = useState<string | null>(null);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [showPinnedOnly, setShowPinnedOnly] = useState(false);
+  const [memoEditItem, setMemoEditItem] = useState<WatchlistItem | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
 
   useOnClickOutside(menuRef, () => setOpenMenuId(null), !!openMenuId);
@@ -236,22 +240,30 @@ const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, portfolioAsset
                           </button>
                         )}
                         <div className="flex flex-col">
-                          <MemoTooltip memo={w.notes}>
-                            <span className="flex items-center gap-1">
-                              {portfolioTickers.has(w.ticker.toUpperCase()) && (
-                                <span className="text-[10px] px-1 py-0.5 rounded bg-blue-500/20 text-blue-400 flex-shrink-0" title="보유중">보유</span>
-                              )}
-                              <a
-                                href={`https://www.google.com/search?q=${encodeURIComponent(w.ticker + ' 주가')}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="font-bold hover:underline text-primary-light cursor-pointer"
-                              >
-                                {w.name}
-                              </a>
-                            </span>
-                            {w.notes && <span className="text-[10px] ml-0.5 opacity-60">📝</span>}
-                          </MemoTooltip>
+                          <div className="flex items-center gap-1">
+                            <MemoTooltip memo={w.notes}>
+                              <span className="flex items-center gap-1">
+                                {portfolioTickers.has(w.ticker.toUpperCase()) && (
+                                  <span className="text-[10px] px-1 py-0.5 rounded bg-blue-500/20 text-blue-400 flex-shrink-0" title="보유중">보유</span>
+                                )}
+                                <a
+                                  href={`https://www.google.com/search?q=${encodeURIComponent(w.ticker + ' 주가')}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="font-bold hover:underline text-primary-light cursor-pointer"
+                                >
+                                  {w.name}
+                                </a>
+                              </span>
+                            </MemoTooltip>
+                            <span
+                              className={`text-xl leading-none cursor-pointer transition-opacity flex-shrink-0 ${
+                                w.notes ? 'opacity-60 hover:opacity-100' : 'opacity-20 hover:opacity-50'
+                              }`}
+                              onClick={(e) => { e.stopPropagation(); setMemoEditItem(w); }}
+                              title={w.notes ? '메모 수정' : '메모 추가'}
+                            >📝</span>
+                          </div>
                           <span className="text-xs text-gray-500">{w.ticker} | {w.exchange} | {getCategoryName(w.categoryId, categories)}</span>
                         </div>
                       </div>
@@ -329,6 +341,7 @@ const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, portfolioAsset
             onDelete={onDelete}
             onOpenEditModal={onOpenEditModal}
             onTogglePin={onTogglePin}
+            onMemoEdit={(item) => setMemoEditItem(item)}
             categories={categories}
             exchangeRates={exchangeRates}
             isPortfolioHeld={portfolioTickers.has(w.ticker.toUpperCase())}
@@ -337,6 +350,16 @@ const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, portfolioAsset
           <div className="text-center py-8 text-gray-500">관심 종목을 추가해주세요.</div>
         )}
       </div>
+
+      {/* 메모 편집 팝업 */}
+      {memoEditItem && (
+        <MemoEditPopup
+          title={memoEditItem.name}
+          memo={memoEditItem.notes || ''}
+          onSave={(memo) => actions.updateWatchItem({ ...memoEditItem, notes: memo || undefined })}
+          onClose={() => setMemoEditItem(null)}
+        />
+      )}
     </div>
   );
 };

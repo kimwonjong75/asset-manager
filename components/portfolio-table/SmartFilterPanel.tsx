@@ -2,6 +2,7 @@ import React from 'react';
 import type { SmartFilterState, SmartFilterKey } from '../../types/smartFilter';
 import { SMART_FILTER_CHIPS, SMART_FILTER_GROUP_LABELS } from '../../constants/smartFilterChips';
 import { usePortfolio } from '../../contexts/PortfolioContext';
+import Tooltip from '../common/Tooltip';
 
 interface SmartFilterPanelProps {
   filter: SmartFilterState;
@@ -102,83 +103,84 @@ const SmartFilterPanel: React.FC<SmartFilterPanelProps> = ({
     const directionSymbol = isActive ? '>' : isPairActive ? '<' : '↕';
 
     return (
-      <button
-        key={chip.key}
-        onClick={isMaPeriodChip ? handleTriStateClick : () => onToggleFilter(chip.key)}
-        className={`
-          px-2 py-0.5 rounded-full text-xs font-medium transition-all flex items-center gap-0.5
-          ${isAnyActive
-            ? `${activeColorClass} text-white shadow-sm`
-            : 'bg-gray-700 text-gray-400 hover:bg-gray-600 hover:text-gray-200'}
-          ${isLoadingChip && isAnyActive ? 'opacity-60' : ''}
-        `}
-      >
-        {isLoadingChip && isAnyActive && (
-          <svg className="animate-spin h-3 w-3" viewBox="0 0 24 24" fill="none">
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-          </svg>
-        )}
-        {isMaPeriodChip ? (
-          <>
-            <span>현재가{directionSymbol}</span>
-            <select
-              value={chip.key === 'PRICE_ABOVE_SHORT_MA' ? filter.maShortPeriod : filter.maLongPeriod}
-              onChange={chip.key === 'PRICE_ABOVE_SHORT_MA' ? handleShortPeriodChange : handleLongPeriodChange}
-              onClick={(e) => e.stopPropagation()}
-              className={`bg-transparent text-xs font-bold focus:outline-none cursor-pointer
-                ${isAnyActive ? 'text-white' : 'text-gray-300'}`}
-            >
-              {(chip.key === 'PRICE_ABOVE_SHORT_MA' ? MA_SHORT_OPTIONS : MA_LONG_OPTIONS).map(p => (
-                <option
-                  key={p}
-                  value={p}
-                  disabled={
-                    chip.key === 'PRICE_ABOVE_SHORT_MA'
-                      ? p >= filter.maLongPeriod
-                      : p <= filter.maShortPeriod
-                  }
-                  className="bg-gray-800 text-gray-200"
-                >
-                  MA{p}
-                </option>
-              ))}
-            </select>
-          </>
-        ) : (
-          chip.labelFn ? chip.labelFn(filter) : chip.label
-        )}
-        {chip.key === 'DROP_FROM_HIGH' && isActive && (
-          <>
-            <input
-              type="number"
-              value={filter.dropFromHighThreshold}
-              onChange={(e) => onDropThresholdChange(
-                Math.max(0, parseInt(e.target.value) || 0)
-              )}
-              onClick={(e) => e.stopPropagation()}
-              className="w-10 bg-gray-900 border border-gray-600 rounded px-1 text-white text-xs text-center"
-              min="0"
-            />
-            <span>%</span>
-          </>
-        )}
-        {chip.key === 'LOSS_THRESHOLD' && isActive && (
-          <>
-            <input
-              type="number"
-              value={filter.lossThreshold}
-              onChange={(e) => onLossThresholdChange(
-                Math.max(0, parseInt(e.target.value) || 0)
-              )}
-              onClick={(e) => e.stopPropagation()}
-              className="w-10 bg-gray-900 border border-gray-600 rounded px-1 text-white text-xs text-center"
-              min="0"
-            />
-            <span>%</span>
-          </>
-        )}
-      </button>
+      <Tooltip key={chip.key} content={chip.description} position="bottom" wrap>
+        <button
+          onClick={isMaPeriodChip ? handleTriStateClick : () => onToggleFilter(chip.key)}
+          className={`
+            px-2 py-0.5 rounded-full text-xs font-medium transition-all flex items-center gap-0.5
+            ${isAnyActive
+              ? `${activeColorClass} text-white shadow-sm`
+              : 'bg-gray-700 text-gray-400 hover:bg-gray-600 hover:text-gray-200'}
+            ${isLoadingChip && isAnyActive ? 'opacity-60' : ''}
+          `}
+        >
+          {isLoadingChip && isAnyActive && (
+            <svg className="animate-spin h-3 w-3" viewBox="0 0 24 24" fill="none">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+            </svg>
+          )}
+          {isMaPeriodChip ? (
+            <>
+              <span>현재가{directionSymbol}</span>
+              <select
+                value={chip.key === 'PRICE_ABOVE_SHORT_MA' ? filter.maShortPeriod : filter.maLongPeriod}
+                onChange={chip.key === 'PRICE_ABOVE_SHORT_MA' ? handleShortPeriodChange : handleLongPeriodChange}
+                onClick={(e) => e.stopPropagation()}
+                className={`bg-transparent text-xs font-bold focus:outline-none cursor-pointer
+                  ${isAnyActive ? 'text-white' : 'text-gray-300'}`}
+              >
+                {(chip.key === 'PRICE_ABOVE_SHORT_MA' ? MA_SHORT_OPTIONS : MA_LONG_OPTIONS).map(p => (
+                  <option
+                    key={p}
+                    value={p}
+                    disabled={
+                      chip.key === 'PRICE_ABOVE_SHORT_MA'
+                        ? p >= filter.maLongPeriod
+                        : p <= filter.maShortPeriod
+                    }
+                    className="bg-gray-800 text-gray-200"
+                  >
+                    MA{p}
+                  </option>
+                ))}
+              </select>
+            </>
+          ) : (
+            chip.labelFn ? chip.labelFn(filter) : chip.label
+          )}
+          {chip.key === 'DROP_FROM_HIGH' && isActive && (
+            <>
+              <input
+                type="number"
+                value={filter.dropFromHighThreshold}
+                onChange={(e) => onDropThresholdChange(
+                  Math.max(0, parseInt(e.target.value) || 0)
+                )}
+                onClick={(e) => e.stopPropagation()}
+                className="w-10 bg-gray-900 border border-gray-600 rounded px-1 text-white text-xs text-center"
+                min="0"
+              />
+              <span>%</span>
+            </>
+          )}
+          {chip.key === 'LOSS_THRESHOLD' && isActive && (
+            <>
+              <input
+                type="number"
+                value={filter.lossThreshold}
+                onChange={(e) => onLossThresholdChange(
+                  Math.max(0, parseInt(e.target.value) || 0)
+                )}
+                onClick={(e) => e.stopPropagation()}
+                className="w-10 bg-gray-900 border border-gray-600 rounded px-1 text-white text-xs text-center"
+                min="0"
+              />
+              <span>%</span>
+            </>
+          )}
+        </button>
+      </Tooltip>
     );
   };
 

@@ -3,7 +3,9 @@
     "allow": [
       "Bash(find /c/Users/beari/Desktop/dev/asset_manager -type f \\\\\\(-name *.py -o -name requirements.txt -o -name app.py -o -name main.py \\\\\\))",
       "Bash(grep -r \"fetchBatchAssetPrices\\\\|/POST\\\\|POST.*tickers\" /c/Users/beari/Desktop/dev/asset_manager/services --include=*.ts)",
-      "Bash(grep -n \"mx-auto\\\\|mx-4\\\\|px-4\\\\|w-full max-w\" /c/Users/beari/Desktop/dev/asset_manager/components/*.tsx)"
+      "Bash(grep -n \"mx-auto\\\\|mx-4\\\\|px-4\\\\|w-full max-w\" /c/Users/beari/Desktop/dev/asset_manager/components/*.tsx)",
+      "Bash(xargs grep:*)",
+      "Bash(grep -E \"\\\\.\\(tsx|ts\\)$\")"
     ]
   }
 }

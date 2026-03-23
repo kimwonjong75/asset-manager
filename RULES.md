@@ -96,14 +96,14 @@
 | `api.ts` | API 응답 타입 (`PriceItem`, `Indicators` 등). `Indicators`에 거래량 3필드 포함: `volume`(당일), `volume_avg20`(20일 평균), `volume_ratio`(비율) | `services/`, `hooks/` |
 | `store.ts` | 상태 관리 타입 (`PortfolioContextValue`, `GlobalPeriod`, `UIState.activeTab` 등). **`GlobalPeriod = 'THIS_MONTH' \| 'LAST_MONTH' \| '1M' \| '3M' \| '6M' \| '1Y' \| '2Y' \| 'ALL'`** (금월/전월/1개월 추가). `PortfolioData`에 `categoryStore`, `PortfolioStatus`에 `needsReAuth`, `DerivedState`에 `backupList`/`isBackingUp` 포함. `UIState`에 `focusedAssetId: string \| null` 포함 (브리핑 패널 클릭-투-포커스용). `PortfolioActions`에 `setFocusedAssetId`, `togglePinAsset` 포함 | `contexts/`, `hooks/`, `App.tsx`, `components/common/PeriodSelector`, `SmartFilterPanel`, `AlertSettingsPage` |
 | `ui.ts` | UI 컴포넌트 Props 타입 | `components/` |
-| `smartFilter.ts` | 스마트 필터 타입 (24개 키, 5개 그룹: ma/rsi/signal/portfolio/volume, MA 기간 설정 + `lossThreshold` 포함), 그룹 매핑, 칩 정의(`pairKey`/`pairColorClass` tri-state 지원), 초기값 | `utils/smartFilterLogic`, `SmartFilterPanel`(+ `PortfolioContext` 의존), `PortfolioTable`, `alertChecker` |
+| `smartFilter.ts` | 스마트 필터 타입 (24개 키, 5개 그룹: ma/rsi/signal/portfolio/volume, MA 기간 설정 + `lossThreshold` 포함), 그룹 매핑, 칩 정의(`pairKey`/`pairColorClass` tri-state 지원, `description` 툴팁 텍스트), 초기값 | `utils/smartFilterLogic`, `SmartFilterPanel`(+ `PortfolioContext` 의존), `PortfolioTable`, `alertChecker` |
 | `alertRules.ts` | 알림 규칙 타입 (`AlertRule`, `AlertResult`, `AlertSettings`, `AlertMatchedAsset`). `AlertMatchedAsset`에 `source?: 'portfolio' \| 'watchlist'` 필드 포함 | `constants/alertRules`, `utils/alertChecker`, `hooks/useAutoAlert`, `AlertSettingsPage`, `AlertPopup` |
 
 ### constants/ (상수 정의)
 | 파일 | 책임 | 수정 시 영향 범위 |
 |------|------|------------------|
 | `columnDescriptions.ts` | 포트폴리오 테이블 컬럼 툴팁 텍스트 | `PortfolioTable`, `PortfolioTableRow` |
-| `smartFilterChips.ts` | 스마트 필터 칩 정의 (22개 칩, 동적 라벨, 색상). MA 현재가 칩 2개는 `pairKey`로 ABOVE↔BELOW tri-state 토글 (off→>→<→off 순환, 칩 하나로 2개 필터 키 제어). `DAILY_DROP`/`LOSS_THRESHOLD` 추가. 거래량 그룹 3개 칩: `VOLUME_SURGE`(급증≥2x), `VOLUME_HIGH`(증가≥1.5x), `VOLUME_LOW`(감소<0.5x) | `SmartFilterPanel` |
+| `smartFilterChips.ts` | 스마트 필터 칩 정의 (22개 칩, 동적 라벨, 색상, `description` 툴팁). MA 현재가 칩 2개는 `pairKey`로 ABOVE↔BELOW tri-state 토글 (off→>→<→off 순환, 칩 하나로 2개 필터 키 제어). `DAILY_DROP`/`LOSS_THRESHOLD` 추가. 거래량 그룹 3개 칩: `VOLUME_SURGE`(급증≥2x), `VOLUME_HIGH`(증가≥1.5x), `VOLUME_LOW`(감소<0.5x) | `SmartFilterPanel` |
 | `alertRules.ts` | 기본 알림 규칙 8개 (매도 5 + 매수 3), `DEFAULT_ALERT_SETTINGS` | `useAutoAlert`, `AlertSettingsPage` |
 
 ### components/layouts/ (탭별 뷰)
@@ -122,8 +122,8 @@
 |------|------|------|
 | `PeriodSelector.tsx` | 글로벌 기간 선택 버튼 (금월/전월/1개월/3개월/6개월/1년/2년/전체, 8개 옵션) | `types/store` (`GlobalPeriod`) |
 | `ActionMenu.tsx` | Portal 기반 액션 메뉴 — 데스크탑: `createPortal`로 body에 드롭다운 렌더링(공간 부족 시 위로 열림), 모바일(<768px): 바텀시트 | `react-dom/createPortal` |
-| `AlertPopup.tsx` | "오늘의 투자 브리핑" **플로팅 패널** (`fixed bottom-4 right-4 w-96`) — 전체화면 오버레이 없음, severity별 스타일, 매도/매수 섹션 분리, **표 형식**(종목·당일·수익률·RSI 컬럼), 최소화/복원 토글(타이틀 클릭). **관심종목 구분**: `source === 'watchlist'`인 종목에 teal `[관심]` 배지 표시. `onAssetClick(assetId, source?)` — source에 따라 포트폴리오/관심종목 탭 전환 | `types/alertRules` (`AlertResult`, `AlertMatchedAsset`) |
-| `MemoEditPopup.tsx` | 경량 메모 편집 팝업 — Portal 기반(`document.body`), Ctrl+Enter 저장, Esc 닫기, 미저장 변경 `confirm` 보호. `PortfolioTableRow`/`PortfolioMobileCard`의 메모 아이콘 클릭 시 열림 | `PortfolioContext` (`actions.updateAsset`), `react-dom/createPortal` |
+| `AlertPopup.tsx` | "오늘의 투자 브리핑" **플로팅 패널** (데스크탑: `fixed bottom-4 right-4 w-96`, 모바일: `left-4 right-4 w-auto`) — 전체화면 오버레이 없음, severity별 스타일, 매도/매수 섹션 분리, **표 형식**(종목·당일·수익률·RSI 컬럼), 최소화/복원 토글(타이틀 클릭). **관심종목 구분**: `source === 'watchlist'`인 종목에 teal `[관심]` 배지 표시. `onAssetClick(assetId, source?)` — source에 따라 포트폴리오/관심종목 탭 전환 | `types/alertRules` (`AlertResult`, `AlertMatchedAsset`) |
+| `MemoEditPopup.tsx` | 범용 메모 편집 팝업 — Portal 기반(`document.body`), Ctrl+Enter 저장, Esc 닫기, 미저장 변경 `confirm` 보호. Props: `title`, `memo`, `onSave(memo)`, `onClose`. 포트폴리오(`PortfolioTable`)와 관심종목(`WatchlistPage`) 양쪽에서 사용 | `react-dom/createPortal` |
 | `MemoTooltip.tsx` | 메모 전용 마우스 추적 툴팁 — Portal 기반(`document.body`), 마우스 커서 추적(`onMouseMove`), `maxWidth: 500px`, 뷰포트 경계 자동 반전. `Tooltip.tsx`와 독립된 별도 컴포넌트 | `react-dom/createPortal` | `PortfolioTableRow`, `WatchlistPage` (메모 표시) |
 | `UpdateStatusIndicator.tsx` | 시세 업데이트 상태 인라인 표시 — 탭바 우측에 배치. 로딩 중: 스피너+파란색 텍스트, 완료: 체크마크+초록색 텍스트(5초 후 소멸), idle: null 반환. **성공 메시지는 플로팅 토스트가 아닌 이 컴포넌트로 표시** (에러는 기존 플로팅 토스트 유지) | `PortfolioContext` (`status.isLoading`, `status.successMessage`) | `App.tsx` (탭바 영역) |
 | `Toggle.tsx` | 토글 스위치 | - |
@@ -139,7 +139,12 @@
 |------|------|------|
 | `WatchlistAddModal.tsx` | 관심종목 추가 모달 | `PortfolioContext` (`addWatchItemOpen`, `addWatchItem`) |
 | `WatchlistEditModal.tsx` | 관심종목 수정/삭제 모달 | `PortfolioContext` (`editingWatchItem`, `updateWatchItem`, `deleteWatchItem`) |
-| `WatchlistPage.tsx` | 관심종목 테이블 (행별 액션 메뉴 + 차트 확장, 종목명 hover 시 메모 툴팁, 전용 시세 업데이트 버튼). **메모 툴팁은 `MemoTooltip` 사용** (포트폴리오 테이블과 동일 — Portal 기반, 마우스 추적). 메모가 있는 종목명 옆 📝 아이콘 표시 | `AssetTrendChart`, `MemoTooltip`, `onRefresh` prop from `WatchlistView` |
+| `WatchlistPage.tsx` | 관심종목 테이블 — **데스크탑/모바일 뷰 분기**: `hidden md:block`(테이블) / `block md:hidden`(카드 뷰, `WatchlistMobileCard`). 행별 액션 메뉴 + 차트 확장, 종목명 hover 시 메모 툴팁, 전용 시세 업데이트 버튼. 📝 아이콘 클릭 시 `MemoEditPopup` 팝업 열림 (`memoEditItem: WatchlistItem | null` 로컬 상태). **테이블에 새 기능 추가 시 `WatchlistMobileCard`에도 반영 필요** | `AssetTrendChart`, `MemoTooltip`, `MemoEditPopup`, `WatchlistMobileCard`, `PortfolioContext`, `onRefresh` prop from `WatchlistView` |
+
+### components/watchlist/
+| 파일 | 책임 | 의존 |
+|------|------|------|
+| `WatchlistMobileCard.tsx` | 관심종목 모바일 카드 뷰 — 종목명+현재가+어제대비+고가대비를 카드 형태로 표시, 탭하면 차트 펼침, 관리 메뉴는 `ActionMenu`(바텀시트). 체크박스로 선택, ★ 핀, 📝 메모 아이콘 클릭 시 `onMemoEdit` 콜백. `PortfolioMobileCard`와 동일 패턴 | `ActionMenu`, `MemoTooltip`, `AssetTrendChart` |
 
 > `WatchlistView.tsx`에서 세 컴포넌트를 함께 렌더링
 
@@ -148,7 +153,7 @@
 |------|------|------|
 | `PortfolioTable.tsx` | 포트폴리오 메인 테이블 — 정렬, 검색, 스마트 필터, 핀 필터, 메모 편집 통합. `memoEditAsset` 로컬 상태 관리. 프리셋 버튼으로 AlertRule→SmartFilterState 변환. `onRefreshSelected`(선택 업데이트 버튼)·`onRefreshOne`(개별 행 전달) props 수신 | `portfolio-table/*`, `SmartFilterPanel`, `MemoEditPopup`, `PortfolioContext` |
 | `AssetTrendChart.tsx` | Recharts ComposedChart — 가격 Line + MA 오버레이 + 거래량 Bar + 매수평균선, localStorage 기반 MA/VOL 토글 | `useHistoricalPriceData`, `maCalculations`, `PortfolioSnapshot` |
-| `SellAnalyticsPage.tsx` | 매도 기록 분석 대시보드 (기간별 집계, 카테고리 필터). `sellHistory[]`와 `asset.sellTransactions[]` 합산 시 `id` 기반 중복 제거 | `SellRecord`, `CategoryDefinition`, Recharts |
+| `SellAnalyticsPage.tsx` | 매도 기록 분석 대시보드 (기간별 집계, 카테고리 필터). `sellHistory[]`와 `asset.sellTransactions[]` 합산 시 `id` 기반 중복 제거. **모바일 대응**: 필터 `flex-col sm:flex-row`, 프리셋 버튼 `overflow-x-auto`, 차트 `h-72 sm:h-96`, 매도 기록 테이블 4컬럼(티커/수량/매도금액/매수금액) `hidden sm:table-cell` | `SellRecord`, `CategoryDefinition`, Recharts |
 | `PortfolioAssistant.tsx` | AI 어시스턴트 FAB + 채팅 패널 (Gemini 스트리밍 응답) | `geminiService`, `PortfolioContext.derived.enrichedMap` |
 
 ### components/ (자산 CRUD 모달)
@@ -183,9 +188,9 @@
 ### components/portfolio-table/ (테이블 내부 모듈)
 | 파일 | 책임 | 의존 |
 |------|------|------|
-| `PortfolioTableRow.tsx` | 테이블 행 렌더링 + 차트 펼침 + 브리핑 클릭-투-포커스. `usePortfolio()` 직접 사용 — `focusedAssetId`/`setFocusedAssetId`로 스크롤 이동. `onTogglePin`, `onMemoEdit`, `onRefreshOne`(ActionMenu "가격 업데이트") props 수신 | `PortfolioContext`, `AssetTrendChart`, `ActionMenu`, `MemoTooltip` |
-| `PortfolioMobileCard.tsx` | 모바일 카드 뷰 — 종목명+현재가+수익률+평가액+고가대비/전일대비. 탭하면 차트 펼침, 관리 메뉴는 `ActionMenu`(바텀시트). `onRefreshOne`(ActionMenu "가격 업데이트") props 수신 | `PortfolioContext`, `AssetTrendChart`, `ActionMenu` |
-| `SmartFilterPanel.tsx` | 스마트 필터 칩 UI (22개 칩, tri-state 토글, 그룹별 색상) | `types/smartFilter`, `constants/smartFilterChips`, `PortfolioContext` |
+| `PortfolioTableRow.tsx` | 테이블 행 렌더링 + 차트 펼침 + 브리핑 클릭-투-포커스. `usePortfolio()` 직접 사용 — `focusedAssetId`/`setFocusedAssetId`로 스크롤 이동. `onTogglePin`, `onMemoEdit`, `onRefreshOne`(ActionMenu "가격 업데이트") props 수신. `SignalBadge` 내부에 `SIGNAL_DESCRIPTIONS` + `Tooltip`으로 신호별 설명 표시 | `PortfolioContext`, `AssetTrendChart`, `ActionMenu`, `MemoTooltip`, `Tooltip` |
+| `PortfolioMobileCard.tsx` | 모바일 카드 뷰 — 종목명+현재가+수익률+평가액+고가대비/전일대비. 탭하면 차트 펼침, 관리 메뉴는 `ActionMenu`(바텀시트). `onRefreshOne`(ActionMenu "가격 업데이트") props 수신. `SignalBadgeMini` 내부에 `SIGNAL_DESCRIPTIONS` + `Tooltip`으로 신호별 설명 표시 | `PortfolioContext`, `AssetTrendChart`, `ActionMenu`, `Tooltip` |
+| `SmartFilterPanel.tsx` | 스마트 필터 칩 UI (22개 칩, tri-state 토글, 그룹별 색상, 칩별 `Tooltip` 설명 표시) | `types/smartFilter`, `constants/smartFilterChips`, `PortfolioContext`, `Tooltip` |
 | `types.ts` | 테이블 전용 타입 (`PortfolioTableProps`, `SortKey`, `AssetMetrics`, `EnrichedAsset`) | `types/index` |
 | `usePortfolioData.ts` | 자산 메트릭 enrichment (KRW 환산, 수익률, 고가대비) + 정렬/필터. **⚠️ `hooks/usePortfolioData.ts`와 이름 겹침 주의** | `types/index`, `usePortfolioCalculator` |
 | `utils.ts` | 테이블 전용 유틸 (`getValueInKRW`, `formatKRW`, `formatOriginalCurrency`, `getChangeColor`) | `Currency`, `ExchangeRates` |
@@ -253,7 +258,7 @@ useMarketData.ts → handleRefreshWatchlistPrices() (관심종목 전용)
 
 ### 글로벌 기간 선택 흐름
 ```
-PeriodSelector (App.tsx 탭 바 우측 + SoldAssetsStats/ProfitLossChart 타이틀 우측)
+PeriodSelector (App.tsx 탭 바 우측(데스크탑) / 탭 바 아래 별도 행(모바일) + SoldAssetsStats/ProfitLossChart 타이틀 우측)
     │
     └─ PortfolioContext.globalPeriod (THIS_MONTH/LAST_MONTH/1M/3M/6M/1Y/2Y/ALL, 기본 1Y)
          │   └─ localStorage 영속 ('asset-manager-global-period')
@@ -394,11 +399,11 @@ PortfolioAssistant.tsx
 | `constants/alertRules.ts` | `useAutoAlert`, `AlertSettingsPage` |
 | `useGlobalPeriodDays.ts` | `AssetTrendChart`, `DashboardView`, `AnalyticsView` |
 | `PortfolioContext.tsx` | `App.tsx`, 모든 Context 소비 컴포넌트 |
-| `ActionMenu.tsx` | `PortfolioTableRow`, `PortfolioMobileCard`, `WatchlistPage` (드롭다운 메뉴 사용처) |
-| `MemoTooltip.tsx` | `PortfolioTableRow`, `WatchlistPage` (메모 표시) |
+| `ActionMenu.tsx` | `PortfolioTableRow`, `PortfolioMobileCard`, `WatchlistPage`, `WatchlistMobileCard` (드롭다운 메뉴 사용처) |
+| `MemoTooltip.tsx` | `PortfolioTableRow`, `WatchlistPage`, `WatchlistMobileCard` (메모 표시) |
 | `PortfolioTableRow.tsx` 컬럼 추가 | `PortfolioMobileCard`에도 반영 필요 (데스크탑/모바일 뷰 동기화) |
 | `PortfolioTableRow.tsx` | **`usePortfolio()` 직접 사용** — `ui.focusedAssetId` + `actions.setFocusedAssetId`로 브리핑 패널 클릭-투-포커스 구현. `rowRef`(HTMLTableRowElement)로 `scrollIntoView` 수행. `onTogglePin`(★ 토글), `onMemoEdit`(메모 편집 팝업 열기), `onRefreshOne`(개별 가격 업데이트) props 수신 |
-| `MemoEditPopup.tsx` | `PortfolioTable`에서 `memoEditAsset` 상태로 관리 — 메모 아이콘 클릭 시 열림 |
+| `MemoEditPopup.tsx` | `PortfolioTable`(`memoEditAsset`)과 `WatchlistPage`(`memoEditItem`)에서 메모 아이콘 클릭 시 열림 |
 | `usePortfolioCalculator.ts` | `usePortfolioStats`, `portfolio-table/usePortfolioData` (수익률/손익 계산 공유) |
 | `useTopBottomAssets.ts` | `TopBottomAssets` (대시보드 상위/하위 종목 표시) |
 | `portfolio-table/usePortfolioData.ts` | `PortfolioTable` — **⚠️ `hooks/usePortfolioData.ts`와 이름 겹침. 전자는 테이블 메트릭, 후자는 Drive 동기화** |
@@ -671,8 +676,12 @@ try {
 - **전체 레이아웃**: `App.tsx`는 `h-screen flex flex-col overflow-hidden`. 탭바만 `flex-shrink-0`으로 최상단 고정, Header와 콘텐츠는 `<main className="flex-1 overflow-y-auto">`에서 함께 스크롤
 - **포트폴리오 테이블 sticky thead**: `<thead>`의 `sticky top-0`이 `<main>` 스크롤 컨테이너 기준으로 동작. **`<main>`과 `<thead>` 사이에 `overflow` CSS 속성을 가진 wrapper를 추가하면 sticky가 깨짐** — 새 wrapper div 추가 시 overflow 속성 금지
 - **드롭다운 메뉴**: 인라인 `absolute` 포지션 메뉴 사용 금지 → `ActionMenu` 컴포넌트 사용 (`createPortal`로 body에 렌더링). 데스크탑: 버튼 위치 기반 드롭다운(공간 부족 시 위로 열림), 모바일(<768px): 바텀시트
-- **데스크탑/모바일 뷰 분기**: `PortfolioTable`에서 `hidden md:block`(데스크탑 테이블) / `block md:hidden`(모바일 카드 뷰)로 분기. **테이블에 새 기능 추가 시 모바일 카드 뷰(`PortfolioMobileCard`)에도 반영 필요**
+- **데스크탑/모바일 뷰 분기**: `hidden md:block`(데스크탑 테이블) / `block md:hidden`(모바일 카드 뷰)로 분기. 적용 대상: `PortfolioTable`(`PortfolioMobileCard`), `WatchlistPage`(`WatchlistMobileCard`). **테이블에 새 기능 추가 시 대응 모바일 카드 뷰에도 반영 필요**
 - **`PortfolioMobileCard`**: 종목명+현재가+수익률+평가액+고가대비/전일대비를 카드 형태로 표시, 탭하면 차트 펼침, 관리 메뉴는 `ActionMenu`(바텀시트) 사용
+- **`WatchlistMobileCard`**: `PortfolioMobileCard`와 동일 패턴. 종목명+현재가+어제대비+고가대비, 체크박스 선택, `ActionMenu`(바텀시트), 📝 메모 아이콘 클릭 시 `onMemoEdit` 콜백
+- **모바일 PeriodSelector**: `App.tsx`에서 데스크탑은 탭바 우측(`hidden sm:flex`), 모바일은 탭바 아래 별도 행(`sm:hidden`)으로 분리 렌더링
+- **모달 반응형 패턴**: 외부 `p-4` (모바일 여백), 내부 `p-4 sm:p-6 max-h-[90vh] overflow-y-auto` (모바일 패딩 축소 + 스크롤), `grid-cols-1 sm:grid-cols-2` (폼 그리드)
+- **CSS 유틸리티** (`index.css`): `scrollbar-hide` (수평 스크롤 스크롤바 숨김), `overscroll-behavior: contain` (pull-to-refresh 차단), `-webkit-tap-highlight-color: transparent` (탭 하이라이트 제거), 모바일 input `font-size: 16px` (자동 확대 방지)
 
 ### 종목 고정(Pin) 기능
 - **데이터 모델**: `Asset.pinned?: boolean` — Google Drive에 함께 저장됨 (autoSave 파이프라인 포함)
@@ -681,8 +690,10 @@ try {
 - **필터**: `PortfolioTable`의 `showPinnedOnly` 로컬 상태 — `filteredAssets` useMemo에서 스마트 필터 전에 적용
 
 ### 메모 편집 팝업 (MemoEditPopup)
-- **트리거**: `PortfolioTableRow`/`PortfolioMobileCard`의 메모 아이콘(📝) 클릭. 아이콘은 기존보다 크게(`text-xl`), 메모 유무와 무관하게 항상 표시 (opacity 차등)
-- **상태 관리**: `PortfolioTable`의 `memoEditAsset: Asset | null` 로컬 상태
+- **범용 Props**: `title`, `memo`, `onSave(memo: string)`, `onClose` — Asset/WatchlistItem에 의존하지 않음
+- **트리거(포트폴리오)**: `PortfolioTableRow`/`PortfolioMobileCard`의 📝 아이콘 클릭. `PortfolioTable`의 `memoEditAsset: Asset | null` 상태
+- **트리거(관심종목)**: `WatchlistPage`/`WatchlistMobileCard`의 📝 아이콘 클릭. `WatchlistPage`의 `memoEditItem: WatchlistItem | null` 상태
+- **아이콘 스타일**: `text-xl`(데스크탑)/`text-lg`(모바일), 메모 유무와 무관하게 항상 표시 (opacity 차등: 60%/20%)
 - **닫기 보호**: `MemoEditPopup` 내부에서 `isDirty` + `confirm()` 패턴 적용 (모달 닫기 보호 패턴과 동일)
 - **MemoTooltip과 분리**: 메모 아이콘은 `MemoTooltip` 바깥에 배치 → hover는 툴팁, click은 편집 팝업 (이벤트 충돌 없음)
 

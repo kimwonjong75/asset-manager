@@ -13,6 +13,7 @@ interface WatchlistMobileCardProps {
   onDelete: (id: string) => void;
   onOpenEditModal: (item: WatchlistItem) => void;
   onTogglePin?: (id: string) => void;
+  onMemoEdit?: (item: WatchlistItem) => void;
   categories: CategoryDefinition[];
   exchangeRates: ExchangeRates;
   isPortfolioHeld: boolean;
@@ -29,6 +30,7 @@ const WatchlistMobileCard: React.FC<WatchlistMobileCardProps> = ({
   onDelete,
   onOpenEditModal,
   onTogglePin,
+  onMemoEdit,
   categories,
   exchangeRates,
   isPortfolioHeld,
@@ -74,8 +76,13 @@ const WatchlistMobileCard: React.FC<WatchlistMobileCardProps> = ({
               <span className="font-bold text-primary-light text-sm truncate max-w-[160px]">
                 {item.name}
               </span>
-              {item.notes && <span className="text-[10px] ml-0.5 opacity-60">📝</span>}
             </MemoTooltip>
+            <span
+              className={`text-lg leading-none cursor-pointer transition-opacity flex-shrink-0 ${
+                item.notes ? 'opacity-60 hover:opacity-100' : 'opacity-20 hover:opacity-50'
+              }`}
+              onClick={(e) => { e.stopPropagation(); onMemoEdit?.(item); }}
+            >📝</span>
           </div>
           <div className="text-[11px] text-gray-500 mt-0.5">
             {item.ticker} | {item.exchange} | {getCategoryName(item.categoryId, categories)}
@@ -132,7 +139,7 @@ const WatchlistMobileCard: React.FC<WatchlistMobileCardProps> = ({
 
       {/* 차트 확장 */}
       {expanded && (
-        <div className="px-2 pb-3">
+        <div className="pb-2">
           <AssetTrendChart
             history={[]}
             assetId={item.id}

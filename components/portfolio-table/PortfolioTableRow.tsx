@@ -13,6 +13,13 @@ import ActionMenu from '../common/ActionMenu';
 // ----------------------------------------------------------------------
 // [추가된 컴포넌트] 퀀트 신호 배지
 // ----------------------------------------------------------------------
+const SIGNAL_DESCRIPTIONS: Record<string, string> = {
+  STRONG_BUY: 'RSI·MA·거래량 복합 강력 매수 신호',
+  BUY: '기술적 지표 기반 매수 신호',
+  SELL: '기술적 지표 기반 매도 신호',
+  STRONG_SELL: 'RSI·MA·거래량 복합 강력 매도 신호',
+};
+
 const SignalBadge = ({ signal }: { signal?: string }) => {
   if (!signal || signal === 'NEUTRAL') return null;
 
@@ -34,9 +41,11 @@ const SignalBadge = ({ signal }: { signal?: string }) => {
   }
 
   return (
-    <span className={`ml-2 text-[10px] px-1.5 py-0.5 rounded font-bold ${bgClass} whitespace-nowrap`}>
-      {text}
-    </span>
+    <Tooltip content={SIGNAL_DESCRIPTIONS[signal]} position="top">
+      <span className={`ml-2 text-[10px] px-1.5 py-0.5 rounded font-bold ${bgClass} whitespace-nowrap`}>
+        {text}
+      </span>
+    </Tooltip>
   );
 };
 
