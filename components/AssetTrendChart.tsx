@@ -309,7 +309,7 @@ const AssetTrendChart: React.FC<AssetTrendChartProps> = ({
         fixRightEdge: false,
       },
       handleScroll: {
-        mouseWheel: false,
+        mouseWheel: true,
         pressedMouseMove: true,
         horzTouchDrag: true,
         vertTouchDrag: false,
@@ -427,7 +427,28 @@ const AssetTrendChart: React.FC<AssetTrendChartProps> = ({
     // 모바일: 수평 터치는 차트가 처리, 수직 터치만 브라우저 스크롤
     container.style.touchAction = 'pan-y';
 
+    // PC: 차트 영역 wheel 시 페이지 스크롤 방지
+    // document 레벨 { passive: false }로 Chrome compositor의 선행 스크롤을 차단
+    const handleDocWheel = (e: WheelEvent) => {
+      if (container.contains(e.target as Node)) {
+        e.preventDefault();
+        console.log('[Chart] wheel intercepted — deltaX:', e.deltaX, 'deltaY:', e.deltaY);
+      }
+    };
+    document.addEventListener('wheel', handleDocWheel, { passive: false });
+
+    // 진단: 차트의 시간축 범위가 변경될 때 로그 (드래그/줌이 작동하면 이 로그가 출력됨)
+    const onRangeChange = () => {
+      const range = chart.timeScale().getVisibleRange();
+      if (range) {
+        console.log('[Chart] visibleRange changed:', range.from, '~', range.to);
+      }
+    };
+    chart.timeScale().subscribeVisibleTimeRangeChange(onRangeChange);
+
     return () => {
+      document.removeEventListener('wheel', handleDocWheel);
+      chart.timeScale().unsubscribeVisibleTimeRangeChange(onRangeChange);
       resizeObserver.disconnect();
       chart.remove();
       chartRef.current = null;
