@@ -77,8 +77,8 @@ export async function fetchBatchAssetPrices(
             // 전일 종가 파싱 (API 응답 우선 -> 계산된 값 -> 0)
             const prev = toNumber(item.prev_close ?? item.previousClose ?? item.yesterdayPrice, 0);
             
-            // 등락률 파싱
-            let changeRate = 0;
+            // 등락률 파싱 (undefined = 데이터 없음, 0 = 실제 변동 없음)
+            let changeRate: number | undefined;
             if (typeof item.change_rate === 'number') {
                 changeRate = item.change_rate;
             } else if (typeof item.changeRate === 'number') {

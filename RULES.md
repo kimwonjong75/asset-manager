@@ -69,7 +69,7 @@
 ### services/ (외부 API 연동)
 | 파일 | 책임 | API 엔드포인트 | 수정 시 확인 |
 |------|------|----------------|-------------|
-| `priceService.ts` | 주식/ETF 시세, 환율. **NaN 방어**: 응답 텍스트에서 `NaN` → `null` 치환 후 파싱, `toNumber()` 헬퍼로 null/NaN → 0 변환 | Cloud Run `/`, `/exchange-rate` | `useMarketData`, `useAssetActions` |
+| `priceService.ts` | 주식/ETF 시세, 환율. **NaN 방어**: 응답 텍스트에서 `NaN` → `null` 치환 후 파싱, `toNumber()` 헬퍼로 null/NaN → 0 변환. **`changeRate` 초기값은 `undefined`** (API가 `change_rate`/`changeRate`를 number로 안 주고 `prev_close`도 없으면 `undefined` 유지 → calculator 폴백 허용) | Cloud Run `/`, `/exchange-rate` | `useMarketData`, `useAssetActions` |
 | `upbitService.ts` | 암호화폐 시세 | Cloud Run `/upbit` | `useMarketData` |
 | `historicalPriceService.ts` | 과거 시세+거래량 (백필/차트용/AI분석용). `HistoricalPriceResult`에 optional `volume` 필드 포함. **NaN 방어**: `parseJsonSafe()` → `sanitizeResult()` / `stripNullPrices()`로 null/NaN 엔트리를 제거하여 `HistoricalPriceData`에는 `number`만 보장 | Cloud Run `/history`, `/upbit/history` | `useHistoricalPriceData`, `historyUtils`, `geminiService` |
 | `googleDriveService.ts` | 클라우드 저장/로드, **Authorization Code Flow + Backend JWT 기반 인증**, `authenticatedFetch` 래퍼(401 시 백엔드 `/auth/refresh`로 갱신), 백업 파일 관리(`deleteFileById`, `loadFileById`, `listFilesByPattern`) | Google Drive API, Cloud Run `/auth/*` | `useGoogleDriveSync`, `useBackup` |
@@ -577,8 +577,8 @@ try {
 - **CORS 우회 필수**: 클라이언트에서 업비트 직접 호출 불가 → Cloud Run 프록시 경유
 
 ### 당일 변동률 표시 주의
-- **`asset.changeRate`**: API 원본 비율값 (0.05 = 5%). **UI에 직접 `%` 표기 금지** (곱하기 100 누락 시 항상 0.0%로 보임)
-- **`asset.metrics.yesterdayChange`**: `usePortfolioCalculator`에서 `changeRate * 100` (API 원본, 우선) 또는 `((현재가 - 전일종가) / 전일종가) * 100` (폴백)으로 계산된 % 값. **UI 표시에는 이 값 사용**
+- **`asset.changeRate`**: API 원본 비율값 (0.05 = 5%), **`undefined` = 데이터 없음** (0은 실제 변동 없음을 의미하는 유효값). **UI에 직접 `%` 표기 금지** (곱하기 100 누락 시 항상 0.0%로 보임). `priceService.ts`에서 API 응답에 `change_rate`/`changeRate`가 없고 `prev_close`도 없으면 `undefined` 유지
+- **`asset.metrics.yesterdayChange`**: `usePortfolioCalculator`에서 `changeRate * 100` (API 원본, `!= null`일 때 우선) 또는 `((현재가KRW - 전일종가KRW) / 전일종가KRW) * 100` (폴백: `changeRate`가 `undefined`일 때)으로 계산된 % 값. **UI 표시에는 이 값 사용**
 - **원칙**: 변동률을 UI에 보여줄 때는 반드시 `metrics.yesterdayChange` 사용, `changeRate`는 내부 계산용으로만 참조
 
 ### 환율 처리
