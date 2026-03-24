@@ -309,7 +309,7 @@ const AssetTrendChart: React.FC<AssetTrendChartProps> = ({
         fixRightEdge: false,
       },
       handleScroll: {
-        mouseWheel: true,
+        mouseWheel: false,
         pressedMouseMove: true,
         horzTouchDrag: true,
         vertTouchDrag: false,
@@ -424,15 +424,10 @@ const AssetTrendChart: React.FC<AssetTrendChartProps> = ({
     });
     resizeObserver.observe(container);
 
-    // PC: 부모 <main overflow-y-auto>가 wheel 이벤트를 가로채는 것 방지
-    const handleWheel = (e: WheelEvent) => { e.preventDefault(); };
-    container.addEventListener('wheel', handleWheel, { passive: false });
-
     // 모바일: 수평 터치는 차트가 처리, 수직 터치만 브라우저 스크롤
     container.style.touchAction = 'pan-y';
 
     return () => {
-      container.removeEventListener('wheel', handleWheel);
       resizeObserver.disconnect();
       chart.remove();
       chartRef.current = null;

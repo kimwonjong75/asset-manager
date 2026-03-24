@@ -52,7 +52,7 @@
 | `useMarketData.ts` | 시세/환율 업데이트, 암호화폐 분기, **관심종목 시세도 함께 갱신** (어제대비 `yesterdayChange` 선계산 포함), 관심종목 전용 갱신(52주 최고가 히스토리 기반 계산) | `priceService`, `upbitService`, `historicalPriceService` | `PortfolioContext` |
 | `useAssetActions.ts` | 자산 CRUD, 매도/매수/CSV 처리. **매도 시 `fetchHistoricalExchangeRate` 결과 유효성 검증** (USD>3000, JPY>50, CNY>400이면 앱 현재 환율로 자동 대체) | `priceService`, `geminiService` | 모달 컴포넌트들 |
 | `usePortfolioCalculator.ts` | 수익률/손익 계산 (구매 환율 기준). **`getSellAmountKRW(record, exchangeRates)`** 모듈 레벨 헬퍼로 비정상 환율 감지 후 KRW 매도금액 보정. `calculateSoldAssetsStats(sellHistory, assets, exchangeRates)` — `exchangeRates` 세 번째 파라미터 추가 (기본값 `{ USD: 1450, JPY: 9.5 }`) | `types/index` | 대시보드, 통계 |
-| `useHistoricalPriceData.ts` | 차트용 과거 종가+거래량 데이터 (MA 여부 무관, 캐시 내장, `displayDays` 기반 기간 제어). 반환값: `{ historicalPrices, historicalVolumes, isLoading, error }` | `historicalPriceService`, `maCalculations` | `AssetTrendChart` |
+| `useHistoricalPriceData.ts` | 차트용 과거 종가+거래량 데이터 (MA 여부 무관, 캐시 내장, 항상 전체 10년 fetch). 반환값: `{ historicalPrices, historicalVolumes, isLoading, error }` | `historicalPriceService` | `AssetTrendChart` |
 | `useGlobalPeriodDays.ts` | 글로벌 기간(`GlobalPeriod`) → `{ startDate, endDate, days }` 변환 유틸 훅 | `types/store` | `AssetTrendChart`, `DashboardView`, `AnalyticsView` |
 | `useEnrichedIndicators.ts` | 전 종목 배치 과거 데이터 조회 → MA 전 기간(5~200) + RSI(금일/전일) 계산. **포트폴리오 + 관심종목 통합**: `useEnrichedIndicators(assets, watchlistItems?)` — 관심종목 ticker도 중복 제거 후 배치 조회에 포함 | `historicalPriceService`, `maCalculations` | **`PortfolioContext`** (Context 레벨에서 호출, enrichedMap을 전역 공유), `geminiService` (타입만) |
 | `useAutoAlert.ts` | 자동 알림 트리거 + AlertSettings localStorage 영속. **관심종목 매수 기회 포함**: `watchlistItems` prop 수신 → `checkBuyRulesForWatchlist()` 결과를 포트폴리오 결과와 병합 (`mergeWatchlistResults`) | `alertChecker`, `types/alertRules` | `PortfolioContext` (derived/actions에 노출) |
@@ -279,7 +279,7 @@ PeriodSelector (App.tsx 탭 바 우측(데스크탑) / 탭 바 아래 별도 행
 AssetTrendChart.tsx (Lightweight Charts — Canvas 기반, 핀치 줌/드래그 팬 내장)
     │
     ├─ ticker/exchange 있는 자산 (주식, 코인 등)
-    │   └─ useHistoricalPriceData.ts (displayDays + MA warm-up 합산 fetch)
+    │   └─ useHistoricalPriceData.ts (항상 전체 10년 fetch, 캐시 재활용)
     │        └─ historicalPriceService.ts → /history 또는 /upbit/history
     │             ├─ historicalPrices → calculateSMA() 직접 호출 → LineSeries + MA LineSeries
     │             └─ historicalVolumes → HistogramSeries (별도 priceScale, 하단 20%)
@@ -396,7 +396,7 @@ PortfolioAssistant.tsx
 | `historyUtils.ts` | `usePortfolioData.ts` |
 | `usePortfolioData.ts` | `PortfolioContext.tsx` |
 | `useGoogleDriveSync.ts` | `usePortfolioData.ts`, `usePortfolioExport.ts` |
-| `maCalculations.ts` | `AssetTrendChart`, `useEnrichedIndicators`, `useHistoricalPriceData`, `geminiService` |
+| `maCalculations.ts` | `AssetTrendChart`, `useEnrichedIndicators`, `geminiService` |
 | `useEnrichedIndicators.ts` | **`PortfolioContext`** (enrichedMap 전역 공유), `geminiService` (타입만) |
 | `alertChecker.ts` | `useAutoAlert`, 프리셋 버튼 (`PortfolioTable`) |
 | `constants/alertRules.ts` | `useAutoAlert`, `AlertSettingsPage` |
@@ -628,9 +628,8 @@ try {
 ### 글로벌 기간 선택기 (GlobalPeriod)
 - **상태 위치**: `PortfolioContext.ui.globalPeriod` (타입: `'THIS_MONTH' | 'LAST_MONTH' | '1M' | '3M' | '6M' | '1Y' | '2Y' | 'ALL'`)
 - **기본값**: `'1Y'`, localStorage에 영속 (`'asset-manager-global-period'`)
-- **영향 범위**: 모든 탭에 일관 적용 — 대시보드(수익통계 SoldAssetsStats + ProfitLossChart 필터, `endDate`도 필터 적용), 차트(AssetTrendChart fetch 기간), 수익 통계(매도 기록 필터)
-- **차트 fetch 계산**: `totalDays = displayDays + MA warm-up days` (MA200 + 2년 = 730 + 330 = 1060일 fetch)
-- **`ALL` 선택 시**: 최대 10년(3650일) fetch, 날짜 필터는 `'2000-01-01'`부터
+- **영향 범위**: 모든 탭에 일관 적용 — 대시보드(수익통계 SoldAssetsStats + ProfitLossChart 필터, `endDate`도 필터 적용), 차트(AssetTrendChart의 visibleRange 초기 뷰), 수익 통계(매도 기록 필터)
+- **차트 fetch**: 항상 전체 10년(3650일) fetch (기간 변경 시 캐시 히트, 재호출 없음). `visibleRange`로 초기 뷰만 제한, 드래그로 이전 구간 탐색 가능
 - **수익 통계 탭**: 자체 date input이 **삭제됨** — 반드시 `periodStartDate`/`periodEndDate` props로 전달받아야 함
 
 ### 관심종목 (WatchlistItem)

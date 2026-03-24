@@ -9,15 +9,13 @@ import {
   convertTickerForAPI,
   isCryptoExchange,
 } from '../services/historicalPriceService';
-import { getRequiredHistoryDays } from '../utils/maCalculations';
-
 interface UseHistoricalPriceDataProps {
   ticker: string;
   exchange: string;
   category?: string;
   isExpanded: boolean;
   maxMAPeriod: number;
-  displayDays?: number | null; // 글로벌 기간 (null = ALL)
+  displayDays?: number | null; // 글로벌 기간 (null = ALL) — visibleRange 전달용 (fetch에는 미사용)
 }
 
 interface UseHistoricalPriceDataResult {
@@ -61,20 +59,8 @@ export function useHistoricalPriceData({
       return;
     }
 
-    // MA warm-up에 필요한 일수
-    const effectivePeriod = Math.max(maxMAPeriod, 1);
-    const maWarmupDays = getRequiredHistoryDays(effectivePeriod);
-
-    // 총 fetch 일수: 표시 기간 + MA warm-up (또는 MA warm-up만)
-    let totalDays: number;
-    if (displayDays === null) {
-      // ALL: 최대 10년
-      totalDays = 3650;
-    } else if (displayDays && displayDays > 0) {
-      totalDays = displayDays + maWarmupDays;
-    } else {
-      totalDays = maWarmupDays;
-    }
+    // 항상 전체 데이터를 fetch (차트에서 visibleRange로 초기 뷰만 제한, 드래그로 이전 구간 탐색 가능)
+    const totalDays = 3650;
 
     const cacheKey = getCacheKey(ticker, exchange);
     const now = Date.now();
@@ -148,7 +134,7 @@ export function useHistoricalPriceData({
     return () => {
       abortRef.current = true;
     };
-  }, [ticker, exchange, category, isExpanded, maxMAPeriod, displayDays]);
+  }, [ticker, exchange, category, isExpanded]);
 
   return { historicalPrices, historicalVolumes, isLoading, error };
 }
