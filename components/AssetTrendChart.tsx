@@ -109,6 +109,7 @@ const AssetTrendChart: React.FC<AssetTrendChartProps> = ({
   const volumeSeriesRef = useRef<ISeriesApi<'Histogram'> | null>(null);
   const maSeriesRefs = useRef<Map<number, ISeriesApi<'Line'>>>(new Map());
   const purchaseLineRef = useRef<ReturnType<ISeriesApi<'Line'>['createPriceLine']> | null>(null);
+  const displayPurchasePriceRef = useRef<number | null>(null);
 
   const isCash = categoryId ? isBaseType(categoryId, 'CASH') : false;
   const enabledConfigs = maConfigs.filter(c => c.enabled);
@@ -151,15 +152,8 @@ const AssetTrendChart: React.FC<AssetTrendChartProps> = ({
   const priceData = useMemo(() => {
     if (useHistoricalData && historicalPrices) {
       const sortedDates = Object.keys(historicalPrices).sort();
-      let cutoffStr: string | null = null;
-      if (displayDays !== null) {
-        const cutoff = new Date();
-        cutoff.setDate(cutoff.getDate() - displayDays);
-        cutoffStr = cutoff.toISOString().split('T')[0];
-      }
 
       const points = sortedDates
-        .filter(d => !cutoffStr || d >= cutoffStr)
         .map(date => ({
           time: toChartTime(date),
           value: applyKRW ? historicalPrices[date] * exchangeRate : historicalPrices[date],
@@ -181,15 +175,7 @@ const AssetTrendChart: React.FC<AssetTrendChartProps> = ({
     }
 
     // PortfolioSnapshot 폴백
-    let cutoffStr: string | null = null;
-    if (displayDays !== null) {
-      const cutoff = new Date();
-      cutoff.setDate(cutoff.getDate() - displayDays);
-      cutoffStr = cutoff.toISOString().split('T')[0];
-    }
-
     const points = (history || [])
-      .filter(snapshot => !cutoffStr || snapshot.date >= cutoffStr)
       .map(snapshot => {
         const assetSnapshot = snapshot.assets.find(a => a.id === assetId);
         let price = 0;
@@ -230,27 +216,20 @@ const AssetTrendChart: React.FC<AssetTrendChartProps> = ({
     }
 
     return points;
-  }, [useHistoricalData, historicalPrices, history, assetId, currentQuantity, currentPrice, currency, exchangeRate, showInKRW, displayDays, applyKRW]);
+  }, [useHistoricalData, historicalPrices, history, assetId, currentQuantity, currentPrice, currency, exchangeRate, showInKRW, applyKRW]);
 
   // 거래량 데이터
   const volumeData = useMemo(() => {
     if (!useHistoricalData || !historicalVolumes) return [];
     const sortedDates = Object.keys(historicalVolumes).sort();
-    let cutoffStr: string | null = null;
-    if (displayDays !== null) {
-      const cutoff = new Date();
-      cutoff.setDate(cutoff.getDate() - displayDays);
-      cutoffStr = cutoff.toISOString().split('T')[0];
-    }
     return sortedDates
-      .filter(d => !cutoffStr || d >= cutoffStr)
       .filter(d => historicalVolumes[d] > 0)
       .map(date => ({
         time: toChartTime(date),
         value: historicalVolumes[date],
         color: 'rgba(74, 85, 104, 0.3)',
       }));
-  }, [useHistoricalData, historicalVolumes, displayDays]);
+  }, [useHistoricalData, historicalVolumes]);
 
   const hasVolumeData = volumeData.length > 0;
 
@@ -263,28 +242,19 @@ const AssetTrendChart: React.FC<AssetTrendChartProps> = ({
       price: applyKRW ? historicalPrices[date] * exchangeRate : historicalPrices[date],
     }));
 
-    let cutoffStr: string | null = null;
-    if (displayDays !== null) {
-      const cutoff = new Date();
-      cutoff.setDate(cutoff.getDate() - displayDays);
-      cutoffStr = cutoff.toISOString().split('T')[0];
-    }
-
     const result = new Map<number, { time: string; value: number }[]>();
     for (const period of enabledPeriods) {
       const sma = calculateSMA(sortedPrices, period);
       const points: { time: string; value: number }[] = [];
       for (let i = 0; i < sortedPrices.length; i++) {
-        const date = sortedPrices[i].date;
-        if (cutoffStr && date < cutoffStr) continue;
         if (sma[i] !== null) {
-          points.push({ time: toChartTime(date), value: Math.round(sma[i]! * 100) / 100 });
+          points.push({ time: toChartTime(sortedPrices[i].date), value: Math.round(sma[i]! * 100) / 100 });
         }
       }
       result.set(period, points);
     }
     return result;
-  }, [useHistoricalData, historicalPrices, enabledPeriods, applyKRW, exchangeRate, displayDays]);
+  }, [useHistoricalData, historicalPrices, enabledPeriods, applyKRW, exchangeRate]);
 
   // 매수평균가
   const displayPurchasePrice = useMemo(() => {
@@ -294,6 +264,20 @@ const AssetTrendChart: React.FC<AssetTrendChartProps> = ({
     }
     return purchasePrice;
   }, [purchasePrice, showInKRW, currency, exchangeRate]);
+
+  // ref를 통해 autoscaleInfoProvider가 최신 값 참조
+  displayPurchasePriceRef.current = displayPurchasePrice;
+
+  // 선택 기간에 해당하는 visible range (데이터 전체는 차트에 로드, 초기 뷰만 제한)
+  const visibleRange = useMemo(() => {
+    if (displayDays === null || priceData.length === 0) return null;
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - displayDays);
+    const from = cutoff.toISOString().split('T')[0];
+    const firstDate = priceData[0].time as string;
+    const lastDate = priceData[priceData.length - 1].time as string;
+    return { from: from > firstDate ? from : firstDate, to: lastDate };
+  }, [displayDays, priceData]);
 
   // --- 차트 생성 및 업데이트 ---
   useEffect(() => {
@@ -348,6 +332,18 @@ const AssetTrendChart: React.FC<AssetTrendChartProps> = ({
         type: 'price',
         precision: displayCurrency === Currency.KRW ? 0 : 2,
         minMove: displayCurrency === Currency.KRW ? 1 : 0.01,
+      },
+      autoscaleInfoProvider: (baseImpl) => {
+        const baseInfo = baseImpl();
+        const pp = displayPurchasePriceRef.current;
+        if (pp == null || !baseInfo || !baseInfo.priceRange) return baseInfo;
+        return {
+          ...baseInfo,
+          priceRange: {
+            minValue: Math.min(baseInfo.priceRange.minValue, pp),
+            maxValue: Math.max(baseInfo.priceRange.maxValue, pp),
+          },
+        };
       },
     });
     priceSeriesRef.current = priceSeries;
@@ -428,7 +424,15 @@ const AssetTrendChart: React.FC<AssetTrendChartProps> = ({
     });
     resizeObserver.observe(container);
 
+    // PC: 부모 <main overflow-y-auto>가 wheel 이벤트를 가로채는 것 방지
+    const handleWheel = (e: WheelEvent) => { e.preventDefault(); };
+    container.addEventListener('wheel', handleWheel, { passive: false });
+
+    // 모바일: 수평 터치는 차트가 처리, 수직 터치만 브라우저 스크롤
+    container.style.touchAction = 'pan-y';
+
     return () => {
+      container.removeEventListener('wheel', handleWheel);
       resizeObserver.disconnect();
       chart.remove();
       chartRef.current = null;
@@ -477,9 +481,16 @@ const AssetTrendChart: React.FC<AssetTrendChartProps> = ({
       });
     }
 
-    // 전체 데이터에 맞게 시간축 조정
-    chartRef.current?.timeScale().fitContent();
-  }, [priceData, volumeData, maDataMap, displayPurchasePrice]);
+    // 선택 기간에 맞게 시간축 조정 (이전 구간 데이터는 드래그로 탐색 가능)
+    if (visibleRange) {
+      chartRef.current?.timeScale().setVisibleRange({
+        from: visibleRange.from,
+        to: visibleRange.to,
+      });
+    } else {
+      chartRef.current?.timeScale().fitContent();
+    }
+  }, [priceData, volumeData, maDataMap, displayPurchasePrice, visibleRange]);
 
   const hasMAToggle = hasMASupport;
 

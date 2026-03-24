@@ -152,7 +152,7 @@
 | 파일 | 책임 | 의존 |
 |------|------|------|
 | `PortfolioTable.tsx` | 포트폴리오 메인 테이블 — 정렬, 검색, 스마트 필터, 핀 필터, 메모 편집 통합. `memoEditAsset` 로컬 상태 관리. 프리셋 버튼으로 AlertRule→SmartFilterState 변환. `onRefreshSelected`(선택 업데이트 버튼)·`onRefreshOne`(개별 행 전달) props 수신 | `portfolio-table/*`, `SmartFilterPanel`, `MemoEditPopup`, `PortfolioContext` |
-| `AssetTrendChart.tsx` | **Lightweight Charts (Canvas)** — 가격 LineSeries + MA 오버레이 + 거래량 HistogramSeries + 매수평균선(createPriceLine), localStorage 기반 MA/VOL 토글. 모바일 핀치 줌·드래그 팬·마우스 휠 줌 내장. ResizeObserver로 반응형. 커스텀 HTML 툴팁(subscribeCrosshairMove). MA는 `calculateSMA` 직접 호출 | `useHistoricalPriceData`, `maCalculations`(`calculateSMA`), `PortfolioSnapshot` |
+| `AssetTrendChart.tsx` | **Lightweight Charts (Canvas)** — 가격 LineSeries + MA 오버레이 + 거래량 HistogramSeries + 매수평균선(createPriceLine, `autoscaleInfoProvider`로 Y축 범위에 매수가 포함 보장), localStorage 기반 MA/VOL 토글. 데이터 cutoff 없이 전체 로드 → `setVisibleRange()`로 초기 뷰만 선택 기간 제한 (드래그로 이전 구간 탐색 가능). PC: `wheel` 이벤트 `passive:false`로 부모 스크롤 차단. 모바일: `touch-action:pan-y`로 수평 터치를 차트에 위임. ResizeObserver로 반응형. 커스텀 HTML 툴팁(subscribeCrosshairMove). MA는 `calculateSMA` 직접 호출 | `useHistoricalPriceData`, `maCalculations`(`calculateSMA`), `PortfolioSnapshot` |
 | `SellAnalyticsPage.tsx` | 매도 기록 분석 대시보드 (기간별 집계, 카테고리 필터). `sellHistory[]`와 `asset.sellTransactions[]` 합산 시 `id` 기반 중복 제거. **모바일 대응**: 필터 `flex-col sm:flex-row`, 프리셋 버튼 `overflow-x-auto`, 차트 `h-72 sm:h-96`, 매도 기록 테이블 4컬럼(티커/수량/매도금액/매수금액) `hidden sm:table-cell` | `SellRecord`, `CategoryDefinition`, Recharts |
 | `PortfolioAssistant.tsx` | AI 어시스턴트 FAB + 채팅 패널 (Gemini 스트리밍 응답) | `geminiService`, `PortfolioContext.derived.enrichedMap` |
 
@@ -266,7 +266,7 @@ PeriodSelector (App.tsx 탭 바 우측(데스크탑) / 탭 바 아래 별도 행
          ├─ DashboardView → useGlobalPeriodDays(startDate+endDate) → portfolioHistory/filteredSellHistory 필터
          │    ├─ SoldAssetsStats (수익통계, PeriodSelector 내장)
          │    └─ ProfitLossChart (PeriodSelector 내장)
-         ├─ AssetTrendChart → useHistoricalPriceData(displayDays) + 차트 데이터 slice
+         ├─ AssetTrendChart → useHistoricalPriceData(displayDays) + 전체 로드 → setVisibleRange(기간)
          ├─ AnalyticsView → SellAnalyticsPage(periodStartDate, periodEndDate)
          └─ WatchlistPage → AssetTrendChart (동일)
 ```
@@ -283,17 +283,17 @@ AssetTrendChart.tsx (Lightweight Charts — Canvas 기반, 핀치 줌/드래그 
     │        └─ historicalPriceService.ts → /history 또는 /upbit/history
     │             ├─ historicalPrices → calculateSMA() 직접 호출 → LineSeries + MA LineSeries
     │             └─ historicalVolumes → HistogramSeries (별도 priceScale, 하단 20%)
-    │                  └─ displayDays 기준으로 표시 범위 slice (MA warm-up 구간 제거)
+    │                  └─ 전체 데이터 로드 → setVisibleRange(displayDays)로 초기 뷰 제한
     │
     └─ 현금 등 ticker 없는 자산
-        └─ PortfolioSnapshot 기반 (폴백, 글로벌 기간으로 필터)
+        └─ PortfolioSnapshot 기반 (폴백, 전체 로드)
 ```
 - **차트 라이브러리**: `lightweight-charts` (TradingView 오픈소스, Canvas 렌더링). 이전 Recharts(SVG) 대비 대량 데이터 성능 우수
-- **터치/마우스 인터랙션**: 핀치 줌(`handleScale.pinch`), 드래그 팬(`handleScroll.horzTouchDrag`), 마우스 휠 줌(`handleScale.mouseWheel`) — 모두 내장, zero-config
+- **터치/마우스 인터랙션**: 핀치 줌(`handleScale.pinch`), 드래그 팬(`handleScroll.horzTouchDrag`), 마우스 휠 줌(`handleScale.mouseWheel`). PC: `wheel` 이벤트를 `passive:false`로 직접 캡처하여 부모 `<main overflow-y-auto>` 스크롤 차단. 모바일: 컨테이너에 `touch-action:pan-y` 설정하여 수평 터치를 차트가 처리
 - **시리즈 구조**: 가격 `LineSeries` + MA별 `LineSeries` + 거래량 `HistogramSeries`(별도 `priceScaleId='volume'`, `scaleMargins: {top:0.8, bottom:0}`)
 - **차트 인스턴스 생명주기**: `showVolume`, `enabledConfigs`, `displayCurrency` 변경 시 차트 재생성 (useEffect cleanup → `chart.remove()`). 데이터만 변경 시 `series.setData()`로 업데이트 (재생성 없음)
 - **VOL 토글**: MA 토글 영역에 거래량 표시/숨김 버튼 (기본: 표시). 토글 시 차트 인스턴스 재생성
-- **매수평균선**: `purchasePrice` prop → `priceSeries.createPriceLine()` (금색 점선, 통화 토글 연동). 관심종목은 `purchasePrice` 없으므로 자동 생략
+- **매수평균선**: `purchasePrice` prop → `priceSeries.createPriceLine()` (금색 점선, 통화 토글 연동). `autoscaleInfoProvider`로 매수평균가를 Y축 범위에 항상 포함 (현재가와 괴리 시에도 보임). 관심종목은 `purchasePrice` 없으므로 자동 생략
 - **커스텀 툴팁**: `subscribeCrosshairMove` → 절대 위치 HTML div (pointer-events-none). 뷰포트 경계 보정 포함
 - **범례 위치**: MA 토글 칩 라인 오른쪽에 커스텀 HTML 범례 (현재가 + 활성 MA + 매수평균)
 - **리사이즈 대응**: `ResizeObserver`로 컨테이너 크기 변경 감지 → `chart.applyOptions({width, height})`
