@@ -20,6 +20,8 @@
 - 외부 API 호출은 전용 훅(`hooks/`)에서만 수행
 - 실패 시 `try-catch` + fallback 데이터 필수 (부분 성공 허용)
 - 새 Google Drive API fetch → 반드시 `authenticatedFetch()` 사용 (raw fetch 금지)
+- Cloud Run 서버 URL → `constants/api.ts`의 `CLOUD_RUN_BASE_URL` 사용 (하드코딩 금지)
+- 로깅 → `createLogger('모듈명')` 사용 (`console.*` 직접 사용 금지)
 
 ## 카테고리 시스템
 - `asset.categoryId` (number)가 PRIMARY — `isBaseType(categoryId, 'CASH')` 사용

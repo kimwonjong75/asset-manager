@@ -3,6 +3,9 @@
 
 import { Currency, AssetCategory, ExchangeRates, LegacyAssetShape, PortfolioSnapshot, SellRecord, WatchlistItem, AllocationTargets } from '../types';
 import { DEFAULT_CATEGORIES, DEFAULT_CATEGORY_STORE, CategoryStore } from '../types/category';
+import { createLogger } from './logger';
+
+const log = createLogger('Migration');
 
 /**
  * 마이그레이션 실행
@@ -21,7 +24,7 @@ export const runMigrationIfNeeded = <T extends { exchangeRates?: ExchangeRates; 
   
   // 자산 마이그레이션
   if (Array.isArray(data.assets)) {
-    console.log('[Migration] 데이터 마이그레이션 시작...');
+    log.info('데이터 마이그레이션 시작...');
     let fixedCount = 0;
     
     data.assets = data.assets.map((asset: any) => {
@@ -55,9 +58,7 @@ export const runMigrationIfNeeded = <T extends { exchangeRates?: ExchangeRates; 
             (purchasePrice > 1000 && currentPrice < 1000);  // 1000 이상, 현재가 1000 미만 (일반)
           
           if (isKRWPurchase) {
-            console.log(`[Migration] ${ticker}: 암호화폐 KRW 복구`);
-            console.log(`  - purchasePrice: ${purchasePrice.toLocaleString()} (KRW)`);
-            console.log(`  - currency: USD → KRW`);
+            log.info(`${ticker}: 암호화폐 KRW 복구 - purchasePrice: ${purchasePrice.toLocaleString()} (KRW), currency: USD → KRW`);
             fixedCount++;
             
             return {
@@ -77,8 +78,7 @@ export const runMigrationIfNeeded = <T extends { exchangeRates?: ExchangeRates; 
           
           // currentPrice가 priceOriginal보다 100배 이상 크면 원화로 저장된 것
           if (ratio > 100) {
-            console.log(`[Migration] ${ticker}: 가격 복구 (원화→원래통화)`);
-            console.log(`  - currentPrice: ${currentPrice.toLocaleString()} → ${priceOriginal}`);
+            log.info(`${ticker}: 가격 복구 (원화→원래통화) - currentPrice: ${currentPrice.toLocaleString()} → ${priceOriginal}`);
             fixedCount++;
             
             // 최고가도 복구
@@ -102,7 +102,7 @@ export const runMigrationIfNeeded = <T extends { exchangeRates?: ExchangeRates; 
       return targetAsset;
     });
     
-    console.log(`[Migration] 완료! ${fixedCount}개 자산 수정됨`);
+    log.info(`완료! ${fixedCount}개 자산 수정됨`);
   }
   
   return data;
@@ -127,7 +127,7 @@ export const migrateCategorySystem = <T extends {
     return data as T;
   }
 
-  console.log('[Migration] 카테고리 시스템 마이그레이션 시작...');
+  log.info('카테고리 시스템 마이그레이션 시작...');
 
   // 이름 → ID 매핑 빌드
   const nameToId: Record<string, number> = {};
@@ -192,6 +192,6 @@ export const migrateCategorySystem = <T extends {
     data.categoryStore = DEFAULT_CATEGORY_STORE;
   }
 
-  console.log('[Migration] 카테고리 마이그레이션 완료');
+  log.info('카테고리 마이그레이션 완료');
   return data as T;
 };

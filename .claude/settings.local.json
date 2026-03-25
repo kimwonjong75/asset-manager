@@ -23,7 +23,15 @@
       "Bash(git ls-tree:*)",
       "Bash(git config:*)",
       "Bash(xargs grep -l \"showAlertPopup\\\\|dismissAlertPopup\")",
-      "Bash(npx tsc --noEmit --pretty)"
+      "Bash(npx tsc --noEmit --pretty)",
+      "Bash(grep -r \"throw\\\\|Error\\\\|catch\" /c/Users/beari/Desktop/Dev/asset-manager/hooks --include=*.ts --include=*.tsx)",
+      "Bash(grep -r \"interface.*Props\\\\|type.*Props\" /c/Users/beari/Desktop/Dev/asset-manager/components --include=*.tsx)",
+      "Bash(grep -c \"console.log\\\\|console.error\\\\|console.warn\" /c/Users/beari/Desktop/Dev/asset-manager/hooks/*.ts)",
+      "Bash(grep -v \":0$\")",
+      "Bash(grep -c \"console.log\\\\|console.error\\\\|console.warn\" /c/Users/beari/Desktop/Dev/asset-manager/services/*.ts)",
+      "Bash(grep -r \"VITE_\\\\|process.env\" /c/Users/beari/Desktop/Dev/asset-manager --include=*.ts --include=*.tsx ! -path */node_modules/*)",
+      "Bash(grep \"import.meta.env\\\\|VITE_\" /c/Users/beari/Desktop/Dev/asset-manager/services/*.ts)",
+      "Bash(grep -r \"async\\\\|await\" /c/Users/beari/Desktop/Dev/asset-manager/hooks --include=*.ts)"
     ],
     "additionalDirectories": [
       "C:\\Users\\beari\\Downloads"

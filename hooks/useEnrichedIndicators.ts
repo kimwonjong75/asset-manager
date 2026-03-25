@@ -3,6 +3,9 @@
 
 import { useState, useEffect, useRef, useMemo } from 'react';
 import type { Asset, WatchlistItem } from '../types';
+import { createLogger } from '../utils/logger';
+
+const log = createLogger('EnrichedIndicators');
 import {
   fetchStockHistoricalPrices,
   fetchCryptoHistoricalPrices,
@@ -189,7 +192,7 @@ export function useEnrichedIndicators(
         setEnrichedMap(result);
       } catch (err) {
         if (abortRef.current) return;
-        console.error('[useEnrichedIndicators] fetch error:', err);
+        log.error('fetch error:', err);
       } finally {
         if (!abortRef.current) {
           setIsLoading(false);

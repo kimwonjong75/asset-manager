@@ -1,5 +1,8 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { fetchGoldPremium, GoldPremiumResult } from '../services/goldPremiumService';
+import { createLogger } from '../utils/logger';
+
+const log = createLogger('GoldPremium');
 
 const VISIBILITY_COOLDOWN_MS = 10 * 60 * 1000; // 10분
 
@@ -34,7 +37,7 @@ export function useGoldPremium({
       lastFetchedAtRef.current = Date.now();
     } catch (e) {
       setError('금 가격 조회 실패');
-      console.error('[useGoldPremium]', e);
+      log.error(e);
     } finally {
       setLoading(false);
     }

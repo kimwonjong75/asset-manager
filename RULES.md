@@ -86,6 +86,7 @@
 | `smartFilterLogic.ts` | 스마트 필터 매칭 (그룹 내 OR, 그룹 간 AND), enriched 지표 참조, `PRICE_BELOW_*` 판정 포함. 거래량 필터(`VOLUME_SURGE/HIGH/LOW`)는 `indicators.volume_ratio` 사용. **`matchesSingleFilter()` export** — 알림 규칙 체커에서도 재활용 | `PortfolioTable`, `alertChecker.ts` |
 | `alertChecker.ts` | 알림 규칙별 자산 매칭 (규칙 내 필터 AND 조합), 매칭 결과 구조화 반환 (`dailyChange`/`returnPct`/`dropFromHigh`/`rsi` + `details` 문자열). **당일 변동률은 `asset.metrics.yesterdayChange` 사용** (`changeRate` 사용 금지). **`checkBuyRulesForWatchlist()` export**: 관심종목을 pseudo-EnrichedAsset으로 변환(`watchlistToPseudoAsset`)하여 매수 규칙만 실행, 결과에 `source: 'watchlist'` 표시 | `smartFilterLogic.matchesSingleFilter`, `types/alertRules`, `types/index`(WatchlistItem, Currency) | `useAutoAlert`, 프리셋 버튼 |
 | `migrateData.ts` | 데이터 마이그레이션 (기존 형식 변환 + 카테고리 ID 변환) | 로드 시 자동 실행 |
+| `logger.ts` | 중앙 로깅 유틸리티. `createLogger(module)` 팩토리 — 프로덕션 빌드에서 debug/info 자동 억제, warn/error만 출력. 모듈명 자동 프리픽스. **새 서비스/훅 추가 시 `console.*` 직접 사용 금지, 반드시 `createLogger` 사용** | 전체 services/, hooks/, utils/ |
 
 ### types/ (타입 정의)
 | 파일 | 책임 | 수정 시 영향 범위 |
@@ -105,6 +106,7 @@
 | `columnDescriptions.ts` | 포트폴리오 테이블 컬럼 툴팁 텍스트 | `PortfolioTable`, `PortfolioTableRow` |
 | `smartFilterChips.ts` | 스마트 필터 칩 정의 (22개 칩, 동적 라벨, 색상, `description` 툴팁). MA 현재가 칩 2개는 `pairKey`로 ABOVE↔BELOW tri-state 토글 (off→>→<→off 순환, 칩 하나로 2개 필터 키 제어). `DAILY_DROP`/`LOSS_THRESHOLD` 추가. 거래량 그룹 3개 칩: `VOLUME_SURGE`(급증≥2x), `VOLUME_HIGH`(증가≥1.5x), `VOLUME_LOW`(감소<0.5x) | `SmartFilterPanel` |
 | `alertRules.ts` | 기본 알림 규칙 8개 (매도 5 + 매수 3), `DEFAULT_ALERT_SETTINGS` | `useAutoAlert`, `AlertSettingsPage` |
+| `api.ts` | Cloud Run 서버 URL 중앙 관리. `CLOUD_RUN_BASE_URL` 단일 상수 export. 서버 URL 변경 시 이 파일만 수정 | `services/priceService`, `services/upbitService`, `services/historicalPriceService`, `services/googleDriveService` |
 
 ### components/layouts/ (탭별 뷰)
 | 파일 | 책임 | 의존 |
@@ -537,11 +539,14 @@ const getPurchaseValueInKRW = (asset: Asset, exchangeRates: ExchangeRates): numb
 
 ### API 호출 표준 패턴
 ```typescript
+import { createLogger } from '../utils/logger';
+const log = createLogger('모듈명');
+
 try {
   const result = await fetchSomething();
   // 성공 처리
 } catch (error) {
-  console.error('[함수명] 에러:', error);
+  log.error('에러:', error);
   // 폴백 데이터 반환 또는 부분 성공 처리
   return fallbackData;
 }
@@ -555,8 +560,8 @@ try {
 - **시세 업데이트 상태**: 탭바 우측 인라인 `UpdateStatusIndicator` 컴포넌트로 표시 (플로팅 토스트 아님). 모든 업데이트 핸들러에서 "~중..." 메시지 즉시 표시 → 완료 후 5초간 "완료" 메시지 유지. **성공 메시지를 플로팅 토스트로 추가하지 말 것**
 - 에러 메시지: 상단 플로팅 토스트 (`fixed top-4 left-1/2`, 닫기 버튼 포함)
 - 치명적 오류: `alert()` 또는 Toast
-- 경고성 오류: `console.warn()` + UI 상태 표시
-- 디버그 정보: `console.log()` (프로덕션에서 제거 고려)
+- 경고성 오류: `log.warn()` + UI 상태 표시
+- 디버그 정보: `log.debug()` (프로덕션 빌드에서 자동 억제됨)
 
 ---
 
@@ -622,7 +627,7 @@ try {
 - **보관**: Rolling N개 (기본 10개), 초과 시 `createdTime` 기준 오래된 것 자동 삭제
 - **설정**: `localStorage('asset-manager-backup-settings')` — `{ enabled, retentionCount }`
 - **복원**: `loadFileById()` → 전체 데이터 교체 → `updateAllData()` + autoSave (현재 데이터 덮어쓰기)
-- **백업 실패 시**: 앱 동작에 영향 없음 (try-catch, console.error만)
+- **백업 실패 시**: 앱 동작에 영향 없음 (try-catch, log.error만)
 - **관련 파일**: `hooks/useBackup.ts`, `components/BackupSettingsSection.tsx`, `types/backup.ts`, `googleDriveService.ts`
 
 ### 글로벌 기간 선택기 (GlobalPeriod)
@@ -710,11 +715,15 @@ try {
 
 ### 디버깅 로그 패턴
 ```typescript
-// 표준 로그 형식
-console.log('[useMarketData] 자산 분류:', { upbit: upbitAssets.length, general: generalAssets.length });
-console.log('[useMarketData] 업비트 조회 심볼:', upbitSymbols);
-console.log('[Upbit] BTC: 현재가=xxx, 전일종가=xxx');
-console.error('[priceService] 시세 조회 실패:', error);
+// 중앙 로거 사용 (console.* 직접 사용 금지)
+import { createLogger } from '../utils/logger';
+const log = createLogger('MarketData');
+
+log.debug('자산 분류:', { upbit: upbitAssets.length, general: generalAssets.length });
+log.debug('업비트 조회 심볼:', upbitSymbols);
+log.info('BTC: 현재가=xxx, 전일종가=xxx');
+log.error('시세 조회 실패:', error);
+// 레벨: debug(개발만) < info < warn < error(프로덕션도 출력)
 ```
 
 ### 데이터 무결성
@@ -745,9 +754,11 @@ console.error('[priceService] 시세 조회 실패:', error);
 
 ### 새 API 엔드포인트 연동 시
 - [ ] `services/`에 함수 추가 또는 기존 서비스 확장
+- [ ] Cloud Run URL은 `constants/api.ts`의 `CLOUD_RUN_BASE_URL` import (하드코딩 금지)
 - [ ] `types/api.ts`에 응답 타입 정의
 - [ ] `hooks/`에서 해당 서비스 호출
 - [ ] 에러 핸들링 및 폴백 로직 구현
+- [ ] 로깅은 `createLogger('모듈명')` 사용 (`console.*` 직접 사용 금지)
 
 ### 시세 조회 로직 수정 시
 - [ ] `useMarketData.ts`의 `shouldUseUpbitAPI()` 확인

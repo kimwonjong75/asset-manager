@@ -2,6 +2,9 @@
 // 차트용 과거 시세 데이터 fetching hook (종가 기반)
 
 import { useState, useEffect, useRef } from 'react';
+import { createLogger } from '../utils/logger';
+
+const log = createLogger('HistoricalPriceData');
 import {
   HistoricalPriceData,
   fetchStockHistoricalPrices,
@@ -120,7 +123,7 @@ export function useHistoricalPriceData({
         }
       } catch (err) {
         if (abortRef.current) return;
-        console.error('[useHistoricalPriceData] fetch error:', err);
+        log.error('fetch error:', err);
         setError('과거 시세 조회 실패');
       } finally {
         if (!abortRef.current) {

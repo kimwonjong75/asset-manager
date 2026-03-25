@@ -3,7 +3,11 @@
 
 // AssetCategory import removed — category param is now optional string
 
-const API_BASE_URL = 'https://asset-manager-887842923289.asia-northeast3.run.app';
+import { CLOUD_RUN_BASE_URL } from '../constants/api';
+import { createLogger } from '../utils/logger';
+
+const log = createLogger('HistoricalPrice');
+const API_BASE_URL = CLOUD_RUN_BASE_URL;
 
 /** 백엔드 NaN → null 치환 후 파싱하는 헬퍼 */
 async function parseJsonSafe(response: Response): Promise<unknown> {
@@ -70,14 +74,14 @@ export async function fetchStockHistoricalPrices(
     });
 
     if (!response.ok) {
-      console.error(`[HistoricalPrice] API Error: ${response.status}`);
+      log.error(`API Error: ${response.status}`);
       return {};
     }
 
     const data = await parseJsonSafe(response);
     return sanitizeResult(data as Record<string, any>);
   } catch (error) {
-    console.error('[HistoricalPrice] Stock fetch error:', error);
+    log.error('Stock fetch error:', error);
     return {};
   }
 }
@@ -104,14 +108,14 @@ export async function fetchCryptoHistoricalPrices(
     });
 
     if (!response.ok) {
-      console.error(`[HistoricalPrice] Upbit API Error: ${response.status}`);
+      log.error(`Upbit API Error: ${response.status}`);
       return {};
     }
 
     const data = await parseJsonSafe(response);
     return sanitizeResult(data as Record<string, any>);
   } catch (error) {
-    console.error('[HistoricalPrice] Crypto fetch error:', error);
+    log.error('Crypto fetch error:', error);
     return {};
   }
 }
@@ -142,7 +146,7 @@ export async function fetchExchangeRateHistory(
     const result = (data as Record<string, any>)['USD/KRW'];
     return result?.data ? stripNullPrices(result.data) : {};
   } catch (error) {
-    console.error('[HistoricalPrice] Exchange rate fetch error:', error);
+    log.error('Exchange rate fetch error:', error);
     return {};
   }
 }

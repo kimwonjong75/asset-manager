@@ -1,7 +1,10 @@
 // services/upbitService.ts
 
-// Cloud Run 서버 URL (기존 STOCK_API_URL과 동일)
-const UPBIT_PROXY_URL = 'https://asset-manager-887842923289.asia-northeast3.run.app/upbit';
+import { CLOUD_RUN_BASE_URL } from '../constants/api';
+import { createLogger } from '../utils/logger';
+
+const log = createLogger('Upbit');
+const UPBIT_PROXY_URL = `${CLOUD_RUN_BASE_URL}/upbit`;
 
 export interface UpbitTicker {
   market: string;
@@ -46,11 +49,11 @@ export const fetchUpbitPricesBatch = async (symbols: string[]): Promise<Map<stri
     .filter(s => s.length > 0);
 
   if (validSymbols.length === 0) {
-    console.warn('[Upbit] 유효한 심볼이 없습니다');
+    log.warn('유효한 심볼이 없습니다');
     return resultMap;
   }
 
-  console.log('[Upbit] Cloud Run 프록시 호출:', validSymbols);
+  log.debug('Cloud Run 프록시 호출:', validSymbols);
 
   try {
     const res = await fetch(UPBIT_PROXY_URL, {
@@ -64,12 +67,12 @@ export const fetchUpbitPricesBatch = async (symbols: string[]): Promise<Map<stri
 
     if (!res.ok) {
       const errorText = await res.text().catch(() => '');
-      console.error(`[Upbit] 프록시 응답 에러: ${res.status}`, errorText);
+      log.error(`프록시 응답 에러: ${res.status}`, errorText);
       return resultMap;
     }
 
     const data = await res.json();
-    console.log('[Upbit] 프록시 응답:', data);
+    log.debug('프록시 응답:', data);
 
     // 응답 데이터를 Map으로 변환
     Object.entries(data).forEach(([market, tickerData]: [string, UpbitTickerResponse]) => {
@@ -98,11 +101,11 @@ export const fetchUpbitPricesBatch = async (symbols: string[]): Promise<Map<stri
       }
     });
 
-    console.log(`[Upbit] 조회 성공: ${resultMap.size}개 코인`);
+    log.info(`조회 성공: ${resultMap.size}개 코인`);
     return resultMap;
 
   } catch (error) {
-    console.error('[Upbit] 프록시 호출 에러:', error);
+    log.error('프록시 호출 에러:', error);
     return resultMap;
   }
 };

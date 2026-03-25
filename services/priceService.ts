@@ -1,8 +1,11 @@
 import { AssetCategory, Currency, normalizeExchange } from '../types';
 import { isBaseType } from '../types/category';
 import { AssetDataResult, PriceAPIResponse, PriceItem } from '../types/api';
+import { CLOUD_RUN_BASE_URL } from '../constants/api';
+import { createLogger } from '../utils/logger';
 
-const STOCK_API_URL = 'https://asset-manager-887842923289.asia-northeast3.run.app';
+const log = createLogger('priceService');
+const STOCK_API_URL = CLOUD_RUN_BASE_URL;
 const CHUNK_SIZE = 20;
 const CHUNK_DELAY_MS = 500;
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -20,7 +23,7 @@ export async function fetchBatchAssetPrices(
   if (assets.length === 0) return resultMap;
 
   // 로깅: 요청 대상 확인
-  console.log(`[priceService] Fetching prices for ${assets.length} assets...`);
+  log.debug(`Fetching prices for ${assets.length} assets...`);
 
   for (let i = 0; i < assets.length; i += CHUNK_SIZE) {
     const chunk = assets.slice(i, i + CHUNK_SIZE);
@@ -129,7 +132,7 @@ export async function fetchBatchAssetPrices(
       });
 
     } catch (e) {
-      console.error('[priceService] Batch fetch failed:', e);
+      log.error('Batch fetch failed:', e);
     }
     if (i + CHUNK_SIZE < assets.length) await sleep(CHUNK_DELAY_MS);
   }
@@ -137,7 +140,7 @@ export async function fetchBatchAssetPrices(
   // 데이터가 없는 자산들 처리 (Mock)
   assets.forEach(s => {
     if (!resultMap.has(s.id)) {
-        console.warn(`[priceService] No data for: ${s.ticker}`);
+        log.warn(`No data for: ${s.ticker}`);
         resultMap.set(s.id, {
             name: s.ticker,
             priceOriginal: 0,
@@ -182,7 +185,7 @@ const EXCHANGE_RATE_CACHE_TTL = 5 * 60 * 1000; // 5분
 function getCachedExchangeRate(key: string): number | null {
     const cached = exchangeRateCache.get(key);
     if (cached && Date.now() - cached.timestamp < EXCHANGE_RATE_CACHE_TTL) {
-        console.log(`[priceService] 💱 Cache hit: ${key}`);
+        log.debug(`Cache hit: ${key}`);
         return cached.rate;
     }
     exchangeRateCache.delete(key);
@@ -213,10 +216,10 @@ export async function fetchCurrentExchangeRate(from: Currency, to: Currency): Pr
         const data = await response.json();
         const rate = data.rate || DEFAULT_EXCHANGE_RATES[`${from}-${to}`] || 1;
         setCachedExchangeRate(cacheKey, rate);
-        console.log(`[priceService] 💱 Fetched: ${from}→${to} = ${rate}`);
+        log.debug(`Fetched: ${from}→${to} = ${rate}`);
         return rate;
     } catch (e) {
-        console.error('[priceService] fetchCurrentExchangeRate failed:', e);
+        log.error('fetchCurrentExchangeRate failed:', e);
         return DEFAULT_EXCHANGE_RATES[`${from}-${to}`] || 1;
     }
 }
@@ -242,10 +245,10 @@ export async function fetchHistoricalExchangeRate(date: string, from: Currency, 
         const data = await response.json();
         const rate = data.rate || DEFAULT_EXCHANGE_RATES[`${from}-${to}`] || 1;
         setCachedExchangeRate(cacheKey, rate);
-        console.log(`[priceService] 💱 Fetched historical: ${date} ${from}→${to} = ${rate}`);
+        log.debug(`Fetched historical: ${date} ${from}→${to} = ${rate}`);
         return rate;
     } catch (e) {
-        console.error('[priceService] fetchHistoricalExchangeRate failed:', e);
+        log.error('fetchHistoricalExchangeRate failed:', e);
         return DEFAULT_EXCHANGE_RATES[`${from}-${to}`] || 1;
     }
 }

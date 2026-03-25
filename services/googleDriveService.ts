@@ -17,8 +17,12 @@ export interface DriveFile {
   modifiedTime: string;
 }
 
+import { CLOUD_RUN_BASE_URL } from '../constants/api';
+import { createLogger } from '../utils/logger';
+
+const log = createLogger('GoogleDrive');
 const DRIVE_FOLDER_ID = '10O5cGNd9QVoAAxR8NdojqI9AD7wj0Q_g';
-const AUTH_API_URL = 'https://asset-manager-887842923289.asia-northeast3.run.app';
+const AUTH_API_URL = CLOUD_RUN_BASE_URL;
 
 class GoogleDriveService {
   private accessToken: string | null = null;
@@ -72,7 +76,7 @@ class GoogleDriveService {
         this.isInitialized = true;
         return;
       } catch {
-        console.log('Backend token refresh failed, user needs to sign in again');
+        log.info('Backend token refresh failed, user needs to sign in again');
       }
 
       // 갱신 실패 → 토큰 정리 (초기화 시에는 onAuthStateChange 호출하지 않음)
@@ -118,7 +122,7 @@ class GoogleDriveService {
         ux_mode: 'popup',
         callback: async (response: google.accounts.oauth2.CodeResponse) => {
           if (response.error) {
-            console.error('OAuth code error:', response.error);
+            log.error('OAuth code error:', response.error);
             reject(new Error(response.error));
             return;
           }
@@ -153,7 +157,7 @@ class GoogleDriveService {
             this.scheduleTokenRefresh(expiresIn);
             resolve(this.user!);
           } catch (error) {
-            console.error('Auth callback error:', error);
+            log.error('Auth callback error:', error);
             reject(error);
           }
         },
@@ -217,7 +221,7 @@ class GoogleDriveService {
     const refreshTime = Math.max(0, expiresInMs - 5 * 60 * 1000); // 5분 전
     this.refreshTimer = setTimeout(() => {
       this.refreshTokenViaBackend().catch(() => {
-        console.log('Scheduled token refresh failed');
+        log.warn('Scheduled token refresh failed');
         this.clearAuth();
       });
     }, refreshTime);
@@ -266,7 +270,7 @@ class GoogleDriveService {
     const response = await doFetch();
 
     if (response.status === 401) {
-      console.log('Got 401, attempting re-authentication...');
+      log.info('Got 401, attempting re-authentication...');
       await this.reAuthenticate();
       // 재인증 성공 — 원래 요청 재시도
       return doFetch();
@@ -333,7 +337,7 @@ class GoogleDriveService {
 
     if (!response.ok) {
       const errorText = await response.text().catch(() => 'Unknown error');
-      console.error('Drive list files error', response.status, errorText);
+      log.error('Drive list files error', response.status, errorText);
       throw new Error(`Failed to list files (${response.status})`);
     }
 
@@ -445,7 +449,7 @@ class GoogleDriveService {
 
     if (!response.ok) {
       const errorText = await response.text().catch(() => 'Unknown error');
-      console.error('Drive load file error', response.status, errorText);
+      log.error('Drive load file error', response.status, errorText);
       throw new Error(`Failed to load file (${response.status})`);
     }
 

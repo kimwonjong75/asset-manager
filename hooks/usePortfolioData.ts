@@ -5,6 +5,9 @@ import { runMigrationIfNeeded, migrateCategorySystem } from '../utils/migrateDat
 import { CategoryStore, DEFAULT_CATEGORY_STORE, CategoryBaseType } from '../types/category';
 import { mapToNewAssetStructure } from '../utils/portfolioCalculations';
 import { fillAllMissingDates, backfillWithRealPrices, getMissingDateRange, repairCorruptedSnapshots } from '../utils/historyUtils';
+import { createLogger } from '../utils/logger';
+
+const log = createLogger('PortfolioData');
 
 export const usePortfolioData = () => {
   const [error, setError] = useState<string | null>(null);
@@ -44,7 +47,7 @@ export const usePortfolioData = () => {
           // 백필이 필요한지 확인
           const missingRange = getMissingDateRange(repairedHistory);
           if (missingRange && driveAssets.length > 0) {
-            console.log(`[Backfill] ${missingRange.missingDates.length}일 누락 감지, 실제 시세 조회 시작...`);
+            log.info(`${missingRange.missingDates.length}일 누락 감지, 실제 시세 조회 시작...`);
 
             // 비동기로 백필 수행 (교정된 데이터 기반)
             const rates = data.exchangeRates || { USD: 1450, JPY: 9.5 };
@@ -61,11 +64,11 @@ export const usePortfolioData = () => {
                     ? loaded.allocationTargets
                     : { weights: loaded.allocationTargets || {} };
                   hookAutoSave(driveAssets, backfilledHistory, sellData, watchlistData, rates, allocData as AllocationTargets, loaded.sellAlertDropRate ?? 15);
-                  console.log('[Backfill] 백필 완료, 자동 저장됨');
+                  log.info('백필 완료, 자동 저장됨');
                 }
               })
               .catch(err => {
-                console.error('[Backfill] 백필 실패, 기존 보간 데이터 유지:', err);
+                log.error('백필 실패, 기존 보간 데이터 유지:', err);
               });
           }
         } else {
@@ -135,7 +138,7 @@ export const usePortfolioData = () => {
         setTimeout(() => setSuccessMessage(null), 3000);
       }
     } catch (error: unknown) {
-      console.error('Failed to load from Google Drive:', error);
+      log.error('Failed to load from Google Drive:', error);
       const message = error instanceof Error ? error.message : '';
       setError(`Google Drive에서 데이터를 불러오지 못했습니다.${message ? ` (${message})` : ''}`);
       setTimeout(() => setError(null), 3000);

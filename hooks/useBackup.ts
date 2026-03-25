@@ -1,6 +1,9 @@
 import { useState, useCallback, useRef } from 'react';
 import { googleDriveService } from '../services/googleDriveService';
 import { BackupInfo, BackupSettings, DEFAULT_BACKUP_SETTINGS } from '../types/backup';
+import { createLogger } from '../utils/logger';
+
+const log = createLogger('Backup');
 
 const LS_KEY_SETTINGS = 'asset-manager-backup-settings';
 const LS_KEY_LAST_DATE = 'asset-manager-last-backup-date';
@@ -55,7 +58,7 @@ export function useBackup(deps: { isSignedIn: boolean }) {
       if (!content) {
         content = await googleDriveService.loadFile();
         if (!content) {
-          console.log('[Backup] No portfolio data to backup');
+          log.info(' No portfolio data to backup');
           return;
         }
       }
@@ -63,12 +66,12 @@ export function useBackup(deps: { isSignedIn: boolean }) {
       const fileName = `${BACKUP_PREFIX}${today}.json`;
       await googleDriveService.saveFile(content, fileName);
       localStorage.setItem(LS_KEY_LAST_DATE, today);
-      console.log(`[Backup] 백업 완료: ${fileName}`);
+      log.info(`백업 완료: ${fileName}`);
 
       // retention cleanup
       await cleanupOldBackups(settings.retentionCount);
     } catch (err) {
-      console.error('[Backup] 백업 실패:', err);
+      log.error(' 백업 실패:', err);
     } finally {
       isRunningRef.current = false;
       setIsBackingUp(false);
@@ -87,11 +90,11 @@ export function useBackup(deps: { isSignedIn: boolean }) {
         const toDelete = backups.slice(retentionCount);
         for (const file of toDelete) {
           await googleDriveService.deleteFileById(file.id);
-          console.log(`[Backup] 오래된 백업 삭제: ${file.name}`);
+          log.info(`오래된 백업 삭제: ${file.name}`);
         }
       }
     } catch (err) {
-      console.error('[Backup] Cleanup 실패:', err);
+      log.error(' Cleanup 실패:', err);
     }
   };
 
@@ -112,7 +115,7 @@ export function useBackup(deps: { isSignedIn: boolean }) {
         .sort((a, b) => b.date.localeCompare(a.date));
       setBackupList(list);
     } catch (err) {
-      console.error('[Backup] 목록 조회 실패:', err);
+      log.error(' 목록 조회 실패:', err);
     } finally {
       setIsLoadingList(false);
     }
@@ -126,7 +129,7 @@ export function useBackup(deps: { isSignedIn: boolean }) {
       const content = await googleDriveService.loadFileById(fileId);
       return content;
     } catch (err) {
-      console.error('[Backup] 복원 실패:', err);
+      log.error(' 복원 실패:', err);
       return null;
     } finally {
       setIsRestoring(false);
@@ -140,7 +143,7 @@ export function useBackup(deps: { isSignedIn: boolean }) {
       await googleDriveService.deleteFileById(fileId);
       setBackupList(prev => prev.filter(b => b.fileId !== fileId));
     } catch (err) {
-      console.error('[Backup] 삭제 실패:', err);
+      log.error(' 삭제 실패:', err);
     }
   }, [deps.isSignedIn]);
 

@@ -10,14 +10,16 @@ import {
 } from './historicalPriceService';
 import { calculateSMA, calculateRSI, getRequiredHistoryDays } from '../utils/maCalculations';
 import type { EnrichedIndicatorData } from '../hooks/useEnrichedIndicators';
+import { createLogger } from '../utils/logger';
 
 // =================================================================
 // 1. 설정 및 초기화
 // =================================================================
+const log = createLogger('Gemini');
 const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
 const ai = API_KEY ? new GoogleGenAI({ apiKey: API_KEY }) : null;
 
-console.log("Gemini Service Status:", API_KEY ? "✅ API Key Loaded" : "❌ No API Key");
+log.info("Status:", API_KEY ? "API Key Loaded" : "No API Key");
 
 // =================================================================
 // 2. 캐싱 시스템 (API 호출 횟수 감소)
@@ -74,7 +76,7 @@ function delay(ms: number): Promise<void> {
 // =================================================================
 async function callGeminiWithSearch(prompt: string): Promise<string> {
   if (!ai) {
-    console.error("Gemini AI not initialized");
+    log.error("AI not initialized");
     return "";
   }
 
@@ -91,14 +93,14 @@ async function callGeminiWithSearch(prompt: string): Promise<string> {
     // JSON 블록 정리
     return text.replace(/^```json\s*|```$/g, '').trim();
   } catch (error) {
-    console.error("Gemini API Error:", error);
+    log.error("API Error:", error);
     return "";
   }
 }
 
 async function callGeminiBasic(prompt: string): Promise<string> {
   if (!ai) {
-    console.error("Gemini AI not initialized");
+    log.error("AI not initialized");
     return "";
   }
 
@@ -110,7 +112,7 @@ async function callGeminiBasic(prompt: string): Promise<string> {
 
     return response.text?.trim() || "";
   } catch (error) {
-    console.error("Gemini API Error:", error);
+    log.error("API Error:", error);
     return "";
   }
 }
@@ -191,7 +193,7 @@ Your final output must be only the JSON array, with no other text or markdown fo
     setCache(searchCache, cacheKey, results);
     return results;
   } catch (error) {
-    console.error(`Search failed for "${query}":`, error);
+    log.error(`Search failed for "${query}":`, error);
     return [];
   }
 }
@@ -209,7 +211,7 @@ export const fetchAssetData = async (
   const cacheKey = `${ticker}-${exchange}`;
   const cached = getCached(priceCache, cacheKey);
   if (cached) {
-    console.log(`📦 Cache hit: ${ticker}`);
+    log.debug(`Cache hit: ${ticker}`);
     return cached;
   }
 
@@ -266,10 +268,10 @@ Ensure all prices are numbers. Return ONLY the JSON object.`;
     };
 
     setCache(priceCache, cacheKey, result);
-    console.log(`✅ Fetched: ${ticker} = ${priceKRW.toLocaleString()} KRW`);
+    log.debug(`Fetched: ${ticker} = ${priceKRW.toLocaleString()} KRW`);
     return result;
   } catch (error) {
-    console.error(`❌ Failed to fetch ${ticker}:`, error);
+    log.error(`Failed to fetch ${ticker}:`, error);
     return createMockResult(ticker);
   }
 };
@@ -307,7 +309,7 @@ export const fetchBatchAssetPrices = async (
     const cached = getCached(priceCache, cacheKey);
     if (cached) {
       resultMap.set(asset.id, cached);
-      console.log(`📦 Cache hit: ${asset.ticker}`);
+      log.debug(`Cache hit: ${asset.ticker}`);
     } else {
       uncachedAssets.push(asset);
     }
@@ -409,21 +411,21 @@ Ensure all prices are numbers. Do not miss any assets. Return ONLY the JSON arra
           setCache(priceCache, cacheKey, result);
         }
         
-        console.log(`✅ Batch fetched: ${item.name || item.id} = ${item.priceKRW?.toLocaleString()} KRW`);
+        log.debug(`Batch fetched: ${item.name || item.id} = ${item.priceKRW?.toLocaleString()} KRW`);
       }
     });
 
     // 실패한 자산들은 mock 데이터로 채움
     assets.forEach(asset => {
       if (!resultMap.has(asset.id)) {
-        console.warn(`⚠️ Missing in batch result: ${asset.ticker}`);
+        log.warn(`Missing in batch result: ${asset.ticker}`);
         resultMap.set(asset.id, createMockResult(asset.ticker));
       }
     });
 
     return resultMap;
   } catch (error) {
-    console.error('❌ Batch fetch failed:', error);
+    log.error('Batch fetch failed:', error);
     // 전체 실패 시 개별 조회로 폴백
     for (const asset of assets) {
       try {
@@ -526,7 +528,7 @@ async function fetchTechnicalIndicators(
       result.set(asset.ticker, { ma, prevMa, rsi, prevRsi });
     }
   } catch (err) {
-    console.error('[fetchTechnicalIndicators] error:', err);
+    log.error('fetchTechnicalIndicators error:', err);
   }
 
   return result;
@@ -672,7 +674,7 @@ export const askPortfolioQuestionStream = async (
 
     return fullText || "죄송합니다. 답변을 생성할 수 없습니다.";
   } catch (error) {
-    console.error('Portfolio question stream error:', error);
+    log.error('Portfolio question stream error:', error);
     throw error;
   }
 };
@@ -698,7 +700,7 @@ export const askPortfolioQuestion = async (
     const response = await callGeminiBasic(prompt);
     return response || "죄송합니다. 답변을 생성할 수 없습니다.";
   } catch (error) {
-    console.error('Portfolio question error:', error);
+    log.error('Portfolio question error:', error);
     return "포트폴리오 질문에 대한 답변 생성에 실패했습니다.";
   }
 };
@@ -711,13 +713,13 @@ export const analyzePortfolio = askPortfolioQuestion;
 // =================================================================
 export function clearPriceCache(): void {
   priceCache.clear();
-  console.log("🗑️ Price cache cleared");
+  log.info("Price cache cleared");
 }
 
 export function clearAllCaches(): void {
   priceCache.clear();
   searchCache.clear();
-  console.log("🗑️ All caches cleared");
+  log.info("All caches cleared");
 }
 
 export function getCacheStats(): { prices: number; searches: number } {

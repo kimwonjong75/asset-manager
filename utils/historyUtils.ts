@@ -1,5 +1,8 @@
 import { PortfolioSnapshot, SellRecord, Asset, AssetSnapshot, Currency } from '../types';
 import { isBaseType } from '../types/category';
+import { createLogger } from './logger';
+
+const log = createLogger('Backfill');
 import {
   fetchStockHistoricalPrices,
   fetchCryptoHistoricalPrices,
@@ -228,7 +231,7 @@ export const repairCorruptedSnapshots = (history: PortfolioSnapshot[]): Portfoli
   });
 
   if (repairedCount > 0) {
-    console.log(`[Repair] ${repairedCount}개 오염된 스냅샷 자산 교정됨`);
+    log.info(`${repairedCount}개 오염된 스냅샷 자산 교정됨`);
   }
 
   return repaired;
@@ -289,7 +292,7 @@ export const backfillWithRealPrices = async (
   // API 조회 범위 계산
   const allDates = [...new Set([...existingDates, ...missingDates])].sort();
   if (allDates.length === 0) {
-    console.log('[Backfill] 교정/백필 대상 없음');
+    log.info('교정/백필 대상 없음');
     return fillAllMissingDates(history);
   }
 
@@ -298,7 +301,7 @@ export const backfillWithRealPrices = async (
   const fetchStart = targetDates[0];
   const fetchEnd = targetDates[targetDates.length - 1];
 
-  console.log(`[Backfill] 백필+교정: ${fetchStart} ~ ${fetchEnd} (누락 ${missingDates.length}일, 교정 ${existingDates.length}일)`);
+  log.info(`백필+교정: ${fetchStart} ~ ${fetchEnd} (누락 ${missingDates.length}일, 교정 ${existingDates.length}일)`);
 
   try {
     const [stockPrices, cryptoPrices, exchangeRateHistory] = await Promise.all([
@@ -311,7 +314,7 @@ export const backfillWithRealPrices = async (
     const hasCryptoData = Object.values(cryptoPrices as Record<string, HistoricalPriceResult>).some(r => r.data && Object.keys(r.data).length > 0);
 
     if (!hasStockData && !hasCryptoData) {
-      console.warn('[Backfill] API에서 데이터를 받지 못함, 기존 보간 방식 사용');
+      log.warn('API에서 데이터를 받지 못함, 기존 보간 방식 사용');
       return fillAllMissingDates(history);
     }
 
@@ -377,7 +380,7 @@ export const backfillWithRealPrices = async (
     });
 
     if (correctedCount > 0) {
-      console.log(`[Backfill] 기존 스냅샷 ${correctedCount}개 종가로 교정`);
+      log.info(`기존 스냅샷 ${correctedCount}개 종가로 교정`);
     }
 
     // 2) 누락 날짜 스냅샷 생성
@@ -391,14 +394,14 @@ export const backfillWithRealPrices = async (
     }
 
     if (newSnapshots.length > 0) {
-      console.log(`[Backfill] ${newSnapshots.length}개 새 스냅샷 생성`);
+      log.info(`${newSnapshots.length}개 새 스냅샷 생성`);
     }
 
     const merged = [...correctedHistory, ...newSnapshots].sort((a, b) => a.date.localeCompare(b.date));
     return fillAllMissingDates(merged);
 
   } catch (error) {
-    console.error('[Backfill] API 호출 실패, 기존 보간 방식으로 폴백:', error);
+    log.error('API 호출 실패, 기존 보간 방식으로 폴백:', error);
     return fillAllMissingDates(history);
   }
 };

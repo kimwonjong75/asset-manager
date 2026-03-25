@@ -5,6 +5,9 @@ import { isBaseType } from '../types/category';
 import { fetchBatchAssetPrices as fetchBatchAssetPricesNew, fetchAssetData as fetchAssetDataNew, fetchExchangeRate, fetchExchangeRateJPY, fetchCurrentExchangeRate } from '../services/priceService';
 import { fetchUpbitPricesBatch } from '../services/upbitService';
 import { fetchStockHistoricalPrices, fetchCryptoHistoricalPrices, isCryptoExchange } from '../services/historicalPriceService';
+import { createLogger } from '../utils/logger';
+
+const log = createLogger('MarketData');
 
 interface UseMarketDataProps {
   assets: Asset[];
@@ -52,7 +55,7 @@ export const useMarketData = ({
       let safeHighestPrice = asset.highestPrice;
       // 최고가가 현재가보다 20배 이상 크고, 원화 자산이 아니라면 단위 오류로 간주하고 리셋
       if (asset.currency !== Currency.KRW && safeHighestPrice > newCurrentPrice * 20) {
-          console.log(`[Data Fix] ${asset.ticker} 최고가 오류 보정. ${safeHighestPrice} -> 0`);
+          log.warn(`${asset.ticker} 최고가 오류 보정. ${safeHighestPrice} -> 0`);
           safeHighestPrice = 0;
       }
       return Math.max(safeHighestPrice, apiHighest, newCurrentPrice);
@@ -179,7 +182,7 @@ export const useMarketData = ({
         setTimeout(() => { setError(null); setSuccessMessage(null); }, 5000);
 
     } catch (error) {
-        console.error('Refresh Error:', error);
+        log.error('Refresh Error:', error);
         setError('시세 업데이트 중 오류 발생');
     } finally {
         setIsLoading(false);
