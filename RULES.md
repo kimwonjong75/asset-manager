@@ -49,7 +49,7 @@
 | 파일 | 책임 | 의존 | 수정 시 확인 |
 |------|------|------|-------------|
 | `usePortfolioData.ts` | 핵심 데이터 상태, Google Drive 동기화 | `useGoogleDriveSync`, `historyUtils` | `PortfolioContext` |
-| `useMarketData.ts` | 시세/환율 업데이트, 암호화폐 분기, **관심종목 시세도 함께 갱신** (어제대비 `yesterdayChange` 선계산 포함), 관심종목 전용 갱신(52주 최고가 히스토리 기반 계산) | `priceService`, `upbitService`, `historicalPriceService` | `PortfolioContext` |
+| `useMarketData.ts` | 시세/환율 업데이트, 암호화폐 분기, **관심종목 시세도 함께 갱신** (어제대비 `yesterdayChange` 선계산 포함), 관심종목 전용 갱신(52주 최고가 히스토리 기반 계산). **`patchMissingPrevClose(priceMap, items)`**: 모듈 레벨 헬퍼 — 해외종목 `prev_close=NaN` 시 히스토리 API(`/history`, 최근 7일)로 전일종가/변동률 보완. 4개 갱신 경로(`handleRefreshAllPrices`, `handleRefreshSelectedPrices`, `handleRefreshOnePrice`, `handleRefreshWatchlistPrices`) 모두에서 호출 | `priceService`, `upbitService`, `historicalPriceService` | `PortfolioContext` |
 | `useAssetActions.ts` | 자산 CRUD, 매도/매수/CSV 처리. **매도 시 `fetchHistoricalExchangeRate` 결과 유효성 검증** (USD>3000, JPY>50, CNY>400이면 앱 현재 환율로 자동 대체) | `priceService`, `geminiService` | 모달 컴포넌트들 |
 | `usePortfolioCalculator.ts` | 수익률/손익 계산 (구매 환율 기준). **`getSellAmountKRW(record, exchangeRates)`** 모듈 레벨 헬퍼로 비정상 환율 감지 후 KRW 매도금액 보정. `calculateSoldAssetsStats(sellHistory, assets, exchangeRates)` — `exchangeRates` 세 번째 파라미터 추가 (기본값 `{ USD: 1450, JPY: 9.5 }`) | `types/index` | 대시보드, 통계 |
 | `useHistoricalPriceData.ts` | 차트용 과거 종가+거래량 데이터 (MA 여부 무관, 캐시 내장, 항상 전체 10년 fetch). 반환값: `{ historicalPrices, historicalVolumes, isLoading, error }` | `historicalPriceService` | `AssetTrendChart` |
@@ -69,9 +69,9 @@
 ### services/ (외부 API 연동)
 | 파일 | 책임 | API 엔드포인트 | 수정 시 확인 |
 |------|------|----------------|-------------|
-| `priceService.ts` | 주식/ETF 시세, 환율. **NaN 방어**: 응답 텍스트에서 `NaN` → `null` 치환 후 파싱, `toNumber()` 헬퍼로 null/NaN → 0 변환. **`changeRate` 초기값은 `undefined`** (API가 `change_rate`/`changeRate`를 number로 안 주고 `prev_close`도 없으면 `undefined` 유지 → calculator 폴백 허용) | Cloud Run `/`, `/exchange-rate` | `useMarketData`, `useAssetActions` |
+| `priceService.ts` | 주식/ETF 시세, 환율. **NaN 방어**: 응답 텍스트에서 `NaN` → `null` 치환 후 파싱, `toNumber()` 헬퍼로 null/NaN → 0 변환. **`changeRate` 초기값은 `undefined`** (API가 `change_rate`/`changeRate`를 number로 안 주고 `prev_close`도 없으면 `undefined` 유지 → calculator 폴백 허용). **해외종목 보정**: `change_rate===0 && prev<=0 && priceOrig>0`이면 `changeRate`를 `undefined`로 리셋 (백엔드가 `prev_close=NaN`일 때 `change_rate=0`을 기본값으로 반환하는 패턴 대응) | Cloud Run `/`, `/exchange-rate` | `useMarketData`, `useAssetActions` |
 | `upbitService.ts` | 암호화폐 시세 | Cloud Run `/upbit` | `useMarketData` |
-| `historicalPriceService.ts` | 과거 시세+거래량 (백필/차트용/AI분석용). `HistoricalPriceResult`에 optional `volume` 필드 포함. **NaN 방어**: `parseJsonSafe()` → `sanitizeResult()` / `stripNullPrices()`로 null/NaN 엔트리를 제거하여 `HistoricalPriceData`에는 `number`만 보장 | Cloud Run `/history`, `/upbit/history` | `useHistoricalPriceData`, `historyUtils`, `geminiService` |
+| `historicalPriceService.ts` | 과거 시세+거래량 (백필/차트용/AI분석용). `HistoricalPriceResult`에 optional `volume` 필드 포함. **NaN 방어**: `parseJsonSafe()` → `sanitizeResult()` / `stripNullPrices()`로 null/NaN 엔트리를 제거하여 `HistoricalPriceData`에는 `number`만 보장 | Cloud Run `/history`, `/upbit/history` | `useHistoricalPriceData`, `historyUtils`, `geminiService`, `useMarketData`(전일종가 보완) |
 | `googleDriveService.ts` | 클라우드 저장/로드, **Authorization Code Flow + Backend JWT 기반 인증**, `authenticatedFetch` 래퍼(401 시 백엔드 `/auth/refresh`로 갱신), 백업 파일 관리(`deleteFileById`, `loadFileById`, `listFilesByPattern`) | Google Drive API, Cloud Run `/auth/*` | `useGoogleDriveSync`, `useBackup` |
 | `geminiService.ts` | 종목 검색, AI 분석 (스트리밍 응답, 기술적 질문 시 Context의 enrichedMap 재활용 우선 → 폴백으로 직접 fetch) | Gemini API, `historicalPriceService`, `maCalculations`, `useEnrichedIndicators`(타입만) | `useAssetActions`, `PortfolioAssistant` |
 | `goldPremiumService.ts` | 금 김치 프리미엄 계산. `KRX-GOLD`(KRW/g)와 `GC=F`(USD/oz) 시세를 `fetchBatchAssetPrices()`로 조회 → `usdKrwRate`로 환산 → 프리미엄 계산 | Cloud Run `/` (기존 엔드포인트 재사용) | `useGoldPremium` |
@@ -218,7 +218,8 @@ App.tsx (needsReAuth 배너 포함)
        │                            └─ migrateData.ts (runMigrationIfNeeded + migrateCategorySystem)
        ├─ useMarketData.ts ─────────┬─ priceService.ts (주식/ETF/환율)
        │                            ├─ upbitService.ts (암호화폐)
-       │                            └─ historicalPriceService.ts (관심종목 52주 최고가)
+       │                            ├─ historicalPriceService.ts (관심종목 52주 최고가 + 해외종목 전일종가 보완)
+       │                            └─ patchMissingPrevClose() (해외종목 prev_close=NaN → 히스토리 API 폴백)
        ├─ useAssetActions.ts ───────┬─ priceService.ts
        │                            └─ geminiService.ts
        ├─ usePortfolioCalculator.ts ── types/index.ts
@@ -239,7 +240,8 @@ useMarketData.ts → handleRefreshAllPrices()
          ├─ 관심종목(일반)             → priceService.ts → Cloud Run /
          └─ 관심종목(암호화폐)         → upbitService.ts → Cloud Run /upbit
               │
-              └─ 모든 fetch 완료 후 결과 매핑
+              └─ 모든 fetch 완료 후
+                   ├─ patchMissingPrevClose() ── 해외종목 prev_close=NaN 보완 (히스토리 API 7일)
                    ├─ 현금 자산: 환율 결과로 즉시 계산
                    ├─ setAssets() + setWatchlist()
                    └─ triggerAutoSave()
@@ -256,6 +258,7 @@ useMarketData.ts → handleRefreshWatchlistPrices() (관심종목 전용)
          └─ 1년 히스토리(암호화폐)     → historicalPriceService.ts → Cloud Run /upbit/history
               │
               └─ 히스토리에서 52주 최고가 계산 → highestPrice 갱신
+                   └─ prevCloseMap 추출 → 해외종목 전일종가/changeRate 보완 (추가 API 호출 없음)
 ```
 
 ### 글로벌 기간 선택 흐름
@@ -582,7 +585,8 @@ try {
 - **CORS 우회 필수**: 클라이언트에서 업비트 직접 호출 불가 → Cloud Run 프록시 경유
 
 ### 당일 변동률 표시 주의
-- **`asset.changeRate`**: API 원본 비율값 (0.05 = 5%), **`undefined` = 데이터 없음** (0은 실제 변동 없음을 의미하는 유효값). **UI에 직접 `%` 표기 금지** (곱하기 100 누락 시 항상 0.0%로 보임). `priceService.ts`에서 API 응답에 `change_rate`/`changeRate`가 없고 `prev_close`도 없으면 `undefined` 유지
+- **`asset.changeRate`**: API 원본 비율값 (0.05 = 5%), **`undefined` = 데이터 없음** (0은 실제 변동 없음을 의미하는 유효값). **UI에 직접 `%` 표기 금지** (곱하기 100 누락 시 항상 0.0%로 보임). `priceService.ts`에서 API 응답에 `change_rate`/`changeRate`가 없고 `prev_close`도 없으면 `undefined` 유지. **추가 보정**: `change_rate===0 && prev_close≤0`이면 `undefined`로 리셋 (백엔드 NaN 기본값 패턴)
+- **해외종목 전일종가 보완**: 백엔드가 해외종목의 `prev_close=NaN`, `change_rate=0`을 반환하는 경우, `useMarketData.ts`의 `patchMissingPrevClose()`가 히스토리 API(`/history`, 최근 7일)에서 전일종가를 가져와 `changeRate`와 `previousClosePrice`를 보완
 - **`asset.metrics.yesterdayChange`**: `usePortfolioCalculator`에서 `changeRate * 100` (API 원본, `!= null`일 때 우선) 또는 `((현재가KRW - 전일종가KRW) / 전일종가KRW) * 100` (폴백: `changeRate`가 `undefined`일 때)으로 계산된 % 값. **UI 표시에는 이 값 사용**
 - **원칙**: 변동률을 UI에 보여줄 때는 반드시 `metrics.yesterdayChange` 사용, `changeRate`는 내부 계산용으로만 참조
 

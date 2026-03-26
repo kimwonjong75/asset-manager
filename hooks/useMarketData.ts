@@ -3,6 +3,7 @@ import { Asset, Currency, ExchangeRates, PortfolioSnapshot, SellRecord, Watchlis
 import { isBaseType } from '../types/category';
 // [수정] fetchAssetData import 복구 (단일 갱신 시 필요)
 import { fetchBatchAssetPrices as fetchBatchAssetPricesNew, fetchAssetData as fetchAssetDataNew, fetchExchangeRate, fetchExchangeRateJPY, fetchCurrentExchangeRate } from '../services/priceService';
+import { AssetDataResult } from '../types/api';
 import { fetchUpbitPricesBatch } from '../services/upbitService';
 import { fetchStockHistoricalPrices, fetchCryptoHistoricalPrices, isCryptoExchange } from '../services/historicalPriceService';
 import { createLogger } from '../utils/logger';
@@ -21,6 +22,69 @@ interface UseMarketDataProps {
   triggerAutoSave: (assets: Asset[], history: PortfolioSnapshot[], sells: SellRecord[], watchlist: WatchlistItem[], rates: ExchangeRates) => void;
   setError: (msg: string | null) => void;
   setSuccessMessage: (msg: string | null) => void;
+}
+
+/**
+ * 해외종목 전일종가/변동률 보완
+ * 백엔드가 prev_close=NaN, change_rate=0 반환 시 히스토리 API로 전일종가 보완
+ */
+async function patchMissingPrevClose(
+    priceMap: Map<string, AssetDataResult>,
+    items: { id: string; ticker: string }[],
+): Promise<void> {
+    const missingTickers: string[] = [];
+    const tickerToIds = new Map<string, string[]>();
+
+    for (const item of items) {
+        const data = priceMap.get(item.id);
+        if (data && !data.isMocked && data.changeRate === undefined && data.previousClosePrice <= 0 && data.priceOriginal > 0) {
+            const ticker = item.ticker.toUpperCase();
+            if (!tickerToIds.has(ticker)) {
+                tickerToIds.set(ticker, []);
+                missingTickers.push(ticker);
+            }
+            tickerToIds.get(ticker)!.push(item.id);
+        }
+    }
+
+    if (missingTickers.length === 0) return;
+
+    const today = new Date().toISOString().slice(0, 10);
+    const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10);
+
+    try {
+        const histData = await fetchStockHistoricalPrices(missingTickers, weekAgo, today);
+
+        for (const [ticker, result] of Object.entries(histData)) {
+            if (!result?.data) continue;
+            const upperTicker = ticker.toUpperCase();
+            const ids = tickerToIds.get(upperTicker);
+            if (!ids) continue;
+
+            const dates = Object.keys(result.data).sort();
+            let prevClose: number | undefined;
+            for (let i = dates.length - 1; i >= 0; i--) {
+                if (dates[i] < today && result.data[dates[i]] > 0) {
+                    prevClose = result.data[dates[i]];
+                    break;
+                }
+            }
+            if (!prevClose || prevClose <= 0) continue;
+
+            for (const id of ids) {
+                const data = priceMap.get(id);
+                if (data) {
+                    priceMap.set(id, {
+                        ...data,
+                        previousClosePrice: prevClose,
+                        changeRate: (data.priceOriginal - prevClose) / prevClose,
+                    });
+                }
+            }
+        }
+    } catch (e) {
+        log.warn('전일종가 히스토리 보완 실패:', e);
+    }
 }
 
 const shouldUseUpbitAPI = (exchange: string): boolean => {
@@ -113,6 +177,12 @@ export const useMarketData = ({
             id: asset.id, priceKRW: rate * asset.priceOriginal, priceOriginal: asset.priceOriginal, currency: asset.currency, previousClosePrice: rate * asset.priceOriginal
           }))
         ));
+
+        // 해외종목 전일종가 보완 (prev_close=NaN인 경우 히스토리 API 폴백)
+        await Promise.all([
+            patchMissingPrevClose(batchPriceMap, generalAssets),
+            patchMissingPrevClose(wlPriceMap, wlGeneral),
+        ]);
 
         const failedTickers: string[] = [];
         const failedIds: string[] = [];
@@ -213,6 +283,9 @@ export const useMarketData = ({
              upbitSymbols.length > 0 ? fetchUpbitPricesBatch(upbitSymbols) : Promise.resolve(new Map())
         ]);
 
+        // 해외종목 전일종가 보완
+        await patchMissingPrevClose(batchPriceMap, generalAssets);
+
         const updatedAssets = assets.map(asset => {
             if (!idSet.has(asset.id)) return asset;
             if (isBaseType(asset.categoryId, 'CASH')) return asset; // 현금은 전체 갱신 때만
@@ -266,10 +339,31 @@ export const useMarketData = ({
         } else throw new Error('업비트 조회 실패');
       } else {
         const d = await fetchAssetDataNew({ ticker: target.ticker, exchange: target.exchange, category: target.category, currency: target.currency });
+
+        // 전일종가 보완 (해외종목: prev_close=NaN인 경우)
+        if (d.changeRate === undefined && d.previousClosePrice <= 0 && d.priceOriginal > 0) {
+            const todayStr = new Date().toISOString().slice(0, 10);
+            const weekAgoStr = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10);
+            try {
+                const hist = await fetchStockHistoricalPrices([target.ticker.toUpperCase()], weekAgoStr, todayStr);
+                const tickerHist = hist[target.ticker.toUpperCase()];
+                if (tickerHist?.data) {
+                    const dates = Object.keys(tickerHist.data).sort();
+                    for (let i = dates.length - 1; i >= 0; i--) {
+                        if (dates[i] < todayStr && tickerHist.data[dates[i]] > 0) {
+                            d.previousClosePrice = tickerHist.data[dates[i]];
+                            d.changeRate = (d.priceOriginal - d.previousClosePrice) / d.previousClosePrice;
+                            break;
+                        }
+                    }
+                }
+            } catch (e) { log.warn('전일종가 보완 실패:', e); }
+        }
+
         const newCurrency = isBaseType(target.categoryId, 'CRYPTOCURRENCY') ? target.currency : (d.currency as Currency);
         const newCurrentPrice = (target.currency === Currency.KRW) ? d.priceKRW : d.priceOriginal;
         const finalHighest = fixHighestPrice(target, newCurrentPrice, d.highestPrice);
-        
+
         const updated = assets.map(a => a.id === assetId ? { ...a, previousClosePrice: d.previousClosePrice, currentPrice: newCurrentPrice, currency: newCurrency, highestPrice: finalHighest, changeRate: d.changeRate } : a);
         setAssets(updated);
         triggerAutoSave(updated, portfolioHistory, sellHistory, watchlist, exchangeRates);
@@ -327,6 +421,21 @@ export const useMarketData = ({
             }
         }
 
+        // 전일종가 추출 (해외종목 prev_close=NaN 보완용, 이미 fetch한 stockHistory 재사용)
+        const prevCloseMap = new Map<string, number>();
+        const todayForPrev = new Date().toISOString().slice(0, 10);
+        for (const [ticker, result] of Object.entries(stockHistory) as [string, { data?: Record<string, number> }][]) {
+            if (result?.data) {
+                const dates = Object.keys(result.data).sort();
+                for (let i = dates.length - 1; i >= 0; i--) {
+                    if (dates[i] < todayForPrev && result.data[dates[i]] > 0) {
+                        prevCloseMap.set(ticker.toUpperCase(), result.data[dates[i]]);
+                        break;
+                    }
+                }
+            }
+        }
+
         const updated = watchlist.map(item => {
             if (shouldUseUpbitAPI(item.exchange)) {
                 const data = upbitPriceMap.get(item.ticker.toUpperCase()) || upbitPriceMap.get(`KRW-${item.ticker.toUpperCase()}`);
@@ -344,8 +453,17 @@ export const useMarketData = ({
                 const newCurrent = (item.currency === Currency.KRW) ? d.priceKRW : d.priceOriginal;
                 const histHigh = histHighMap.get(item.ticker.toUpperCase()) || 0;
                 const newHighest = Math.max(item.highestPrice || 0, d.highestPrice || 0, histHigh, newCurrent);
-                const cr = d.changeRate;
-                return { ...item, currentPrice: newCurrent, priceOriginal: d.priceOriginal, currency: (item.currency || d.currency) as Currency, previousClosePrice: d.previousClosePrice, changeRate: cr, indicators: d.indicators, highestPrice: newHighest, yesterdayChange: cr != null ? cr * 100 : (d.previousClosePrice > 0 ? ((newCurrent - d.previousClosePrice) / d.previousClosePrice) * 100 : 0) };
+                let cr = d.changeRate;
+                let prevClose = d.previousClosePrice;
+                // 전일종가 보완 (해외종목)
+                if (cr === undefined && prevClose <= 0 && d.priceOriginal > 0) {
+                    const histPrev = prevCloseMap.get(item.ticker.toUpperCase());
+                    if (histPrev && histPrev > 0) {
+                        prevClose = histPrev;
+                        cr = (d.priceOriginal - histPrev) / histPrev;
+                    }
+                }
+                return { ...item, currentPrice: newCurrent, priceOriginal: d.priceOriginal, currency: (item.currency || d.currency) as Currency, previousClosePrice: prevClose, changeRate: cr, indicators: d.indicators, highestPrice: newHighest, yesterdayChange: cr != null ? cr * 100 : (prevClose > 0 ? ((newCurrent - prevClose) / prevClose) * 100 : 0) };
             }
             return item;
         });

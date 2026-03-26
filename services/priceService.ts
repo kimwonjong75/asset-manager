@@ -90,6 +90,12 @@ export async function fetchBatchAssetPrices(
                 changeRate = (priceOrig - prev) / prev;
             }
 
+            // 백엔드가 prev_close=NaN일 때 change_rate=0을 기본값으로 반환하는 패턴 대응
+            // prev_close가 유효하지 않은데 change_rate=0이면 신뢰할 수 없는 기본값
+            if (changeRate === 0 && prev <= 0 && priceOrig > 0) {
+                changeRate = undefined;
+            }
+
             // 통화 처리
             const currencyFromServer = String(item.currency ?? matched.currency ?? Currency.USD);
             const keepOriginalCurrency = matched.category === AssetCategory.CRYPTOCURRENCY || (matched.categoryId != null && isBaseType(matched.categoryId, 'CRYPTOCURRENCY'));
