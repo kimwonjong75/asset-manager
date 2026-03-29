@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import Header from './components/Header';
 import EditAssetModal from './components/EditAssetModal';
 import SellAssetModal from './components/SellAssetModal';
@@ -29,6 +29,16 @@ const AppContent: React.FC = () => {
 
   const [updateAvailable, setUpdateAvailable] = useState<boolean>(false);
   const [fileName, setFileName] = useState<string>('portfolio.json');
+  const mainRef = useRef<HTMLElement>(null);
+  const [showScrollTop, setShowScrollTop] = useState(false);
+
+  useEffect(() => {
+    const el = mainRef.current;
+    if (!el) return;
+    const onScroll = () => setShowScrollTop(el.scrollTop > 300);
+    el.addEventListener('scroll', onScroll, { passive: true });
+    return () => el.removeEventListener('scroll', onScroll);
+  }, []);
 
 
 
@@ -222,7 +232,7 @@ const AppContent: React.FC = () => {
               )}
             </div>
 
-            <main className="flex-1 overflow-y-auto min-h-0">
+            <main ref={mainRef} className="flex-1 overflow-y-auto min-h-0">
               <div className="pt-4 sm:pt-6">
                 <Header
                   onSave={actions.saveToDrive}
@@ -246,6 +256,18 @@ const AppContent: React.FC = () => {
                 {ui.activeTab === 'settings' && <SettingsPage />}
               </div>
             </main>
+
+            {showScrollTop && (
+              <button
+                onClick={() => mainRef.current?.scrollTo({ top: 0 })}
+                className="fixed bottom-8 right-8 bg-gray-700 hover:bg-gray-600 text-white rounded-full p-3 shadow-lg transition-opacity focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 focus:ring-primary"
+                title="맨 위로 이동"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" />
+                </svg>
+              </button>
+            )}
             
             <EditAssetModal />
             <SellAssetModal />
