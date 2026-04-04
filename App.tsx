@@ -29,16 +29,22 @@ const AppContent: React.FC = () => {
 
   const [updateAvailable, setUpdateAvailable] = useState<boolean>(false);
   const [fileName, setFileName] = useState<string>('portfolio.json');
-  const mainRef = useRef<HTMLElement>(null);
+  const mainRef = useRef<HTMLElement | null>(null);
   const [showScrollTop, setShowScrollTop] = useState(false);
 
-  useEffect(() => {
-    const el = mainRef.current;
-    if (!el) return;
-    const onScroll = () => setShowScrollTop(el.scrollTop > 300);
-    el.addEventListener('scroll', onScroll, { passive: true });
-    return () => el.removeEventListener('scroll', onScroll);
+  const mainCallbackRef = useCallback((node: HTMLElement | null) => {
+    if (mainRef.current) {
+      mainRef.current.removeEventListener('scroll', handleMainScroll);
+    }
+    mainRef.current = node;
+    if (node) {
+      node.addEventListener('scroll', handleMainScroll, { passive: true });
+    }
   }, []);
+
+  function handleMainScroll(this: HTMLElement) {
+    setShowScrollTop(this.scrollTop > 300);
+  }
 
 
 
@@ -232,7 +238,7 @@ const AppContent: React.FC = () => {
               )}
             </div>
 
-            <main ref={mainRef} className="flex-1 overflow-y-auto min-h-0">
+            <main ref={mainCallbackRef} className="flex-1 overflow-y-auto min-h-0">
               <div className="pt-4 sm:pt-6">
                 <Header
                   onSave={actions.saveToDrive}
@@ -295,6 +301,7 @@ const AppContent: React.FC = () => {
                 onAssetClick={(assetId, source) => {
                   if (source === 'watchlist') {
                     actions.setActiveTab('watchlist');
+                    actions.setFocusedWatchItemId(assetId);
                   } else {
                     actions.setActiveTab('portfolio');
                     actions.setFocusedAssetId(assetId);

@@ -95,7 +95,7 @@
 | `category.ts` | **카테고리 시스템 핵심** — `CategoryDefinition`, `CategoryStore`, `CategoryBaseType`, `DEFAULT_CATEGORIES`, `EXCHANGE_MAP_BY_BASE_TYPE`, 유틸(`isBaseType`, `getCategoryName`, `inferCategoryIdFromExchange`, `getAllowedCategories`) | **전역** — 모든 카테고리 참조 컴포넌트/훅 |
 | `backup.ts` | 백업 타입 (`BackupInfo`, `BackupSettings`, `RETENTION_OPTIONS`) | `hooks/useBackup`, `BackupSettingsSection` |
 | `api.ts` | API 응답 타입 (`PriceItem`, `Indicators` 등). `Indicators`에 거래량 3필드 포함: `volume`(당일), `volume_avg20`(20일 평균), `volume_ratio`(비율) | `services/`, `hooks/` |
-| `store.ts` | 상태 관리 타입 (`PortfolioContextValue`, `GlobalPeriod`, `UIState.activeTab` 등). **`GlobalPeriod = 'THIS_MONTH' \| 'LAST_MONTH' \| '1M' \| '3M' \| '6M' \| '1Y' \| '2Y' \| 'ALL'`** (금월/전월/1개월 추가). `PortfolioData`에 `categoryStore`, `PortfolioStatus`에 `needsReAuth`, `DerivedState`에 `backupList`/`isBackingUp` 포함. `UIState`에 `focusedAssetId: string \| null` 포함 (브리핑 패널 클릭-투-포커스용). `PortfolioActions`에 `setFocusedAssetId`, `togglePinAsset` 포함 | `contexts/`, `hooks/`, `App.tsx`, `components/common/PeriodSelector`, `SmartFilterPanel`, `AlertSettingsPage` |
+| `store.ts` | 상태 관리 타입 (`PortfolioContextValue`, `GlobalPeriod`, `UIState.activeTab` 등). **`GlobalPeriod = 'THIS_MONTH' \| 'LAST_MONTH' \| '1M' \| '3M' \| '6M' \| '1Y' \| '2Y' \| 'ALL'`** (금월/전월/1개월 추가). `PortfolioData`에 `categoryStore`, `PortfolioStatus`에 `needsReAuth`, `DerivedState`에 `backupList`/`isBackingUp` 포함. `UIState`에 `focusedAssetId: string \| null` + `focusedWatchItemId: string \| null` 포함 (브리핑 패널 클릭-투-포커스용). `PortfolioActions`에 `setFocusedAssetId`, `setFocusedWatchItemId`, `togglePinAsset` 포함 | `contexts/`, `hooks/`, `App.tsx`, `components/common/PeriodSelector`, `SmartFilterPanel`, `AlertSettingsPage` |
 | `ui.ts` | UI 컴포넌트 Props 타입 | `components/` |
 | `smartFilter.ts` | 스마트 필터 타입 (24개 키, 5개 그룹: ma/rsi/signal/portfolio/volume, MA 기간 설정 + `lossThreshold` 포함), 그룹 매핑, 칩 정의(`pairKey`/`pairColorClass` tri-state 지원, `description` 툴팁 텍스트), 초기값 | `utils/smartFilterLogic`, `SmartFilterPanel`(+ `PortfolioContext` 의존), `PortfolioTable`, `alertChecker` |
 | `alertRules.ts` | 알림 규칙 타입 (`AlertRule`, `AlertResult`, `AlertSettings`, `AlertMatchedAsset`). `AlertMatchedAsset`에 `source?: 'portfolio' \| 'watchlist'` 필드 포함 | `constants/alertRules`, `utils/alertChecker`, `hooks/useAutoAlert`, `AlertSettingsPage`, `AlertPopup` |
@@ -141,7 +141,7 @@
 |------|------|------|
 | `WatchlistAddModal.tsx` | 관심종목 추가 모달 | `PortfolioContext` (`addWatchItemOpen`, `addWatchItem`) |
 | `WatchlistEditModal.tsx` | 관심종목 수정/삭제 모달 | `PortfolioContext` (`editingWatchItem`, `updateWatchItem`, `deleteWatchItem`) |
-| `WatchlistPage.tsx` | 관심종목 테이블 — **데스크탑/모바일 뷰 분기**: `hidden md:block`(테이블) / `block md:hidden`(카드 뷰, `WatchlistMobileCard`). 행별 액션 메뉴 + 차트 확장, 종목명 hover 시 메모 툴팁, 전용 시세 업데이트 버튼. 📝 아이콘 클릭 시 `MemoEditPopup` 팝업 열림 (`memoEditItem: WatchlistItem | null` 로컬 상태). **테이블에 새 기능 추가 시 `WatchlistMobileCard`에도 반영 필요** | `AssetTrendChart`, `MemoTooltip`, `MemoEditPopup`, `WatchlistMobileCard`, `PortfolioContext`, `onRefresh` prop from `WatchlistView` |
+| `WatchlistPage.tsx` | 관심종목 테이블 — **데스크탑/모바일 뷰 분기**: `hidden md:block`(테이블) / `block md:hidden`(카드 뷰, `WatchlistMobileCard`). 행별 액션 메뉴 + 차트 확장, 종목명 hover 시 메모 툴팁, 전용 시세 업데이트 버튼. 📝 아이콘 클릭 시 `MemoEditPopup` 팝업 열림 (`memoEditItem: WatchlistItem | null` 로컬 상태). `usePortfolio()` 직접 사용 — `ui.focusedWatchItemId` + `actions.setFocusedWatchItemId`로 브리핑 패널 클릭-투-포커스 구현 (차트 자동 펼침). **테이블에 새 기능 추가 시 `WatchlistMobileCard`에도 반영 필요** | `AssetTrendChart`, `MemoTooltip`, `MemoEditPopup`, `WatchlistMobileCard`, `PortfolioContext` (`actions` + `ui`), `onRefresh` prop from `WatchlistView` |
 
 ### components/watchlist/
 | 파일 | 책임 | 의존 |
@@ -341,7 +341,9 @@ PortfolioContext.tsx (Context 레벨에서 호출)
 AlertPopup (플로팅 패널) → 종목 클릭
     │
     └─ App.tsx의 onAssetClick(assetId, source?) 콜백
-         ├─ source === 'watchlist' → actions.setActiveTab('watchlist')
+         ├─ source === 'watchlist'
+         │    ├─ actions.setActiveTab('watchlist')
+         │    └─ actions.setFocusedWatchItemId(assetId) — WatchlistPage에서 차트 자동 펼침
          └─ source !== 'watchlist' (기본)
               ├─ actions.setActiveTab('portfolio')   — 포트폴리오 탭 전환
               └─ actions.setFocusedAssetId(assetId)  — UIState.focusedAssetId 설정
@@ -411,6 +413,7 @@ PortfolioAssistant.tsx
 | `MemoTooltip.tsx` | `PortfolioTableRow`, `WatchlistPage`, `WatchlistMobileCard` (메모 표시) |
 | `PortfolioTableRow.tsx` 컬럼 추가 | `PortfolioMobileCard`에도 반영 필요 (데스크탑/모바일 뷰 동기화) |
 | `PortfolioTableRow.tsx` | **`usePortfolio()` 직접 사용** — `ui.focusedAssetId` + `actions.setFocusedAssetId`로 브리핑 패널 클릭-투-포커스 구현. `rowRef`(HTMLTableRowElement)로 `scrollIntoView` 수행. `onTogglePin`(★ 토글), `onMemoEdit`(메모 편집 팝업 열기), `onRefreshOne`(개별 가격 업데이트) props 수신 |
+| `WatchlistPage.tsx` | **`usePortfolio()` 직접 사용** — `ui.focusedWatchItemId` + `actions.setFocusedWatchItemId`로 브리핑 패널 클릭-투-포커스 구현 (차트 자동 펼침). `actions.updateWatchItem`으로 메모 저장 |
 | `MemoEditPopup.tsx` | `PortfolioTable`(`memoEditAsset`)과 `WatchlistPage`(`memoEditItem`)에서 메모 아이콘 클릭 시 열림 |
 | `usePortfolioCalculator.ts` | `usePortfolioStats`, `portfolio-table/usePortfolioData` (수익률/손익 계산 공유) |
 | `useTopBottomAssets.ts` | `TopBottomAssets` (대시보드 상위/하위 종목 표시) |
@@ -650,7 +653,7 @@ try {
   - `handleRefreshWatchlistPrices` (전용 업데이트 버튼): 현재가 + **1년 히스토리 조회로 52주 최고가 계산** (`historicalPriceService` 사용)
 - **52주 최고가(`highestPrice`) 계산**: 관심종목 전용 갱신 시 `fetchStockHistoricalPrices`/`fetchCryptoHistoricalPrices`로 1년 히스토리를 가져와 `Math.max(...prices)`로 산출. 백엔드 시세 API가 `high52w`를 제공하지 않는 종목도 커버
 - **enrichedMap 통합**: `useEnrichedIndicators`가 관심종목 ticker도 포함하여 배치 조회 → MA/RSI 지표 계산. 알림 브리핑의 매수 기회 판정에 활용
-- **브리핑 매수 기회 참여**: 관심종목은 `checkBuyRulesForWatchlist()`를 통해 매수 규칙에 매칭 → 브리핑 패널에 `[관심]` 배지와 함께 표시. 클릭 시 관심종목 탭으로 이동
+- **브리핑 매수 기회 참여**: 관심종목은 `checkBuyRulesForWatchlist()`를 통해 매수 규칙에 매칭 → 브리핑 패널에 `[관심]` 배지와 함께 표시. 클릭 시 관심종목 탭으로 이동 + `focusedWatchItemId`로 차트 자동 펼침
 - **최고가대비 표시**: `highestPrice`가 미설정(`undefined`)이면 `0.00%`가 아닌 `-` 표시
 - **차트 확장**: `AssetTrendChart`를 `history={[]}`로 호출 (스냅샷 없이 API 과거 시세만 사용)
 - **어제대비(`yesterdayChange`) 선계산**: `useMarketData.ts`에서 시세 갱신 시 `changeRate * 100`으로 사전 계산하여 `WatchlistItem.yesterdayChange`에 저장. `WatchlistPage.tsx`는 이 값을 렌더링만 함 (UI에서 직접 계산 금지). `changeRate`가 없는 레거시 데이터는 `??`로 폴백

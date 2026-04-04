@@ -31,7 +31,7 @@ const ChartBarIcon: React.FC = () => (
 );
 
 const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, portfolioAssets, onDelete, onOpenAddModal, onOpenEditModal, isLoading, onBulkDelete, exchangeRates, onRefresh, categories, onTogglePin }) => {
-  const { actions } = usePortfolio();
+  const { actions, ui } = usePortfolio();
   const [filterCategory, setFilterCategory] = useState<number | 'ALL'>('ALL');
   const [search, setSearch] = useState('');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -43,6 +43,14 @@ const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, portfolioAsset
   const menuRef = useRef<HTMLDivElement | null>(null);
 
   useOnClickOutside(menuRef, () => setOpenMenuId(null), !!openMenuId);
+
+  // 브리핑에서 관심종목 클릭 시 차트 자동 확장
+  useEffect(() => {
+    if (ui.focusedWatchItemId) {
+      setExpandedItemId(ui.focusedWatchItemId);
+      actions.setFocusedWatchItemId(null);
+    }
+  }, [ui.focusedWatchItemId]);
 
   const categoryOptions = useMemo(() => {
     const allowed = getAllowedCategories(categories);
