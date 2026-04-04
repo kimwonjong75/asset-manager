@@ -110,6 +110,7 @@ const AssetTrendChart: React.FC<AssetTrendChartProps> = ({
   const maSeriesRefs = useRef<Map<number, ISeriesApi<'Line'>>>(new Map());
   const purchaseLineRef = useRef<ReturnType<ISeriesApi<'Line'>['createPriceLine']> | null>(null);
   const displayPurchasePriceRef = useRef<number | null>(null);
+  const hasInitializedRangeRef = useRef<string | null>(null);
 
   const isCash = categoryId ? isBaseType(categoryId, 'CASH') : false;
   const enabledConfigs = maConfigs.filter(c => c.enabled);
@@ -284,6 +285,9 @@ const AssetTrendChart: React.FC<AssetTrendChartProps> = ({
     const container = chartContainerRef.current;
     if (!container) return;
 
+    // 차트 재생성 시 range 초기화 플래그 리셋 (데이터 useEffect에서 재적용)
+    hasInitializedRangeRef.current = null;
+
     // 차트 생성
     const chart = createChart(container, {
       layout: {
@@ -309,7 +313,7 @@ const AssetTrendChart: React.FC<AssetTrendChartProps> = ({
         fixRightEdge: false,
       },
       handleScroll: {
-        mouseWheel: true,
+        mouseWheel: false,
         pressedMouseMove: true,
         horzTouchDrag: true,
         vertTouchDrag: false,
@@ -428,27 +432,15 @@ const AssetTrendChart: React.FC<AssetTrendChartProps> = ({
     container.style.touchAction = 'pan-y';
 
     // PC: 차트 영역 wheel 시 페이지 스크롤 방지
-    // document 레벨 { passive: false }로 Chrome compositor의 선행 스크롤을 차단
-    const handleDocWheel = (e: WheelEvent) => {
-      if (container.contains(e.target as Node)) {
-        e.preventDefault();
-        console.log('[Chart] wheel intercepted — deltaX:', e.deltaX, 'deltaY:', e.deltaY);
-      }
+    // container 레벨에서 preventDefault만 호출 — lightweight-charts 내부 핸들러(canvas)가
+    // bubble phase에서 먼저 처리한 후 container에서 브라우저 기본 스크롤만 차단
+    const handleContainerWheel = (e: WheelEvent) => {
+      e.preventDefault();
     };
-    document.addEventListener('wheel', handleDocWheel, { passive: false });
-
-    // 진단: 차트의 시간축 범위가 변경될 때 로그 (드래그/줌이 작동하면 이 로그가 출력됨)
-    const onRangeChange = () => {
-      const range = chart.timeScale().getVisibleRange();
-      if (range) {
-        console.log('[Chart] visibleRange changed:', range.from, '~', range.to);
-      }
-    };
-    chart.timeScale().subscribeVisibleTimeRangeChange(onRangeChange);
+    container.addEventListener('wheel', handleContainerWheel, { passive: false });
 
     return () => {
-      document.removeEventListener('wheel', handleDocWheel);
-      chart.timeScale().unsubscribeVisibleTimeRangeChange(onRangeChange);
+      container.removeEventListener('wheel', handleContainerWheel);
       resizeObserver.disconnect();
       chart.remove();
       chartRef.current = null;
@@ -497,16 +489,21 @@ const AssetTrendChart: React.FC<AssetTrendChartProps> = ({
       });
     }
 
-    // 선택 기간에 맞게 시간축 조정 (이전 구간 데이터는 드래그로 탐색 가능)
-    if (visibleRange) {
-      chartRef.current?.timeScale().setVisibleRange({
-        from: visibleRange.from,
-        to: visibleRange.to,
-      });
-    } else {
-      chartRef.current?.timeScale().fitContent();
+    // 선택 기간에 맞게 시간축 조정 (종목+기간 조합당 한 번만 적용)
+    // 사용자가 줌/드래그한 뷰는 보존, 기간 버튼 클릭 또는 종목 변경 시에만 재적용
+    const rangeKey = `${assetId}-${displayDays}`;
+    if (hasInitializedRangeRef.current !== rangeKey) {
+      hasInitializedRangeRef.current = rangeKey;
+      if (visibleRange) {
+        chartRef.current?.timeScale().setVisibleRange({
+          from: visibleRange.from,
+          to: visibleRange.to,
+        });
+      } else {
+        chartRef.current?.timeScale().fitContent();
+      }
     }
-  }, [priceData, volumeData, maDataMap, displayPurchasePrice, visibleRange]);
+  }, [priceData, volumeData, maDataMap, displayPurchasePrice, visibleRange, assetId, displayDays]);
 
   const hasMAToggle = hasMASupport;
 
