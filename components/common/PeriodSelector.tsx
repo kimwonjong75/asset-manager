@@ -19,14 +19,14 @@ const PERIOD_OPTIONS: { value: GlobalPeriod; label: string }[] = [
 
 const PeriodSelector: React.FC<PeriodSelectorProps> = ({ value, onChange }) => {
   return (
-    <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide">
+    <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-hide">
       {PERIOD_OPTIONS.map(opt => {
         const isActive = value === opt.value;
         return (
           <button
             key={opt.value}
             onClick={() => onChange(opt.value)}
-            className={`px-2.5 py-1 text-xs font-medium rounded transition-colors whitespace-nowrap ${
+            className={`px-3 py-1.5 text-xs font-medium rounded transition-colors whitespace-nowrap ${
               isActive
                 ? 'bg-primary text-white'
                 : 'bg-gray-700 text-gray-400 hover:text-white hover:bg-gray-600'

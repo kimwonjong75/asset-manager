@@ -168,40 +168,41 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
   return (
     <div className="bg-gray-800 rounded-lg shadow-lg">
       {/* 헤더 영역 */}
-      <div className="bg-gray-800 px-4 sm:px-6 pt-4 sm:pt-6 pb-4 flex justify-between items-center gap-4 border-b border-gray-700">
-        <div className="flex items-center gap-4">
-          <h2 className="text-xl font-bold text-white">포트폴리오 현황</h2>
-          {onSearchChange && (
-            <div className="relative">
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => onSearchChange(e.target.value)}
-                placeholder="검색..."
-                className="bg-gray-700 border border-gray-600 rounded-md py-2 pl-10 pr-10 text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary w-48 sm:w-64"
-              />
-              <svg className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-              {searchQuery && (
-                <button onClick={() => onSearchChange('')} className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white">
-                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-                </button>
-              )}
-            </div>
-          )}
-          <button
-            onClick={() => setShowPinnedOnly(!showPinnedOnly)}
-            className={`text-xl leading-none py-2 px-2 rounded-md transition-colors ${
-              showPinnedOnly
-                ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/50'
-                : 'text-gray-500 hover:text-yellow-400/60 border border-transparent'
-            }`}
-            title={showPinnedOnly ? '전체 보기' : '중요 종목만 보기'}
-          >
-            {showPinnedOnly ? '★' : '☆'}
-          </button>
-        </div>
+      <div className="bg-gray-800 px-3 sm:px-6 pt-2 sm:pt-6 pb-2 sm:pb-4 border-b border-gray-700">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 sm:gap-4 min-w-0 flex-1">
+            <h2 className="text-base sm:text-xl font-bold text-white whitespace-nowrap hidden sm:block">포트폴리오 현황</h2>
+            {onSearchChange && (
+              <div className="relative flex-1 sm:flex-none">
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => onSearchChange(e.target.value)}
+                  placeholder="포트폴리오 검색..."
+                  className="bg-gray-700 border border-gray-600 rounded-md py-2 pl-10 pr-10 text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary w-full sm:w-64"
+                />
+                <svg className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                {searchQuery && (
+                  <button onClick={() => onSearchChange('')} className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white">
+                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                  </button>
+                )}
+              </div>
+            )}
+            <button
+              onClick={() => setShowPinnedOnly(!showPinnedOnly)}
+              className={`text-xl leading-none py-2 px-2 rounded-md transition-colors flex-shrink-0 ${
+                showPinnedOnly
+                  ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/50'
+                  : 'text-gray-500 hover:text-yellow-400/60 border border-transparent'
+              }`}
+              title={showPinnedOnly ? '전체 보기' : '중요 종목만 보기'}
+            >
+              {showPinnedOnly ? '★' : '☆'}
+            </button>
+          </div>
         <div className="flex items-center gap-2">
           {selectedIds.size > 0 && (
             <div className="flex items-center gap-2">
@@ -335,6 +336,7 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
               {showHiddenColumns ? '간소화' : '더보기'}
             </button>
           </div>
+        </div>
         </div>
       </div>
 

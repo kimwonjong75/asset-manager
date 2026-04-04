@@ -84,7 +84,7 @@ const AppContent: React.FC = () => {
     return (
         <button
           onClick={onClick}
-          className={`py-3 sm:py-4 px-1 text-center border-b-2 font-medium text-xs sm:text-sm whitespace-nowrap focus:outline-none transition-colors duration-300 ${isActive ? activeClasses : inactiveClasses}`}
+          className={`py-3 sm:py-4 px-2 sm:px-1 text-center border-b-2 font-medium text-xs sm:text-sm whitespace-nowrap focus:outline-none transition-colors duration-300 ${isActive ? activeClasses : inactiveClasses}`}
         >
           {children}
         </button>
@@ -163,13 +163,13 @@ const AppContent: React.FC = () => {
                   {derived.alertResults.length > 0 && (
                     <button
                       onClick={actions.showBriefingPopup}
-                      className="flex items-center gap-1 sm:gap-1.5 text-xs text-amber-400 hover:text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 px-1.5 sm:px-2.5 py-1.5 rounded-md transition-colors border border-amber-500/30"
+                      className="flex items-center gap-1 sm:gap-1.5 text-xs text-amber-400 hover:text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 px-2 sm:px-2.5 py-2 rounded-md transition-colors border border-amber-500/30"
                       title="투자 브리핑 다시 보기"
                     >
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
                       </svg>
-                      <span className="hidden sm:inline">브리핑</span> {derived.alertResults.reduce((s, r) => s + r.matchedAssets.length, 0)}<span className="hidden sm:inline">건</span>
+                      {(() => { const count = derived.alertResults.reduce((s, r) => s + r.matchedAssets.length, 0); return count > 99 ? '99+' : count; })()}<span className="hidden sm:inline">건</span>
                     </button>
                   )}
                   <button
@@ -179,16 +179,16 @@ const AppContent: React.FC = () => {
                       }
                     }}
                     disabled={status.isLoading}
-                    className="flex items-center gap-1.5 text-xs text-gray-300 hover:text-white bg-gray-700 hover:bg-gray-600 px-1.5 sm:px-2.5 py-1.5 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex items-center gap-1.5 text-xs text-gray-300 hover:text-white bg-gray-700 hover:bg-gray-600 px-2 sm:px-2.5 py-2 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     title="시세 업데이트"
                   >
                     {status.isLoading ? (
-                      <svg className="animate-spin h-3.5 w-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                       </svg>
                     ) : (
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h5M20 20v-5h-5M4 4l1.5 1.5A9 9 0 0120.5 10M20 20l-1.5-1.5A9 9 0 003.5 14" />
                       </svg>
                     )}
@@ -202,7 +202,7 @@ const AppContent: React.FC = () => {
                   <div className="flex items-center gap-1.5 border-l border-gray-700 pl-2 ml-1">
                     <button
                       onClick={() => actions.setActiveTab('guide')}
-                      className={`flex items-center p-1.5 rounded-md transition-colors ${
+                      className={`flex items-center p-2 sm:p-1.5 rounded-md transition-colors ${
                         ui.activeTab === 'guide'
                           ? 'text-primary bg-primary/10'
                           : 'text-gray-400 hover:text-white hover:bg-gray-700'
@@ -215,7 +215,7 @@ const AppContent: React.FC = () => {
                     </button>
                     <button
                       onClick={() => actions.setActiveTab('settings')}
-                      className={`flex items-center p-1.5 rounded-md transition-colors ${
+                      className={`flex items-center p-2 sm:p-1.5 rounded-md transition-colors ${
                         ui.activeTab === 'settings'
                           ? 'text-primary bg-primary/10'
                           : 'text-gray-400 hover:text-white hover:bg-gray-700'
@@ -230,16 +230,16 @@ const AppContent: React.FC = () => {
                   </div>
                 </div>
               </div>
-              {/* 모바일 PeriodSelector - 탭바 아래 별도 행 */}
+              {/* 모바일 PeriodSelector - 탭바 아래 컴팩트 행 */}
               {ui.activeTab !== 'guide' && ui.activeTab !== 'settings' && ui.activeTab !== 'analytics' && (
-                <div className="sm:hidden py-2 overflow-x-auto scrollbar-hide">
+                <div className="sm:hidden py-1.5 overflow-x-auto scrollbar-hide">
                   <PeriodSelector value={ui.globalPeriod} onChange={actions.setGlobalPeriod} />
                 </div>
               )}
             </div>
 
             <main ref={mainCallbackRef} className="flex-1 overflow-y-auto min-h-0">
-              <div className="pt-4 sm:pt-6">
+              <div className="pt-2 sm:pt-6">
                 <Header
                   onSave={actions.saveToDrive}
                   onImport={actions.importJsonPrompt}
@@ -253,7 +253,7 @@ const AppContent: React.FC = () => {
                   userEmail={status.userEmail}
                 />
               </div>
-              <div className="mt-4">
+              <div className="mt-2 sm:mt-4">
                 {ui.activeTab === 'dashboard' && <DashboardView />}
                 {ui.activeTab === 'portfolio' && <PortfolioView />}
                 {ui.activeTab === 'analytics' && <AnalyticsView />}
@@ -266,7 +266,7 @@ const AppContent: React.FC = () => {
             {showScrollTop && (
               <button
                 onClick={() => mainRef.current?.scrollTo({ top: 0 })}
-                className="fixed bottom-8 right-8 bg-gray-700 hover:bg-gray-600 text-white rounded-full p-3 shadow-lg transition-opacity focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 focus:ring-primary"
+                className="fixed bottom-4 right-4 sm:bottom-8 sm:right-8 bg-gray-700 hover:bg-gray-600 text-white rounded-full p-3 shadow-lg transition-opacity focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 focus:ring-primary"
                 title="맨 위로 이동"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -283,7 +283,7 @@ const AppContent: React.FC = () => {
 
             <button
               onClick={actions.openAssistant}
-              className="fixed bottom-8 left-8 bg-primary hover:bg-primary-dark text-white rounded-full p-4 shadow-lg transition-transform transform hover:scale-110 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 focus:ring-primary"
+              className="fixed bottom-4 left-4 sm:bottom-8 sm:left-8 bg-primary hover:bg-primary-dark text-white rounded-full p-3 sm:p-4 shadow-lg transition-transform transform hover:scale-110 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 focus:ring-primary"
               title="포트폴리오 어시스턴트 열기"
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" viewBox="0 0 24 24" fill="currentColor">

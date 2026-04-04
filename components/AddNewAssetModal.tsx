@@ -231,7 +231,7 @@ const AddNewAssetModal: React.FC = () => {
             )}
             </div>
 
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
                 <label htmlFor="quantity" className={labelClasses}>수량</label>
                 <input id="quantity" type="number" value={quantity} onChange={(e) => setQuantity(e.target.value)} placeholder="10" className={inputClasses} required min="0" step="any" title="보유하고 있는 자산의 수량을 입력하세요."/>

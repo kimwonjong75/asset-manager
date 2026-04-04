@@ -190,7 +190,7 @@ const EditAssetModal: React.FC = () => {
               </div>
             </div>
           </div>
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
               <label htmlFor="quantity-edit" className={labelClasses}>수량</label>
               <input id="quantity-edit" name="quantity" type="number" value={formData.quantity} onChange={handleChange} className={inputClasses} required min="0" step="any" />

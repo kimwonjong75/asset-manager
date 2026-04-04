@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import type { SmartFilterState, SmartFilterKey } from '../../types/smartFilter';
 import { SMART_FILTER_CHIPS, SMART_FILTER_GROUP_LABELS } from '../../constants/smartFilterChips';
 import { usePortfolio } from '../../contexts/PortfolioContext';
@@ -45,6 +45,8 @@ const SmartFilterPanel: React.FC<SmartFilterPanelProps> = ({
 }) => {
   const { actions } = usePortfolio();
   const hasActiveFilters = filter.activeFilters.size > 0;
+  const [mobileExpanded, setMobileExpanded] = useState(false);
+  const activeFilterCount = filter.activeFilters.size;
 
   const handleSellAlertRateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value === '' ? 0 : parseInt(e.target.value, 10);
@@ -184,99 +186,155 @@ const SmartFilterPanel: React.FC<SmartFilterPanelProps> = ({
     );
   };
 
-  return (
-    <div className="px-4 sm:px-6 py-2.5 border-b border-gray-700 bg-gray-800/50">
-      {/* 필터 그리드 */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
-        {GROUPS.map(group => {
-          const chips = SMART_FILTER_CHIPS.filter(c => c.group === group);
-          return (
-            <div key={group} className="bg-gray-900 border border-gray-600/50 rounded-lg shadow-md px-2.5 py-2">
-              {/* 그룹 헤더 */}
-              <div className="flex items-center gap-1.5 mb-1.5">
-                <span className="text-[11px] text-gray-400 font-medium">
-                  {SMART_FILTER_GROUP_LABELS[group]}
-                </span>
-              </div>
-              {/* 칩 목록 */}
-              <div className="flex flex-wrap gap-1.5">
-                {chips.map(renderChip)}
-              </div>
-              {/* 매매신호 그룹: 거래량 칩 병합 */}
-              {group === 'signal' && (
-                <div className="mt-1.5 pt-1.5 border-t border-gray-600/30">
-                  <div className="flex items-center gap-1.5 mb-1.5">
-                    <span className="text-[11px] text-gray-400 font-medium">
-                      {SMART_FILTER_GROUP_LABELS['volume']}
-                    </span>
-                  </div>
-                  <div className="flex flex-wrap gap-1.5">
-                    {SMART_FILTER_CHIPS.filter(c => c.group === 'volume').map(renderChip)}
-                  </div>
-                </div>
-              )}
-              {/* 포트폴리오 그룹: 매도알림 섹션 */}
-              {group === 'portfolio' && (
-                <div className="mt-2 pt-1.5 border-t border-gray-600/30">
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    <button
-                      onClick={() => onFilterAlertsChange(!filterAlerts)}
-                      className={`
-                        px-2 py-0.5 rounded-full text-xs font-medium transition-all flex items-center gap-1
-                        ${filterAlerts
-                          ? 'bg-yellow-600 text-white shadow-sm'
-                          : 'bg-gray-700 text-gray-400 hover:bg-gray-600 hover:text-gray-200'}
-                      `}
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                      </svg>
-                      알림만
-                    </button>
-                    <div className="flex items-center gap-1 text-[10px] text-gray-400">
-                      <span>최고가</span>
-                      <input
-                        type="number"
-                        value={sellAlertDropRate}
-                        onChange={handleSellAlertRateChange}
-                        min="0"
-                        className="w-10 bg-gray-800 border border-gray-600 rounded px-1 py-0.5 text-white text-[10px] text-center font-bold focus:outline-none focus:ring-1 focus:ring-primary"
-                      />
-                      <span>% 이하</span>
-                    </div>
-                  </div>
-                </div>
-              )}
+  const filterGrid = (
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
+      {GROUPS.map(group => {
+        const chips = SMART_FILTER_CHIPS.filter(c => c.group === group);
+        return (
+          <div key={group} className="bg-gray-900 border border-gray-600/50 rounded-lg shadow-md px-2.5 py-2">
+            {/* 그룹 헤더 */}
+            <div className="flex items-center gap-1.5 mb-1.5">
+              <span className="text-[11px] text-gray-400 font-medium">
+                {SMART_FILTER_GROUP_LABELS[group]}
+              </span>
             </div>
-          );
-        })}
+            {/* 칩 목록 */}
+            <div className="flex flex-wrap gap-1.5">
+              {chips.map(renderChip)}
+            </div>
+            {/* 매매신호 그룹: 거래량 칩 병합 */}
+            {group === 'signal' && (
+              <div className="mt-1.5 pt-1.5 border-t border-gray-600/30">
+                <div className="flex items-center gap-1.5 mb-1.5">
+                  <span className="text-[11px] text-gray-400 font-medium">
+                    {SMART_FILTER_GROUP_LABELS['volume']}
+                  </span>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {SMART_FILTER_CHIPS.filter(c => c.group === 'volume').map(renderChip)}
+                </div>
+              </div>
+            )}
+            {/* 포트폴리오 그룹: 매도알림 섹션 */}
+            {group === 'portfolio' && (
+              <div className="mt-2 pt-1.5 border-t border-gray-600/30">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <button
+                    onClick={() => onFilterAlertsChange(!filterAlerts)}
+                    className={`
+                      px-2 py-0.5 rounded-full text-xs font-medium transition-all flex items-center gap-1
+                      ${filterAlerts
+                        ? 'bg-yellow-600 text-white shadow-sm'
+                        : 'bg-gray-700 text-gray-400 hover:bg-gray-600 hover:text-gray-200'}
+                    `}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                    알림만
+                  </button>
+                  <div className="flex items-center gap-1 text-[10px] text-gray-400">
+                    <span>최고가</span>
+                    <input
+                      type="number"
+                      value={sellAlertDropRate}
+                      onChange={handleSellAlertRateChange}
+                      min="0"
+                      className="w-10 bg-gray-800 border border-gray-600 rounded px-1 py-0.5 text-white text-[10px] text-center font-bold focus:outline-none focus:ring-1 focus:ring-primary"
+                    />
+                    <span>% 이하</span>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+
+  const filterFooter = (
+    <div className="flex items-center justify-end gap-3 mt-2">
+      {hasActiveFilters && (
+        <>
+          <span className="text-xs text-gray-400">
+            {matchCount}/{totalCount}개 매칭
+          </span>
+          <button
+            onClick={onClearAll}
+            className="text-xs text-gray-400 hover:text-white transition"
+          >
+            초기화
+          </button>
+        </>
+      )}
+      <button
+        onClick={() => actions.setActiveTab('guide')}
+        className="text-gray-500 hover:text-gray-300 transition flex items-center gap-1"
+        title="투자 가이드 보기"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        <span className="text-[10px]">가이드</span>
+      </button>
+    </div>
+  );
+
+  return (
+    <div className="px-3 sm:px-6 py-2 sm:py-2.5 border-b border-gray-700 bg-gray-800/50">
+      {/* 모바일: 접기/펼치기 토글 바 */}
+      <div className="md:hidden">
+        <button
+          onClick={() => setMobileExpanded(!mobileExpanded)}
+          className="w-full flex items-center justify-between py-1"
+        >
+          <div className="flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+            </svg>
+            <span className="text-xs text-gray-400 font-medium">필터</span>
+            {activeFilterCount > 0 && (
+              <span className="bg-primary text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[20px] text-center">
+                {activeFilterCount}
+              </span>
+            )}
+            {hasActiveFilters && (
+              <span className="text-[11px] text-gray-500">
+                {matchCount}/{totalCount}
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            {hasActiveFilters && (
+              <button
+                onClick={(e) => { e.stopPropagation(); onClearAll(); }}
+                className="text-[11px] text-gray-500 hover:text-white transition px-1"
+              >
+                초기화
+              </button>
+            )}
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className={`h-4 w-4 text-gray-500 transition-transform ${mobileExpanded ? 'rotate-180' : ''}`}
+              fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+            </svg>
+          </div>
+        </button>
+        {mobileExpanded && (
+          <div className="mt-2">
+            {filterGrid}
+            {filterFooter}
+          </div>
+        )}
       </div>
 
-      {/* Footer: 매칭 수 + 초기화 + 도움말 */}
-      <div className="flex items-center justify-end gap-3 mt-2">
-        {hasActiveFilters && (
-          <>
-            <span className="text-xs text-gray-400">
-              {matchCount}/{totalCount}개 매칭
-            </span>
-            <button
-              onClick={onClearAll}
-              className="text-xs text-gray-400 hover:text-white transition"
-            >
-              초기화
-            </button>
-          </>
-        )}
-        <button
-          onClick={() => actions.setActiveTab('guide')}
-          className="text-gray-500 hover:text-gray-300 transition flex items-center gap-1"
-          title="투자 가이드 보기"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          <span className="text-[10px]">가이드</span>
-        </button>
+      {/* 데스크탑: 항상 펼침 */}
+      <div className="hidden md:block">
+        {filterGrid}
+        {filterFooter}
       </div>
     </div>
   );
