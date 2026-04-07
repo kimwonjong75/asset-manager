@@ -31,7 +31,9 @@
       "Bash(grep -c \"console.log\\\\|console.error\\\\|console.warn\" /c/Users/beari/Desktop/Dev/asset-manager/services/*.ts)",
       "Bash(grep -r \"VITE_\\\\|process.env\" /c/Users/beari/Desktop/Dev/asset-manager --include=*.ts --include=*.tsx ! -path */node_modules/*)",
       "Bash(grep \"import.meta.env\\\\|VITE_\" /c/Users/beari/Desktop/Dev/asset-manager/services/*.ts)",
-      "Bash(grep -r \"async\\\\|await\" /c/Users/beari/Desktop/Dev/asset-manager/hooks --include=*.ts)"
+      "Bash(grep -r \"async\\\\|await\" /c/Users/beari/Desktop/Dev/asset-manager/hooks --include=*.ts)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
     ],
     "additionalDirectories": [
       "C:\\Users\\beari\\Downloads"
