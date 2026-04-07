@@ -294,9 +294,10 @@ AssetTrendChart.tsx (Lightweight Charts — Canvas 기반, 핀치 줌/드래그 
         └─ PortfolioSnapshot 기반 (폴백, 전체 로드)
 ```
 - **차트 라이브러리**: `lightweight-charts` (TradingView 오픈소스, Canvas 렌더링). 이전 Recharts(SVG) 대비 대량 데이터 성능 우수
-- **터치/마우스 인터랙션**: 핀치 줌(`handleScale.pinch`), 드래그 팬(`handleScroll.horzTouchDrag`), 마우스 휠 줌(`handleScale.mouseWheel`). PC: `wheel` 이벤트를 `passive:false`로 직접 캡처하여 부모 `<main overflow-y-auto>` 스크롤 차단. 모바일: 컨테이너에 `touch-action:pan-y` 설정하여 수평 터치를 차트가 처리
+- **터치/마우스 인터랙션**: 핀치 줌(`handleScale.pinch`), 드래그 팬(`pressedMouseMove` + `horzTouchDrag`), 마우스 휠 줌(`handleScale.mouseWheel`). `handleScroll.mouseWheel: false` — 일반 휠은 줌 전용, 시간축 이동은 드래그로 수행. PC: **container 레벨** `wheel` 리스너(`passive:false`)로 페이지 스크롤만 차단 (document 레벨 금지 — lightweight-charts 내부 핸들러와 충돌). 모바일: 컨테이너에 `touch-action:pan-y` 설정하여 수평 터치를 차트가 처리
 - **시리즈 구조**: 가격 `LineSeries` + MA별 `LineSeries` + 거래량 `HistogramSeries`(별도 `priceScaleId='volume'`, `scaleMargins: {top:0.8, bottom:0}`)
-- **차트 인스턴스 생명주기**: `showVolume`, `enabledConfigs`, `displayCurrency` 변경 시 차트 재생성 (useEffect cleanup → `chart.remove()`). 데이터만 변경 시 `series.setData()`로 업데이트 (재생성 없음)
+- **차트 인스턴스 생명주기**: `showVolume`, `enabledConfigs`, `displayCurrency` 변경 시 차트 재생성 (useEffect cleanup → `chart.remove()`, `hasInitializedRangeRef` 리셋). 데이터만 변경 시 `series.setData()`로 업데이트 (재생성 없음)
+- **visibleRange 1회 적용 패턴**: `hasInitializedRangeRef`로 `"${assetId}-${displayDays}"` 조합당 한 번만 `setVisibleRange()` 적용. 사용자 줌/드래그 뷰를 보존하고, 기간 버튼 클릭(`displayDays` 변경) 또는 종목 변경(`assetId` 변경) 시에만 재적용. **데이터 업데이트 useEffect에서 매번 `setVisibleRange()`를 호출하면 사용자 인터랙션이 리셋되므로 금지**
 - **VOL 토글**: MA 토글 영역에 거래량 표시/숨김 버튼 (기본: 표시). 토글 시 차트 인스턴스 재생성
 - **매수평균선**: `purchasePrice` prop → `priceSeries.createPriceLine()` (금색 점선, 통화 토글 연동). `autoscaleInfoProvider`로 매수평균가를 Y축 범위에 항상 포함 (현재가와 괴리 시에도 보임). 관심종목은 `purchasePrice` 없으므로 자동 생략
 - **커스텀 툴팁**: `subscribeCrosshairMove` → 절대 위치 HTML div (pointer-events-none). 뷰포트 경계 보정 포함
@@ -641,7 +642,7 @@ try {
 - **상태 위치**: `PortfolioContext.ui.globalPeriod` (타입: `'THIS_MONTH' | 'LAST_MONTH' | '1M' | '3M' | '6M' | '1Y' | '2Y' | 'ALL'`)
 - **기본값**: `'1Y'`, localStorage에 영속 (`'asset-manager-global-period'`)
 - **영향 범위**: 모든 탭에 일관 적용 — 대시보드(수익통계 SoldAssetsStats + ProfitLossChart 필터, `endDate`도 필터 적용), 차트(AssetTrendChart의 visibleRange 초기 뷰), 수익 통계(매도 기록 필터)
-- **차트 fetch**: 항상 전체 10년(3650일) fetch (기간 변경 시 캐시 히트, 재호출 없음). `visibleRange`로 초기 뷰만 제한, 드래그로 이전 구간 탐색 가능
+- **차트 fetch**: 항상 전체 10년(3650일) fetch (기간 변경 시 캐시 히트, 재호출 없음). `visibleRange`로 초기 뷰만 제한, 드래그/줌으로 자유 탐색 가능 (사용자 인터랙션 후에는 기간 버튼 클릭 또는 종목 변경 전까지 range 미갱신)
 - **수익 통계 탭**: 자체 date input이 **삭제됨** — 반드시 `periodStartDate`/`periodEndDate` props로 전달받아야 함
 
 ### 관심종목 (WatchlistItem)
