@@ -3,6 +3,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { Asset, Currency, CURRENCY_SYMBOLS, SellTransaction } from '../types';
+import { isBaseType } from '../types/category';
+import { formatQuantity } from './portfolio-table/utils';
 import { usePortfolio } from '../contexts/PortfolioContext';
 
 const SellAssetModal: React.FC = () => {
@@ -27,6 +29,8 @@ const SellAssetModal: React.FC = () => {
   }, [asset, isOpen]);
 
   if (!isOpen || !asset) return null;
+
+  const isCrypto = isBaseType(asset.categoryId, 'CRYPTOCURRENCY');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -110,7 +114,7 @@ const SellAssetModal: React.FC = () => {
               <div>
                 <div className="text-gray-400">보유 수량</div>
                 <div className="text-white font-semibold">
-                  {asset.quantity.toLocaleString()}
+                  {formatQuantity(asset.quantity, isCrypto)}
                 </div>
               </div>
               <div>
@@ -190,7 +194,7 @@ const SellAssetModal: React.FC = () => {
               onChange={(e) => setSellQuantity(e.target.value)}
               className={inputClasses}
               required
-              min="1"
+              min={isCrypto ? "0.00000001" : "1"}
               max={asset.quantity}
               step="any"
               placeholder="매도할 수량을 입력하세요"
@@ -204,7 +208,7 @@ const SellAssetModal: React.FC = () => {
                 전량 매도
               </button>
               <span className="text-xs text-gray-500">
-                최대: {asset.quantity.toLocaleString()}
+                최대: {formatQuantity(asset.quantity, isCrypto)}
               </span>
             </div>
           </div>

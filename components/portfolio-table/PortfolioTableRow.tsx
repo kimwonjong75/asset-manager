@@ -1,10 +1,11 @@
 import React, { Fragment, useEffect, useRef, useState } from 'react';
 import { usePortfolio } from '../../contexts/PortfolioContext';
 import { Asset, Currency, PortfolioSnapshot, ExchangeRates } from '../../types';
+import { isBaseType } from '../../types/category';
 import { EnrichedAsset } from '../../types/ui';
 import AssetTrendChart from '../AssetTrendChart';
 import { MoreHorizontal } from 'lucide-react';
-import { formatNumber, formatOriginalCurrency, formatKRW, formatProfitLoss, getChangeColor } from './utils';
+import { formatNumber, formatQuantity, formatOriginalCurrency, formatKRW, formatProfitLoss, getChangeColor } from './utils';
 import Tooltip from '../common/Tooltip';
 import MemoTooltip from '../common/MemoTooltip';
 import { COLUMN_DESCRIPTIONS } from '../../constants/columnDescriptions';
@@ -206,7 +207,7 @@ const PortfolioTableRow: React.FC<PortfolioTableRowProps> = ({
         {showHiddenColumns && (
           <td className="px-4 py-4 text-right">
             <Tooltip content={COLUMN_DESCRIPTIONS.quantity} position="top" wrap>
-              <span>{formatNumber(asset.quantity)}</span>
+              <span>{formatQuantity(asset.quantity, isBaseType(asset.categoryId, 'CRYPTOCURRENCY'))}</span>
             </Tooltip>
           </td>
         )}

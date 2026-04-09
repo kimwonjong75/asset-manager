@@ -3,6 +3,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { Asset, Currency, CURRENCY_SYMBOLS } from '../types';
+import { isBaseType } from '../types/category';
+import { formatQuantity } from './portfolio-table/utils';
 import { usePortfolio } from '../contexts/PortfolioContext';
 
 const BuyMoreAssetModal: React.FC = () => {
@@ -107,7 +109,7 @@ const BuyMoreAssetModal: React.FC = () => {
               <div>
                 <div className="text-gray-400">보유 수량</div>
                 <div className="text-white font-semibold">
-                  {asset.quantity.toLocaleString()}
+                  {formatQuantity(asset.quantity, isBaseType(asset.categoryId, 'CRYPTOCURRENCY'))}
                 </div>
               </div>
               <div>

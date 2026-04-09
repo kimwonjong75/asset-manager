@@ -14,6 +14,13 @@ export const getValueInKRW = (
 
 export const formatNumber = (num: number) => new Intl.NumberFormat('ko-KR', { maximumFractionDigits: 0 }).format(num);
 
+export const formatQuantity = (quantity: number, isCrypto: boolean): string => {
+  if (isCrypto) {
+    return new Intl.NumberFormat('ko-KR', { minimumFractionDigits: 0, maximumFractionDigits: 8 }).format(quantity);
+  }
+  return formatNumber(quantity);
+};
+
 export const formatKRW = (num: number) => new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW', maximumFractionDigits: 0 }).format(num);
 
 export const formatOriginalCurrency = (num: number, currency: Currency) => {
