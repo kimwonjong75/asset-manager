@@ -56,6 +56,16 @@ const buildAssetInfo = (
   if (maShort && enriched?.ma[maShort] != null) parts.push(`MA${maShort} ${enriched.ma[maShort]!.toLocaleString()}`);
   if (maLong && enriched?.ma[maLong] != null) parts.push(`MA${maLong} ${enriched.ma[maLong]!.toLocaleString()}`);
 
+  // MA 교차 경과일
+  if (maShort && maLong) {
+    const crossDays = enriched?.maCrossDays?.[maShort]?.[maLong];
+    if (typeof crossDays === 'number') {
+      const days = Math.abs(crossDays);
+      const label = crossDays < 0 ? 'DC' : 'GC';
+      parts.push(`${label} ${days === 0 ? '오늘' : `${days}일전`}`);
+    }
+  }
+
   return {
     details: parts.join(' · '),
     dailyChange: dailyChange || undefined,

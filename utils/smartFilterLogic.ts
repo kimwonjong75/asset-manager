@@ -78,26 +78,20 @@ export const matchesSingleFilter = (
       return false;
     }
 
-    // ── 골든크로스/데드크로스: enriched 필수 ──
+    // ── 골든크로스/데드크로스: 상태 기반 (경과일은 UI 뱃지로 표시) ──
     case 'MA_GOLDEN_CROSS': {
       if (!enriched) return false;
       const todayShort = enriched.ma[maShortPeriod];
       const todayLong = enriched.ma[maLongPeriod];
-      const prevShort = enriched.prevMa[maShortPeriod];
-      const prevLong = enriched.prevMa[maLongPeriod];
-      if (typeof todayShort !== 'number' || typeof todayLong !== 'number' ||
-          typeof prevShort !== 'number' || typeof prevLong !== 'number') return false;
-      return prevShort <= prevLong && todayShort > todayLong;
+      if (typeof todayShort !== 'number' || typeof todayLong !== 'number') return false;
+      return todayShort > todayLong;
     }
     case 'MA_DEAD_CROSS': {
       if (!enriched) return false;
       const todayShort = enriched.ma[maShortPeriod];
       const todayLong = enriched.ma[maLongPeriod];
-      const prevShort = enriched.prevMa[maShortPeriod];
-      const prevLong = enriched.prevMa[maLongPeriod];
-      if (typeof todayShort !== 'number' || typeof todayLong !== 'number' ||
-          typeof prevShort !== 'number' || typeof prevLong !== 'number') return false;
-      return prevShort >= prevLong && todayShort < todayLong;
+      if (typeof todayShort !== 'number' || typeof todayLong !== 'number') return false;
+      return todayShort < todayLong;
     }
 
     // ── RSI: 기존 + enriched 전환감지 ──

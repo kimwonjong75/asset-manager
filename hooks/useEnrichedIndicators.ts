@@ -13,7 +13,7 @@ import {
   isCryptoExchange,
 } from '../services/historicalPriceService';
 import { getCategoryName, DEFAULT_CATEGORIES } from '../types/category';
-import { calculateSMA, calculateRSI, getRequiredHistoryDays } from '../utils/maCalculations';
+import { calculateSMA, calculateRSI, calculateCrossDays, getRequiredHistoryDays } from '../utils/maCalculations';
 
 /** 종목별 확장 지표 데이터 */
 export interface EnrichedIndicatorData {
@@ -25,6 +25,9 @@ export interface EnrichedIndicatorData {
   rsi: number | null;
   /** 전일 RSI (14일) */
   prevRsi: number | null;
+  /** MA 교차 경과일 — maCrossDays[shortPeriod][longPeriod]
+   *  양수 = 골든크로스 N거래일 전, 음수 = 데드크로스 N거래일 전, null = 미확인 */
+  maCrossDays: Record<number, Record<number, number | null>>;
 }
 
 /** enriched 지표 계산에 필요한 최소 종목 정보 */
@@ -164,11 +167,24 @@ export function useEnrichedIndicators(
           // MA 계산
           const ma: Record<number, number | null> = {};
           const prevMa: Record<number, number | null> = {};
+          const smaArrays: Record<number, (number | null)[]> = {};
           for (const period of MA_PERIODS) {
             const smaValues = calculateSMA(sortedPrices, period);
+            smaArrays[period] = smaValues;
             const lastIdx = smaValues.length - 1;
             ma[period] = lastIdx >= 0 ? smaValues[lastIdx] : null;
             prevMa[period] = lastIdx >= 1 ? smaValues[lastIdx - 1] : null;
+          }
+
+          // MA 교차 경과일 계산 (모든 short < long 쌍)
+          const maCrossDays: Record<number, Record<number, number | null>> = {};
+          for (let i = 0; i < MA_PERIODS.length; i++) {
+            for (let j = i + 1; j < MA_PERIODS.length; j++) {
+              const short = MA_PERIODS[i];
+              const long = MA_PERIODS[j];
+              if (!maCrossDays[short]) maCrossDays[short] = {};
+              maCrossDays[short][long] = calculateCrossDays(smaArrays[short], smaArrays[long]);
+            }
           }
 
           // RSI 계산
@@ -178,7 +194,7 @@ export function useEnrichedIndicators(
           const prevRsi = lastRsiIdx >= 1 ? rsiValues[lastRsiIdx - 1] : null;
 
           // ticker 기준으로 저장
-          result.set(item.ticker, { ma, prevMa, rsi, prevRsi });
+          result.set(item.ticker, { ma, prevMa, rsi, prevRsi, maCrossDays });
         }
 
         if (abortRef.current) return;

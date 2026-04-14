@@ -10,45 +10,7 @@ import Tooltip from '../common/Tooltip';
 import MemoTooltip from '../common/MemoTooltip';
 import { COLUMN_DESCRIPTIONS } from '../../constants/columnDescriptions';
 import ActionMenu from '../common/ActionMenu';
-
-// ----------------------------------------------------------------------
-// [추가된 컴포넌트] 퀀트 신호 배지
-// ----------------------------------------------------------------------
-const SIGNAL_DESCRIPTIONS: Record<string, string> = {
-  STRONG_BUY: 'RSI·MA·거래량 복합 강력 매수 신호',
-  BUY: '기술적 지표 기반 매수 신호',
-  SELL: '기술적 지표 기반 매도 신호',
-  STRONG_SELL: 'RSI·MA·거래량 복합 강력 매도 신호',
-};
-
-const SignalBadge = ({ signal }: { signal?: string }) => {
-  if (!signal || signal === 'NEUTRAL') return null;
-
-  let bgClass = 'bg-gray-500';
-  let text = signal;
-
-  if (signal === 'STRONG_BUY') {
-    bgClass = 'bg-red-600 text-white animate-pulse';
-    text = '강력매수';
-  } else if (signal === 'BUY') {
-    bgClass = 'bg-red-500 text-white';
-    text = '매수';
-  } else if (signal === 'SELL') {
-    bgClass = 'bg-blue-500 text-white';
-    text = '매도';
-  } else if (signal === 'STRONG_SELL') {
-    bgClass = 'bg-blue-600 text-white';
-    text = '강력매도';
-  }
-
-  return (
-    <Tooltip content={SIGNAL_DESCRIPTIONS[signal]} position="top">
-      <span className={`ml-2 text-[10px] px-1.5 py-0.5 rounded font-bold ${bgClass} whitespace-nowrap`}>
-        {text}
-      </span>
-    </Tooltip>
-  );
-};
+import CrossDaysBadge from '../common/CrossDaysBadge';
 
 // ----------------------------------------------------------------------
 // [추가된 컴포넌트] RSI 지표
@@ -104,6 +66,8 @@ interface PortfolioTableRowProps {
   onRefreshOne?: (id: string) => void | Promise<void>;
   onTogglePin?: (id: string) => void;
   onMemoEdit?: (asset: Asset) => void;
+  /** MA 교차 경과일 (양수=골든, 음수=데드, null=미확인) */
+  crossDays?: number | null;
 }
 
 const ChartBarIcon: React.FC = () => (
@@ -124,7 +88,8 @@ const PortfolioTableRow: React.FC<PortfolioTableRowProps> = ({
   onRefreshOne,
   exchangeRates,
   onTogglePin,
-  onMemoEdit
+  onMemoEdit,
+  crossDays
 }) => {
   const [expandedAssetId, setExpandedAssetId] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -195,13 +160,15 @@ const PortfolioTableRow: React.FC<PortfolioTableRowProps> = ({
                  </a>
                </MemoTooltip>
                <span
-                 className={`text-xl leading-none cursor-pointer transition-opacity flex-shrink-0 ${asset.memo ? 'opacity-60 hover:opacity-100' : 'opacity-20 hover:opacity-50'}`}
+                 className={`text-xs leading-none cursor-pointer transition-opacity flex-shrink-0 ${asset.memo ? 'opacity-60 hover:opacity-100' : 'opacity-20 hover:opacity-50'}`}
                  onClick={(e) => { e.stopPropagation(); onMemoEdit?.(asset); }}
                  title={asset.memo ? '메모 수정' : '메모 추가'}
                >📝</span>
-               <SignalBadge signal={asset.indicators?.signal} />
              </div>
-            <span className="text-xs text-gray-500 break-all">{asset.ticker} | {asset.exchange}</span>
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs text-gray-500 break-all">{asset.ticker} | {asset.exchange}</span>
+              <CrossDaysBadge crossDays={crossDays} />
+            </div>
           </div>
         </td>
         {showHiddenColumns && (
@@ -290,6 +257,9 @@ const PortfolioTableRow: React.FC<PortfolioTableRowProps> = ({
               <div className="text-xs opacity-80">{formatProfitLoss(diffFromYesterday, Currency.KRW)}</div>
             </div>
           </Tooltip>
+        </td>
+        <td className="px-4 py-4 text-center">
+          <CrossDaysBadge crossDays={crossDays} />
         </td>
         <td className="px-4 py-4 text-center">
           <div className="flex items-center justify-center gap-1">

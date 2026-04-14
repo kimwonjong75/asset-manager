@@ -8,7 +8,7 @@ import {
   convertTickerForAPI,
   isCryptoExchange,
 } from './historicalPriceService';
-import { calculateSMA, calculateRSI, getRequiredHistoryDays } from '../utils/maCalculations';
+import { calculateSMA, calculateRSI, calculateCrossDays, getRequiredHistoryDays } from '../utils/maCalculations';
 import type { EnrichedIndicatorData } from '../hooks/useEnrichedIndicators';
 import { createLogger } from '../utils/logger';
 
@@ -513,11 +513,23 @@ async function fetchTechnicalIndicators(
 
       const ma: Record<number, number | null> = {};
       const prevMa: Record<number, number | null> = {};
+      const smaArrays: Record<number, (number | null)[]> = {};
       for (const period of MA_PERIODS) {
         const smaValues = calculateSMA(sortedPrices, period);
+        smaArrays[period] = smaValues;
         const lastIdx = smaValues.length - 1;
         ma[period] = lastIdx >= 0 ? smaValues[lastIdx] : null;
         prevMa[period] = lastIdx >= 1 ? smaValues[lastIdx - 1] : null;
+      }
+
+      const maCrossDays: Record<number, Record<number, number | null>> = {};
+      for (let i = 0; i < MA_PERIODS.length; i++) {
+        for (let j = i + 1; j < MA_PERIODS.length; j++) {
+          const short = MA_PERIODS[i];
+          const long = MA_PERIODS[j];
+          if (!maCrossDays[short]) maCrossDays[short] = {};
+          maCrossDays[short][long] = calculateCrossDays(smaArrays[short], smaArrays[long]);
+        }
       }
 
       const rsiValues = calculateRSI(sortedPrices, RSI_PERIOD);
@@ -525,7 +537,7 @@ async function fetchTechnicalIndicators(
       const rsi = lastRsiIdx >= 0 ? rsiValues[lastRsiIdx] : null;
       const prevRsi = lastRsiIdx >= 1 ? rsiValues[lastRsiIdx - 1] : null;
 
-      result.set(asset.ticker, { ma, prevMa, rsi, prevRsi });
+      result.set(asset.ticker, { ma, prevMa, rsi, prevRsi, maCrossDays });
     }
   } catch (err) {
     log.error('fetchTechnicalIndicators error:', err);

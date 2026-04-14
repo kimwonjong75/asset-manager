@@ -54,7 +54,7 @@
 | `usePortfolioCalculator.ts` | 수익률/손익 계산 (구매 환율 기준). **`getSellAmountKRW(record, exchangeRates)`** 모듈 레벨 헬퍼로 비정상 환율 감지 후 KRW 매도금액 보정. `calculateSoldAssetsStats(sellHistory, assets, exchangeRates)` — `exchangeRates` 세 번째 파라미터 추가 (기본값 `{ USD: 1450, JPY: 9.5 }`) | `types/index` | 대시보드, 통계 |
 | `useHistoricalPriceData.ts` | 차트용 과거 종가+거래량 데이터 (MA 여부 무관, 캐시 내장, 항상 전체 10년 fetch). 반환값: `{ historicalPrices, historicalVolumes, isLoading, error }` | `historicalPriceService` | `AssetTrendChart` |
 | `useGlobalPeriodDays.ts` | 글로벌 기간(`GlobalPeriod`) → `{ startDate, endDate, days }` 변환 유틸 훅 | `types/store` | `AssetTrendChart`, `DashboardView`, `AnalyticsView` |
-| `useEnrichedIndicators.ts` | 전 종목 배치 과거 데이터 조회 → MA 전 기간(5~200) + RSI(금일/전일) 계산. **포트폴리오 + 관심종목 통합**: `useEnrichedIndicators(assets, watchlistItems?)` — 관심종목 ticker도 중복 제거 후 배치 조회에 포함 | `historicalPriceService`, `maCalculations` | **`PortfolioContext`** (Context 레벨에서 호출, enrichedMap을 전역 공유), `geminiService` (타입만) |
+| `useEnrichedIndicators.ts` | 전 종목 배치 과거 데이터 조회 → MA 전 기간(5~200) + RSI(금일/전일) + **MA 교차 경과일(`maCrossDays`)** 계산. `maCrossDays[shortPeriod][longPeriod]` — 양수=골든크로스, 음수=데드크로스, null=미확인. **포트폴리오 + 관심종목 통합**: `useEnrichedIndicators(assets, watchlistItems?)` — 관심종목 ticker도 중복 제거 후 배치 조회에 포함 | `historicalPriceService`, `maCalculations` | **`PortfolioContext`** (Context 레벨에서 호출, enrichedMap을 전역 공유), `geminiService` (타입만) |
 | `useAutoAlert.ts` | 자동 알림 트리거 + AlertSettings localStorage 영속. **관심종목 매수 기회 포함**: `watchlistItems` prop 수신 → `checkBuyRulesForWatchlist()` 결과를 포트폴리오 결과와 병합 (`mergeWatchlistResults`) | `alertChecker`, `types/alertRules` | `PortfolioContext` (derived/actions에 노출) |
 | `usePortfolioHistory.ts` | 포트폴리오 스냅샷 저장 | `types/index` | 차트 데이터 |
 | `useRebalancing.ts` | 리밸런싱 계산 및 저장. `CategoryData`에 `categoryKey`(ID 문자열)와 `category`(표시명)를 분리 — 가중치 변경 핸들러에는 `categoryKey` 전달 필수 | `PortfolioContext` | `RebalancingTable` |
@@ -81,9 +81,8 @@
 |------|------|------------------|
 | `portfolioCalculations.ts` | 포트폴리오 계산 유틸 | 전역 (계산 결과 변경) |
 | `historyUtils.ts` | 히스토리 보간/백필/기존 스냅샷 종가 교정/오염 데이터 교정 | `usePortfolioData` |
-| `maCalculations.ts` | SMA/RSI 계산. `calculateSMA(sortedPrices, period)` — 날짜 오름차순 `{date, price}[]`과 기간을 받아 `(number|null)[]` 반환. `buildChartDataWithMA()`는 Recharts 전용 데이터 빌더로 현재 미사용 (Lightweight Charts 전환으로 AssetTrendChart가 `calculateSMA` 직접 호출) | `AssetTrendChart`(`calculateSMA`), `useEnrichedIndicators`, `geminiService` |
-| `signalUtils.ts` | 신호/RSI 배지 렌더링 | `PortfolioTableRow` |
-| `smartFilterLogic.ts` | 스마트 필터 매칭 (그룹 내 OR, 그룹 간 AND), enriched 지표 참조, `PRICE_BELOW_*` 판정 포함. 거래량 필터(`VOLUME_SURGE/HIGH/LOW`)는 `indicators.volume_ratio` 사용. **`matchesSingleFilter()` export** — 알림 규칙 체커에서도 재활용 | `PortfolioTable`, `alertChecker.ts` |
+| `maCalculations.ts` | SMA/RSI/교차경과일 계산. `calculateSMA(sortedPrices, period)` — `(number|null)[]` 반환. `calculateCrossDays(shortSma, longSma)` — 두 SMA 배열 역순회하여 교차 시점까지 거래일 수 반환 (양수=골든, 음수=데드, null=미확인). `buildChartDataWithMA()`는 현재 미사용 (Lightweight Charts 전환) | `AssetTrendChart`(`calculateSMA`), `useEnrichedIndicators`, `geminiService` |
+| `smartFilterLogic.ts` | 스마트 필터 매칭 (그룹 내 OR, 그룹 간 AND), enriched 지표 참조, `PRICE_BELOW_*` 판정 포함. 거래량 필터(`VOLUME_SURGE/HIGH/LOW`)는 `indicators.volume_ratio` 사용. **골든/데드크로스 필터는 상태 기반** (`MA_GOLDEN_CROSS`: shortMA > longMA, `MA_DEAD_CROSS`: shortMA < longMA — 교차 당일뿐 아니라 지속 상태 감지, 경과일은 UI `CrossDaysBadge`에서 표시). **`matchesSingleFilter()` export** — 알림 규칙 체커에서도 재활용 | `PortfolioTable`, `alertChecker.ts` |
 | `alertChecker.ts` | 알림 규칙별 자산 매칭 (규칙 내 필터 AND 조합), 매칭 결과 구조화 반환 (`dailyChange`/`returnPct`/`dropFromHigh`/`rsi` + `details` 문자열). **당일 변동률은 `asset.metrics.yesterdayChange` 사용** (`changeRate` 사용 금지). **`checkBuyRulesForWatchlist()` export**: 관심종목을 pseudo-EnrichedAsset으로 변환(`watchlistToPseudoAsset`)하여 매수 규칙만 실행, 결과에 `source: 'watchlist'` 표시 | `smartFilterLogic.matchesSingleFilter`, `types/alertRules`, `types/index`(WatchlistItem, Currency) | `useAutoAlert`, 프리셋 버튼 |
 | `migrateData.ts` | 데이터 마이그레이션 (기존 형식 변환 + 카테고리 ID 변환) | 로드 시 자동 실행 |
 | `logger.ts` | 중앙 로깅 유틸리티. `createLogger(module)` 팩토리 — 프로덕션 빌드에서 debug/info 자동 억제, warn/error만 출력. 모듈명 자동 프리픽스. **새 서비스/훅 추가 시 `console.*` 직접 사용 금지, 반드시 `createLogger` 사용** | 전체 services/, hooks/, utils/ |
@@ -163,8 +162,8 @@
 |------|------|------|
 | `AddNewAssetModal.tsx` | 새 자산 추가 모달 (심볼 검색, 카테고리 추론, 중복 검사) | `geminiService`, `PortfolioContext`, `CategoryDefinition` |
 | `EditAssetModal.tsx` | 자산 편집 모달 (isDirty 닫기 보호 적용) | `geminiService`, `PortfolioContext`, `CategoryDefinition` |
-| `BuyMoreAssetModal.tsx` | 추가 매수 모달 (수량, 단가, 날짜) | `PortfolioContext`, `Currency` |
-| `SellAssetModal.tsx` | 매도 모달 (부분/전량 매도) | `PortfolioContext`, `Currency` |
+| `BuyMoreAssetModal.tsx` | 추가 매수 모달 (수량, 단가, 날짜). 암호화폐 보유수량 소수점 표시 | `PortfolioContext`, `Currency`, `isBaseType`, `formatQuantity` |
+| `SellAssetModal.tsx` | 매도 모달 (부분/전량 매도). 암호화폐: `min=0.00000001` (소수점 매도 허용), 보유수량 소수점 표시 | `PortfolioContext`, `Currency`, `isBaseType`, `formatQuantity` |
 | `BulkUploadModal.tsx` | CSV 일괄 업로드 모달 (검증, 안내, 결과 표시) | `PortfolioContext`, `CategoryDefinition` |
 | `DataConflictModal.tsx` | 로컬/Drive 데이터 충돌 해결 모달 (버전 선택) | `Asset` (순수 프레젠테이션) |
 
@@ -190,12 +189,12 @@
 ### components/portfolio-table/ (테이블 내부 모듈)
 | 파일 | 책임 | 의존 |
 |------|------|------|
-| `PortfolioTableRow.tsx` | 테이블 행 렌더링 + 차트 펼침 + 브리핑 클릭-투-포커스. `usePortfolio()` 직접 사용 — `focusedAssetId`/`setFocusedAssetId`로 스크롤 이동. `onTogglePin`, `onMemoEdit`, `onRefreshOne`(ActionMenu "가격 업데이트") props 수신. `SignalBadge` 내부에 `SIGNAL_DESCRIPTIONS` + `Tooltip`으로 신호별 설명 표시 | `PortfolioContext`, `AssetTrendChart`, `ActionMenu`, `MemoTooltip`, `Tooltip` |
+| `PortfolioTableRow.tsx` | 테이블 행 렌더링 + 차트 펼침 + 브리핑 클릭-투-포커스. `usePortfolio()` 직접 사용 — `focusedAssetId`/`setFocusedAssetId`로 스크롤 이동. `onTogglePin`, `onMemoEdit`, `onRefreshOne`(ActionMenu "가격 업데이트") props 수신. `SignalBadge` 내부에 `SIGNAL_DESCRIPTIONS` + `Tooltip`으로 신호별 설명 표시. 수량 표시: `formatQuantity` 사용 (암호화폐 소수점 대응) | `PortfolioContext`, `AssetTrendChart`, `ActionMenu`, `MemoTooltip`, `Tooltip`, `isBaseType`, `formatQuantity` |
 | `PortfolioMobileCard.tsx` | 모바일 카드 뷰 — 종목명+현재가+수익률+평가액+고가대비/전일대비. 탭하면 차트 펼침, 관리 메뉴는 `ActionMenu`(바텀시트). `onRefreshOne`(ActionMenu "가격 업데이트") props 수신. `SignalBadgeMini` 내부에 `SIGNAL_DESCRIPTIONS` + `Tooltip`으로 신호별 설명 표시 | `PortfolioContext`, `AssetTrendChart`, `ActionMenu`, `Tooltip` |
 | `SmartFilterPanel.tsx` | 스마트 필터 칩 UI (22개 칩, tri-state 토글, 그룹별 색상, 칩별 `Tooltip` 설명 표시) | `types/smartFilter`, `constants/smartFilterChips`, `PortfolioContext`, `Tooltip` |
 | `types.ts` | 테이블 전용 타입 (`PortfolioTableProps`, `SortKey`, `AssetMetrics`, `EnrichedAsset`) | `types/index` |
-| `usePortfolioData.ts` | 자산 메트릭 enrichment (KRW 환산, 수익률, 고가대비) + 정렬/필터. **⚠️ `hooks/usePortfolioData.ts`와 이름 겹침 주의** | `types/index`, `usePortfolioCalculator` |
-| `utils.ts` | 테이블 전용 유틸 (`getValueInKRW`, `formatKRW`, `formatOriginalCurrency`, `getChangeColor`) | `Currency`, `ExchangeRates` |
+| `usePortfolioData.ts` | 자산 메트릭 enrichment (KRW 환산, 수익률, 고가대비) + 정렬/필터. GC/DC 2단계 정렬: `enrichedMap`, `maShortPeriod`, `maLongPeriod` optional props → `SortKey='maCrossDays'`로 MA 교차 경과일 정렬 (ascending=GC먼저, descending=DC먼저, 그룹 내 최근 크로스 순, null 맨 뒤). **⚠️ `hooks/usePortfolioData.ts`와 이름 겹침 주의** | `types/index`, `usePortfolioCalculator`, `useEnrichedIndicators`(타입) |
+| `utils.ts` | 테이블 전용 유틸 (`getValueInKRW`, `formatKRW`, `formatOriginalCurrency`, `getChangeColor`, `formatQuantity`). `formatQuantity(quantity, isCrypto)`: 암호화폐는 최대 소수점 8자리, 그 외 정수 표시 | `Currency`, `ExchangeRates` |
 
 > **빈 스텁 파일** (미사용, 삭제 가능): `AddAssetForm.tsx`, `PortfolioModal.tsx`, `RegionAllocationChart.tsx`
 

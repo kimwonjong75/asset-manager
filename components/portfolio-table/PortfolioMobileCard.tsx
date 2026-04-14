@@ -3,9 +3,10 @@ import { Asset, Currency, PortfolioSnapshot, ExchangeRates } from '../../types';
 import { EnrichedAsset } from '../../types/ui';
 import { formatOriginalCurrency, formatKRW, formatProfitLoss, getChangeColor } from './utils';
 import ActionMenu from '../common/ActionMenu';
+import CrossDaysBadge from '../common/CrossDaysBadge';
 import { MoreHorizontal } from 'lucide-react';
 import AssetTrendChart from '../AssetTrendChart';
-import Tooltip from '../common/Tooltip';
+
 
 interface PortfolioMobileCardProps {
   asset: EnrichedAsset;
@@ -17,31 +18,9 @@ interface PortfolioMobileCardProps {
   exchangeRates?: ExchangeRates;
   onTogglePin?: (id: string) => void;
   onMemoEdit?: (asset: Asset) => void;
+  crossDays?: number | null;
 }
 
-const SIGNAL_DESCRIPTIONS: Record<string, string> = {
-  STRONG_BUY: 'RSI·MA·거래량 복합 강력 매수 신호',
-  BUY: '기술적 지표 기반 매수 신호',
-  SELL: '기술적 지표 기반 매도 신호',
-  STRONG_SELL: 'RSI·MA·거래량 복합 강력 매도 신호',
-};
-
-const SignalBadgeMini = ({ signal }: { signal?: string }) => {
-  if (!signal || signal === 'NEUTRAL') return null;
-  const map: Record<string, { bg: string; text: string }> = {
-    STRONG_BUY: { bg: 'bg-red-600 animate-pulse', text: '강력매수' },
-    BUY: { bg: 'bg-red-500', text: '매수' },
-    SELL: { bg: 'bg-blue-500', text: '매도' },
-    STRONG_SELL: { bg: 'bg-blue-600', text: '강력매도' },
-  };
-  const s = map[signal];
-  if (!s) return null;
-  return (
-    <Tooltip content={SIGNAL_DESCRIPTIONS[signal]} position="top">
-      <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold text-white ${s.bg}`}>{s.text}</span>
-    </Tooltip>
-  );
-};
 
 const PortfolioMobileCard: React.FC<PortfolioMobileCardProps> = ({
   asset,
@@ -53,6 +32,7 @@ const PortfolioMobileCard: React.FC<PortfolioMobileCardProps> = ({
   exchangeRates,
   onTogglePin,
   onMemoEdit,
+  crossDays,
 }) => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [expanded, setExpanded] = useState(false);
@@ -88,12 +68,14 @@ const PortfolioMobileCard: React.FC<PortfolioMobileCardProps> = ({
               {asset.customName?.trim() || asset.name}
             </span>
             <span
-              className={`text-lg leading-none cursor-pointer transition-opacity flex-shrink-0 ${asset.memo ? 'opacity-60 hover:opacity-100' : 'opacity-20 hover:opacity-50'}`}
+              className={`text-[11px] leading-none cursor-pointer transition-opacity flex-shrink-0 ${asset.memo ? 'opacity-60 hover:opacity-100' : 'opacity-20 hover:opacity-50'}`}
               onClick={(e) => { e.stopPropagation(); onMemoEdit?.(asset); }}
             >📝</span>
-            <SignalBadgeMini signal={asset.indicators?.signal} />
           </div>
-          <div className="text-[11px] text-gray-500 mt-0.5">{asset.ticker} | {asset.exchange}</div>
+          <div className="flex items-center gap-1.5 mt-0.5">
+            <span className="text-[11px] text-gray-500">{asset.ticker} | {asset.exchange}</span>
+            <CrossDaysBadge crossDays={crossDays} />
+          </div>
 
           {/* Price + Return row */}
           <div className="flex items-baseline gap-3 mt-2">

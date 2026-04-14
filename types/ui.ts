@@ -23,7 +23,7 @@ export interface PortfolioTableProps {
   exchangeRates: ExchangeRates;
 }
 
-export type SortKey = 'name' | 'purchaseDate' | 'quantity' | 'purchasePrice' | 'currentPrice' | 'returnPercentage' | 'dropFromHigh' | 'yesterdayChange' | 'purchaseValue' | 'currentValue' | 'allocation' | 'profitLoss' | 'profitLossKRW';
+export type SortKey = 'name' | 'purchaseDate' | 'quantity' | 'purchasePrice' | 'currentPrice' | 'returnPercentage' | 'dropFromHigh' | 'yesterdayChange' | 'purchaseValue' | 'currentValue' | 'allocation' | 'profitLoss' | 'profitLossKRW' | 'maCrossDays';
 export type SortDirection = 'ascending' | 'descending';
 
 export interface AssetMetrics {

@@ -69,7 +69,10 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
     filterAlerts,
     sellAlertDropRate,
     showFailedOnly,
-    failedIds
+    failedIds,
+    enrichedMap,
+    maShortPeriod: smartFilter.maShortPeriod,
+    maLongPeriod: smartFilter.maLongPeriod
   });
   const [presetOpen, setPresetOpen] = useState(false);
   const [activePreset, setActivePreset] = useState<string | null>(null);
@@ -424,6 +427,11 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
                   <div className={`${thContentClasses} justify-end`}><span>어제대비</span> <SortIcon sortKey='yesterdayChange' sortConfig={sortConfig}/></div>
                 </Tooltip>
               </th>
+              <th scope="col" className={`${thClasses} text-center`} onClick={() => requestSort('maCrossDays')}>
+                <Tooltip content={`MA${smartFilter.maShortPeriod}/${smartFilter.maLongPeriod} 골든/데드크로스 경과일 기준 정렬`} position="bottom" wrap>
+                  <div className={`${thContentClasses} justify-center`}><span>GC/DC</span> <SortIcon sortKey='maCrossDays' sortConfig={sortConfig}/></div>
+                </Tooltip>
+              </th>
               <th scope="col" className="px-4 py-3 text-center sticky top-0 bg-gray-700 z-20">관리</th>
             </tr>
           </thead>
@@ -447,6 +455,7 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
                 exchangeRates={exchangeRates}
                 onTogglePin={actions.togglePinAsset}
                 onMemoEdit={(asset) => setMemoEditAsset(asset)}
+                crossDays={enrichedMap.get(asset.ticker)?.maCrossDays?.[smartFilter.maShortPeriod]?.[smartFilter.maLongPeriod]}
               />
             )) : (
               <tr><td colSpan={13} className="text-center py-8 text-gray-500">
@@ -471,6 +480,7 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
             exchangeRates={exchangeRates}
             onTogglePin={actions.togglePinAsset}
             onMemoEdit={(asset) => setMemoEditAsset(asset)}
+            crossDays={enrichedMap.get(asset.ticker)?.maCrossDays?.[smartFilter.maShortPeriod]?.[smartFilter.maLongPeriod]}
           />
         )) : (
           <div className="text-center py-8 text-gray-500">{emptyMessage}</div>

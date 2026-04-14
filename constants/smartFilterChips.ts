@@ -26,8 +26,8 @@ export const SMART_FILTER_CHIPS: SmartFilterChipDef[] = [
   },
   { key: 'MA_BULLISH_ALIGN', label: '정배열', group: 'ma', colorClass: 'bg-green-600', needsEnriched: true, description: '단기MA > 장기MA — 상승 추세 정렬' },
   { key: 'MA_BEARISH_ALIGN', label: '역배열', group: 'ma', colorClass: 'bg-red-600', needsEnriched: true, description: '단기MA < 장기MA — 하락 추세 정렬' },
-  { key: 'MA_GOLDEN_CROSS', label: '골든크로스', group: 'ma', colorClass: 'bg-amber-600', needsEnriched: true, description: '단기MA가 장기MA를 상향 돌파 — 매수 신호' },
-  { key: 'MA_DEAD_CROSS', label: '데드크로스', group: 'ma', colorClass: 'bg-purple-600', needsEnriched: true, description: '단기MA가 장기MA를 하향 돌파 — 매도 신호' },
+  { key: 'MA_GOLDEN_CROSS', label: '골든크로스', group: 'ma', colorClass: 'bg-amber-600', needsEnriched: true, description: '단기MA > 장기MA 상태 (교차 경과일 표시)' },
+  { key: 'MA_DEAD_CROSS', label: '데드크로스', group: 'ma', colorClass: 'bg-purple-600', needsEnriched: true, description: '단기MA < 장기MA 상태 (교차 경과일 표시)' },
 
   // RSI
   { key: 'RSI_OVERBOUGHT', label: '과매수(RSI≥70)', group: 'rsi', colorClass: 'bg-yellow-600', description: 'RSI 70 이상 — 과매수 구간, 하락 전환 가능성' },

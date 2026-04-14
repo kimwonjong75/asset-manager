@@ -174,6 +174,46 @@ export function buildChartDataWithMA(
 }
 
 /**
+ * 두 SMA 배열을 역순회하여 가장 최근 교차(crossover) 시점까지의 거래일 수를 반환.
+ * 양수 = 골든크로스 N일 전, 음수 = 데드크로스 N일 전, null = 데이터 부족
+ */
+export function calculateCrossDays(
+  shortSma: (number | null)[],
+  longSma: (number | null)[]
+): number | null {
+  // 끝에서부터 둘 다 유효한 첫 인덱스 찾기
+  let last = Math.min(shortSma.length, longSma.length) - 1;
+  while (last >= 0 && (shortSma[last] === null || longSma[last] === null)) {
+    last--;
+  }
+  if (last < 0) return null;
+
+  const currentShort = shortSma[last]!;
+  const currentLong = longSma[last]!;
+  // 정확히 같으면 교차 직전/직후 판별 불가
+  if (currentShort === currentLong) return null;
+
+  const isGolden = currentShort > currentLong; // 현재 상태
+
+  // 역순회: 상태가 반전된 지점 탐색
+  for (let i = last - 1; i >= 0; i--) {
+    const s = shortSma[i];
+    const l = longSma[i];
+    if (s === null || l === null) break; // 데이터 끊김 → 탐색 중단
+
+    const wasGolden = s > l;
+    if (wasGolden !== isGolden) {
+      // i+1일에 교차 발생 → last에서의 거리
+      const daysAgo = last - (i + 1);
+      return isGolden ? daysAgo : -daysAgo;
+    }
+  }
+
+  // 사용 가능한 전체 구간에서 교차 없음 → null
+  return null;
+}
+
+/**
  * API 요청에 필요한 과거 일수 계산
  * MA 계산을 위해 maxPeriod * 1.5 + 30 (주말/공휴일 보정)
  */

@@ -4,6 +4,7 @@ import { Currency } from '../../types';
 import { getAllowedCategories, type CategoryDefinition } from '../../types/category';
 import { PortfolioTableProps, SortKey, SortDirection, AssetMetrics, EnrichedAsset } from '../../types/ui';
 import { usePortfolioCalculator } from '../../hooks/usePortfolioCalculator';
+import type { EnrichedIndicatorData } from '../../hooks/useEnrichedIndicators';
 
 interface UsePortfolioDataProps {
   assets: Asset[];
@@ -13,6 +14,9 @@ interface UsePortfolioDataProps {
   sellAlertDropRate: number;
   showFailedOnly: boolean;
   failedIds?: Set<string>;
+  enrichedMap?: Map<string, EnrichedIndicatorData>;
+  maShortPeriod?: number;
+  maLongPeriod?: number;
 }
 
 export const usePortfolioData = ({
@@ -22,7 +26,10 @@ export const usePortfolioData = ({
   filterAlerts,
   sellAlertDropRate,
   showFailedOnly,
-  failedIds
+  failedIds,
+  enrichedMap,
+  maShortPeriod,
+  maLongPeriod
 }: UsePortfolioDataProps) => {
   const [sortConfig, setSortConfig] = useState<{ key: SortKey; direction: SortDirection } | null>(null);
   const { calculatePortfolioStats, calculateAssetMetrics } = usePortfolioCalculator();
@@ -59,6 +66,30 @@ export const usePortfolioData = ({
     if (sortConfig !== null) {
       enriched.sort((a, b) => {
         const { key, direction } = sortConfig;
+
+        // GC/DC 2단계 정렬: 그룹(GC/DC) → 그룹 내 최근 크로스 순
+        if (key === 'maCrossDays' && enrichedMap && maShortPeriod != null && maLongPeriod != null) {
+          const aCross = enrichedMap.get(a.ticker)?.maCrossDays?.[maShortPeriod]?.[maLongPeriod] ?? null;
+          const bCross = enrichedMap.get(b.ticker)?.maCrossDays?.[maShortPeriod]?.[maLongPeriod] ?? null;
+
+          // null은 항상 맨 뒤
+          if (aCross === null && bCross === null) return 0;
+          if (aCross === null) return 1;
+          if (bCross === null) return -1;
+
+          const aIsGC = aCross >= 0;
+          const bIsGC = bCross >= 0;
+
+          // 그룹이 다르면: ascending=GC먼저, descending=DC먼저
+          if (aIsGC !== bIsGC) {
+            if (aIsGC) return direction === 'ascending' ? -1 : 1;
+            return direction === 'ascending' ? 1 : -1;
+          }
+
+          // 같은 그룹 내: 절대값 작은 것(최근 크로스)이 항상 위
+          return Math.abs(aCross) - Math.abs(bCross);
+        }
+
         let aValue: number | string, bValue: number | string;
 
         if (key === 'name') {
@@ -92,7 +123,7 @@ export const usePortfolioData = ({
     }
 
     return enriched;
-  }, [assets, sortConfig, totalValueKRW, exchangeRates, filterAlerts, sellAlertDropRate, showFailedOnly, failedIds]);
+  }, [assets, sortConfig, totalValueKRW, exchangeRates, filterAlerts, sellAlertDropRate, showFailedOnly, failedIds, enrichedMap, maShortPeriod, maLongPeriod]);
 
   const requestSort = (key: SortKey) => {
     let direction: SortDirection = 'ascending';
