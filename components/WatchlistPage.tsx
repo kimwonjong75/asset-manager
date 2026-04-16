@@ -44,11 +44,20 @@ const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, portfolioAsset
 
   useOnClickOutside(menuRef, () => setOpenMenuId(null), !!openMenuId);
 
-  // 브리핑에서 관심종목 클릭 시 차트 자동 확장
+  // 브리핑에서 관심종목 클릭 시 차트 자동 확장 + 해당 행으로 스크롤
   useEffect(() => {
     if (ui.focusedWatchItemId) {
-      setExpandedItemId(ui.focusedWatchItemId);
+      const targetId = ui.focusedWatchItemId;
+      setExpandedItemId(targetId);
       actions.setFocusedWatchItemId(null);
+      setTimeout(() => {
+        const elements = document.querySelectorAll<HTMLElement>(`[data-watch-id="${targetId}"]`);
+        elements.forEach(el => {
+          if (el.offsetParent !== null) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        });
+      }, 150);
     }
   }, [ui.focusedWatchItemId]);
 
@@ -226,7 +235,7 @@ const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, portfolioAsset
               const derivedExchangeRate = getExchangeRate(w.currency);
               return (
                 <Fragment key={w.id}>
-                  <tr className="border-b border-gray-700 transition-colors duration-200 hover:bg-gray-700/50">
+                  <tr data-watch-id={w.id} className="border-b border-gray-700 transition-colors duration-200 hover:bg-gray-700/50">
                     <td className="px-4 py-3 text-center">
                       <input type="checkbox" checked={selectedIds.has(w.id)} onChange={(e) => {
                         const next = new Set<string>(selectedIds);
@@ -337,8 +346,8 @@ const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, portfolioAsset
       {/* 모바일 카드 뷰 */}
       <div className="block md:hidden bg-gray-800 rounded-lg shadow-lg overflow-hidden">
         {filtered.length > 0 ? filtered.map(w => (
+          <div key={w.id} data-watch-id={w.id}>
           <WatchlistMobileCard
-            key={w.id}
             item={w}
             isSelected={selectedIds.has(w.id)}
             onToggleSelect={(id) => {
@@ -354,6 +363,7 @@ const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, portfolioAsset
             exchangeRates={exchangeRates}
             isPortfolioHeld={portfolioTickers.has(w.ticker.toUpperCase())}
           />
+          </div>
         )) : (
           <div className="text-center py-8 text-gray-500">관심 종목을 추가해주세요.</div>
         )}

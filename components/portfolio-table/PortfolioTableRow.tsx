@@ -167,9 +167,11 @@ const PortfolioTableRow: React.FC<PortfolioTableRowProps> = ({
              </div>
             <div className="flex items-center gap-1.5">
               <span className="text-xs text-gray-500 break-all">{asset.ticker} | {asset.exchange}</span>
-              <CrossDaysBadge crossDays={crossDays} />
             </div>
           </div>
+        </td>
+        <td className="px-4 py-4 text-center">
+          <CrossDaysBadge crossDays={crossDays} />
         </td>
         {showHiddenColumns && (
           <td className="px-4 py-4 text-right">
@@ -257,9 +259,6 @@ const PortfolioTableRow: React.FC<PortfolioTableRowProps> = ({
               <div className="text-xs opacity-80">{formatProfitLoss(diffFromYesterday, Currency.KRW)}</div>
             </div>
           </Tooltip>
-        </td>
-        <td className="px-4 py-4 text-center">
-          <CrossDaysBadge crossDays={crossDays} />
         </td>
         <td className="px-4 py-4 text-center">
           <div className="flex items-center justify-center gap-1">

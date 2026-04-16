@@ -82,7 +82,7 @@
 | `portfolioCalculations.ts` | 포트폴리오 계산 유틸 | 전역 (계산 결과 변경) |
 | `historyUtils.ts` | 히스토리 보간/백필/기존 스냅샷 종가 교정/오염 데이터 교정 | `usePortfolioData` |
 | `maCalculations.ts` | SMA/RSI/교차경과일 계산. `calculateSMA(sortedPrices, period)` — `(number|null)[]` 반환. `calculateCrossDays(shortSma, longSma)` — 두 SMA 배열 역순회하여 교차 시점까지 거래일 수 반환 (양수=골든, 음수=데드, null=미확인). `buildChartDataWithMA()`는 현재 미사용 (Lightweight Charts 전환) | `AssetTrendChart`(`calculateSMA`), `useEnrichedIndicators`, `geminiService` |
-| `smartFilterLogic.ts` | 스마트 필터 매칭 (그룹 내 OR, 그룹 간 AND), enriched 지표 참조, `PRICE_BELOW_*` 판정 포함. 거래량 필터(`VOLUME_SURGE/HIGH/LOW`)는 `indicators.volume_ratio` 사용. **골든/데드크로스 필터는 상태 기반** (`MA_GOLDEN_CROSS`: shortMA > longMA, `MA_DEAD_CROSS`: shortMA < longMA — 교차 당일뿐 아니라 지속 상태 감지, 경과일은 UI `CrossDaysBadge`에서 표시). **`matchesSingleFilter()` export** — 알림 규칙 체커에서도 재활용 | `PortfolioTable`, `alertChecker.ts` |
+| `smartFilterLogic.ts` | 스마트 필터 매칭 (그룹 내 OR, 그룹 간 AND), enriched 지표 참조, `PRICE_BELOW_*` 판정 포함. 거래량 필터(`VOLUME_SURGE/HIGH/LOW`)는 `indicators.volume_ratio` 사용. **골든/데드크로스 필터는 상태 기반** (`MA_GOLDEN_CROSS`: shortMA > longMA, `MA_DEAD_CROSS`: shortMA < longMA — 교차 당일뿐 아니라 지속 상태 감지, 경과일은 UI `CrossDaysBadge`에서 표시(60거래일 초과는 숨김, `scaleY(0.8)` 축소 뱃지, 종목명 오른쪽 컬럼에 배치)). **`matchesSingleFilter()` export** — 알림 규칙 체커에서도 재활용 | `PortfolioTable`, `alertChecker.ts` |
 | `alertChecker.ts` | 알림 규칙별 자산 매칭 (규칙 내 필터 AND 조합), 매칭 결과 구조화 반환 (`dailyChange`/`returnPct`/`dropFromHigh`/`rsi` + `details` 문자열). **당일 변동률은 `asset.metrics.yesterdayChange` 사용** (`changeRate` 사용 금지). **`checkBuyRulesForWatchlist()` export**: 관심종목을 pseudo-EnrichedAsset으로 변환(`watchlistToPseudoAsset`)하여 매수 규칙만 실행, 결과에 `source: 'watchlist'` 표시 | `smartFilterLogic.matchesSingleFilter`, `types/alertRules`, `types/index`(WatchlistItem, Currency) | `useAutoAlert`, 프리셋 버튼 |
 | `migrateData.ts` | 데이터 마이그레이션 (기존 형식 변환 + 카테고리 ID 변환) | 로드 시 자동 실행 |
 | `logger.ts` | 중앙 로깅 유틸리티. `createLogger(module)` 팩토리 — 프로덕션 빌드에서 debug/info 자동 억제, warn/error만 출력. 모듈명 자동 프리픽스. **새 서비스/훅 추가 시 `console.*` 직접 사용 금지, 반드시 `createLogger` 사용** | 전체 services/, hooks/, utils/ |
@@ -343,7 +343,7 @@ AlertPopup (플로팅 패널) → 종목 클릭
     └─ App.tsx의 onAssetClick(assetId, source?) 콜백
          ├─ source === 'watchlist'
          │    ├─ actions.setActiveTab('watchlist')
-         │    └─ actions.setFocusedWatchItemId(assetId) — WatchlistPage에서 차트 자동 펼침
+         │    └─ actions.setFocusedWatchItemId(assetId) — WatchlistPage에서 차트 자동 펼침 + `[data-watch-id]` 기반 `scrollIntoView`(150ms 후, 보이는 뷰만 `offsetParent` 체크로 필터)
          └─ source !== 'watchlist' (기본)
               ├─ actions.setActiveTab('portfolio')   — 포트폴리오 탭 전환
               └─ actions.setFocusedAssetId(assetId)  — UIState.focusedAssetId 설정
@@ -413,7 +413,7 @@ PortfolioAssistant.tsx
 | `MemoTooltip.tsx` | `PortfolioTableRow`, `WatchlistPage`, `WatchlistMobileCard` (메모 표시) |
 | `PortfolioTableRow.tsx` 컬럼 추가 | `PortfolioMobileCard`에도 반영 필요 (데스크탑/모바일 뷰 동기화) |
 | `PortfolioTableRow.tsx` | **`usePortfolio()` 직접 사용** — `ui.focusedAssetId` + `actions.setFocusedAssetId`로 브리핑 패널 클릭-투-포커스 구현. `rowRef`(HTMLTableRowElement)로 `scrollIntoView` 수행. `onTogglePin`(★ 토글), `onMemoEdit`(메모 편집 팝업 열기), `onRefreshOne`(개별 가격 업데이트) props 수신 |
-| `WatchlistPage.tsx` | **`usePortfolio()` 직접 사용** — `ui.focusedWatchItemId` + `actions.setFocusedWatchItemId`로 브리핑 패널 클릭-투-포커스 구현 (차트 자동 펼침). `actions.updateWatchItem`으로 메모 저장 |
+| `WatchlistPage.tsx` | **`usePortfolio()` 직접 사용** — `ui.focusedWatchItemId` + `actions.setFocusedWatchItemId`로 브리핑 패널 클릭-투-포커스 구현 (차트 자동 펼침 + 해당 행으로 `scrollIntoView`). 데스크탑 `<tr>`과 모바일 카드 래퍼 `<div>` 양쪽에 `data-watch-id={id}` 부여 → `document.querySelectorAll('[data-watch-id=…]')`로 보이는 뷰만 스크롤(`offsetParent !== null` 필터, 150ms 지연). `actions.updateWatchItem`으로 메모 저장 |
 | `MemoEditPopup.tsx` | `PortfolioTable`(`memoEditAsset`)과 `WatchlistPage`(`memoEditItem`)에서 메모 아이콘 클릭 시 열림 |
 | `usePortfolioCalculator.ts` | `usePortfolioStats`, `portfolio-table/usePortfolioData` (수익률/손익 계산 공유) |
 | `useTopBottomAssets.ts` | `TopBottomAssets` (대시보드 상위/하위 종목 표시) |

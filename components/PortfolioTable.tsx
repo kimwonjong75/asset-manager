@@ -377,6 +377,11 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
                   <div className={thContentClasses}><span>종목명</span> <SortIcon sortKey='name' sortConfig={sortConfig}/></div>
                 </Tooltip>
               </th>
+              <th scope="col" className={`${thClasses} text-center`} onClick={() => requestSort('maCrossDays')}>
+                <Tooltip content={`MA${smartFilter.maShortPeriod}/${smartFilter.maLongPeriod} 골든/데드크로스 경과일 기준 정렬`} position="bottom" wrap>
+                  <div className={`${thContentClasses} justify-center`}><span>GC/DC</span> <SortIcon sortKey='maCrossDays' sortConfig={sortConfig}/></div>
+                </Tooltip>
+              </th>
               {showHiddenColumns && <th scope="col" className={`${thClasses} text-right`} onClick={() => requestSort('quantity')}>
                 <Tooltip content={COLUMN_DESCRIPTIONS.quantity} position="bottom" wrap>
                   <div className={`${thContentClasses} justify-end`}><span>보유수량</span> <SortIcon sortKey='quantity' sortConfig={sortConfig}/></div>
@@ -425,11 +430,6 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
               <th scope="col" className={`${thClasses} justify-end`} onClick={() => requestSort('yesterdayChange')}>
                 <Tooltip content={COLUMN_DESCRIPTIONS.yesterdayChange} position="bottom" wrap>
                   <div className={`${thContentClasses} justify-end`}><span>어제대비</span> <SortIcon sortKey='yesterdayChange' sortConfig={sortConfig}/></div>
-                </Tooltip>
-              </th>
-              <th scope="col" className={`${thClasses} text-center`} onClick={() => requestSort('maCrossDays')}>
-                <Tooltip content={`MA${smartFilter.maShortPeriod}/${smartFilter.maLongPeriod} 골든/데드크로스 경과일 기준 정렬`} position="bottom" wrap>
-                  <div className={`${thContentClasses} justify-center`}><span>GC/DC</span> <SortIcon sortKey='maCrossDays' sortConfig={sortConfig}/></div>
                 </Tooltip>
               </th>
               <th scope="col" className="px-4 py-3 text-center sticky top-0 bg-gray-700 z-20">관리</th>

@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useCallback, useRef, useEffect } from 'react';
 import { PortfolioSnapshot, Currency } from '../types';
 import { isBaseType, getCategoryName, DEFAULT_CATEGORIES } from '../types/category';
-import { createChart, IChartApi, ISeriesApi, LineSeries, HistogramSeries, LineStyle, ColorType, CrosshairMode } from 'lightweight-charts';
+import { createChart, IChartApi, ISeriesApi, LineSeries, HistogramSeries, LineStyle, ColorType, CrosshairMode, TickMarkType } from 'lightweight-charts';
 import { useHistoricalPriceData } from '../hooks/useHistoricalPriceData';
 import { DEFAULT_MA_CONFIGS, MALineConfig, calculateSMA } from '../utils/maCalculations';
 import { usePortfolio } from '../contexts/PortfolioContext';
@@ -292,7 +292,7 @@ const AssetTrendChart: React.FC<AssetTrendChartProps> = ({
     const chart = createChart(container, {
       layout: {
         background: { type: ColorType.Solid, color: '#1F2937' },
-        textColor: '#A0AEC0',
+        textColor: '#E5E7EB',
         fontSize: 11,
       },
       grid: {
@@ -311,6 +311,35 @@ const AssetTrendChart: React.FC<AssetTrendChartProps> = ({
         timeVisible: false,
         fixLeftEdge: false,
         fixRightEdge: false,
+        tickMarkFormatter: (time: any, tickMarkType: TickMarkType): string => {
+          let year: number;
+          let month: number;
+          let day: number;
+          if (typeof time === 'string') {
+            const [y, m, d] = time.split('-');
+            year = Number(y);
+            month = Number(m);
+            day = Number(d);
+          } else if (time && typeof time === 'object' && 'year' in time) {
+            year = time.year;
+            month = time.month;
+            day = time.day;
+          } else if (typeof time === 'number') {
+            const d = new Date(time * 1000);
+            year = d.getUTCFullYear();
+            month = d.getUTCMonth() + 1;
+            day = d.getUTCDate();
+          } else {
+            return '';
+          }
+          if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) return '';
+          switch (tickMarkType) {
+            case TickMarkType.Year: return `${year}년`;
+            case TickMarkType.Month: return `${month}월`;
+            case TickMarkType.DayOfMonth: return `${day}`;
+            default: return `${day}`;
+          }
+        },
       },
       handleScroll: {
         mouseWheel: false,
