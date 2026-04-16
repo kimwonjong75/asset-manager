@@ -56,6 +56,21 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
   const { derived, ui, actions, data } = usePortfolio();
   const { enrichedMap, isEnrichedLoading } = derived;
 
+  // GC/DC 뱃지: 알림 규칙(`golden-cross`, `dead-cross`)의 MA 페어를 직접 참조
+  // 사용자가 알림 설정에서 변경한 페어가 즉시 뱃지에 반영됨
+  const badgePairs = useMemo(() => {
+    const gc = ui.alertSettings.rules.find(r => r.id === 'golden-cross');
+    const dc = ui.alertSettings.rules.find(r => r.id === 'dead-cross');
+    return {
+      gcEnabled: gc?.enabled ?? false,
+      gcShort: gc?.filterConfig?.maShortPeriod ?? 5,
+      gcLong: gc?.filterConfig?.maLongPeriod ?? 20,
+      dcEnabled: dc?.enabled ?? false,
+      dcShort: dc?.filterConfig?.maShortPeriod ?? 5,
+      dcLong: dc?.filterConfig?.maLongPeriod ?? 20,
+    };
+  }, [ui.alertSettings.rules]);
+
   const {
     enrichedAndSortedAssets,
     sortConfig,
@@ -71,8 +86,7 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
     showFailedOnly,
     failedIds,
     enrichedMap,
-    maShortPeriod: smartFilter.maShortPeriod,
-    maLongPeriod: smartFilter.maLongPeriod
+    badgePairs,
   });
   const [presetOpen, setPresetOpen] = useState(false);
   const [activePreset, setActivePreset] = useState<string | null>(null);
@@ -378,7 +392,7 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
                 </Tooltip>
               </th>
               <th scope="col" className={`${thClasses} text-center`} onClick={() => requestSort('maCrossDays')}>
-                <Tooltip content={`MA${smartFilter.maShortPeriod}/${smartFilter.maLongPeriod} 골든/데드크로스 경과일 기준 정렬`} position="bottom" wrap>
+                <Tooltip content={`알림 규칙 기준: GC=MA${badgePairs.gcShort}/${badgePairs.gcLong}, DC=MA${badgePairs.dcShort}/${badgePairs.dcLong} (환경설정에서 변경)`} position="bottom" wrap>
                   <div className={`${thContentClasses} justify-center`}><span>GC/DC</span> <SortIcon sortKey='maCrossDays' sortConfig={sortConfig}/></div>
                 </Tooltip>
               </th>
@@ -436,7 +450,15 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
             </tr>
           </thead>
           <tbody>
-            {filteredAssets.length > 0 ? filteredAssets.map(asset => (
+            {filteredAssets.length > 0 ? filteredAssets.map(asset => {
+              const enriched = enrichedMap.get(asset.ticker);
+              const gcRaw = badgePairs.gcEnabled
+                ? enriched?.maCrossDays?.[badgePairs.gcShort]?.[badgePairs.gcLong]
+                : null;
+              const dcRaw = badgePairs.dcEnabled
+                ? enriched?.maCrossDays?.[badgePairs.dcShort]?.[badgePairs.dcLong]
+                : null;
+              return (
               <PortfolioTableRow
                 key={asset.id}
                 asset={asset}
@@ -455,9 +477,11 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
                 exchangeRates={exchangeRates}
                 onTogglePin={actions.togglePinAsset}
                 onMemoEdit={(asset) => setMemoEditAsset(asset)}
-                crossDays={enrichedMap.get(asset.ticker)?.maCrossDays?.[smartFilter.maShortPeriod]?.[smartFilter.maLongPeriod]}
+                gcCrossDays={gcRaw != null && gcRaw >= 0 ? gcRaw : null}
+                dcCrossDays={dcRaw != null && dcRaw < 0 ? dcRaw : null}
               />
-            )) : (
+              );
+            }) : (
               <tr><td colSpan={13} className="text-center py-8 text-gray-500">
                   {emptyMessage}
               </td></tr>
@@ -468,7 +492,15 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
 
       {/* 모바일: 카드 뷰 */}
       <div className="block md:hidden">
-        {filteredAssets.length > 0 ? filteredAssets.map(asset => (
+        {filteredAssets.length > 0 ? filteredAssets.map(asset => {
+          const enriched = enrichedMap.get(asset.ticker);
+          const gcRaw = badgePairs.gcEnabled
+            ? enriched?.maCrossDays?.[badgePairs.gcShort]?.[badgePairs.gcLong]
+            : null;
+          const dcRaw = badgePairs.dcEnabled
+            ? enriched?.maCrossDays?.[badgePairs.dcShort]?.[badgePairs.dcLong]
+            : null;
+          return (
           <PortfolioMobileCard
             key={asset.id}
             asset={asset}
@@ -480,9 +512,11 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
             exchangeRates={exchangeRates}
             onTogglePin={actions.togglePinAsset}
             onMemoEdit={(asset) => setMemoEditAsset(asset)}
-            crossDays={enrichedMap.get(asset.ticker)?.maCrossDays?.[smartFilter.maShortPeriod]?.[smartFilter.maLongPeriod]}
+            gcCrossDays={gcRaw != null && gcRaw >= 0 ? gcRaw : null}
+            dcCrossDays={dcRaw != null && dcRaw < 0 ? dcRaw : null}
           />
-        )) : (
+          );
+        }) : (
           <div className="text-center py-8 text-gray-500">{emptyMessage}</div>
         )}
       </div>

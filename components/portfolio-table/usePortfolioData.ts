@@ -6,6 +6,16 @@ import { PortfolioTableProps, SortKey, SortDirection, AssetMetrics, EnrichedAsse
 import { usePortfolioCalculator } from '../../hooks/usePortfolioCalculator';
 import type { EnrichedIndicatorData } from '../../hooks/useEnrichedIndicators';
 
+/** GC/DC 뱃지 평가에 사용할 알림 룰 페어 (PortfolioTable이 alertSettings에서 추출) */
+export interface BadgePairs {
+  gcEnabled: boolean;
+  gcShort: number;
+  gcLong: number;
+  dcEnabled: boolean;
+  dcShort: number;
+  dcLong: number;
+}
+
 interface UsePortfolioDataProps {
   assets: Asset[];
   exchangeRates: ExchangeRates;
@@ -15,8 +25,7 @@ interface UsePortfolioDataProps {
   showFailedOnly: boolean;
   failedIds?: Set<string>;
   enrichedMap?: Map<string, EnrichedIndicatorData>;
-  maShortPeriod?: number;
-  maLongPeriod?: number;
+  badgePairs?: BadgePairs;
 }
 
 export const usePortfolioData = ({
@@ -28,8 +37,7 @@ export const usePortfolioData = ({
   showFailedOnly,
   failedIds,
   enrichedMap,
-  maShortPeriod,
-  maLongPeriod
+  badgePairs,
 }: UsePortfolioDataProps) => {
   const [sortConfig, setSortConfig] = useState<{ key: SortKey; direction: SortDirection } | null>(null);
   const { calculatePortfolioStats, calculateAssetMetrics } = usePortfolioCalculator();
@@ -67,12 +75,26 @@ export const usePortfolioData = ({
       enriched.sort((a, b) => {
         const { key, direction } = sortConfig;
 
-        // GC/DC 2단계 정렬: 그룹(GC/DC) → 그룹 내 최근 크로스 순
-        if (key === 'maCrossDays' && enrichedMap && maShortPeriod != null && maLongPeriod != null) {
-          const aCross = enrichedMap.get(a.ticker)?.maCrossDays?.[maShortPeriod]?.[maLongPeriod] ?? null;
-          const bCross = enrichedMap.get(b.ticker)?.maCrossDays?.[maShortPeriod]?.[maLongPeriod] ?? null;
+        // GC/DC 2단계 정렬 — 두 알림 룰의 페어를 모두 평가:
+        //   GC 페어로 양수, DC 페어로 음수 → 둘 중 더 최근(절대값 작은) 신호로 정렬
+        //   둘 다 없으면 null로 취급 (항상 맨 뒤)
+        if (key === 'maCrossDays' && enrichedMap && badgePairs) {
+          const evalEffective = (ticker: string): number | null => {
+            const m = enrichedMap.get(ticker)?.maCrossDays;
+            if (!m) return null;
+            const gc = badgePairs.gcEnabled ? m[badgePairs.gcShort]?.[badgePairs.gcLong] ?? null : null;
+            const dc = badgePairs.dcEnabled ? m[badgePairs.dcShort]?.[badgePairs.dcLong] ?? null : null;
+            const gcSig = gc != null && gc >= 0 ? gc : null;
+            const dcSig = dc != null && dc < 0 ? dc : null;
+            if (gcSig === null && dcSig === null) return null;
+            if (gcSig === null) return dcSig;
+            if (dcSig === null) return gcSig;
+            return Math.abs(gcSig) <= Math.abs(dcSig) ? gcSig : dcSig;
+          };
 
-          // null은 항상 맨 뒤
+          const aCross = evalEffective(a.ticker);
+          const bCross = evalEffective(b.ticker);
+
           if (aCross === null && bCross === null) return 0;
           if (aCross === null) return 1;
           if (bCross === null) return -1;
@@ -123,7 +145,7 @@ export const usePortfolioData = ({
     }
 
     return enriched;
-  }, [assets, sortConfig, totalValueKRW, exchangeRates, filterAlerts, sellAlertDropRate, showFailedOnly, failedIds, enrichedMap, maShortPeriod, maLongPeriod]);
+  }, [assets, sortConfig, totalValueKRW, exchangeRates, filterAlerts, sellAlertDropRate, showFailedOnly, failedIds, enrichedMap, badgePairs]);
 
   const requestSort = (key: SortKey) => {
     let direction: SortDirection = 'ascending';

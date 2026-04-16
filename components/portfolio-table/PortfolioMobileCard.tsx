@@ -18,7 +18,10 @@ interface PortfolioMobileCardProps {
   exchangeRates?: ExchangeRates;
   onTogglePin?: (id: string) => void;
   onMemoEdit?: (asset: Asset) => void;
-  crossDays?: number | null;
+  /** 골든크로스 신호 (`golden-cross` 알림 룰의 MA 페어 기준 — 양수만, 그 외 null) */
+  gcCrossDays?: number | null;
+  /** 데드크로스 신호 (`dead-cross` 알림 룰의 MA 페어 기준 — 음수만, 그 외 null) */
+  dcCrossDays?: number | null;
 }
 
 
@@ -32,7 +35,8 @@ const PortfolioMobileCard: React.FC<PortfolioMobileCardProps> = ({
   exchangeRates,
   onTogglePin,
   onMemoEdit,
-  crossDays,
+  gcCrossDays,
+  dcCrossDays,
 }) => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [expanded, setExpanded] = useState(false);
@@ -74,7 +78,8 @@ const PortfolioMobileCard: React.FC<PortfolioMobileCardProps> = ({
           </div>
           <div className="flex items-center gap-1.5 mt-0.5">
             <span className="text-[11px] text-gray-500">{asset.ticker} | {asset.exchange}</span>
-            <CrossDaysBadge crossDays={crossDays} />
+            <CrossDaysBadge crossDays={gcCrossDays} />
+            <CrossDaysBadge crossDays={dcCrossDays} />
           </div>
 
           {/* Price + Return row */}

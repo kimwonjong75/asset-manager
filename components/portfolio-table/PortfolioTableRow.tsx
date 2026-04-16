@@ -66,8 +66,10 @@ interface PortfolioTableRowProps {
   onRefreshOne?: (id: string) => void | Promise<void>;
   onTogglePin?: (id: string) => void;
   onMemoEdit?: (asset: Asset) => void;
-  /** MA 교차 경과일 (양수=골든, 음수=데드, null=미확인) */
-  crossDays?: number | null;
+  /** 골든크로스 신호 (`golden-cross` 알림 룰의 MA 페어 기준 — 양수만 전달, 그 외 null) */
+  gcCrossDays?: number | null;
+  /** 데드크로스 신호 (`dead-cross` 알림 룰의 MA 페어 기준 — 음수만 전달, 그 외 null) */
+  dcCrossDays?: number | null;
 }
 
 const ChartBarIcon: React.FC = () => (
@@ -89,7 +91,8 @@ const PortfolioTableRow: React.FC<PortfolioTableRowProps> = ({
   exchangeRates,
   onTogglePin,
   onMemoEdit,
-  crossDays
+  gcCrossDays,
+  dcCrossDays,
 }) => {
   const [expandedAssetId, setExpandedAssetId] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -171,7 +174,10 @@ const PortfolioTableRow: React.FC<PortfolioTableRowProps> = ({
           </div>
         </td>
         <td className="px-4 py-4 text-center">
-          <CrossDaysBadge crossDays={crossDays} />
+          <div className="inline-flex items-center gap-1">
+            <CrossDaysBadge crossDays={gcCrossDays} />
+            <CrossDaysBadge crossDays={dcCrossDays} />
+          </div>
         </td>
         {showHiddenColumns && (
           <td className="px-4 py-4 text-right">
