@@ -6,8 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "preview": "vite preview",
-    "deploy": "npm run build && gh-pages -d dist"
+    "preview": "npm run build && wrangler dev",
+    "deploy": "npm run build && wrangler deploy"
   },
   "dependencies": {
     "@google/genai": "^1.29.1",
@@ -23,6 +23,7 @@
     "tailwind-merge": "^3.4.0"
   },
   "devDependencies": {
+    "@cloudflare/vite-plugin": "^1.33.2",
     "@types/lz-string": "^1.3.34",
     "@types/node": "^22.14.0",
     "@types/react": "^19.2.5",
@@ -35,6 +36,7 @@
     "rehype-raw": "^7.0.0",
     "tailwindcss": "^3.4.13",
     "typescript": "~5.8.2",
-    "vite": "^6.4.1"
+    "vite": "^6.4.1",
+    "wrangler": "^4.85.0"
   }
 }
