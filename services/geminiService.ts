@@ -8,7 +8,7 @@ import {
   convertTickerForAPI,
   isCryptoExchange,
 } from './historicalPriceService';
-import { calculateSMA, calculateRSI, calculateCrossDays, getRequiredHistoryDays } from '../utils/maCalculations';
+import { calculateSMA, calculateRSI, calculateCrossDays, calculatePriceCrossMaDays, calculateRsiCrossDays, getRequiredHistoryDays } from '../utils/maCalculations';
 import type { EnrichedIndicatorData } from '../hooks/useEnrichedIndicators';
 import { createLogger } from '../utils/logger';
 
@@ -537,7 +537,19 @@ async function fetchTechnicalIndicators(
       const rsi = lastRsiIdx >= 0 ? rsiValues[lastRsiIdx] : null;
       const prevRsi = lastRsiIdx >= 1 ? rsiValues[lastRsiIdx - 1] : null;
 
-      result.set(asset.ticker, { ma, prevMa, rsi, prevRsi, maCrossDays });
+      const prevClose = sortedPrices.length >= 2
+        ? sortedPrices[sortedPrices.length - 2].price
+        : null;
+
+      // 가격 vs MA 상향돌파 경과일
+      const priceCrossMaDays: Record<number, number | null> = {};
+      for (const period of MA_PERIODS) {
+        priceCrossMaDays[period] = calculatePriceCrossMaDays(sortedPrices, smaArrays[period]);
+      }
+      const rsiBounceDay = calculateRsiCrossDays(rsiValues, 30);
+      const rsiOverheatEntryDay = calculateRsiCrossDays(rsiValues, 70);
+
+      result.set(asset.ticker, { ma, prevMa, rsi, prevRsi, maCrossDays, prevClose, priceCrossMaDays, rsiBounceDay, rsiOverheatEntryDay });
     }
   } catch (err) {
     log.error('fetchTechnicalIndicators error:', err);

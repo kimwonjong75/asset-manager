@@ -24,6 +24,8 @@ const matchesRule = (
     profitTargetThreshold: filterConfig.profitTargetThreshold,
     dailySurgeThreshold: filterConfig.dailySurgeThreshold,
     dailyCrashThreshold: filterConfig.dailyCrashThreshold,
+    maCrossPeriod: filterConfig.maCrossPeriod,
+    withinDays: filterConfig.withinDays,
   };
 
   return filters.every(filterKey =>
@@ -53,8 +55,10 @@ const buildAssetInfo = (
 
   const maShort = rule.filterConfig.maShortPeriod;
   const maLong = rule.filterConfig.maLongPeriod;
+  const maCross = rule.filterConfig.maCrossPeriod;
   if (maShort && enriched?.ma[maShort] != null) parts.push(`MA${maShort} ${enriched.ma[maShort]!.toLocaleString()}`);
   if (maLong && enriched?.ma[maLong] != null) parts.push(`MA${maLong} ${enriched.ma[maLong]!.toLocaleString()}`);
+  if (maCross && enriched?.ma[maCross] != null) parts.push(`MA${maCross} ${enriched.ma[maCross]!.toLocaleString()}`);
 
   // MA 교차 경과일
   if (maShort && maLong) {
@@ -64,6 +68,22 @@ const buildAssetInfo = (
       const label = crossDays < 0 ? 'DC' : 'GC';
       parts.push(`${label} ${days === 0 ? '오늘' : `${days}일전`}`);
     }
+  }
+
+  // 가격 vs MA 상향돌파 경과일
+  if (maCross && enriched?.priceCrossMaDays) {
+    const crossDay = enriched.priceCrossMaDays[maCross];
+    if (typeof crossDay === 'number') {
+      parts.push(`돌파 ${crossDay === 0 ? '오늘' : `${crossDay}일전`}`);
+    }
+  }
+
+  // RSI 이벤트 경과일
+  if (rule.filters.includes('RSI_BOUNCE') && enriched?.rsiBounceDay != null) {
+    parts.push(`반등 ${enriched.rsiBounceDay === 0 ? '오늘' : `${enriched.rsiBounceDay}일전`}`);
+  }
+  if (rule.filters.includes('RSI_OVERHEAT_ENTRY') && enriched?.rsiOverheatEntryDay != null) {
+    parts.push(`과열진입 ${enriched.rsiOverheatEntryDay === 0 ? '오늘' : `${enriched.rsiOverheatEntryDay}일전`}`);
   }
 
   return {

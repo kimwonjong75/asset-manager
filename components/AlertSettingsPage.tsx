@@ -163,6 +163,20 @@ const AlertSettingsPage: React.FC = () => {
                 <span>%</span>
               </div>
             )}
+            {config.maCrossPeriod !== undefined && (
+              <div className="flex items-center gap-1 text-xs text-gray-300">
+                <span>이평선</span>
+                <select
+                  value={config.maCrossPeriod}
+                  onChange={(e) => updateRuleConfig(rule.id, 'maCrossPeriod', parseInt(e.target.value))}
+                  className="bg-gray-700 border border-gray-600 rounded px-1 py-0.5 text-white text-xs"
+                >
+                  {[20, 60, 120, 200].map(p => (
+                    <option key={p} value={p}>MA{p}</option>
+                  ))}
+                </select>
+              </div>
+            )}
             {config.dailyCrashThreshold !== undefined && (
               <div className="flex items-center gap-1 text-xs text-gray-300">
                 <span>급락률</span>
@@ -174,6 +188,20 @@ const AlertSettingsPage: React.FC = () => {
                   min="0"
                 />
                 <span>%</span>
+              </div>
+            )}
+            {config.withinDays !== undefined && (
+              <div className="flex items-center gap-1 text-xs text-gray-300">
+                <span>감지유지</span>
+                <input
+                  type="number"
+                  value={config.withinDays}
+                  onChange={(e) => updateRuleConfig(rule.id, 'withinDays', Math.max(0, Math.min(30, parseInt(e.target.value) || 0)))}
+                  className="w-12 bg-gray-700 border border-gray-600 rounded px-1 py-0.5 text-white text-xs text-center"
+                  min="0"
+                  max="30"
+                />
+                <span>일</span>
               </div>
             )}
           </div>

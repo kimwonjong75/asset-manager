@@ -25,6 +25,16 @@ const loadAlertSettings = (): AlertSettings => {
         }
       }
 
+      // 기존 규칙에 신규 filterConfig 필드 병합 (withinDays 등)
+      const defaultRuleMap = new Map(DEFAULT_ALERT_SETTINGS.rules.map(r => [r.id, r]));
+      settings.rules = settings.rules.map((r: AlertRule) => {
+        const def = defaultRuleMap.get(r.id);
+        if (!def) return r;
+        // 기본값에 있는데 저장된 config에 없는 필드만 backfill
+        const mergedConfig = { ...def.filterConfig, ...r.filterConfig };
+        return { ...r, filterConfig: mergedConfig };
+      });
+
       return settings;
     }
   } catch { /* ignore */ }

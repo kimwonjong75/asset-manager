@@ -266,7 +266,9 @@ const AppContent: React.FC = () => {
             {showScrollTop && (
               <button
                 onClick={() => mainRef.current?.scrollTo({ top: 0 })}
-                className="fixed bottom-4 right-4 sm:bottom-8 sm:right-8 bg-gray-700 hover:bg-gray-600 text-white rounded-full p-3 shadow-lg transition-opacity focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 focus:ring-primary"
+                className={`fixed right-4 sm:right-8 bg-gray-700 hover:bg-gray-600 text-white rounded-full p-3 shadow-lg transition-all z-[70] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 focus:ring-primary ${
+                  derived.showAlertPopup ? 'bottom-20 sm:bottom-24' : 'bottom-4 sm:bottom-8'
+                }`}
                 title="맨 위로 이동"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

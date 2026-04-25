@@ -9,6 +9,9 @@ export interface AlertRuleFilterConfig {
   profitTargetThreshold?: number;
   dailySurgeThreshold?: number;
   dailyCrashThreshold?: number;
+  maCrossPeriod?: number;
+  /** 이벤트형 필터 감지 유지 일수 (PRICE_CROSS_ABOVE_MA, RSI_BOUNCE, RSI_OVERHEAT_ENTRY) */
+  withinDays?: number;
 }
 
 /** 개별 알림 규칙 */

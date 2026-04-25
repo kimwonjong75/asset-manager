@@ -214,6 +214,59 @@ export function calculateCrossDays(
 }
 
 /**
+ * 가격이 MA를 상향돌파한 경과 거래일 수 계산
+ * sortedPrices와 smaValues는 동일 길이, 날짜 오름차순
+ * 반환: 양수 = N거래일 전 상향돌파, null = 미확인
+ */
+export function calculatePriceCrossMaDays(
+  sortedPrices: PricePoint[],
+  smaValues: (number | null)[]
+): number | null {
+  const last = sortedPrices.length - 1;
+  if (last < 1) return null;
+
+  const currentPrice = sortedPrices[last].price;
+  const currentMa = smaValues[last];
+  if (currentMa === null || currentPrice < currentMa) return null; // 현재 MA 아래면 무의미
+
+  // 역순회: 가격이 MA 아래였던 마지막 지점 탐색
+  for (let i = last - 1; i >= 0; i--) {
+    const ma = smaValues[i];
+    if (ma === null) break;
+    if (sortedPrices[i].price < ma) {
+      // i일에 아래 → i+1일에 상향돌파
+      return last - (i + 1);
+    }
+  }
+  return null; // 전체 구간 동안 항상 MA 위
+}
+
+/**
+ * RSI가 특정 임계값을 상향돌파한 경과 거래일 수 계산
+ * 반환: 양수 = N거래일 전 상향돌파, null = 미확인
+ */
+export function calculateRsiCrossDays(
+  rsiValues: (number | null)[],
+  threshold: number
+): number | null {
+  const last = rsiValues.length - 1;
+  if (last < 1) return null;
+
+  const currentRsi = rsiValues[last];
+  if (currentRsi === null || currentRsi <= threshold) return null;
+
+  // 역순회: RSI가 threshold 이하였던 마지막 지점 탐색
+  for (let i = last - 1; i >= 0; i--) {
+    const rsi = rsiValues[i];
+    if (rsi === null) break;
+    if (rsi <= threshold) {
+      return last - (i + 1);
+    }
+  }
+  return null;
+}
+
+/**
  * API 요청에 필요한 과거 일수 계산
  * MA 계산을 위해 maxPeriod * 1.5 + 30 (주말/공휴일 보정)
  */

@@ -11,6 +11,7 @@ export type SmartFilterKey =
   | 'MA_BEARISH_ALIGN'
   | 'MA_GOLDEN_CROSS'
   | 'MA_DEAD_CROSS'
+  | 'PRICE_CROSS_ABOVE_MA'
   // RSI
   | 'RSI_OVERBOUGHT'
   | 'RSI_OVERSOLD'
@@ -48,6 +49,7 @@ export const FILTER_KEY_TO_GROUP: Record<SmartFilterKey, SmartFilterGroup> = {
   MA_BEARISH_ALIGN: 'ma',
   MA_GOLDEN_CROSS: 'ma',
   MA_DEAD_CROSS: 'ma',
+  PRICE_CROSS_ABOVE_MA: 'ma',
   RSI_OVERBOUGHT: 'rsi',
   RSI_OVERSOLD: 'rsi',
   RSI_BOUNCE: 'rsi',

@@ -10,6 +10,9 @@ export interface ExtraFilterConfig {
   profitTargetThreshold?: number;
   dailySurgeThreshold?: number;
   dailyCrashThreshold?: number;
+  maCrossPeriod?: number;
+  /** 이벤트형 필터 감지 유지 일수 (0 = 당일만, undefined = 당일만 폴백) */
+  withinDays?: number;
 }
 
 export const matchesSingleFilter = (
@@ -94,6 +97,27 @@ export const matchesSingleFilter = (
       return todayShort < todayLong;
     }
 
+    // ── 가격 vs MA 상향돌파: withinDays 이내 돌파 + 현재 MA 위 유지 ──
+    case 'PRICE_CROSS_ABOVE_MA': {
+      if (!enriched) return false;
+      const period = extraConfig?.maCrossPeriod ?? maLongPeriod;
+      const todayMa = enriched.ma[period];
+      if (typeof todayMa !== 'number') return false;
+      if (asset.priceOriginal < todayMa) return false; // 현재 MA 아래면 무효
+
+      const days = extraConfig?.withinDays ?? 0;
+      if (days > 0) {
+        // withinDays 모드: N거래일 이내 상향돌파
+        const crossDay = enriched.priceCrossMaDays?.[period];
+        return typeof crossDay === 'number' && crossDay <= days;
+      }
+      // 기존 동작: 당일 돌파만
+      const yesterdayMa = enriched.prevMa[period];
+      const prevClose = enriched.prevClose;
+      if (typeof yesterdayMa !== 'number' || typeof prevClose !== 'number') return false;
+      return prevClose < yesterdayMa;
+    }
+
     // ── RSI: 기존 + enriched 전환감지 ──
     case 'RSI_OVERBOUGHT':
       // enriched 우선, 폴백 indicators
@@ -105,13 +129,31 @@ export const matchesSingleFilter = (
     case 'RSI_BOUNCE': {
       if (!enriched) return false;
       const { rsi, prevRsi } = enriched;
-      if (typeof rsi !== 'number' || typeof prevRsi !== 'number') return false;
-      return prevRsi <= 30 && rsi > 30;
+      if (typeof rsi !== 'number') return false;
+      if (rsi <= 30) return false; // 현재 과매도면 반등 아님
+
+      const days = extraConfig?.withinDays ?? 0;
+      if (days > 0) {
+        const bounceDay = enriched.rsiBounceDay;
+        return typeof bounceDay === 'number' && bounceDay <= days;
+      }
+      // 기존 동작: 당일 반등만
+      if (typeof prevRsi !== 'number') return false;
+      return prevRsi <= 30;
     }
     case 'RSI_OVERHEAT_ENTRY': {
       if (!enriched) return false;
       const { rsi, prevRsi } = enriched;
-      if (typeof rsi !== 'number' || typeof prevRsi !== 'number') return false;
+      if (typeof rsi !== 'number') return false;
+      if (rsi < 65) return false; // 과열 영역 이탈 시 무효 (5pt 여유)
+
+      const days = extraConfig?.withinDays ?? 0;
+      if (days > 0) {
+        const entryDay = enriched.rsiOverheatEntryDay;
+        return typeof entryDay === 'number' && entryDay <= days;
+      }
+      // 기존 동작: 당일 진입만
+      if (typeof prevRsi !== 'number') return false;
       return prevRsi < 70 && rsi >= 70;
     }
 

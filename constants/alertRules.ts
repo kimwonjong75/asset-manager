@@ -70,7 +70,7 @@ const SELL_RULES: AlertRule[] = [
     action: 'sell',
     enabled: true,
     filters: ['PROFIT_TARGET', 'RSI_OVERHEAT_ENTRY'],
-    filterConfig: { profitTargetThreshold: 15 },
+    filterConfig: { profitTargetThreshold: 15, withinDays: 3 },
   },
   {
     id: 'daily-crash',
@@ -124,7 +124,7 @@ const BUY_RULES: AlertRule[] = [
     action: 'buy',
     enabled: true,
     filters: ['RSI_BOUNCE'],
-    filterConfig: {},
+    filterConfig: { withinDays: 3 },
   },
   {
     id: 'volume-confirmed-buy',
@@ -144,7 +144,17 @@ const BUY_RULES: AlertRule[] = [
     action: 'buy',
     enabled: true,
     filters: ['RSI_BOUNCE', 'VOLUME_HIGH'],
-    filterConfig: {},
+    filterConfig: { withinDays: 3 },
+  },
+  {
+    id: 'trend-reversal-buy',
+    name: '추세 전환 매수',
+    description: '가격이 장기이평선을 상향돌파 — 추세 전환 신호',
+    severity: 'info',
+    action: 'buy',
+    enabled: true,
+    filters: ['PRICE_CROSS_ABOVE_MA'],
+    filterConfig: { maCrossPeriod: 120, withinDays: 5 },
   },
   {
     id: 'bullish-entry',

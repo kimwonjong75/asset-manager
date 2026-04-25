@@ -161,6 +161,19 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const isLoading = isAuthLoading || isMarketLoading || isActionLoading;
   const isInitializing = isAuthInitializing;
 
+  // 브라우저 탭 제목 동적 변경 (다른 탭에서도 상태 확인 가능)
+  const DEFAULT_TITLE = "KIM'S 퀸트자산관리";
+  useEffect(() => {
+    if (isInitializing) {
+      document.title = `로그인 확인 중... — ${DEFAULT_TITLE}`;
+    } else if (isMarketLoading) {
+      document.title = `시세 업데이트 중... — ${DEFAULT_TITLE}`;
+    } else {
+      document.title = DEFAULT_TITLE;
+    }
+    return () => { document.title = DEFAULT_TITLE; };
+  }, [isInitializing, isMarketLoading]);
+
   // 통계/파생 데이터 훅
   const { totalValue, alertCount } = usePortfolioStats({
     assets,

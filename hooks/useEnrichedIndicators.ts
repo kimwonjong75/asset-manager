@@ -13,7 +13,7 @@ import {
   isCryptoExchange,
 } from '../services/historicalPriceService';
 import { getCategoryName, DEFAULT_CATEGORIES } from '../types/category';
-import { calculateSMA, calculateRSI, calculateCrossDays, getRequiredHistoryDays } from '../utils/maCalculations';
+import { calculateSMA, calculateRSI, calculateCrossDays, calculatePriceCrossMaDays, calculateRsiCrossDays, getRequiredHistoryDays } from '../utils/maCalculations';
 
 /** 종목별 확장 지표 데이터 */
 export interface EnrichedIndicatorData {
@@ -28,6 +28,15 @@ export interface EnrichedIndicatorData {
   /** MA 교차 경과일 — maCrossDays[shortPeriod][longPeriod]
    *  양수 = 골든크로스 N거래일 전, 음수 = 데드크로스 N거래일 전, null = 미확인 */
   maCrossDays: Record<number, Record<number, number | null>>;
+  /** 전일 종가 (가격 vs MA 돌파 감지용) */
+  prevClose: number | null;
+  /** 가격이 MA를 상향돌파한 경과일 — priceCrossMaDays[period]
+   *  양수 = N거래일 전 상향돌파, null = 미확인/현재 MA 아래 */
+  priceCrossMaDays: Record<number, number | null>;
+  /** RSI가 30을 상향돌파한 경과일 (null = 미확인/현재 RSI ≤ 30) */
+  rsiBounceDay: number | null;
+  /** RSI가 70을 상향돌파한 경과일 (null = 미확인/현재 RSI ≤ 70) */
+  rsiOverheatEntryDay: number | null;
 }
 
 /** enriched 지표 계산에 필요한 최소 종목 정보 */
@@ -193,8 +202,23 @@ export function useEnrichedIndicators(
           const rsi = lastRsiIdx >= 0 ? rsiValues[lastRsiIdx] : null;
           const prevRsi = lastRsiIdx >= 1 ? rsiValues[lastRsiIdx - 1] : null;
 
+          // 전일 종가
+          const prevClose = sortedPrices.length >= 2
+            ? sortedPrices[sortedPrices.length - 2].price
+            : null;
+
+          // 가격 vs MA 상향돌파 경과일 (각 기간별)
+          const priceCrossMaDays: Record<number, number | null> = {};
+          for (const period of MA_PERIODS) {
+            priceCrossMaDays[period] = calculatePriceCrossMaDays(sortedPrices, smaArrays[period]);
+          }
+
+          // RSI 이벤트 경과일
+          const rsiBounceDay = calculateRsiCrossDays(rsiValues, 30);
+          const rsiOverheatEntryDay = calculateRsiCrossDays(rsiValues, 70);
+
           // ticker 기준으로 저장
-          result.set(item.ticker, { ma, prevMa, rsi, prevRsi, maCrossDays });
+          result.set(item.ticker, { ma, prevMa, rsi, prevRsi, maCrossDays, prevClose, priceCrossMaDays, rsiBounceDay, rsiOverheatEntryDay });
         }
 
         if (abortRef.current) return;
