@@ -42,6 +42,8 @@ export interface UIState {
   alertSettings: AlertSettings;
   focusedAssetId: string | null;
   focusedWatchItemId: string | null;
+  /** 포트폴리오 표시 임계값 (KRW) — 토글 활성 시 평가총액이 이 값 미만인 자산 숨김. 기본 1,000,000 */
+  lowValueThreshold: number;
 }
 
 export interface ModalState {
@@ -126,6 +128,7 @@ export interface PortfolioActions {
   setFilterAlerts: (v: boolean) => void;
   setSearchQuery: (q: string) => void;
   setSellAlertDropRate: (n: number) => void;
+  setLowValueThreshold: (n: number) => void;
   updateAllocationTargets: (targets: AllocationTargets) => void;
   openEditModal: (asset: Asset) => void;
   closeEditModal: () => void;

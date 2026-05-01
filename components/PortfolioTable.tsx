@@ -40,7 +40,14 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
   failedIds,
   exchangeRates
 }) => {
-  const [showHiddenColumns, setShowHiddenColumns] = useState<boolean>(false);
+  const [showHiddenColumns, setShowHiddenColumns] = useState<boolean>(() => {
+    try { return localStorage.getItem('asset-manager-portfolio-show-more') === '1'; }
+    catch { return false; }
+  });
+  const [hideLowValue, setHideLowValue] = useState<boolean>(() => {
+    try { return localStorage.getItem('asset-manager-hide-low-value') === '1'; }
+    catch { return false; }
+  });
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [showFailedOnly, setShowFailedOnly] = useState<boolean>(false);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
@@ -49,6 +56,15 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
   const [smartFilter, setSmartFilter] = useState<SmartFilterState>({ ...EMPTY_SMART_FILTER, activeFilters: new Set() });
   const [showPinnedOnly, setShowPinnedOnly] = useState(false);
   const [memoEditAsset, setMemoEditAsset] = useState<Asset | null>(null);
+
+  const handleSetShowHiddenColumns = (v: boolean) => {
+    setShowHiddenColumns(v);
+    try { localStorage.setItem('asset-manager-portfolio-show-more', v ? '1' : '0'); } catch { /* ignore */ }
+  };
+  const handleSetHideLowValue = (v: boolean) => {
+    setHideLowValue(v);
+    try { localStorage.setItem('asset-manager-hide-low-value', v ? '1' : '0'); } catch { /* ignore */ }
+  };
 
   useOnClickOutside(menuRef, () => setOpenMenuId(null), !!openMenuId);
 
@@ -114,17 +130,21 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
     setPresetOpen(false);
   };
 
-  // 스마트 필터 + 핀 필터 적용
+  // 스마트 필터 + 핀 필터 + 소액 숨김 적용
   const filteredAssets = useMemo(() => {
     let result = enrichedAndSortedAssets;
     if (showPinnedOnly) {
       result = result.filter(a => a.pinned);
     }
+    if (hideLowValue && ui.lowValueThreshold > 0) {
+      // 핀 고정 자산은 소액이어도 항상 표시 (사용자가 명시적으로 중요 표시한 자산 보호)
+      result = result.filter(a => a.pinned || a.metrics.currentValueKRW >= ui.lowValueThreshold);
+    }
     if (smartFilter.activeFilters.size > 0) {
       result = result.filter(a => matchesSmartFilter(a, smartFilter, enrichedMap));
     }
     return result;
-  }, [enrichedAndSortedAssets, smartFilter, enrichedMap, showPinnedOnly]);
+  }, [enrichedAndSortedAssets, smartFilter, enrichedMap, showPinnedOnly, hideLowValue, ui.lowValueThreshold]);
 
   const handleToggleFilter = (key: SmartFilterKey, deactivateKey?: SmartFilterKey) => {
     setSmartFilter(prev => {
@@ -238,6 +258,41 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
             </div>
           )}
 
+          {/* 표시 토글 — 소액 숨김 + 더보기 (프리셋 왼쪽) */}
+          <label
+            className="flex items-center cursor-pointer gap-1.5 sm:gap-2"
+            title={`평가총액 ${ui.lowValueThreshold.toLocaleString('ko-KR')}원 미만 자산 숨김 (★ 핀 고정 자산은 항상 표시 / 환경설정에서 임계값 변경)`}
+          >
+            <input
+              type="checkbox"
+              className="sr-only"
+              checked={hideLowValue}
+              onChange={(e) => handleSetHideLowValue(e.target.checked)}
+            />
+            <div className="relative">
+              <div className={`block w-9 h-5 rounded-full transition-colors ${hideLowValue ? 'bg-primary' : 'bg-gray-600'}`} />
+              <div className={`absolute left-0.5 top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${hideLowValue ? 'translate-x-4' : ''}`} />
+            </div>
+            <span className="text-xs text-gray-300 whitespace-nowrap hidden sm:inline">소액 숨김</span>
+          </label>
+
+          <label
+            className="hidden md:flex items-center cursor-pointer gap-2"
+            title="보유수량 / 매수평균가 / 매수일 / 비중 컬럼 표시"
+          >
+            <input
+              type="checkbox"
+              className="sr-only"
+              checked={showHiddenColumns}
+              onChange={(e) => handleSetShowHiddenColumns(e.target.checked)}
+            />
+            <div className="relative">
+              <div className={`block w-9 h-5 rounded-full transition-colors ${showHiddenColumns ? 'bg-primary' : 'bg-gray-600'}`} />
+              <div className={`absolute left-0.5 top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${showHiddenColumns ? 'translate-x-4' : ''}`} />
+            </div>
+            <span className="text-xs text-gray-300 whitespace-nowrap">더보기</span>
+          </label>
+
           {/* 프리셋 드롭다운 */}
           <div className="relative" ref={presetRef}>
             <button
@@ -329,29 +384,20 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
             )}
           </div>
 
-          <div className="flex items-center gap-2">
-            <div className="relative hidden sm:block">
-              <select
-                value={filterCategory}
-                onChange={(e) => { const v = e.target.value; onFilterChange(v === 'ALL' ? 'ALL' : Number(v)); }}
-                className="appearance-none bg-gray-700 border border-gray-600 text-white text-sm rounded-md py-2 pl-3 pr-8 focus:outline-none focus:ring-2 focus:ring-primary"
-              >
-                <option value="ALL">전체 자산</option>
-                {categoryOptions.map(cat => (
-                  <option key={cat.id} value={cat.id}>{cat.name}</option>
-                ))}
-              </select>
-               <svg className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-            </div>
-            
-            <button
-              onClick={() => setShowHiddenColumns(!showHiddenColumns)}
-              className={`py-2 px-3 rounded-md text-sm font-medium transition whitespace-nowrap ${showHiddenColumns ? 'bg-primary text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}
+          <div className="relative hidden sm:block">
+            <select
+              value={filterCategory}
+              onChange={(e) => { const v = e.target.value; onFilterChange(v === 'ALL' ? 'ALL' : Number(v)); }}
+              className="appearance-none bg-gray-700 border border-gray-600 text-white text-sm rounded-md py-2 pl-3 pr-8 focus:outline-none focus:ring-2 focus:ring-primary"
             >
-              {showHiddenColumns ? '간소화' : '더보기'}
-            </button>
+              <option value="ALL">전체 자산</option>
+              {categoryOptions.map(cat => (
+                <option key={cat.id} value={cat.id}>{cat.name}</option>
+              ))}
+            </select>
+            <svg className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
           </div>
         </div>
         </div>

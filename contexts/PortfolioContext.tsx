@@ -158,6 +158,23 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [focusedAssetId, setFocusedAssetId] = useState<string | null>(null);
   const [focusedWatchItemId, setFocusedWatchItemId] = useState<string | null>(null);
 
+  // 저가 자산 숨김 임계값 (KRW). 환경설정에서 조정, localStorage 영속
+  const [lowValueThreshold, setLowValueThresholdState] = useState<number>(() => {
+    try {
+      const stored = localStorage.getItem('asset-manager-low-value-threshold');
+      if (stored) {
+        const n = Number(stored);
+        if (Number.isFinite(n) && n >= 0) return n;
+      }
+    } catch { /* ignore */ }
+    return 1_000_000;
+  });
+  const handleSetLowValueThreshold = (n: number) => {
+    const v = Math.max(0, Math.floor(n) || 0);
+    setLowValueThresholdState(v);
+    try { localStorage.setItem('asset-manager-low-value-threshold', String(v)); } catch { /* ignore */ }
+  };
+
   const isLoading = isAuthLoading || isMarketLoading || isActionLoading;
   const isInitializing = isAuthInitializing;
 
@@ -281,6 +298,7 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       alertSettings,
       focusedAssetId,
       focusedWatchItemId,
+      lowValueThreshold,
     },
     modal: {
       editingAsset,
@@ -370,6 +388,7 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         setPersistedSellAlertDropRate(n);
         triggerAutoSave(assets, portfolioHistory, sellHistory, watchlist, exchangeRates, undefined, n);
       },
+      setLowValueThreshold: handleSetLowValueThreshold,
       updateAllocationTargets: (targets: AllocationTargets) => {
         setAllocationTargets(targets);
         triggerAutoSave(assets, portfolioHistory, sellHistory, watchlist, exchangeRates, targets);

@@ -73,7 +73,7 @@
 | `upbitService.ts` | 암호화폐 시세 | Cloud Run `/upbit` | `useMarketData` |
 | `historicalPriceService.ts` | 과거 시세+거래량 (백필/차트용/AI분석용). `HistoricalPriceResult`에 optional `volume` 필드 포함. **NaN 방어**: `parseJsonSafe()` → `sanitizeResult()` / `stripNullPrices()`로 null/NaN 엔트리를 제거하여 `HistoricalPriceData`에는 `number`만 보장 | Cloud Run `/history`, `/upbit/history` | `useHistoricalPriceData`, `historyUtils`, `geminiService`, `useMarketData`(전일종가 보완) |
 | `googleDriveService.ts` | 클라우드 저장/로드, **Authorization Code Flow + Backend JWT 기반 인증**, `authenticatedFetch` 래퍼(401 시 백엔드 `/auth/refresh`로 갱신), 백업 파일 관리(`deleteFileById`, `loadFileById`, `listFilesByPattern`) | Google Drive API, Cloud Run `/auth/*` | `useGoogleDriveSync`, `useBackup` |
-| `geminiService.ts` | 종목 검색, AI 분석 (스트리밍 응답, 기술적 질문 시 Context의 enrichedMap 재활용 우선 → 폴백으로 직접 fetch) | Gemini API, `historicalPriceService`, `maCalculations`, `useEnrichedIndicators`(타입만) | `useAssetActions`, `PortfolioAssistant` |
+| `geminiService.ts` | 종목 검색, AI 분석 (스트리밍 응답, 기술적 질문 시 Context의 enrichedMap 재활용 우선 → 폴백으로 직접 fetch). `fetchTechnicalIndicators` 폴백 시 `useEnrichedIndicators`와 동일한 `EnrichedIndicatorData` 구조 반환 (`priceCrossMaDays`/`rsiBounceDay`/`rsiOverheatEntryDay` 포함) | Gemini API, `historicalPriceService`, `maCalculations`, `useEnrichedIndicators`(타입만) | `useAssetActions`, `PortfolioAssistant` |
 | `goldPremiumService.ts` | 금 김치 프리미엄 계산. `KRX-GOLD`(KRW/g)와 `GC=F`(USD/oz) 시세를 `fetchBatchAssetPrices()`로 조회 → `usdKrwRate`로 환산 → 프리미엄 계산 | Cloud Run `/` (기존 엔드포인트 재사용) | `useGoldPremium` |
 
 ### utils/ (순수 함수)
@@ -82,8 +82,8 @@
 | `portfolioCalculations.ts` | 포트폴리오 계산 유틸 | 전역 (계산 결과 변경) |
 | `historyUtils.ts` | 히스토리 보간/백필/기존 스냅샷 종가 교정/오염 데이터 교정 | `usePortfolioData` |
 | `maCalculations.ts` | SMA/RSI/교차경과일 계산. `calculateSMA(sortedPrices, period)` — `(number|null)[]` 반환. `calculateCrossDays(shortSma, longSma)` — 두 SMA 배열 역순회하여 교차 시점까지 거래일 수 반환 (양수=골든, 음수=데드, null=미확인). **`calculatePriceCrossMaDays(sortedPrices, smaValues)`** — 가격이 MA를 상향돌파한 경과 거래일 반환 (현재 MA 아래면 null). **`calculateRsiCrossDays(rsiValues, threshold)`** — RSI가 임계값을 상향돌파한 경과 거래일 반환. `buildChartDataWithMA()`는 현재 미사용 (Lightweight Charts 전환) | `AssetTrendChart`(`calculateSMA`), `useEnrichedIndicators`, `geminiService` |
-| `smartFilterLogic.ts` | 스마트 필터 매칭 (그룹 내 OR, 그룹 간 AND), enriched 지표 참조, `PRICE_BELOW_*` 판정 포함. ���래량 필터(`VOLUME_SURGE/HIGH/LOW`)는 `indicators.volume_ratio` 사용. **`PRICE_CROSS_ABOVE_MA`**: 전일종가 < 전일MA && 금일종가 >= 금일MA (가격 vs MA 상향돌파, `extraConfig.maCrossPeriod` 사용). **골든/데드크로스 필터는 상태 기반** (`MA_GOLDEN_CROSS`: shortMA > longMA, `MA_DEAD_CROSS`: shortMA < longMA — 교차 당일뿐 아니라 지속 상태 감지, 경과일은 UI `CrossDaysBadge`에서 표시(60거래일 초과는 숨김, `scaleY(0.8)` 축소 뱃지, 종목명 오른쪽 컬럼에 배치). **뱃���가 사용하는 MA 페어는 `alertSettings.rules`의 `golden-cross`/`dead-cross` 룰의 `filterConfig.maShort/LongPeriod`를 직접 참조** (PortfolioTable에서 추출 ��� `BadgePairs`로 전���). 두 룰 페어가 다를 수 있어 한 자산이 GC/DC 신호를 동시에 가질 �� 있고 활성 신호 모두 표시. 룰이 `enabled=false`면 해당 신호 미표시). **`matchesSingleFilter()` export** — 알림 규�� 체커에서도 재활용. `ExtraFilterConfig`에 `maCrossPeriod?: number`, `withinDays?: number` 포함. **이벤트형 필터(`PRICE_CROSS_ABOVE_MA`, `RSI_BOUNCE`, `RSI_OVERHEAT_ENTRY`)는 `withinDays > 0`이면 경과일 기반 판정** (N거래일 이내 이벤트 발생 + 현재 조건 유지) | `PortfolioTable`, `alertChecker.ts` |
-| `alertChecker.ts` | 알림 규칙별 자산 매칭 (규칙 내 필터 AND 조합), 매칭 결과 구조화 반환 (`dailyChange`/`returnPct`/`dropFromHigh`/`rsi` + `details` 문자열). **당일 변동률은 `asset.metrics.yesterdayChange` 사용** (`changeRate` 사용 금지). **`checkBuyRulesForWatchlist()` export**: 관심종목을 pseudo-EnrichedAsset으로 변환(`watchlistToPseudoAsset`)하여 매수 규칙만 실행, 결과에 `source: 'watchlist'` 표시 | `smartFilterLogic.matchesSingleFilter`, `types/alertRules`, `types/index`(WatchlistItem, Currency) | `useAutoAlert`, 프리셋 버튼 |
+| `smartFilterLogic.ts` | 스마트 필터 매칭 (그룹 내 OR, 그룹 간 AND), enriched 지표 참조, `PRICE_BELOW_*` 판정 포함. ���래량 필터(`VOLUME_SURGE/HIGH/LOW`)는 `indicators.volume_ratio` 사용. **`PRICE_CROSS_ABOVE_MA`**: `withinDays > 0`이면 `priceCrossMaDays[period] <= withinDays && price >= MA` (N거래일 이내 상향돌파 + MA 위 유지), `withinDays=0`/미설정이면 기존 당일 돌파 판정(전일종가 < 전일MA && 금일종가 >= 금일MA). `extraConfig.maCrossPeriod` 사용. **골든/데드크로스 필터는 상태 기반** (`MA_GOLDEN_CROSS`: shortMA > longMA, `MA_DEAD_CROSS`: shortMA < longMA — 교차 당일뿐 아니라 지속 상태 감지, 경과일은 UI `CrossDaysBadge`에서 표시(60거래일 초과는 숨김, `scaleY(0.8)` 축소 뱃지, 종목명 오른쪽 컬럼에 배치). **뱃���가 사용하는 MA 페어는 `alertSettings.rules`의 `golden-cross`/`dead-cross` 룰의 `filterConfig.maShort/LongPeriod`를 직접 참조** (PortfolioTable에서 추출 ��� `BadgePairs`로 전���). 두 룰 페어가 다를 수 있어 한 자산이 GC/DC 신호를 동시에 가질 �� 있고 활성 신호 모두 표시. 룰이 `enabled=false`면 해당 신호 미표시). **`matchesSingleFilter()` export** — 알림 규�� 체커에서도 재활용. `ExtraFilterConfig`에 `maCrossPeriod?: number`, `withinDays?: number` 포함. **이벤트형 필터(`PRICE_CROSS_ABOVE_MA`, `RSI_BOUNCE`, `RSI_OVERHEAT_ENTRY`)는 `withinDays > 0`이면 경과일 기반 판정** (N거래일 이내 이벤트 발생 + 현재 조건 유지) | `PortfolioTable`, `alertChecker.ts` |
+| `alertChecker.ts` | 알림 규칙별 자산 매칭 (규칙 내 필터 AND 조합), 매칭 결과 구조화 반환 (`dailyChange`/`returnPct`/`dropFromHigh`/`rsi` + `details` 문자열). **`buildAssetInfo`에 이벤트 경과일 표시 포함**: `priceCrossMaDays` → "돌파 N일전", `rsiBounceDay` → "반등 N일전", `rsiOverheatEntryDay` → "과열진입 N일전". **당일 변동률은 `asset.metrics.yesterdayChange` 사용** (`changeRate` 사용 금지). **`checkBuyRulesForWatchlist()` export**: 관심종목을 pseudo-EnrichedAsset으로 변환(`watchlistToPseudoAsset`)하여 매수 규칙만 실행, 결과에 `source: 'watchlist'` 표시 | `smartFilterLogic.matchesSingleFilter`, `types/alertRules`, `types/index`(WatchlistItem, Currency) | `useAutoAlert`, 프리셋 버튼 |
 | `migrateData.ts` | 데이터 마이그레이션 (기존 형식 변환 + 카테고리 ID 변환) | 로드 시 자동 실행 |
 | `logger.ts` | 중앙 로깅 유틸리티. `createLogger(module)` 팩토리 — 프로덕션 빌드에서 debug/info 자동 억제, warn/error만 출력. 모듈명 자동 프리픽스. **새 서비스/훅 추가 시 `console.*` 직접 사용 금지, 반드시 `createLogger` 사용** | 전체 services/, hooks/, utils/ |
 
@@ -94,7 +94,7 @@
 | `category.ts` | **카테고리 시스템 핵심** — `CategoryDefinition`, `CategoryStore`, `CategoryBaseType`, `DEFAULT_CATEGORIES`, `EXCHANGE_MAP_BY_BASE_TYPE`, 유틸(`isBaseType`, `getCategoryName`, `inferCategoryIdFromExchange`, `getAllowedCategories`) | **전역** — 모든 카테고리 참조 컴포넌트/훅 |
 | `backup.ts` | 백업 타입 (`BackupInfo`, `BackupSettings`, `RETENTION_OPTIONS`) | `hooks/useBackup`, `BackupSettingsSection` |
 | `api.ts` | API 응답 타입 (`PriceItem`, `Indicators` 등). `Indicators`에 거래량 3필드 포함: `volume`(당일), `volume_avg20`(20일 평균), `volume_ratio`(비율) | `services/`, `hooks/` |
-| `store.ts` | 상태 관리 타입 (`PortfolioContextValue`, `GlobalPeriod`, `UIState.activeTab` 등). **`GlobalPeriod = 'THIS_MONTH' \| 'LAST_MONTH' \| '1M' \| '3M' \| '6M' \| '1Y' \| '2Y' \| 'ALL'`** (금월/전월/1개월 추가). `PortfolioData`에 `categoryStore`, `PortfolioStatus`에 `needsReAuth`, `DerivedState`에 `backupList`/`isBackingUp` 포함. `UIState`에 `focusedAssetId: string \| null` + `focusedWatchItemId: string \| null` 포함 (브리핑 패널 클릭-투-포커스용). `PortfolioActions`에 `setFocusedAssetId`, `setFocusedWatchItemId`, `togglePinAsset` 포함 | `contexts/`, `hooks/`, `App.tsx`, `components/common/PeriodSelector`, `SmartFilterPanel`, `AlertSettingsPage` |
+| `store.ts` | 상태 관리 타입 (`PortfolioContextValue`, `GlobalPeriod`, `UIState.activeTab` 등). **`GlobalPeriod = 'THIS_MONTH' \| 'LAST_MONTH' \| '1M' \| '3M' \| '6M' \| '1Y' \| '2Y' \| 'ALL'`** (금월/전월/1개월 추가). `PortfolioData`에 `categoryStore`, `PortfolioStatus`에 `needsReAuth`, `DerivedState`에 `backupList`/`isBackingUp` 포함. `UIState`에 `focusedAssetId: string \| null` + `focusedWatchItemId: string \| null` + **`lowValueThreshold: number`** (소액 자산 숨김 임계값 KRW, 기본 1,000,000) 포함. `PortfolioActions`에 `setFocusedAssetId`, `setFocusedWatchItemId`, `togglePinAsset`, **`setLowValueThreshold`** 포함 | `contexts/`, `hooks/`, `App.tsx`, `components/common/PeriodSelector`, `SmartFilterPanel`, `AlertSettingsPage`, `DisplaySettingsSection` |
 | `ui.ts` | UI 컴포넌트 Props 타입 | `components/` |
 | `smartFilter.ts` | 스마트 필터 타입 (25개 키 — `PRICE_CROSS_ABOVE_MA` 포함, 5개 그룹: ma/rsi/signal/portfolio/volume, MA 기간 설정 + `lossThreshold` 포함), 그룹 매핑, 칩 정의(`pairKey`/`pairColorClass` tri-state 지원, `description` 툴팁 텍스트), 초기값 | `utils/smartFilterLogic`, `SmartFilterPanel`(+ `PortfolioContext` 의존), `PortfolioTable`, `alertChecker` |
 | `alertRules.ts` | 알림 규칙 타입 (`AlertRule`, `AlertResult`, `AlertSettings`, `AlertMatchedAsset`). `AlertMatchedAsset`에 `source?: 'portfolio' \| 'watchlist'` 필드 포함. `AlertRuleFilterConfig`에 `maCrossPeriod?: number` (단일 이평선 돌파 규칙용), `withinDays?: number` (이벤트형 필터 감지 유지 일수) | `constants/alertRules`, `utils/alertChecker`, `hooks/useAutoAlert`, `AlertSettingsPage`, `AlertPopup` |
@@ -116,7 +116,7 @@
 | `WatchlistView.tsx` | 관심종목 탭 | `PortfolioContext`, `WatchlistPage` |
 | `InvestmentGuideView.tsx` | 투자 가이드 탭 (순수 UI, 외부 의존 없음) | - |
 
-> 설정 탭은 `components/SettingsPage.tsx`가 래핑하며 3개 섹션으로 구성: `AlertSettingsPage` (알림), `BackupSettingsSection` (백업), `CategorySettingsSection` (카테고리 관리)
+> 설정 탭은 `components/SettingsPage.tsx`가 래핑하며 4개 섹션으로 구성: `DisplaySettingsSection` (표시 옵션), `AlertSettingsPage` (알림), `BackupSettingsSection` (백업), `CategorySettingsSection` (카테고리 관리)
 
 ### components/common/ (공용 컴포넌트)
 | 파일 | 책임 | 의존 |
@@ -133,7 +133,8 @@
 ### components/ (알림 설정)
 | 파일 | 책임 | 의존 |
 |------|------|------|
-| `AlertSettingsPage.tsx` | 설정 탭 — 알림 규칙별 활성/비활성 토글, 임계값 인라인 편집, 자동 팝업 on/off | `PortfolioContext` (`ui.alertSettings`, `actions.updateAlertSettings`), `constants/alertRules` |
+| `AlertSettingsPage.tsx` | 설정 탭 — 알림 규칙별 활성/비활성 토글, 임계값 인라인 편집, 자동 팝업 on/off, **`withinDays` 감지유지 일수 편집** (0~30 범위, `filterConfig.withinDays`가 있는 규칙만 표시) | `PortfolioContext` (`ui.alertSettings`, `actions.updateAlertSettings`), `constants/alertRules` |
+| `DisplaySettingsSection.tsx` | 설정 탭 — **소액 자산 숨김 임계값** 편집 (KRW 직접 입력 + 빠른 설정 5개 프리셋: 50만/100만/300만/500만/1,000만). `actions.setLowValueThreshold` 호출 → `localStorage('asset-manager-low-value-threshold')` 영속 | `PortfolioContext` (`ui.lowValueThreshold`, `actions.setLowValueThreshold`) |
 
 ### components/ (관심종목 모달)
 | 파일 | 책임 | 의존 |
@@ -152,7 +153,7 @@
 ### components/ (핵심 테이블/차트)
 | 파일 | 책임 | 의존 |
 |------|------|------|
-| `PortfolioTable.tsx` | 포트폴리오 메인 테이블 — 정렬, 검색, 스마트 필터, 핀 필터, 메모 편집 통합. `memoEditAsset` 로컬 상태 관리. 프리셋 버튼으로 AlertRule→SmartFilterState 변환. `onRefreshSelected`(선택 업데이트 버튼)·`onRefreshOne`(개별 행 전달) props 수신 | `portfolio-table/*`, `SmartFilterPanel`, `MemoEditPopup`, `PortfolioContext` |
+| `PortfolioTable.tsx` | 포트폴리오 메인 테이블 — 정렬, 검색, 스마트 필터, 핀 필터, **소액 자산 숨김 토글**, **더보기(추가 컬럼) 토글**, 메모 편집 통합. `memoEditAsset` 로컬 상태 관리. 프리셋 버튼으로 AlertRule→SmartFilterState 변환. `onRefreshSelected`(선택 업데이트 버튼)·`onRefreshOne`(개별 행 전달) props 수신. **헤더 우측 토글 그룹**: [소액 숨김] [더보기(데스크탑만)] [프리셋] [카테고리(데스크탑만)]. 소액 숨김 토글은 `ui.lowValueThreshold` 미만 자산을 `filteredAssets`에서 제외 (★ 핀 고정 자산은 예외로 항상 표시). 토글 상태는 `localStorage('asset-manager-hide-low-value')`/`localStorage('asset-manager-portfolio-show-more')`에 영속 | `portfolio-table/*`, `SmartFilterPanel`, `MemoEditPopup`, `PortfolioContext` |
 | `AssetTrendChart.tsx` | **Lightweight Charts (Canvas)** — 가격 LineSeries + MA 오버레이 + 거래량 HistogramSeries + 매수평균선(createPriceLine, `autoscaleInfoProvider`로 Y축 범위에 매수가 포함 보장), localStorage 기반 MA/VOL 토글. 데이터 cutoff 없이 전체 로드 → `setVisibleRange()`로 초기 뷰만 선택 기간 제한 (드래그로 이전 구간 탐색 가능). PC: `wheel` 이벤트 `passive:false`로 부모 스크롤 차단. 모바일: `touch-action:pan-y`로 수평 터치를 차트에 위임. ResizeObserver로 반응형. 커스텀 HTML 툴팁(subscribeCrosshairMove). MA는 `calculateSMA` 직접 호출 | `useHistoricalPriceData`, `maCalculations`(`calculateSMA`), `PortfolioSnapshot` |
 | `SellAnalyticsPage.tsx` | 매도 기록 분석 대시보드 (기간별 집계, 카테고리 필터). `sellHistory[]`와 `asset.sellTransactions[]` 합산 시 `id` 기반 중복 제거. **모바일 대응**: 필터 `flex-col sm:flex-row`, 프리셋 버튼 `overflow-x-auto`, 차트 `h-72 sm:h-96`, 매도 기록 테이블 4컬럼(티커/수량/매도금액/매수금액) `hidden sm:table-cell` | `SellRecord`, `CategoryDefinition`, Recharts |
 | `PortfolioAssistant.tsx` | AI 어시스턴트 FAB + 채팅 패널 (Gemini 스트리밍 응답) | `geminiService`, `PortfolioContext.derived.enrichedMap` |
@@ -189,8 +190,8 @@
 ### components/portfolio-table/ (테이블 내부 모듈)
 | 파일 | 책임 | 의존 |
 |------|------|------|
-| `PortfolioTableRow.tsx` | 테이블 행 렌더링 + 차트 펼침 + 브리핑 클릭-투-포커스. `usePortfolio()` 직접 사용 — `focusedAssetId`/`setFocusedAssetId`로 스크롤 이동. `onTogglePin`, `onMemoEdit`, `onRefreshOne`(ActionMenu "가격 업데이트") props 수신. `SignalBadge` 내부에 `SIGNAL_DESCRIPTIONS` + `Tooltip`으로 신호별 설명 표시. 수량 표시: `formatQuantity` 사용 (암호화폐 소수점 대응) | `PortfolioContext`, `AssetTrendChart`, `ActionMenu`, `MemoTooltip`, `Tooltip`, `isBaseType`, `formatQuantity` |
-| `PortfolioMobileCard.tsx` | 모바일 카드 뷰 — 종목명+현재가+수익률+평가액+고가대비/전일대비. 탭하면 차트 펼침, 관리 메뉴는 `ActionMenu`(바텀시트). `onRefreshOne`(ActionMenu "가격 업데이트") props 수신. `SignalBadgeMini` 내부에 `SIGNAL_DESCRIPTIONS` + `Tooltip`으로 신호별 설명 표시 | `PortfolioContext`, `AssetTrendChart`, `ActionMenu`, `Tooltip` |
+| `PortfolioTableRow.tsx` | 테이블 행 렌더링 + 차트 펼침 + 브리핑 클릭-투-포커스. `usePortfolio()` 직접 사용 — `focusedAssetId`/`setFocusedAssetId`로 스크롤 이동. `onTogglePin`, `onMemoEdit`, `onRefreshOne`(ActionMenu "가격 업데이트") props 수신. **GC/DC 뱃지: `gcCrossDays`/`dcCrossDays` 두 개 props** (양수=GC, 음수=DC, null=미표시) — 종목명 오른쪽 컬럼에 `CrossDaysBadge` 2개 렌더(활성 신호만 표시). `SignalBadge` 내부에 `SIGNAL_DESCRIPTIONS` + `Tooltip`으로 신호별 설명 표시. 수량 표시: `formatQuantity` 사용 (암호화폐 소수점 대응) | `PortfolioContext`, `AssetTrendChart`, `ActionMenu`, `MemoTooltip`, `Tooltip`, `CrossDaysBadge`, `isBaseType`, `formatQuantity` |
+| `PortfolioMobileCard.tsx` | 모바일 카드 뷰 — 종목명+현재가+수익률+평가액+고가대비/전일대비. 탭하면 차트 펼침, 관리 메뉴는 `ActionMenu`(바텀시트). `onRefreshOne`(ActionMenu "가격 업데이트") props 수신. **GC/DC 뱃지: `gcCrossDays`/`dcCrossDays` 두 개 props** — ticker 옆에 `CrossDaysBadge` 2개 렌더. `SignalBadgeMini` 내부에 `SIGNAL_DESCRIPTIONS` + `Tooltip`으로 신호별 설명 표시 | `PortfolioContext`, `AssetTrendChart`, `ActionMenu`, `CrossDaysBadge`, `Tooltip` |
 | `SmartFilterPanel.tsx` | 스마트 필터 칩 UI (22개 칩, tri-state 토글, 그룹별 색상, 칩별 `Tooltip` 설명 표시) | `types/smartFilter`, `constants/smartFilterChips`, `PortfolioContext`, `Tooltip` |
 | `types.ts` | 테이블 전용 타입 (`PortfolioTableProps`, `SortKey`, `AssetMetrics`, `EnrichedAsset`) | `types/index` |
 | `usePortfolioData.ts` | 자산 메트릭 enrichment (KRW 환산, 수익률, 고가대비) + 정렬/필터. GC/DC 2단계 정렬: `enrichedMap`, `badgePairs: BadgePairs` (gc/dc 각 enabled+short+long) optional props → `SortKey='maCrossDays'`로 두 페어 모두 평가 후 더 최근(절대값 작은) 신호로 정렬 (ascending=GC먼저, descending=DC먼저, null 맨 뒤). **⚠️ `hooks/usePortfolioData.ts`와 이름 겹침 주의** | `types/index`, `usePortfolioCalculator`, `useEnrichedIndicators`(타입) |
@@ -201,7 +202,7 @@
 ### contexts/
 | 파일 | 책임 | 수정 시 영향 범위 |
 |------|------|------------------|
-| `PortfolioContext.tsx` | 전역 상태 Provider, 모든 훅 통합 | **전역** - App.tsx 및 모든 컴포넌트 |
+| `PortfolioContext.tsx` | 전역 상태 Provider, 모든 훅 통합. **브라우저 탭 제목 동적 변경**: `isInitializing` → "로그인 확인 중...", `isMarketLoading` → "시세 업데이트 중...", 그 외 → 기본 제목 | **전역** - App.tsx 및 모든 컴포넌트 |
 
 ---
 
@@ -694,6 +695,7 @@ try {
 - **데스크탑/모바일 뷰 분기**: `hidden md:block`(데스크탑 테이블) / `block md:hidden`(모바일 카드 뷰)로 분기. 적용 대상: `PortfolioTable`(`PortfolioMobileCard`), `WatchlistPage`(`WatchlistMobileCard`). **테이블에 새 기능 추가 시 대응 모바일 카드 뷰에도 반영 필요**
 - **`PortfolioMobileCard`**: 종목명+현재가+수익률+평가액+고가대비/전일대비를 카드 형태로 표시, 탭하면 차트 펼침, 관리 메뉴는 `ActionMenu`(바텀시트) 사용
 - **`WatchlistMobileCard`**: `PortfolioMobileCard`와 동일 패턴. 종목명+현재가+어제대비+고가대비, 체크박스 선택, `ActionMenu`(바텀시트), 📝 메모 아이콘 클릭 시 `onMemoEdit` 콜백
+- **위로가기 버튼 z-index**: `App.tsx`의 스크롤 맨 위 버튼은 `z-[70]` (투자브리핑 팝업 `z-[60]`보다 위). 브리핑 팝업 표시 시 `bottom-20 sm:bottom-24`로 위로 이동하여 겹침 방지
 - **모바일 PeriodSelector**: `App.tsx`에서 데스크탑은 탭바 우측(`hidden sm:flex`), 모바일은 탭바 아래 별도 행(`sm:hidden`)으로 분리 렌더링
 - **모달 반응형 패턴**: 외부 `p-4` (모바일 여백), 내부 `p-4 sm:p-6 max-h-[90vh] overflow-y-auto` (모바일 패딩 축소 + 스크롤), `grid-cols-1 sm:grid-cols-2` (폼 그리드)
 - **CSS 유틸리티** (`index.css`): `scrollbar-hide` (수평 스크롤 스크롤바 숨김), `overscroll-behavior: contain` (pull-to-refresh 차단), `-webkit-tap-highlight-color: transparent` (탭 하이라이트 제거), 모바일 input `font-size: 16px` (자동 확대 방지)
@@ -703,6 +705,15 @@ try {
 - **토글 액션**: `PortfolioActions.togglePinAsset(id)` → `PortfolioContext`에서 구현, `setAssets()` + `triggerAutoSave()`
 - **UI**: `PortfolioTableRow`/`PortfolioMobileCard`에 ★/☆ 아이콘 (종목명 앞), `PortfolioTable`에 핀 필터 버튼 (검색바 옆)
 - **필터**: `PortfolioTable`의 `showPinnedOnly` 로컬 상태 — `filteredAssets` useMemo에서 스마트 필터 전에 적용
+- **소액 숨김 예외**: 소액 자산 숨김 토글이 켜져 있어도 `pinned=true` 자산은 항상 표시됨 (사용자가 명시적으로 중요 표시한 자산 보호)
+
+### 소액 자산 숨김 기능
+- **목적**: 보유 종목이 많을 때 평가총액이 낮은 자산을 일시적으로 가려 가독성 향상
+- **임계값**: `UIState.lowValueThreshold` (KRW, 기본 1,000,000원). 환경설정 → 표시 설정에서 사용자가 조정. `localStorage('asset-manager-low-value-threshold')`에 영속
+- **토글 위치**: `PortfolioTable` 헤더 우측, 프리셋 버튼 왼쪽. 모바일도 표시 (라벨은 `hidden sm:inline`로 모바일에서 숨김)
+- **토글 상태**: `PortfolioTable`의 `hideLowValue` 로컬 상태 — `localStorage('asset-manager-hide-low-value')`에 영속 (`'1'`/`'0'`)
+- **필터링 로직**: `filteredAssets` useMemo에서 `pinned || metrics.currentValueKRW >= ui.lowValueThreshold`로 통과 — 데스크탑 테이블/모바일 카드 모두에 자동 반영
+- **`lowValueThreshold === 0`이면 필터 미적용** (전체 표시)
 
 ### 메모 편집 팝업 (MemoEditPopup)
 - **범용 Props**: `title`, `memo`, `onSave(memo: string)`, `onClose` — Asset/WatchlistItem에 의존하지 않음
