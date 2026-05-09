@@ -26,6 +26,7 @@ const matchesRule = (
     dailyCrashThreshold: filterConfig.dailyCrashThreshold,
     maCrossPeriod: filterConfig.maCrossPeriod,
     withinDays: filterConfig.withinDays,
+    maxLookbackTradingDays: filterConfig.maxLookbackTradingDays,
   };
 
   return filters.every(filterKey =>

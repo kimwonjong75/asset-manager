@@ -204,6 +204,21 @@ const AlertSettingsPage: React.FC = () => {
                 <span>일</span>
               </div>
             )}
+            {config.maxLookbackTradingDays !== undefined && (
+              <div className="flex items-center gap-1 text-xs text-gray-300">
+                <span>최대 감지기간</span>
+                <select
+                  value={config.maxLookbackTradingDays}
+                  onChange={(e) => updateRuleConfig(rule.id, 'maxLookbackTradingDays', parseInt(e.target.value))}
+                  className="bg-gray-700 border border-gray-600 rounded px-1 py-0.5 text-white text-xs"
+                >
+                  <option value={22}>1개월</option>
+                  <option value={66}>3개월</option>
+                  <option value={132}>6개월</option>
+                  <option value={252}>1년</option>
+                </select>
+              </div>
+            )}
           </div>
         </div>
       </div>

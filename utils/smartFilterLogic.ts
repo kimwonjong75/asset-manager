@@ -13,6 +13,8 @@ export interface ExtraFilterConfig {
   maCrossPeriod?: number;
   /** 이벤트형 필터 감지 유지 일수 (0 = 당일만, undefined = 당일만 폴백) */
   withinDays?: number;
+  /** MA 교차류 필터 — 교차 발생 이후 N거래일 이내만 매칭 (undefined = 상태 검사만) */
+  maxLookbackTradingDays?: number;
 }
 
 export const matchesSingleFilter = (
@@ -94,7 +96,16 @@ export const matchesSingleFilter = (
       const todayShort = enriched.ma[maShortPeriod];
       const todayLong = enriched.ma[maLongPeriod];
       if (typeof todayShort !== 'number' || typeof todayLong !== 'number') return false;
-      return todayShort < todayLong;
+      if (!(todayShort < todayLong)) return false;
+
+      // lookback 옵션이 주입된 경우만 추가 검사 (스마트필터 칩 등 미주입 경로는 영향 없음)
+      const lookback = extraConfig?.maxLookbackTradingDays;
+      if (typeof lookback === 'number') {
+        const crossDays = enriched.maCrossDays?.[maShortPeriod]?.[maLongPeriod];
+        if (typeof crossDays !== 'number') return false;
+        if (Math.abs(crossDays) > lookback) return false;
+      }
+      return true;
     }
 
     // ── 가격 vs MA 상향돌파: withinDays 이내 돌파 + 현재 MA 위 유지 ──

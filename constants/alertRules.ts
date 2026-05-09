@@ -30,7 +30,7 @@ const SELL_RULES: AlertRule[] = [
     action: 'sell',
     enabled: true,
     filters: ['MA_DEAD_CROSS'],
-    filterConfig: { maShortPeriod: 5, maLongPeriod: 20 },
+    filterConfig: { maShortPeriod: 5, maLongPeriod: 20, maxLookbackTradingDays: 252 },
   },
   {
     id: 'trend-break',

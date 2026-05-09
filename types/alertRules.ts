@@ -12,6 +12,8 @@ export interface AlertRuleFilterConfig {
   maCrossPeriod?: number;
   /** 이벤트형 필터 감지 유지 일수 (PRICE_CROSS_ABOVE_MA, RSI_BOUNCE, RSI_OVERHEAT_ENTRY) */
   withinDays?: number;
+  /** MA 교차류 룰 — 교차 발생 이후 N거래일 이내만 매칭 (없으면 무제한 / 상태 검사만) */
+  maxLookbackTradingDays?: number;
 }
 
 /** 개별 알림 규칙 */

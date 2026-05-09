@@ -6,16 +6,11 @@ interface CrossDaysBadgeProps {
   crossDays: number | null | undefined;
 }
 
-// 60 거래일(≈3개월) 초과 오래된 교차는 표시하지 않음
-// 오래된 false positive와 이미 유효 시그널이 지난 항목을 필터링
-const MAX_DAYS_TO_DISPLAY = 60;
-
 const CrossDaysBadge: React.FC<CrossDaysBadgeProps> = ({ crossDays }) => {
   if (crossDays === null || crossDays === undefined) return null;
 
   const isDead = crossDays < 0;
   const days = Math.abs(crossDays);
-  if (days > MAX_DAYS_TO_DISPLAY) return null;
 
   const label = isDead ? 'DC' : 'GC';
   const daysText = days === 0 ? '오늘' : `${days}일전`;
