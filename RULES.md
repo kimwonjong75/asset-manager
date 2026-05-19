@@ -50,7 +50,7 @@
 |------|------|------|-------------|
 | `usePortfolioData.ts` | 핵심 데이터 상태, Google Drive 동기화 | `useGoogleDriveSync`, `historyUtils` | `PortfolioContext` |
 | `useMarketData.ts` | 시세/환율 업데이트, 암호화폐 분기, **관심종목 시세도 함께 갱신** (어제대비 `yesterdayChange` 선계산 포함), 관심종목 전용 갱신(52주 최고가 히스토리 기반 계산). **`patchMissingPrevClose(priceMap, items)`**: 모듈 레벨 헬퍼 — 해외종목 `prev_close=NaN` 시 히스토리 API(`/history`, 최근 7일)로 전일종가/변동률 보완. 4개 갱신 경로(`handleRefreshAllPrices`, `handleRefreshSelectedPrices`, `handleRefreshOnePrice`, `handleRefreshWatchlistPrices`) 모두에서 호출 | `priceService`, `upbitService`, `historicalPriceService` | `PortfolioContext` |
-| `useAssetActions.ts` | 자산 CRUD, 매도/매수/CSV 처리. **매도 시 `fetchHistoricalExchangeRate` 결과 유효성 검증** (USD>3000, JPY>50, CNY>400이면 앱 현재 환율로 자동 대체) | `priceService`, `geminiService` | 모달 컴포넌트들 |
+| `useAssetActions.ts` | 자산 CRUD, 매도/매수/CSV 처리. **매도 시 `fetchHistoricalExchangeRate` 결과 유효성 검증** (USD>3000, JPY>50, CNY>400이면 앱 현재 환율로 자동 대체). **`handleEditSellRecord(recordId, patch)`** — 매도 기록 편집: `sellDate`/`sellPriceSettlement`/`sellQuantity` 변경, 날짜 변경 시 환율 재조회(상한 보정 포함), KRW 값 재계산, `sellHistory` + `asset.sellTransactions` 동기 갱신, 부분매도 자산이 유지 중이면 수량 차이만큼 보유수량 조정(음수 방지). **`handleDeleteSellRecord(recordId)`** — `sellHistory` + 자산 `sellTransactions` 양쪽 제거, 보유수량 자동 복구 없음 | `priceService`, `geminiService` | 모달 컴포넌트들 |
 | `usePortfolioCalculator.ts` | 수익률/손익 계산 (구매 환율 기준). **`getSellAmountKRW(record, exchangeRates)`** 모듈 레벨 헬퍼로 비정상 환율 감지 후 KRW 매도금액 보정. `calculateSoldAssetsStats(sellHistory, assets, exchangeRates)` — `exchangeRates` 세 번째 파라미터 추가 (기본값 `{ USD: 1450, JPY: 9.5 }`) | `types/index` | 대시보드, 통계 |
 | `useHistoricalPriceData.ts` | 차트용 과거 종가+거래량 데이터 (MA 여부 무관, 캐시 내장, 항상 전체 10년 fetch). 반환값: `{ historicalPrices, historicalVolumes, isLoading, error }` | `historicalPriceService` | `AssetTrendChart` |
 | `useGlobalPeriodDays.ts` | 글로벌 기간(`GlobalPeriod`) → `{ startDate, endDate, days }` 변환 유틸 훅 | `types/store` | `AssetTrendChart`, `DashboardView`, `AnalyticsView` |
@@ -155,7 +155,8 @@
 |------|------|------|
 | `PortfolioTable.tsx` | 포트폴리오 메인 테이블 — 정렬, 검색, 스마트 필터, 핀 필터, **소액 자산 숨김 토글**, **더보기(추가 컬럼) 토글**, 메모 편집 통합. `memoEditAsset` 로컬 상태 관리. 프리셋 버튼으로 AlertRule→SmartFilterState 변환. `onRefreshSelected`(선택 업데이트 버튼)·`onRefreshOne`(개별 행 전달) props 수신. **헤더 우측 토글 그룹**: [소액 숨김] [더보기(데스크탑만)] [프리셋] [카테고리(데스크탑만)]. 소액 숨김 토글은 `ui.lowValueThreshold` 미만 자산을 `filteredAssets`에서 제외 (★ 핀 고정 자산은 예외로 항상 표시). 토글 상태는 `localStorage('asset-manager-hide-low-value')`/`localStorage('asset-manager-portfolio-show-more')`에 영속 | `portfolio-table/*`, `SmartFilterPanel`, `MemoEditPopup`, `PortfolioContext` |
 | `AssetTrendChart.tsx` | **Lightweight Charts (Canvas)** — 가격 LineSeries + MA 오버레이 + 거래량 HistogramSeries + 매수평균선(createPriceLine, `autoscaleInfoProvider`로 Y축 범위에 매수가 포함 보장), localStorage 기반 MA/VOL 토글. 데이터 cutoff 없이 전체 로드 → `setVisibleRange()`로 초기 뷰만 선택 기간 제한 (드래그로 이전 구간 탐색 가능). PC: `wheel` 이벤트 `passive:false`로 부모 스크롤 차단. 모바일: `touch-action:pan-y`로 수평 터치를 차트에 위임. ResizeObserver로 반응형. 커스텀 HTML 툴팁(subscribeCrosshairMove). MA는 `calculateSMA` 직접 호출 | `useHistoricalPriceData`, `maCalculations`(`calculateSMA`), `PortfolioSnapshot` |
-| `SellAnalyticsPage.tsx` | 매도 기록 분석 대시보드 (기간별 집계, 카테고리 필터). `sellHistory[]`와 `asset.sellTransactions[]` 합산 시 `id` 기반 중복 제거. **모바일 대응**: 필터 `flex-col sm:flex-row`, 프리셋 버튼 `overflow-x-auto`, 차트 `h-72 sm:h-96`, 매도 기록 테이블 4컬럼(티커/수량/매도금액/매수금액) `hidden sm:table-cell` | `SellRecord`, `CategoryDefinition`, Recharts |
+| `SellAnalyticsPage.tsx` | 매도 기록 분석 대시보드 (기간별 집계, 카테고리 필터). `sellHistory[]`와 `asset.sellTransactions[]` 합산 시 `id` 기반 중복 제거. **모바일 대응**: 필터 `flex-col sm:flex-row`, 프리셋 버튼 `overflow-x-auto`, 차트 `h-72 sm:h-96`, 매도 기록 테이블 4컬럼(티커/수량/매도금액/매수금액) `hidden sm:table-cell`. **매도 기록 테이블 우측 "관리" 컬럼**: 행별 편집 버튼 → `actions.openEditSellRecord(record)`로 `EditSellRecordModal` 열기 | `SellRecord`, `CategoryDefinition`, Recharts, `PortfolioContext` |
+| `EditSellRecordModal.tsx` | 매도 기록 편집/삭제 모달. `modal.editingSellRecord`로 활성화. 편집 필드: 매도일자/매도가(정산통화)/매도수량. **원본 자산이 이미 삭제된 경우 수량 변경 시 경고**(보유수량 자동 복구 안 됨). 환율은 매도일 변경 시 재조회되며, `record.sellExchangeRate` 표시. 삭제 버튼은 별도 위치, `confirm` 다이얼로그로 보호 | `PortfolioContext`, `SellRecord`, `Currency`, `CURRENCY_SYMBOLS` |
 | `PortfolioAssistant.tsx` | AI 어시스턴트 FAB + 채팅 패널 (Gemini 스트리밍 응답) | `geminiService`, `PortfolioContext.derived.enrichedMap` |
 
 ### components/ (자산 CRUD 모달)
@@ -759,7 +760,8 @@ log.error('시세 조회 실패:', error);
   - 전량 매도: 자산 삭제 → `sellHistory`만 남음 (중복 없음)
   - 부분 매도: 자산 유지 → 양쪽 모두 존재 (중복 위험)
 - **조회 시 `id` 기반 중복 제거 필수**: `SellAnalyticsPage`에서 양쪽을 합칠 때 `sellHistory`의 `id` Set으로 `inlineRecords` 중복 방지
-- **수정 시 확인**: `useAssetActions.ts`(저장), `SellAnalyticsPage.tsx`(조회/집계)
+- **수정 시 확인**: `useAssetActions.ts`(저장/편집/삭제), `SellAnalyticsPage.tsx`(조회/집계), `EditSellRecordModal.tsx`(편집 UI)
+- **편집/삭제 시 양쪽 동기**: `handleEditSellRecord`/`handleDeleteSellRecord`는 `sellHistory`와 자산의 `sellTransactions`를 동일한 `id`로 매핑하여 함께 갱신 — 한쪽만 수정 금지
 
 ---
 

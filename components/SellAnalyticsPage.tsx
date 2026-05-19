@@ -3,6 +3,7 @@ import { Asset, Currency, ExchangeRates, SellRecord } from '../types';
 import { getAllowedCategories, type CategoryDefinition } from '../types/category';
 import StatCard from './StatCard';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar, Cell } from 'recharts';
+import { usePortfolio } from '../contexts/PortfolioContext';
 
 const MAX_REASONABLE_EXCHANGE_RATES: Partial<Record<Currency, number>> = {
   [Currency.USD]: 3000,
@@ -50,6 +51,7 @@ const getPresetRange = (preset: PeriodPreset): { start: string; end: string } =>
 };
 
 const SellAnalyticsPage: React.FC<SellAnalyticsPageProps> = ({ assets, sellHistory, categories, exchangeRates }) => {
+  const { actions } = usePortfolio();
 
   const getSellTotalKRW = (r: SellRecord): number => {
     const currency = r.settlementCurrency;
@@ -408,6 +410,7 @@ const SellAnalyticsPage: React.FC<SellAnalyticsPageProps> = ({ assets, sellHisto
                   <th className="py-3 px-3 text-right hidden sm:table-cell">매수금액</th>
                   <th className="py-3 px-2 sm:px-3 text-right">실현손익</th>
                   <th className="py-3 px-2 sm:px-3 text-right">수익률</th>
+                  <th className="py-3 px-2 sm:px-3 text-right">관리</th>
                 </tr>
               </thead>
               <tbody>
@@ -430,6 +433,16 @@ const SellAnalyticsPage: React.FC<SellAnalyticsPageProps> = ({ assets, sellHisto
                         </td>
                         <td className={`py-3 px-2 sm:px-3 text-right font-semibold text-xs sm:text-sm ${isProfit ? 'text-green-400' : 'text-red-400'}`}>
                           {r.purchaseKRW > 0 ? `${r.returnPct.toFixed(2)}%` : '-'}
+                        </td>
+                        <td className="py-3 px-2 sm:px-3 text-right">
+                          <button
+                            onClick={() => actions.openEditSellRecord(r)}
+                            className="text-gray-400 hover:text-primary transition-colors px-1.5 py-1 text-xs sm:text-sm"
+                            title="매도 기록 수정/삭제"
+                            aria-label="매도 기록 수정"
+                          >
+                            ✏️
+                          </button>
                         </td>
                       </tr>
                     );

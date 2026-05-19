@@ -55,6 +55,7 @@ export interface ModalState {
   assistantOpen: boolean;
   editingWatchItem: WatchlistItem | null;
   addWatchItemOpen: boolean;
+  editingSellRecord: SellRecord | null;
 }
 
 export interface DerivedState {
@@ -98,6 +99,10 @@ export interface PortfolioActions {
   togglePinAsset: (id: string) => void;
   deleteAsset: (id: string) => void;
   confirmSell: (id: string, sellDate: string, sellPrice: number, sellQuantity: number, currency: Currency) => Promise<void>;
+  /** 매도 기록 편집: 입력값은 자산 통화 기준 단가(`sellPriceSettlement`). 날짜 변경 시 환율 재조회 */
+  editSellRecord: (recordId: string, patch: { sellDate?: string; sellPriceSettlement?: number; sellQuantity?: number }) => Promise<void>;
+  /** 매도 기록 삭제 — `sellHistory` + 자산의 `sellTransactions` 양쪽에서 제거. 보유수량 복구하지 않음 */
+  deleteSellRecord: (recordId: string) => void;
   confirmBuyMore: (id: string, buyDate: string, buyPrice: number, buyQuantity: number) => Promise<void>;
   addSelectedToWatchlist: (assets: Asset[]) => void;
 
@@ -146,6 +151,8 @@ export interface PortfolioActions {
   closeAddWatchItem: () => void;
   openEditWatchItem: (item: WatchlistItem) => void;
   closeEditWatchItem: () => void;
+  openEditSellRecord: (record: SellRecord) => void;
+  closeEditSellRecord: () => void;
 
   // 카테고리 관리
   addCategory: (name: string, baseType: CategoryBaseType) => void;

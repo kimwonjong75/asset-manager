@@ -324,6 +324,151 @@ export const useAssetActions = ({
     }
   }, [isSignedIn, assets, portfolioHistory, sellHistory, watchlist, exchangeRates, triggerAutoSave, setAssets, setSellHistory, setError, setSuccessMessage]);
 
+  // 매도 기록 편집 — sellDate / sellPriceSettlement / sellQuantity 변경. KRW 값 재계산.
+  // 날짜가 바뀌면 환율 재조회, 가격/수량만 바뀌면 기존 sellExchangeRate 재사용.
+  // 부분매도였던 자산이 아직 존재하면 수량 차이만큼 보유수량을 조정.
+  const handleEditSellRecord = useCallback(async (
+    recordId: string,
+    patch: { sellDate?: string; sellPriceSettlement?: number; sellQuantity?: number }
+  ) => {
+    if (!isSignedIn) {
+      setError('Google Drive 로그인 후 매도 기록을 수정할 수 있습니다.');
+      setTimeout(() => setError(null), 3000);
+      return;
+    }
+
+    const record = sellHistory.find(r => r.id === recordId);
+    if (!record) {
+      setError('해당 매도 기록을 찾을 수 없습니다.');
+      setTimeout(() => setError(null), 3000);
+      return;
+    }
+
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const newSellDate = patch.sellDate ?? record.sellDate;
+      const newSellPriceSettlement = patch.sellPriceSettlement ?? record.sellPriceSettlement ?? record.sellPriceOriginal ?? 0;
+      const newSellQuantity = patch.sellQuantity ?? record.sellQuantity;
+
+      if (newSellPriceSettlement <= 0) {
+        setError('매도가는 0보다 커야 합니다.');
+        setTimeout(() => setError(null), 3000);
+        return;
+      }
+      if (newSellQuantity <= 0) {
+        setError('매도 수량은 0보다 커야 합니다.');
+        setTimeout(() => setError(null), 3000);
+        return;
+      }
+
+      const settlementCurrency = record.settlementCurrency || record.originalCurrency || Currency.KRW;
+
+      let sellExchangeRate = record.sellExchangeRate || 1;
+      const dateChanged = newSellDate !== record.sellDate;
+      if (dateChanged && settlementCurrency !== Currency.KRW) {
+        sellExchangeRate = await fetchHistoricalExchangeRate(newSellDate, settlementCurrency, Currency.KRW);
+        const maxRate = MAX_REASONABLE_EXCHANGE_RATES[settlementCurrency];
+        if (maxRate && sellExchangeRate > maxRate) {
+          log.warn(`비정상적인 역사적 환율 감지: ${settlementCurrency}/KRW = ${sellExchangeRate}. 현재 앱 환율로 대체합니다.`);
+          sellExchangeRate = (settlementCurrency === Currency.USD ? exchangeRates.USD : exchangeRates.JPY) || sellExchangeRate;
+        }
+      }
+
+      const originalCurrency = record.originalCurrency || settlementCurrency;
+      const sellPriceKRW = newSellPriceSettlement * sellExchangeRate;
+      const sellPriceOriginal = originalCurrency !== Currency.KRW && originalCurrency === settlementCurrency
+        ? newSellPriceSettlement
+        : newSellPriceSettlement / sellExchangeRate;
+
+      const updatedRecord: SellRecord = {
+        ...record,
+        sellDate: newSellDate,
+        sellPrice: sellPriceKRW,
+        sellPriceOriginal,
+        sellPriceSettlement: newSellPriceSettlement,
+        sellQuantity: newSellQuantity,
+        sellExchangeRate,
+        settlementCurrency,
+      };
+
+      const quantityDelta = newSellQuantity - record.sellQuantity;
+      const newSellHistory = sellHistory.map(r => (r.id === recordId ? updatedRecord : r));
+
+      setAssets(prevAssets => {
+        const updated = prevAssets.map(a => {
+          if (a.id !== record.assetId) return a;
+          const newInline = (a.sellTransactions || []).map(t => {
+            if (t.id !== recordId) return t;
+            return {
+              ...t,
+              sellDate: newSellDate,
+              sellPrice: sellPriceKRW,
+              sellPriceOriginal,
+              sellPriceSettlement: newSellPriceSettlement,
+              sellQuantity: newSellQuantity,
+              sellExchangeRate,
+              settlementCurrency,
+            };
+          });
+          // 부분매도였던 자산이 살아있는 경우에만 보유수량 조정
+          const adjustedQuantity = a.quantity - quantityDelta;
+          if (adjustedQuantity < 0) {
+            throw new Error('변경된 매도 수량이 현재 보유 수량보다 큽니다.');
+          }
+          return { ...a, quantity: adjustedQuantity, sellTransactions: newInline };
+        });
+        setSellHistory(newSellHistory);
+        triggerAutoSave(updated, portfolioHistory, newSellHistory, watchlist, exchangeRates);
+        return updated;
+      });
+
+      setSuccessMessage('매도 기록이 수정되었습니다.');
+      setTimeout(() => setSuccessMessage(null), 3000);
+    } catch (e) {
+      log.error(e);
+      const msg = e instanceof Error ? e.message : '매도 기록 수정 중 오류가 발생했습니다.';
+      setError(msg);
+      setTimeout(() => setError(null), 3000);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [isSignedIn, sellHistory, portfolioHistory, watchlist, exchangeRates, triggerAutoSave, setAssets, setSellHistory, setError, setSuccessMessage]);
+
+  // 매도 기록 삭제 — sellHistory + asset.sellTransactions 양쪽에서 제거. 보유수량 복구는 하지 않음.
+  const handleDeleteSellRecord = useCallback((recordId: string) => {
+    if (!isSignedIn) {
+      setError('Google Drive 로그인 후 매도 기록을 삭제할 수 있습니다.');
+      setTimeout(() => setError(null), 3000);
+      return;
+    }
+
+    const record = sellHistory.find(r => r.id === recordId);
+    if (!record) {
+      setError('해당 매도 기록을 찾을 수 없습니다.');
+      setTimeout(() => setError(null), 3000);
+      return;
+    }
+
+    const newSellHistory = sellHistory.filter(r => r.id !== recordId);
+    setAssets(prevAssets => {
+      const updated = prevAssets.map(a => {
+        if (a.id !== record.assetId) return a;
+        return {
+          ...a,
+          sellTransactions: (a.sellTransactions || []).filter(t => t.id !== recordId),
+        };
+      });
+      setSellHistory(newSellHistory);
+      triggerAutoSave(updated, portfolioHistory, newSellHistory, watchlist, exchangeRates);
+      return updated;
+    });
+
+    setSuccessMessage('매도 기록이 삭제되었습니다.');
+    setTimeout(() => setSuccessMessage(null), 3000);
+  }, [isSignedIn, sellHistory, portfolioHistory, watchlist, exchangeRates, triggerAutoSave, setAssets, setSellHistory, setError, setSuccessMessage]);
+
   // 추가매수 확정
   const handleConfirmBuyMore = useCallback(async (
     assetId: string,
@@ -637,6 +782,8 @@ export const useAssetActions = ({
     handleDeleteAsset,
     handleUpdateAsset,
     handleConfirmSell,
+    handleEditSellRecord,
+    handleDeleteSellRecord,
     handleConfirmBuyMore,
     handleCsvFileUpload,
     handleAddWatchItem,

@@ -5,6 +5,7 @@ import {
   ExchangeRates,
   AllocationTargets,
   WatchlistItem,
+  SellRecord,
 } from '../types';
 import { PortfolioContextValue, UIState, GlobalPeriod } from '../types/store';
 import { usePortfolioData } from '../hooks/usePortfolioData';
@@ -113,6 +114,8 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     handleDeleteAsset,
     handleUpdateAsset,
     handleConfirmSell,
+    handleEditSellRecord,
+    handleDeleteSellRecord,
     handleConfirmBuyMore,
     handleCsvFileUpload,
     handleAddWatchItem,
@@ -157,6 +160,7 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [isAddWatchItemOpen, setIsAddWatchItemOpen] = useState<boolean>(false);
   const [focusedAssetId, setFocusedAssetId] = useState<string | null>(null);
   const [focusedWatchItemId, setFocusedWatchItemId] = useState<string | null>(null);
+  const [editingSellRecord, setEditingSellRecord] = useState<SellRecord | null>(null);
 
   // 저가 자산 숨김 임계값 (KRW). 환경설정에서 조정, localStorage 영속
   const [lowValueThreshold, setLowValueThresholdState] = useState<number>(() => {
@@ -309,6 +313,7 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       assistantOpen: isAssistantOpen,
       editingWatchItem,
       addWatchItemOpen: isAddWatchItemOpen,
+      editingSellRecord,
     },
     derived: {
       totalValue,
@@ -355,6 +360,8 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         // Hook: (assetId, sellQuantity, sellPrice, sellDate, settlementCurrency)
         await handleConfirmSell(id, sellQuantity, sellPrice, sellDate, currency);
       },
+      editSellRecord: handleEditSellRecord,
+      deleteSellRecord: handleDeleteSellRecord,
       confirmBuyMore: async (id: string, buyDate: string, buyPrice: number, buyQuantity: number) => {
         await handleConfirmBuyMore(id, buyQuantity, buyPrice, buyDate);
       },
@@ -409,6 +416,8 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       closeAddWatchItem: () => setIsAddWatchItemOpen(false),
       openEditWatchItem: (item: WatchlistItem) => setEditingWatchItem(item),
       closeEditWatchItem: () => setEditingWatchItem(null),
+      openEditSellRecord: (record: SellRecord) => setEditingSellRecord(record),
+      closeEditSellRecord: () => setEditingSellRecord(null),
       // 카테고리 관리
       addCategory: (name: string, baseType: CategoryBaseType) => {
         const newCat = {
