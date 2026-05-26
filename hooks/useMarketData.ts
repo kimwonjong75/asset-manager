@@ -7,6 +7,7 @@ import { AssetDataResult } from '../types/api';
 import { fetchUpbitPricesBatch } from '../services/upbitService';
 import { fetchStockHistoricalPrices, fetchCryptoHistoricalPrices, isCryptoExchange } from '../services/historicalPriceService';
 import { createLogger } from '../utils/logger';
+import { saveLastKnownRates } from '../utils/exchangeRateCache';
 
 const log = createLogger('MarketData');
 
@@ -169,6 +170,7 @@ export const useMarketData = ({
             JPY: jpyRate > 5 ? jpyRate : (exchangeRates.JPY || 9.5)
         };
         setExchangeRates(newRates);
+        saveLastKnownRates(newRates);
 
         // 현금 자산 환율 처리 (USD/JPY는 이미 조회 완료, 기타 통화만 추가 fetch)
         const cashResults = await Promise.allSettled(cashAssets.map(asset =>

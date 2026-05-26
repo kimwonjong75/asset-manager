@@ -103,6 +103,16 @@ export function useGoogleDriveSync(options: UseGoogleDriveSyncOptions = {}) {
     const allocationTargets = data.allocationTargets as AllocationTargets | undefined;
     const sellAlertDropRate = typeof data.sellAlertDropRate === 'number' ? data.sellAlertDropRate : undefined;
     const categoryStore = data.categoryStore as CategoryStore | undefined;
+
+    // 컬럼 설정 복원 — UI 환경설정이므로 localStorage 경유
+    // PortfolioContext에서 'column-config-restored' 이벤트를 감지하여 state 즉시 동기화
+    if (Array.isArray(data.columnConfig)) {
+      try {
+        localStorage.setItem('asset-manager-column-config-v1', JSON.stringify(data.columnConfig));
+        window.dispatchEvent(new CustomEvent('column-config-restored', { detail: data.columnConfig }));
+      } catch { /* ignore */ }
+    }
+
     optionsRef.current.onSuccessMessage?.('Google Drive에서 포트폴리오를 불러왔습니다.');
     return { assets, portfolioHistory, sellHistory, watchlist, exchangeRates, allocationTargets, sellAlertDropRate, categoryStore };
   }, []);
@@ -117,6 +127,13 @@ export function useGoogleDriveSync(options: UseGoogleDriveSyncOptions = {}) {
     }
     timeoutIdRef.current = setTimeout(async () => {
       if (isSavingRef.current) return;
+      // 컬럼 설정 — UI 환경설정이므로 localStorage에서 읽어 페이로드에 포함
+      let columnConfig: unknown = undefined;
+      try {
+        const raw = localStorage.getItem('asset-manager-column-config-v1');
+        if (raw) columnConfig = JSON.parse(raw);
+      } catch { /* ignore */ }
+
       const exportData = {
         assets: assetsToSave,
         portfolioHistory: history,
@@ -126,6 +143,7 @@ export function useGoogleDriveSync(options: UseGoogleDriveSyncOptions = {}) {
         allocationTargets,
         sellAlertDropRate,
         categoryStore,
+        columnConfig,
         lastUpdateDate: new Date().toISOString().slice(0, 10),
       };
       const portfolioJSON = JSON.stringify(exportData, null, 2);

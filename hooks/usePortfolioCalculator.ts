@@ -1,6 +1,7 @@
 import { useCallback } from 'react';
 import { Asset, Currency, ExchangeRates, SellRecord } from '../types';
 import { AssetMetrics, EnrichedAsset } from '../types/ui';
+import { resolveRate } from '../utils/exchangeRateCache';
 
 const MAX_REASONABLE_EXCHANGE_RATES: Partial<Record<Currency, number>> = {
   [Currency.USD]: 3000,
@@ -26,11 +27,8 @@ function getSellAmountKRW(record: SellRecord, exchangeRates: ExchangeRates): num
 export const usePortfolioCalculator = () => {
   
   const getValueInKRW = useCallback((value: number, currency: Currency, exchangeRates: ExchangeRates): number => {
-    switch (currency) {
-      case Currency.USD: return value * (exchangeRates.USD || 0);
-      case Currency.JPY: return value * (exchangeRates.JPY || 0);
-      case Currency.KRW: default: return value;
-    }
+    if (currency === Currency.KRW) return value;
+    return value * resolveRate(currency, exchangeRates);
   }, []);
 
   // [신규] 매수가를 KRW로 변환 - 구매 당시 환율 우선 사용

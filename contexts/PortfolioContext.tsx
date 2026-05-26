@@ -21,8 +21,20 @@ import { useBackup } from '../hooks/useBackup';
 import { useGoldPremium } from '../hooks/useGoldPremium';
 import { CategoryBaseType } from '../types/category';
 import type { CategoryStore } from '../types/category';
+import { DEFAULT_COLUMN_CONFIG, type ColumnConfig, type ColumnKey } from '../types/ui';
 
 const PortfolioContext = createContext<PortfolioContextValue | null>(null);
+
+// 저장된 컬럼 설정과 현재 DEFAULT_COLUMN_CONFIG를 머지:
+//  - 저장본에 없는 키는 default 위치에 visible 기본값으로 추가
+//  - 저장본의 알 수 없는 키는 제거
+const mergeColumnConfig = (stored: ColumnConfig[]): ColumnConfig[] => {
+  const validKeys = new Set(DEFAULT_COLUMN_CONFIG.map(c => c.key));
+  const cleaned = stored.filter(c => validKeys.has(c.key as ColumnKey));
+  const seen = new Set(cleaned.map(c => c.key));
+  const missing = DEFAULT_COLUMN_CONFIG.filter(c => !seen.has(c.key));
+  return [...cleaned, ...missing];
+};
 
 export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   // 핵심 데이터/인증/저장 훅
@@ -179,6 +191,40 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     try { localStorage.setItem('asset-manager-low-value-threshold', String(v)); } catch { /* ignore */ }
   };
 
+  // 포트폴리오 테이블 컬럼 설정 — localStorage 영속 + 스키마 마이그레이션
+  const [columnConfig, setColumnConfigState] = useState<ColumnConfig[]>(() => {
+    try {
+      const raw = localStorage.getItem('asset-manager-column-config-v1');
+      if (raw) {
+        const parsed = JSON.parse(raw) as ColumnConfig[];
+        if (Array.isArray(parsed)) return mergeColumnConfig(parsed);
+      }
+    } catch { /* ignore */ }
+    return DEFAULT_COLUMN_CONFIG;
+  });
+  const persistColumnConfig = (next: ColumnConfig[]) => {
+    setColumnConfigState(next);
+    try { localStorage.setItem('asset-manager-column-config-v1', JSON.stringify(next)); } catch { /* ignore */ }
+  };
+  const handleSetColumnConfig = (config: ColumnConfig[]) => {
+    persistColumnConfig(mergeColumnConfig(config));
+  };
+  const handleResetColumnConfig = () => {
+    persistColumnConfig(DEFAULT_COLUMN_CONFIG);
+  };
+
+  // Drive 복원 시 useGoogleDriveSync가 dispatch하는 이벤트를 감지하여 상태 동기화
+  useEffect(() => {
+    const handleRestored = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (Array.isArray(detail)) {
+        setColumnConfigState(mergeColumnConfig(detail as ColumnConfig[]));
+      }
+    };
+    window.addEventListener('column-config-restored', handleRestored);
+    return () => window.removeEventListener('column-config-restored', handleRestored);
+  }, []);
+
   const isLoading = isAuthLoading || isMarketLoading || isActionLoading;
   const isInitializing = isAuthInitializing;
 
@@ -303,6 +349,7 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       focusedAssetId,
       focusedWatchItemId,
       lowValueThreshold,
+      columnConfig,
     },
     modal: {
       editingAsset,
@@ -396,6 +443,8 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         triggerAutoSave(assets, portfolioHistory, sellHistory, watchlist, exchangeRates, undefined, n);
       },
       setLowValueThreshold: handleSetLowValueThreshold,
+      setColumnConfig: handleSetColumnConfig,
+      resetColumnConfig: handleResetColumnConfig,
       updateAllocationTargets: (targets: AllocationTargets) => {
         setAllocationTargets(targets);
         triggerAutoSave(assets, portfolioHistory, sellHistory, watchlist, exchangeRates, targets);

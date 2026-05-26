@@ -1,7 +1,9 @@
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+import React, { Fragment, useState, useRef, useEffect, useMemo } from 'react';
 import { useOnClickOutside } from '../hooks/useOnClickOutside';
 import type { Asset } from '../types';
 import { PortfolioTableProps, SortKey, SortDirection } from '../types/ui';
+import { COLUMN_DEFINITIONS } from './portfolio-table/columnDefinitions';
+import ColumnSettingsDropdown from './portfolio-table/ColumnSettingsDropdown';
 import { usePortfolioData } from './portfolio-table/usePortfolioData';
 import PortfolioTableRow from './portfolio-table/PortfolioTableRow';
 import PortfolioMobileCard from './portfolio-table/PortfolioMobileCard';
@@ -14,6 +16,8 @@ import { matchesSmartFilter } from '../utils/smartFilterLogic';
 import SmartFilterPanel from './portfolio-table/SmartFilterPanel';
 import { usePortfolio } from '../contexts/PortfolioContext';
 import type { AlertRule } from '../types/alertRules';
+import { hasResolvableRates } from '../utils/exchangeRateCache';
+import { Currency } from '../types';
 
 const SortIcon = ({ sortKey, sortConfig }: { sortKey: SortKey, sortConfig: { key: SortKey; direction: SortDirection } | null }) => {
   if (!sortConfig || sortConfig.key !== sortKey) return <span className="opacity-30">↕</span>;
@@ -40,10 +44,6 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
   failedIds,
   exchangeRates
 }) => {
-  const [showHiddenColumns, setShowHiddenColumns] = useState<boolean>(() => {
-    try { return localStorage.getItem('asset-manager-portfolio-show-more') === '1'; }
-    catch { return false; }
-  });
   const [hideLowValue, setHideLowValue] = useState<boolean>(() => {
     try { return localStorage.getItem('asset-manager-hide-low-value') === '1'; }
     catch { return false; }
@@ -57,10 +57,6 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
   const [showPinnedOnly, setShowPinnedOnly] = useState(false);
   const [memoEditAsset, setMemoEditAsset] = useState<Asset | null>(null);
 
-  const handleSetShowHiddenColumns = (v: boolean) => {
-    setShowHiddenColumns(v);
-    try { localStorage.setItem('asset-manager-portfolio-show-more', v ? '1' : '0'); } catch { /* ignore */ }
-  };
   const handleSetHideLowValue = (v: boolean) => {
     setHideLowValue(v);
     try { localStorage.setItem('asset-manager-hide-low-value', v ? '1' : '0'); } catch { /* ignore */ }
@@ -130,13 +126,32 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
     setPresetOpen(false);
   };
 
+  // 외화 자산이 있는데 환율(현재 + 캐시)이 모두 미확보면 소액 숨김을 자동 우회
+  // — 잘못 변환된 0값으로 자산이 사라지는 것을 방지
+  const lowValueFilterReady = useMemo(() => {
+    const foreignCurrencies = assets
+      .map(a => a.currency)
+      .filter(c => c !== Currency.KRW);
+    if (foreignCurrencies.length === 0) return true;
+    return hasResolvableRates(foreignCurrencies, exchangeRates);
+  }, [assets, exchangeRates]);
+
+  // 현재 가시 컬럼 (Context의 columnConfig 사용)
+  const visibleColumns = ui.columnConfig;
+
+  // 콜스팬 계산 — 양끝 고정(체크박스+종목명+관리) 3 + 가시 컬럼 수
+  const totalColSpan = useMemo(
+    () => 3 + visibleColumns.filter(c => c.visible).length,
+    [visibleColumns],
+  );
+
   // 스마트 필터 + 핀 필터 + 소액 숨김 적용
   const filteredAssets = useMemo(() => {
     let result = enrichedAndSortedAssets;
     if (showPinnedOnly) {
       result = result.filter(a => a.pinned);
     }
-    if (hideLowValue && ui.lowValueThreshold > 0) {
+    if (hideLowValue && ui.lowValueThreshold > 0 && lowValueFilterReady) {
       // 핀 고정 자산은 소액이어도 항상 표시 (사용자가 명시적으로 중요 표시한 자산 보호)
       result = result.filter(a => a.pinned || a.metrics.currentValueKRW >= ui.lowValueThreshold);
     }
@@ -144,7 +159,7 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
       result = result.filter(a => matchesSmartFilter(a, smartFilter, enrichedMap));
     }
     return result;
-  }, [enrichedAndSortedAssets, smartFilter, enrichedMap, showPinnedOnly, hideLowValue, ui.lowValueThreshold]);
+  }, [enrichedAndSortedAssets, smartFilter, enrichedMap, showPinnedOnly, hideLowValue, ui.lowValueThreshold, lowValueFilterReady]);
 
   const handleToggleFilter = (key: SmartFilterKey, deactivateKey?: SmartFilterKey) => {
     setSmartFilter(prev => {
@@ -261,7 +276,11 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
           {/* 표시 토글 — 소액 숨김 + 더보기 (프리셋 왼쪽) */}
           <label
             className="flex items-center cursor-pointer gap-1.5 sm:gap-2"
-            title={`평가총액 ${ui.lowValueThreshold.toLocaleString('ko-KR')}원 미만 자산 숨김 (★ 핀 고정 자산은 항상 표시 / 환경설정에서 임계값 변경)`}
+            title={
+              hideLowValue && !lowValueFilterReady
+                ? '환율 미확보 — 외화 자산 KRW 환산이 불가하여 소액 숨김이 일시 정지됩니다. 시세 갱신 후 자동으로 재적용됩니다.'
+                : `평가총액 ${ui.lowValueThreshold.toLocaleString('ko-KR')}원 미만 자산 숨김 (★ 핀 고정 자산은 항상 표시 / 환경설정에서 임계값 변경)`
+            }
           >
             <input
               type="checkbox"
@@ -270,28 +289,15 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
               onChange={(e) => handleSetHideLowValue(e.target.checked)}
             />
             <div className="relative">
-              <div className={`block w-9 h-5 rounded-full transition-colors ${hideLowValue ? 'bg-primary' : 'bg-gray-600'}`} />
+              <div className={`block w-9 h-5 rounded-full transition-colors ${hideLowValue ? (lowValueFilterReady ? 'bg-primary' : 'bg-amber-600') : 'bg-gray-600'}`} />
               <div className={`absolute left-0.5 top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${hideLowValue ? 'translate-x-4' : ''}`} />
             </div>
-            <span className="text-xs text-gray-300 whitespace-nowrap hidden sm:inline">소액 숨김</span>
+            <span className={`text-xs whitespace-nowrap hidden sm:inline ${hideLowValue && !lowValueFilterReady ? 'text-amber-400' : 'text-gray-300'}`}>
+              소액 숨김{hideLowValue && !lowValueFilterReady ? ' (환율 대기)' : ''}
+            </span>
           </label>
 
-          <label
-            className="hidden md:flex items-center cursor-pointer gap-2"
-            title="보유수량 / 매수평균가 / 매수일 / 비중 컬럼 표시"
-          >
-            <input
-              type="checkbox"
-              className="sr-only"
-              checked={showHiddenColumns}
-              onChange={(e) => handleSetShowHiddenColumns(e.target.checked)}
-            />
-            <div className="relative">
-              <div className={`block w-9 h-5 rounded-full transition-colors ${showHiddenColumns ? 'bg-primary' : 'bg-gray-600'}`} />
-              <div className={`absolute left-0.5 top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${showHiddenColumns ? 'translate-x-4' : ''}`} />
-            </div>
-            <span className="text-xs text-gray-300 whitespace-nowrap">더보기</span>
-          </label>
+          <ColumnSettingsDropdown />
 
           {/* 프리셋 드롭다운 */}
           <div className="relative" ref={presetRef}>
@@ -437,61 +443,24 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
                   <div className={thContentClasses}><span>종목명</span> <SortIcon sortKey='name' sortConfig={sortConfig}/></div>
                 </Tooltip>
               </th>
-              <th scope="col" className={`${thClasses} text-center`} onClick={() => requestSort('maCrossDays')}>
-                <Tooltip content={`알림 규칙 기준: GC=MA${badgePairs.gcShort}/${badgePairs.gcLong}, DC=MA${badgePairs.dcShort}/${badgePairs.dcLong} (환경설정에서 변경)`} position="bottom" wrap>
-                  <div className={`${thContentClasses} justify-center`}><span>GC/DC</span> <SortIcon sortKey='maCrossDays' sortConfig={sortConfig}/></div>
-                </Tooltip>
-              </th>
-              {showHiddenColumns && <th scope="col" className={`${thClasses} text-right`} onClick={() => requestSort('quantity')}>
-                <Tooltip content={COLUMN_DESCRIPTIONS.quantity} position="bottom" wrap>
-                  <div className={`${thContentClasses} justify-end`}><span>보유수량</span> <SortIcon sortKey='quantity' sortConfig={sortConfig}/></div>
-                </Tooltip>
-              </th>}
-              {showHiddenColumns && <th scope="col" className={`${thClasses} text-right`} onClick={() => requestSort('purchasePrice')}>
-                <Tooltip content={COLUMN_DESCRIPTIONS.purchasePrice} position="bottom" wrap>
-                  <div className={`${thContentClasses} justify-end`}><span>매수평균가</span> <SortIcon sortKey='purchasePrice' sortConfig={sortConfig}/></div>
-                </Tooltip>
-              </th>}
-              <th scope="col" className={`${thClasses} text-right`} onClick={() => requestSort('currentPrice')}>
-                <Tooltip content={COLUMN_DESCRIPTIONS.currentPrice} position="bottom" wrap>
-                  <div className={`${thContentClasses} justify-end`}><span>현재가</span> <SortIcon sortKey='currentPrice' sortConfig={sortConfig}/></div>
-                </Tooltip>
-              </th>
-              <th scope="col" className={`${thClasses} justify-end`} onClick={toggleReturnSort}>
-                <Tooltip content={sortConfig?.key === 'profitLossKRW' ? COLUMN_DESCRIPTIONS.profitLossKRW : COLUMN_DESCRIPTIONS.returnPercentage} position="bottom" wrap>
-                  <div className={`${thContentClasses} justify-end`}><span>{getReturnHeaderLabel()}</span></div>
-                </Tooltip>
-              </th>
-              <th scope="col" className={`${thClasses} justify-end`} onClick={() => requestSort('purchaseValue')}>
-                <Tooltip content={COLUMN_DESCRIPTIONS.purchaseValue} position="bottom" wrap>
-                  <div className={`${thContentClasses} justify-end`}><span>투자원금</span> <SortIcon sortKey='purchaseValue' sortConfig={sortConfig}/></div>
-                </Tooltip>
-              </th>
-              <th scope="col" className={`${thClasses} justify-end`} onClick={() => requestSort('currentValue')}>
-                <Tooltip content={COLUMN_DESCRIPTIONS.currentValue} position="bottom" wrap>
-                  <div className={`${thContentClasses} justify-end`}><span>평가총액</span> <SortIcon sortKey='currentValue' sortConfig={sortConfig}/></div>
-                </Tooltip>
-              </th>
-              {showHiddenColumns && <th scope="col" className={`${thClasses} text-center`} onClick={() => requestSort('purchaseDate')}>
-                <Tooltip content={COLUMN_DESCRIPTIONS.purchaseDate} position="bottom" wrap>
-                  <div className={`${thContentClasses} justify-center`}><span>매수일</span> <SortIcon sortKey='purchaseDate' sortConfig={sortConfig}/></div>
-                </Tooltip>
-              </th>}
-              {showHiddenColumns && <th scope="col" className={`${thClasses} justify-end`} onClick={() => requestSort('allocation')}>
-                <Tooltip content={COLUMN_DESCRIPTIONS.allocation} position="bottom" wrap>
-                  <div className={`${thContentClasses} justify-end`}><span>비중</span> <SortIcon sortKey='allocation' sortConfig={sortConfig}/></div>
-                </Tooltip>
-              </th>}
-              <th scope="col" className={`${thClasses} justify-end`} onClick={() => requestSort('dropFromHigh')}>
-                <Tooltip content={COLUMN_DESCRIPTIONS.dropFromHigh} position="bottom" wrap>
-                  <div className={`${thContentClasses} justify-end`}><span>최고가 대비</span> <SortIcon sortKey='dropFromHigh' sortConfig={sortConfig}/></div>
-                </Tooltip>
-              </th>
-              <th scope="col" className={`${thClasses} justify-end`} onClick={() => requestSort('yesterdayChange')}>
-                <Tooltip content={COLUMN_DESCRIPTIONS.yesterdayChange} position="bottom" wrap>
-                  <div className={`${thContentClasses} justify-end`}><span>어제대비</span> <SortIcon sortKey='yesterdayChange' sortConfig={sortConfig}/></div>
-                </Tooltip>
-              </th>
+              {visibleColumns.filter(c => c.visible).map(c => {
+                const def = COLUMN_DEFINITIONS[c.key];
+                if (!def) return null;
+                return (
+                  <Fragment key={c.key}>
+                    {def.renderHeader({
+                      sortConfig,
+                      requestSort,
+                      toggleReturnSort,
+                      badgePairs,
+                      thClasses,
+                      thContentClasses,
+                      SortIcon: ({ sortKey }) => <SortIcon sortKey={sortKey} sortConfig={sortConfig} />,
+                      getReturnHeaderLabel,
+                    })}
+                  </Fragment>
+                );
+              })}
               <th scope="col" className="px-4 py-3 text-center sticky top-0 bg-gray-700 z-20">관리</th>
             </tr>
           </thead>
@@ -515,7 +484,7 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
                   checked ? next.add(id) : next.delete(id);
                   setSelectedIds(next);
                 }}
-                showHiddenColumns={showHiddenColumns}
+                visibleColumns={visibleColumns}
                 onEdit={onEdit}
                 onSell={onSell}
                 onBuy={onBuy}
@@ -528,7 +497,7 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
               />
               );
             }) : (
-              <tr><td colSpan={13} className="text-center py-8 text-gray-500">
+              <tr><td colSpan={totalColSpan} className="text-center py-8 text-gray-500">
                   {emptyMessage}
               </td></tr>
             )}

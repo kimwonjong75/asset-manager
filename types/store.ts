@@ -4,6 +4,7 @@ import type { EnrichedIndicatorData } from '../hooks/useEnrichedIndicators';
 import type { BackupInfo, BackupSettings } from './backup';
 import type { CategoryStore, CategoryBaseType } from './category';
 import type { GoldPremiumResult } from '../services/goldPremiumService';
+import type { ColumnConfig } from './ui';
 
 export type PortfolioHistory = PortfolioSnapshot[];
 
@@ -44,6 +45,8 @@ export interface UIState {
   focusedWatchItemId: string | null;
   /** 포트폴리오 표시 임계값 (KRW) — 토글 활성 시 평가총액이 이 값 미만인 자산 숨김. 기본 1,000,000 */
   lowValueThreshold: number;
+  /** 포트폴리오 테이블 컬럼 표시/순서 설정 (데스크탑 전용, 양끝 name/actions 제외) */
+  columnConfig: ColumnConfig[];
 }
 
 export interface ModalState {
@@ -134,6 +137,10 @@ export interface PortfolioActions {
   setSearchQuery: (q: string) => void;
   setSellAlertDropRate: (n: number) => void;
   setLowValueThreshold: (n: number) => void;
+  /** 포트폴리오 테이블 컬럼 설정 갱신 — visible/순서 모두 포함. localStorage에 영속화 */
+  setColumnConfig: (config: ColumnConfig[]) => void;
+  /** 컬럼 설정을 DEFAULT_COLUMN_CONFIG로 초기화 */
+  resetColumnConfig: () => void;
   updateAllocationTargets: (targets: AllocationTargets) => void;
   openEditModal: (asset: Asset) => void;
   closeEditModal: () => void;

@@ -6,6 +6,7 @@ import { CategoryStore, DEFAULT_CATEGORY_STORE, CategoryBaseType } from '../type
 import { mapToNewAssetStructure } from '../utils/portfolioCalculations';
 import { fillAllMissingDates, backfillWithRealPrices, getMissingDateRange, repairCorruptedSnapshots } from '../utils/historyUtils';
 import { createLogger } from '../utils/logger';
+import { saveLastKnownRates } from '../utils/exchangeRateCache';
 
 const log = createLogger('PortfolioData');
 
@@ -86,8 +87,11 @@ export const usePortfolioData = () => {
           if (!rates.USD || rates.USD < 100) rates.USD = 1450;
           if (!rates.JPY || rates.JPY < 1) rates.JPY = 9.5;
           setExchangeRates(rates);
+          saveLastKnownRates(rates);
         } else {
-           setExchangeRates({ USD: 1450, JPY: 9.5 });
+           const defaults = { USD: 1450, JPY: 9.5 };
+           setExchangeRates(defaults);
+           saveLastKnownRates(defaults);
         }
 
         if (loaded.allocationTargets) {

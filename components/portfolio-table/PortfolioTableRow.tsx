@@ -1,64 +1,21 @@
 import React, { Fragment, useEffect, useRef, useState } from 'react';
 import { usePortfolio } from '../../contexts/PortfolioContext';
 import { Asset, Currency, PortfolioSnapshot, ExchangeRates } from '../../types';
-import { isBaseType } from '../../types/category';
-import { EnrichedAsset } from '../../types/ui';
+import { EnrichedAsset, ColumnConfig } from '../../types/ui';
 import AssetTrendChart from '../AssetTrendChart';
 import { MoreHorizontal } from 'lucide-react';
-import { formatNumber, formatQuantity, formatOriginalCurrency, formatKRW, formatProfitLoss, getChangeColor } from './utils';
-import Tooltip from '../common/Tooltip';
 import MemoTooltip from '../common/MemoTooltip';
-import { COLUMN_DESCRIPTIONS } from '../../constants/columnDescriptions';
+import Tooltip from '../common/Tooltip';
 import ActionMenu from '../common/ActionMenu';
-import CrossDaysBadge from '../common/CrossDaysBadge';
-
-// ----------------------------------------------------------------------
-// [추가된 컴포넌트] RSI 지표
-// ----------------------------------------------------------------------
-const RSIIndicator = ({ rsi, status }: { rsi?: number, status?: string }) => {
-  if (typeof rsi !== 'number') return null;
-
-  let colorClass = 'text-gray-400';
-  if (status === 'OVERBOUGHT' || rsi >= 70) colorClass = 'text-red-400'; // 과매수
-  else if (status === 'OVERSOLD' || rsi <= 30) colorClass = 'text-blue-400'; // 과매도
-
-  return (
-    <div className="text-[10px] mt-0.5">
-      <span className="text-gray-500">RSI:</span> <span className={colorClass}>{rsi.toFixed(1)}</span>
-    </div>
-  );
-};
-
-// ----------------------------------------------------------------------
-// [추가된 컴포넌트] 거래량 지표
-// ----------------------------------------------------------------------
-const VolumeIndicator = ({ ratio }: { ratio?: number }) => {
-  if (typeof ratio !== 'number') return null;
-
-  let colorClass = 'text-gray-400';
-  let label = '';
-  if (ratio >= 2.0) { colorClass = 'text-orange-400'; label = '!!'; }
-  else if (ratio >= 1.5) { colorClass = 'text-yellow-400'; label = '!'; }
-  else if (ratio < 0.5) { colorClass = 'text-gray-500'; label = '~'; }
-
-  return (
-    <div className="text-[10px] mt-0.5">
-      <span className="text-gray-500">VOL:</span>{' '}
-      <span className={colorClass}>{ratio.toFixed(1)}x{label && ` ${label}`}</span>
-    </div>
-  );
-};
-
-// ----------------------------------------------------------------------
-// Main Component
-// ----------------------------------------------------------------------
+import { COLUMN_DEFINITIONS } from './columnDefinitions';
 
 interface PortfolioTableRowProps {
   asset: EnrichedAsset;
   history: PortfolioSnapshot[];
   selectedIds: Set<string>;
   onSelect: (id: string, checked: boolean) => void;
-  showHiddenColumns: boolean;
+  /** 가시 컬럼 설정 (양끝 name/actions 제외, 순서대로 렌더링) */
+  visibleColumns: ColumnConfig[];
   onEdit: (asset: Asset) => void;
   onSell?: (asset: Asset) => void;
   onBuy?: (asset: Asset) => void;
@@ -83,7 +40,7 @@ const PortfolioTableRow: React.FC<PortfolioTableRowProps> = ({
   history,
   selectedIds,
   onSelect,
-  showHiddenColumns,
+  visibleColumns,
   onEdit,
   onSell,
   onBuy,
@@ -114,12 +71,8 @@ const PortfolioTableRow: React.FC<PortfolioTableRowProps> = ({
     setExpandedAssetId(prevId => (prevId === assetId ? null : assetId));
   };
 
-  const { purchaseValue, currentValue, purchaseValueKRW, currentValueKRW, returnPercentage, allocation, dropFromHigh, profitLoss, profitLossKRW, diffFromHigh, yesterdayChange, diffFromYesterday } = asset.metrics;
-
+  const { currentValue, currentValueKRW } = asset.metrics;
   const isNonKRW = asset.currency !== Currency.KRW;
-  const investmentColor = getChangeColor(returnPercentage);
-
-  const finalYesterdayChangeRate = yesterdayChange;
 
   // [수정] 차트에 전달할 환율 계산
   // 1순위: exchangeRates prop 사용 (가장 정확)
@@ -133,6 +86,9 @@ const PortfolioTableRow: React.FC<PortfolioTableRowProps> = ({
           derivedExchangeRate = currentValueKRW / currentValue;
       }
   }
+
+  // 양끝 고정 컬럼(체크박스/종목명/액션) 3 + 가시 컬럼 수 = 차트 expand row colSpan
+  const totalColSpan = 3 + visibleColumns.filter(c => c.visible).length;
 
   return (
     <Fragment>
@@ -173,99 +129,15 @@ const PortfolioTableRow: React.FC<PortfolioTableRowProps> = ({
             </div>
           </div>
         </td>
-        <td className="px-4 py-4 text-center">
-          <div className="inline-flex items-center gap-1">
-            <CrossDaysBadge crossDays={gcCrossDays} />
-            <CrossDaysBadge crossDays={dcCrossDays} />
-          </div>
-        </td>
-        {showHiddenColumns && (
-          <td className="px-4 py-4 text-right">
-            <Tooltip content={COLUMN_DESCRIPTIONS.quantity} position="top" wrap>
-              <span>{formatQuantity(asset.quantity, isBaseType(asset.categoryId, 'CRYPTOCURRENCY'))}</span>
-            </Tooltip>
-          </td>
-        )}
-        {showHiddenColumns && (
-          <td className="px-4 py-4 text-right">
-            <Tooltip content={COLUMN_DESCRIPTIONS.purchasePrice} position="top" wrap>
-              <div>
-                <div>{formatOriginalCurrency(asset.purchasePrice, asset.currency)}</div>
-                {isNonKRW && <div className="text-xs text-gray-500">≈ {formatKRW(asset.metrics.purchasePriceKRW)}</div>}
-              </div>
-            </Tooltip>
-          </td>
-        )}
-        <td className="px-4 py-4">
-          <Tooltip content={COLUMN_DESCRIPTIONS.currentPrice} position="top" wrap>
-            <div className="flex items-start justify-between gap-3">
-              <div className="text-right">
-                <div className="font-semibold text-white">{formatOriginalCurrency(asset.currentPrice, asset.currency)}</div>
-                {isNonKRW && <div className="text-xs text-gray-500">≈ {formatKRW(asset.metrics.currentPriceKRW)}</div>}
-              </div>
-              {(asset.indicators?.rsi != null || asset.indicators?.volume_ratio != null) && (
-                <div className="text-right shrink-0">
-                  <RSIIndicator rsi={asset.indicators?.rsi} status={asset.indicators?.rsi_status} />
-                  <VolumeIndicator ratio={asset.indicators?.volume_ratio} />
-                </div>
-              )}
-            </div>
-          </Tooltip>
-        </td>
-        <td className={`px-4 py-4 font-medium text-right ${getChangeColor(returnPercentage)}`}>
-          <Tooltip content={COLUMN_DESCRIPTIONS.returnPercentage} position="top" wrap>
-            <div>
-              <div>{returnPercentage.toFixed(2)}%</div>
-              <div className="text-xs opacity-80">{formatProfitLoss(profitLoss, asset.currency)}</div>
-            </div>
-          </Tooltip>
-        </td>
-        <td className="px-4 py-4 text-right">
-          <Tooltip content={COLUMN_DESCRIPTIONS.purchaseValue} position="top" wrap>
-            <div>
-              <div className={investmentColor}>{formatOriginalCurrency(purchaseValue, asset.currency)}</div>
-              {isNonKRW && <div className="text-xs text-gray-500">≈ {formatKRW(purchaseValueKRW)}</div>}
-            </div>
-          </Tooltip>
-        </td>
-        <td className="px-4 py-4 text-right">
-          <Tooltip content={COLUMN_DESCRIPTIONS.currentValue} position="top" wrap>
-            <div>
-              <div className="font-semibold text-white">{formatOriginalCurrency(currentValue, asset.currency)}</div>
-              {isNonKRW && <div className="text-xs text-gray-500">≈ {formatKRW(currentValueKRW)}</div>}
-            </div>
-          </Tooltip>
-        </td>
-        {showHiddenColumns && (
-          <td className="px-4 py-4 text-center">
-            <Tooltip content={COLUMN_DESCRIPTIONS.purchaseDate} position="top" wrap>
-              <span>{asset.purchaseDate}</span>
-            </Tooltip>
-          </td>
-        )}
-        {showHiddenColumns && (
-          <td className="px-4 py-4 text-right">
-            <Tooltip content={COLUMN_DESCRIPTIONS.allocation} position="top" wrap>
-              <span>{allocation.toFixed(2)}%</span>
-            </Tooltip>
-          </td>
-        )}
-        <td className={`px-4 py-4 font-medium text-right ${getChangeColor(dropFromHigh)}`}>
-          <Tooltip content={COLUMN_DESCRIPTIONS.dropFromHigh} position="top" wrap>
-            <div>
-              <div>{dropFromHigh.toFixed(2)}%</div>
-              <div className="text-xs opacity-80">{formatProfitLoss(diffFromHigh, asset.currency)}</div>
-            </div>
-          </Tooltip>
-        </td>
-        <td className={`px-4 py-4 font-medium text-right ${getChangeColor(finalYesterdayChangeRate)}`}>
-          <Tooltip content={COLUMN_DESCRIPTIONS.yesterdayChange} position="top" wrap>
-            <div>
-              <div>{finalYesterdayChangeRate.toFixed(2)}%</div>
-              <div className="text-xs opacity-80">{formatProfitLoss(diffFromYesterday, Currency.KRW)}</div>
-            </div>
-          </Tooltip>
-        </td>
+        {visibleColumns.filter(c => c.visible).map(c => {
+          const def = COLUMN_DEFINITIONS[c.key];
+          if (!def) return null;
+          return (
+            <Fragment key={c.key}>
+              {def.renderCell({ asset, gcCrossDays, dcCrossDays })}
+            </Fragment>
+          );
+        })}
         <td className="px-4 py-4 text-center">
           <div className="flex items-center justify-center gap-1">
             <Tooltip content="차트" position="left">
@@ -294,7 +166,7 @@ const PortfolioTableRow: React.FC<PortfolioTableRowProps> = ({
       </tr>
       {expandedAssetId === asset.id && (
         <tr className="bg-gray-900/50">
-          <td colSpan={showHiddenColumns ? 13 : 9} className="p-0 sm:p-2">
+          <td colSpan={totalColSpan} className="p-0 sm:p-2">
             <AssetTrendChart
               history={history}
               assetId={asset.id}
