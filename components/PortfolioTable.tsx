@@ -545,6 +545,7 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
                 onMemoEdit={(asset) => setMemoEditAsset(asset)}
                 gcCrossDays={gcRaw != null && gcRaw >= 0 ? gcRaw : null}
                 dcCrossDays={dcRaw != null && dcRaw < 0 ? dcRaw : null}
+                getTdStyle={getThStyle}
               />
               );
             }) : (

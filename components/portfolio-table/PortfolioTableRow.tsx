@@ -1,7 +1,7 @@
 import React, { Fragment, useEffect, useRef, useState } from 'react';
 import { usePortfolio } from '../../contexts/PortfolioContext';
 import { Asset, Currency, PortfolioSnapshot, ExchangeRates } from '../../types';
-import { EnrichedAsset, ColumnConfig } from '../../types/ui';
+import { EnrichedAsset, ColumnConfig, ColumnKey } from '../../types/ui';
 import AssetTrendChart from '../AssetTrendChart';
 import { MoreHorizontal } from 'lucide-react';
 import MemoTooltip from '../common/MemoTooltip';
@@ -27,6 +27,8 @@ interface PortfolioTableRowProps {
   gcCrossDays?: number | null;
   /** 데드크로스 신호 (`dead-cross` 알림 룰의 MA 페어 기준 — 음수만 전달, 그 외 null) */
   dcCrossDays?: number | null;
+  /** <td>에 적용할 inline 너비 스타일 (종목명 'name' + 중간 ColumnKey). 컬럼 리사이즈와 연동 */
+  getTdStyle?: (columnKey: ColumnKey | 'name') => React.CSSProperties | undefined;
 }
 
 const ChartBarIcon: React.FC = () => (
@@ -50,6 +52,7 @@ const PortfolioTableRow: React.FC<PortfolioTableRowProps> = ({
   onMemoEdit,
   gcCrossDays,
   dcCrossDays,
+  getTdStyle,
 }) => {
   const [expandedAssetId, setExpandedAssetId] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -96,7 +99,7 @@ const PortfolioTableRow: React.FC<PortfolioTableRowProps> = ({
         <td className="px-4 py-4 text-center">
           <input type="checkbox" checked={selectedIds.has(asset.id)} onChange={(e) => onSelect(asset.id, e.target.checked)} />
         </td>
-        <td className="px-4 py-4 font-medium text-white break-words">
+        <td className="px-4 py-4 font-medium text-white break-words overflow-hidden" style={getTdStyle?.('name')}>
           <div className="flex flex-col">
              <div className="flex items-center gap-2">
                {onTogglePin && (
@@ -134,7 +137,7 @@ const PortfolioTableRow: React.FC<PortfolioTableRowProps> = ({
           if (!def) return null;
           return (
             <Fragment key={c.key}>
-              {def.renderCell({ asset, gcCrossDays, dcCrossDays })}
+              {def.renderCell({ asset, gcCrossDays, dcCrossDays, getTdStyle })}
             </Fragment>
           );
         })}

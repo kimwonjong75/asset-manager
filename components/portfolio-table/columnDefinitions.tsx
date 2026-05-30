@@ -58,6 +58,8 @@ export interface CellRenderContext {
   asset: EnrichedAsset;
   gcCrossDays?: number | null;
   dcCrossDays?: number | null;
+  /** <td>에 적용할 inline 너비 스타일. 미정의 시 자동 너비 */
+  getTdStyle?: (columnKey: ColumnKey) => React.CSSProperties | undefined;
 }
 
 export interface ColumnDefinition {
@@ -85,8 +87,8 @@ export const COLUMN_DEFINITIONS: Record<ColumnKey, ColumnDefinition> = {
         <ResizeHandle columnKey="maCrossDays" />
       </th>
     ),
-    renderCell: ({ gcCrossDays, dcCrossDays }) => (
-      <td className="px-4 py-4 text-center">
+    renderCell: ({ gcCrossDays, dcCrossDays, getTdStyle }) => (
+      <td className="px-4 py-4 text-center overflow-hidden" style={getTdStyle?.('maCrossDays')}>
         <div className="inline-flex items-center gap-1">
           <CrossDaysBadge crossDays={gcCrossDays} />
           <CrossDaysBadge crossDays={dcCrossDays} />
@@ -105,8 +107,8 @@ export const COLUMN_DEFINITIONS: Record<ColumnKey, ColumnDefinition> = {
         <ResizeHandle columnKey="quantity" />
       </th>
     ),
-    renderCell: ({ asset }) => (
-      <td className="px-4 py-4 text-right">
+    renderCell: ({ asset, getTdStyle }) => (
+      <td className="px-4 py-4 text-right overflow-hidden" style={getTdStyle?.('quantity')}>
         <Tooltip content={COLUMN_DESCRIPTIONS.quantity} position="top" wrap>
           <span>{formatQuantity(asset.quantity, isBaseType(asset.categoryId, 'CRYPTOCURRENCY'))}</span>
         </Tooltip>
@@ -124,10 +126,10 @@ export const COLUMN_DEFINITIONS: Record<ColumnKey, ColumnDefinition> = {
         <ResizeHandle columnKey="purchasePrice" />
       </th>
     ),
-    renderCell: ({ asset }) => {
+    renderCell: ({ asset, getTdStyle }) => {
       const isNonKRW = asset.currency !== Currency.KRW;
       return (
-        <td className="px-4 py-4 text-right">
+        <td className="px-4 py-4 text-right overflow-hidden" style={getTdStyle?.('purchasePrice')}>
           <Tooltip content={COLUMN_DESCRIPTIONS.purchasePrice} position="top" wrap>
             <div>
               <div>{formatOriginalCurrency(asset.purchasePrice, asset.currency)}</div>
@@ -149,10 +151,10 @@ export const COLUMN_DEFINITIONS: Record<ColumnKey, ColumnDefinition> = {
         <ResizeHandle columnKey="currentPrice" />
       </th>
     ),
-    renderCell: ({ asset }) => {
+    renderCell: ({ asset, getTdStyle }) => {
       const isNonKRW = asset.currency !== Currency.KRW;
       return (
-        <td className="px-4 py-4">
+        <td className="px-4 py-4 overflow-hidden" style={getTdStyle?.('currentPrice')}>
           <Tooltip content={COLUMN_DESCRIPTIONS.currentPrice} position="top" wrap>
             <div className="flex items-start justify-between gap-3">
               <div className="text-right">
@@ -182,10 +184,10 @@ export const COLUMN_DEFINITIONS: Record<ColumnKey, ColumnDefinition> = {
         <ResizeHandle columnKey="returnPercentage" />
       </th>
     ),
-    renderCell: ({ asset }) => {
+    renderCell: ({ asset, getTdStyle }) => {
       const { returnPercentage, profitLoss } = asset.metrics;
       return (
-        <td className={`px-4 py-4 font-medium text-right ${getChangeColor(returnPercentage)}`}>
+        <td className={`px-4 py-4 font-medium text-right overflow-hidden ${getChangeColor(returnPercentage)}`} style={getTdStyle?.('returnPercentage')}>
           <Tooltip content={COLUMN_DESCRIPTIONS.returnPercentage} position="top" wrap>
             <div>
               <div>{returnPercentage.toFixed(2)}%</div>
@@ -207,12 +209,12 @@ export const COLUMN_DEFINITIONS: Record<ColumnKey, ColumnDefinition> = {
         <ResizeHandle columnKey="purchaseValue" />
       </th>
     ),
-    renderCell: ({ asset }) => {
+    renderCell: ({ asset, getTdStyle }) => {
       const isNonKRW = asset.currency !== Currency.KRW;
       const { purchaseValue, purchaseValueKRW, returnPercentage } = asset.metrics;
       const investmentColor = getChangeColor(returnPercentage);
       return (
-        <td className="px-4 py-4 text-right">
+        <td className="px-4 py-4 text-right overflow-hidden" style={getTdStyle?.('purchaseValue')}>
           <Tooltip content={COLUMN_DESCRIPTIONS.purchaseValue} position="top" wrap>
             <div>
               <div className={investmentColor}>{formatOriginalCurrency(purchaseValue, asset.currency)}</div>
@@ -234,11 +236,11 @@ export const COLUMN_DEFINITIONS: Record<ColumnKey, ColumnDefinition> = {
         <ResizeHandle columnKey="currentValue" />
       </th>
     ),
-    renderCell: ({ asset }) => {
+    renderCell: ({ asset, getTdStyle }) => {
       const isNonKRW = asset.currency !== Currency.KRW;
       const { currentValue, currentValueKRW } = asset.metrics;
       return (
-        <td className="px-4 py-4 text-right">
+        <td className="px-4 py-4 text-right overflow-hidden" style={getTdStyle?.('currentValue')}>
           <Tooltip content={COLUMN_DESCRIPTIONS.currentValue} position="top" wrap>
             <div>
               <div className="font-semibold text-white">{formatOriginalCurrency(currentValue, asset.currency)}</div>
@@ -260,8 +262,8 @@ export const COLUMN_DEFINITIONS: Record<ColumnKey, ColumnDefinition> = {
         <ResizeHandle columnKey="purchaseDate" />
       </th>
     ),
-    renderCell: ({ asset }) => (
-      <td className="px-4 py-4 text-center">
+    renderCell: ({ asset, getTdStyle }) => (
+      <td className="px-4 py-4 text-center overflow-hidden" style={getTdStyle?.('purchaseDate')}>
         <Tooltip content={COLUMN_DESCRIPTIONS.purchaseDate} position="top" wrap>
           <span>{asset.purchaseDate}</span>
         </Tooltip>
@@ -279,8 +281,8 @@ export const COLUMN_DEFINITIONS: Record<ColumnKey, ColumnDefinition> = {
         <ResizeHandle columnKey="allocation" />
       </th>
     ),
-    renderCell: ({ asset }) => (
-      <td className="px-4 py-4 text-right">
+    renderCell: ({ asset, getTdStyle }) => (
+      <td className="px-4 py-4 text-right overflow-hidden" style={getTdStyle?.('allocation')}>
         <Tooltip content={COLUMN_DESCRIPTIONS.allocation} position="top" wrap>
           <span>{asset.metrics.allocation.toFixed(2)}%</span>
         </Tooltip>
@@ -298,10 +300,10 @@ export const COLUMN_DEFINITIONS: Record<ColumnKey, ColumnDefinition> = {
         <ResizeHandle columnKey="dropFromHigh" />
       </th>
     ),
-    renderCell: ({ asset }) => {
+    renderCell: ({ asset, getTdStyle }) => {
       const { dropFromHigh, diffFromHigh } = asset.metrics;
       return (
-        <td className={`px-4 py-4 font-medium text-right ${getChangeColor(dropFromHigh)}`}>
+        <td className={`px-4 py-4 font-medium text-right overflow-hidden ${getChangeColor(dropFromHigh)}`} style={getTdStyle?.('dropFromHigh')}>
           <Tooltip content={COLUMN_DESCRIPTIONS.dropFromHigh} position="top" wrap>
             <div>
               <div>{dropFromHigh.toFixed(2)}%</div>
@@ -323,10 +325,10 @@ export const COLUMN_DEFINITIONS: Record<ColumnKey, ColumnDefinition> = {
         <ResizeHandle columnKey="yesterdayChange" />
       </th>
     ),
-    renderCell: ({ asset }) => {
+    renderCell: ({ asset, getTdStyle }) => {
       const { yesterdayChange, diffFromYesterday } = asset.metrics;
       return (
-        <td className={`px-4 py-4 font-medium text-right ${getChangeColor(yesterdayChange)}`}>
+        <td className={`px-4 py-4 font-medium text-right overflow-hidden ${getChangeColor(yesterdayChange)}`} style={getTdStyle?.('yesterdayChange')}>
           <Tooltip content={COLUMN_DESCRIPTIONS.yesterdayChange} position="top" wrap>
             <div>
               <div>{yesterdayChange.toFixed(2)}%</div>
