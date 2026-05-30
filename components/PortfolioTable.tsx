@@ -150,6 +150,15 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
     return cfg?.width;
   }, [dragOverride, ui.fixedColumnWidths, ui.columnConfig]);
 
+  // <th>에 강제 적용할 너비 스타일.
+  // table-layout: auto + width:100% 환경에서는 <col width>가 hint로만 동작하므로
+  // <th>에 직접 width + minWidth를 inline으로 주어 콘텐츠 측정을 우회 강제함.
+  const getThStyle = useCallback((key: string): React.CSSProperties | undefined => {
+    const w = getColWidth(key);
+    if (!w) return undefined;
+    return { width: `${w}px`, minWidth: `${w}px`, maxWidth: `${w}px` };
+  }, [getColWidth]);
+
   // 중간 컬럼 헤더에 주입할 ResizeHandle 컴포넌트
   // actions가 Context 갱신마다 새 객체가 되므로 ref로 안정화 — 드래그 중 ColumnResizeHandle 리마운트 방지
   const actionsRef = useRef(actions);
@@ -473,7 +482,7 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
                   else setSelectedIds(new Set());
                 }} />
               </th>
-              <th scope="col" className={`${thClasses} z-20`} onClick={() => requestSort('name')}>
+              <th scope="col" className={`${thClasses} z-20`} style={getThStyle('name')} onClick={() => requestSort('name')}>
                 <Tooltip content={COLUMN_DESCRIPTIONS.name} position="bottom" wrap>
                   <div className={thContentClasses}><span>종목명</span> <SortIcon sortKey='name' sortConfig={sortConfig}/></div>
                 </Tooltip>
@@ -498,6 +507,7 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
                       SortIcon: ({ sortKey }) => <SortIcon sortKey={sortKey} sortConfig={sortConfig} />,
                       getReturnHeaderLabel,
                       ResizeHandle: MiddleColumnResizeHandle,
+                      getThStyle,
                     })}
                   </Fragment>
                 );
