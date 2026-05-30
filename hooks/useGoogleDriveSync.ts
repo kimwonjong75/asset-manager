@@ -104,9 +104,21 @@ export function useGoogleDriveSync(options: UseGoogleDriveSyncOptions = {}) {
     const sellAlertDropRate = typeof data.sellAlertDropRate === 'number' ? data.sellAlertDropRate : undefined;
     const categoryStore = data.categoryStore as CategoryStore | undefined;
 
-    // 컬럼 설정 복원 — UI 환경설정이므로 localStorage 경유
-    // PortfolioContext에서 'column-config-restored' 이벤트를 감지하여 state 즉시 동기화
-    if (Array.isArray(data.columnConfig)) {
+    // 테이블 레이아웃 복원 — UI 환경설정이므로 localStorage 경유
+    // PortfolioContext에서 'table-layout-restored' / 'column-config-restored' 이벤트로 state 동기화
+    // 신규 백업: tableLayout = { columns, fixedWidths }
+    // 레거시 백업: columnConfig = ColumnConfig[]
+    if (data.tableLayout && typeof data.tableLayout === 'object') {
+      try {
+        if (Array.isArray(data.tableLayout.columns)) {
+          localStorage.setItem('asset-manager-column-config-v1', JSON.stringify(data.tableLayout.columns));
+        }
+        if (data.tableLayout.fixedWidths && typeof data.tableLayout.fixedWidths === 'object') {
+          localStorage.setItem('asset-manager-fixed-column-widths-v1', JSON.stringify(data.tableLayout.fixedWidths));
+        }
+        window.dispatchEvent(new CustomEvent('table-layout-restored', { detail: data.tableLayout }));
+      } catch { /* ignore */ }
+    } else if (Array.isArray(data.columnConfig)) {
       try {
         localStorage.setItem('asset-manager-column-config-v1', JSON.stringify(data.columnConfig));
         window.dispatchEvent(new CustomEvent('column-config-restored', { detail: data.columnConfig }));
@@ -127,12 +139,20 @@ export function useGoogleDriveSync(options: UseGoogleDriveSyncOptions = {}) {
     }
     timeoutIdRef.current = setTimeout(async () => {
       if (isSavingRef.current) return;
-      // 컬럼 설정 — UI 환경설정이므로 localStorage에서 읽어 페이로드에 포함
+      // 테이블 레이아웃 — UI 환경설정이므로 localStorage에서 읽어 페이로드에 포함
+      // 신규 필드 tableLayout = { columns, fixedWidths }
+      // 레거시 필드 columnConfig는 한 릴리스 동안 함께 저장 (구 버전 클라이언트 읽기 호환)
       let columnConfig: unknown = undefined;
+      let fixedWidths: unknown = undefined;
       try {
         const raw = localStorage.getItem('asset-manager-column-config-v1');
         if (raw) columnConfig = JSON.parse(raw);
       } catch { /* ignore */ }
+      try {
+        const raw = localStorage.getItem('asset-manager-fixed-column-widths-v1');
+        if (raw) fixedWidths = JSON.parse(raw);
+      } catch { /* ignore */ }
+      const tableLayout = { columns: columnConfig, fixedWidths };
 
       const exportData = {
         assets: assetsToSave,
@@ -144,6 +164,7 @@ export function useGoogleDriveSync(options: UseGoogleDriveSyncOptions = {}) {
         sellAlertDropRate,
         categoryStore,
         columnConfig,
+        tableLayout,
         lastUpdateDate: new Date().toISOString().slice(0, 10),
       };
       const portfolioJSON = JSON.stringify(exportData, null, 2);

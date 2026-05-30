@@ -21,7 +21,14 @@ import { useBackup } from '../hooks/useBackup';
 import { useGoldPremium } from '../hooks/useGoldPremium';
 import { CategoryBaseType } from '../types/category';
 import type { CategoryStore } from '../types/category';
-import { DEFAULT_COLUMN_CONFIG, type ColumnConfig, type ColumnKey } from '../types/ui';
+import {
+  DEFAULT_COLUMN_CONFIG,
+  DEFAULT_FIXED_COLUMN_WIDTHS,
+  MIN_COLUMN_WIDTH,
+  type ColumnConfig,
+  type ColumnKey,
+  type FixedColumnWidths,
+} from '../types/ui';
 
 const PortfolioContext = createContext<PortfolioContextValue | null>(null);
 
@@ -209,20 +216,63 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const handleSetColumnConfig = (config: ColumnConfig[]) => {
     persistColumnConfig(mergeColumnConfig(config));
   };
+
+  // 고정 컬럼 너비(name) — localStorage 영속
+  const [fixedColumnWidths, setFixedColumnWidthsState] = useState<FixedColumnWidths>(() => {
+    try {
+      const raw = localStorage.getItem('asset-manager-fixed-column-widths-v1');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === 'object') return parsed as FixedColumnWidths;
+      }
+    } catch { /* ignore */ }
+    return DEFAULT_FIXED_COLUMN_WIDTHS;
+  });
+  const persistFixedColumnWidths = (next: FixedColumnWidths) => {
+    setFixedColumnWidthsState(next);
+    try { localStorage.setItem('asset-manager-fixed-column-widths-v1', JSON.stringify(next)); } catch { /* ignore */ }
+  };
   const handleResetColumnConfig = () => {
     persistColumnConfig(DEFAULT_COLUMN_CONFIG);
+    persistFixedColumnWidths(DEFAULT_FIXED_COLUMN_WIDTHS);
+  };
+  const handleSetColumnWidth = (key: ColumnKey, width: number) => {
+    const clamped = Math.max(MIN_COLUMN_WIDTH, Math.round(width));
+    const next = columnConfig.map(c => (c.key === key ? { ...c, width: clamped } : c));
+    persistColumnConfig(next);
+  };
+  const handleSetFixedColumnWidth = (key: keyof FixedColumnWidths, width: number) => {
+    const clamped = Math.max(MIN_COLUMN_WIDTH, Math.round(width));
+    persistFixedColumnWidths({ ...fixedColumnWidths, [key]: clamped });
   };
 
   // Drive 복원 시 useGoogleDriveSync가 dispatch하는 이벤트를 감지하여 상태 동기화
+  // 신규: 'table-layout-restored' (columns + fixedWidths 묶음)
+  // 레거시: 'column-config-restored' (columns 배열만 — 구 백업 호환)
   useEffect(() => {
-    const handleRestored = (e: Event) => {
+    const handleTableLayoutRestored = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail && typeof detail === 'object') {
+        if (Array.isArray(detail.columns)) {
+          setColumnConfigState(mergeColumnConfig(detail.columns as ColumnConfig[]));
+        }
+        if (detail.fixedWidths && typeof detail.fixedWidths === 'object') {
+          setFixedColumnWidthsState(detail.fixedWidths as FixedColumnWidths);
+        }
+      }
+    };
+    const handleLegacyRestored = (e: Event) => {
       const detail = (e as CustomEvent).detail;
       if (Array.isArray(detail)) {
         setColumnConfigState(mergeColumnConfig(detail as ColumnConfig[]));
       }
     };
-    window.addEventListener('column-config-restored', handleRestored);
-    return () => window.removeEventListener('column-config-restored', handleRestored);
+    window.addEventListener('table-layout-restored', handleTableLayoutRestored);
+    window.addEventListener('column-config-restored', handleLegacyRestored);
+    return () => {
+      window.removeEventListener('table-layout-restored', handleTableLayoutRestored);
+      window.removeEventListener('column-config-restored', handleLegacyRestored);
+    };
   }, []);
 
   const isLoading = isAuthLoading || isMarketLoading || isActionLoading;
@@ -350,6 +400,7 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       focusedWatchItemId,
       lowValueThreshold,
       columnConfig,
+      fixedColumnWidths,
     },
     modal: {
       editingAsset,
@@ -445,6 +496,8 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       setLowValueThreshold: handleSetLowValueThreshold,
       setColumnConfig: handleSetColumnConfig,
       resetColumnConfig: handleResetColumnConfig,
+      setColumnWidth: handleSetColumnWidth,
+      setFixedColumnWidth: handleSetFixedColumnWidth,
       updateAllocationTargets: (targets: AllocationTargets) => {
         setAllocationTargets(targets);
         triggerAutoSave(assets, portfolioHistory, sellHistory, watchlist, exchangeRates, targets);

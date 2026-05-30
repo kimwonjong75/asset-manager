@@ -1,12 +1,13 @@
-import React, { Fragment, useState, useRef, useEffect, useMemo } from 'react';
+import React, { Fragment, useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { useOnClickOutside } from '../hooks/useOnClickOutside';
 import type { Asset } from '../types';
-import { PortfolioTableProps, SortKey, SortDirection } from '../types/ui';
+import { PortfolioTableProps, SortKey, SortDirection, ColumnKey } from '../types/ui';
 import { COLUMN_DEFINITIONS } from './portfolio-table/columnDefinitions';
 import ColumnSettingsDropdown from './portfolio-table/ColumnSettingsDropdown';
 import { usePortfolioData } from './portfolio-table/usePortfolioData';
 import PortfolioTableRow from './portfolio-table/PortfolioTableRow';
 import PortfolioMobileCard from './portfolio-table/PortfolioMobileCard';
+import ColumnResizeHandle from './portfolio-table/ColumnResizeHandle';
 import MemoEditPopup from './common/MemoEditPopup';
 import Tooltip from './common/Tooltip';
 import { COLUMN_DESCRIPTIONS } from '../constants/columnDescriptions';
@@ -139,6 +140,31 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
   // 현재 가시 컬럼 (Context의 columnConfig 사용)
   const visibleColumns = ui.columnConfig;
 
+  // 컬럼 리사이즈 — 드래그 중 미리보기는 로컬 state, mouseup 시점에 Context로 커밋
+  // (드래그 중 Context 갱신 시 행 전체 재렌더되어 성능/UX 저하)
+  const [dragOverride, setDragOverride] = useState<{ key: string; width: number } | null>(null);
+  const getColWidth = useCallback((key: string): number | undefined => {
+    if (dragOverride && dragOverride.key === key) return dragOverride.width;
+    if (key === 'name') return ui.fixedColumnWidths.name;
+    const cfg = ui.columnConfig.find(c => c.key === key);
+    return cfg?.width;
+  }, [dragOverride, ui.fixedColumnWidths, ui.columnConfig]);
+
+  // 중간 컬럼 헤더에 주입할 ResizeHandle 컴포넌트
+  // actions가 Context 갱신마다 새 객체가 되므로 ref로 안정화 — 드래그 중 ColumnResizeHandle 리마운트 방지
+  const actionsRef = useRef(actions);
+  useEffect(() => { actionsRef.current = actions; }, [actions]);
+  const MiddleColumnResizeHandle = useMemo(() => {
+    const Component: React.FC<{ columnKey: ColumnKey }> = ({ columnKey }) => (
+      <ColumnResizeHandle
+        columnKey={columnKey}
+        onResize={(w) => actionsRef.current.setColumnWidth(columnKey, w)}
+        onDragPreview={(w) => setDragOverride(w !== null ? { key: columnKey, width: w } : null)}
+      />
+    );
+    return Component;
+  }, []);
+
   // 콜스팬 계산 — 양끝 고정(체크박스+종목명+관리) 3 + 가시 컬럼 수
   const totalColSpan = useMemo(
     () => 3 + visibleColumns.filter(c => c.visible).length,
@@ -214,7 +240,7 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
       ? '알림 기준을 초과한 자산이 없습니다.'
       : '자산이 없습니다.';
 
-  const thClasses = "px-4 py-3 cursor-pointer hover:bg-gray-600 transition-colors sticky top-0 bg-gray-700 z-10 whitespace-nowrap";
+  const thClasses = "relative px-4 py-3 cursor-pointer hover:bg-gray-600 transition-colors sticky top-0 bg-gray-700 z-10 whitespace-nowrap";
   const thContentClasses = "flex items-center gap-2";
 
   return (
@@ -430,6 +456,15 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
       {/* 데스크탑: 테이블 — overflow 없음, thead가 main 스크롤 기준 sticky */}
       <div className="hidden md:block">
         <table className="w-full text-sm">
+          <colgroup>
+            <col />
+            <col style={getColWidth('name') ? { width: `${getColWidth('name')}px` } : undefined} />
+            {visibleColumns.filter(c => c.visible).map(c => {
+              const w = getColWidth(c.key);
+              return <col key={c.key} style={w ? { width: `${w}px` } : undefined} />;
+            })}
+            <col />
+          </colgroup>
           <thead className="bg-gray-700 text-gray-300 uppercase text-xs">
             <tr>
               <th scope="col" className="px-4 py-3 text-center sticky top-0 bg-gray-700 z-20">
@@ -442,6 +477,11 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
                 <Tooltip content={COLUMN_DESCRIPTIONS.name} position="bottom" wrap>
                   <div className={thContentClasses}><span>종목명</span> <SortIcon sortKey='name' sortConfig={sortConfig}/></div>
                 </Tooltip>
+                <ColumnResizeHandle
+                  columnKey="name"
+                  onResize={(w) => actions.setFixedColumnWidth('name', w)}
+                  onDragPreview={(w) => setDragOverride(w !== null ? { key: 'name', width: w } : null)}
+                />
               </th>
               {visibleColumns.filter(c => c.visible).map(c => {
                 const def = COLUMN_DEFINITIONS[c.key];
@@ -457,6 +497,7 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
                       thContentClasses,
                       SortIcon: ({ sortKey }) => <SortIcon sortKey={sortKey} sortConfig={sortConfig} />,
                       getReturnHeaderLabel,
+                      ResizeHandle: MiddleColumnResizeHandle,
                     })}
                   </Fragment>
                 );

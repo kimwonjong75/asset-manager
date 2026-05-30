@@ -48,6 +48,8 @@ export interface HeaderRenderContext {
   thContentClasses: string;
   SortIcon: React.FC<{ sortKey: SortKey }>;
   getReturnHeaderLabel: () => string;
+  /** <th> 우측 가장자리에 렌더링하는 리사이즈 핸들. 컬럼별로 columnKey를 넘겨 사용 */
+  ResizeHandle: React.FC<{ columnKey: ColumnKey }>;
 }
 
 export interface CellRenderContext {
@@ -73,11 +75,12 @@ export const COLUMN_DEFINITIONS: Record<ColumnKey, ColumnDefinition> = {
   maCrossDays: {
     key: 'maCrossDays',
     align: 'center',
-    renderHeader: ({ thClasses, thContentClasses, requestSort, SortIcon, badgePairs }) => (
+    renderHeader: ({ thClasses, thContentClasses, requestSort, SortIcon, badgePairs, ResizeHandle }) => (
       <th scope="col" className={`${thClasses} text-center`} onClick={() => requestSort('maCrossDays')}>
         <Tooltip content={`알림 규칙 기준: GC=MA${badgePairs.gcShort}/${badgePairs.gcLong}, DC=MA${badgePairs.dcShort}/${badgePairs.dcLong} (환경설정에서 변경)`} position="bottom" wrap>
           <div className={`${thContentClasses} justify-center`}><span>GC/DC</span> <SortIcon sortKey="maCrossDays" /></div>
         </Tooltip>
+        <ResizeHandle columnKey="maCrossDays" />
       </th>
     ),
     renderCell: ({ gcCrossDays, dcCrossDays }) => (
@@ -92,11 +95,12 @@ export const COLUMN_DEFINITIONS: Record<ColumnKey, ColumnDefinition> = {
   quantity: {
     key: 'quantity',
     align: 'right',
-    renderHeader: ({ thClasses, thContentClasses, requestSort, SortIcon }) => (
+    renderHeader: ({ thClasses, thContentClasses, requestSort, SortIcon, ResizeHandle }) => (
       <th scope="col" className={`${thClasses} text-right`} onClick={() => requestSort('quantity')}>
         <Tooltip content={COLUMN_DESCRIPTIONS.quantity} position="bottom" wrap>
           <div className={`${thContentClasses} justify-end`}><span>보유수량</span> <SortIcon sortKey="quantity" /></div>
         </Tooltip>
+        <ResizeHandle columnKey="quantity" />
       </th>
     ),
     renderCell: ({ asset }) => (
@@ -110,11 +114,12 @@ export const COLUMN_DEFINITIONS: Record<ColumnKey, ColumnDefinition> = {
   purchasePrice: {
     key: 'purchasePrice',
     align: 'right',
-    renderHeader: ({ thClasses, thContentClasses, requestSort, SortIcon }) => (
+    renderHeader: ({ thClasses, thContentClasses, requestSort, SortIcon, ResizeHandle }) => (
       <th scope="col" className={`${thClasses} text-right`} onClick={() => requestSort('purchasePrice')}>
         <Tooltip content={COLUMN_DESCRIPTIONS.purchasePrice} position="bottom" wrap>
           <div className={`${thContentClasses} justify-end`}><span>매수평균가</span> <SortIcon sortKey="purchasePrice" /></div>
         </Tooltip>
+        <ResizeHandle columnKey="purchasePrice" />
       </th>
     ),
     renderCell: ({ asset }) => {
@@ -134,11 +139,12 @@ export const COLUMN_DEFINITIONS: Record<ColumnKey, ColumnDefinition> = {
   currentPrice: {
     key: 'currentPrice',
     align: 'right',
-    renderHeader: ({ thClasses, thContentClasses, requestSort, SortIcon }) => (
+    renderHeader: ({ thClasses, thContentClasses, requestSort, SortIcon, ResizeHandle }) => (
       <th scope="col" className={`${thClasses} text-right`} onClick={() => requestSort('currentPrice')}>
         <Tooltip content={COLUMN_DESCRIPTIONS.currentPrice} position="bottom" wrap>
           <div className={`${thContentClasses} justify-end`}><span>현재가</span> <SortIcon sortKey="currentPrice" /></div>
         </Tooltip>
+        <ResizeHandle columnKey="currentPrice" />
       </th>
     ),
     renderCell: ({ asset }) => {
@@ -166,11 +172,12 @@ export const COLUMN_DEFINITIONS: Record<ColumnKey, ColumnDefinition> = {
   returnPercentage: {
     key: 'returnPercentage',
     align: 'right',
-    renderHeader: ({ thClasses, thContentClasses, toggleReturnSort, getReturnHeaderLabel, sortConfig }) => (
+    renderHeader: ({ thClasses, thContentClasses, toggleReturnSort, getReturnHeaderLabel, sortConfig, ResizeHandle }) => (
       <th scope="col" className={`${thClasses} justify-end`} onClick={toggleReturnSort}>
         <Tooltip content={sortConfig?.key === 'profitLossKRW' ? COLUMN_DESCRIPTIONS.profitLossKRW : COLUMN_DESCRIPTIONS.returnPercentage} position="bottom" wrap>
           <div className={`${thContentClasses} justify-end`}><span>{getReturnHeaderLabel()}</span></div>
         </Tooltip>
+        <ResizeHandle columnKey="returnPercentage" />
       </th>
     ),
     renderCell: ({ asset }) => {
@@ -190,11 +197,12 @@ export const COLUMN_DEFINITIONS: Record<ColumnKey, ColumnDefinition> = {
   purchaseValue: {
     key: 'purchaseValue',
     align: 'right',
-    renderHeader: ({ thClasses, thContentClasses, requestSort, SortIcon }) => (
+    renderHeader: ({ thClasses, thContentClasses, requestSort, SortIcon, ResizeHandle }) => (
       <th scope="col" className={`${thClasses} justify-end`} onClick={() => requestSort('purchaseValue')}>
         <Tooltip content={COLUMN_DESCRIPTIONS.purchaseValue} position="bottom" wrap>
           <div className={`${thContentClasses} justify-end`}><span>투자원금</span> <SortIcon sortKey="purchaseValue" /></div>
         </Tooltip>
+        <ResizeHandle columnKey="purchaseValue" />
       </th>
     ),
     renderCell: ({ asset }) => {
@@ -216,11 +224,12 @@ export const COLUMN_DEFINITIONS: Record<ColumnKey, ColumnDefinition> = {
   currentValue: {
     key: 'currentValue',
     align: 'right',
-    renderHeader: ({ thClasses, thContentClasses, requestSort, SortIcon }) => (
+    renderHeader: ({ thClasses, thContentClasses, requestSort, SortIcon, ResizeHandle }) => (
       <th scope="col" className={`${thClasses} justify-end`} onClick={() => requestSort('currentValue')}>
         <Tooltip content={COLUMN_DESCRIPTIONS.currentValue} position="bottom" wrap>
           <div className={`${thContentClasses} justify-end`}><span>평가총액</span> <SortIcon sortKey="currentValue" /></div>
         </Tooltip>
+        <ResizeHandle columnKey="currentValue" />
       </th>
     ),
     renderCell: ({ asset }) => {
@@ -241,11 +250,12 @@ export const COLUMN_DEFINITIONS: Record<ColumnKey, ColumnDefinition> = {
   purchaseDate: {
     key: 'purchaseDate',
     align: 'center',
-    renderHeader: ({ thClasses, thContentClasses, requestSort, SortIcon }) => (
+    renderHeader: ({ thClasses, thContentClasses, requestSort, SortIcon, ResizeHandle }) => (
       <th scope="col" className={`${thClasses} text-center`} onClick={() => requestSort('purchaseDate')}>
         <Tooltip content={COLUMN_DESCRIPTIONS.purchaseDate} position="bottom" wrap>
           <div className={`${thContentClasses} justify-center`}><span>매수일</span> <SortIcon sortKey="purchaseDate" /></div>
         </Tooltip>
+        <ResizeHandle columnKey="purchaseDate" />
       </th>
     ),
     renderCell: ({ asset }) => (
@@ -259,11 +269,12 @@ export const COLUMN_DEFINITIONS: Record<ColumnKey, ColumnDefinition> = {
   allocation: {
     key: 'allocation',
     align: 'right',
-    renderHeader: ({ thClasses, thContentClasses, requestSort, SortIcon }) => (
+    renderHeader: ({ thClasses, thContentClasses, requestSort, SortIcon, ResizeHandle }) => (
       <th scope="col" className={`${thClasses} justify-end`} onClick={() => requestSort('allocation')}>
         <Tooltip content={COLUMN_DESCRIPTIONS.allocation} position="bottom" wrap>
           <div className={`${thContentClasses} justify-end`}><span>비중</span> <SortIcon sortKey="allocation" /></div>
         </Tooltip>
+        <ResizeHandle columnKey="allocation" />
       </th>
     ),
     renderCell: ({ asset }) => (
@@ -277,11 +288,12 @@ export const COLUMN_DEFINITIONS: Record<ColumnKey, ColumnDefinition> = {
   dropFromHigh: {
     key: 'dropFromHigh',
     align: 'right',
-    renderHeader: ({ thClasses, thContentClasses, requestSort, SortIcon }) => (
+    renderHeader: ({ thClasses, thContentClasses, requestSort, SortIcon, ResizeHandle }) => (
       <th scope="col" className={`${thClasses} justify-end`} onClick={() => requestSort('dropFromHigh')}>
         <Tooltip content={COLUMN_DESCRIPTIONS.dropFromHigh} position="bottom" wrap>
           <div className={`${thContentClasses} justify-end`}><span>최고가 대비</span> <SortIcon sortKey="dropFromHigh" /></div>
         </Tooltip>
+        <ResizeHandle columnKey="dropFromHigh" />
       </th>
     ),
     renderCell: ({ asset }) => {
@@ -301,11 +313,12 @@ export const COLUMN_DEFINITIONS: Record<ColumnKey, ColumnDefinition> = {
   yesterdayChange: {
     key: 'yesterdayChange',
     align: 'right',
-    renderHeader: ({ thClasses, thContentClasses, requestSort, SortIcon }) => (
+    renderHeader: ({ thClasses, thContentClasses, requestSort, SortIcon, ResizeHandle }) => (
       <th scope="col" className={`${thClasses} justify-end`} onClick={() => requestSort('yesterdayChange')}>
         <Tooltip content={COLUMN_DESCRIPTIONS.yesterdayChange} position="bottom" wrap>
           <div className={`${thContentClasses} justify-end`}><span>어제대비</span> <SortIcon sortKey="yesterdayChange" /></div>
         </Tooltip>
+        <ResizeHandle columnKey="yesterdayChange" />
       </th>
     ),
     renderCell: ({ asset }) => {

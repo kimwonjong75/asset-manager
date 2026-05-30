@@ -67,7 +67,19 @@ export type ColumnKey =
 export interface ColumnConfig {
   key: ColumnKey;
   visible: boolean;
+  width?: number;
 }
+
+// 양끝 고정 컬럼 중 사용자 리사이즈 가능한 컬럼의 너비
+// (체크박스/관리는 자동 너비 유지 — 컬럼 너비 조정 대상에서 제외)
+export interface FixedColumnWidths {
+  name?: number;
+}
+
+export const DEFAULT_FIXED_COLUMN_WIDTHS: FixedColumnWidths = {};
+
+// 컬럼 너비 최소값 (80px 미만 시 헤더 텍스트가 SortIcon과 함께 줄바꿈됨)
+export const MIN_COLUMN_WIDTH = 80;
 
 // 기존 더보기 ON 상태와 동일한 순서/표시 — 마이그레이션 기본값
 export const DEFAULT_COLUMN_CONFIG: ColumnConfig[] = [

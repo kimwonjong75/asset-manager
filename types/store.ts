@@ -4,7 +4,7 @@ import type { EnrichedIndicatorData } from '../hooks/useEnrichedIndicators';
 import type { BackupInfo, BackupSettings } from './backup';
 import type { CategoryStore, CategoryBaseType } from './category';
 import type { GoldPremiumResult } from '../services/goldPremiumService';
-import type { ColumnConfig } from './ui';
+import type { ColumnConfig, ColumnKey, FixedColumnWidths } from './ui';
 
 export type PortfolioHistory = PortfolioSnapshot[];
 
@@ -47,6 +47,8 @@ export interface UIState {
   lowValueThreshold: number;
   /** 포트폴리오 테이블 컬럼 표시/순서 설정 (데스크탑 전용, 양끝 name/actions 제외) */
   columnConfig: ColumnConfig[];
+  /** 양끝 고정 컬럼 중 사용자 리사이즈 가능한 컬럼의 너비 (현재 name만) */
+  fixedColumnWidths: FixedColumnWidths;
 }
 
 export interface ModalState {
@@ -139,8 +141,12 @@ export interface PortfolioActions {
   setLowValueThreshold: (n: number) => void;
   /** 포트폴리오 테이블 컬럼 설정 갱신 — visible/순서 모두 포함. localStorage에 영속화 */
   setColumnConfig: (config: ColumnConfig[]) => void;
-  /** 컬럼 설정을 DEFAULT_COLUMN_CONFIG로 초기화 */
+  /** 컬럼 설정을 DEFAULT_COLUMN_CONFIG로 초기화 — visible/순서/너비 모두 리셋 */
   resetColumnConfig: () => void;
+  /** 중간 컬럼 너비 갱신 (px). MIN_COLUMN_WIDTH(80px) 미만 자동 클램프 */
+  setColumnWidth: (key: ColumnKey, width: number) => void;
+  /** 고정 컬럼(name) 너비 갱신 (px). MIN_COLUMN_WIDTH(80px) 미만 자동 클램프 */
+  setFixedColumnWidth: (key: keyof FixedColumnWidths, width: number) => void;
   updateAllocationTargets: (targets: AllocationTargets) => void;
   openEditModal: (asset: Asset) => void;
   closeEditModal: () => void;
