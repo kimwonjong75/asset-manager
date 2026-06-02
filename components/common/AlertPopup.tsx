@@ -1,11 +1,35 @@
 import React, { useState } from 'react';
 import type { AlertResult, AlertMatchedAsset } from '../../types/alertRules';
+import type { RiskMatrixRow } from '../../utils/riskMatrix';
 
 interface AlertPopupProps {
   results: AlertResult[];
+  /** 종합 리스크 매트릭스 — 위험 우선 정렬된 배열. 빈 배열이면 배너 미표시 */
+  riskMatrix: RiskMatrixRow[];
   onClose: () => void;
   onAssetClick: (assetId: string, source?: 'portfolio' | 'watchlist') => void;
 }
+
+const RISK_TIER_STYLES = {
+  red: {
+    badge: 'bg-red-600 text-white',
+    label: '🔴 전량 매도/탈출',
+    bg: 'bg-red-950/60',
+    border: 'border-red-700/60',
+  },
+  amber: {
+    badge: 'bg-amber-600 text-white',
+    label: '🟡 비중 축소',
+    bg: 'bg-amber-950/40',
+    border: 'border-amber-700/50',
+  },
+  blue: {
+    badge: 'bg-blue-600 text-white',
+    label: '🔵 신규 진입 금지/관찰',
+    bg: 'bg-blue-950/40',
+    border: 'border-blue-700/50',
+  },
+} as const;
 
 const SEVERITY_STYLES: Record<string, { bg: string; border: string; badge: string }> = {
   critical: { bg: 'bg-red-950/50', border: 'border-red-800/60', badge: 'bg-red-600' },
@@ -25,7 +49,7 @@ const pctColor = (v: number | undefined): string => {
   return 'text-gray-400';
 };
 
-const AlertPopup: React.FC<AlertPopupProps> = ({ results, onClose, onAssetClick }) => {
+const AlertPopup: React.FC<AlertPopupProps> = ({ results, riskMatrix, onClose, onAssetClick }) => {
   const [isMinimized, setIsMinimized] = useState(false);
 
   const today = new Date().toLocaleDateString('ko-KR', {
@@ -34,8 +58,16 @@ const AlertPopup: React.FC<AlertPopupProps> = ({ results, onClose, onAssetClick 
 
   const sellResults = results.filter(r => r.rule.action === 'sell');
   const buyResults = results.filter(r => r.rule.action === 'buy');
-  const hasResults = results.length > 0;
+  const hasResults = results.length > 0 || riskMatrix.length > 0;
   const totalCount = results.reduce((sum, r) => sum + r.matchedAssets.length, 0);
+  const riskTieredCount = riskMatrix.filter(r => r.assessment.tier !== null).length;
+
+  // 리스크 매트릭스 — 티어별 그룹
+  const tieredRows = {
+    red: riskMatrix.filter(r => r.assessment.tier === 'red'),
+    amber: riskMatrix.filter(r => r.assessment.tier === 'amber'),
+    blue: riskMatrix.filter(r => r.assessment.tier === 'blue'),
+  };
 
   const renderAssetRow = (asset: AlertMatchedAsset) => {
     const isWatchlist = asset.source === 'watchlist';
@@ -184,6 +216,55 @@ const AlertPopup: React.FC<AlertPopupProps> = ({ results, onClose, onAssetClick 
           <div className="px-4 py-3 overflow-y-auto space-y-4 flex-1">
             {hasResults ? (
               <>
+                {/* 종합 리스크 매트릭스 — 클라이맥스 + 디스트리뷰션 합성 (예측 아닌 과열 경고) */}
+                {riskTieredCount > 0 && (
+                  <div>
+                    <h3 className="text-xs font-semibold text-amber-300 mb-2 flex items-center gap-1.5">
+                      <span>⚠️ 과열 리스크 경고</span>
+                      <span className="text-gray-500 font-normal">({riskTieredCount}종목)</span>
+                    </h3>
+                    <div className="space-y-2">
+                      {(['red', 'amber', 'blue'] as const).map(tier => {
+                        const rows = tieredRows[tier];
+                        if (rows.length === 0) return null;
+                        const styles = RISK_TIER_STYLES[tier];
+                        return (
+                          <div key={tier} className={`${styles.bg} border ${styles.border} rounded-lg p-2.5`}>
+                            <div className="flex items-center gap-2 mb-1.5">
+                              <span className={`text-[10px] px-1.5 py-0.5 rounded ${styles.badge} font-medium`}>
+                                {styles.label}
+                              </span>
+                              <span className="text-gray-400 text-[11px]">{rows.length}종목</span>
+                            </div>
+                            <div className="space-y-1">
+                              {rows.map(row => (
+                                <div
+                                  key={`${row.assetId}-${row.source}`}
+                                  className="flex items-center justify-between text-xs cursor-pointer hover:bg-white/5 rounded px-1 py-0.5 transition-colors"
+                                  onClick={() => onAssetClick(row.assetId, row.source)}
+                                  title={row.source === 'watchlist' ? '관심종목으로 이동' : '포트폴리오로 이동'}
+                                >
+                                  <div className="flex items-center gap-1 min-w-0 overflow-hidden">
+                                    {row.source === 'watchlist' && (
+                                      <span className="text-[9px] px-1 py-0.5 rounded bg-teal-600/30 text-teal-400 font-medium shrink-0">관심</span>
+                                    )}
+                                    <span className="text-white truncate">{row.assetName}</span>
+                                    <span className="text-gray-600 text-[10px] shrink-0">{row.ticker}</span>
+                                  </div>
+                                  <span className="text-gray-400 text-[10px] shrink-0 ml-2">
+                                    {row.assessment.reasons.join(' · ')}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <p className="text-gray-500 text-[10px] mt-1.5 italic">참고용 경고이며 투자자문이 아닙니다. 예측이 아닌 과열 리스크 경고입니다.</p>
+                  </div>
+                )}
+
                 {renderSection(
                   sellResults,
                   '매도 감지',

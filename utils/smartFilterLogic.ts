@@ -15,6 +15,20 @@ export interface ExtraFilterConfig {
   withinDays?: number;
   /** MA 교차류 필터 — 교차 발생 이후 N거래일 이내만 매칭 (undefined = 상태 검사만) */
   maxLookbackTradingDays?: number;
+  // ── 클라이맥스 탑 ──
+  /** CLIMAX_TOP: 충족해야 할 플래그 수 (기본 2, 1~3) */
+  climaxFlagsRequired?: number;
+  /** (a) slopeRatio >= 임계 (기본 3) */
+  climaxSlopeMultiplier?: number;
+  /** (b) dayRangeOverAtr >= 임계 (기본 2.5, OHLCV 필요) */
+  climaxAtrMultiple?: number;
+  // ── 디스트리뷰션 ──
+  /** 카운트 윈도우 거래일 수 (기본 13, 최대 30) */
+  distributionWindow?: number;
+  /** 거래량 / 50일 평균 비율 임계 (기본 1.5) */
+  distributionVolumeRatio?: number;
+  /** 윈도우 내 충족일 수 임계 (기본 5) */
+  distributionThreshold?: number;
 }
 
 export const matchesSingleFilter = (
@@ -203,6 +217,46 @@ export const matchesSingleFilter = (
       return typeof ind?.volume_ratio === 'number' && ind.volume_ratio >= 1.5;
     case 'VOLUME_LOW':
       return typeof ind?.volume_ratio === 'number' && ind.volume_ratio < 0.5;
+
+    // ── 과열 리스크: 미너비니 클라이맥스 탑 (예측 아닌 참고 경고) ──
+    case 'CLIMAX_TOP': {
+      if (!enriched) return false;
+      const slopeMul = extraConfig?.climaxSlopeMultiplier ?? 3;
+      const atrMul = extraConfig?.climaxAtrMultiple ?? 2.5;
+      const required = extraConfig?.climaxFlagsRequired ?? 2;
+      let count = 0;
+      // (a) 단기 기울기 ≥ 장기 기울기 × multiplier
+      if (typeof enriched.slopeRatio === 'number' && enriched.slopeRatio >= slopeMul) count++;
+      // (b) (고가-저가) ≥ ATR × multiple — OHLCV 미수신 시 dayRangeOverAtr === null → 평가 안 됨
+      if (typeof enriched.dayRangeOverAtr === 'number' && enriched.dayRangeOverAtr >= atrMul) count++;
+      // (c) 52주 신고가 AND 거래량 52주 최대
+      if (enriched.priceIsAt52wHigh && enriched.volumeIsAt52wMax) count++;
+      return count >= required;
+    }
+
+    // ── 과열 리스크: 오닐 디스트리뷰션 (매물 출회) ──
+    case 'DISTRIBUTION_HIGH': {
+      if (!enriched) return false;
+      const window = Math.max(1, extraConfig?.distributionWindow ?? 13);
+      const ratioThr = extraConfig?.distributionVolumeRatio ?? 1.5;
+      const countThr = extraConfig?.distributionThreshold ?? 5;
+      const meta = enriched.distributionDayMeta;
+      if (!meta || meta.length === 0) return false;
+      const useWindow = Math.min(window, meta.length);
+      let count = 0;
+      for (let i = meta.length - useWindow; i < meta.length; i++) {
+        const d = meta[i];
+        if (typeof d.volRatio !== 'number' || d.volRatio < ratioThr) continue;
+        // 매물 출회 패턴: 음봉 OR 윗꼬리 마감 OR 정체(등락률 < +0.2%)
+        // OHLCV 미수신 구간에서는 isBearish/isLowerHalfClose가 null → 정체 조건만 평가
+        const churn =
+          d.isBearish === true ||
+          d.isLowerHalfClose === true ||
+          d.changeRatio < 0.002;
+        if (churn) count++;
+      }
+      return count >= countThr;
+    }
 
     default:
       return false;

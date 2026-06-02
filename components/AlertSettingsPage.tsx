@@ -118,7 +118,7 @@ const AlertSettingsPage: React.FC = () => {
                   onChange={(e) => updateRuleConfig(rule.id, 'maLongPeriod', parseInt(e.target.value))}
                   className="bg-gray-700 border border-gray-600 rounded px-1 py-0.5 text-white text-xs"
                 >
-                  {[20, 60, 120, 200].map(p => (
+                  {[20, 60, 120, 150, 200].map(p => (
                     <option key={p} value={p} disabled={config.maShortPeriod !== undefined && p <= config.maShortPeriod}>MA{p}</option>
                   ))}
                 </select>
@@ -171,7 +171,7 @@ const AlertSettingsPage: React.FC = () => {
                   onChange={(e) => updateRuleConfig(rule.id, 'maCrossPeriod', parseInt(e.target.value))}
                   className="bg-gray-700 border border-gray-600 rounded px-1 py-0.5 text-white text-xs"
                 >
-                  {[20, 60, 120, 200].map(p => (
+                  {[20, 60, 120, 150, 200].map(p => (
                     <option key={p} value={p}>MA{p}</option>
                   ))}
                 </select>
@@ -217,6 +217,95 @@ const AlertSettingsPage: React.FC = () => {
                   <option value={132}>6개월</option>
                   <option value={252}>1년</option>
                 </select>
+              </div>
+            )}
+            {/* ── 클라이맥스 탑 임계값 ── */}
+            {config.climaxFlagsRequired !== undefined && (
+              <div className="flex items-center gap-1 text-xs text-gray-300">
+                <span title="3개 플래그(가속/넓은봉/신고가+최대거래량) 중 충족해야 할 최소 개수">충족 플래그</span>
+                <input
+                  type="number"
+                  value={config.climaxFlagsRequired}
+                  onChange={(e) => updateRuleConfig(rule.id, 'climaxFlagsRequired', Math.max(1, Math.min(3, parseInt(e.target.value) || 1)))}
+                  className="w-12 bg-gray-700 border border-gray-600 rounded px-1 py-0.5 text-white text-xs text-center"
+                  min="1"
+                  max="3"
+                />
+                <span>/3</span>
+              </div>
+            )}
+            {config.climaxSlopeMultiplier !== undefined && (
+              <div className="flex items-center gap-1 text-xs text-gray-300">
+                <span title="10일 기울기 / 60일 기울기 임계값">기울기 배수</span>
+                <input
+                  type="number"
+                  step="0.5"
+                  value={config.climaxSlopeMultiplier}
+                  onChange={(e) => updateRuleConfig(rule.id, 'climaxSlopeMultiplier', Math.max(1, Math.min(10, parseFloat(e.target.value) || 1)))}
+                  className="w-12 bg-gray-700 border border-gray-600 rounded px-1 py-0.5 text-white text-xs text-center"
+                  min="1"
+                  max="10"
+                />
+                <span>배</span>
+              </div>
+            )}
+            {config.climaxAtrMultiple !== undefined && (
+              <div className="flex items-center gap-1 text-xs text-gray-300">
+                <span title="(고가-저가) / ATR14 임계값 (OHLCV 필요)">ATR 배수</span>
+                <input
+                  type="number"
+                  step="0.5"
+                  value={config.climaxAtrMultiple}
+                  onChange={(e) => updateRuleConfig(rule.id, 'climaxAtrMultiple', Math.max(1, Math.min(5, parseFloat(e.target.value) || 1)))}
+                  className="w-12 bg-gray-700 border border-gray-600 rounded px-1 py-0.5 text-white text-xs text-center"
+                  min="1"
+                  max="5"
+                />
+                <span>배</span>
+              </div>
+            )}
+            {/* ── 디스트리뷰션 임계값 ── */}
+            {config.distributionWindow !== undefined && (
+              <div className="flex items-center gap-1 text-xs text-gray-300">
+                <span title="카운트 대상 기간">카운트 기간</span>
+                <input
+                  type="number"
+                  value={config.distributionWindow}
+                  onChange={(e) => updateRuleConfig(rule.id, 'distributionWindow', Math.max(5, Math.min(30, parseInt(e.target.value) || 5)))}
+                  className="w-12 bg-gray-700 border border-gray-600 rounded px-1 py-0.5 text-white text-xs text-center"
+                  min="5"
+                  max="30"
+                />
+                <span>일</span>
+              </div>
+            )}
+            {config.distributionVolumeRatio !== undefined && (
+              <div className="flex items-center gap-1 text-xs text-gray-300">
+                <span title="당일 거래량 / 50일 평균 거래량 임계값">거래량 배수</span>
+                <input
+                  type="number"
+                  step="0.1"
+                  value={config.distributionVolumeRatio}
+                  onChange={(e) => updateRuleConfig(rule.id, 'distributionVolumeRatio', Math.max(1, Math.min(3, parseFloat(e.target.value) || 1)))}
+                  className="w-12 bg-gray-700 border border-gray-600 rounded px-1 py-0.5 text-white text-xs text-center"
+                  min="1"
+                  max="3"
+                />
+                <span>배</span>
+              </div>
+            )}
+            {config.distributionThreshold !== undefined && (
+              <div className="flex items-center gap-1 text-xs text-gray-300">
+                <span title="기간 내 매물 출회 누적일 임계값">누적 임계</span>
+                <input
+                  type="number"
+                  value={config.distributionThreshold}
+                  onChange={(e) => updateRuleConfig(rule.id, 'distributionThreshold', Math.max(1, Math.min(15, parseInt(e.target.value) || 1)))}
+                  className="w-12 bg-gray-700 border border-gray-600 rounded px-1 py-0.5 text-white text-xs text-center"
+                  min="1"
+                  max="15"
+                />
+                <span>일</span>
               </div>
             )}
           </div>

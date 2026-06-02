@@ -274,6 +274,143 @@ export function getRequiredHistoryDays(maxPeriod: number): number {
   return Math.ceil(maxPeriod * 1.5) + 30;
 }
 
+/**
+ * OHLCV 기반 신호(52주 신고가/최대거래량/ATR/기울기)에 필요한 최소 캘린더 일수
+ * 252 거래일 × 1.5(주말/공휴일 보정) + 60(MA200 워밍업) ≈ 440일
+ */
+export function getRequiredHistoryDaysForOHLCV(): number {
+  return Math.ceil(252 * 1.5) + 60;
+}
+
+/**
+ * ATR(Average True Range) — Wilder's smoothing
+ * True Range = max(high-low, |high-prevClose|, |low-prevClose|)
+ * 입력 3개 배열은 동일 길이/날짜 오름차순. 어느 한 값이라도 null/undefined면 해당 인덱스 ATR도 null.
+ * 반환 배열의 처음 period개는 null (워밍업)
+ */
+export function calculateATR(
+  highs: (number | null)[],
+  lows: (number | null)[],
+  closes: (number | null)[],
+  period: number = 14
+): (number | null)[] {
+  const n = Math.min(highs.length, lows.length, closes.length);
+  const result: (number | null)[] = new Array(n).fill(null);
+  if (n < period + 1) return result;
+
+  // True Range 시계열
+  const tr: (number | null)[] = new Array(n).fill(null);
+  for (let i = 1; i < n; i++) {
+    const h = highs[i], l = lows[i], pc = closes[i - 1];
+    if (typeof h !== 'number' || typeof l !== 'number' || typeof pc !== 'number') {
+      tr[i] = null;
+      continue;
+    }
+    tr[i] = Math.max(h - l, Math.abs(h - pc), Math.abs(l - pc));
+  }
+
+  // 초기 ATR = 첫 period일 TR 단순평균 (인덱스 1..period)
+  let sum = 0;
+  let validCount = 0;
+  for (let i = 1; i <= period; i++) {
+    if (typeof tr[i] === 'number') { sum += tr[i] as number; validCount++; }
+  }
+  if (validCount < period) return result; // 데이터 부족
+  let atr = sum / period;
+  result[period] = atr;
+
+  // Wilder's smoothing
+  for (let i = period + 1; i < n; i++) {
+    const t = tr[i];
+    if (typeof t !== 'number') {
+      result[i] = result[i - 1]; // null 구간은 직전 값 유지
+      continue;
+    }
+    atr = (atr * (period - 1) + t) / period;
+    result[i] = atr;
+  }
+  return result;
+}
+
+/**
+ * 52주(또는 지정 lookback) 최고 종가
+ * 끝에서 lookback개 윈도우의 최댓값. 데이터 부족 시 가용 범위 사용 (null은 데이터 0개일 때만)
+ */
+export function calculate52WeekHigh(closes: (number | null)[], lookback: number = 252): number | null {
+  if (closes.length === 0) return null;
+  const start = Math.max(0, closes.length - lookback);
+  let max = -Infinity;
+  for (let i = start; i < closes.length; i++) {
+    const c = closes[i];
+    if (typeof c === 'number' && c > max) max = c;
+  }
+  return max === -Infinity ? null : max;
+}
+
+/**
+ * 52주(또는 지정 lookback) 최대 거래량
+ */
+export function calculate52WeekMaxVolume(volumes: (number | null)[], lookback: number = 252): number | null {
+  if (volumes.length === 0) return null;
+  const start = Math.max(0, volumes.length - lookback);
+  let max = -Infinity;
+  for (let i = start; i < volumes.length; i++) {
+    const v = volumes[i];
+    if (typeof v === 'number' && v > max) max = v;
+  }
+  return max === -Infinity ? null : max;
+}
+
+/**
+ * 단순 OLS 선형회귀 기울기 — 끝에서 period개 값의 기울기를 평균값으로 정규화
+ * 정규화: slope / mean → 종목 간 비교 가능한 무차원 값
+ * 반환 단위: "1거래일당 평균값 대비 변화 비율" (예: 0.01 = 일평균 1% 상승 추세)
+ */
+export function calculateLinearRegressionSlope(values: (number | null)[], period: number): number | null {
+  if (values.length < period) return null;
+  const start = values.length - period;
+  const xs: number[] = [];
+  const ys: number[] = [];
+  for (let i = 0; i < period; i++) {
+    const v = values[start + i];
+    if (typeof v !== 'number') return null;
+    xs.push(i);
+    ys.push(v);
+  }
+  const meanY = ys.reduce((a, b) => a + b, 0) / period;
+  if (meanY === 0) return null;
+
+  const meanX = (period - 1) / 2;
+  let num = 0;
+  let den = 0;
+  for (let i = 0; i < period; i++) {
+    const dx = xs[i] - meanX;
+    num += dx * (ys[i] - meanY);
+    den += dx * dx;
+  }
+  if (den === 0) return null;
+  const slope = num / den;
+  return slope / meanY;
+}
+
+/**
+ * 단기/장기 기울기 비율 (미너비니 클라이맥스 (a)용)
+ * 단기 기울기 / 장기 기울기. 두 기울기 모두 양수일 때만 의미 있음.
+ * 둘 중 하나가 null/0/음수면 null.
+ */
+export function calculateSlopeRatio(
+  closes: (number | null)[],
+  shortPeriod: number = 10,
+  longPeriod: number = 60
+): number | null {
+  const shortSlope = calculateLinearRegressionSlope(closes, shortPeriod);
+  const longSlope = calculateLinearRegressionSlope(closes, longPeriod);
+  if (shortSlope === null || longSlope === null) return null;
+  if (longSlope <= 0) return null; // 장기 추세가 상승이 아니면 클라이맥스 정의 불가
+  if (shortSlope <= 0) return 0;
+  return shortSlope / longSlope;
+}
+
 function formatDateForChart(dateStr: string): string {
   const d = new Date(dateStr);
   return d.toLocaleDateString('ko-KR', { month: '2-digit', day: '2-digit' });

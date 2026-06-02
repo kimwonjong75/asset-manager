@@ -27,6 +27,12 @@ const matchesRule = (
     maCrossPeriod: filterConfig.maCrossPeriod,
     withinDays: filterConfig.withinDays,
     maxLookbackTradingDays: filterConfig.maxLookbackTradingDays,
+    climaxFlagsRequired: filterConfig.climaxFlagsRequired,
+    climaxSlopeMultiplier: filterConfig.climaxSlopeMultiplier,
+    climaxAtrMultiple: filterConfig.climaxAtrMultiple,
+    distributionWindow: filterConfig.distributionWindow,
+    distributionVolumeRatio: filterConfig.distributionVolumeRatio,
+    distributionThreshold: filterConfig.distributionThreshold,
   };
 
   return filters.every(filterKey =>

@@ -459,7 +459,7 @@ function containsTechnicalKeywords(question: string): boolean {
 /**
  * 기술적 질문 시 과거 시세를 직접 fetch하여 지표 계산
  */
-const MA_PERIODS = [5, 10, 20, 60, 120, 200];
+const MA_PERIODS = [5, 10, 20, 60, 120, 150, 200];
 const RSI_PERIOD = 14;
 
 async function fetchTechnicalIndicators(
@@ -549,7 +549,19 @@ async function fetchTechnicalIndicators(
       const rsiBounceDay = calculateRsiCrossDays(rsiValues, 30);
       const rsiOverheatEntryDay = calculateRsiCrossDays(rsiValues, 70);
 
-      result.set(asset.ticker, { ma, prevMa, rsi, prevRsi, maCrossDays, prevClose, priceCrossMaDays, rsiBounceDay, rsiOverheatEntryDay });
+      // OHLCV-기반 신호는 이 폴백에서 미산출 (AI 분석은 MA/RSI만 필요)
+      result.set(asset.ticker, {
+        ma, prevMa, rsi, prevRsi, maCrossDays, prevClose, priceCrossMaDays, rsiBounceDay, rsiOverheatEntryDay,
+        atr14: null,
+        high52w: null,
+        volume52wMax: null,
+        slopeRatio: null,
+        dayRangeOverAtr: null,
+        priceIsAt52wHigh: false,
+        volumeIsAt52wMax: false,
+        distributionDayMeta: [],
+        ohlcvAvailable: false,
+      });
     }
   } catch (err) {
     log.error('fetchTechnicalIndicators error:', err);

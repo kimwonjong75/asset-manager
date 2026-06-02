@@ -1,10 +1,11 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import type { AlertRule, AlertSettings, AlertResult } from '../types/alertRules';
 import type { EnrichedAsset } from '../types/ui';
 import type { EnrichedIndicatorData } from './useEnrichedIndicators';
 import type { WatchlistItem } from '../types';
 import { DEFAULT_ALERT_SETTINGS } from '../constants/alertRules';
 import { checkAlertRules, checkBuyRulesForWatchlist } from '../utils/alertChecker';
+import { computeRiskTier, sortByRiskPriority, DEFAULT_RISK_MATRIX_THRESHOLDS, type RiskMatrixRow } from '../utils/riskMatrix';
 
 const STORAGE_KEY = 'asset-manager-alert-settings';
 const POPUP_DATE_KEY = 'asset-manager-alert-popup-date';
@@ -131,6 +132,49 @@ export const useAutoAlert = ({
     setAlertResults(results);
   }, [isEnrichedLoading, enrichedAssets, runAlertCheck]);
 
+  // 종합 리스크 매트릭스 — 클라이맥스 플래그 + 디스트리뷰션 카운트 + MA 근접도 합성
+  // alertSettings의 distributionWindow/Ratio 등 사용자 임계값이 있으면 적용, 없으면 DEFAULT 사용
+  // (현재는 alertSettings에 별도 riskMatrix 키가 없어 DEFAULT 사용 — 추후 확장 가능)
+  const riskMatrix = useMemo<RiskMatrixRow[]>(() => {
+    if (isEnrichedLoading || enrichedMap.size === 0) return [];
+    const rows: RiskMatrixRow[] = [];
+    for (const asset of enrichedAssets) {
+      const enriched = enrichedMap.get(asset.ticker);
+      if (!enriched) continue;
+      const assessment = computeRiskTier(enriched, asset.priceOriginal, DEFAULT_RISK_MATRIX_THRESHOLDS);
+      if (assessment.tier !== null) {
+        rows.push({
+          assetId: asset.id,
+          ticker: asset.ticker,
+          assetName: asset.name,
+          source: 'portfolio',
+          assessment,
+        });
+      }
+    }
+    if (watchlistItems) {
+      const portfolioTickers = new Set(enrichedAssets.map(a => a.ticker));
+      for (const item of watchlistItems) {
+        if (portfolioTickers.has(item.ticker)) continue;
+        const enriched = enrichedMap.get(item.ticker);
+        if (!enriched) continue;
+        const price = item.priceOriginal ?? item.currentPrice ?? 0;
+        if (price <= 0) continue;
+        const assessment = computeRiskTier(enriched, price, DEFAULT_RISK_MATRIX_THRESHOLDS);
+        if (assessment.tier !== null) {
+          rows.push({
+            assetId: item.id,
+            ticker: item.ticker,
+            assetName: item.name,
+            source: 'watchlist',
+            assessment,
+          });
+        }
+      }
+    }
+    return sortByRiskPriority(rows);
+  }, [enrichedMap, enrichedAssets, watchlistItems, isEnrichedLoading]);
+
   // 자동 알림 트리거: 시세 업데이트 + enriched 로드 완료 시 (팝업만 제어)
   useEffect(() => {
     if (hasTriggeredRef.current) return;
@@ -156,6 +200,7 @@ export const useAutoAlert = ({
     alertSettings,
     updateAlertSettings,
     alertResults,
+    riskMatrix,
     showAlertPopup,
     dismissAlertPopup,
     showBriefingPopup,

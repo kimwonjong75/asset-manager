@@ -1,6 +1,7 @@
 import { Asset, PortfolioSnapshot, SellRecord, WatchlistItem, ExchangeRates, Currency, BulkUploadResult, AllocationTargets } from './index';
 import type { AlertSettings, AlertResult } from './alertRules';
 import type { EnrichedIndicatorData } from '../hooks/useEnrichedIndicators';
+import type { RiskMatrixRow } from '../utils/riskMatrix';
 import type { BackupInfo, BackupSettings } from './backup';
 import type { CategoryStore, CategoryBaseType } from './category';
 import type { GoldPremiumResult } from '../services/goldPremiumService';
@@ -69,6 +70,8 @@ export interface DerivedState {
   enrichedMap: Map<string, EnrichedIndicatorData>;
   isEnrichedLoading: boolean;
   alertResults: AlertResult[];
+  /** 종합 리스크 매트릭스 — 클라이맥스 + 디스트리뷰션 합성 티어 (위험 우선 정렬됨) */
+  riskMatrix: RiskMatrixRow[];
   showAlertPopup: boolean;
   // 백업
   backupList: BackupInfo[];

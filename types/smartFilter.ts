@@ -34,7 +34,10 @@ export type SmartFilterKey =
   // 거래량
   | 'VOLUME_SURGE'
   | 'VOLUME_HIGH'
-  | 'VOLUME_LOW';
+  | 'VOLUME_LOW'
+  // 과열 리스크 (예측 아님, 참고용 경고)
+  | 'CLIMAX_TOP'
+  | 'DISTRIBUTION_HIGH';
 
 /** 필터 그룹 */
 export type SmartFilterGroup = 'ma' | 'rsi' | 'signal' | 'portfolio' | 'volume';
@@ -69,6 +72,8 @@ export const FILTER_KEY_TO_GROUP: Record<SmartFilterKey, SmartFilterGroup> = {
   VOLUME_SURGE: 'volume',
   VOLUME_HIGH: 'volume',
   VOLUME_LOW: 'volume',
+  CLIMAX_TOP: 'signal',
+  DISTRIBUTION_HIGH: 'signal',
 };
 
 /** 스마트 필터 전체 상태 */

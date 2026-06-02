@@ -92,6 +92,34 @@ const SELL_RULES: AlertRule[] = [
     filters: ['SIGNAL_STRONG_SELL', 'VOLUME_HIGH'],
     filterConfig: {},
   },
+  {
+    id: 'climax-top',
+    name: '클라이맥스 탑(과열 경고)',
+    description: '상승 가속 + 52주 신고가/거래량 — 과열 리스크 경고(참고용, 예측 아님)',
+    severity: 'warning',
+    action: 'sell',
+    enabled: true,
+    filters: ['CLIMAX_TOP'],
+    filterConfig: {
+      climaxFlagsRequired: 2,
+      climaxSlopeMultiplier: 3,
+      climaxAtrMultiple: 2.5,
+    },
+  },
+  {
+    id: 'distribution-high',
+    name: '디스트리뷰션(매물 출회)',
+    description: '13거래일 내 거래량 동반 정체/약세일 누적 — 매물 출회 경고(참고용, 예측 아님)',
+    severity: 'warning',
+    action: 'sell',
+    enabled: true,
+    filters: ['DISTRIBUTION_HIGH'],
+    filterConfig: {
+      distributionWindow: 13,
+      distributionVolumeRatio: 1.5,
+      distributionThreshold: 5,
+    },
+  },
 ];
 
 /** 기본 매수 기회 규칙 */

@@ -615,7 +615,7 @@ const InvestmentGuideView: React.FC = () => {
 
           <div className="mt-6 bg-gray-900/80 border border-gray-600/30 rounded-lg px-4 py-3">
             <p className="text-xs text-gray-400">
-              <span className="text-cyan-400 font-semibold">면책 조항:</span> 이 앱의 모든 시그널과 지표는 기술적 분석에 기반한 <span className="text-white">참고 정보</span>이며, 투자 결정의 최종 책임은 사용자 본인에게 있습니다.
+              <span className="text-cyan-400 font-semibold">면책 조항:</span> 이 앱은 <span className="text-white">투자자문이 아닙니다</span>. 클라이맥스 탑·디스트리뷰션·리스크 매트릭스를 포함한 모든 시그널과 지표는 <span className="text-white">예측이 아닌 과열 리스크에 대한 참고용 경고</span>이며, 투자 결정의 최종 책임은 사용자 본인에게 있습니다.
               기업의 실적, 뉴스, 시장 상황 등 기술적 분석 외의 요인도 반드시 함께 고려하세요.
             </p>
           </div>

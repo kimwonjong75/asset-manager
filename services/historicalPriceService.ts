@@ -26,7 +26,7 @@ function stripNullPrices(data: Record<string, unknown>): Record<string, number> 
   return clean;
 }
 
-/** HistoricalPriceResult 내부의 data/volume에서 null 제거 */
+/** HistoricalPriceResult 내부의 data/volume/open/high/low에서 null 제거 */
 function sanitizeResult(raw: Record<string, any>): Record<string, HistoricalPriceResult> {
   const result: Record<string, HistoricalPriceResult> = {};
   for (const [ticker, entry] of Object.entries(raw)) {
@@ -35,6 +35,9 @@ function sanitizeResult(raw: Record<string, any>): Record<string, HistoricalPric
       ...entry,
       data: entry.data ? stripNullPrices(entry.data) : undefined,
       volume: entry.volume ? stripNullPrices(entry.volume) : undefined,
+      open: entry.open ? stripNullPrices(entry.open) : undefined,
+      high: entry.high ? stripNullPrices(entry.high) : undefined,
+      low: entry.low ? stripNullPrices(entry.low) : undefined,
     };
   }
   return result;
@@ -45,8 +48,14 @@ export interface HistoricalPriceData {
 }
 
 export interface HistoricalPriceResult {
-  data?: HistoricalPriceData;
+  data?: HistoricalPriceData;    // 종가 시계열 { "YYYY-MM-DD": close }
   volume?: HistoricalPriceData;  // 거래량 시계열 { "YYYY-MM-DD": volume }
+  /** 시가 시계열 (백엔드 OHLCV 확장 후 제공, 미수신 시 undefined) */
+  open?: HistoricalPriceData;
+  /** 고가 시계열 (백엔드 OHLCV 확장 후 제공, 미수신 시 undefined) */
+  high?: HistoricalPriceData;
+  /** 저가 시계열 (백엔드 OHLCV 확장 후 제공, 미수신 시 undefined) */
+  low?: HistoricalPriceData;
   error?: string;
   ticker?: string;
   market?: string;

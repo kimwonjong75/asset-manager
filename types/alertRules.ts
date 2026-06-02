@@ -14,6 +14,22 @@ export interface AlertRuleFilterConfig {
   withinDays?: number;
   /** MA 교차류 룰 — 교차 발생 이후 N거래일 이내만 매칭 (없으면 무제한 / 상태 검사만) */
   maxLookbackTradingDays?: number;
+
+  // ── 클라이맥스 탑 (CLIMAX_TOP) 임계값 ──
+  /** 충족해야 할 플래그 수 (1~3, 기본 2) */
+  climaxFlagsRequired?: number;
+  /** (a) 단기 기울기/장기 기울기 비율 임계값 (기본 3) */
+  climaxSlopeMultiplier?: number;
+  /** (b) 당일 (고가-저가) / ATR14 임계 배수 (기본 2.5, OHLCV 필요) */
+  climaxAtrMultiple?: number;
+
+  // ── 디스트리뷰션 (DISTRIBUTION_HIGH) 임계값 ──
+  /** 카운트 윈도우 거래일 수 (기본 13) */
+  distributionWindow?: number;
+  /** 거래량 / 20일 평균거래량 비율 임계 (기본 1.5) */
+  distributionVolumeRatio?: number;
+  /** 윈도우 내 충족일 수 임계 (기본 5) */
+  distributionThreshold?: number;
 }
 
 /** 개별 알림 규칙 */
