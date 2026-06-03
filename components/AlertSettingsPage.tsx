@@ -402,6 +402,16 @@ const AlertSettingsPage: React.FC = () => {
           <p className="text-gray-400 text-sm mt-1">앱 접속 시 자동 브리핑 팝업과 프리셋 필터에 사용되는 규칙을 관리합니다.</p>
         </div>
 
+        {/* "징후 ≠ 방아쇠" 안내 — 사용자 과신 방지 */}
+        <div className="mx-6 mt-4 bg-amber-950/30 border border-amber-700/40 rounded-lg px-4 py-3">
+          <p className="text-amber-200 text-xs leading-relaxed">
+            <span className="font-semibold">💡 이 신호들은 과열 상태를 알리는 것이지, 폭락 시점을 정확히 예측하지 않습니다.</span>
+            <br />
+            신호 발생 후 며칠~몇 주는 계속 오를 수도 있으며, 실제 하락은 외부 악재가 방아쇠가 됩니다.
+            분할매도 / 비중조절의 참고로만 사용하세요.
+          </p>
+        </div>
+
         <div className="px-6 py-4 space-y-6">
           {/* 자동 팝업 토글 */}
           <div className="flex items-center justify-between bg-gray-900 rounded-lg p-4">

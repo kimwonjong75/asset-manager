@@ -260,7 +260,7 @@ const AlertPopup: React.FC<AlertPopupProps> = ({ results, riskMatrix, onClose, o
       {!isMinimized && (
         <div className="bg-gray-900 flex flex-col" style={{ maxHeight: '70vh' }}>
           <p className="text-gray-500 text-[11px] px-4 pt-2">{today}</p>
-          <div className="px-4 py-3 overflow-y-auto space-y-4 flex-1">
+          <div className="px-4 py-3 overflow-y-auto space-y-4 flex-1 min-h-0">
             {hasResults ? (
               <>
                 {/* 종합 리스크 매트릭스 — 클라이맥스 + 디스트리뷰션 합성 (예측 아닌 과열 경고) */}
@@ -340,6 +340,17 @@ const AlertPopup: React.FC<AlertPopupProps> = ({ results, riskMatrix, onClose, o
               </div>
             )}
           </div>
+
+          {/* "징후 ≠ 방아쇠" 고정 footer — 사용자 과신 방지 (스크롤되지 않음) */}
+          {hasResults && (
+            <div className="shrink-0 px-4 py-2 border-t border-gray-800 bg-gray-950/50">
+              <p className="text-gray-500 text-[10px] leading-snug">
+                <span className="text-gray-400">💡 과열 상태 알림</span>이지 폭락 시점 예측이 아닙니다.
+                신호 후에도 며칠~몇 주는 계속 오를 수 있고, 실제 하락은 외부 악재가 방아쇠가 됩니다.
+                분할매도 / 비중조절 참고용.
+              </p>
+            </div>
+          )}
         </div>
       )}
     </div>
