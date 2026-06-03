@@ -8,7 +8,7 @@ import {
   convertTickerForAPI,
   isCryptoExchange,
 } from './historicalPriceService';
-import { calculateSMA, calculateRSI, calculateCrossDays, calculatePriceCrossMaDays, calculateRsiCrossDays, getRequiredHistoryDays } from '../utils/maCalculations';
+import { calculateSMA, calculateRSI, calculateCrossDays, calculatePriceCrossMaDays, calculatePriceBreakBelowMaDays, calculateRsiCrossDays, getRequiredHistoryDays } from '../utils/maCalculations';
 import type { EnrichedIndicatorData } from '../hooks/useEnrichedIndicators';
 import { createLogger } from '../utils/logger';
 
@@ -541,17 +541,19 @@ async function fetchTechnicalIndicators(
         ? sortedPrices[sortedPrices.length - 2].price
         : null;
 
-      // 가격 vs MA 상향돌파 경과일
+      // 가격 vs MA 상향돌파/하향이탈 경과일
       const priceCrossMaDays: Record<number, number | null> = {};
+      const priceBreakBelowMaDays: Record<number, number | null> = {};
       for (const period of MA_PERIODS) {
         priceCrossMaDays[period] = calculatePriceCrossMaDays(sortedPrices, smaArrays[period]);
+        priceBreakBelowMaDays[period] = calculatePriceBreakBelowMaDays(sortedPrices, smaArrays[period]);
       }
       const rsiBounceDay = calculateRsiCrossDays(rsiValues, 30);
       const rsiOverheatEntryDay = calculateRsiCrossDays(rsiValues, 70);
 
       // OHLCV-기반 신호는 이 폴백에서 미산출 (AI 분석은 MA/RSI만 필요)
       result.set(asset.ticker, {
-        ma, prevMa, rsi, prevRsi, maCrossDays, prevClose, priceCrossMaDays, rsiBounceDay, rsiOverheatEntryDay,
+        ma, prevMa, rsi, prevRsi, maCrossDays, prevClose, priceCrossMaDays, priceBreakBelowMaDays, rsiBounceDay, rsiOverheatEntryDay,
         atr14: null,
         high52w: null,
         volume52wMax: null,
@@ -561,6 +563,9 @@ async function fetchTechnicalIndicators(
         volumeIsAt52wMax: false,
         distributionDayMeta: [],
         ohlcvAvailable: false,
+        isBullishCandle: null,
+        longTrendUp: null,
+        recentSwingLow: null,
       });
     }
   } catch (err) {

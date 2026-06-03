@@ -1,7 +1,23 @@
 import React, { useCallback } from 'react';
+import { Info } from 'lucide-react';
 import { usePortfolio } from '../contexts/PortfolioContext';
 import type { AlertRule, AlertSettings } from '../types/alertRules';
 import { DEFAULT_ALERT_SETTINGS } from '../constants/alertRules';
+import Tooltip from './common/Tooltip';
+
+const RULE_SUMMARY_TOOLTIPS: Record<string, string> = {
+  'climax-top': "가파르고 뜨겁게 오른 '과열' 상태를 잡는 규칙.",
+  'distribution-high': "거래량은 터졌는데 가격이 못 오르는 '매물 떠넘기기'를 잡는 규칙.",
+};
+
+const FieldLabel: React.FC<{ text: string; tip: string }> = ({ text, tip }) => (
+  <Tooltip content={tip} wrap>
+    <span className="inline-flex items-center gap-0.5 cursor-help">
+      {text}
+      <Info className="w-3 h-3 text-gray-400" />
+    </span>
+  </Tooltip>
+);
 
 const SEVERITY_COLORS: Record<string, string> = {
   critical: 'bg-red-500',
@@ -26,7 +42,7 @@ const AlertSettingsPage: React.FC = () => {
     actions.updateAlertSettings({ ...alertSettings, rules: newRules });
   }, [alertSettings, actions]);
 
-  const updateRuleConfig = useCallback((ruleId: string, configKey: string, value: number) => {
+  const updateRuleConfig = useCallback((ruleId: string, configKey: string, value: number | boolean) => {
     const newRules = alertSettings.rules.map(r =>
       r.id === ruleId
         ? { ...r, filterConfig: { ...r.filterConfig, [configKey]: value } }
@@ -73,6 +89,11 @@ const AlertSettingsPage: React.FC = () => {
               <div className="flex items-center gap-2">
                 <span className={`w-2 h-2 rounded-full ${SEVERITY_COLORS[rule.severity]}`} />
                 <span className="text-white font-medium text-sm">{rule.name}</span>
+                {RULE_SUMMARY_TOOLTIPS[rule.id] && (
+                  <Tooltip content={RULE_SUMMARY_TOOLTIPS[rule.id]} wrap>
+                    <Info className="w-3.5 h-3.5 text-gray-400 cursor-help" />
+                  </Tooltip>
+                )}
                 <span className={`text-[10px] px-1.5 py-0.5 rounded ${SEVERITY_COLORS[rule.severity]} text-white`}>
                   {SEVERITY_LABELS[rule.severity]}
                 </span>
@@ -222,7 +243,10 @@ const AlertSettingsPage: React.FC = () => {
             {/* ── 클라이맥스 탑 임계값 ── */}
             {config.climaxFlagsRequired !== undefined && (
               <div className="flex items-center gap-1 text-xs text-gray-300">
-                <span title="3개 플래그(가속/넓은봉/신고가+최대거래량) 중 충족해야 할 최소 개수">충족 플래그</span>
+                <FieldLabel
+                  text="충족 플래그"
+                  tip="3가지 과열 조건 중 몇 개 이상이면 경고할지. 낮출수록 경고가 자주 뜸."
+                />
                 <input
                   type="number"
                   value={config.climaxFlagsRequired}
@@ -236,7 +260,10 @@ const AlertSettingsPage: React.FC = () => {
             )}
             {config.climaxSlopeMultiplier !== undefined && (
               <div className="flex items-center gap-1 text-xs text-gray-300">
-                <span title="10일 기울기 / 60일 기울기 임계값">기울기 배수</span>
+                <FieldLabel
+                  text="기울기 배수"
+                  tip="최근 10일 상승 각도가 평소(60일)의 몇 배일 때 급가속으로 볼지. 클수록 둔감."
+                />
                 <input
                   type="number"
                   step="0.5"
@@ -251,7 +278,10 @@ const AlertSettingsPage: React.FC = () => {
             )}
             {config.climaxAtrMultiple !== undefined && (
               <div className="flex items-center gap-1 text-xs text-gray-300">
-                <span title="(고가-저가) / ATR14 임계값 (OHLCV 필요)">ATR 배수</span>
+                <FieldLabel
+                  text="ATR 배수"
+                  tip="하루 변동폭이 평소(ATR14)의 몇 배일 때 변동성 폭발로 볼지. 클수록 둔감."
+                />
                 <input
                   type="number"
                   step="0.5"
@@ -264,10 +294,53 @@ const AlertSettingsPage: React.FC = () => {
                 <span>배</span>
               </div>
             )}
+            {config.climaxRequireBullishCandle !== undefined && (
+              <div className="flex items-center gap-1 text-xs text-gray-300">
+                <FieldLabel
+                  text="양봉만"
+                  tip="변동성 폭발일을 상승(양봉)일 때만 카운트. 끄면 ±급변동일도 포함 — 거짓 신호 증가."
+                />
+                <button
+                  onClick={() => updateRuleConfig(rule.id, 'climaxRequireBullishCandle', !config.climaxRequireBullishCandle)}
+                  className={`flex-shrink-0 w-8 h-4 rounded-full transition-colors relative ${
+                    config.climaxRequireBullishCandle ? 'bg-primary' : 'bg-gray-600'
+                  }`}
+                >
+                  <span
+                    className={`absolute top-0.5 w-3 h-3 bg-white rounded-full transition-transform ${
+                      config.climaxRequireBullishCandle ? 'left-4' : 'left-0.5'
+                    }`}
+                  />
+                </button>
+              </div>
+            )}
+            {config.climaxRequireLongTrendUp !== undefined && (
+              <div className="flex items-center gap-1 text-xs text-gray-300">
+                <FieldLabel
+                  text="수개월상승 전제"
+                  tip="최근 60일간 평균선이 10%+ 우상향일 때만 경고. 끄면 박스권/낙폭 종목도 클라이맥스로 잡힘."
+                />
+                <button
+                  onClick={() => updateRuleConfig(rule.id, 'climaxRequireLongTrendUp', !config.climaxRequireLongTrendUp)}
+                  className={`flex-shrink-0 w-8 h-4 rounded-full transition-colors relative ${
+                    config.climaxRequireLongTrendUp ? 'bg-primary' : 'bg-gray-600'
+                  }`}
+                >
+                  <span
+                    className={`absolute top-0.5 w-3 h-3 bg-white rounded-full transition-transform ${
+                      config.climaxRequireLongTrendUp ? 'left-4' : 'left-0.5'
+                    }`}
+                  />
+                </button>
+              </div>
+            )}
             {/* ── 디스트리뷰션 임계값 ── */}
             {config.distributionWindow !== undefined && (
               <div className="flex items-center gap-1 text-xs text-gray-300">
-                <span title="카운트 대상 기간">카운트 기간</span>
+                <FieldLabel
+                  text="카운트 기간"
+                  tip="최근 며칠(거래일)을 검사할지."
+                />
                 <input
                   type="number"
                   value={config.distributionWindow}
@@ -281,7 +354,10 @@ const AlertSettingsPage: React.FC = () => {
             )}
             {config.distributionVolumeRatio !== undefined && (
               <div className="flex items-center gap-1 text-xs text-gray-300">
-                <span title="당일 거래량 / 50일 평균 거래량 임계값">거래량 배수</span>
+                <FieldLabel
+                  text="거래량 배수"
+                  tip="거래량이 50일 평균의 몇 배 넘은 날만 의심일로 셀지. 클수록 거래량 폭증한 날만 포함."
+                />
                 <input
                   type="number"
                   step="0.1"
@@ -296,7 +372,10 @@ const AlertSettingsPage: React.FC = () => {
             )}
             {config.distributionThreshold !== undefined && (
               <div className="flex items-center gap-1 text-xs text-gray-300">
-                <span title="기간 내 매물 출회 누적일 임계값">누적 임계</span>
+                <FieldLabel
+                  text="누적 임계"
+                  tip="의심일이 며칠 이상 쌓이면 경고할지. 낮출수록 예민."
+                />
                 <input
                   type="number"
                   value={config.distributionThreshold}

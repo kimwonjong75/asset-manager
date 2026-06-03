@@ -242,6 +242,34 @@ export function calculatePriceCrossMaDays(
 }
 
 /**
+ * 가격이 MA를 하향이탈한 경과 거래일 수 계산
+ * sortedPrices와 smaValues는 동일 길이, 날짜 오름차순
+ * 반환: 양수 = N거래일 전 하향이탈, null = 미확인(현재 MA 위거나 전 구간 아래)
+ */
+export function calculatePriceBreakBelowMaDays(
+  sortedPrices: PricePoint[],
+  smaValues: (number | null)[]
+): number | null {
+  const last = sortedPrices.length - 1;
+  if (last < 1) return null;
+
+  const currentPrice = sortedPrices[last].price;
+  const currentMa = smaValues[last];
+  if (currentMa === null || currentPrice >= currentMa) return null; // 현재 MA 위면 무의미
+
+  // 역순회: 가격이 MA 위였던 마지막 지점 탐색
+  for (let i = last - 1; i >= 0; i--) {
+    const ma = smaValues[i];
+    if (ma === null) break;
+    if (sortedPrices[i].price >= ma) {
+      // i일에 위 → i+1일에 하향이탈
+      return last - (i + 1);
+    }
+  }
+  return null; // 전체 구간 동안 항상 MA 아래
+}
+
+/**
  * RSI가 특정 임계값을 상향돌파한 경과 거래일 수 계산
  * 반환: 양수 = N거래일 전 상향돌파, null = 미확인
  */

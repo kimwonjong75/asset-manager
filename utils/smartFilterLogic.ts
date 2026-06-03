@@ -22,6 +22,10 @@ export interface ExtraFilterConfig {
   climaxSlopeMultiplier?: number;
   /** (b) dayRangeOverAtr >= 임계 (기본 2.5, OHLCV 필요) */
   climaxAtrMultiple?: number;
+  /** (b) ATR 폭발일을 양봉일 때만 카운트 (기본 true) */
+  climaxRequireBullishCandle?: boolean;
+  /** "수개월 상승" 전제 강제 — longTrendUp이 false면 카운트 0으로 (기본 true) */
+  climaxRequireLongTrendUp?: boolean;
   // ── 디스트리뷰션 ──
   /** 카운트 윈도우 거래일 수 (기본 13, 최대 30) */
   distributionWindow?: number;
@@ -143,6 +147,27 @@ export const matchesSingleFilter = (
       return prevClose < yesterdayMa;
     }
 
+    // ── 가격 vs MA 하향이탈: withinDays 이내 이탈 + 현재 MA 아래 유지 (와인스타인 매도 트리거) ──
+    case 'PRICE_CROSS_BELOW_MA': {
+      if (!enriched) return false;
+      const period = extraConfig?.maCrossPeriod ?? maLongPeriod;
+      const todayMa = enriched.ma[period];
+      if (typeof todayMa !== 'number') return false;
+      if (asset.priceOriginal >= todayMa) return false; // 현재 MA 위면 무효
+
+      const days = extraConfig?.withinDays ?? 0;
+      if (days > 0) {
+        // withinDays 모드: N거래일 이내 하향이탈
+        const breakDay = enriched.priceBreakBelowMaDays?.[period];
+        return typeof breakDay === 'number' && breakDay <= days;
+      }
+      // 기존 동작: 당일 이탈만
+      const yesterdayMa = enriched.prevMa[period];
+      const prevClose = enriched.prevClose;
+      if (typeof yesterdayMa !== 'number' || typeof prevClose !== 'number') return false;
+      return prevClose >= yesterdayMa;
+    }
+
     // ── RSI: 기존 + enriched 전환감지 ──
     case 'RSI_OVERBOUGHT':
       // enriched 우선, 폴백 indicators
@@ -224,14 +249,31 @@ export const matchesSingleFilter = (
       const slopeMul = extraConfig?.climaxSlopeMultiplier ?? 3;
       const atrMul = extraConfig?.climaxAtrMultiple ?? 2.5;
       const required = extraConfig?.climaxFlagsRequired ?? 2;
+      const requireBullish = extraConfig?.climaxRequireBullishCandle ?? true;
+      const requireLongUp = extraConfig?.climaxRequireLongTrendUp ?? true;
+
+      // "수개월 상승" 전제 강제 — longTrendUp이 명시적 false면 즉시 미충족 (null=데이터부족은 보수적 통과)
+      if (requireLongUp && enriched.longTrendUp === false) return false;
+
       let count = 0;
       // (a) 단기 기울기 ≥ 장기 기울기 × multiplier
       if (typeof enriched.slopeRatio === 'number' && enriched.slopeRatio >= slopeMul) count++;
-      // (b) (고가-저가) ≥ ATR × multiple — OHLCV 미수신 시 dayRangeOverAtr === null → 평가 안 됨
-      if (typeof enriched.dayRangeOverAtr === 'number' && enriched.dayRangeOverAtr >= atrMul) count++;
+      // (b) (고가-저가) ≥ ATR × multiple — 양봉 동반 시에만 카운트 (방향성 보강)
+      //     OHLCV 미수신 시 dayRangeOverAtr === null → 평가 안 됨
+      if (typeof enriched.dayRangeOverAtr === 'number' && enriched.dayRangeOverAtr >= atrMul) {
+        if (!requireBullish || enriched.isBullishCandle !== false) count++;
+      }
       // (c) 52주 신고가 AND 거래량 52주 최대
       if (enriched.priceIsAt52wHigh && enriched.volumeIsAt52wMax) count++;
       return count >= required;
+    }
+
+    // ── 추세 종료: 직전 swing low 이탈 (와인스타인 매도 트리거) ──
+    case 'SWING_LOW_BREAK': {
+      if (!enriched) return false;
+      const swingLow = enriched.recentSwingLow;
+      if (typeof swingLow !== 'number' || swingLow <= 0) return false;
+      return asset.priceOriginal < swingLow;
     }
 
     // ── 과열 리스크: 오닐 디스트리뷰션 (매물 출회) ──

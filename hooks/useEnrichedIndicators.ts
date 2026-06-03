@@ -19,6 +19,7 @@ import {
   calculateRSI,
   calculateCrossDays,
   calculatePriceCrossMaDays,
+  calculatePriceBreakBelowMaDays,
   calculateRsiCrossDays,
   calculateATR,
   calculate52WeekHigh,
@@ -27,6 +28,7 @@ import {
   getRequiredHistoryDaysForOHLCV,
 } from '../utils/maCalculations';
 import { VOLUME_PROXY_MAP } from '../constants/commodityProxyMap';
+import { detectRecentSwingLow } from '../utils/swingPointDetection';
 
 /** 디스트리뷰션 판정 메타 (최근 N일치 — N은 DISTRIBUTION_META_LENGTH) */
 export interface DistributionDayMeta {
@@ -56,6 +58,8 @@ export interface EnrichedIndicatorData {
   prevClose: number | null;
   /** 가격이 MA를 상향돌파한 경과일 — priceCrossMaDays[period] */
   priceCrossMaDays: Record<number, number | null>;
+  /** 가격이 MA를 하향이탈한 경과일 — priceBreakBelowMaDays[period] (와인스타인 매도 트리거) */
+  priceBreakBelowMaDays: Record<number, number | null>;
   /** RSI가 30을 상향돌파한 경과일 */
   rsiBounceDay: number | null;
   /** RSI가 70을 상향돌파한 경과일 */
@@ -80,6 +84,12 @@ export interface EnrichedIndicatorData {
   distributionDayMeta: DistributionDayMeta[];
   /** OHLCV (open/high/low) 수신 여부. false면 클라이맥스 (b)와 디스트리뷰션 윗꼬리 조건은 평가 안 됨 */
   ohlcvAvailable: boolean;
+  /** 당일 양봉 여부 (close > open) — 클라이맥스 (b) 방향성 보강용. OHLCV 미수신 시 null */
+  isBullishCandle: boolean | null;
+  /** "수개월 상승" 전제 — MA60이 LONG_TREND_LOOKBACK일 전 대비 +10% 이상. 데이터 부족 시 null */
+  longTrendUp: boolean | null;
+  /** 최근 60거래일 내 가장 최근에 확정된 swing low 종가 (와인스타인 매도 트리거). 미형성 시 null */
+  recentSwingLow: number | null;
 }
 
 /** enriched 지표 계산에 필요한 최소 종목 정보 */
@@ -95,6 +105,10 @@ const CACHE_TTL_MS = 10 * 60 * 1000; // 10분
 const DISTRIBUTION_META_LENGTH = 30; // filterLogic에서 최대 30일 윈도우까지 지원
 const VOLUME_AVG_PERIOD_DISTRIBUTION = 50; // 디스트리뷰션 거래량 비율 산출에 사용
 const PRICE_HIGH_TOLERANCE = 1e-9; // 52주 신고가 비교 관용
+const LONG_TREND_LOOKBACK = 60;     // longTrendUp: MA60을 60거래일 전과 비교
+const LONG_TREND_GROWTH = 1.1;      // longTrendUp: +10% 이상 우상향
+const SWING_LOW_LOOKBACK = 60;      // swing low 탐지 윈도우 (거래일)
+const SWING_LOW_BARS = 5;            // 좌우 N거래일 동안 자기보다 낮은 종가 없어야 함
 
 interface CacheEntry {
   data: Map<string, EnrichedIndicatorData>;
@@ -315,8 +329,10 @@ export function useEnrichedIndicators(
 
           // 가격 vs MA 상향돌파 경과일
           const priceCrossMaDays: Record<number, number | null> = {};
+          const priceBreakBelowMaDays: Record<number, number | null> = {};
           for (const period of MA_PERIODS) {
             priceCrossMaDays[period] = calculatePriceCrossMaDays(sortedPrices, smaArrays[period]);
+            priceBreakBelowMaDays[period] = calculatePriceBreakBelowMaDays(sortedPrices, smaArrays[period]);
           }
 
           // RSI 이벤트 경과일
@@ -356,6 +372,27 @@ export function useEnrichedIndicators(
           const volumeIsAt52wMax =
             typeof volume52wMax === 'number' && typeof todayVolume === 'number' && todayVolume >= volume52wMax - PRICE_HIGH_TOLERANCE;
 
+          // 당일 양봉 여부 (close > open) — 클라이맥스 (b) 방향성 보강
+          const todayOpen = opens[lastIdx];
+          const isBullishCandle: boolean | null =
+            typeof todayOpen === 'number' && typeof todayClose === 'number'
+              ? todayClose > todayOpen
+              : null;
+
+          // "수개월 상승" 전제 — MA60이 LONG_TREND_LOOKBACK일 전 대비 LONG_TREND_GROWTH배 이상
+          const sma60 = smaArrays[60];
+          const ma60Today = sma60[sma60.length - 1] ?? null;
+          const ma60PastIdx = sma60.length - 1 - LONG_TREND_LOOKBACK;
+          const ma60Past = ma60PastIdx >= 0 ? sma60[ma60PastIdx] : null;
+          const longTrendUp: boolean | null =
+            typeof ma60Today === 'number' && typeof ma60Past === 'number' && ma60Past > 0
+              ? ma60Today > ma60Past * LONG_TREND_GROWTH
+              : null;
+
+          // 직전 swing low — 와인스타인 매도 트리거
+          const swingLow = detectRecentSwingLow(sortedPrices, SWING_LOW_LOOKBACK, SWING_LOW_BARS, SWING_LOW_BARS);
+          const recentSwingLow = swingLow?.price ?? null;
+
           // 디스트리뷰션 메타: 최근 30일(또는 가용)
           const distributionDayMeta: DistributionDayMeta[] = [];
           const metaStart = Math.max(0, sortedDates.length - DISTRIBUTION_META_LENGTH);
@@ -392,6 +429,7 @@ export function useEnrichedIndicators(
             maCrossDays,
             prevClose,
             priceCrossMaDays,
+            priceBreakBelowMaDays,
             rsiBounceDay,
             rsiOverheatEntryDay,
             atr14,
@@ -403,6 +441,9 @@ export function useEnrichedIndicators(
             volumeIsAt52wMax,
             distributionDayMeta,
             ohlcvAvailable,
+            isBullishCandle,
+            longTrendUp,
+            recentSwingLow,
           });
         }
 

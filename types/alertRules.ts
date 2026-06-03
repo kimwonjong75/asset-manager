@@ -22,6 +22,10 @@ export interface AlertRuleFilterConfig {
   climaxSlopeMultiplier?: number;
   /** (b) 당일 (고가-저가) / ATR14 임계 배수 (기본 2.5, OHLCV 필요) */
   climaxAtrMultiple?: number;
+  /** (b) ATR 폭발일을 양봉(close > open)일 때만 카운트 (방향성 보강, 기본 true) */
+  climaxRequireBullishCandle?: boolean;
+  /** "수개월 상승" 전제 강제 — MA60이 60일 전 대비 +10% 이상일 때만 클라이맥스 판정 (기본 true) */
+  climaxRequireLongTrendUp?: boolean;
 
   // ── 디스트리뷰션 (DISTRIBUTION_HIGH) 임계값 ──
   /** 카운트 윈도우 거래일 수 (기본 13) */

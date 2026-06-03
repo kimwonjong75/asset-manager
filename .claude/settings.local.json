@@ -33,7 +33,9 @@
       "Bash(grep \"import.meta.env\\\\|VITE_\" /c/Users/beari/Desktop/Dev/asset-manager/services/*.ts)",
       "Bash(grep -r \"async\\\\|await\" /c/Users/beari/Desktop/Dev/asset-manager/hooks --include=*.ts)",
       "Bash(git add:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(grep -E \"lucide\" c:\\\\\\\\Users\\\\\\\\beari\\\\\\\\Desktop\\\\\\\\dev\\\\\\\\asset_manager\\\\\\\\package.json)",
+      "PowerShell(npx tsc --noEmit)"
     ],
     "additionalDirectories": [
       "C:\\Users\\beari\\Downloads"

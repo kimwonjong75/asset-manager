@@ -30,6 +30,8 @@ const matchesRule = (
     climaxFlagsRequired: filterConfig.climaxFlagsRequired,
     climaxSlopeMultiplier: filterConfig.climaxSlopeMultiplier,
     climaxAtrMultiple: filterConfig.climaxAtrMultiple,
+    climaxRequireBullishCandle: filterConfig.climaxRequireBullishCandle,
+    climaxRequireLongTrendUp: filterConfig.climaxRequireLongTrendUp,
     distributionWindow: filterConfig.distributionWindow,
     distributionVolumeRatio: filterConfig.distributionVolumeRatio,
     distributionThreshold: filterConfig.distributionThreshold,

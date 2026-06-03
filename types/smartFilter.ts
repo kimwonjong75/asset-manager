@@ -12,6 +12,7 @@ export type SmartFilterKey =
   | 'MA_GOLDEN_CROSS'
   | 'MA_DEAD_CROSS'
   | 'PRICE_CROSS_ABOVE_MA'
+  | 'PRICE_CROSS_BELOW_MA'
   // RSI
   | 'RSI_OVERBOUGHT'
   | 'RSI_OVERSOLD'
@@ -37,7 +38,9 @@ export type SmartFilterKey =
   | 'VOLUME_LOW'
   // 과열 리스크 (예측 아님, 참고용 경고)
   | 'CLIMAX_TOP'
-  | 'DISTRIBUTION_HIGH';
+  | 'DISTRIBUTION_HIGH'
+  // 추세 종료 (와인스타인)
+  | 'SWING_LOW_BREAK';
 
 /** 필터 그룹 */
 export type SmartFilterGroup = 'ma' | 'rsi' | 'signal' | 'portfolio' | 'volume';
@@ -53,6 +56,7 @@ export const FILTER_KEY_TO_GROUP: Record<SmartFilterKey, SmartFilterGroup> = {
   MA_GOLDEN_CROSS: 'ma',
   MA_DEAD_CROSS: 'ma',
   PRICE_CROSS_ABOVE_MA: 'ma',
+  PRICE_CROSS_BELOW_MA: 'ma',
   RSI_OVERBOUGHT: 'rsi',
   RSI_OVERSOLD: 'rsi',
   RSI_BOUNCE: 'rsi',
@@ -74,6 +78,7 @@ export const FILTER_KEY_TO_GROUP: Record<SmartFilterKey, SmartFilterGroup> = {
   VOLUME_LOW: 'volume',
   CLIMAX_TOP: 'signal',
   DISTRIBUTION_HIGH: 'signal',
+  SWING_LOW_BREAK: 'signal',
 };
 
 /** 스마트 필터 전체 상태 */

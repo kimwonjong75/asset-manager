@@ -60,14 +60,23 @@ export interface RiskAssessment {
   distributionCount: number;
 }
 
-/** 단일 자산의 클라이맥스 플래그 카운트 (a, b, c) — useEnrichedIndicators의 결과 사용 */
+/** 단일 자산의 클라이맥스 플래그 카운트 (a, b, c) — useEnrichedIndicators의 결과 사용
+ *  - "수개월 상승" 전제: longTrendUp === false면 0 (데이터 부족 null은 보수적으로 통과)
+ *  - (b) ATR 폭발은 양봉(상승)일 때만 카운트 (isBullishCandle === false면 무시) — 방향성 보강
+ */
 function countClimaxFlags(
   enriched: EnrichedIndicatorData,
   thresholds: RiskMatrixThresholds
 ): number {
+  if (enriched.longTrendUp === false) return 0;
+
   let count = 0;
   if (typeof enriched.slopeRatio === 'number' && enriched.slopeRatio >= thresholds.climaxSlopeMultiplier) count++;
-  if (typeof enriched.dayRangeOverAtr === 'number' && enriched.dayRangeOverAtr >= thresholds.climaxAtrMultiple) count++;
+  if (
+    typeof enriched.dayRangeOverAtr === 'number' &&
+    enriched.dayRangeOverAtr >= thresholds.climaxAtrMultiple &&
+    enriched.isBullishCandle !== false
+  ) count++;
   if (enriched.priceIsAt52wHigh && enriched.volumeIsAt52wMax) count++;
   return count;
 }
