@@ -2,6 +2,7 @@ import type { SmartFilterState, SmartFilterKey, SmartFilterGroup } from '../type
 import { FILTER_KEY_TO_GROUP } from '../types/smartFilter';
 import type { EnrichedAsset } from '../types/ui';
 import type { EnrichedIndicatorData } from '../hooks/useEnrichedIndicators';
+import { CLIMAX_C_VOL_SURGE_RATIO } from './buildEnrichedIndicator';
 
 /**
  * 단일 필터 키에 대해 자산이 조건을 충족하는지 판정
@@ -246,7 +247,7 @@ export const matchesSingleFilter = (
     // ── 과열 리스크: 미너비니 클라이맥스 탑 (예측 아닌 참고 경고) ──
     case 'CLIMAX_TOP': {
       if (!enriched) return false;
-      const slopeMul = extraConfig?.climaxSlopeMultiplier ?? 3;
+      const slopeMul = extraConfig?.climaxSlopeMultiplier ?? 2.5; // P4.5 C1: 3 → 2.5
       const atrMul = extraConfig?.climaxAtrMultiple ?? 2.5;
       const required = extraConfig?.climaxFlagsRequired ?? 2;
       const requireBullish = extraConfig?.climaxRequireBullishCandle ?? true;
@@ -263,8 +264,14 @@ export const matchesSingleFilter = (
       if (typeof enriched.dayRangeOverAtr === 'number' && enriched.dayRangeOverAtr >= atrMul) {
         if (!requireBullish || enriched.isBullishCandle !== false) count++;
       }
-      // (c) 52주 신고가 AND 거래량 52주 최대
-      if (enriched.priceIsAt52wHigh && enriched.volumeIsAt52wMax) count++;
+      // (c) 52주 신고가 AND (거래량 52주 최대 OR 50일 평균의 CLIMAX_C_VOL_SURGE_RATIO배 이상) — P4.5 C3
+      if (enriched.priceIsAt52wHigh) {
+        const todayMeta = enriched.distributionDayMeta?.[enriched.distributionDayMeta.length - 1];
+        const volRatio = todayMeta?.volRatio ?? null;
+        if (enriched.volumeIsAt52wMax || (typeof volRatio === 'number' && volRatio >= CLIMAX_C_VOL_SURGE_RATIO)) {
+          count++;
+        }
+      }
       return count >= required;
     }
 

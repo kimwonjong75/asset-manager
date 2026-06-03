@@ -1,4 +1,5 @@
 import type { SmartFilterKey } from './smartFilter';
+import type { DistributionTierClassification } from '../utils/distributionTierState';
 
 /** 알림 규칙의 필터 설정 */
 export interface AlertRuleFilterConfig {
@@ -64,6 +65,8 @@ export interface AlertMatchedAsset {
   rsi?: number;
   /** 출처 (포트폴리오 vs 관심종목) */
   source?: 'portfolio' | 'watchlist';
+  /** distribution-high 룰 한정 — P4.5 D1 단계 분류 (3/4/5 + new/ongoing). 다른 룰에서는 undefined */
+  distributionTier?: DistributionTierClassification;
 }
 
 /** 규칙별 알림 결과 */

@@ -10,7 +10,7 @@ import type { ExtraFilterConfig } from './smartFilterLogic';
  * 단일 규칙에 대해 자산 매칭 여부 판정
  * 규칙의 모든 filters를 AND로 적용 (스마트필터의 그룹 OR과 다름)
  */
-const matchesRule = (
+export const matchesRule = (
   asset: EnrichedAsset,
   rule: AlertRule,
   enriched?: EnrichedIndicatorData

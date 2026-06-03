@@ -1,6 +1,20 @@
 import React, { useState } from 'react';
 import type { AlertResult, AlertMatchedAsset } from '../../types/alertRules';
 import type { RiskMatrixRow } from '../../utils/riskMatrix';
+import type { DistributionTier } from '../../utils/distributionTierState';
+
+// P4.5 D1: distribution-high 단계별 뱃지 — 'new'는 컬러, 'ongoing'은 회색
+const TIER_NEW_STYLES: Record<DistributionTier, { bg: string; label: string }> = {
+  3: { bg: 'bg-yellow-500/80 text-black', label: '주의 (3)' },
+  4: { bg: 'bg-orange-500/80 text-white', label: '약세 (4)' },
+  5: { bg: 'bg-red-600/90 text-white', label: '위험 (5+)' },
+};
+
+const TIER_ONGOING_STYLES: Record<DistributionTier, { bg: string; label: string }> = {
+  3: { bg: 'bg-gray-700/60 text-gray-400', label: '지속 (3)' },
+  4: { bg: 'bg-gray-700/60 text-gray-400', label: '지속 (4)' },
+  5: { bg: 'bg-gray-700/60 text-gray-400', label: '지속 (5+)' },
+};
 
 interface AlertPopupProps {
   results: AlertResult[];
@@ -71,10 +85,17 @@ const AlertPopup: React.FC<AlertPopupProps> = ({ results, riskMatrix, onClose, o
 
   const renderAssetRow = (asset: AlertMatchedAsset) => {
     const isWatchlist = asset.source === 'watchlist';
+    const tier = asset.distributionTier;
+    const tierStyle = tier
+      ? (tier.status === 'new' ? TIER_NEW_STYLES[tier.tier] : TIER_ONGOING_STYLES[tier.tier])
+      : null;
+    const isOngoing = tier?.status === 'ongoing';
     return (
       <tr
         key={`${asset.assetId}-${asset.source || 'p'}`}
-        className="border-b border-gray-800/30 last:border-b-0 cursor-pointer hover:bg-white/5 transition-colors"
+        className={`border-b border-gray-800/30 last:border-b-0 cursor-pointer hover:bg-white/5 transition-colors ${
+          isOngoing ? 'opacity-60' : ''
+        }`}
         onClick={() => onAssetClick(asset.assetId, asset.source)}
         title={isWatchlist ? '클릭하면 관심종목으로 이동합니다' : '클릭하면 포트폴리오에서 해당 종목으로 이동합니다'}
       >
@@ -83,6 +104,11 @@ const AlertPopup: React.FC<AlertPopupProps> = ({ results, riskMatrix, onClose, o
             {isWatchlist && (
               <span className="text-[9px] px-1 py-0.5 rounded bg-teal-600/30 text-teal-400 font-medium shrink-0">
                 관심
+              </span>
+            )}
+            {tierStyle && (
+              <span className={`text-[9px] px-1 py-0.5 rounded font-medium shrink-0 ${tierStyle.bg}`}>
+                {tierStyle.label}
               </span>
             )}
             <span className="text-white font-medium truncate">{asset.assetName}</span>
@@ -125,12 +151,33 @@ const AlertPopup: React.FC<AlertPopupProps> = ({ results, riskMatrix, onClose, o
         <div className="space-y-2">
           {sectionResults.map(({ rule, matchedAssets }) => {
             const styles = SEVERITY_STYLES[rule.severity];
+
+            // P4.5 D1: distribution-high 룰은 신규 자산을 위로, 지속 자산을 아래로 정렬
+            let displayAssets = matchedAssets;
+            let newCount = 0;
+            let ongoingCount = 0;
+            if (rule.id === 'distribution-high') {
+              const newAssets = matchedAssets.filter(a => a.distributionTier?.status === 'new');
+              const ongoingAssets = matchedAssets.filter(a => a.distributionTier?.status === 'ongoing');
+              const untagged = matchedAssets.filter(a => !a.distributionTier);
+              displayAssets = [...newAssets, ...ongoingAssets, ...untagged];
+              newCount = newAssets.length;
+              ongoingCount = ongoingAssets.length;
+            }
+
             return (
               <div key={rule.id} className={`${styles.bg} border ${styles.border} rounded-lg p-2.5`}>
-                <div className="flex items-center gap-2 mb-1.5">
+                <div className="flex items-center gap-2 mb-1.5 flex-wrap">
                   <span className={`text-[10px] px-1.5 py-0.5 rounded ${styles.badge} text-white font-medium`}>
                     {rule.name}
                   </span>
+                  {rule.id === 'distribution-high' && (newCount > 0 || ongoingCount > 0) && (
+                    <span className="text-[10px] flex items-center gap-1.5">
+                      {newCount > 0 && <span className="text-amber-300 font-medium">신규 {newCount}건</span>}
+                      {newCount > 0 && ongoingCount > 0 && <span className="text-gray-600">·</span>}
+                      {ongoingCount > 0 && <span className="text-gray-500">지속 {ongoingCount}건</span>}
+                    </span>
+                  )}
                   <span className="text-gray-400 text-[11px]">{rule.description}</span>
                 </div>
                 <table className="w-full text-xs table-fixed">
@@ -151,7 +198,7 @@ const AlertPopup: React.FC<AlertPopupProps> = ({ results, riskMatrix, onClose, o
                     </tr>
                   </thead>
                   <tbody>
-                    {matchedAssets.map(renderAssetRow)}
+                    {displayAssets.map(renderAssetRow)}
                   </tbody>
                 </table>
               </div>

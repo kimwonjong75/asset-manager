@@ -6,6 +6,8 @@ import type { WatchlistItem } from '../types';
 import { DEFAULT_ALERT_SETTINGS } from '../constants/alertRules';
 import { checkAlertRules, checkBuyRulesForWatchlist } from '../utils/alertChecker';
 import { computeRiskTier, sortByRiskPriority, DEFAULT_RISK_MATRIX_THRESHOLDS, type RiskMatrixRow } from '../utils/riskMatrix';
+import { countDistributionDays } from '../utils/marketDistribution';
+import { classifyDistributionTier } from '../utils/distributionTierState';
 
 const STORAGE_KEY = 'asset-manager-alert-settings';
 const POPUP_DATE_KEY = 'asset-manager-alert-popup-date';
@@ -47,6 +49,37 @@ const saveAlertSettings = (settings: AlertSettings) => {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
   } catch { /* ignore */ }
+};
+
+/**
+ * P4.5 D1: distribution-high 매칭 자산에 tier 분류(new/ongoing) 첨부
+ * 룰 매칭 로직은 건드리지 않고 표시 레이어 디듀프만 수행
+ * distribution 카운트 계산은 alertChecker가 boolean만 반환하므로 enriched에서 직접 재계산
+ */
+const attachDistributionTiers = (
+  results: AlertResult[],
+  enrichedMap: Map<string, EnrichedIndicatorData>,
+  rules: AlertRule[]
+): AlertResult[] => {
+  const distRule = rules.find(r => r.id === 'distribution-high');
+  if (!distRule) return results;
+  const windowDays = distRule.filterConfig.distributionWindow ?? 13;
+  const volRatio = distRule.filterConfig.distributionVolumeRatio ?? 1.5;
+  const today = new Date().toISOString().slice(0, 10);
+
+  return results.map(result => {
+    if (result.rule.id !== 'distribution-high') return result;
+    const updatedAssets = result.matchedAssets.map(asset => {
+      const enriched = enrichedMap.get(asset.ticker);
+      if (!enriched) return asset;
+      const count = countDistributionDays(enriched.distributionDayMeta, windowDays, volRatio);
+      const classification = classifyDistributionTier(asset.assetId, count, today);
+      // count<3은 룰이 안 매칭됐을 것이므로 classification이 null이면 그대로 통과
+      if (!classification) return asset;
+      return { ...asset, distributionTier: classification };
+    });
+    return { ...result, matchedAssets: updatedAssets };
+  });
 };
 
 /** 포트폴리오 결과에 관심종목 매수 결과를 병합 */
@@ -106,15 +139,19 @@ export const useAutoAlert = ({
     const portfolioResults = checkAlertRules(enrichedAssets, enrichedMap, alertSettings.rules);
 
     // 관심종목 매수 기회 체크
+    let merged: AlertResult[];
     if (watchlistItems && watchlistItems.length > 0) {
       const portfolioTickers = new Set(enrichedAssets.map(a => a.ticker));
       const watchlistBuyResults = checkBuyRulesForWatchlist(
         watchlistItems, enrichedMap, alertSettings.rules, portfolioTickers
       );
-      return mergeWatchlistResults(portfolioResults, watchlistBuyResults);
+      merged = mergeWatchlistResults(portfolioResults, watchlistBuyResults);
+    } else {
+      merged = portfolioResults;
     }
 
-    return portfolioResults;
+    // P4.5 D1: distribution-high 자산에 tier(new/ongoing) 첨부 — localStorage 기반 일자 디듀프
+    return attachDistributionTiers(merged, enrichedMap, alertSettings.rules);
   }, [enrichedAssets, enrichedMap, alertSettings.rules, watchlistItems]);
 
   // 수동으로 브리핑 다시 보기

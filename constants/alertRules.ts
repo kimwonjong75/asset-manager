@@ -102,7 +102,7 @@ const SELL_RULES: AlertRule[] = [
     filters: ['CLIMAX_TOP'],
     filterConfig: {
       climaxFlagsRequired: 2,
-      climaxSlopeMultiplier: 3,
+      climaxSlopeMultiplier: 2.5, // P4.5 C1: 3 → 2.5 (SLV 사례 진단 결과)
       climaxAtrMultiple: 2.5,
       climaxRequireBullishCandle: true,
       climaxRequireLongTrendUp: true,

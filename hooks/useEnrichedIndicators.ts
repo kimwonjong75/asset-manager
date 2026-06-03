@@ -14,25 +14,10 @@ import {
   type HistoricalPriceResult,
 } from '../services/historicalPriceService';
 import { getCategoryName, DEFAULT_CATEGORIES } from '../types/category';
-import {
-  calculateSMA,
-  calculateRSI,
-  calculateCrossDays,
-  calculatePriceCrossMaDays,
-  calculatePriceBreakBelowMaDays,
-  calculateRsiCrossDays,
-  calculateATR,
-  calculate52WeekHigh,
-  calculate52WeekMaxVolume,
-  calculateSlopeRatio,
-  getRequiredHistoryDaysForOHLCV,
-} from '../utils/maCalculations';
+import { getRequiredHistoryDaysForOHLCV } from '../utils/maCalculations';
 import { VOLUME_PROXY_MAP } from '../constants/commodityProxyMap';
-import { detectRecentSwingLow } from '../utils/swingPointDetection';
-import {
-  buildDistributionMeta,
-  type DistributionDayMeta as SharedDistributionDayMeta,
-} from '../utils/marketDistribution';
+import type { DistributionDayMeta as SharedDistributionDayMeta } from '../utils/marketDistribution';
+import { buildEnrichedIndicator } from '../utils/buildEnrichedIndicator';
 
 /** 디스트리뷰션 판정 메타 — 정의는 utils/marketDistribution으로 이동 (지수와 종목 공용) */
 export type DistributionDayMeta = SharedDistributionDayMeta;
@@ -94,16 +79,9 @@ interface TickerItem {
   categoryId: number;
 }
 
-const MA_PERIODS = [5, 10, 20, 60, 120, 150, 200];
-const RSI_PERIOD = 14;
 const CACHE_TTL_MS = 10 * 60 * 1000; // 10분
-const DISTRIBUTION_META_LENGTH = 30; // filterLogic에서 최대 30일 윈도우까지 지원
-const VOLUME_AVG_PERIOD_DISTRIBUTION = 50; // 디스트리뷰션 거래량 비율 산출에 사용
-const PRICE_HIGH_TOLERANCE = 1e-9; // 52주 신고가 비교 관용
-const LONG_TREND_LOOKBACK = 60;     // longTrendUp: MA60을 60거래일 전과 비교
-const LONG_TREND_GROWTH = 1.1;      // longTrendUp: +10% 이상 우상향
-const SWING_LOW_LOOKBACK = 60;      // swing low 탐지 윈도우 (거래일)
-const SWING_LOW_BARS = 5;            // 좌우 N거래일 동안 자기보다 낮은 종가 없어야 함
+// MA_PERIODS/RSI_PERIOD/DISTRIBUTION_META_LENGTH/VOLUME_AVG_PERIOD_DISTRIBUTION 등 enrichment 상수는
+// `utils/buildEnrichedIndicator`에 정의됨 (백테스트와 공유)
 
 interface CacheEntry {
   data: Map<string, EnrichedIndicatorData>;
@@ -255,11 +233,7 @@ export function useEnrichedIndicators(
 
           // 날짜 오름차순 정렬 (close 기준)
           const sortedDates = Object.keys(priceData).sort();
-          const sortedPrices = sortedDates.map(date => ({
-            date,
-            price: priceData[date],
-          }));
-          const closes = sortedPrices.map(p => p.price);
+          const closes = sortedDates.map(d => priceData[d]);
 
           // OHLCV 시계열 정렬 (없으면 null로 채움)
           const opens = alignSeries(sortedDates, entry.open);
@@ -267,142 +241,11 @@ export function useEnrichedIndicators(
           const lows = alignSeries(sortedDates, entry.low);
           const volumes = alignSeries(sortedDates, effectiveVolumeSeries);
 
-          const ohlcvAvailable =
-            opens.some(v => v !== null) &&
-            highs.some(v => v !== null) &&
-            lows.some(v => v !== null);
-
-          // MA 계산
-          const ma: Record<number, number | null> = {};
-          const prevMa: Record<number, number | null> = {};
-          const smaArrays: Record<number, (number | null)[]> = {};
-          for (const period of MA_PERIODS) {
-            const smaValues = calculateSMA(sortedPrices, period);
-            smaArrays[period] = smaValues;
-            const lastIdx = smaValues.length - 1;
-            ma[period] = lastIdx >= 0 ? smaValues[lastIdx] : null;
-            prevMa[period] = lastIdx >= 1 ? smaValues[lastIdx - 1] : null;
-          }
-
-          // MA 교차 경과일 (모든 short < long 쌍)
-          const maCrossDays: Record<number, Record<number, number | null>> = {};
-          for (let i = 0; i < MA_PERIODS.length; i++) {
-            for (let j = i + 1; j < MA_PERIODS.length; j++) {
-              const short = MA_PERIODS[i];
-              const long = MA_PERIODS[j];
-              if (!maCrossDays[short]) maCrossDays[short] = {};
-              maCrossDays[short][long] = calculateCrossDays(smaArrays[short], smaArrays[long]);
-            }
-          }
-
-          // RSI 계산
-          const rsiValues = calculateRSI(sortedPrices, RSI_PERIOD);
-          const lastRsiIdx = rsiValues.length - 1;
-          const rsi = lastRsiIdx >= 0 ? rsiValues[lastRsiIdx] : null;
-          const prevRsi = lastRsiIdx >= 1 ? rsiValues[lastRsiIdx - 1] : null;
-
-          // 전일 종가
-          const prevClose = sortedPrices.length >= 2
-            ? sortedPrices[sortedPrices.length - 2].price
-            : null;
-
-          // 가격 vs MA 상향돌파 경과일
-          const priceCrossMaDays: Record<number, number | null> = {};
-          const priceBreakBelowMaDays: Record<number, number | null> = {};
-          for (const period of MA_PERIODS) {
-            priceCrossMaDays[period] = calculatePriceCrossMaDays(sortedPrices, smaArrays[period]);
-            priceBreakBelowMaDays[period] = calculatePriceBreakBelowMaDays(sortedPrices, smaArrays[period]);
-          }
-
-          // RSI 이벤트 경과일
-          const rsiBounceDay = calculateRsiCrossDays(rsiValues, 30);
-          const rsiOverheatEntryDay = calculateRsiCrossDays(rsiValues, 70);
-
-          // ── OHLCV 기반 확장 ──
-          const closesNullable: (number | null)[] = closes;
-
-          // ATR(14) — H/L/C 필요
-          const atrSeries = ohlcvAvailable
-            ? calculateATR(highs, lows, closesNullable, 14)
-            : [];
-          const atr14 = atrSeries.length > 0 ? atrSeries[atrSeries.length - 1] : null;
-
-          // 52주 신고가/최대거래량
-          const high52w = calculate52WeekHigh(closesNullable);
-          const volume52wMax = calculate52WeekMaxVolume(volumes);
-
-          // 기울기 비율
-          const slopeRatio = calculateSlopeRatio(closesNullable, 10, 60);
-
-          // 당일 (H-L) / ATR
-          const lastIdx = sortedDates.length - 1;
-          const todayHigh = highs[lastIdx];
-          const todayLow = lows[lastIdx];
-          const dayRangeOverAtr =
-            ohlcvAvailable && typeof todayHigh === 'number' && typeof todayLow === 'number' && typeof atr14 === 'number' && atr14 > 0
-              ? (todayHigh - todayLow) / atr14
-              : null;
-
-          // 52주 신고가/최대거래량 충족 여부
-          const todayClose = closes[lastIdx];
-          const todayVolume = volumes[lastIdx];
-          const priceIsAt52wHigh =
-            typeof high52w === 'number' && typeof todayClose === 'number' && todayClose >= high52w - PRICE_HIGH_TOLERANCE;
-          const volumeIsAt52wMax =
-            typeof volume52wMax === 'number' && typeof todayVolume === 'number' && todayVolume >= volume52wMax - PRICE_HIGH_TOLERANCE;
-
-          // 당일 양봉 여부 (close > open) — 클라이맥스 (b) 방향성 보강
-          const todayOpen = opens[lastIdx];
-          const isBullishCandle: boolean | null =
-            typeof todayOpen === 'number' && typeof todayClose === 'number'
-              ? todayClose > todayOpen
-              : null;
-
-          // "수개월 상승" 전제 — MA60이 LONG_TREND_LOOKBACK일 전 대비 LONG_TREND_GROWTH배 이상
-          const sma60 = smaArrays[60];
-          const ma60Today = sma60[sma60.length - 1] ?? null;
-          const ma60PastIdx = sma60.length - 1 - LONG_TREND_LOOKBACK;
-          const ma60Past = ma60PastIdx >= 0 ? sma60[ma60PastIdx] : null;
-          const longTrendUp: boolean | null =
-            typeof ma60Today === 'number' && typeof ma60Past === 'number' && ma60Past > 0
-              ? ma60Today > ma60Past * LONG_TREND_GROWTH
-              : null;
-
-          // 직전 swing low — 와인스타인 매도 트리거
-          const swingLow = detectRecentSwingLow(sortedPrices, SWING_LOW_LOOKBACK, SWING_LOW_BARS, SWING_LOW_BARS);
-          const recentSwingLow = swingLow?.price ?? null;
-
-          // 디스트리뷰션 메타: 공용 유틸 위임 (지수와 동일 알고리즘 보장)
-          const distributionDayMeta = buildDistributionMeta(opens, highs, lows, closesNullable, volumes, {
-            metaLength: DISTRIBUTION_META_LENGTH,
-            volumeAvgPeriod: VOLUME_AVG_PERIOD_DISTRIBUTION,
+          // 단일 종목 enrichment — 백테스트와 동일 알고리즘 사용
+          const enriched = buildEnrichedIndicator({
+            sortedDates, closes, opens, highs, lows, volumes,
           });
-
-          // ticker 기준으로 저장
-          result.set(item.ticker, {
-            ma,
-            prevMa,
-            rsi,
-            prevRsi,
-            maCrossDays,
-            prevClose,
-            priceCrossMaDays,
-            priceBreakBelowMaDays,
-            rsiBounceDay,
-            rsiOverheatEntryDay,
-            atr14,
-            high52w,
-            volume52wMax,
-            slopeRatio,
-            dayRangeOverAtr,
-            priceIsAt52wHigh,
-            volumeIsAt52wMax,
-            distributionDayMeta,
-            ohlcvAvailable,
-            isBullishCandle,
-            longTrendUp,
-            recentSwingLow,
-          });
+          result.set(item.ticker, enriched);
         }
 
         if (abortRef.current) return;

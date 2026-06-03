@@ -14,6 +14,7 @@
 
 import type { EnrichedIndicatorData } from '../hooks/useEnrichedIndicators';
 import { countDistributionDays as countDistributionDaysShared } from './marketDistribution';
+import { CLIMAX_C_VOL_SURGE_RATIO } from './buildEnrichedIndicator';
 
 export type RiskTier = 'red' | 'amber' | 'blue' | null;
 
@@ -36,7 +37,7 @@ export interface RiskMatrixThresholds {
 }
 
 export const DEFAULT_RISK_MATRIX_THRESHOLDS: RiskMatrixThresholds = {
-  climaxSlopeMultiplier: 3,
+  climaxSlopeMultiplier: 2.5, // P4.5 C1: 3 → 2.5 (smartFilterLogic CLIMAX_TOP과 동기)
   climaxAtrMultiple: 2.5,
   distributionWindow: 13,
   distributionVolumeRatio: 1.5,
@@ -64,6 +65,8 @@ export interface RiskAssessment {
 /** 단일 자산의 클라이맥스 플래그 카운트 (a, b, c) — useEnrichedIndicators의 결과 사용
  *  - "수개월 상승" 전제: longTrendUp === false면 0 (데이터 부족 null은 보수적으로 통과)
  *  - (b) ATR 폭발은 양봉(상승)일 때만 카운트 (isBullishCandle === false면 무시) — 방향성 보강
+ *  - (c) P4.5 C3: 52w 신고가 AND (52w 거래량 최대 OR 50일 평균의 CLIMAX_C_VOL_SURGE_RATIO배 이상)
+ *  smartFilterLogic.CLIMAX_TOP과 동일 로직 유지 (drift 방지)
  */
 function countClimaxFlags(
   enriched: EnrichedIndicatorData,
@@ -78,7 +81,13 @@ function countClimaxFlags(
     enriched.dayRangeOverAtr >= thresholds.climaxAtrMultiple &&
     enriched.isBullishCandle !== false
   ) count++;
-  if (enriched.priceIsAt52wHigh && enriched.volumeIsAt52wMax) count++;
+  if (enriched.priceIsAt52wHigh) {
+    const todayMeta = enriched.distributionDayMeta?.[enriched.distributionDayMeta.length - 1];
+    const volRatio = todayMeta?.volRatio ?? null;
+    if (enriched.volumeIsAt52wMax || (typeof volRatio === 'number' && volRatio >= CLIMAX_C_VOL_SURGE_RATIO)) {
+      count++;
+    }
+  }
   return count;
 }
 
