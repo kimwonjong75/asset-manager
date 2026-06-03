@@ -13,6 +13,7 @@
 // 이 신호는 "예측"이 아닌 "과열 리스크 경고"임. UI 카피에 명시할 것.
 
 import type { EnrichedIndicatorData } from '../hooks/useEnrichedIndicators';
+import { countDistributionDays as countDistributionDaysShared } from './marketDistribution';
 
 export type RiskTier = 'red' | 'amber' | 'blue' | null;
 
@@ -81,26 +82,16 @@ function countClimaxFlags(
   return count;
 }
 
-/** 단일 자산의 디스트리뷰션 카운트 — 윈도우 내 매물 출회 패턴 일수 */
+/** 단일 자산의 디스트리뷰션 카운트 — 윈도우 내 매물 출회 패턴 일수 (공용 유틸 위임) */
 function countDistributionDays(
   enriched: EnrichedIndicatorData,
   thresholds: RiskMatrixThresholds
 ): number {
-  const meta = enriched.distributionDayMeta;
-  if (!meta || meta.length === 0) return 0;
-  const window = Math.min(thresholds.distributionWindow, meta.length);
-  const ratioThr = thresholds.distributionVolumeRatio;
-  let count = 0;
-  for (let i = meta.length - window; i < meta.length; i++) {
-    const d = meta[i];
-    if (typeof d.volRatio !== 'number' || d.volRatio < ratioThr) continue;
-    const churn =
-      d.isBearish === true ||
-      d.isLowerHalfClose === true ||
-      d.changeRatio < 0.002;
-    if (churn) count++;
-  }
-  return count;
+  return countDistributionDaysShared(
+    enriched.distributionDayMeta,
+    thresholds.distributionWindow,
+    thresholds.distributionVolumeRatio
+  );
 }
 
 /** MA 근접 여부 — 현재가가 MA의 ±proximityPct% 이내 */

@@ -29,18 +29,13 @@ import {
 } from '../utils/maCalculations';
 import { VOLUME_PROXY_MAP } from '../constants/commodityProxyMap';
 import { detectRecentSwingLow } from '../utils/swingPointDetection';
+import {
+  buildDistributionMeta,
+  type DistributionDayMeta as SharedDistributionDayMeta,
+} from '../utils/marketDistribution';
 
-/** 디스트리뷰션 판정 메타 (최근 N일치 — N은 DISTRIBUTION_META_LENGTH) */
-export interface DistributionDayMeta {
-  /** 거래량 / 50일 평균 거래량 (프록시 적용 후) — 50일 평균 산출 불가 시 null */
-  volRatio: number | null;
-  /** 종가 < 시가 (음봉). open 시계열 미수신 시 null */
-  isBearish: boolean | null;
-  /** 종가가 당일 (고-저) 구간의 하위 50%에서 마감. high/low 미수신 시 null */
-  isLowerHalfClose: boolean | null;
-  /** 등락률 (close - prevClose) / prevClose */
-  changeRatio: number;
-}
+/** 디스트리뷰션 판정 메타 — 정의는 utils/marketDistribution으로 이동 (지수와 종목 공용) */
+export type DistributionDayMeta = SharedDistributionDayMeta;
 
 /** 종목별 확장 지표 데이터 */
 export interface EnrichedIndicatorData {
@@ -140,22 +135,6 @@ function alignSeries(
     const v = series[d];
     return typeof v === 'number' && isFinite(v) ? v : null;
   });
-}
-
-/** 50일 trailing 평균 거래량 — i 이전 50일치 평균 (i 미포함, 룩어헤드 방지) */
-function trailingVolumeAvg(volumes: (number | null)[], i: number, period: number): number | null {
-  if (i < period) return null;
-  let sum = 0;
-  let count = 0;
-  for (let j = i - period; j < i; j++) {
-    const v = volumes[j];
-    if (typeof v === 'number') {
-      sum += v;
-      count++;
-    }
-  }
-  if (count < period * 0.8) return null; // 50일 중 80% 미만이면 신뢰 불가
-  return sum / count;
 }
 
 export function useEnrichedIndicators(
@@ -393,32 +372,11 @@ export function useEnrichedIndicators(
           const swingLow = detectRecentSwingLow(sortedPrices, SWING_LOW_LOOKBACK, SWING_LOW_BARS, SWING_LOW_BARS);
           const recentSwingLow = swingLow?.price ?? null;
 
-          // 디스트리뷰션 메타: 최근 30일(또는 가용)
-          const distributionDayMeta: DistributionDayMeta[] = [];
-          const metaStart = Math.max(0, sortedDates.length - DISTRIBUTION_META_LENGTH);
-          for (let i = metaStart; i < sortedDates.length; i++) {
-            const avgVol = trailingVolumeAvg(volumes, i, VOLUME_AVG_PERIOD_DISTRIBUTION);
-            const v = volumes[i];
-            const volRatio = typeof v === 'number' && typeof avgVol === 'number' && avgVol > 0
-              ? v / avgVol
-              : null;
-            const o = opens[i];
-            const h = highs[i];
-            const l = lows[i];
-            const c = closes[i];
-            const pc = i > 0 ? closes[i - 1] : null;
-            const isBearish: boolean | null =
-              typeof o === 'number' && typeof c === 'number' ? c < o : null;
-            const isLowerHalfClose: boolean | null =
-              typeof h === 'number' && typeof l === 'number' && typeof c === 'number' && h > l
-                ? (c - l) / (h - l) < 0.5
-                : null;
-            const changeRatio =
-              typeof pc === 'number' && pc > 0 && typeof c === 'number'
-                ? (c - pc) / pc
-                : 0;
-            distributionDayMeta.push({ volRatio, isBearish, isLowerHalfClose, changeRatio });
-          }
+          // 디스트리뷰션 메타: 공용 유틸 위임 (지수와 동일 알고리즘 보장)
+          const distributionDayMeta = buildDistributionMeta(opens, highs, lows, closesNullable, volumes, {
+            metaLength: DISTRIBUTION_META_LENGTH,
+            volumeAvgPeriod: VOLUME_AVG_PERIOD_DISTRIBUTION,
+          });
 
           // ticker 기준으로 저장
           result.set(item.ticker, {

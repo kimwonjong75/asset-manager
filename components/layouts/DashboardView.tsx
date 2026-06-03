@@ -14,6 +14,7 @@ import CategorySummaryTable from '../dashboard/CategorySummaryTable';
 import TopBottomAssets from '../dashboard/TopBottomAssets';
 import RebalancingTable from '../dashboard/RebalancingTable';
 import GoldPremiumWidget from '../GoldPremiumWidget';
+import MarketDistributionBanner from '../MarketDistributionBanner';
 
 const DashboardView: React.FC = () => {
   const { data, ui, actions, status, derived } = usePortfolio();
@@ -84,7 +85,9 @@ const DashboardView: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <DashboardControls 
+      <MarketDistributionBanner />
+
+      <DashboardControls
         assets={assets}
         filterCategory={dashboardFilterCategory}
         onFilterChange={(cat) => setDashboardFilterCategory(cat)}
