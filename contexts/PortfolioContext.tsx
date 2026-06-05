@@ -212,6 +212,9 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const persistColumnConfig = (next: ColumnConfig[]) => {
     setColumnConfigState(next);
     try { localStorage.setItem('asset-manager-column-config-v1', JSON.stringify(next)); } catch { /* ignore */ }
+    // 컬럼 설정 변경은 Drive autoSave 의존성에 포함되지 않으므로 명시적으로 트리거.
+    // (hookAutoSave는 localStorage에서 최신 tableLayout을 읽어 백업에 포함하며, 디바운스됨)
+    triggerAutoSave(assets, portfolioHistory, sellHistory, watchlist, exchangeRates);
   };
   const handleSetColumnConfig = (config: ColumnConfig[]) => {
     persistColumnConfig(mergeColumnConfig(config));
@@ -231,6 +234,7 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const persistFixedColumnWidths = (next: FixedColumnWidths) => {
     setFixedColumnWidthsState(next);
     try { localStorage.setItem('asset-manager-fixed-column-widths-v1', JSON.stringify(next)); } catch { /* ignore */ }
+    triggerAutoSave(assets, portfolioHistory, sellHistory, watchlist, exchangeRates);
   };
   const handleResetColumnConfig = () => {
     persistColumnConfig(DEFAULT_COLUMN_CONFIG);

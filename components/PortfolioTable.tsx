@@ -463,8 +463,9 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
       />
 
       {/* 데스크탑: 테이블 — overflow 없음, thead가 main 스크롤 기준 sticky */}
+      {/* table-layout: fixed — 사용자가 지정한 컬럼 너비를 엄격히 적용해 콘텐츠 크기와 무관하게 가로 스크롤 방지 */}
       <div className="hidden md:block">
-        <table className="w-full text-sm">
+        <table className="w-full text-sm" style={{ tableLayout: 'fixed' }}>
           <colgroup>
             <col />
             <col style={getColWidth('name') ? { width: `${getColWidth('name')}px` } : undefined} />

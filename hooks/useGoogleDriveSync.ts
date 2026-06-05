@@ -51,6 +51,13 @@ export function useGoogleDriveSync(options: UseGoogleDriveSyncOptions = {}) {
           if (googleDriveService.isSignedIn()) {
             setIsSignedIn(true);
             setGoogleUser(googleDriveService.getCurrentUser());
+          } else if (googleDriveService.getCurrentUser()) {
+            // 토큰 갱신 실패로 access token은 없지만 JWT/user는 보존됨.
+            // 데이터 UI를 유지하면서 "세션 만료" 배너로 재로그인 유도.
+            // (페이지 reload 후 백엔드 일시 장애 등으로 로그아웃 화면이 뜨는 문제 방지)
+            setIsSignedIn(true);
+            setGoogleUser(googleDriveService.getCurrentUser());
+            setNeedsReAuth(true);
           }
         }
       } catch (e) {

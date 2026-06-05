@@ -624,6 +624,7 @@ try {
 - **토큰 구조**: JWT(30일, localStorage) + Access Token(1시간, localStorage) + Refresh Token(영구, Firestore — 백엔드만 접근)
 - **토큰 갱신**: Access Token 만료 5분 전 자동 갱신 (`scheduleTokenRefresh` → `/auth/refresh`)
 - **401 자동 재인증**: 모든 Drive API 호출은 `authenticatedFetch()` 래퍼를 경유 — 401 응답 시 백엔드 `/auth/refresh` 호출 → 실패 시 `clearAuth()` → `needsReAuth` 배너 표시 (데이터 유지)
+- **초기화 시 갱신 실패 처리**: `googleDriveService.initialize()`는 저장된 JWT/user가 있지만 Access Token이 만료된 경우 백엔드 갱신을 시도. **갱신 실패 시 JWT/user는 localStorage에 그대로 보존하고 Access Token만 정리**. `useGoogleDriveSync` 초기화 effect가 `getCurrentUser()`로 user 존재를 감지하면 `setIsSignedIn(true) + setNeedsReAuth(true)`를 호출 → "Google Drive 로그인 필요" 화면 대신 amber 배너 표시. **이유**: 업데이트 알림에서 `window.location.replace()`로 페이지를 reload할 때 일시적 백엔드 장애로도 강제 로그아웃되는 문제 방지
 - **초기화 로딩 화면**: App.tsx는 3분기 렌더링 — `isInitializing ? 로딩스피너("로그인 확인 중...") : isSignedIn ? 메인앱 : 로그인화면`. 초기화 중에는 로그인 버튼이 노출되지 않아 중복 로그인 시도 방지
 - **`isInitializing` 전달 경로**: `useGoogleDriveSync` → `usePortfolioData`(`isInitializing`) → `PortfolioContext`(`isAuthInitializing` → `isInitializing`) → `App.tsx`(`status.isInitializing`). Context에서 하드코딩하지 말 것
 - **세션 만료 UX**: `needsReAuth=true` 시 App.tsx에 amber 배너 표시 + "다시 로그인" 버튼. `isSignedIn`은 유지되어 데이터/UI 보존. 재로그인 성공 시 `needsReAuth=false`
@@ -755,8 +756,9 @@ try {
   - **상위 컴포넌트 안정화**: `MiddleColumnResizeHandle`은 `useMemo([])`로 영구 안정. 콜백 내부에서 `actionsRef.current.setColumnWidth(...)` 호출 — Context 갱신 시 핸들 리마운트 방지 (드래그 중 state 손실 차단)
   - 대상: 종목명 + 중간 11개. 체크박스/관리는 자동 너비 유지
 - **콜스팬**: 차트 확장 행과 empty 메시지는 `totalColSpan = 3 + visibleColumns.filter(c => c.visible).length` (체크박스+종목명+관리 3 + 가시 컬럼 수). `<colgroup>`은 콜스팬에 영향 없음
-- **`table-layout: auto` 유지**: `<col>`에 너비 미지정 컬럼은 브라우저 자동 분배. `fixed`로 바꾸지 말 것 (모든 컬럼 너비 시드 필요해짐)
+- **`table-layout: fixed` 강제**: `PortfolioTable.tsx`에서 `<table style={{ tableLayout: 'fixed' }}>`로 적용. 특정 PC 환경(폰트/배율 차이)에서 `auto`일 때 콘텐츠 min-content가 사용자 지정 width를 무시해 가로 스크롤바가 사라지지 않는 문제를 해결. **부작용**: 콘텐츠가 길면 잘림 — 모든 td는 `overflow-hidden` 처리 필수 (현 `PortfolioTableRow` / `columnDefinitions` 모두 적용됨). 컬럼 너비 미지정 시에도 동작하나, 시각적으로 좁아질 수 있어 `DEFAULT_COLUMN_CONFIG`에서 합리적 기본값 권장
 - **백업 포함**: Drive 자동 저장/복원 시 `useGoogleDriveSync.autoSave`가 `tableLayout: { columns, fixedWidths }` 단일 객체로 묶어 페이로드 포함 (`columnConfig` 필드도 한 릴리스 동안 함께 저장 — 구 클라이언트 호환). `loadFromGoogleDrive`는 복원 시 두 localStorage 키 갱신 + `window.dispatchEvent('table-layout-restored', { detail: { columns, fixedWidths } })` 발행. 레거시 `columnConfig`(배열)만 있는 백업은 `'column-config-restored'` 폴백 경로로 복원 (한 릴리스 뒤 제거 예정). `PortfolioContext`가 두 이벤트 모두 리스닝하여 state 즉시 동기화
+- **컬럼 변경 시 autoSave 트리거**: `PortfolioContext.persistColumnConfig` / `persistFixedColumnWidths`는 localStorage 저장 직후 `triggerAutoSave(assets, portfolioHistory, sellHistory, watchlist, exchangeRates)`를 호출. 호출 인자는 현재 상태 그대로 전달 (autoSave 본문이 localStorage에서 최신 tableLayout을 읽어 백업에 포함). **이유**: 컬럼 변경은 `usePortfolioData`의 `triggerAutoSave` deps에 포함되지 않아, 컬럼만 조절하고 세션 종료 시 Drive 백업에 반영되지 않고 다음 로드 시 옛 백업이 localStorage를 덮어쓰는 문제 발생 → 재부팅 시 초기화되는 것처럼 보임. autoSave는 디바운스되어 빠른 리사이즈에도 1회만 저장됨
 - **모바일 미적용**: `PortfolioMobileCard`는 영향 없음 — 컬럼 개념이 카드 레이아웃과 맞지 않음 ("포트폴리오 테이블 기능 추가 시 PortfolioMobileCard에도 반영" 규칙의 의도적 예외)
 - **기존 `더보기` 토글 제거**: `asset-manager-portfolio-show-more` localStorage 키는 더 이상 사용되지 않음 (자동 정리는 안 되며, 무시됨)
 

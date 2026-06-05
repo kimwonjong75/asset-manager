@@ -76,16 +76,13 @@ class GoogleDriveService {
         this.isInitialized = true;
         return;
       } catch {
-        log.info('Backend token refresh failed, user needs to sign in again');
+        log.info('Backend token refresh failed, keeping JWT/user — re-auth required');
       }
 
-      // 갱신 실패 → 토큰 정리 (초기화 시에는 onAuthStateChange 호출하지 않음)
-      this.jwtToken = null;
-      this.user = null;
+      // 갱신 실패 → access token만 정리, JWT/user는 보존하여 데이터 UI를 유지.
+      // useGoogleDriveSync가 user 존재를 감지해 needsReAuth 배너를 표시함.
       this.accessToken = null;
-      localStorage.removeItem('google_drive_jwt');
       localStorage.removeItem('google_drive_access_token');
-      localStorage.removeItem('google_drive_user');
       localStorage.removeItem('google_drive_token_expiry');
     }
 
