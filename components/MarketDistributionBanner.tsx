@@ -10,6 +10,11 @@ import {
   type MarketDistributionEntry,
   type MarketDistributionSeverity,
 } from '../hooks/useMarketDistributionDays';
+import Tooltip from './common/Tooltip';
+
+// 라벨 뱃지 hover 시 표시 — 산식·단계·면책을 한 번에 설명 (3개 등급 공용)
+const BANNER_TOOLTIP =
+  "시장 지수의 '매물 출회일'을 세어 시장 전체의 위험을 진단하는 신호예요. (내 보유종목이 아니라 지수 자체 기준)\n📐 계산: 거래량이 50일 평균의 1.5배 이상인데 가격은 못 오른 날(음봉·윗꼬리·정체)을 '매물 출회일'로 셉니다. 최근 13거래일 기준.\n🚦 단계: 3회=주의(노랑) · 4회=약세(주황) · 5회 이상=시장 탈출(빨강). 2회 이하는 표시 안 함.\n💡 큰손이 물량을 던지는 날이 쌓일수록 시장이 약해진다는 오닐(W.O'Neil)의 진단 도구예요. 예측이 아닌 분위기 경고.";
 
 const SEVERITY_STYLES: Record<Exclude<MarketDistributionSeverity, 'safe'>, {
   containerClass: string;
@@ -66,7 +71,12 @@ const MarketDistributionBanner: React.FC = () => {
           >
             <span className={`flex-shrink-0 w-2.5 h-2.5 rounded-full ${styles.dotClass}`} />
             <span className="font-semibold">{entry.name}</span>
-            <span className="text-xs px-1.5 py-0.5 rounded bg-black/30">{styles.label}</span>
+            <Tooltip content={BANNER_TOOLTIP} position="bottom" wrap className="cursor-help">
+              <span className="text-xs px-1.5 py-0.5 rounded bg-black/30 inline-flex items-center gap-1">
+                {styles.label}
+                <span className="opacity-60">ⓘ</span>
+              </span>
+            </Tooltip>
             <span className="text-xs sm:text-sm">{styles.message(entry.count)}</span>
           </div>
         );

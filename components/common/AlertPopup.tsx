@@ -8,6 +8,7 @@ import {
   BRIEFING_COLUMN_TOOLTIPS,
   BRIEFING_RULE_TOOLTIPS,
   RISK_TIER_TOOLTIPS,
+  CLIMAX_SIGNAL_TOOLTIP,
 } from '../../constants/briefingDescriptions';
 
 // P4.5 D1: distribution-high 단계별 뱃지 — 'new'는 컬러, 'ongoing'은 회색
@@ -306,6 +307,11 @@ const AlertPopup: React.FC<AlertPopupProps> = ({ results, riskMatrix, onClose, o
                         <span>⚠️ 과열 리스크 경고</span>
                       </Tooltip>
                       <span className="text-gray-500 font-normal">({riskTieredCount}종목)</span>
+                      <Tooltip content={CLIMAX_SIGNAL_TOOLTIP} position="bottom" wrap className="cursor-help">
+                        <span className="text-[10px] text-gray-500 font-normal underline decoration-dotted underline-offset-2">
+                          클라이맥스란? ⓘ
+                        </span>
+                      </Tooltip>
                     </h3>
                     <div className="space-y-2">
                       {(['red', 'amber', 'blue'] as const).map(tier => {
