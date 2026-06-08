@@ -2,6 +2,13 @@ import React, { useState } from 'react';
 import type { AlertResult, AlertMatchedAsset } from '../../types/alertRules';
 import type { RiskMatrixRow } from '../../utils/riskMatrix';
 import type { DistributionTier } from '../../utils/distributionTierState';
+import Tooltip from './Tooltip';
+import {
+  BRIEFING_SECTION_TOOLTIPS,
+  BRIEFING_COLUMN_TOOLTIPS,
+  BRIEFING_RULE_TOOLTIPS,
+  RISK_TIER_TOOLTIPS,
+} from '../../constants/briefingDescriptions';
 
 // P4.5 D1: distribution-high 단계별 뱃지 — 'new'는 컬러, 'ongoing'은 회색
 const TIER_NEW_STYLES: Record<DistributionTier, { bg: string; label: string }> = {
@@ -137,13 +144,17 @@ const AlertPopup: React.FC<AlertPopupProps> = ({ results, riskMatrix, onClose, o
     );
   };
 
-  const renderSection = (sectionResults: AlertResult[], title: string, icon: React.ReactNode, titleColor: string) => {
+  const renderSection = (sectionResults: AlertResult[], title: string, icon: React.ReactNode, titleColor: string, tooltip: string) => {
     if (sectionResults.length === 0) return null;
     return (
       <div>
         <h3 className={`text-xs font-semibold ${titleColor} mb-2 flex items-center gap-1.5`}>
-          {icon}
-          {title}
+          <Tooltip content={tooltip} wrap className="cursor-help">
+            <span className="flex items-center gap-1.5">
+              {icon}
+              {title}
+            </span>
+          </Tooltip>
           <span className="text-gray-500 font-normal">
             ({sectionResults.reduce((sum, r) => sum + r.matchedAssets.length, 0)}종목)
           </span>
@@ -168,9 +179,17 @@ const AlertPopup: React.FC<AlertPopupProps> = ({ results, riskMatrix, onClose, o
             return (
               <div key={rule.id} className={`${styles.bg} border ${styles.border} rounded-lg p-2.5`}>
                 <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-                  <span className={`text-[10px] px-1.5 py-0.5 rounded ${styles.badge} text-white font-medium`}>
-                    {rule.name}
-                  </span>
+                  {BRIEFING_RULE_TOOLTIPS[rule.id] ? (
+                    <Tooltip content={BRIEFING_RULE_TOOLTIPS[rule.id]} wrap className="cursor-help">
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded ${styles.badge} text-white font-medium`}>
+                        {rule.name}
+                      </span>
+                    </Tooltip>
+                  ) : (
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded ${styles.badge} text-white font-medium`}>
+                      {rule.name}
+                    </span>
+                  )}
                   {rule.id === 'distribution-high' && (newCount > 0 || ongoingCount > 0) && (
                     <span className="text-[10px] flex items-center gap-1.5">
                       {newCount > 0 && <span className="text-amber-300 font-medium">신규 {newCount}건</span>}
@@ -190,10 +209,26 @@ const AlertPopup: React.FC<AlertPopupProps> = ({ results, riskMatrix, onClose, o
                   </colgroup>
                   <thead>
                     <tr className="text-gray-500 border-b border-gray-700/50">
-                      <th className="text-left py-1 pr-2 font-medium truncate">종목</th>
-                      <th className="text-right py-1 px-1 font-medium">당일</th>
-                      <th className="text-right py-1 px-1 font-medium">수익률</th>
-                      <th className="text-right py-1 pl-1 font-medium">RSI</th>
+                      <th className="text-left py-1 pr-2 font-medium truncate">
+                        <Tooltip content={BRIEFING_COLUMN_TOOLTIPS.asset} position="bottom" wrap className="cursor-help">
+                          <span>종목</span>
+                        </Tooltip>
+                      </th>
+                      <th className="text-right py-1 px-1 font-medium">
+                        <Tooltip content={BRIEFING_COLUMN_TOOLTIPS.daily} position="bottom" wrap className="cursor-help">
+                          <span>당일</span>
+                        </Tooltip>
+                      </th>
+                      <th className="text-right py-1 px-1 font-medium">
+                        <Tooltip content={BRIEFING_COLUMN_TOOLTIPS.return} position="bottom" wrap className="cursor-help">
+                          <span>수익률</span>
+                        </Tooltip>
+                      </th>
+                      <th className="text-right py-1 pl-1 font-medium">
+                        <Tooltip content={BRIEFING_COLUMN_TOOLTIPS.rsi} position="bottom" wrap className="cursor-help">
+                          <span>RSI</span>
+                        </Tooltip>
+                      </th>
                       <th></th>
                     </tr>
                   </thead>
@@ -267,7 +302,9 @@ const AlertPopup: React.FC<AlertPopupProps> = ({ results, riskMatrix, onClose, o
                 {riskTieredCount > 0 && (
                   <div>
                     <h3 className="text-xs font-semibold text-amber-300 mb-2 flex items-center gap-1.5">
-                      <span>⚠️ 과열 리스크 경고</span>
+                      <Tooltip content={BRIEFING_SECTION_TOOLTIPS.riskWarning} wrap className="cursor-help">
+                        <span>⚠️ 과열 리스크 경고</span>
+                      </Tooltip>
                       <span className="text-gray-500 font-normal">({riskTieredCount}종목)</span>
                     </h3>
                     <div className="space-y-2">
@@ -278,9 +315,11 @@ const AlertPopup: React.FC<AlertPopupProps> = ({ results, riskMatrix, onClose, o
                         return (
                           <div key={tier} className={`${styles.bg} border ${styles.border} rounded-lg p-2.5`}>
                             <div className="flex items-center gap-2 mb-1.5">
-                              <span className={`text-[10px] px-1.5 py-0.5 rounded ${styles.badge} font-medium`}>
-                                {styles.label}
-                              </span>
+                              <Tooltip content={RISK_TIER_TOOLTIPS[tier]} wrap className="cursor-help">
+                                <span className={`text-[10px] px-1.5 py-0.5 rounded ${styles.badge} font-medium`}>
+                                  {styles.label}
+                                </span>
+                              </Tooltip>
                               <span className="text-gray-400 text-[11px]">{rows.length}종목</span>
                             </div>
                             <div className="space-y-1">
@@ -318,7 +357,8 @@ const AlertPopup: React.FC<AlertPopupProps> = ({ results, riskMatrix, onClose, o
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                   </svg>,
-                  'text-red-400'
+                  'text-red-400',
+                  BRIEFING_SECTION_TOOLTIPS.sell
                 )}
                 {renderSection(
                   buyResults,
@@ -326,7 +366,8 @@ const AlertPopup: React.FC<AlertPopupProps> = ({ results, riskMatrix, onClose, o
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
                   </svg>,
-                  'text-blue-400'
+                  'text-blue-400',
+                  BRIEFING_SECTION_TOOLTIPS.buy
                 )}
                 <p className="text-gray-600 text-[10px] text-center pb-1">종목을 클릭하면 해당 탭으로 이동합니다</p>
               </>
