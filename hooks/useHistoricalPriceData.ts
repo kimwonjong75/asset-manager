@@ -24,6 +24,12 @@ interface UseHistoricalPriceDataProps {
 interface UseHistoricalPriceDataResult {
   historicalPrices: HistoricalPriceData | null;
   historicalVolumes: HistoricalPriceData | null;
+  /** 시가 시계열 (캔들차트용, 백엔드 미수신 시 null → 라인 폴백) */
+  historicalOpens: HistoricalPriceData | null;
+  /** 고가 시계열 (캔들차트용, 백엔드 미수신 시 null → 라인 폴백) */
+  historicalHighs: HistoricalPriceData | null;
+  /** 저가 시계열 (캔들차트용, 백엔드 미수신 시 null → 라인 폴백) */
+  historicalLows: HistoricalPriceData | null;
   isLoading: boolean;
   error: string | null;
 }
@@ -31,6 +37,9 @@ interface UseHistoricalPriceDataResult {
 interface CacheEntry {
   data: HistoricalPriceData;
   volume: HistoricalPriceData | null;
+  open: HistoricalPriceData | null;
+  high: HistoricalPriceData | null;
+  low: HistoricalPriceData | null;
   fetchedAt: number;
   totalDays: number;
 }
@@ -52,6 +61,9 @@ export function useHistoricalPriceData({
 }: UseHistoricalPriceDataProps): UseHistoricalPriceDataResult {
   const [historicalPrices, setHistoricalPrices] = useState<HistoricalPriceData | null>(null);
   const [historicalVolumes, setHistoricalVolumes] = useState<HistoricalPriceData | null>(null);
+  const [historicalOpens, setHistoricalOpens] = useState<HistoricalPriceData | null>(null);
+  const [historicalHighs, setHistoricalHighs] = useState<HistoricalPriceData | null>(null);
+  const [historicalLows, setHistoricalLows] = useState<HistoricalPriceData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const abortRef = useRef(false);
@@ -73,6 +85,9 @@ export function useHistoricalPriceData({
     if (cached && (now - cached.fetchedAt) < CACHE_TTL_MS && cached.totalDays >= totalDays) {
       setHistoricalPrices(cached.data);
       setHistoricalVolumes(cached.volume);
+      setHistoricalOpens(cached.open);
+      setHistoricalHighs(cached.high);
+      setHistoricalLows(cached.low);
       setError(null);
       return;
     }
@@ -93,17 +108,26 @@ export function useHistoricalPriceData({
 
         let priceData: HistoricalPriceData | undefined;
         let volumeData: HistoricalPriceData | undefined;
+        let openData: HistoricalPriceData | undefined;
+        let highData: HistoricalPriceData | undefined;
+        let lowData: HistoricalPriceData | undefined;
 
         if (isCrypto) {
           const result = await fetchCryptoHistoricalPrices([apiTicker], startDate, endDate);
           const entry = result[apiTicker] || result[Object.keys(result)[0]];
           priceData = entry?.data;
           volumeData = entry?.volume;
+          openData = entry?.open;
+          highData = entry?.high;
+          lowData = entry?.low;
         } else {
           const result = await fetchStockHistoricalPrices([apiTicker], startDate, endDate);
           const entry = result[apiTicker] || result[Object.keys(result)[0]];
           priceData = entry?.data;
           volumeData = entry?.volume;
+          openData = entry?.open;
+          highData = entry?.high;
+          lowData = entry?.low;
         }
 
         if (abortRef.current) return;
@@ -112,11 +136,17 @@ export function useHistoricalPriceData({
           cache.set(cacheKey, {
             data: priceData,
             volume: volumeData ?? null,
+            open: openData ?? null,
+            high: highData ?? null,
+            low: lowData ?? null,
             fetchedAt: Date.now(),
             totalDays,
           });
           setHistoricalPrices(priceData);
           setHistoricalVolumes(volumeData ?? null);
+          setHistoricalOpens(openData ?? null);
+          setHistoricalHighs(highData ?? null);
+          setHistoricalLows(lowData ?? null);
           setError(null);
         } else {
           setError('과거 시세 데이터가 없습니다.');
@@ -139,5 +169,5 @@ export function useHistoricalPriceData({
     };
   }, [ticker, exchange, category, isExpanded]);
 
-  return { historicalPrices, historicalVolumes, isLoading, error };
+  return { historicalPrices, historicalVolumes, historicalOpens, historicalHighs, historicalLows, isLoading, error };
 }

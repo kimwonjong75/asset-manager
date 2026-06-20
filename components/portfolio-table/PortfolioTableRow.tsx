@@ -3,6 +3,7 @@ import { usePortfolio } from '../../contexts/PortfolioContext';
 import { Asset, Currency, PortfolioSnapshot, ExchangeRates } from '../../types';
 import { EnrichedAsset, ColumnConfig, ColumnKey } from '../../types/ui';
 import AssetTrendChart from '../AssetTrendChart';
+import ChartViewerModal from '../common/ChartViewerModal';
 import { MoreHorizontal } from 'lucide-react';
 import MemoTooltip from '../common/MemoTooltip';
 import Tooltip from '../common/Tooltip';
@@ -55,6 +56,7 @@ const PortfolioTableRow: React.FC<PortfolioTableRowProps> = ({
   getTdStyle,
 }) => {
   const [expandedAssetId, setExpandedAssetId] = useState<string | null>(null);
+  const [fullscreen, setFullscreen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuAnchorRef = useRef<HTMLButtonElement>(null);
   const rowRef = useRef<HTMLTableRowElement>(null);
@@ -162,6 +164,7 @@ const PortfolioTableRow: React.FC<PortfolioTableRowProps> = ({
                 ...(onBuy ? [{ label: '매수', onClick: () => onBuy(asset), colorClass: 'text-green-400' }] : []),
                 ...(onSell ? [{ label: '매도', onClick: () => onSell(asset), colorClass: 'text-red-400' }] : []),
                 { label: '차트 보기', onClick: () => handleToggleExpand(asset.id), colorClass: 'text-gray-200' },
+                { label: '차트 확대', onClick: () => setFullscreen(true), colorClass: 'text-gray-200' },
               ]}
             />
           )}
@@ -182,9 +185,26 @@ const PortfolioTableRow: React.FC<PortfolioTableRowProps> = ({
               exchange={asset.exchange}
               categoryId={asset.categoryId}
               purchasePrice={asset.purchasePrice}
+              onExpand={() => setFullscreen(true)}
             />
           </td>
         </tr>
+      )}
+      {fullscreen && (
+        <ChartViewerModal
+          history={history}
+          assetId={asset.id}
+          assetName={(asset.customName?.trim() || asset.name)}
+          currentQuantity={asset.quantity}
+          currentPrice={asset.currentPrice}
+          currency={asset.currency}
+          exchangeRate={derivedExchangeRate}
+          ticker={asset.ticker}
+          exchange={asset.exchange}
+          categoryId={asset.categoryId}
+          purchasePrice={asset.purchasePrice}
+          onClose={() => setFullscreen(false)}
+        />
       )}
     </Fragment>
   );

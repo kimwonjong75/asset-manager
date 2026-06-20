@@ -5,6 +5,7 @@ import ActionMenu from '../common/ActionMenu';
 import MemoTooltip from '../common/MemoTooltip';
 import { MoreHorizontal } from 'lucide-react';
 import AssetTrendChart from '../AssetTrendChart';
+import ChartViewerModal from '../common/ChartViewerModal';
 
 interface WatchlistMobileCardProps {
   item: WatchlistItem & { dropFromHigh: number | null; yesterdayChange: number };
@@ -37,6 +38,7 @@ const WatchlistMobileCard: React.FC<WatchlistMobileCardProps> = ({
 }) => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  const [fullscreen, setFullscreen] = useState(false);
   const menuAnchorRef = useRef<HTMLButtonElement>(null);
 
   const isNonKRW = item.currency !== undefined && item.currency !== Currency.KRW;
@@ -129,6 +131,7 @@ const WatchlistMobileCard: React.FC<WatchlistMobileCardProps> = ({
             items={[
               { label: '수정', onClick: () => onOpenEditModal(item) },
               { label: '차트 보기', onClick: () => setExpanded(!expanded), colorClass: 'text-gray-200' },
+              { label: '차트 확대', onClick: () => setFullscreen(true), colorClass: 'text-gray-200' },
               { label: '삭제', onClick: () => {
                 if (window.confirm(`'${item.name}' 종목을 삭제하시겠습니까?`)) onDelete(item.id);
               }, colorClass: 'text-red-400' },
@@ -151,8 +154,25 @@ const WatchlistMobileCard: React.FC<WatchlistMobileCardProps> = ({
             ticker={item.ticker}
             exchange={item.exchange}
             categoryId={item.categoryId}
+            onExpand={() => setFullscreen(true)}
           />
         </div>
+      )}
+
+      {fullscreen && (
+        <ChartViewerModal
+          history={[]}
+          assetId={item.id}
+          assetName={item.name}
+          currentQuantity={1}
+          currentPrice={item.priceOriginal || item.currentPrice || 0}
+          currency={item.currency}
+          exchangeRate={getExchangeRate()}
+          ticker={item.ticker}
+          exchange={item.exchange}
+          categoryId={item.categoryId}
+          onClose={() => setFullscreen(false)}
+        />
       )}
     </div>
   );

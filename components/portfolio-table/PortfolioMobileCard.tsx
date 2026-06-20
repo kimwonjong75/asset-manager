@@ -6,6 +6,7 @@ import ActionMenu from '../common/ActionMenu';
 import CrossDaysBadge from '../common/CrossDaysBadge';
 import { MoreHorizontal } from 'lucide-react';
 import AssetTrendChart from '../AssetTrendChart';
+import ChartViewerModal from '../common/ChartViewerModal';
 
 
 interface PortfolioMobileCardProps {
@@ -40,6 +41,7 @@ const PortfolioMobileCard: React.FC<PortfolioMobileCardProps> = ({
 }) => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  const [fullscreen, setFullscreen] = useState(false);
   const menuAnchorRef = useRef<HTMLButtonElement>(null);
 
   const { returnPercentage, currentValue, currentValueKRW, profitLoss, dropFromHigh, yesterdayChange } = asset.metrics;
@@ -119,6 +121,7 @@ const PortfolioMobileCard: React.FC<PortfolioMobileCardProps> = ({
               ...(onBuy ? [{ label: '매수', onClick: () => onBuy(asset), colorClass: 'text-green-400' }] : []),
               ...(onSell ? [{ label: '매도', onClick: () => onSell(asset), colorClass: 'text-red-400' }] : []),
               { label: '차트 보기', onClick: () => setExpanded(!expanded), colorClass: 'text-gray-200' },
+              { label: '차트 확대', onClick: () => setFullscreen(true), colorClass: 'text-gray-200' },
             ]}
           />
         )}
@@ -139,8 +142,26 @@ const PortfolioMobileCard: React.FC<PortfolioMobileCardProps> = ({
             exchange={asset.exchange}
             categoryId={asset.categoryId}
             purchasePrice={asset.purchasePrice}
+            onExpand={() => setFullscreen(true)}
           />
         </div>
+      )}
+
+      {fullscreen && (
+        <ChartViewerModal
+          history={history}
+          assetId={asset.id}
+          assetName={asset.customName?.trim() || asset.name}
+          currentQuantity={asset.quantity}
+          currentPrice={asset.currentPrice}
+          currency={asset.currency}
+          exchangeRate={derivedExchangeRate}
+          ticker={asset.ticker}
+          exchange={asset.exchange}
+          categoryId={asset.categoryId}
+          purchasePrice={asset.purchasePrice}
+          onClose={() => setFullscreen(false)}
+        />
       )}
     </div>
   );

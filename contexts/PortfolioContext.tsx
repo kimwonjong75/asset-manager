@@ -29,8 +29,48 @@ import {
   type ColumnKey,
   type FixedColumnWidths,
 } from '../types/ui';
+import { DEFAULT_MA_CONFIGS, clampMAPeriod, type MALineConfig } from '../utils/maCalculations';
 
 const PortfolioContext = createContext<PortfolioContextValue | null>(null);
+
+// --- 차트 MA 슬롯 설정 (localStorage 영속 + 레거시 마이그레이션) ---
+const MA_CONFIGS_KEY_V2 = 'asset-manager-ma-configs-v2';
+const MA_CONFIGS_KEY_LEGACY = 'asset-manager-ma-preferences';
+
+// v2 저장본을 DEFAULT와 슬롯 id 기준으로 머지: 기간 클램프, 누락 슬롯 backfill, 색은 default 유지
+const mergeChartMAConfigs = (stored: Partial<MALineConfig>[]): MALineConfig[] =>
+  DEFAULT_MA_CONFIGS.map(def => {
+    const saved = stored.find(s => s.id === def.id);
+    if (!saved) return { ...def };
+    return {
+      ...def,
+      period: clampMAPeriod(saved.period ?? def.period),
+      enabled: typeof saved.enabled === 'boolean' ? saved.enabled : def.enabled,
+    };
+  });
+
+// 레거시(period 키, enabled만 저장된 구 포맷) → v2: 기존 enabled 상태 보존
+const migrateLegacyMAConfigs = (parsed: { period?: number; enabled?: boolean }[]): MALineConfig[] =>
+  DEFAULT_MA_CONFIGS.map(def => {
+    const saved = parsed.find(p => p.period === def.period);
+    return saved && typeof saved.enabled === 'boolean' ? { ...def, enabled: saved.enabled } : { ...def };
+  });
+
+const loadChartMAConfigs = (): MALineConfig[] => {
+  try {
+    const rawV2 = localStorage.getItem(MA_CONFIGS_KEY_V2);
+    if (rawV2) {
+      const parsed = JSON.parse(rawV2);
+      if (Array.isArray(parsed)) return mergeChartMAConfigs(parsed);
+    }
+    const rawLegacy = localStorage.getItem(MA_CONFIGS_KEY_LEGACY);
+    if (rawLegacy) {
+      const parsed = JSON.parse(rawLegacy);
+      if (Array.isArray(parsed)) return migrateLegacyMAConfigs(parsed);
+    }
+  } catch { /* ignore */ }
+  return DEFAULT_MA_CONFIGS.map(c => ({ ...c }));
+};
 
 // 저장된 컬럼 설정과 현재 DEFAULT_COLUMN_CONFIG를 머지:
 //  - 저장본에 없는 키는 default 위치에 visible 기본값으로 추가
@@ -250,6 +290,19 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     persistFixedColumnWidths({ ...fixedColumnWidths, [key]: clamped });
   };
 
+  // 개별 차트 MA 슬롯 설정 — localStorage 영속 (차트 표시 전용, Drive 동기화 불필요)
+  const [chartMAConfigs, setChartMAConfigsState] = useState<MALineConfig[]>(() => loadChartMAConfigs());
+  const handleSetChartMAConfigs = (configs: MALineConfig[]) => {
+    const merged = mergeChartMAConfigs(configs);
+    setChartMAConfigsState(merged);
+    try { localStorage.setItem(MA_CONFIGS_KEY_V2, JSON.stringify(merged)); } catch { /* ignore */ }
+  };
+  const handleResetChartMAConfigs = () => {
+    const def = DEFAULT_MA_CONFIGS.map(c => ({ ...c }));
+    setChartMAConfigsState(def);
+    try { localStorage.setItem(MA_CONFIGS_KEY_V2, JSON.stringify(def)); } catch { /* ignore */ }
+  };
+
   // Drive 복원 시 useGoogleDriveSync가 dispatch하는 이벤트를 감지하여 상태 동기화
   // 신규: 'table-layout-restored' (columns + fixedWidths 묶음)
   // 레거시: 'column-config-restored' (columns 배열만 — 구 백업 호환)
@@ -406,6 +459,7 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       lowValueThreshold,
       columnConfig,
       fixedColumnWidths,
+      chartMAConfigs,
     },
     modal: {
       editingAsset,
@@ -504,6 +558,8 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       resetColumnConfig: handleResetColumnConfig,
       setColumnWidth: handleSetColumnWidth,
       setFixedColumnWidth: handleSetFixedColumnWidth,
+      setChartMAConfigs: handleSetChartMAConfigs,
+      resetChartMAConfigs: handleResetChartMAConfigs,
       updateAllocationTargets: (targets: AllocationTargets) => {
         setAllocationTargets(targets);
         triggerAutoSave(assets, portfolioHistory, sellHistory, watchlist, exchangeRates, targets);

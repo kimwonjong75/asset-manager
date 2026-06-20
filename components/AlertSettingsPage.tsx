@@ -69,8 +69,8 @@ const AlertSettingsPage: React.FC = () => {
           rule.enabled ? 'border-gray-600' : 'border-gray-700 opacity-50'
         }`}
       >
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex items-center gap-3 min-w-0">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="flex items-center gap-3 flex-1 min-w-[200px]">
             {/* 활성/비활성 토글 */}
             <button
               onClick={() => updateRule(rule.id, { enabled: !rule.enabled })}
@@ -103,7 +103,7 @@ const AlertSettingsPage: React.FC = () => {
           </div>
 
           {/* 설정 영역 */}
-          <div className="flex items-center gap-2 flex-shrink-0 flex-wrap justify-end">
+          <div className="flex items-center gap-2 flex-wrap justify-end">
             {config.lossThreshold !== undefined && (
               <div className="flex items-center gap-1 text-xs text-gray-300">
                 <span>손실률</span>

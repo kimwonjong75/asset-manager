@@ -4,19 +4,27 @@
 import { HistoricalPriceData } from '../services/historicalPriceService';
 
 export interface MALineConfig {
+  /** 슬롯 식별자 (ma1~ma6) — period가 사용자 편집 대상이 되어도 슬롯 정체성 유지용 */
+  id: string;
   period: number;
   color: string;
   enabled: boolean;
 }
 
 export const DEFAULT_MA_CONFIGS: MALineConfig[] = [
-  { period: 5,   color: '#F59E0B', enabled: false },
-  { period: 10,  color: '#10B981', enabled: false },
-  { period: 20,  color: '#EF4444', enabled: true  },
-  { period: 60,  color: '#3B82F6', enabled: true  },
-  { period: 120, color: '#EC4899', enabled: false },
-  { period: 200, color: '#8B5CF6', enabled: false },
+  { id: 'ma1', period: 5,   color: '#F59E0B', enabled: false },
+  { id: 'ma2', period: 10,  color: '#10B981', enabled: false },
+  { id: 'ma3', period: 20,  color: '#EF4444', enabled: true  },
+  { id: 'ma4', period: 60,  color: '#3B82F6', enabled: true  },
+  { id: 'ma5', period: 120, color: '#EC4899', enabled: false },
+  { id: 'ma6', period: 200, color: '#8B5CF6', enabled: false },
 ];
+
+/** 사용자 입력 MA 기간을 유효 범위로 보정 (1~400 정수, 데이터 10년≈2500거래일 내) */
+export function clampMAPeriod(value: number): number {
+  if (!Number.isFinite(value)) return 1;
+  return Math.min(400, Math.max(1, Math.round(value)));
+}
 
 interface PricePoint {
   date: string;

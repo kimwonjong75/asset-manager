@@ -5,6 +5,7 @@ import MemoEditPopup from './common/MemoEditPopup';
 import { Asset, Currency, CURRENCY_SYMBOLS, WatchlistItem, ExchangeRates } from '../types';
 import { getAllowedCategories, getCategoryName, type CategoryDefinition } from '../types/category';
 import AssetTrendChart from './AssetTrendChart';
+import ChartViewerModal from './common/ChartViewerModal';
 import { useOnClickOutside } from '../hooks/useOnClickOutside';
 import WatchlistMobileCard from './watchlist/WatchlistMobileCard';
 import { usePortfolio } from '../contexts/PortfolioContext';
@@ -37,6 +38,7 @@ const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, portfolioAsset
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [openFilterOptions, setOpenFilterOptions] = useState<boolean>(false);
   const [expandedItemId, setExpandedItemId] = useState<string | null>(null);
+  const [fullscreenItemId, setFullscreenItemId] = useState<string | null>(null);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [showPinnedOnly, setShowPinnedOnly] = useState(false);
   const [memoEditItem, setMemoEditItem] = useState<WatchlistItem | null>(null);
@@ -306,6 +308,7 @@ const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, portfolioAsset
                         <div ref={menuRef} className="absolute right-0 mt-2 w-36 bg-gray-800 border border-gray-700 rounded-md shadow-lg z-30 text-sm">
                           <button onClick={() => { setOpenMenuId(null); onOpenEditModal(w); }} className="block w-full text-left px-3 py-2 hover:bg-gray-700 text-white">수정</button>
                           <button onClick={() => { setOpenMenuId(null); handleToggleExpand(w.id); }} className="block w-full text-left px-3 py-2 text-gray-200 hover:bg-gray-700">차트 보기</button>
+                          <button onClick={() => { setOpenMenuId(null); setFullscreenItemId(w.id); }} className="block w-full text-left px-3 py-2 text-gray-200 hover:bg-gray-700">차트 확대</button>
                           <button onClick={() => {
                             setOpenMenuId(null);
                             if (window.confirm(`'${w.name}' 종목을 삭제하시겠습니까?`)) onDelete(w.id);
@@ -328,9 +331,25 @@ const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, portfolioAsset
                           ticker={w.ticker}
                           exchange={w.exchange}
                           categoryId={w.categoryId}
+                          onExpand={() => setFullscreenItemId(w.id)}
                         />
                       </td>
                     </tr>
+                  )}
+                  {fullscreenItemId === w.id && (
+                    <ChartViewerModal
+                      history={[]}
+                      assetId={w.id}
+                      assetName={w.name}
+                      currentQuantity={1}
+                      currentPrice={w.priceOriginal || w.currentPrice || 0}
+                      currency={w.currency}
+                      exchangeRate={derivedExchangeRate}
+                      ticker={w.ticker}
+                      exchange={w.exchange}
+                      categoryId={w.categoryId}
+                      onClose={() => setFullscreenItemId(null)}
+                    />
                   )}
                 </Fragment>
               );

@@ -6,6 +6,7 @@ import type { BackupInfo, BackupSettings } from './backup';
 import type { CategoryStore, CategoryBaseType } from './category';
 import type { GoldPremiumResult } from '../services/goldPremiumService';
 import type { ColumnConfig, ColumnKey, FixedColumnWidths } from './ui';
+import type { MALineConfig } from '../utils/maCalculations';
 
 export type PortfolioHistory = PortfolioSnapshot[];
 
@@ -50,6 +51,8 @@ export interface UIState {
   columnConfig: ColumnConfig[];
   /** 양끝 고정 컬럼 중 사용자 리사이즈 가능한 컬럼의 너비 (현재 name만) */
   fixedColumnWidths: FixedColumnWidths;
+  /** 개별 차트 이동평균선 6슬롯 설정 (기간/색/표시여부) — 차트 표시 전용, 알림/스마트필터 MA와 무관 */
+  chartMAConfigs: MALineConfig[];
 }
 
 export interface ModalState {
@@ -150,6 +153,10 @@ export interface PortfolioActions {
   setColumnWidth: (key: ColumnKey, width: number) => void;
   /** 고정 컬럼(name) 너비 갱신 (px). MIN_COLUMN_WIDTH(80px) 미만 자동 클램프 */
   setFixedColumnWidth: (key: keyof FixedColumnWidths, width: number) => void;
+  /** 개별 차트 MA 슬롯 설정 갱신 (기간/표시여부). 기간은 1~400으로 클램프, localStorage 영속 */
+  setChartMAConfigs: (configs: MALineConfig[]) => void;
+  /** 차트 MA 슬롯 설정을 DEFAULT_MA_CONFIGS로 초기화 */
+  resetChartMAConfigs: () => void;
   updateAllocationTargets: (targets: AllocationTargets) => void;
   openEditModal: (asset: Asset) => void;
   closeEditModal: () => void;

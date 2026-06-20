@@ -1,35 +1,42 @@
 import React, { useMemo, useState, useCallback, useRef, useEffect } from 'react';
 import { PortfolioSnapshot, Currency } from '../types';
 import { isBaseType, getCategoryName, DEFAULT_CATEGORIES } from '../types/category';
-import { createChart, IChartApi, ISeriesApi, LineSeries, HistogramSeries, LineStyle, ColorType, CrosshairMode, TickMarkType } from 'lightweight-charts';
+import { createChart, IChartApi, ISeriesApi, LineSeries, CandlestickSeries, HistogramSeries, LineStyle, ColorType, CrosshairMode, TickMarkType, AutoscaleInfo } from 'lightweight-charts';
+import { Maximize2 } from 'lucide-react';
 import { useHistoricalPriceData } from '../hooks/useHistoricalPriceData';
-import { DEFAULT_MA_CONFIGS, MALineConfig, calculateSMA } from '../utils/maCalculations';
+import { calculateSMA } from '../utils/maCalculations';
 import { usePortfolio } from '../contexts/PortfolioContext';
 import { getGlobalPeriodDays } from '../hooks/useGlobalPeriodDays';
 
-const MA_PREFS_KEY = 'asset-manager-ma-preferences';
+// 캔들 색상 — 한국식 (양봉=상승=빨강, 음봉=하락=파랑)
+const CANDLE_UP_COLOR = '#F23645';
+const CANDLE_DOWN_COLOR = '#2962FF';
+const VOLUME_UP_COLOR = 'rgba(242, 54, 69, 0.45)';
+const VOLUME_DOWN_COLOR = 'rgba(41, 98, 255, 0.45)';
+const VOLUME_NEUTRAL_COLOR = 'rgba(74, 85, 104, 0.45)';
 
-function loadMAConfigs(): MALineConfig[] {
+// 차트 표시 토글 영속 키 (모달/인라인 차트가 동일 설정을 마운트 시 공유)
+const CHART_TYPE_KEY = 'asset-manager-chart-type';
+const CHART_VOLUME_KEY = 'asset-manager-chart-show-volume';
+
+type ChartType = 'line' | 'candle';
+
+function loadChartType(): ChartType {
   try {
-    const stored = localStorage.getItem(MA_PREFS_KEY);
-    if (stored) {
-      const parsed = JSON.parse(stored) as MALineConfig[];
-      return DEFAULT_MA_CONFIGS.map(def => {
-        const saved = parsed.find(p => p.period === def.period);
-        return saved ? { ...def, enabled: saved.enabled } : def;
-      });
-    }
-  } catch { /* ignore */ }
-  return DEFAULT_MA_CONFIGS.map(c => ({ ...c }));
+    return localStorage.getItem(CHART_TYPE_KEY) === 'candle' ? 'candle' : 'line';
+  } catch { return 'line'; }
+}
+function saveChartType(t: ChartType): void {
+  try { localStorage.setItem(CHART_TYPE_KEY, t); } catch { /* ignore */ }
+}
+function loadShowVolume(): boolean {
+  try { return localStorage.getItem(CHART_VOLUME_KEY) !== 'false'; } catch { return true; }
+}
+function saveShowVolume(v: boolean): void {
+  try { localStorage.setItem(CHART_VOLUME_KEY, String(v)); } catch { /* ignore */ }
 }
 
-function saveMAConfigs(configs: MALineConfig[]): void {
-  try {
-    localStorage.setItem(MA_PREFS_KEY, JSON.stringify(configs));
-  } catch { /* ignore */ }
-}
-
-interface AssetTrendChartProps {
+export interface AssetTrendChartProps {
   history: PortfolioSnapshot[];
   assetId: string;
   assetName: string;
@@ -41,6 +48,10 @@ interface AssetTrendChartProps {
   exchange?: string;
   categoryId?: number;
   purchasePrice?: number;
+  /** true면 부모 높이를 가득 채움(풀스크린 모달용). false면 고정 높이(인라인) */
+  fillParent?: boolean;
+  /** 전체화면 확대 콜백 — 전달 시 차트 헤더에 ⤢ 아이콘 노출 (fillParent=true면 미노출) */
+  onExpand?: () => void;
 }
 
 /** 거래량 포맷 */
@@ -84,6 +95,14 @@ interface TooltipData {
   date: string;
 }
 
+interface CandlePoint {
+  time: string;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+}
+
 const AssetTrendChart: React.FC<AssetTrendChartProps> = ({
   history,
   assetId,
@@ -96,16 +115,18 @@ const AssetTrendChart: React.FC<AssetTrendChartProps> = ({
   exchange,
   categoryId,
   purchasePrice,
+  fillParent = false,
+  onExpand,
 }) => {
   const [showInKRW, setShowInKRW] = useState<boolean>(false);
-  const [maConfigs, setMAConfigs] = useState<MALineConfig[]>(loadMAConfigs);
-  const [showVolume, setShowVolume] = useState<boolean>(true);
+  const [showVolume, setShowVolume] = useState<boolean>(loadShowVolume);
+  const [chartType, setChartType] = useState<ChartType>(loadChartType);
   const [tooltipData, setTooltipData] = useState<TooltipData | null>(null);
   const [tooltipPos, setTooltipPos] = useState<{ x: number; y: number } | null>(null);
 
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
-  const priceSeriesRef = useRef<ISeriesApi<'Line'> | null>(null);
+  const priceSeriesRef = useRef<ISeriesApi<'Line'> | ISeriesApi<'Candlestick'> | null>(null);
   const volumeSeriesRef = useRef<ISeriesApi<'Histogram'> | null>(null);
   const maSeriesRefs = useRef<Map<number, ISeriesApi<'Line'>>>(new Map());
   const purchaseLineRef = useRef<ReturnType<ISeriesApi<'Line'>['createPriceLine']> | null>(null);
@@ -113,16 +134,26 @@ const AssetTrendChart: React.FC<AssetTrendChartProps> = ({
   const hasInitializedRangeRef = useRef<string | null>(null);
 
   const isCash = categoryId ? isBaseType(categoryId, 'CASH') : false;
+
+  const { ui, actions } = usePortfolio();
+  const maConfigs = ui.chartMAConfigs;
   const enabledConfigs = maConfigs.filter(c => c.enabled);
   const enabledPeriods = enabledConfigs.map(c => c.period);
   const maxMAPeriod = enabledPeriods.length > 0 ? Math.max(...enabledPeriods) : 0;
   const hasMASupport = !!ticker && !!exchange && !!categoryId && !isCash;
 
-  const { ui } = usePortfolio();
   const displayDays = getGlobalPeriodDays(ui.globalPeriod);
 
   const categoryName = categoryId ? getCategoryName(categoryId, DEFAULT_CATEGORIES) : undefined;
-  const { historicalPrices, historicalVolumes, isLoading: maLoading, error: maError } = useHistoricalPriceData({
+  const {
+    historicalPrices,
+    historicalVolumes,
+    historicalOpens,
+    historicalHighs,
+    historicalLows,
+    isLoading: maLoading,
+    error: maError,
+  } = useHistoricalPriceData({
     ticker: ticker || '',
     exchange: exchange || '',
     category: categoryName,
@@ -133,14 +164,16 @@ const AssetTrendChart: React.FC<AssetTrendChartProps> = ({
 
   const useHistoricalData = hasMASupport && !!historicalPrices && Object.keys(historicalPrices).length > 0;
 
-  const handleToggleMA = useCallback((period: number) => {
-    setMAConfigs(prev => {
-      const next = prev.map(c =>
-        c.period === period ? { ...c, enabled: !c.enabled } : c
-      );
-      saveMAConfigs(next);
-      return next;
-    });
+  const handleToggleMA = useCallback((id: string) => {
+    actions.setChartMAConfigs(maConfigs.map(c => (c.id === id ? { ...c, enabled: !c.enabled } : c)));
+  }, [actions, maConfigs]);
+
+  const handleToggleVolume = useCallback(() => {
+    setShowVolume(prev => { const next = !prev; saveShowVolume(next); return next; });
+  }, []);
+
+  const handleToggleChartType = useCallback(() => {
+    setChartType(prev => { const next: ChartType = prev === 'line' ? 'candle' : 'line'; saveChartType(next); return next; });
   }, []);
 
   // 표시 통화 결정
@@ -149,7 +182,7 @@ const AssetTrendChart: React.FC<AssetTrendChartProps> = ({
 
   // --- 데이터 준비 ---
 
-  // 과거 종가 기반 데이터
+  // 과거 종가 기반 라인 데이터
   const priceData = useMemo(() => {
     if (useHistoricalData && historicalPrices) {
       const sortedDates = Object.keys(historicalPrices).sort();
@@ -219,18 +252,58 @@ const AssetTrendChart: React.FC<AssetTrendChartProps> = ({
     return points;
   }, [useHistoricalData, historicalPrices, history, assetId, currentQuantity, currentPrice, currency, exchangeRate, showInKRW, applyKRW]);
 
-  // 거래량 데이터
+  // 캔들(OHLC) 데이터 — open/high/low 모두 수신된 경우에만 생성 (미수신 시 빈 배열 → 라인 폴백)
+  const candleData = useMemo<CandlePoint[]>(() => {
+    if (!useHistoricalData || !historicalPrices || !historicalOpens || !historicalHighs || !historicalLows) return [];
+    const sortedDates = Object.keys(historicalPrices).sort();
+    const mul = applyKRW ? exchangeRate : 1;
+    const points: CandlePoint[] = [];
+    for (const date of sortedDates) {
+      const o = historicalOpens[date];
+      const h = historicalHighs[date];
+      const l = historicalLows[date];
+      const c = historicalPrices[date];
+      if (o === undefined || h === undefined || l === undefined || c === undefined) continue;
+      points.push({ time: toChartTime(date), open: o * mul, high: h * mul, low: l * mul, close: c * mul });
+    }
+    // 오늘 현재가 오버레이 — 오늘 봉의 close만 갱신 (high/low가 포함하도록 확장)
+    if (currentPrice > 0 && points.length > 0) {
+      const todayISO = new Date().toISOString().split('T')[0];
+      const dispPrice = applyKRW ? currentPrice * exchangeRate : currentPrice;
+      const last = points[points.length - 1];
+      if (last.time === todayISO) {
+        last.close = dispPrice;
+        last.high = Math.max(last.high, dispPrice);
+        last.low = Math.min(last.low, dispPrice);
+      } else {
+        points.push({ time: todayISO, open: dispPrice, high: dispPrice, low: dispPrice, close: dispPrice });
+      }
+    }
+    return points;
+  }, [useHistoricalData, historicalPrices, historicalOpens, historicalHighs, historicalLows, currentPrice, applyKRW, exchangeRate]);
+
+  const canShowCandle = candleData.length > 0;
+  const effectiveChartType: ChartType = chartType === 'candle' && canShowCandle ? 'candle' : 'line';
+
+  // 거래량 데이터 (캔들 방향에 맞춘 색상 — OHLC 미수신 시 중립색)
   const volumeData = useMemo(() => {
     if (!useHistoricalData || !historicalVolumes) return [];
     const sortedDates = Object.keys(historicalVolumes).sort();
+    const hasOHLC = !!(historicalOpens && historicalPrices);
     return sortedDates
       .filter(d => historicalVolumes[d] > 0)
-      .map(date => ({
-        time: toChartTime(date),
-        value: historicalVolumes[date],
-        color: 'rgba(74, 85, 104, 0.3)',
-      }));
-  }, [useHistoricalData, historicalVolumes]);
+      .map(date => {
+        let color = VOLUME_NEUTRAL_COLOR;
+        if (hasOHLC) {
+          const o = historicalOpens![date];
+          const c = historicalPrices![date];
+          if (o !== undefined && c !== undefined) {
+            color = c >= o ? VOLUME_UP_COLOR : VOLUME_DOWN_COLOR;
+          }
+        }
+        return { time: toChartTime(date), value: historicalVolumes[date], color };
+      });
+  }, [useHistoricalData, historicalVolumes, historicalOpens, historicalPrices]);
 
   const hasVolumeData = volumeData.length > 0;
 
@@ -356,29 +429,48 @@ const AssetTrendChart: React.FC<AssetTrendChartProps> = ({
     });
     chartRef.current = chart;
 
-    // 가격 라인 시리즈
-    const priceSeries = chart.addSeries(LineSeries, {
-      color: '#818CF8',
-      lineWidth: 2,
-      crosshairMarkerRadius: 5,
-      priceFormat: {
-        type: 'price',
-        precision: displayCurrency === Currency.KRW ? 0 : 2,
-        minMove: displayCurrency === Currency.KRW ? 1 : 0.01,
-      },
-      autoscaleInfoProvider: (baseImpl) => {
-        const baseInfo = baseImpl();
-        const pp = displayPurchasePriceRef.current;
-        if (pp == null || !baseInfo || !baseInfo.priceRange) return baseInfo;
-        return {
-          ...baseInfo,
-          priceRange: {
-            minValue: Math.min(baseInfo.priceRange.minValue, pp),
-            maxValue: Math.max(baseInfo.priceRange.maxValue, pp),
-          },
-        };
-      },
-    });
+    const priceFormat = {
+      type: 'price' as const,
+      precision: displayCurrency === Currency.KRW ? 0 : 2,
+      minMove: displayCurrency === Currency.KRW ? 1 : 0.01,
+    };
+
+    // 매수평균선을 Y축 범위에 포함시키는 autoscale provider (라인/캔들 공통)
+    const autoscaleInfoProvider = (baseImpl: () => AutoscaleInfo | null): AutoscaleInfo | null => {
+      const baseInfo = baseImpl();
+      const pp = displayPurchasePriceRef.current;
+      if (pp == null || !baseInfo || !baseInfo.priceRange) return baseInfo;
+      return {
+        ...baseInfo,
+        priceRange: {
+          minValue: Math.min(baseInfo.priceRange.minValue, pp),
+          maxValue: Math.max(baseInfo.priceRange.maxValue, pp),
+        },
+      };
+    };
+
+    // 가격 시리즈 (라인 또는 캔들)
+    let priceSeries: ISeriesApi<'Line'> | ISeriesApi<'Candlestick'>;
+    if (effectiveChartType === 'candle') {
+      priceSeries = chart.addSeries(CandlestickSeries, {
+        upColor: CANDLE_UP_COLOR,
+        downColor: CANDLE_DOWN_COLOR,
+        borderUpColor: CANDLE_UP_COLOR,
+        borderDownColor: CANDLE_DOWN_COLOR,
+        wickUpColor: CANDLE_UP_COLOR,
+        wickDownColor: CANDLE_DOWN_COLOR,
+        priceFormat,
+        autoscaleInfoProvider,
+      });
+    } else {
+      priceSeries = chart.addSeries(LineSeries, {
+        color: '#818CF8',
+        lineWidth: 2,
+        crosshairMarkerRadius: 5,
+        priceFormat,
+        autoscaleInfoProvider,
+      });
+    }
     priceSeriesRef.current = priceSeries;
 
     // 거래량 시리즈
@@ -415,8 +507,13 @@ const AssetTrendChart: React.FC<AssetTrendChartProps> = ({
         return;
       }
 
-      const priceValue = param.seriesData.get(priceSeries);
-      if (!priceValue || !('value' in priceValue)) {
+      const pd = param.seriesData.get(priceSeries);
+      let priceValue: number | undefined;
+      if (pd) {
+        if ('value' in pd && pd.value !== undefined) priceValue = pd.value as number;
+        else if ('close' in pd && (pd as { close?: number }).close !== undefined) priceValue = (pd as { close: number }).close;
+      }
+      if (priceValue === undefined) {
         setTooltipData(null);
         setTooltipPos(null);
         return;
@@ -440,7 +537,7 @@ const AssetTrendChart: React.FC<AssetTrendChartProps> = ({
       }
 
       setTooltipData({
-        price: priceValue.value as number,
+        price: priceValue,
         volume: vol,
         maValues,
         date: String(param.time),
@@ -461,8 +558,6 @@ const AssetTrendChart: React.FC<AssetTrendChartProps> = ({
     container.style.touchAction = 'pan-y';
 
     // PC: 차트 영역 wheel 시 페이지 스크롤 방지
-    // container 레벨에서 preventDefault만 호출 — lightweight-charts 내부 핸들러(canvas)가
-    // bubble phase에서 먼저 처리한 후 container에서 브라우저 기본 스크롤만 차단
     const handleContainerWheel = (e: WheelEvent) => {
       e.preventDefault();
     };
@@ -478,16 +573,20 @@ const AssetTrendChart: React.FC<AssetTrendChartProps> = ({
       maSeriesRefs.current = new Map();
       purchaseLineRef.current = null;
     };
-    // 차트 인스턴스는 showVolume, enabledConfigs 변경 시 재생성
+    // 차트 인스턴스는 showVolume, MA 페어, 통화, 차트 타입 변경 시 재생성
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showVolume, hasVolumeData, enabledConfigs.map(c => c.period).join(','), displayCurrency]);
+  }, [showVolume, hasVolumeData, enabledConfigs.map(c => `${c.id}:${c.period}`).join(','), displayCurrency, effectiveChartType]);
 
   // --- 데이터 업데이트 (차트 인스턴스 재생성 없이) ---
   useEffect(() => {
     if (!priceSeriesRef.current || priceData.length === 0) return;
 
-    // 가격 데이터
-    priceSeriesRef.current.setData(priceData as { time: string; value: number }[]);
+    // 가격 데이터 (라인/캔들 분기)
+    if (effectiveChartType === 'candle') {
+      (priceSeriesRef.current as ISeriesApi<'Candlestick'>).setData(candleData);
+    } else {
+      (priceSeriesRef.current as ISeriesApi<'Line'>).setData(priceData as { time: string; value: number }[]);
+    }
 
     // 거래량 데이터
     if (volumeSeriesRef.current && volumeData.length > 0) {
@@ -519,7 +618,6 @@ const AssetTrendChart: React.FC<AssetTrendChartProps> = ({
     }
 
     // 선택 기간에 맞게 시간축 조정 (종목+기간 조합당 한 번만 적용)
-    // 사용자가 줌/드래그한 뷰는 보존, 기간 버튼 클릭 또는 종목 변경 시에만 재적용
     const rangeKey = `${assetId}-${displayDays}`;
     if (hasInitializedRangeRef.current !== rangeKey) {
       hasInitializedRangeRef.current = rangeKey;
@@ -532,27 +630,41 @@ const AssetTrendChart: React.FC<AssetTrendChartProps> = ({
         chartRef.current?.timeScale().fitContent();
       }
     }
-  }, [priceData, volumeData, maDataMap, displayPurchasePrice, visibleRange, assetId, displayDays]);
+  }, [priceData, candleData, effectiveChartType, volumeData, maDataMap, displayPurchasePrice, visibleRange, assetId, displayDays]);
 
   const hasMAToggle = hasMASupport;
 
   return (
-    <div className="bg-gray-800 rounded-lg relative">
+    <div className={`bg-gray-800 rounded-lg relative ${fillParent ? 'flex flex-col h-full' : ''}`}>
       <div className="flex justify-between items-center px-3 pt-3 pb-1">
         <h3 className="text-md font-bold text-white text-center flex-1">
           {`"${assetName}" 가격 추이 (${displayCurrency})`}
         </h3>
 
-        {/* 통화 전환 토글 */}
-        {currency !== Currency.KRW && (
-          <button
-            onClick={() => setShowInKRW(!showInKRW)}
-            className="text-xs bg-gray-700 hover:bg-gray-600 text-gray-200 px-2 py-1 rounded border border-gray-600 transition-colors"
-            title={showInKRW ? "외화로 보기" : "원화로 보기"}
-          >
-            {showInKRW ? `원화(${Currency.KRW})` : `외화(${currency})`}
-          </button>
-        )}
+        <div className="flex items-center gap-1">
+          {/* 통화 전환 토글 */}
+          {currency !== Currency.KRW && (
+            <button
+              onClick={() => setShowInKRW(!showInKRW)}
+              className="text-xs bg-gray-700 hover:bg-gray-600 text-gray-200 px-2 py-1 rounded border border-gray-600 transition-colors"
+              title={showInKRW ? "외화로 보기" : "원화로 보기"}
+            >
+              {showInKRW ? `원화(${Currency.KRW})` : `외화(${currency})`}
+            </button>
+          )}
+
+          {/* 전체화면 확대 (인라인 차트에서만 노출) */}
+          {!fillParent && onExpand && (
+            <button
+              onClick={onExpand}
+              className="p-1 rounded text-gray-300 hover:text-white hover:bg-gray-700 border border-gray-600 transition-colors"
+              title="전체화면으로 보기"
+              aria-label="전체화면으로 보기"
+            >
+              <Maximize2 className="h-3.5 w-3.5" />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* MA 토글 칩 + 범례 */}
@@ -561,8 +673,8 @@ const AssetTrendChart: React.FC<AssetTrendChartProps> = ({
           <span className="text-[10px] text-gray-500 mr-0.5">MA</span>
           {maConfigs.map(config => (
             <button
-              key={config.period}
-              onClick={() => handleToggleMA(config.period)}
+              key={config.id}
+              onClick={() => handleToggleMA(config.id)}
               className={`text-[10px] px-1.5 py-0.5 rounded-full border transition-colors ${
                 config.enabled
                   ? 'text-white border-transparent'
@@ -573,11 +685,23 @@ const AssetTrendChart: React.FC<AssetTrendChartProps> = ({
               {config.period}
             </button>
           ))}
+          {/* 라인/캔들 토글 */}
+          <button
+            onClick={handleToggleChartType}
+            className={`text-[10px] px-1.5 py-0.5 rounded-full border transition-colors ml-1 ${
+              chartType === 'candle'
+                ? 'text-white bg-gray-600 border-gray-500'
+                : 'text-gray-400 border-gray-600 bg-transparent hover:border-gray-500'
+            }`}
+            title="라인/캔들 전환"
+          >
+            {chartType === 'candle' ? '캔들' : '라인'}
+          </button>
           {/* VOL 토글 */}
           {hasVolumeData && (
             <button
-              onClick={() => setShowVolume(!showVolume)}
-              className={`text-[10px] px-1.5 py-0.5 rounded-full border transition-colors ml-1 ${
+              onClick={handleToggleVolume}
+              className={`text-[10px] px-1.5 py-0.5 rounded-full border transition-colors ${
                 showVolume
                   ? 'text-white bg-gray-600 border-gray-500'
                   : 'text-gray-400 border-gray-600 bg-transparent hover:border-gray-500'
@@ -585,6 +709,9 @@ const AssetTrendChart: React.FC<AssetTrendChartProps> = ({
             >
               VOL
             </button>
+          )}
+          {chartType === 'candle' && !canShowCandle && !maLoading && (
+            <span className="text-[10px] text-amber-400 ml-1">캔들 데이터 없음(라인 표시)</span>
           )}
           {maLoading && <span className="text-[10px] text-gray-500 ml-1">불러오는 중...</span>}
           {maError && !maLoading && <span className="text-[10px] text-red-400 ml-1">{maError}</span>}
@@ -594,7 +721,7 @@ const AssetTrendChart: React.FC<AssetTrendChartProps> = ({
               <span className="inline-block w-3 h-0.5 rounded" style={{ backgroundColor: '#818CF8' }} />현재가
             </span>
             {enabledConfigs.map(config => (
-              <span key={config.period} className="flex items-center gap-1 text-[10px] text-gray-300">
+              <span key={config.id} className="flex items-center gap-1 text-[10px] text-gray-300">
                 <span className="inline-block w-3 h-0.5 rounded" style={{ backgroundColor: config.color }} />MA{config.period}
               </span>
             ))}
@@ -609,7 +736,10 @@ const AssetTrendChart: React.FC<AssetTrendChartProps> = ({
 
       {/* 차트 컨테이너 */}
       {priceData.length > 0 ? (
-        <div className="relative" style={{ height: hasMAToggle ? '280px' : '220px' }}>
+        <div
+          className={`relative ${fillParent ? 'flex-1 min-h-0' : ''}`}
+          style={fillParent ? undefined : { height: hasMAToggle ? '280px' : '220px' }}
+        >
           <div ref={chartContainerRef} className="w-full h-full" />
 
           {/* 커스텀 툴팁 */}
@@ -623,7 +753,7 @@ const AssetTrendChart: React.FC<AssetTrendChartProps> = ({
             >
               <div className="text-gray-400 mb-0.5">{tooltipData.date}</div>
               <div className="text-white font-bold">
-                현재가: {formatPrice(tooltipData.price, currency, showInKRW)}
+                {effectiveChartType === 'candle' ? '종가' : '현재가'}: {formatPrice(tooltipData.price, currency, showInKRW)}
               </div>
               {tooltipData.maValues.map(ma => (
                 <div key={ma.period} style={{ color: ma.color }}>
@@ -637,7 +767,7 @@ const AssetTrendChart: React.FC<AssetTrendChartProps> = ({
           )}
         </div>
       ) : (
-        <div className="flex items-center justify-center" style={{ height: '220px' }}>
+        <div className={`flex items-center justify-center ${fillParent ? 'flex-1' : ''}`} style={fillParent ? undefined : { height: '220px' }}>
           <p className="text-gray-500 text-sm">추이 데이터가 부족합니다.</p>
         </div>
       )}
