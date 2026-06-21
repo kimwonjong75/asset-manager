@@ -3,9 +3,10 @@ import { Currency, SymbolSearchResult, normalizeExchange } from '../types';
 import { getAllowedCategories, inferCategoryIdFromExchange, getCategoryBaseType } from '../types/category';
 import { searchSymbols } from '../services/geminiService';
 import { usePortfolio } from '../contexts/PortfolioContext';
+import PositionSizingCalculator from './common/PositionSizingCalculator';
 
 const AddNewAssetModal: React.FC = () => {
-  const { modal, actions, status, data } = usePortfolio();
+  const { modal, actions, status, data, derived } = usePortfolio();
   const categories = data.categoryStore.categories;
   const isOpen = modal.addAssetOpen;
   const onClose = actions.closeAddAsset;
@@ -253,6 +254,23 @@ const AddNewAssetModal: React.FC = () => {
             <label htmlFor="purchaseDate" className={labelClasses}>매수/보유 시작일</label>
             <input id="purchaseDate" type="date" value={purchaseDate} onChange={(e) => setPurchaseDate(e.target.value)} className={inputClasses} required title="자산을 매수했거나 보유하기 시작한 날짜를 선택하세요."/>
             </div>
+
+            {/* 리스크 기반 권장 수량 (선택) */}
+            <div className="bg-gray-700/40 p-3 rounded-md">
+                <div className={`${labelClasses} flex items-center gap-1.5`}>
+                    <span>🛡️ 리스크 기반 권장 수량</span>
+                    <span className="text-[11px] text-gray-500 font-normal">(위 매수가 기준)</span>
+                </div>
+                <PositionSizingCalculator
+                    totalEquityKRW={derived.totalValue}
+                    currency={currency}
+                    exchangeRates={data.exchangeRates}
+                    entryPrice={parseFloat(purchasePrice) || 0}
+                    allowFractional={getCategoryBaseType(category, categories) === 'CRYPTOCURRENCY'}
+                    onApplyQuantity={(qty) => setQuantity(String(qty))}
+                />
+            </div>
+
             <div className="pt-4 flex justify-end">
                 <button type="submit" disabled={isLoading || !!duplicateError} className="w-full bg-primary hover:bg-primary-dark text-white font-bold py-2.5 px-4 rounded-md disabled:bg-gray-600 disabled:cursor-not-allowed transition duration-300 flex items-center justify-center" title="입력한 정보로 새 자산을 포트폴리오에 추가합니다.">
                 {isLoading ? (

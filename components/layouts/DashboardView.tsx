@@ -15,6 +15,8 @@ import TopBottomAssets from '../dashboard/TopBottomAssets';
 import RebalancingTable from '../dashboard/RebalancingTable';
 import GoldPremiumWidget from '../GoldPremiumWidget';
 import MarketDistributionBanner from '../MarketDistributionBanner';
+import RiskCalculatorCard from '../dashboard/RiskCalculatorCard';
+import GuruSignalCard from '../dashboard/GuruSignalCard';
 
 const DashboardView: React.FC = () => {
   const { data, ui, actions, status, derived } = usePortfolio();
@@ -104,6 +106,11 @@ const DashboardView: React.FC = () => {
       />
 
       <GoldPremiumWidget />
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <RiskCalculatorCard />
+        <GuruSignalCard />
+      </div>
 
       <SoldAssetsStats stats={soldAssetsStats} globalPeriod={ui.globalPeriod} onPeriodChange={actions.setGlobalPeriod} />
 

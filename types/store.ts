@@ -4,6 +4,8 @@ import type { EnrichedIndicatorData } from '../hooks/useEnrichedIndicators';
 import type { RiskMatrixRow } from '../utils/riskMatrix';
 import type { BackupInfo, BackupSettings } from './backup';
 import type { CategoryStore, CategoryBaseType } from './category';
+import type { KnowledgeBase } from './knowledge';
+import type { GuruSignalMatch } from '../utils/guruSignalEngine';
 import type { GoldPremiumResult } from '../services/goldPremiumService';
 import type { ColumnConfig, ColumnKey, FixedColumnWidths } from './ui';
 import type { MALineConfig } from '../utils/maCalculations';
@@ -20,6 +22,7 @@ export interface PortfolioData {
   exchangeRates: ExchangeRates;
   allocationTargets: AllocationTargets;
   categoryStore: CategoryStore;
+  knowledgeBase: KnowledgeBase;
 }
 
 export interface PortfolioStatus {
@@ -75,6 +78,8 @@ export interface DerivedState {
   alertResults: AlertResult[];
   /** 종합 리스크 매트릭스 — 클라이맥스 + 디스트리뷰션 합성 티어 (위험 우선 정렬됨) */
   riskMatrix: RiskMatrixRow[];
+  /** 구루 신호 엔진 매칭 — 활성 지식 규칙(typed condition)을 종목별 평가한 결과 */
+  guruSignals: GuruSignalMatch[];
   showAlertPopup: boolean;
   // 백업
   backupList: BackupInfo[];
@@ -181,6 +186,9 @@ export interface PortfolioActions {
   addCategory: (name: string, baseType: CategoryBaseType) => void;
   renameCategory: (id: number, newName: string) => void;
   deleteCategory: (id: number, reassignToId: number) => void;
+
+  // 지식 베이스 (구루 지식 DB) — 상태 갱신 + Drive 자동 저장
+  updateKnowledgeBase: (kb: KnowledgeBase) => void;
 
   // 금 김치프리미엄
   refreshGoldPremium: () => Promise<void>;

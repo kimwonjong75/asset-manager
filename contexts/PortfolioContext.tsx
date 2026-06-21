@@ -21,6 +21,8 @@ import { useBackup } from '../hooks/useBackup';
 import { useGoldPremium } from '../hooks/useGoldPremium';
 import { CategoryBaseType } from '../types/category';
 import type { CategoryStore } from '../types/category';
+import type { KnowledgeBase } from '../types/knowledge';
+import { evaluateGuruSignals, type GuruSignalMatch, type GuruSignalTarget } from '../utils/guruSignalEngine';
 import {
   DEFAULT_COLUMN_CONFIG,
   DEFAULT_FIXED_COLUMN_WIDTHS,
@@ -95,6 +97,7 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     sellAlertDropRate: persistedSellAlertDropRate,
     setSellAlertDropRate: setPersistedSellAlertDropRate,
     categoryStore, setCategoryStore,
+    knowledgeBase, setKnowledgeBase,
     isSignedIn, googleUser, needsReAuth,
     isInitializing: isAuthInitializing,
     isLoading: isAuthLoading,
@@ -384,6 +387,40 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     watchlistItems: watchlist,
   });
 
+  // 구루 신호 엔진 — 활성 지식 규칙(typed condition)을 종목별로 평가 (data.knowledgeBase 기반)
+  // 게이트(isActiveSignal) 통과 + condition 보유 규칙만 발화. 현재 구현된 지표만 매핑되므로
+  // 신규 지표(④) 추가 시 어댑터 확장만으로 더 많은 규칙이 자동 발화된다.
+  const guruSignals = useMemo<GuruSignalMatch[]>(() => {
+    if (isEnrichedLoading || enrichedMap.size === 0) return [];
+    const targets: GuruSignalTarget[] = [];
+    for (const asset of enrichedAssets) {
+      const enriched = enrichedMap.get(asset.ticker);
+      if (!enriched) continue;
+      targets.push({
+        assetId: asset.id, ticker: asset.ticker, name: asset.name,
+        currentPrice: asset.priceOriginal, enriched, source: 'portfolio',
+      });
+    }
+    const portfolioTickers = new Set(enrichedAssets.map(a => a.ticker));
+    for (const item of watchlist) {
+      if (portfolioTickers.has(item.ticker)) continue;
+      const enriched = enrichedMap.get(item.ticker);
+      if (!enriched) continue;
+      const price = item.priceOriginal ?? item.currentPrice ?? 0;
+      if (price <= 0) continue;
+      targets.push({
+        assetId: item.id, ticker: item.ticker, name: item.name,
+        currentPrice: price, enriched, source: 'watchlist',
+      });
+    }
+    return evaluateGuruSignals({
+      rules: knowledgeBase.rules,
+      claims: knowledgeBase.claims,
+      targets,
+      now: new Date(),
+    });
+  }, [enrichedMap, enrichedAssets, watchlist, knowledgeBase, isEnrichedLoading]);
+
   const showExchangeRateWarning = useMemo(() => {
     const hasUSD = assets.some(a => a.currency === Currency.USD);
     const hasJPY = assets.some(a => a.currency === Currency.JPY);
@@ -433,6 +470,7 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       exchangeRates,
       allocationTargets,
       categoryStore,
+      knowledgeBase,
     },
     status: {
       isLoading,
@@ -479,6 +517,7 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       isEnrichedLoading,
       alertResults,
       riskMatrix,
+      guruSignals,
       showAlertPopup,
       backupList: backup.backupList,
       backupSettings: backup.backupSettings,
@@ -622,6 +661,11 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         setSellHistory(newSellHistory);
         setCategoryStore(updated);
         triggerAutoSave(newAssets, portfolioHistory, newSellHistory, newWatchlist, exchangeRates, undefined, undefined, updated);
+      },
+      // 지식 베이스 (구루 지식 DB) — 상태 갱신 후 Drive 자동 저장 (9번째 인자로 knowledgeBase 주입)
+      updateKnowledgeBase: (kb: KnowledgeBase) => {
+        setKnowledgeBase(kb);
+        triggerAutoSave(assets, portfolioHistory, sellHistory, watchlist, exchangeRates, undefined, undefined, undefined, kb);
       },
       // 금 김치프리미엄
       refreshGoldPremium,

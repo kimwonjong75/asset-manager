@@ -6,9 +6,10 @@ import { Asset, Currency, CURRENCY_SYMBOLS } from '../types';
 import { isBaseType } from '../types/category';
 import { formatQuantity } from './portfolio-table/utils';
 import { usePortfolio } from '../contexts/PortfolioContext';
+import PositionSizingCalculator from './common/PositionSizingCalculator';
 
 const BuyMoreAssetModal: React.FC = () => {
-  const { modal, actions, status } = usePortfolio();
+  const { modal, actions, status, data, derived } = usePortfolio();
   const asset = modal.buyingAsset;
   const isOpen = !!modal.buyingAsset;
   const onClose = actions.closeBuyModal;
@@ -189,6 +190,22 @@ const BuyMoreAssetModal: React.FC = () => {
               min="1"
               step="any"
               placeholder="추가 매수할 수량을 입력하세요"
+            />
+          </div>
+
+          {/* 리스크 기반 권장 수량 (선택) */}
+          <div className="bg-gray-700/40 p-3 rounded-md">
+            <div className={`${labelClasses} flex items-center gap-1.5`}>
+              <span>🛡️ 리스크 기반 권장 수량</span>
+              <span className="text-[11px] text-gray-500 font-normal">(위 매수가 기준)</span>
+            </div>
+            <PositionSizingCalculator
+              totalEquityKRW={derived.totalValue}
+              currency={asset.currency}
+              exchangeRates={data.exchangeRates}
+              entryPrice={parseFloat(buyPrice) || 0}
+              allowFractional={isBaseType(asset.categoryId, 'CRYPTOCURRENCY')}
+              onApplyQuantity={(qty) => setBuyQuantity(String(qty))}
             />
           </div>
 

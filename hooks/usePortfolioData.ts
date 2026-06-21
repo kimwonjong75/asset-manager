@@ -7,6 +7,9 @@ import { mapToNewAssetStructure } from '../utils/portfolioCalculations';
 import { fillAllMissingDates, backfillWithRealPrices, getMissingDateRange, repairCorruptedSnapshots } from '../utils/historyUtils';
 import { createLogger } from '../utils/logger';
 import { saveLastKnownRates } from '../utils/exchangeRateCache';
+import type { KnowledgeBase } from '../types/knowledge';
+import { SEED_KNOWLEDGE_BASE } from '../constants/knowledgeBase';
+import { mergeKnowledgeBase } from '../utils/mergeKnowledgeBase';
 
 const log = createLogger('PortfolioData');
 
@@ -23,6 +26,7 @@ export const usePortfolioData = () => {
   const [allocationTargets, setAllocationTargets] = useState<AllocationTargets>({ weights: {} });
   const [sellAlertDropRate, setSellAlertDropRate] = useState<number>(15);
   const [categoryStore, setCategoryStore] = useState<CategoryStore>(DEFAULT_CATEGORY_STORE);
+  const [knowledgeBase, setKnowledgeBase] = useState<KnowledgeBase>(SEED_KNOWLEDGE_BASE);
   const [hasAutoUpdated, setHasAutoUpdated] = useState<boolean>(false);
   const [shouldAutoUpdate, setShouldAutoUpdate] = useState<boolean>(false);
   const [lastUpdateDate, setLastUpdateDate] = useState<string | null>(null);
@@ -38,6 +42,13 @@ export const usePortfolioData = () => {
         const data = migrateCategorySystem(data1);
         const driveAssets = Array.isArray(data.assets) ? data.assets.map(mapToNewAssetStructure) : [];
         setAssets(driveAssets);
+
+        // 지식 베이스: 앱 시드 ⊕ Drive 저장본 병합 (정의는 시드, 승인/journal은 저장본 보존)
+        const mergedKnowledgeBase = mergeKnowledgeBase(SEED_KNOWLEDGE_BASE, loaded.knowledgeBase);
+        setKnowledgeBase(mergedKnowledgeBase);
+        const loadedCategoryStore: CategoryStore = (data as any).categoryStore?.categories?.length
+          ? (data as any).categoryStore as CategoryStore
+          : DEFAULT_CATEGORY_STORE;
         
         if (Array.isArray(data.portfolioHistory)) {
           // 오염된 스냅샷 교정 후 보간
@@ -64,7 +75,7 @@ export const usePortfolioData = () => {
                   const allocData = loaded.allocationTargets && 'weights' in loaded.allocationTargets
                     ? loaded.allocationTargets
                     : { weights: loaded.allocationTargets || {} };
-                  hookAutoSave(driveAssets, backfilledHistory, sellData, watchlistData, rates, allocData as AllocationTargets, loaded.sellAlertDropRate ?? 15);
+                  hookAutoSave(driveAssets, backfilledHistory, sellData, watchlistData, rates, allocData as AllocationTargets, loaded.sellAlertDropRate ?? 15, loadedCategoryStore, mergedKnowledgeBase);
                   log.info('백필 완료, 자동 저장됨');
                 }
               })
@@ -111,12 +122,8 @@ export const usePortfolioData = () => {
           setSellAlertDropRate(loaded.sellAlertDropRate);
         }
 
-        // categoryStore 로드
-        if ((data as any).categoryStore?.categories?.length) {
-          setCategoryStore((data as any).categoryStore);
-        } else {
-          setCategoryStore(DEFAULT_CATEGORY_STORE);
-        }
+        // categoryStore 로드 (위에서 계산한 loadedCategoryStore 재사용)
+        setCategoryStore(loadedCategoryStore);
 
         // 마지막 업데이트 날짜 확인 및 자동 업데이트 플래그 설정
         const today = new Date().toISOString().slice(0, 10);
@@ -178,12 +185,13 @@ export const usePortfolioData = () => {
     newRates: ExchangeRates,
     newAllocationTargets?: AllocationTargets,
     newSellAlertDropRate?: number,
-    newCategoryStore?: CategoryStore
+    newCategoryStore?: CategoryStore,
+    newKnowledgeBase?: KnowledgeBase
   ) => {
     if (isSignedIn) {
-      hookAutoSave(newAssets, newHistory, newSells, newWatchlist, newRates, newAllocationTargets || allocationTargets, newSellAlertDropRate ?? sellAlertDropRate, newCategoryStore || categoryStore);
+      hookAutoSave(newAssets, newHistory, newSells, newWatchlist, newRates, newAllocationTargets || allocationTargets, newSellAlertDropRate ?? sellAlertDropRate, newCategoryStore || categoryStore, newKnowledgeBase || knowledgeBase);
     }
-  }, [isSignedIn, hookAutoSave, allocationTargets, sellAlertDropRate, categoryStore]);
+  }, [isSignedIn, hookAutoSave, allocationTargets, sellAlertDropRate, categoryStore, knowledgeBase]);
 
   const handleSignOut = useCallback(() => {
     hookSignOut();
@@ -194,6 +202,7 @@ export const usePortfolioData = () => {
     setAllocationTargets({ weights: {} });
     setSellAlertDropRate(15);
     setCategoryStore(DEFAULT_CATEGORY_STORE);
+    setKnowledgeBase(SEED_KNOWLEDGE_BASE);
     setHasAutoUpdated(false);
   }, [hookSignOut]);
 
@@ -227,6 +236,7 @@ export const usePortfolioData = () => {
     allocationTargets, setAllocationTargets,
     sellAlertDropRate, setSellAlertDropRate,
     categoryStore, setCategoryStore,
+    knowledgeBase, setKnowledgeBase,
     isSignedIn, googleUser,
     isInitializing, needsReAuth,
     isLoading: isInitializing, // Alias for legacy support
