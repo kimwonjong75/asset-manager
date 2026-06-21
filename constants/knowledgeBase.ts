@@ -103,14 +103,15 @@ const CURATED_RULES: KnowledgeRule[] = [
       all: [
         { metric: 'assetTrendRegime', operator: '=', value: 'uptrend' },
         { metric: 'priceToMa20Pct', operator: 'between', value: [-3, 3] },
-        { metric: 'distributionCount', operator: '<=', value: 4 }, // 매물 출회 과다(토핑) 제외
+        { metric: 'distributionCount', operator: '<=', value: 4 },  // 매물 출회 과다(토핑) 제외
+        { metric: 'pctBelow52wHigh', operator: '<=', value: 15 },   // 강세 필터: 52주 고점 15% 이내(이미 강한 종목)
       ],
     },
     mappedSignalKey: 'MA20_PULLBACK_WATCH', status: 'active',
-    requiredMetrics: ['assetTrendRegime', 'priceToMa20Pct', 'distributionCount'],
+    requiredMetrics: ['assetTrendRegime', 'priceToMa20Pct', 'distributionCount', 'pctBelow52wHigh'],
     riskPolicy: 'MA20 이탈 후 1~2일 내 회복 실패 또는 직전 저점 이탈 시 무효',
     verification: vf({ sourceVerified: true, factVerified: true, userApproved: true }),
-    note: '근거 claim(ma-pullback-entry)은 "RS 높은 종목" 전제이나, rsRank(시장 유니버스 백분위) 미구현으로 본 규칙은 RS 선별을 뺀 약화판(관찰 후보, buy-watch). 지표는 self-contained(assetTrendRegime·priceToMa20Pct, 라이브 priceOriginal 기준). distribution 과다 제외로 토핑 회피. 사용자 승인으로 활성. rsRank 구현 시 엄격판으로 승격 검토.',
+    note: '근거 claim(ma-pullback-entry)은 "RS 높은 종목" 전제이나, rsRank(시장 유니버스 백분위) 미구현으로 본 규칙은 RS 선별을 뺀 약화판(관찰 후보, buy-watch). 지표는 self-contained(라이브 priceOriginal 기준). distribution 과다 제외로 토핑 회피, pctBelow52wHigh≤15로 강세 종목만(rsRank 대용 근사 — claim pick-among-already-up "이미 많이 오른 종목 중 고른다"). 사용자 승인으로 활성. rsRank 구현 시 엄격판으로 승격 검토.',
   },
   {
     // 신고가 근처 돌파 관찰 — self-contained. 근거: 신고가 돌파 매수 + 박스권 돌파 + 거래량 동반.
@@ -143,13 +144,14 @@ const CURATED_RULES: KnowledgeRule[] = [
         { metric: 'assetTrendRegime', operator: 'in', value: ['neutral', 'uptrend'] },
         { metric: 'priceCrossAboveMa20Days', operator: 'between', value: [0, 5] }, // 최근 5거래일 내 MA20 위로 복귀
         { metric: 'distributionCount', operator: '<=', value: 4 },
+        { metric: 'pctBelow52wHigh', operator: '<=', value: 15 },  // 강세 필터: 고점 근처 종목만(어중간한 반등 제외)
       ],
     },
     mappedSignalKey: 'MA20_RECLAIM_WATCH', status: 'active',
-    requiredMetrics: ['assetTrendRegime', 'priceCrossAboveMa20Days', 'distributionCount'],
+    requiredMetrics: ['assetTrendRegime', 'priceCrossAboveMa20Days', 'distributionCount', 'pctBelow52wHigh'],
     riskPolicy: '재돌파 후 다시 MA20 아래로 마감 또는 직전 저점 이탈 시 무효',
     verification: vf({ sourceVerified: true, factVerified: true, userApproved: true }),
-    note: '근거 claim(ma-reclaim-entry): 주가가 이평선 아래로 떨어졌다 복귀 시 매수, 기준 20일선 추천. priceCrossAboveMa20Days=재돌파 경과 거래일(당일 0, 현재 MA20 아래면 null→미발화). 횡보 후 복귀 종목(neutral 허용). RS 선별 미적용(관찰 후보).',
+    note: '근거 claim(ma-reclaim-entry): 주가가 이평선 아래로 떨어졌다 복귀 시 매수, 기준 20일선 추천("크게 한 번 오른 뒤 횡보" → neutral 허용). priceCrossAboveMa20Days=재돌파 경과 거래일(당일 0, 현재 MA20 아래면 null→미발화). pctBelow52wHigh≤15로 강세 종목만(시장 전체 반등에 휩쓸린 약한 종목 제외). RS 선별 미적용(관찰 후보).',
   },
 ];
 

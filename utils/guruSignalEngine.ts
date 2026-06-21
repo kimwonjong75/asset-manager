@@ -23,6 +23,8 @@ import type {
   RequiredMetric,
   RuleAction,
 } from '../types/knowledge';
+import type { Asset, ExchangeRates, WatchlistItem } from '../types';
+import { Currency } from '../types';
 import type { EnrichedIndicatorData } from '../hooks/useEnrichedIndicators';
 import { computeRiskTier } from './riskMatrix';
 import { isActiveSignal } from './knowledgeScoring';
@@ -106,6 +108,79 @@ export function groupGuruSignals(matches: GuruSignalMatch[]): GuruSignalActionGr
     });
   }
   return groups;
+}
+
+// 신호 종목을 AssetTrendChart에 넘길 props로 변환한 형태(assetId 키 맵의 값).
+// source 분기(포트폴리오/관심종목) 룩업은 비즈니스 로직이므로 컴포넌트가 아닌 여기(순수)에서 처리.
+export interface GuruSignalChartTarget {
+  assetId: string;
+  assetName: string;
+  currentQuantity: number;
+  currentPrice: number;   // 원본 통화 단가 (currency와 일치) — PortfolioTableRow의 차트 호출과 동일 의미
+  currency: Currency;
+  exchangeRate: number;
+  ticker: string;
+  exchange: string;
+  categoryId: number;
+  purchasePrice?: number;
+}
+
+/** 통화→원화 환율. ExchangeRates는 USD/JPY만 보유(그 외/KRW는 1). */
+function resolveExchangeRate(currency: Currency, rates: ExchangeRates): number {
+  if (currency === Currency.USD) return rates.USD || 1;
+  if (currency === Currency.JPY) return rates.JPY || 1;
+  return 1;
+}
+
+/**
+ * 신호 매칭 종목별 차트 props 맵을 만든다(순수, assetId 중복 제거).
+ * 포트폴리오는 enrichedAssets(=Asset)에서, 관심종목은 watchlist에서 룩업.
+ * 관심종목은 수량/매수평균이 없으므로 0/undefined로 채운다.
+ */
+export function buildGuruSignalChartTargets(params: {
+  matches: GuruSignalMatch[];
+  portfolioAssets: Asset[];
+  watchlist: WatchlistItem[];
+  exchangeRates: ExchangeRates;
+}): Record<string, GuruSignalChartTarget> {
+  const { matches, portfolioAssets, watchlist, exchangeRates } = params;
+  const byId: Record<string, GuruSignalChartTarget> = {};
+  for (const m of matches) {
+    if (byId[m.assetId]) continue;
+    if (m.source === 'portfolio') {
+      const a = portfolioAssets.find(x => x.id === m.assetId);
+      if (!a) continue;
+      byId[m.assetId] = {
+        assetId: a.id,
+        assetName: a.customName?.trim() || a.name,
+        currentQuantity: a.quantity,
+        currentPrice: a.currentPrice,
+        currency: a.currency,
+        exchangeRate: resolveExchangeRate(a.currency, exchangeRates),
+        ticker: a.ticker,
+        exchange: a.exchange,
+        categoryId: a.categoryId,
+        purchasePrice: a.purchasePrice,
+      };
+    } else {
+      const w = watchlist.find(x => x.id === m.assetId);
+      if (!w) continue;
+      const currency = w.currency ?? Currency.KRW;
+      byId[m.assetId] = {
+        assetId: w.id,
+        assetName: w.name,
+        currentQuantity: 0,
+        currentPrice: w.priceOriginal ?? w.currentPrice ?? 0,
+        currency,
+        exchangeRate: resolveExchangeRate(currency, exchangeRates),
+        ticker: w.ticker,
+        exchange: w.exchange,
+        categoryId: w.categoryId,
+        purchasePrice: undefined,
+      };
+    }
+  }
+  return byId;
 }
 
 function isLeaf(node: ConditionNode): node is ConditionLeaf {

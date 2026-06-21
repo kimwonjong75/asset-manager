@@ -107,10 +107,9 @@ const DashboardView: React.FC = () => {
 
       <GoldPremiumWidget />
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <RiskCalculatorCard />
-        <GuruSignalCard />
-      </div>
+      {/* 리스크 계산기(평소 접힘) + 구루 신호 엔진(풀폭: 좌 신호 리스트 / 우 차트) */}
+      <RiskCalculatorCard />
+      <GuruSignalCard />
 
       <SoldAssetsStats stats={soldAssetsStats} globalPeriod={ui.globalPeriod} onPeriodChange={actions.setGlobalPeriod} />
 

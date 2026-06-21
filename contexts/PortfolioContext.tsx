@@ -22,7 +22,7 @@ import { useGoldPremium } from '../hooks/useGoldPremium';
 import { CategoryBaseType } from '../types/category';
 import type { CategoryStore } from '../types/category';
 import type { KnowledgeBase } from '../types/knowledge';
-import { evaluateGuruSignals, type GuruSignalMatch, type GuruSignalTarget } from '../utils/guruSignalEngine';
+import { evaluateGuruSignals, buildGuruSignalChartTargets, type GuruSignalMatch, type GuruSignalTarget } from '../utils/guruSignalEngine';
 import {
   DEFAULT_COLUMN_CONFIG,
   DEFAULT_FIXED_COLUMN_WIDTHS,
@@ -421,6 +421,17 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     });
   }, [enrichedMap, enrichedAssets, watchlist, knowledgeBase, isEnrichedLoading]);
 
+  // 신호 종목별 차트 props 맵 — GuruSignalCard 인라인 차트가 assetId로 룩업(source 분기는 순수 빌더에 위임)
+  const guruSignalChartTargets = useMemo(
+    () => buildGuruSignalChartTargets({
+      matches: guruSignals,
+      portfolioAssets: enrichedAssets,
+      watchlist,
+      exchangeRates,
+    }),
+    [guruSignals, enrichedAssets, watchlist, exchangeRates],
+  );
+
   const showExchangeRateWarning = useMemo(() => {
     const hasUSD = assets.some(a => a.currency === Currency.USD);
     const hasJPY = assets.some(a => a.currency === Currency.JPY);
@@ -518,6 +529,7 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       alertResults,
       riskMatrix,
       guruSignals,
+      guruSignalChartTargets,
       showAlertPopup,
       backupList: backup.backupList,
       backupSettings: backup.backupSettings,
