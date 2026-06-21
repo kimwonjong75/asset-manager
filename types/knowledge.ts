@@ -175,6 +175,26 @@ export interface KnowledgeBase {
   lastUpdated: string;         // YYYY-MM-DD
 }
 
+// ── 5. 인제스트 승인 큐 (로컬 DB/queue/knowledge-inbox.jsonl → 앱 import → 승인) ──
+// triage(scripts/ingest)가 만든 정제 후보. 앱에서 사용자가 승인해야만 knowledgeBase에 반영된다.
+export interface IngestQueueEntry {
+  queueId: string;             // "<sourceId>::<candidateId>"
+  kind: 'claim' | 'rule';
+  sourceId: string;            // 원문 대장 id (예: 260620_f4953b99)
+  triagedAt: string;           // YYYY-MM-DD
+  reason: string;              // 초보용 분류 사유
+  dedup: string;               // 'new' | 'refines:<id>'
+  confidence: 'high' | 'medium' | 'low';
+  candidate: KnowledgeClaim | KnowledgeRule;
+}
+
+// promote(rule.status='active' = 신호 활성화) 직전 무결성 검사 결과.
+// isActiveSignal 게이트가 rule만 보므로, 승인 단계가 연결 claim 무결성까지 마지막 문지기 역할을 한다.
+export interface PromoteCheck {
+  ok: boolean;
+  blockers: string[];
+}
+
 // ── 표시명 ─────────────────────────────────────────────────────────────────
 export const KNOWLEDGE_CATEGORY_LABELS: Record<KnowledgeCategory, string> = {
   'market-regime': '시장 레짐(언제)',

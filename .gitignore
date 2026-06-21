@@ -28,3 +28,6 @@ dist-ssr
 .env.local
 
 repomix-output.xml
+
+# 지식 인제스트 로컬 DB (원문·추출·후보·큐 — 절대 커밋 금지, 로컬 전용)
+DB/

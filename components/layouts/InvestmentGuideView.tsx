@@ -1,6 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
+import KnowledgeInboxPanel from '../knowledge/KnowledgeInboxPanel';
 
 const SECTIONS = [
+  { id: 'inbox', label: '지식 인제스트' },
   { id: 'signal', label: '매매 시그널' },
   { id: 'ma', label: '이동평균선' },
   { id: 'rsi', label: 'RSI 지표' },
@@ -13,6 +15,11 @@ type SectionId = typeof SECTIONS[number]['id'];
 
 /* ─── 아이콘 SVG ─── */
 const Icons = {
+  inbox: (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+    </svg>
+  ),
   signal: (
     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
@@ -46,6 +53,7 @@ const Icons = {
 } as const;
 
 const SECTION_COLORS: Record<SectionId, { border: string; bg: string; text: string; badge: string }> = {
+  inbox:    { border: 'border-teal-500/40',    bg: 'bg-teal-500/10',    text: 'text-teal-400',    badge: 'bg-teal-500' },
   signal:   { border: 'border-emerald-500/40', bg: 'bg-emerald-500/10', text: 'text-emerald-400', badge: 'bg-emerald-500' },
   ma:       { border: 'border-blue-500/40',    bg: 'bg-blue-500/10',    text: 'text-blue-400',    badge: 'bg-blue-500' },
   rsi:      { border: 'border-purple-500/40',  bg: 'bg-purple-500/10',  text: 'text-purple-400',  badge: 'bg-purple-500' },
@@ -55,7 +63,7 @@ const SECTION_COLORS: Record<SectionId, { border: string; bg: string; text: stri
 };
 
 const InvestmentGuideView: React.FC = () => {
-  const [activeSection, setActiveSection] = useState<SectionId>('signal');
+  const [activeSection, setActiveSection] = useState<SectionId>('inbox');
   const sectionRefs = useRef<Record<string, HTMLElement | null>>({});
 
   useEffect(() => {
@@ -138,6 +146,16 @@ const InvestmentGuideView: React.FC = () => {
             );
           })}
         </div>
+
+        {/* ━━━━━━━━━━ 0. 지식 인제스트 (승인 큐) ━━━━━━━━━━ */}
+        <section
+          id="inbox"
+          ref={el => { sectionRefs.current['inbox'] = el; }}
+          className="bg-gray-800/60 border border-gray-700 rounded-xl p-5 sm:p-6"
+        >
+          <SectionHeader id="inbox" title="지식 인제스트 — 승인 큐" />
+          <KnowledgeInboxPanel />
+        </section>
 
         {/* ━━━━━━━━━━ 1. 매매 시그널 ━━━━━━━━━━ */}
         <section

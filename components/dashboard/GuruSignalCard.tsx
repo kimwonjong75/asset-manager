@@ -11,6 +11,7 @@
 import React, { useState } from 'react';
 import { usePortfolio } from '../../contexts/PortfolioContext';
 import { getActiveSignalRules, groupGuruSignals } from '../../utils/guruSignalEngine';
+import { buildSignalExplanation, type SignalExplanation } from '../../utils/conditionDescribe';
 import type { RuleAction } from '../../types/knowledge';
 import AssetTrendChart from '../AssetTrendChart';
 import ChartViewerModal from '../common/ChartViewerModal';
@@ -37,6 +38,38 @@ const RULE_SHORT_LABELS: Record<string, string> = {
   'rule-ma20-reclaim-watch': 'MA20 재돌파',
 };
 
+// 신호 설명 블록 — 근거(claim) + 종목별 충족 조건(실제값) + 무효. 렌더 전용.
+const ExplainBlock: React.FC<{ title: string; exp: SignalExplanation }> = ({ title, exp }) => (
+  <div className="bg-gray-900/70 rounded-md p-2.5 text-[11px]">
+    <p className="text-gray-200 font-medium mb-1.5">{title}</p>
+    {exp.basis.length > 0 && (
+      <p className="mb-1.5 text-gray-400">
+        <span className="text-gray-500">📚 근거 </span>{exp.basis.join(' · ')}
+      </p>
+    )}
+    {exp.leaves.length > 0 ? (
+      <div className="space-y-1">
+        <p className="text-gray-500">🟢 이 종목이 충족한 조건</p>
+        {exp.leaves.map((lf, i) => (
+          <div key={i} className="flex items-center gap-1.5 flex-wrap">
+            <span className={lf.passed === true ? 'text-emerald-400' : lf.passed === false ? 'text-rose-400' : 'text-gray-500'}>
+              {lf.passed === true ? '✓' : lf.passed === false ? '✗' : '—'}
+            </span>
+            <span className="text-gray-300">{lf.label}</span>
+            <span className="text-white font-mono">{lf.actual}</span>
+            <span className="text-gray-500">(기준 {lf.condition})</span>
+          </div>
+        ))}
+      </div>
+    ) : exp.conditions.length > 0 ? (
+      <p className="text-gray-400">
+        <span className="text-gray-500">📋 언제 뜨나 </span>{exp.conditions.join(' · ')}
+      </p>
+    ) : null}
+    {exp.riskPolicy && <p className="mt-1.5 text-gray-500">⚠️ 무효: {exp.riskPolicy}</p>}
+  </div>
+);
+
 const GuruSignalCard: React.FC = () => {
   const { data, derived } = usePortfolio();
   const signals = derived.guruSignals;
@@ -53,6 +86,7 @@ const GuruSignalCard: React.FC = () => {
 
   // 선택 종목(우측 차트). 미선택/사라진 종목이면 우선순위 최상위(첫 그룹·첫 종목)로 폴백.
   const [selectedAssetId, setSelectedAssetId] = useState<string | null>(null);
+  const [explainAssetId, setExplainAssetId] = useState<string | null>(null);
   const [fullscreen, setFullscreen] = useState(false);
   const firstAssetId = groups[0]?.assets[0]?.assetId ?? null;
   const effectiveSelectedId =
@@ -141,6 +175,31 @@ const GuruSignalCard: React.FC = () => {
                             {invalidations.length > 0 && (
                               <div className="text-[11px] text-gray-500 mt-1">
                                 ⓘ 무효화: {invalidations.join(' / ')}
+                              </div>
+                            )}
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setExplainAssetId(prev => (prev === asset.assetId ? null : asset.assetId));
+                              }}
+                              className="text-[11px] text-cyan-400/80 hover:text-cyan-300 mt-1"
+                            >
+                              {explainAssetId === asset.assetId ? '설명 접기 ▴' : '왜 떴나 ▾'}
+                            </button>
+                            {explainAssetId === asset.assetId && (
+                              <div className="mt-2 space-y-2 border-t border-gray-700/60 pt-2" onClick={(e) => e.stopPropagation()}>
+                                {asset.rules.map((r) => {
+                                  const rule = data.knowledgeBase.rules.find(x => x.id === r.ruleId);
+                                  const enriched = derived.enrichedMap.get(asset.ticker);
+                                  const currentPrice = chartTargets[asset.assetId]?.currentPrice ?? 0;
+                                  const exp = buildSignalExplanation({
+                                    rule,
+                                    claims: data.knowledgeBase.claims,
+                                    enriched,
+                                    currentPrice,
+                                  });
+                                  return <ExplainBlock key={r.ruleId} title={RULE_SHORT_LABELS[r.ruleId] ?? r.ruleTitle} exp={exp} />;
+                                })}
                               </div>
                             )}
                           </li>
