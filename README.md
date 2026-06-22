@@ -271,10 +271,10 @@ gcloud run deploy asset-manager \
   --source . \
   --region asia-northeast3 \
   --allow-unauthenticated \
-  --set-env-vars "GOOGLE_CLIENT_ID=your_client_id,GOOGLE_CLIENT_SECRET=your_client_secret,JWT_SECRET=your_jwt_secret,GEMINI_API_KEY=your_gemini_api_key"
+  --set-env-vars "GOOGLE_CLIENT_ID=your_client_id,GOOGLE_CLIENT_SECRET=your_client_secret,JWT_SECRET=your_jwt_secret"
 ```
-> **참고**: `requirements.txt`에 `PyJWT`, `google-cloud-firestore`, `google-genai` 의존성 필요
-> (Gemini 프록시는 `cloud-run/gemini_proxy.py` 참고 — 키는 백엔드 전용 `GEMINI_API_KEY`로만 주입)
+> **참고**: `requirements.txt`에 `PyJWT`, `google-cloud-firestore` 의존성 필요
+> (백엔드는 Drive 로그인·시세 전용입니다. Gemini는 백엔드를 거치지 않습니다.)
 
 ---
 
@@ -284,14 +284,14 @@ gcloud run deploy asset-manager \
 ```env
 VITE_GOOGLE_CLIENT_ID=your_google_client_id
 ```
+> **Gemini API 키는 환경 변수가 아닙니다 (BYOK).** 앱 실행 후 **설정 → AI 설정(Gemini)** 화면에서 각자 본인 키를 입력합니다.
+> 키는 사용자 브라우저(localStorage)에만 저장되며 빌드·Drive 동기화·깃 업로드에 포함되지 않습니다.
 
 ### Cloud Run 백엔드 환경 변수
 ```env
 GOOGLE_CLIENT_ID=your_google_client_id
 GOOGLE_CLIENT_SECRET=your_google_client_secret
 JWT_SECRET=your_jwt_secret_key
-GEMINI_API_KEY=your_gemini_api_key          # Gemini 프록시 전용 (프론트에 노출 안 됨)
-# GEMINI_REQUIRE_AUTH=false                 # (선택) 비로그인 사용자도 AI 허용 시
 ```
 
 ### 빌드 설정 (vite.config.ts)

@@ -308,11 +308,6 @@ class GoogleDriveService {
     return this.user;
   }
 
-  // 백엔드 프록시 인증용 앱 JWT 반환 (Gemini 프록시 등 자체 백엔드 호출용)
-  getJwtToken(): string | null {
-    return this.jwtToken;
-  }
-
   // 파일 목록 가져오기 (기본: portfolio.json)
   async listFiles(fileName: string = 'portfolio.json'): Promise<DriveFile[]> {
     if (!this.accessToken) {

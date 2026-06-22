@@ -10,21 +10,36 @@ import {
 import { calculateSMA, calculateRSI, calculateCrossDays, calculatePriceCrossMaDays, calculatePriceBreakBelowMaDays, calculateRsiCrossDays, getRequiredHistoryDays } from '../utils/maCalculations';
 import type { EnrichedIndicatorData } from '../hooks/useEnrichedIndicators';
 import { createLogger } from '../utils/logger';
-import { CLOUD_RUN_BASE_URL } from '../constants/api';
-import { googleDriveService } from './googleDriveService';
+import { GoogleGenAI } from '@google/genai';
+import { getGeminiApiKey, getGeminiModel } from './geminiSettings';
 
 // =================================================================
 // 1. 설정 및 초기화
 // =================================================================
 const log = createLogger('Gemini');
 
-// Gemini 호출은 모두 백엔드(Cloud Run) 프록시 경유 — 클라이언트 번들에 API 키를 두지 않는다.
-// 백엔드가 GEMINI_API_KEY를 보관하고, 앱 JWT로 인증된 요청만 대행한다.
-const GEMINI_PROXY_URL = `${CLOUD_RUN_BASE_URL}/gemini`;
+// BYOK(Bring Your Own Key): 사용자가 설정 화면에서 입력한 자기 Gemini 키를 사용한다.
+// 키/모델은 services/geminiSettings(localStorage)에서만 읽으며, 빌드 env·Drive 동기화에는 절대 포함되지 않는다.
+// 키가 런타임에 바뀔 수 있으므로 클라이언트는 키 기준으로 캐시한다.
+let cachedAi: GoogleGenAI | null = null;
+let cachedKey = '';
+function getAI(): GoogleGenAI | null {
+  const key = getGeminiApiKey();
+  if (!key) {
+    cachedAi = null;
+    cachedKey = '';
+    return null;
+  }
+  if (key !== cachedKey) {
+    cachedAi = new GoogleGenAI({ apiKey: key });
+    cachedKey = key;
+  }
+  return cachedAi;
+}
 
-// 로그인(앱 JWT) 상태에서만 AI 사용 가능. 비로그인 시 mock/스킵으로 폴백.
+// 키가 입력돼 있으면 AI 사용 가능. 없으면 mock/스킵으로 폴백.
 function canUseAI(): boolean {
-  return !!googleDriveService.getJwtToken();
+  return !!getGeminiApiKey();
 }
 
 // =================================================================
@@ -80,44 +95,49 @@ function delay(ms: number): Promise<void> {
 // =================================================================
 // 4. Gemini API 호출 (SDK 방식 - 안정적)
 // =================================================================
-async function callGeminiProxy(prompt: string, useSearch: boolean): Promise<string> {
-  const jwt = googleDriveService.getJwtToken();
-  if (!jwt) {
-    log.error("Not authenticated — AI proxy unavailable");
+async function callGeminiWithSearch(prompt: string): Promise<string> {
+  const ai = getAI();
+  if (!ai) {
+    log.error("No Gemini API key configured");
     return "";
   }
 
   try {
-    const response = await fetch(GEMINI_PROXY_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${jwt}`,
-      },
-      body: JSON.stringify({ prompt, search: useSearch }),
+    const response = await ai.models.generateContent({
+      model: getGeminiModel(),
+      contents: prompt,
+      config: {
+        tools: [{ googleSearch: {} }],
+      }
     });
 
-    if (!response.ok) {
-      log.error("Proxy error:", response.status);
-      return "";
-    }
-
-    const data = await response.json();
-    return (data.text || "").trim();
+    const text = response.text?.trim() || "";
+    // JSON 블록 정리
+    return text.replace(/^```json\s*|```$/g, '').trim();
   } catch (error) {
-    log.error("Proxy request failed:", error);
+    log.error("API Error:", error);
     return "";
   }
 }
 
-async function callGeminiWithSearch(prompt: string): Promise<string> {
-  const text = await callGeminiProxy(prompt, true);
-  // JSON 블록 정리
-  return text.replace(/^```json\s*|```$/g, '').trim();
-}
-
 async function callGeminiBasic(prompt: string): Promise<string> {
-  return callGeminiProxy(prompt, false);
+  const ai = getAI();
+  if (!ai) {
+    log.error("No Gemini API key configured");
+    return "";
+  }
+
+  try {
+    const response = await ai.models.generateContent({
+      model: getGeminiModel(),
+      contents: prompt,
+    });
+
+    return response.text?.trim() || "";
+  } catch (error) {
+    log.error("API Error:", error);
+    return "";
+  }
 }
 
 // =================================================================
@@ -681,9 +701,9 @@ export const askPortfolioQuestionStream = async (
   onChunk: (fullText: string) => void,
   enrichedIndicators?: Map<string, EnrichedIndicatorData>
 ): Promise<string> => {
-  const jwt = googleDriveService.getJwtToken();
-  if (!jwt) {
-    const msg = "로그인 후 AI 분석을 사용할 수 있습니다.";
+  const ai = getAI();
+  if (!ai) {
+    const msg = "Gemini API 키를 설정에서 입력해주세요.";
     onChunk(msg);
     return msg;
   }
@@ -703,28 +723,16 @@ export const askPortfolioQuestionStream = async (
   const prompt = buildPortfolioPrompt(assets, question, indicatorMap);
 
   try {
-    const response = await fetch(`${GEMINI_PROXY_URL}/stream`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${jwt}`,
-      },
-      body: JSON.stringify({ prompt }),
+    const response = await ai.models.generateContentStream({
+      model: getGeminiModel(),
+      contents: prompt,
     });
 
-    if (!response.ok || !response.body) {
-      throw new Error(`AI 프록시 오류 (${response.status})`);
-    }
-
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
     let fullText = '';
-    for (;;) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      const textChunk = decoder.decode(value, { stream: true });
-      if (textChunk) {
-        fullText += textChunk;
+    for await (const chunk of response) {
+      const text = chunk.text || '';
+      if (text) {
+        fullText += text;
         onChunk(fullText);
       }
     }
@@ -743,7 +751,7 @@ export const askPortfolioQuestion = async (
   assets: Asset[],
   question: string
 ): Promise<string> => {
-  if (!canUseAI()) return "로그인 후 AI 분석을 사용할 수 있습니다.";
+  if (!canUseAI()) return "Gemini API 키를 설정에서 입력해주세요.";
 
   const isTechnicalQuestion = containsTechnicalKeywords(question);
   let indicatorMap: Map<string, EnrichedIndicatorData> | null = null;
