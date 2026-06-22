@@ -271,9 +271,10 @@ gcloud run deploy asset-manager \
   --source . \
   --region asia-northeast3 \
   --allow-unauthenticated \
-  --set-env-vars "GOOGLE_CLIENT_ID=your_client_id,GOOGLE_CLIENT_SECRET=your_client_secret,JWT_SECRET=your_jwt_secret"
+  --set-env-vars "GOOGLE_CLIENT_ID=your_client_id,GOOGLE_CLIENT_SECRET=your_client_secret,JWT_SECRET=your_jwt_secret,GEMINI_API_KEY=your_gemini_api_key"
 ```
-> **참고**: `requirements.txt`에 `PyJWT`, `google-cloud-firestore` 의존성 필요
+> **참고**: `requirements.txt`에 `PyJWT`, `google-cloud-firestore`, `google-genai` 의존성 필요
+> (Gemini 프록시는 `cloud-run/gemini_proxy.py` 참고 — 키는 백엔드 전용 `GEMINI_API_KEY`로만 주입)
 
 ---
 
@@ -289,6 +290,8 @@ VITE_GOOGLE_CLIENT_ID=your_google_client_id
 GOOGLE_CLIENT_ID=your_google_client_id
 GOOGLE_CLIENT_SECRET=your_google_client_secret
 JWT_SECRET=your_jwt_secret_key
+GEMINI_API_KEY=your_gemini_api_key          # Gemini 프록시 전용 (프론트에 노출 안 됨)
+# GEMINI_REQUIRE_AUTH=false                 # (선택) 비로그인 사용자도 AI 허용 시
 ```
 
 ### 빌드 설정 (vite.config.ts)

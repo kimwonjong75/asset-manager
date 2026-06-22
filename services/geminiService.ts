@@ -1,4 +1,3 @@
-import { GoogleGenAI } from '@google/genai';
 import { Asset, Currency, SymbolSearchResult, normalizeExchange } from '../types';
 import { isBaseType, getCategoryName, DEFAULT_CATEGORIES } from '../types/category';
 import { AssetDataResult } from '../types/api';
@@ -11,15 +10,22 @@ import {
 import { calculateSMA, calculateRSI, calculateCrossDays, calculatePriceCrossMaDays, calculatePriceBreakBelowMaDays, calculateRsiCrossDays, getRequiredHistoryDays } from '../utils/maCalculations';
 import type { EnrichedIndicatorData } from '../hooks/useEnrichedIndicators';
 import { createLogger } from '../utils/logger';
+import { CLOUD_RUN_BASE_URL } from '../constants/api';
+import { googleDriveService } from './googleDriveService';
 
 // =================================================================
 // 1. 설정 및 초기화
 // =================================================================
 const log = createLogger('Gemini');
-const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
-const ai = API_KEY ? new GoogleGenAI({ apiKey: API_KEY }) : null;
 
-log.info("Status:", API_KEY ? "API Key Loaded" : "No API Key");
+// Gemini 호출은 모두 백엔드(Cloud Run) 프록시 경유 — 클라이언트 번들에 API 키를 두지 않는다.
+// 백엔드가 GEMINI_API_KEY를 보관하고, 앱 JWT로 인증된 요청만 대행한다.
+const GEMINI_PROXY_URL = `${CLOUD_RUN_BASE_URL}/gemini`;
+
+// 로그인(앱 JWT) 상태에서만 AI 사용 가능. 비로그인 시 mock/스킵으로 폴백.
+function canUseAI(): boolean {
+  return !!googleDriveService.getJwtToken();
+}
 
 // =================================================================
 // 2. 캐싱 시스템 (API 호출 횟수 감소)
@@ -74,47 +80,44 @@ function delay(ms: number): Promise<void> {
 // =================================================================
 // 4. Gemini API 호출 (SDK 방식 - 안정적)
 // =================================================================
-async function callGeminiWithSearch(prompt: string): Promise<string> {
-  if (!ai) {
-    log.error("AI not initialized");
+async function callGeminiProxy(prompt: string, useSearch: boolean): Promise<string> {
+  const jwt = googleDriveService.getJwtToken();
+  if (!jwt) {
+    log.error("Not authenticated — AI proxy unavailable");
     return "";
   }
 
   try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: prompt,
-      config: {
-        tools: [{ googleSearch: {} }],
-      }
+    const response = await fetch(GEMINI_PROXY_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${jwt}`,
+      },
+      body: JSON.stringify({ prompt, search: useSearch }),
     });
 
-    const text = response.text?.trim() || "";
-    // JSON 블록 정리
-    return text.replace(/^```json\s*|```$/g, '').trim();
+    if (!response.ok) {
+      log.error("Proxy error:", response.status);
+      return "";
+    }
+
+    const data = await response.json();
+    return (data.text || "").trim();
   } catch (error) {
-    log.error("API Error:", error);
+    log.error("Proxy request failed:", error);
     return "";
   }
 }
 
+async function callGeminiWithSearch(prompt: string): Promise<string> {
+  const text = await callGeminiProxy(prompt, true);
+  // JSON 블록 정리
+  return text.replace(/^```json\s*|```$/g, '').trim();
+}
+
 async function callGeminiBasic(prompt: string): Promise<string> {
-  if (!ai) {
-    log.error("AI not initialized");
-    return "";
-  }
-
-  try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: prompt,
-    });
-
-    return response.text?.trim() || "";
-  } catch (error) {
-    log.error("API Error:", error);
-    return "";
-  }
+  return callGeminiProxy(prompt, false);
 }
 
 // =================================================================
@@ -155,7 +158,7 @@ export async function searchSymbols(query: string): Promise<SymbolSearchResult[]
     return results;
   }
 
-  if (!ai) return [];
+  if (!canUseAI()) return [];
 
   const prompt = `Search for stock or crypto symbols matching "${query}".
 Return a JSON array of up to 5 results. Each object in the array must have these exact keys: "ticker", "name" (in Korean), and "exchange" (e.g., "NASDAQ", "KRX (코스피/코스닥)", "주요 거래소 (종합)").
@@ -215,7 +218,7 @@ export const fetchAssetData = async (
     return cached;
   }
 
-  if (!ai) {
+  if (!canUseAI()) {
     return createMockResult(ticker);
   }
 
@@ -297,7 +300,7 @@ export const fetchBatchAssetPrices = async (
   const resultMap = new Map<string, AssetDataResult>();
   
   if (assets.length === 0) return resultMap;
-  if (!ai) {
+  if (!canUseAI()) {
     assets.forEach(a => resultMap.set(a.id, createMockResult(a.ticker)));
     return resultMap;
   }
@@ -678,8 +681,9 @@ export const askPortfolioQuestionStream = async (
   onChunk: (fullText: string) => void,
   enrichedIndicators?: Map<string, EnrichedIndicatorData>
 ): Promise<string> => {
-  if (!ai) {
-    const msg = "API 키가 설정되지 않았습니다.";
+  const jwt = googleDriveService.getJwtToken();
+  if (!jwt) {
+    const msg = "로그인 후 AI 분석을 사용할 수 있습니다.";
     onChunk(msg);
     return msg;
   }
@@ -699,16 +703,28 @@ export const askPortfolioQuestionStream = async (
   const prompt = buildPortfolioPrompt(assets, question, indicatorMap);
 
   try {
-    const response = await ai.models.generateContentStream({
-      model: 'gemini-2.5-flash',
-      contents: prompt,
+    const response = await fetch(`${GEMINI_PROXY_URL}/stream`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${jwt}`,
+      },
+      body: JSON.stringify({ prompt }),
     });
 
+    if (!response.ok || !response.body) {
+      throw new Error(`AI 프록시 오류 (${response.status})`);
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
     let fullText = '';
-    for await (const chunk of response) {
-      const text = chunk.text || '';
-      if (text) {
-        fullText += text;
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      const textChunk = decoder.decode(value, { stream: true });
+      if (textChunk) {
+        fullText += textChunk;
         onChunk(fullText);
       }
     }
@@ -727,7 +743,7 @@ export const askPortfolioQuestion = async (
   assets: Asset[],
   question: string
 ): Promise<string> => {
-  if (!ai) return "API 키가 설정되지 않았습니다.";
+  if (!canUseAI()) return "로그인 후 AI 분석을 사용할 수 있습니다.";
 
   const isTechnicalQuestion = containsTechnicalKeywords(question);
   let indicatorMap: Map<string, EnrichedIndicatorData> | null = null;

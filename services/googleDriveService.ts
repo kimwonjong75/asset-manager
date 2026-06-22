@@ -21,7 +21,7 @@ import { CLOUD_RUN_BASE_URL } from '../constants/api';
 import { createLogger } from '../utils/logger';
 
 const log = createLogger('GoogleDrive');
-const DRIVE_FOLDER_ID = '10O5cGNd9QVoAAxR8NdojqI9AD7wj0Q_g';
+const DRIVE_FOLDER_ID = import.meta.env?.VITE_DRIVE_FOLDER_ID || '10O5cGNd9QVoAAxR8NdojqI9AD7wj0Q_g';
 const AUTH_API_URL = CLOUD_RUN_BASE_URL;
 
 class GoogleDriveService {
@@ -115,7 +115,7 @@ class GoogleDriveService {
     return new Promise((resolve, reject) => {
       const codeClient = window.google.accounts.oauth2.initCodeClient({
         client_id: this.clientId!,
-        scope: 'https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile openid',
+        scope: 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile openid',
         ux_mode: 'popup',
         callback: async (response: google.accounts.oauth2.CodeResponse) => {
           if (response.error) {
@@ -306,6 +306,11 @@ class GoogleDriveService {
   // 현재 사용자 정보
   getCurrentUser(): GoogleUser | null {
     return this.user;
+  }
+
+  // 백엔드 프록시 인증용 앱 JWT 반환 (Gemini 프록시 등 자체 백엔드 호출용)
+  getJwtToken(): string | null {
+    return this.jwtToken;
   }
 
   // 파일 목록 가져오기 (기본: portfolio.json)

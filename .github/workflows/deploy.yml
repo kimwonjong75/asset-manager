@@ -34,7 +34,6 @@ jobs:
       # [핵심 수정] 환경 변수를 파일(.env)로 직접 생성하여 빌드에 주입 (가장 확실한 방법)
       - name: Create .env file
         run: |
-          echo "VITE_GEMINI_API_KEY=${{ secrets.VITE_GEMINI_API_KEY }}" >> .env
           echo "VITE_GOOGLE_CLIENT_ID=${{ secrets.VITE_GOOGLE_CLIENT_ID }}" >> .env
 
       - name: Build

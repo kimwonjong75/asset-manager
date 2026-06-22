@@ -2,7 +2,6 @@ import React, { useState, useRef, useEffect } from 'react';
 import { askPortfolioQuestionStream } from '../services/geminiService';
 import ReactMarkdown, { type Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import rehypeRaw from 'rehype-raw';
 import { usePortfolio } from '../contexts/PortfolioContext';
 import { useEnrichedIndicators } from '../hooks/useEnrichedIndicators';
 
@@ -197,9 +196,8 @@ const PortfolioAssistant: React.FC = () => {
                             <div key={index} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                                 <div className={`max-w-xl lg:max-w-2xl px-4 py-3 rounded-lg ${msg.role === 'user' ? 'bg-primary text-white' : 'bg-gray-700 text-gray-200'}`}>
                                      {msg.role === 'model' ? (
-                                        <ReactMarkdown 
-                                            remarkPlugins={[remarkGfm]} 
-                                            rehypePlugins={[rehypeRaw]}
+                                        <ReactMarkdown
+                                            remarkPlugins={[remarkGfm]}
                                             components={markdownComponents}
                                         >
                                             {msg.content}

@@ -31,3 +31,8 @@ repomix-output.xml
 
 # 지식 인제스트 로컬 DB (원문·추출·후보·큐 — 절대 커밋 금지, 로컬 전용)
 DB/
+
+# Python 캐시 / 임시 산출물 (백엔드 스크래퍼 컴파일본, PDF/이미지 등)
+__pycache__/
+*.pyc
+tmp/
