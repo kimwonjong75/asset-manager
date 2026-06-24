@@ -12,6 +12,7 @@ import type { EnrichedIndicatorData } from '../hooks/useEnrichedIndicators';
 import { createLogger } from '../utils/logger';
 import { GoogleGenAI } from '@google/genai';
 import { getGeminiApiKey, getGeminiModel } from './geminiSettings';
+import { findSpecialAsset } from './specialAssets';
 
 // =================================================================
 // 1. 설정 및 초기화
@@ -143,29 +144,10 @@ async function callGeminiBasic(prompt: string): Promise<string> {
 }
 
 // =================================================================
-// 5. 종목 검색
+// 5. 종목 검색 (AI 보강용 — 키 있을 때만 "AI로 더 찾기"로 호출)
 // =================================================================
-
-// 특수 종목 정의 (백엔드 전용 코드)
-const SPECIAL_ASSETS: SymbolSearchResult[] = [
-  {
-    ticker: 'KRX-GOLD',
-    name: 'KRX 금현물',
-    exchange: 'KRX (코스피/코스닥)',
-  },
-];
-
-// 특수 종목 검색 키워드 매핑
-function findSpecialAsset(query: string): SymbolSearchResult | null {
-  const q = query.toLowerCase().trim();
-  const goldKeywords = ['금현물', 'krx-gold', 'krx gold', 'gold', 'm04020000', '금', '골드'];
-
-  if (goldKeywords.some(kw => q.includes(kw))) {
-    return SPECIAL_ASSETS.find(a => a.ticker === 'KRX-GOLD') || null;
-  }
-
-  return null;
-}
+// 기본 키리스 검색은 services/symbolListService.searchSymbols 가 담당한다.
+// 여기 searchSymbolsAI 는 자연어/별칭 검색을 Gemini 그라운딩으로 보강하는 선택 경로.
 
 // 검색 실패 사유를 호출부(모달)까지 전달해 사용자에게 표시하기 위한 에러.
 // 빈 배열([])은 "오류 없이 결과 없음"을 의미하며, 이 에러는 키 미설정/API 오류를 의미한다.
@@ -197,7 +179,7 @@ function parseJsonArrayLoose(text: string): unknown {
   }
 }
 
-export async function searchSymbols(query: string): Promise<SymbolSearchResult[]> {
+export async function searchSymbolsAI(query: string): Promise<SymbolSearchResult[]> {
   const cacheKey = query.toLowerCase();
   const cached = getCached(searchCache, cacheKey);
   if (cached) return cached;

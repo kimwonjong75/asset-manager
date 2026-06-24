@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Asset, Currency, normalizeExchange } from '../types';
 import { getAllowedCategories, inferCategoryIdFromExchange } from '../types/category';
-import { searchSymbols } from '../services/geminiService';
+import { searchSymbols } from '../services/symbolListService';
 import { usePortfolio } from '../contexts/PortfolioContext';
 
 const EditAssetModal: React.FC = () => {

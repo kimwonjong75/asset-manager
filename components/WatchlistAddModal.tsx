@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { SymbolSearchResult, normalizeExchange } from '../types';
 import { getAllowedCategories, inferCategoryIdFromExchange, getCategoryBaseType } from '../types/category';
-import { searchSymbols } from '../services/geminiService';
+import { searchSymbols, validateTicker } from '../services/symbolListService';
+import { searchSymbolsAI } from '../services/geminiService';
+import { getGeminiApiKey } from '../services/geminiSettings';
 import { usePortfolio } from '../contexts/PortfolioContext';
 
 const WatchlistAddModal: React.FC = () => {
@@ -85,6 +87,51 @@ const WatchlistAddModal: React.FC = () => {
     setSearchResults([]);
   };
 
+  // 키 있을 때만 노출되는 "AI로 더 찾기" — 자연어/별칭 검색을 Gemini로 보강해 기존 결과에 병합
+  const handleAiSearch = async () => {
+    if (searchQuery.trim().length < 2) return;
+    setIsSearching(true);
+    setSearchError(null);
+    try {
+      const aiResults = await searchSymbolsAI(searchQuery);
+      setSearchResults(prev => {
+        const seen = new Set(prev.map(r => `${r.ticker}-${r.exchange}`));
+        return [...prev, ...aiResults.filter(r => !seen.has(`${r.ticker}-${r.exchange}`))];
+      });
+    } catch (error) {
+      setSearchError(error instanceof Error ? error.message : 'AI 검색 중 오류가 발생했습니다.');
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  // 검색에 안 나오는 종목을 입력한 티커로 직접 추가 (현재 선택한 자산구분/거래소 유지)
+  // 잘못된 티커(종목명 입력 등) 방지를 위해 실제 시세 조회로 검증 후에만 확정한다.
+  const handleManualAdd = async () => {
+    const t = searchQuery.trim().toUpperCase();
+    if (!t) return;
+    setIsSearching(true);
+    setSearchError(null);
+    try {
+      const isCrypto = getCategoryBaseType(category, categories) === 'CRYPTOCURRENCY';
+      const v = await validateTicker(t, exchange, isCrypto);
+      if (!v.valid) {
+        setSearchError(`'${t}' 시세를 확인할 수 없습니다. 티커가 정확한지, 자산구분이 맞는지 확인해 주세요.`);
+        return;
+      }
+      const isDuplicate = data.watchlist.some(
+        w => w.ticker.toUpperCase() === t &&
+             normalizeExchange(w.exchange) === normalizeExchange(exchange)
+      );
+      setDuplicateError(isDuplicate ? '이미 관심종목에 존재하는 종목입니다.' : null);
+      setTicker(t);
+      setSelectedName(v.name || searchQuery.trim());
+      setSearchResults([]);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
   useEffect(() => {
     const baseType = getCategoryBaseType(category, categories);
     if (baseType === 'KOREAN_STOCK') setExchange('KRX (코스피/코스닥)');
@@ -112,7 +159,8 @@ const WatchlistAddModal: React.FC = () => {
 
   const inputClasses = "w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition";
   const labelClasses = "block text-sm font-medium text-gray-300 mb-1";
-  const showResults = isFocused && searchResults.length > 0;
+  const hasGeminiKey = !!getGeminiApiKey();
+  const showSearchPanel = isFocused && !ticker && searchQuery.trim().length >= 2;
 
   if (!isOpen) return null;
 
@@ -162,22 +210,36 @@ const WatchlistAddModal: React.FC = () => {
                 </svg>
               </div>
             )}
-            {showResults && (
-              <ul className="absolute z-10 w-full bg-gray-700 border border-gray-600 rounded-md mt-1 max-h-60 overflow-y-auto shadow-lg">
-                {searchResults.map((result) => (
-                  <li
-                    key={`${result.ticker}-${result.exchange}`}
-                    onMouseDown={() => handleSelectSymbol(result)}
-                    className="px-3 py-2 cursor-pointer hover:bg-primary-dark transition-colors"
-                  >
-                    <div className="font-bold text-white">{result.name} ({result.ticker})</div>
-                    <div className="text-sm text-gray-400">{result.exchange}</div>
-                  </li>
-                ))}
-              </ul>
-            )}
-            {isFocused && !isSearching && !searchError && !ticker && searchQuery.length >= 2 && searchResults.length === 0 && (
-              <div className="absolute z-10 w-full bg-gray-700 border border-gray-600 rounded-md mt-1 px-3 py-2 text-sm text-gray-400 shadow-lg">검색 결과가 없습니다.</div>
+            {showSearchPanel && (
+              <div className="absolute z-10 w-full bg-gray-700 border border-gray-600 rounded-md mt-1 max-h-72 overflow-y-auto shadow-lg">
+                {searchResults.length > 0 && (
+                  <ul>
+                    {searchResults.map((result) => (
+                      <li
+                        key={`${result.ticker}-${result.exchange}`}
+                        onMouseDown={() => handleSelectSymbol(result)}
+                        className="px-3 py-2 cursor-pointer hover:bg-primary-dark transition-colors"
+                      >
+                        <div className="font-bold text-white">{result.name} ({result.ticker})</div>
+                        <div className="text-sm text-gray-400">{result.exchange}</div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {!isSearching && !searchError && searchResults.length === 0 && (
+                  <div className="px-3 py-2 text-sm text-gray-400">검색 결과가 없습니다.</div>
+                )}
+                <div className="border-t border-gray-600">
+                  <button type="button" onMouseDown={(e) => { e.preventDefault(); handleManualAdd(); }} disabled={isSearching} className="w-full text-left px-3 py-2 text-sm text-gray-200 hover:bg-primary-dark transition-colors disabled:opacity-50">
+                    ✏ '<span className="font-mono">{searchQuery.trim().toUpperCase()}</span>' 티커로 직접 추가
+                  </button>
+                  {hasGeminiKey && (
+                    <button type="button" onMouseDown={(e) => { e.preventDefault(); handleAiSearch(); }} disabled={isSearching} className="w-full text-left px-3 py-2 text-sm text-primary hover:bg-primary-dark transition-colors disabled:opacity-50">
+                      ✨ AI로 더 찾기
+                    </button>
+                  )}
+                </div>
+              </div>
             )}
           </div>
           <div>

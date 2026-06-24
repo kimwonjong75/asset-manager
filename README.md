@@ -237,6 +237,7 @@ asset-manager/
 | 경로 | 메서드 | 설명 |
 |------|--------|------|
 | `/` | POST | 주식/ETF 시세 조회 (FinanceDataReader) |
+| `/symbols` | GET | 종목 검색용 전체 목록(주식·ETF·코인, 키 불필요). 프런트가 1회 받아 클라이언트에서 필터링 |
 | `/upbit` | POST | 암호화폐 시세 조회 (Upbit API 프록시) |
 | `/history` | POST | 주식/ETF 과거 시세 (백필용) |
 | `/upbit/history` | POST | 암호화폐 과거 시세 (백필용) |

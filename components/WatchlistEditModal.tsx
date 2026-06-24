@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { WatchlistItem, normalizeExchange } from '../types';
 import { getAllowedCategories, inferCategoryIdFromExchange } from '../types/category';
-import { searchSymbols } from '../services/geminiService';
+import { searchSymbols } from '../services/symbolListService';
 import { usePortfolio } from '../contexts/PortfolioContext';
 
 const WatchlistEditModal: React.FC = () => {
