@@ -115,8 +115,10 @@ async function callGeminiWithSearch(prompt: string): Promise<string> {
     // JSON 블록 정리
     return text.replace(/^```json\s*|```$/g, '').trim();
   } catch (error) {
+    // 오류를 삼키지 않고 호출부로 전파한다(검색 모달에서 사용자에게 사유 표시).
+    // fetchAssetData/fetchBatchInternal은 자체 try-catch로 mock 폴백하므로 영향 없음.
     log.error("API Error:", error);
-    return "";
+    throw error;
   }
 }
 
@@ -165,6 +167,36 @@ function findSpecialAsset(query: string): SymbolSearchResult | null {
   return null;
 }
 
+// 검색 실패 사유를 호출부(모달)까지 전달해 사용자에게 표시하기 위한 에러.
+// 빈 배열([])은 "오류 없이 결과 없음"을 의미하며, 이 에러는 키 미설정/API 오류를 의미한다.
+export class SymbolSearchError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'SymbolSearchError';
+  }
+}
+
+// 그라운딩(Google Search) 응답이 JSON 앞뒤로 설명문/인용을 덧붙이는 경우까지
+// 견고하게 배열을 추출한다. 파싱 불가 시 [](결과 없음)으로 처리한다.
+function parseJsonArrayLoose(text: string): unknown {
+  const cleaned = (text || '').replace(/^```json\s*|```$/g, '').trim();
+  if (!cleaned) return [];
+  try {
+    return JSON.parse(cleaned);
+  } catch {
+    const start = cleaned.indexOf('[');
+    const end = cleaned.lastIndexOf(']');
+    if (start !== -1 && end > start) {
+      try {
+        return JSON.parse(cleaned.slice(start, end + 1));
+      } catch {
+        /* 추출 실패 → 결과 없음으로 처리 */
+      }
+    }
+    return [];
+  }
+}
+
 export async function searchSymbols(query: string): Promise<SymbolSearchResult[]> {
   const cacheKey = query.toLowerCase();
   const cached = getCached(searchCache, cacheKey);
@@ -178,7 +210,9 @@ export async function searchSymbols(query: string): Promise<SymbolSearchResult[]
     return results;
   }
 
-  if (!canUseAI()) return [];
+  if (!canUseAI()) {
+    throw new SymbolSearchError('Gemini API 키가 없습니다. 설정 → AI 설정에서 본인 키를 입력하세요.');
+  }
 
   const prompt = `Search for stock or crypto symbols matching "${query}".
 Return a JSON array of up to 5 results. Each object in the array must have these exact keys: "ticker", "name" (in Korean), and "exchange" (e.g., "NASDAQ", "KRX (코스피/코스닥)", "주요 거래소 (종합)").
@@ -204,21 +238,25 @@ Example for query "apple":
 If no results are found, return an empty array [].
 Your final output must be only the JSON array, with no other text or markdown formatting.`;
 
+  let jsonText: string;
   try {
-    const jsonText = await callGeminiWithSearch(prompt);
-    const parsed = JSON.parse(jsonText || "[]");
-    const isItem = (x: unknown): x is SymbolSearchResult => {
-      return !!x && typeof (x as SymbolSearchResult).ticker === 'string' &&
-        typeof (x as SymbolSearchResult).name === 'string' &&
-        typeof (x as SymbolSearchResult).exchange === 'string';
-    };
-    const results: SymbolSearchResult[] = Array.isArray(parsed) ? parsed.filter(isItem) : [];
-    setCache(searchCache, cacheKey, results);
-    return results;
+    jsonText = await callGeminiWithSearch(prompt);
   } catch (error) {
+    // 실제 API 오류(잘못된 키/모델 미지원/그라운딩 미지원/네트워크 등)는 사유와 함께 전파.
+    const detail = error instanceof Error ? error.message : String(error);
     log.error(`Search failed for "${query}":`, error);
-    return [];
+    throw new SymbolSearchError(`검색 요청 실패: ${detail}`);
   }
+
+  const parsed = parseJsonArrayLoose(jsonText);
+  const isItem = (x: unknown): x is SymbolSearchResult => {
+    return !!x && typeof (x as SymbolSearchResult).ticker === 'string' &&
+      typeof (x as SymbolSearchResult).name === 'string' &&
+      typeof (x as SymbolSearchResult).exchange === 'string';
+  };
+  const results: SymbolSearchResult[] = Array.isArray(parsed) ? parsed.filter(isItem) : [];
+  setCache(searchCache, cacheKey, results);
+  return results;
 }
 
 // =================================================================

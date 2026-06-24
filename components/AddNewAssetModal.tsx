@@ -21,6 +21,7 @@ const AddNewAssetModal: React.FC = () => {
   const [isSearching, setIsSearching] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
   const [duplicateError, setDuplicateError] = useState<string | null>(null);
+  const [searchError, setSearchError] = useState<string | null>(null);
   
   const [quantity, setQuantity] = useState('');
   const [purchasePrice, setPurchasePrice] = useState('');
@@ -63,17 +64,19 @@ const AddNewAssetModal: React.FC = () => {
   useEffect(() => {
     if (searchQuery.length < 2 || searchQuery === ticker) {
       setSearchResults([]);
+      setSearchError(null);
       return;
     }
 
     const handler = setTimeout(async () => {
       setIsSearching(true);
+      setSearchError(null);
       try {
         const results = await searchSymbols(searchQuery);
         setSearchResults(results);
       } catch (error) {
-        console.error("Search failed:", error);
         setSearchResults([]);
+        setSearchError(error instanceof Error ? error.message : '검색 중 오류가 발생했습니다.');
       } finally {
         setIsSearching(false);
       }
@@ -206,6 +209,7 @@ const AddNewAssetModal: React.FC = () => {
                 title="자산의 이름 또는 티커를 입력하여 검색하세요."
             />
             {duplicateError && <p className="text-danger text-sm mt-1">{duplicateError}</p>}
+            {searchError && <p className="text-danger text-sm mt-1">{searchError}</p>}
             {isSearching && (
                 <div className="absolute top-9 right-3">
                     <svg className="animate-spin h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -229,6 +233,9 @@ const AddNewAssetModal: React.FC = () => {
                     </li>
                 ))}
                 </ul>
+            )}
+            {isFocused && !isSearching && !searchError && !ticker && searchQuery.length >= 2 && searchResults.length === 0 && (
+                <div className="absolute z-10 w-full bg-gray-700 border border-gray-600 rounded-md mt-1 px-3 py-2 text-sm text-gray-400 shadow-lg">검색 결과가 없습니다.</div>
             )}
             </div>
 
