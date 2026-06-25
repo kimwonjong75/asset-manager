@@ -36,3 +36,9 @@ DB/
 __pycache__/
 *.pyc
 tmp/
+
+# wrangler files
+.wrangler
+.dev.vars*
+!.dev.vars.example
+!.env.example
