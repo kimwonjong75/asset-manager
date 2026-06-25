@@ -2,7 +2,8 @@ import type { SmartFilterState, SmartFilterKey, SmartFilterGroup } from '../type
 import { FILTER_KEY_TO_GROUP } from '../types/smartFilter';
 import type { EnrichedAsset } from '../types/ui';
 import type { EnrichedIndicatorData } from '../hooks/useEnrichedIndicators';
-import { CLIMAX_C_VOL_SURGE_RATIO } from './buildEnrichedIndicator';
+import { countClimaxFlags } from './climaxFlags';
+import { countDistributionDays } from './marketDistribution';
 
 /**
  * 단일 필터 키에 대해 자산이 조건을 충족하는지 판정
@@ -247,31 +248,14 @@ export const matchesSingleFilter = (
     // ── 과열 리스크: 미너비니 클라이맥스 탑 (예측 아닌 참고 경고) ──
     case 'CLIMAX_TOP': {
       if (!enriched) return false;
-      const slopeMul = extraConfig?.climaxSlopeMultiplier ?? 2.5; // P4.5 C1: 3 → 2.5
-      const atrMul = extraConfig?.climaxAtrMultiple ?? 2.5;
       const required = extraConfig?.climaxFlagsRequired ?? 2;
-      const requireBullish = extraConfig?.climaxRequireBullishCandle ?? true;
-      const requireLongUp = extraConfig?.climaxRequireLongTrendUp ?? true;
-
-      // "수개월 상승" 전제 강제 — longTrendUp이 명시적 false면 즉시 미충족 (null=데이터부족은 보수적 통과)
-      if (requireLongUp && enriched.longTrendUp === false) return false;
-
-      let count = 0;
-      // (a) 단기 기울기 ≥ 장기 기울기 × multiplier
-      if (typeof enriched.slopeRatio === 'number' && enriched.slopeRatio >= slopeMul) count++;
-      // (b) (고가-저가) ≥ ATR × multiple — 양봉 동반 시에만 카운트 (방향성 보강)
-      //     OHLCV 미수신 시 dayRangeOverAtr === null → 평가 안 됨
-      if (typeof enriched.dayRangeOverAtr === 'number' && enriched.dayRangeOverAtr >= atrMul) {
-        if (!requireBullish || enriched.isBullishCandle !== false) count++;
-      }
-      // (c) 52주 신고가 AND (거래량 52주 최대 OR 50일 평균의 CLIMAX_C_VOL_SURGE_RATIO배 이상) — P4.5 C3
-      if (enriched.priceIsAt52wHigh) {
-        const todayMeta = enriched.distributionDayMeta?.[enriched.distributionDayMeta.length - 1];
-        const volRatio = todayMeta?.volRatio ?? null;
-        if (enriched.volumeIsAt52wMax || (typeof volRatio === 'number' && volRatio >= CLIMAX_C_VOL_SURGE_RATIO)) {
-          count++;
-        }
-      }
+      // smartFilter 프로필 — 토글(기본 true)을 그대로 주입. 카운팅 로직은 공유 countClimaxFlags.
+      const count = countClimaxFlags(enriched, {
+        slopeMultiplier: extraConfig?.climaxSlopeMultiplier ?? 2.5, // P4.5 C1: 3 → 2.5
+        atrMultiple: extraConfig?.climaxAtrMultiple ?? 2.5,
+        requireBullishCandle: extraConfig?.climaxRequireBullishCandle ?? true,
+        requireLongTrendUp: extraConfig?.climaxRequireLongTrendUp ?? true,
+      });
       return count >= required;
     }
 
@@ -286,24 +270,13 @@ export const matchesSingleFilter = (
     // ── 과열 리스크: 오닐 디스트리뷰션 (매물 출회) ──
     case 'DISTRIBUTION_HIGH': {
       if (!enriched) return false;
-      const window = Math.max(1, extraConfig?.distributionWindow ?? 13);
-      const ratioThr = extraConfig?.distributionVolumeRatio ?? 1.5;
       const countThr = extraConfig?.distributionThreshold ?? 5;
-      const meta = enriched.distributionDayMeta;
-      if (!meta || meta.length === 0) return false;
-      const useWindow = Math.min(window, meta.length);
-      let count = 0;
-      for (let i = meta.length - useWindow; i < meta.length; i++) {
-        const d = meta[i];
-        if (typeof d.volRatio !== 'number' || d.volRatio < ratioThr) continue;
-        // 매물 출회 패턴: 음봉 OR 윗꼬리 마감 OR 정체(등락률 < +0.2%)
-        // OHLCV 미수신 구간에서는 isBearish/isLowerHalfClose가 null → 정체 조건만 평가
-        const churn =
-          d.isBearish === true ||
-          d.isLowerHalfClose === true ||
-          d.changeRatio < 0.002;
-        if (churn) count++;
-      }
+      // 카운팅 로직은 공유 countDistributionDays — 빈/짧은 윈도우·null volRatio·정체 조건 동일 처리.
+      const count = countDistributionDays(
+        enriched.distributionDayMeta,
+        extraConfig?.distributionWindow ?? 13,
+        extraConfig?.distributionVolumeRatio ?? 1.5,
+      );
       return count >= countThr;
     }
 

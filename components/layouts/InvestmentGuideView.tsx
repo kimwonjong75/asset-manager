@@ -315,15 +315,15 @@ const InvestmentGuideView: React.FC = () => {
             <div className="flex gap-3 items-start bg-emerald-900/15 rounded-lg p-3 border border-emerald-700/20">
               <span className="text-emerald-400 text-lg mt-0.5">★</span>
               <div>
-                <p className="text-sm font-semibold text-emerald-400">골든크로스 (역배열 → 정배열 전환)</p>
-                <p className="text-xs text-gray-400 mt-0.5">MA20이 MA60을 아래에서 위로 돌파. <span className="text-white font-medium">강력한 매수 신호</span> — 하락에서 상승으로 추세 전환.</p>
+                <p className="text-sm font-semibold text-emerald-400">골든크로스 (정배열 상태: MA20 &gt; MA60)</p>
+                <p className="text-xs text-gray-400 mt-0.5">MA20이 MA60을 아래에서 위로 돌파해 정배열이 된 상태. <span className="text-white font-medium">강력한 매수 신호</span> — 앱은 현재 정배열 여부로 판정하고, 교차 시점은 경과일 뱃지로 표시해요.</p>
               </div>
             </div>
             <div className="flex gap-3 items-start bg-orange-900/15 rounded-lg p-3 border border-orange-700/20">
               <span className="text-orange-400 text-lg mt-0.5">★</span>
               <div>
-                <p className="text-sm font-semibold text-orange-400">데드크로스 (정배열 → 역배열 전환)</p>
-                <p className="text-xs text-gray-400 mt-0.5">MA20이 MA60을 위에서 아래로 돌파. <span className="text-white font-medium">강력한 매도 신호</span> — 상승에서 하락으로 추세 전환.</p>
+                <p className="text-sm font-semibold text-orange-400">데드크로스 (역배열 상태: MA20 &lt; MA60)</p>
+                <p className="text-xs text-gray-400 mt-0.5">MA20이 MA60을 위에서 아래로 돌파해 역배열이 된 상태. <span className="text-white font-medium">강력한 매도 신호</span> — 앱은 현재 역배열 여부로 판정하고, 교차 시점은 경과일 뱃지로 표시해요.</p>
               </div>
             </div>
           </div>
@@ -369,7 +369,7 @@ const InvestmentGuideView: React.FC = () => {
           <div className="grid sm:grid-cols-3 gap-3 mb-5">
             <div className="bg-blue-900/20 border border-blue-700/30 rounded-lg p-4">
               <p className="text-sm font-bold text-blue-400 mb-1">RSI &le; 30 (과매도)</p>
-              <p className="text-xs text-gray-400">"너무 많이 떨어졌다." 매도 압력이 과도해 반등 가능성이 높습니다. 분할 매수 고려.</p>
+              <p className="text-xs text-gray-400">"너무 많이 떨어졌다"는 신호. 단, RSI는 <span className="text-gray-300">보조 지표</span> — 하락 추세 종목은 과매도만 보고 사지 말고 추세(이평선)와 함께 판단.</p>
             </div>
             <div className="bg-gray-700/30 border border-gray-600/30 rounded-lg p-4">
               <p className="text-sm font-bold text-gray-300 mb-1">30 &lt; RSI &lt; 70 (정상)</p>
@@ -377,7 +377,7 @@ const InvestmentGuideView: React.FC = () => {
             </div>
             <div className="bg-yellow-900/20 border border-yellow-700/30 rounded-lg p-4">
               <p className="text-sm font-bold text-yellow-400 mb-1">RSI &ge; 70 (과매수)</p>
-              <p className="text-xs text-gray-400">"너무 많이 올랐다." 매수 압력이 과도해 조정(하락) 가능성이 높습니다. 분할 매도 고려.</p>
+              <p className="text-xs text-gray-400">"너무 많이 올랐다"는 신호. 단, RSI는 <span className="text-gray-300">보조 지표</span> — 상승 추세면 계속 높을 수 있으니 추세(이평선)와 함께 판단.</p>
             </div>
           </div>
 
@@ -430,8 +430,8 @@ const InvestmentGuideView: React.FC = () => {
                 <div><span className="font-semibold text-white">현재가 &gt; 장기MA</span> — 가격이 장기 이동평균 위 (장기 상승)</div>
                 <div><span className="font-semibold text-white">정배열</span> — 단기MA &gt; 장기MA (상승 추세)</div>
                 <div><span className="font-semibold text-white">역배열</span> — 단기MA &lt; 장기MA (하락 추세)</div>
-                <div><span className="font-semibold text-white">골든크로스</span> — 어제 역배열 → 오늘 정배열 전환</div>
-                <div><span className="font-semibold text-white">데드크로스</span> — 어제 정배열 → 오늘 역배열 전환</div>
+                <div><span className="font-semibold text-white">골든크로스</span> — 단기MA가 장기MA 위로 올라선 상태 (교차 시점은 경과일 뱃지로 표시)</div>
+                <div><span className="font-semibold text-white">데드크로스</span> — 단기MA가 장기MA 아래로 내려간 상태 (교차 시점은 경과일 뱃지로 표시)</div>
                 <p className="text-gray-500 mt-1">* 드롭다운에서 단기(10/20/60), 장기(60/120/200) 기간 선택 가능</p>
               </div>
             </div>
@@ -443,8 +443,8 @@ const InvestmentGuideView: React.FC = () => {
                 RSI 그룹
               </h4>
               <div className="space-y-2 text-xs text-gray-300">
-                <div><span className="font-semibold text-white">과매수 (RSI &ge; 70)</span> — 과열 구간, 매도 고려</div>
-                <div><span className="font-semibold text-white">과매도 (RSI &le; 30)</span> — 침체 구간, 매수 고려</div>
+                <div><span className="font-semibold text-white">과매수 (RSI &ge; 70)</span> — 과열 구간 (보조 지표 — 추세와 함께 판단)</div>
+                <div><span className="font-semibold text-white">과매도 (RSI &le; 30)</span> — 침체 구간 (보조 지표 — 추세와 함께 판단)</div>
                 <div><span className="font-semibold text-white">RSI 반등</span> — 과매도 탈출 (어제 &le;30 → 오늘 &gt;30)</div>
                 <div><span className="font-semibold text-white">RSI 과열진입</span> — 과매수 진입 (어제 &lt;70 → 오늘 &ge;70)</div>
               </div>
@@ -513,13 +513,13 @@ const InvestmentGuideView: React.FC = () => {
                 </div>
                 <p className="text-xs text-gray-300">상승 추세 유지 중 일시적 조정 = <span className="text-green-400 font-semibold">눌림목 매수 기회</span></p>
               </div>
-              <div className="bg-green-900/15 border border-green-700/20 rounded-lg p-4">
+              <div className="bg-amber-900/15 border border-amber-700/20 rounded-lg p-4">
                 <div className="flex flex-wrap gap-1.5 mb-2">
                   <span className="px-2 py-0.5 rounded-full bg-emerald-600 text-white text-[11px] font-medium">강한 매수</span>
                   <span className="text-gray-500 text-xs">+</span>
                   <span className="px-2 py-0.5 rounded-full bg-amber-600 text-white text-[11px] font-medium">손실중</span>
                 </div>
-                <p className="text-xs text-gray-300">기술적으로 매수 신호인데 내 매입가보다 낮은 상태 = <span className="text-green-400 font-semibold">물타기(추가매수) 고려</span></p>
+                <p className="text-xs text-gray-300">기술적으로 매수 신호여도 매입가보다 낮은 상태에서의 추가매수는 '물타기'예요. <span className="text-amber-400 font-semibold">손실 종목 물타기는 피하고, 먼저 손절·무효화 기준을 확인하세요.</span></p>
               </div>
             </div>
           </div>

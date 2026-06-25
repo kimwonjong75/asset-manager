@@ -14,7 +14,7 @@
 
 import type { EnrichedIndicatorData } from '../hooks/useEnrichedIndicators';
 import { countDistributionDays as countDistributionDaysShared } from './marketDistribution';
-import { CLIMAX_C_VOL_SURGE_RATIO } from './buildEnrichedIndicator';
+import { countClimaxFlags } from './climaxFlags';
 
 export type RiskTier = 'red' | 'amber' | 'blue' | null;
 
@@ -62,35 +62,6 @@ export interface RiskAssessment {
   distributionCount: number;
 }
 
-/** 단일 자산의 클라이맥스 플래그 카운트 (a, b, c) — useEnrichedIndicators의 결과 사용
- *  - "수개월 상승" 전제: longTrendUp === false면 0 (데이터 부족 null은 보수적으로 통과)
- *  - (b) ATR 폭발은 양봉(상승)일 때만 카운트 (isBullishCandle === false면 무시) — 방향성 보강
- *  - (c) P4.5 C3: 52w 신고가 AND (52w 거래량 최대 OR 50일 평균의 CLIMAX_C_VOL_SURGE_RATIO배 이상)
- *  smartFilterLogic.CLIMAX_TOP과 동일 로직 유지 (drift 방지)
- */
-function countClimaxFlags(
-  enriched: EnrichedIndicatorData,
-  thresholds: RiskMatrixThresholds
-): number {
-  if (enriched.longTrendUp === false) return 0;
-
-  let count = 0;
-  if (typeof enriched.slopeRatio === 'number' && enriched.slopeRatio >= thresholds.climaxSlopeMultiplier) count++;
-  if (
-    typeof enriched.dayRangeOverAtr === 'number' &&
-    enriched.dayRangeOverAtr >= thresholds.climaxAtrMultiple &&
-    enriched.isBullishCandle !== false
-  ) count++;
-  if (enriched.priceIsAt52wHigh) {
-    const todayMeta = enriched.distributionDayMeta?.[enriched.distributionDayMeta.length - 1];
-    const volRatio = todayMeta?.volRatio ?? null;
-    if (enriched.volumeIsAt52wMax || (typeof volRatio === 'number' && volRatio >= CLIMAX_C_VOL_SURGE_RATIO)) {
-      count++;
-    }
-  }
-  return count;
-}
-
 /** 단일 자산의 디스트리뷰션 카운트 — 윈도우 내 매물 출회 패턴 일수 (공용 유틸 위임) */
 function countDistributionDays(
   enriched: EnrichedIndicatorData,
@@ -127,7 +98,13 @@ export function computeRiskTier(
   currentPrice: number,
   thresholds: RiskMatrixThresholds = DEFAULT_RISK_MATRIX_THRESHOLDS
 ): RiskAssessment {
-  const climaxFlagCount = countClimaxFlags(enriched, thresholds);
+  // 리스크 매트릭스는 고정 분류 프로필 — 양봉·장기상승 게이트 항상 적용.
+  const climaxFlagCount = countClimaxFlags(enriched, {
+    slopeMultiplier: thresholds.climaxSlopeMultiplier,
+    atrMultiple: thresholds.climaxAtrMultiple,
+    requireBullishCandle: true,
+    requireLongTrendUp: true,
+  });
   const distributionCount = countDistributionDays(enriched, thresholds);
   const reasons: string[] = [];
 
