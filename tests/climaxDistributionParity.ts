@@ -26,7 +26,7 @@
 
 import { computeRiskTier, DEFAULT_RISK_MATRIX_THRESHOLDS } from '../utils/riskMatrix';
 import { matchesSingleFilter } from '../utils/smartFilterLogic';
-import type { ExtraFilterConfig } from '../utils/smartFilterLogic';
+import type { ExtraFilterConfig } from '../types/smartFilter';
 import { countDistributionDays } from '../utils/marketDistribution';
 import type { DistributionDayMeta } from '../utils/marketDistribution';
 import type { EnrichedIndicatorData } from '../hooks/useEnrichedIndicators';

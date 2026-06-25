@@ -11,7 +11,8 @@
     "backtest": "npx --yes tsx tests/walkForwardBacktest.ts",
     "backtest:guru": "npx --yes tsx scripts/backtest/guruSignals.ts",
     "test:parity": "npx --yes tsx tests/climaxDistributionParity.ts",
-    "test:diagnostics": "npx --yes tsx tests/guruDiagnosticsParity.ts"
+    "test:diagnostics": "npx --yes tsx tests/guruDiagnosticsParity.ts",
+    "test:filters": "npx --yes tsx tests/smartFilterParity.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

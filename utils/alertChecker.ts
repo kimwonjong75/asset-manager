@@ -4,7 +4,7 @@ import type { EnrichedIndicatorData } from '../hooks/useEnrichedIndicators';
 import type { WatchlistItem } from '../types';
 import { Currency } from '../types';
 import { matchesSingleFilter } from './smartFilterLogic';
-import type { ExtraFilterConfig } from './smartFilterLogic';
+import type { ExtraFilterConfig } from '../types/smartFilter';
 
 /**
  * 단일 규칙에 대해 자산 매칭 여부 판정
