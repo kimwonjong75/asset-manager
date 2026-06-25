@@ -9,17 +9,12 @@ import type {
   KnowledgeBase, KnowledgeClaim, KnowledgeRule, RequiredMetric,
   IngestQueueEntry, PromoteCheck,
 } from '../types/knowledge';
+import { IMPLEMENTED_METRICS } from '../types/knowledge';
 import { createLogger } from './logger';
 
 const logger = createLogger('knowledgeIngest');
 
-// guruSignalEngine.buildMetricValues 가 실제 산출하는 지표만 신호로 허용 (미구현은 영원히 안 뜸).
-// triage_commit.py 의 IMPLEMENTED_METRICS 와 동기화할 것.
-export const IMPLEMENTED_METRICS: ReadonlySet<RequiredMetric> = new Set<RequiredMetric>([
-  'rsi14', 'climaxFlags', 'distributionCount', 'volumeRatio50',
-  'priceToMa20Pct', 'priceToMa60Pct', 'priceToMa150Pct', 'pctBelow52wHigh',
-  'maCompression', 'assetTrendRegime', 'priceCrossAboveMa20Days',
-]);
+// IMPLEMENTED_METRICS 는 types/knowledge 로 이전(단일 소스) — knowledgeIngest·guruDiagnostics·triage_commit.py 공용.
 
 /** JSONL 텍스트 → 큐 항목 배열. 형식 불일치 줄은 스킵(부분 성공 허용). */
 export function parseIngestQueue(jsonlText: string): IngestQueueEntry[] {

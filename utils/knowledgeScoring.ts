@@ -15,6 +15,7 @@ import type {
   KnowledgeConfidence,
   AuthorityTier,
   DecayClass,
+  InactiveReason,
 } from '../types/knowledge';
 
 // ── 가중 테이블 ─────────────────────────────────────────────────────────────
@@ -113,21 +114,36 @@ export function verificationAllowsSignal(v: KnowledgeRule['verification']): bool
 }
 
 /**
- * 규칙이 실제 앱 신호로 활성화될 자격이 있는가.
+ * 규칙의 신호 활성 자격 + 비활성 사유(reason code)를 함께 산출 — 진단/게이트 단일 소스.
+ * isActiveSignal 은 이 결과의 eligible 만 본다(사유 분류 로직 복제 금지 → drift 방지).
+ * 주의: 'no-condition' 은 규칙 단위가 아니라 getActiveSignalRules 층 게이트 → 진단에서 별도 부여.
  * 근거 claim들을 함께 넘겨 만료(decayClass) 여부까지 확인한다.
  */
+export function getSignalEligibility(
+  rule: KnowledgeRule,
+  linkedClaims: KnowledgeClaim[],
+  now: Date,
+): { eligible: boolean; reasons: InactiveReason[] } {
+  const reasons: InactiveReason[] = [];
+  if (rule.status === 'draft') reasons.push('draft');
+  else if (rule.status === 'archived') reasons.push('archived');
+  if (rule.computability !== 'signal') reasons.push('advisory');
+  if (rule.verification.rejected) reasons.push('rejected');
+  else if (!(rule.verification.userApproved || rule.verification.dataVerified || rule.verification.backtestVerified)) {
+    reasons.push('unverified');
+  }
+  const claims = linkedClaims.filter(c => rule.claimIds.includes(c.id));
+  if (claims.some(c => isExpired(c.decayClass, c.sourceDate, now))) reasons.push('claim-expired');
+  return { eligible: reasons.length === 0, reasons };
+}
+
+/** 규칙이 실제 앱 신호로 활성화될 자격이 있는가 (= getSignalEligibility().eligible). */
 export function isActiveSignal(
   rule: KnowledgeRule,
   linkedClaims: KnowledgeClaim[],
   now: Date,
 ): boolean {
-  if (rule.status !== 'active') return false;
-  if (rule.computability !== 'signal') return false;
-  if (!verificationAllowsSignal(rule.verification)) return false;
-  // 근거 claim이 하나라도 만료됐으면 비활성 (예: 종목 코멘트성 근거)
-  const claims = linkedClaims.filter(c => rule.claimIds.includes(c.id));
-  if (claims.some(c => isExpired(c.decayClass, c.sourceDate, now))) return false;
-  return true;
+  return getSignalEligibility(rule, linkedClaims, now).eligible;
 }
 
 /** 같은 mappedSignalKey 규칙 중 최우선 1개만 남겨 충돌 해소(점수→최신 source 순). */

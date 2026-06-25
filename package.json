@@ -10,7 +10,8 @@
     "deploy": "npm run build && gh-pages -d dist",
     "backtest": "npx --yes tsx tests/walkForwardBacktest.ts",
     "backtest:guru": "npx --yes tsx scripts/backtest/guruSignals.ts",
-    "test:parity": "npx --yes tsx tests/climaxDistributionParity.ts"
+    "test:parity": "npx --yes tsx tests/climaxDistributionParity.ts",
+    "test:diagnostics": "npx --yes tsx tests/guruDiagnosticsParity.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

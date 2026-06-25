@@ -110,6 +110,14 @@ export type RequiredMetric =
   | 'priceCrossAboveMa20Days'
   | 'maCompression' | 'gapPct' | 'ma65' | 'allTimeHigh';
 
+// guruSignalEngine.buildMetricValues 가 실제 산출하는 지표(= 신호로 허용 가능한 지표)의 단일 소스.
+// triage_commit.py·knowledgeIngest·guruDiagnostics 가 모두 이걸 참조 (drift 방지). 미구현 지표는 영원히 안 뜸.
+export const IMPLEMENTED_METRICS: ReadonlySet<RequiredMetric> = new Set<RequiredMetric>([
+  'rsi14', 'climaxFlags', 'distributionCount', 'volumeRatio50',
+  'priceToMa20Pct', 'priceToMa60Pct', 'priceToMa150Pct', 'pctBelow52wHigh',
+  'maCompression', 'assetTrendRegime', 'priceCrossAboveMa20Days',
+]);
+
 export interface ConditionLeaf {
   metric: RequiredMetric;
   operator: ConditionOperator;
@@ -148,6 +156,59 @@ export interface KnowledgeRule {
   riskPolicy?: string;         // 손절/사이징 정책 메모
   verification: VerificationFlags; // 활성 게이트 판정 기준 (규칙 단위)
   note?: string;
+}
+
+// ── 규칙 진단 (5A) — 자격(eligibility)/평가(evaluation)/지표 준비도(coverage) 3축 ──
+// 세 축은 직교: active여도(eligible) 데이터 부족으로 unknown일 수 있고, draft여도 평가는 가능.
+export type MetricAvailability =
+  | 'available'    // 구현됨 + 값 존재 + (OHLC 의존 지표면) 완전
+  | 'partial'      // 구현됨 + 값 존재하나 OHLC 미수신으로 일부 sub-condition 평가 불가 (climaxFlags/distributionCount)
+  | 'missing'      // 구현됨이나 이 종목 데이터 없음
+  | 'unsupported'; // 앱 미구현 (rsRank·marketRegime…) → 영구 dormant
+
+export type InactiveReason =
+  | 'draft' | 'archived'  // rule.status ≠ 'active'
+  | 'advisory'            // computability ≠ 'signal'
+  | 'rejected'            // verification.rejected
+  | 'unverified'          // userApproved·dataVerified·backtestVerified 모두 없음
+  | 'claim-expired'       // 근거 claim decayClass 만료
+  | 'no-condition';       // condition 없음 (getActiveSignalRules 층 게이트)
+
+export type RuleEvaluation = 'matched' | 'unmatched' | 'unknown' | 'not-evaluated';
+
+export interface MetricCoverage {
+  metric: RequiredMetric;
+  availability: MetricAvailability;
+  value?: number | string;
+}
+
+// 규칙당 준비도 = 조건 leaf 중 최악 availability (unsupported>missing>partial>complete).
+export type RuleReadiness = 'complete' | 'partial' | 'missing' | 'unsupported';
+
+// 조건 leaf별 충족 상세 (실제 지표값 vs 기준). conditionDescribe.explainConditionLeaves 산출.
+export interface LeafExplain {
+  label: string;     // "현재가의 20일선 대비 위치"
+  condition: string; // "−3%~+3% 사이"
+  actual: string;    // "+1.2%"
+  passed: boolean | null;
+}
+
+export interface RuleDiagnostic {
+  ruleId: string;
+  ruleTitle: string;
+  action: RuleAction;
+  eligibility: { eligible: boolean; reasons: InactiveReason[] };
+  evaluation: RuleEvaluation;
+  coverage: MetricCoverage[];
+  leaves: LeafExplain[];
+}
+
+// 진단 요약 — 3축을 collapse하지 않고 각각 독립 카운트(partial이 미충족으로 숨지 않도록).
+export interface DiagnosticSummary {
+  total: number;
+  eligibility: { eligible: number; inactive: number };
+  evaluation: { matched: number; unmatched: number; unknown: number; notEvaluated: number };
+  readiness: { complete: number; partial: number; missing: number; unsupported: number };
 }
 
 // ── 4. 매매 복기 (성과 피드백) ─────────────────────────────────────────────

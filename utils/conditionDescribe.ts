@@ -7,7 +7,7 @@
 
 import type {
   ConditionNode, ConditionLeaf, RequiredMetric,
-  KnowledgeRule, KnowledgeClaim,
+  KnowledgeRule, KnowledgeClaim, LeafExplain,
 } from '../types/knowledge';
 import type { EnrichedIndicatorData } from '../hooks/useEnrichedIndicators';
 import { buildMetricValues, evaluateLeaf, type MetricValues, type MetricValue } from './guruSignalEngine';
@@ -84,13 +84,6 @@ export function describeCondition(node: ConditionNode): string[] {
   }
   if (node.not) return describeCondition(node.not).map(s => `(아님) ${s}`);
   return [];
-}
-
-export interface LeafExplain {
-  label: string;       // "현재가의 20일선 대비 위치"
-  condition: string;   // "−3%~+3% 사이"
-  actual: string;      // "+1.2%"
-  passed: boolean | null;
 }
 
 function conditionRangeText(leaf: ConditionLeaf): string {
