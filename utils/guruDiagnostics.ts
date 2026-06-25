@@ -21,11 +21,12 @@ import type {
   KnowledgeRule, KnowledgeClaim,
   MetricAvailability, RuleEvaluation, MetricCoverage, InactiveReason,
   RuleDiagnostic, DiagnosticSummary, RuleReadiness, LeafExplain,
+  RuleStatusDescriptor, RuleStatusKind, StatusTone,
 } from '../types/knowledge';
-import { IMPLEMENTED_METRICS } from '../types/knowledge';
+import { IMPLEMENTED_METRICS, RULE_STATUS_LABELS, INACTIVE_REASON_LABELS } from '../types/knowledge';
 import { getSignalEligibility } from './knowledgeScoring';
 import { evaluateCondition, buildMetricValues, type MetricValues, type GuruSignalTarget } from './guruSignalEngine';
-import { explainConditionLeaves } from './conditionDescribe';
+import { explainConditionLeaves, metricLabel } from './conditionDescribe';
 
 // OHLC(open/high/low) 품질 의존 지표 — 미수신 시 값은 0으로 degrade하지만 (b)/윗꼬리 등 일부 조건 평가 불가.
 // volumeRatio50은 OHLC가 아닌 '거래량' 의존이라 별개(없으면 missing).
@@ -159,4 +160,51 @@ export function summarizeDiagnostics(diags: RuleDiagnostic[]): DiagnosticSummary
     s.readiness[ruleReadiness(d)]++;
   }
   return s;
+}
+
+/** coverage 중 특정 availability 지표들의 표시명(detail 부연용). */
+function metricsByAvailability(d: RuleDiagnostic, availability: MetricAvailability): string[] {
+  return d.coverage.filter(c => c.availability === availability).map(c => metricLabel(c.metric));
+}
+
+/**
+ * 3축 진단(eligibility×evaluation×readiness)을 사용자용 단일 상태로 정밀 번역한다 — "왜 안 뜨나" 패널의 한 줄 상태.
+ * 우선순위가 핵심(라벨이 엔진 결과를 왜곡하지 않도록):
+ *   1) 자격 없음(inactive)이 최우선 — 신호 엔진이 애초에 평가 집합에서 제외하는 층.
+ *   2) 자격 있으면 matched 우선 — 엔진이 "발화"한 사실을 절대 미지원/미충족으로 강등하지 않는다.
+ *      (matched + partial/missing/unsupported readiness여도 'firing-partial'까지만, 발화 자체는 부정 안 함.)
+ *   3) 미발화 케이스에서만 unsupported(영구 dormant)가 의미를 가진다.
+ *   4) 미충족/판정불가는 readiness(complete vs not)로 '순수 불일치' vs '데이터 누락' 캐비엇을 구분.
+ */
+export function describeRuleStatus(d: RuleDiagnostic): RuleStatusDescriptor {
+  const mk = (kind: RuleStatusKind, tone: StatusTone, detail?: string): RuleStatusDescriptor =>
+    ({ kind, label: RULE_STATUS_LABELS[kind], tone, detail });
+
+  const r = ruleReadiness(d);
+  // 조건식 없는 규칙은 평가 자체가 불가 → 자격 사유(no-condition도 reason에 들어가 eligible=false가 됨)보다 먼저.
+  if (d.evaluation === 'not-evaluated' || r === 'not-applicable') return mk('no-condition', 'muted');
+
+  if (!d.eligibility.eligible) {
+    const detail = d.eligibility.reasons.map(reason => INACTIVE_REASON_LABELS[reason]).join(' · ');
+    return mk('inactive', 'muted', detail || undefined);
+  }
+
+  // matched = 엔진이 실제 발화 → 절대 강등 금지. 데이터가 일부 누락/degrade면 'firing-partial'로만 캐비엇.
+  if (d.evaluation === 'matched') {
+    return r === 'complete' ? mk('firing', 'positive') : mk('firing-partial', 'caution');
+  }
+
+  // 미발화 케이스에서만 '미지원'이 의미를 가짐(영구 dormant). matched보다 뒤에 둬야 발화를 가리지 않는다.
+  if (r === 'unsupported') {
+    const names = metricsByAvailability(d, 'unsupported');
+    return mk('unsupported', 'muted', names.length ? `미지원 지표: ${names.join(', ')}` : undefined);
+  }
+
+  if (d.evaluation === 'unmatched') {
+    return r === 'complete' ? mk('not-met', 'neutral') : mk('not-met-partial', 'caution');
+  }
+
+  // unknown — unsupported는 위에서 걸러졌으므로 남은 건 데이터 없음(missing).
+  const names = metricsByAvailability(d, 'missing');
+  return mk('data-missing', 'caution', names.length ? `누락 지표: ${names.join(', ')}` : undefined);
 }

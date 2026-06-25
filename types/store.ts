@@ -5,7 +5,7 @@ import type { RiskMatrixRow } from '../utils/riskMatrix';
 import type { BackupInfo, BackupSettings } from './backup';
 import type { CategoryStore, CategoryBaseType } from './category';
 import type { KnowledgeBase } from './knowledge';
-import type { GuruSignalMatch, GuruSignalChartTarget } from '../utils/guruSignalEngine';
+import type { GuruSignalMatch, GuruSignalChartTarget, GuruSignalTarget } from '../utils/guruSignalEngine';
 import type { GoldPremiumResult } from '../services/goldPremiumService';
 import type { ColumnConfig, ColumnKey, FixedColumnWidths } from './ui';
 import type { MALineConfig } from '../utils/maCalculations';
@@ -80,6 +80,8 @@ export interface DerivedState {
   riskMatrix: RiskMatrixRow[];
   /** 구루 신호 엔진 매칭 — 활성 지식 규칙(typed condition)을 종목별 평가한 결과 */
   guruSignals: GuruSignalMatch[];
+  /** 신호 평가/진단 대상 종목(포트폴리오+관심종목) — 신호 카드와 진단 패널이 공유하는 단일 소스 */
+  guruSignalTargets: GuruSignalTarget[];
   /** 신호 종목별 차트 props 맵(assetId 키) — GuruSignalCard 인라인 차트용 */
   guruSignalChartTargets: Record<string, GuruSignalChartTarget>;
   showAlertPopup: boolean;

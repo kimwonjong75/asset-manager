@@ -212,6 +212,49 @@ export interface DiagnosticSummary {
   readiness: Record<RuleReadiness, number>; // 'not-applicable' 포함(조건 없는 규칙)
 }
 
+// 3축(eligibility×evaluation×readiness)을 사용자용 단일 상태로 정밀 번역한 결과 — "왜 안 뜨나" 패널용.
+// 핵심 불변식(엔진결과 왜곡 금지): evaluation==='matched'면 엔진이 실제 발화한 것이므로 절대
+//   'unsupported'/'not-met'으로 강등하지 않는다(matched 우선). partial/missing은 readiness로만 캐비엇.
+export type RuleStatusKind =
+  | 'firing'           // 자격O + 충족 + 데이터 완전 → 실제 발화
+  | 'firing-partial'   // 자격O + 충족이나 일부 데이터 누락/degrade(OHLC 등) → '일부 데이터 기준 충족'
+  | 'not-met'          // 자격O + 미충족 + 데이터 완전 → 순수 조건 불일치
+  | 'not-met-partial'  // 자격O + 미충족 + 일부 데이터 누락 → '현재 계산상 미충족·일부 데이터 누락'(≠판정유보)
+  | 'data-missing'     // 자격O + 판정불가(unknown) + 데이터 없음 → '데이터 부족으로 판정 불가'
+  | 'unsupported'      // 자격O + 조건이 미구현 지표 의존(미발화 상태) → '현재 앱에서 미지원'(영구 dormant)
+  | 'no-condition'     // 자격O이나 조건식 없음 → 평가 대상 아님
+  | 'inactive';        // 자격X(draft/unverified/rejected/claim-expired) → 신호로 비활성
+
+export type StatusTone = 'positive' | 'neutral' | 'caution' | 'muted';
+
+export interface RuleStatusDescriptor {
+  kind: RuleStatusKind;
+  label: string;      // 사용자에게 보이는 한 줄 상태
+  detail?: string;    // 부연(비활성 사유, 누락/미지원 지표명 등)
+  tone: StatusTone;
+}
+
+export const RULE_STATUS_LABELS: Record<RuleStatusKind, string> = {
+  'firing': '충족 — 신호 발화',
+  'firing-partial': '일부 데이터 기준 충족',
+  'not-met': '미충족 (조건 불일치)',
+  'not-met-partial': '현재 계산상 미충족·일부 데이터 누락',
+  'data-missing': '데이터 부족으로 판정 불가',
+  'unsupported': '현재 앱에서 미지원',
+  'no-condition': '조건식 없음 (평가 대상 아님)',
+  'inactive': '비활성 규칙',
+};
+
+export const INACTIVE_REASON_LABELS: Record<InactiveReason, string> = {
+  'draft': '초안(미승인) 규칙',
+  'archived': '보관됨',
+  'advisory': '참고용(신호 아님)',
+  'rejected': '폐기됨',
+  'unverified': '미검증(승인·데이터·백테스트 전)',
+  'claim-expired': '근거 지식 만료',
+  'no-condition': '조건식 없음',
+};
+
 // ── 4. 매매 복기 (성과 피드백) ─────────────────────────────────────────────
 export type DecisionType = 'buy' | 'sell' | 'hold' | 'reduce' | 'skip';
 
@@ -281,6 +324,15 @@ export const GURU_LABELS: Record<GuruId, string> = {
   'russo': '루소(가명)',
   'breitstein': '브라이트스타인(Breitstein)',
   'generic': '다수 트레이더 공통',
+};
+
+export const RULE_ACTION_LABELS: Record<RuleAction, string> = {
+  'sell-warning': '매도 경고',
+  'buy-setup': '진입 검토',
+  'buy-watch': '관찰 후보',
+  'risk-sizing': '리스크',
+  'regime-filter': '시장 국면',
+  'review': '복기',
 };
 
 export const AUTHORITY_TIER_LABELS: Record<AuthorityTier, string> = {

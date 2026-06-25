@@ -8,14 +8,15 @@
 
 import {
   diagnoseRule, diagnoseAssetRules, classifyMetricAvailability, summarizeDiagnostics, ruleReadiness,
+  describeRuleStatus,
 } from '../utils/guruDiagnostics';
 import { getSignalEligibility, isActiveSignal } from '../utils/knowledgeScoring';
-import { evaluateGuruSignals, type GuruSignalTarget, type MetricValues } from '../utils/guruSignalEngine';
-import { buildMetricValues } from '../utils/guruSignalEngine';
+import { evaluateGuruSignals, buildGuruSignalTargets, buildMetricValues, type GuruSignalTarget, type MetricValues } from '../utils/guruSignalEngine';
 import { IMPLEMENTED_METRICS, EMPTY_VERIFICATION } from '../types/knowledge';
 import type {
   KnowledgeRule, KnowledgeClaim, ConditionNode, RequiredMetric, VerificationFlags, InactiveReason,
 } from '../types/knowledge';
+import type { Asset, WatchlistItem } from '../types';
 import type { EnrichedIndicatorData } from '../hooks/useEnrichedIndicators';
 import { readFileSync } from 'node:fs';
 
@@ -220,11 +221,105 @@ check('cov volumeRatio50 not OHLC-partial', classifyMetricAvailability('volumeRa
   }
 }
 
+// ════════════════════════════════════════════════════════════════════════════
+// 7. describeRuleStatus — 3축 → 사용자용 단일 상태(정밀 라벨). 핵심: 엔진결과(matched) 왜곡 금지.
+// ════════════════════════════════════════════════════════════════════════════
+const stat = (cond: ConditionNode, metrics: MetricValues, ohlcv = true, over: Partial<KnowledgeRule> = {}) =>
+  describeRuleStatus(diagnoseRule(mkRule({ condition: cond, ...over }), [], metrics, ohlcv, NOW));
+
+check('status firing', stat(leaf('rsi14', '>=', 50), { rsi14: 60 }).kind, 'firing');
+check('status not-met', stat(leaf('rsi14', '>=', 50), { rsi14: 40 }).kind, 'not-met');
+check('status data-missing', stat(leaf('priceToMa20Pct', '>=', 0), {}).kind, 'data-missing');
+check('status unsupported', stat(leaf('rsRank', '>=', 90), {}).kind, 'unsupported');
+
+// partial(OHLC degrade) — matched vs unmatched 정밀 라벨 (계약 핵심)
+check('status firing-partial kind', stat(leaf('climaxFlags', '<=', 5), { climaxFlags: 0 }, false).kind, 'firing-partial');
+check('status firing-partial label', stat(leaf('climaxFlags', '<=', 5), { climaxFlags: 0 }, false).label, '일부 데이터 기준 충족');
+check('status not-met-partial kind', stat(leaf('climaxFlags', '>=', 2), { climaxFlags: 0 }, false).kind, 'not-met-partial');
+check('status not-met-partial label', stat(leaf('climaxFlags', '>=', 2), { climaxFlags: 0 }, false).label, '현재 계산상 미충족·일부 데이터 누락');
+check('status data-missing label', stat(leaf('priceToMa20Pct', '>=', 0), {}).label, '데이터 부족으로 판정 불가');
+check('status unsupported label', stat(leaf('rsRank', '>=', 90), {}).label, '현재 앱에서 미지원');
+
+// 자격 없음(draft) → 평가 가능해도 inactive 우선
+check('status inactive(draft)', stat(leaf('rsi14', '>=', 0), { rsi14: 60 }, true, { status: 'draft' }).kind, 'inactive');
+// 조건 없음 → no-condition
+check('status no-condition', describeRuleStatus(diagnoseRule(mkRule({}), [], {}, true, NOW)).kind, 'no-condition');
+
+// 엔진결과 왜곡 금지: any[true, unsupported]=matched → 'unsupported'로 강등 금지(발화 사실 보존)
+{
+  const cond: ConditionNode = { any: [leaf('rsi14', '>=', 50), leaf('rsRank', '>=', 90)] };
+  const s = stat(cond, { rsi14: 60 }); // rsi 충족(matched), rsRank 미지원(null) — readiness=unsupported
+  check('status matched+unsupported → firing-partial(NOT unsupported)', s.kind, 'firing-partial');
+}
+
+// tone 스폿체크
+check('tone firing=positive', stat(leaf('rsi14', '>=', 50), { rsi14: 60 }).tone, 'positive');
+check('tone unsupported=muted', stat(leaf('rsRank', '>=', 90), {}).tone, 'muted');
+check('tone not-met-partial=caution', stat(leaf('climaxFlags', '>=', 2), { climaxFlags: 0 }, false).tone, 'caution');
+
+// ════════════════════════════════════════════════════════════════════════════
+// 8. buildGuruSignalTargets — 신호 평가/진단이 공유하는 "대상 선정" 경로 회귀 핀.
+//    (이 빌더가 바뀌면 신호와 진단 양쪽 대상이 동시에 drift하므로 단일 지점에서 고정.)
+// ════════════════════════════════════════════════════════════════════════════
+{
+  const enrichedMap = new Map<string, EnrichedIndicatorData>([
+    ['AAA', mkEnriched()], ['BBB', mkEnriched()], ['WWW', mkEnriched()],
+    ['DUP', mkEnriched()], ['ZERO', mkEnriched()], ['FB', mkEnriched()],
+  ]);
+  // 빌더가 읽는 필드만 채워 캐스팅(다른 필수 필드는 미접근).
+  const mkAsset = (id: string, ticker: string, priceOriginal: number): Asset =>
+    ({ id, ticker, name: `${ticker}명`, priceOriginal } as unknown as Asset);
+  const mkWatch = (id: string, ticker: string, o: Partial<WatchlistItem> = {}): WatchlistItem =>
+    ({ id, ticker, name: `${ticker}관심`, ...o } as unknown as WatchlistItem);
+
+  // 포트폴리오 우선 순서 + source 태깅 + 포트폴리오는 priceOriginal 사용
+  const t1 = buildGuruSignalTargets({
+    portfolioAssets: [mkAsset('p1', 'AAA', 100), mkAsset('p2', 'BBB', 200)],
+    watchlist: [mkWatch('w1', 'WWW', { priceOriginal: 50 })],
+    enrichedMap,
+  });
+  check('targets: 포트폴리오 우선 순서', t1.map(t => t.assetId), ['p1', 'p2', 'w1']);
+  check('targets: source 태깅', t1.map(t => t.source), ['portfolio', 'portfolio', 'watchlist']);
+  check('targets: 포트폴리오 price=priceOriginal', t1[0].currentPrice, 100);
+
+  // 동일 ticker 관심종목 제외(포트폴리오 우선)
+  const t2 = buildGuruSignalTargets({
+    portfolioAssets: [mkAsset('p1', 'DUP', 100)],
+    watchlist: [mkWatch('w-dup', 'DUP', { priceOriginal: 99 })],
+    enrichedMap,
+  });
+  check('targets: 동일 ticker 관심종목 제외', t2.map(t => t.assetId), ['p1']);
+
+  // enrichment 없는 종목 제외(포트폴리오/관심 모두)
+  const t3 = buildGuruSignalTargets({
+    portfolioAssets: [mkAsset('p-noenr', 'NOENR', 100), mkAsset('p1', 'AAA', 100)],
+    watchlist: [mkWatch('w-noenr', 'NOENR2', { priceOriginal: 10 })],
+    enrichedMap,
+  });
+  check('targets: enrichment 없는 종목 제외', t3.map(t => t.assetId), ['p1']);
+
+  // 가격 0 이하 관심종목 제외(0 / 음수)
+  const t4 = buildGuruSignalTargets({
+    portfolioAssets: [],
+    watchlist: [mkWatch('w-zero', 'ZERO', { priceOriginal: 0 }), mkWatch('w-neg', 'ZERO', { currentPrice: -5 })],
+    enrichedMap,
+  });
+  check('targets: 가격≤0 관심종목 제외', t4.length, 0);
+
+  // priceOriginal 부재 시 currentPrice fallback(관심종목)
+  const t5 = buildGuruSignalTargets({
+    portfolioAssets: [],
+    watchlist: [mkWatch('w-fb', 'FB', { currentPrice: 77 })],
+    enrichedMap,
+  });
+  check('targets: priceOriginal→currentPrice fallback', t5[0]?.currentPrice, 77);
+}
+
 // ── 결과 ─────────────────────────────────────────────────────────────────────
 console.log(`\nguru diagnostics: ${pass} passed, ${fails.length} failed`);
 if (fails.length > 0) {
   for (const f of fails) console.log(f);
   process.exitCode = 1;
 } else {
-  console.log('✓ 진단 3축(eligibility/evaluation/coverage) + 매치셋 동일성 고정');
+  console.log('✓ 진단 3축 + 매치셋 동일성 + describeRuleStatus 정밀 라벨 + buildGuruSignalTargets 대상 선정 고정');
 }

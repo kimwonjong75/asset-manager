@@ -15,6 +15,7 @@ import { buildSignalExplanation, type SignalExplanation } from '../../utils/cond
 import type { RuleAction } from '../../types/knowledge';
 import AssetTrendChart from '../AssetTrendChart';
 import ChartViewerModal from '../common/ChartViewerModal';
+import GuruDiagnosticsPanel from './GuruDiagnosticsPanel';
 
 interface ActionStyle {
   label: string;
@@ -88,6 +89,7 @@ const GuruSignalCard: React.FC = () => {
   const [selectedAssetId, setSelectedAssetId] = useState<string | null>(null);
   const [explainAssetId, setExplainAssetId] = useState<string | null>(null);
   const [fullscreen, setFullscreen] = useState(false);
+  const [showDiagnostics, setShowDiagnostics] = useState(false);
   const firstAssetId = groups[0]?.assets[0]?.assetId ?? null;
   const effectiveSelectedId =
     selectedAssetId && chartTargets[selectedAssetId] ? selectedAssetId : firstAssetId;
@@ -104,10 +106,21 @@ const GuruSignalCard: React.FC = () => {
             지식 규칙 기반 <span className="text-gray-400">관찰 후보</span> · 매수 추천이 아닙니다
           </p>
         </div>
-        <span className="text-xs text-gray-500 whitespace-nowrap bg-gray-700/60 px-2 py-1 rounded shrink-0">
-          활성 규칙 {activeRuleCount}개 평가
-        </span>
+        <div className="flex flex-col items-end gap-1 shrink-0">
+          <span className="text-xs text-gray-500 whitespace-nowrap bg-gray-700/60 px-2 py-1 rounded">
+            활성 규칙 {activeRuleCount}개 평가
+          </span>
+          <button
+            onClick={() => setShowDiagnostics(v => !v)}
+            aria-expanded={showDiagnostics}
+            className="text-[11px] text-cyan-400/80 hover:text-cyan-300 whitespace-nowrap"
+          >
+            {showDiagnostics ? '진단 닫기 ▴' : '왜 신호가 안 뜨나요? ▾'}
+          </button>
+        </div>
       </div>
+
+      {showDiagnostics && <GuruDiagnosticsPanel />}
 
       {signals.length === 0 ? (
         <div className="bg-gray-900/60 rounded-md px-3 py-3 text-xs text-gray-400">

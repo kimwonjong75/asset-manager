@@ -40,6 +40,11 @@ function metaOf(metric: RequiredMetric): MetricMeta {
   return METRIC_META[metric] ?? { label: metric };
 }
 
+/** 지표 표시명(초보 친화). 미정의 지표는 원시 키 그대로. 진단 패널의 누락/미지원 지표 표기에 재사용. */
+export function metricLabel(metric: RequiredMetric): string {
+  return metaOf(metric).label;
+}
+
 function isLeaf(node: ConditionNode): node is ConditionLeaf {
   return 'metric' in node;
 }

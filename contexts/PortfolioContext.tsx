@@ -22,7 +22,7 @@ import { useGoldPremium } from '../hooks/useGoldPremium';
 import { CategoryBaseType } from '../types/category';
 import type { CategoryStore } from '../types/category';
 import type { KnowledgeBase } from '../types/knowledge';
-import { evaluateGuruSignals, buildGuruSignalChartTargets, type GuruSignalMatch, type GuruSignalTarget } from '../utils/guruSignalEngine';
+import { evaluateGuruSignals, buildGuruSignalTargets, buildGuruSignalChartTargets, type GuruSignalMatch, type GuruSignalTarget } from '../utils/guruSignalEngine';
 import {
   DEFAULT_COLUMN_CONFIG,
   DEFAULT_FIXED_COLUMN_WIDTHS,
@@ -387,39 +387,25 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     watchlistItems: watchlist,
   });
 
+  // 구루 신호 평가/진단 대상 — 포트폴리오 + 관심종목을 단일 빌더(buildGuruSignalTargets)로 산출.
+  // 신호 평가(guruSignals)와 진단 패널(useGuruDiagnostics)이 같은 targets를 공유해 집합 불일치를 막는다.
+  const guruSignalTargets = useMemo<GuruSignalTarget[]>(() => {
+    if (isEnrichedLoading || enrichedMap.size === 0) return [];
+    return buildGuruSignalTargets({ portfolioAssets: enrichedAssets, watchlist, enrichedMap });
+  }, [enrichedMap, enrichedAssets, watchlist, isEnrichedLoading]);
+
   // 구루 신호 엔진 — 활성 지식 규칙(typed condition)을 종목별로 평가 (data.knowledgeBase 기반)
   // 게이트(isActiveSignal) 통과 + condition 보유 규칙만 발화. 현재 구현된 지표만 매핑되므로
   // 신규 지표(④) 추가 시 어댑터 확장만으로 더 많은 규칙이 자동 발화된다.
   const guruSignals = useMemo<GuruSignalMatch[]>(() => {
-    if (isEnrichedLoading || enrichedMap.size === 0) return [];
-    const targets: GuruSignalTarget[] = [];
-    for (const asset of enrichedAssets) {
-      const enriched = enrichedMap.get(asset.ticker);
-      if (!enriched) continue;
-      targets.push({
-        assetId: asset.id, ticker: asset.ticker, name: asset.name,
-        currentPrice: asset.priceOriginal, enriched, source: 'portfolio',
-      });
-    }
-    const portfolioTickers = new Set(enrichedAssets.map(a => a.ticker));
-    for (const item of watchlist) {
-      if (portfolioTickers.has(item.ticker)) continue;
-      const enriched = enrichedMap.get(item.ticker);
-      if (!enriched) continue;
-      const price = item.priceOriginal ?? item.currentPrice ?? 0;
-      if (price <= 0) continue;
-      targets.push({
-        assetId: item.id, ticker: item.ticker, name: item.name,
-        currentPrice: price, enriched, source: 'watchlist',
-      });
-    }
+    if (guruSignalTargets.length === 0) return [];
     return evaluateGuruSignals({
       rules: knowledgeBase.rules,
       claims: knowledgeBase.claims,
-      targets,
+      targets: guruSignalTargets,
       now: new Date(),
     });
-  }, [enrichedMap, enrichedAssets, watchlist, knowledgeBase, isEnrichedLoading]);
+  }, [guruSignalTargets, knowledgeBase]);
 
   // 신호 종목별 차트 props 맵 — GuruSignalCard 인라인 차트가 assetId로 룩업(source 분기는 순수 빌더에 위임)
   const guruSignalChartTargets = useMemo(
@@ -529,6 +515,7 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       alertResults,
       riskMatrix,
       guruSignals,
+      guruSignalTargets,
       guruSignalChartTargets,
       showAlertPopup,
       backupList: backup.backupList,
