@@ -315,6 +315,42 @@ export function buildMetricValues(
   return m;
 }
 
+/**
+ * 평가/진단 대상 종목 목록을 만든다(순수). 포트폴리오(enrichedAssets) → 관심종목 순으로 쌓되,
+ * 같은 ticker의 관심종목은 포트폴리오 우선(중복 제외). enriched 없으면 스킵, 관심종목은 가격<=0도 스킵.
+ * 신호 평가(evaluateGuruSignals)와 진단 패널(useGuruDiagnostics)이 "동일 대상"을 공유하도록 단일화한 빌더
+ *  — 둘이 따로 만들면 한쪽에만 보이는 종목이 생겨 "왜 안 뜨나" 진단이 신호 집합과 어긋난다.
+ */
+export function buildGuruSignalTargets(params: {
+  portfolioAssets: Asset[];
+  watchlist: WatchlistItem[];
+  enrichedMap: Map<string, EnrichedIndicatorData>;
+}): GuruSignalTarget[] {
+  const { portfolioAssets, watchlist, enrichedMap } = params;
+  const targets: GuruSignalTarget[] = [];
+  for (const asset of portfolioAssets) {
+    const enriched = enrichedMap.get(asset.ticker);
+    if (!enriched) continue;
+    targets.push({
+      assetId: asset.id, ticker: asset.ticker, name: asset.name,
+      currentPrice: asset.priceOriginal, enriched, source: 'portfolio',
+    });
+  }
+  const portfolioTickers = new Set(portfolioAssets.map(a => a.ticker));
+  for (const item of watchlist) {
+    if (portfolioTickers.has(item.ticker)) continue;
+    const enriched = enrichedMap.get(item.ticker);
+    if (!enriched) continue;
+    const price = item.priceOriginal ?? item.currentPrice ?? 0;
+    if (price <= 0) continue;
+    targets.push({
+      assetId: item.id, ticker: item.ticker, name: item.name,
+      currentPrice: price, enriched, source: 'watchlist',
+    });
+  }
+  return targets;
+}
+
 /** 게이트 통과 + condition 보유한 평가 대상 규칙만 추출. */
 export function getActiveSignalRules(
   rules: KnowledgeRule[],

@@ -12,7 +12,8 @@
 //   npm run backtest:guru
 
 import { CLOUD_RUN_BASE_URL } from '../../constants/api';
-import { buildEnrichedIndicator, CLIMAX_C_VOL_SURGE_RATIO } from '../../utils/buildEnrichedIndicator';
+import { buildEnrichedIndicator } from '../../utils/buildEnrichedIndicator';
+import { CLIMAX_C_VOL_SURGE_RATIO } from '../../utils/climaxFlags';
 import { matchesRule } from '../../utils/alertChecker';
 import { countDistributionDays, buildDistributionMeta } from '../../utils/marketDistribution';
 import { DEFAULT_ALERT_RULES } from '../../constants/alertRules';

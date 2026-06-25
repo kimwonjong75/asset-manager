@@ -7,7 +7,7 @@
 
 import type {
   ConditionNode, ConditionLeaf, RequiredMetric,
-  KnowledgeRule, KnowledgeClaim,
+  KnowledgeRule, KnowledgeClaim, LeafExplain,
 } from '../types/knowledge';
 import type { EnrichedIndicatorData } from '../hooks/useEnrichedIndicators';
 import { buildMetricValues, evaluateLeaf, type MetricValues, type MetricValue } from './guruSignalEngine';
@@ -38,6 +38,11 @@ const METRIC_META: Partial<Record<RequiredMetric, MetricMeta>> = {
 
 function metaOf(metric: RequiredMetric): MetricMeta {
   return METRIC_META[metric] ?? { label: metric };
+}
+
+/** 지표 표시명(초보 친화). 미정의 지표는 원시 키 그대로. 진단 패널의 누락/미지원 지표 표기에 재사용. */
+export function metricLabel(metric: RequiredMetric): string {
+  return metaOf(metric).label;
 }
 
 function isLeaf(node: ConditionNode): node is ConditionLeaf {
@@ -84,13 +89,6 @@ export function describeCondition(node: ConditionNode): string[] {
   }
   if (node.not) return describeCondition(node.not).map(s => `(아님) ${s}`);
   return [];
-}
-
-export interface LeafExplain {
-  label: string;       // "현재가의 20일선 대비 위치"
-  condition: string;   // "−3%~+3% 사이"
-  actual: string;      // "+1.2%"
-  passed: boolean | null;
 }
 
 function conditionRangeText(leaf: ConditionLeaf): string {

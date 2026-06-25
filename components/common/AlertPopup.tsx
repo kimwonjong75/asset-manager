@@ -35,7 +35,7 @@ interface AlertPopupProps {
 const RISK_TIER_STYLES = {
   red: {
     badge: 'bg-red-600 text-white',
-    label: '🔴 전량 매도/탈출',
+    label: '🔴 강한 위험 · 정리 검토',
     bg: 'bg-red-950/60',
     border: 'border-red-700/60',
   },

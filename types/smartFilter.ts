@@ -119,3 +119,50 @@ export const EMPTY_SMART_FILTER: SmartFilterState = {
   maShortPeriod: 20,
   maLongPeriod: 60,
 };
+
+/** 필터 임계값/옵션 묶음 — `matchesSingleFilter`/`evaluateSingleFilter`/`matchesRule`에 전달. */
+export interface ExtraFilterConfig {
+  profitTargetThreshold?: number;
+  dailySurgeThreshold?: number;
+  dailyCrashThreshold?: number;
+  maCrossPeriod?: number;
+  /** 이벤트형 필터 감지 유지 일수 (0 = 당일만, undefined = 당일만 폴백) */
+  withinDays?: number;
+  /** MA 교차류 필터 — 교차 발생 이후 N거래일 이내만 매칭 (undefined = 상태 검사만) */
+  maxLookbackTradingDays?: number;
+  // ── 클라이맥스 탑 ──
+  /** CLIMAX_TOP: 충족해야 할 플래그 수 (기본 2, 1~3) */
+  climaxFlagsRequired?: number;
+  /** (a) slopeRatio >= 임계 (기본 3) */
+  climaxSlopeMultiplier?: number;
+  /** (b) dayRangeOverAtr >= 임계 (기본 2.5, OHLCV 필요) */
+  climaxAtrMultiple?: number;
+  /** (b) ATR 폭발일을 양봉일 때만 카운트 (기본 true) */
+  climaxRequireBullishCandle?: boolean;
+  /** "수개월 상승" 전제 강제 — longTrendUp이 false면 카운트 0으로 (기본 true) */
+  climaxRequireLongTrendUp?: boolean;
+  // ── 디스트리뷰션 ──
+  /** 카운트 윈도우 거래일 수 (기본 13, 최대 30) */
+  distributionWindow?: number;
+  /** 거래량 / 50일 평균 비율 임계 (기본 1.5) */
+  distributionVolumeRatio?: number;
+  /** 윈도우 내 충족일 수 임계 (기본 5) */
+  distributionThreshold?: number;
+}
+
+// ── 5B 알림 진단 (단일 필터 3치 평가) ──────────────────────────────────────────
+// 안정 enum. 진단/민감도 레이어가 의존하는 사유 코드. **팝업 전달 상태와 무관**(필터 판정 전용).
+// no-data(판정 불가) vs event-not-found(평가됐으나 대상 이벤트·구조 미발생)를 구분 — "왜 안 떴나"의 원인이 다름.
+export type FilterEvalReason =
+  | 'met'              // 충족 (result=true)
+  | 'not-met'          // 조건 평가됐으나 미충족 (result=false)
+  | 'event-not-found'  // 지표는 있으나 대상 이벤트/구조 미발생 (result=false) — 예: 최근 N일 내 돌파·반등 없음, swing low 미형성, 최근 교차 없음
+  | 'no-data'          // 평가에 필요한 지표 미수신 (result=null) — 발화 불가, 데이터 부족
+  | 'not-applicable';  // 알 수 없는 키 (result=null)
+
+export interface FilterEvalResult {
+  result: boolean | null;      // true=충족, false=미충족/이벤트없음, null=판정 불가(데이터 없음)
+  reason: FilterEvalReason;
+  actual?: number | string;    // 진단 표시용 실제값
+  threshold?: number | string; // 진단 표시용 기준값
+}

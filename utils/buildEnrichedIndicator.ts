@@ -26,8 +26,6 @@ export const MA_PERIODS = [5, 10, 20, 60, 120, 150, 200] as const;
 export const RSI_PERIOD = 14;
 export const DISTRIBUTION_META_LENGTH = 30;
 export const VOLUME_AVG_PERIOD_DISTRIBUTION = 50;
-/** 클라이맥스 (c) 보조 조건: 52w 거래량 최대가 아니어도 50일 평균의 N배 이상이면 인정 (P4.5 C3) */
-export const CLIMAX_C_VOL_SURGE_RATIO = 2.0;
 const PRICE_HIGH_TOLERANCE = 1e-9;
 const LONG_TREND_LOOKBACK = 60;
 const LONG_TREND_GROWTH = 1.1;

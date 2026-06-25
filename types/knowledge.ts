@@ -110,6 +110,14 @@ export type RequiredMetric =
   | 'priceCrossAboveMa20Days'
   | 'maCompression' | 'gapPct' | 'ma65' | 'allTimeHigh';
 
+// guruSignalEngine.buildMetricValues 가 실제 산출하는 지표(= 신호로 허용 가능한 지표)의 단일 소스.
+// triage_commit.py·knowledgeIngest·guruDiagnostics 가 모두 이걸 참조 (drift 방지). 미구현 지표는 영원히 안 뜸.
+export const IMPLEMENTED_METRICS: ReadonlySet<RequiredMetric> = new Set<RequiredMetric>([
+  'rsi14', 'climaxFlags', 'distributionCount', 'volumeRatio50',
+  'priceToMa20Pct', 'priceToMa60Pct', 'priceToMa150Pct', 'pctBelow52wHigh',
+  'maCompression', 'assetTrendRegime', 'priceCrossAboveMa20Days',
+]);
+
 export interface ConditionLeaf {
   metric: RequiredMetric;
   operator: ConditionOperator;
@@ -149,6 +157,103 @@ export interface KnowledgeRule {
   verification: VerificationFlags; // 활성 게이트 판정 기준 (규칙 단위)
   note?: string;
 }
+
+// ── 규칙 진단 (5A) — 자격(eligibility)/평가(evaluation)/지표 준비도(coverage) 3축 ──
+// 세 축은 직교: active여도(eligible) 데이터 부족으로 unknown일 수 있고, draft여도 평가는 가능.
+export type MetricAvailability =
+  | 'available'    // 구현됨 + 값 존재 + (OHLC 의존 지표면) 완전
+  | 'partial'      // 구현됨 + 값 존재하나 OHLC 미수신으로 일부 sub-condition 평가 불가 (climaxFlags/distributionCount)
+  | 'missing'      // 구현됨이나 이 종목 데이터 없음
+  | 'unsupported'; // 앱 미구현 (rsRank·marketRegime…) → 영구 dormant
+
+export type InactiveReason =
+  | 'draft' | 'archived'  // rule.status ≠ 'active'
+  | 'advisory'            // computability ≠ 'signal'
+  | 'rejected'            // verification.rejected
+  | 'unverified'          // userApproved·dataVerified·backtestVerified 모두 없음
+  | 'claim-expired'       // 근거 claim decayClass 만료
+  | 'no-condition';       // condition 없음 (getActiveSignalRules 층 게이트)
+
+export type RuleEvaluation = 'matched' | 'unmatched' | 'unknown' | 'not-evaluated';
+
+export interface MetricCoverage {
+  metric: RequiredMetric;
+  availability: MetricAvailability;
+  value?: number | string;
+}
+
+// 규칙당 준비도 = 조건 leaf 중 최악 availability (unsupported>missing>partial>complete).
+// 조건 없는 규칙(no-condition)은 평가할 지표가 없어 준비도 적용 불가 → 'not-applicable'.
+export type RuleReadiness = 'complete' | 'partial' | 'missing' | 'unsupported' | 'not-applicable';
+
+// 조건 leaf별 충족 상세 (실제 지표값 vs 기준). conditionDescribe.explainConditionLeaves 산출.
+export interface LeafExplain {
+  label: string;     // "현재가의 20일선 대비 위치"
+  condition: string; // "−3%~+3% 사이"
+  actual: string;    // "+1.2%"
+  passed: boolean | null;
+}
+
+export interface RuleDiagnostic {
+  ruleId: string;
+  ruleTitle: string;
+  action: RuleAction;
+  eligibility: { eligible: boolean; reasons: InactiveReason[] };
+  evaluation: RuleEvaluation;
+  coverage: MetricCoverage[];
+  leaves: LeafExplain[];
+}
+
+// 진단 요약 — 3축을 collapse하지 않고 각각 독립 카운트(partial이 미충족으로 숨지 않도록).
+export interface DiagnosticSummary {
+  total: number;
+  eligibility: { eligible: number; inactive: number };
+  evaluation: { matched: number; unmatched: number; unknown: number; notEvaluated: number };
+  readiness: Record<RuleReadiness, number>; // 'not-applicable' 포함(조건 없는 규칙)
+}
+
+// 3축(eligibility×evaluation×readiness)을 사용자용 단일 상태로 정밀 번역한 결과 — "왜 안 뜨나" 패널용.
+// 핵심 불변식(엔진결과 왜곡 금지): evaluation==='matched'면 엔진이 실제 발화한 것이므로 절대
+//   'unsupported'/'not-met'으로 강등하지 않는다(matched 우선). partial/missing은 readiness로만 캐비엇.
+export type RuleStatusKind =
+  | 'firing'           // 자격O + 충족 + 데이터 완전 → 실제 발화
+  | 'firing-partial'   // 자격O + 충족이나 일부 데이터 누락/degrade(OHLC 등) → '일부 데이터 기준 충족'
+  | 'not-met'          // 자격O + 미충족 + 데이터 완전 → 순수 조건 불일치
+  | 'not-met-partial'  // 자격O + 미충족 + 일부 데이터 누락 → '현재 계산상 미충족·일부 데이터 누락'(≠판정유보)
+  | 'data-missing'     // 자격O + 판정불가(unknown) + 데이터 없음 → '데이터 부족으로 판정 불가'
+  | 'unsupported'      // 자격O + 조건이 미구현 지표 의존(미발화 상태) → '현재 앱에서 미지원'(영구 dormant)
+  | 'no-condition'     // 자격O이나 조건식 없음 → 평가 대상 아님
+  | 'inactive';        // 자격X(draft/unverified/rejected/claim-expired) → 신호로 비활성
+
+export type StatusTone = 'positive' | 'neutral' | 'caution' | 'muted';
+
+export interface RuleStatusDescriptor {
+  kind: RuleStatusKind;
+  label: string;      // 사용자에게 보이는 한 줄 상태
+  detail?: string;    // 부연(비활성 사유, 누락/미지원 지표명 등)
+  tone: StatusTone;
+}
+
+export const RULE_STATUS_LABELS: Record<RuleStatusKind, string> = {
+  'firing': '충족 — 신호 발화',
+  'firing-partial': '일부 데이터 기준 충족',
+  'not-met': '미충족 (조건 불일치)',
+  'not-met-partial': '현재 계산상 미충족·일부 데이터 누락',
+  'data-missing': '데이터 부족으로 판정 불가',
+  'unsupported': '현재 앱에서 미지원',
+  'no-condition': '조건식 없음 (평가 대상 아님)',
+  'inactive': '비활성 규칙',
+};
+
+export const INACTIVE_REASON_LABELS: Record<InactiveReason, string> = {
+  'draft': '초안(미승인) 규칙',
+  'archived': '보관됨',
+  'advisory': '참고용(신호 아님)',
+  'rejected': '폐기됨',
+  'unverified': '미검증(승인·데이터·백테스트 전)',
+  'claim-expired': '근거 지식 만료',
+  'no-condition': '조건식 없음',
+};
 
 // ── 4. 매매 복기 (성과 피드백) ─────────────────────────────────────────────
 export type DecisionType = 'buy' | 'sell' | 'hold' | 'reduce' | 'skip';
@@ -219,6 +324,15 @@ export const GURU_LABELS: Record<GuruId, string> = {
   'russo': '루소(가명)',
   'breitstein': '브라이트스타인(Breitstein)',
   'generic': '다수 트레이더 공통',
+};
+
+export const RULE_ACTION_LABELS: Record<RuleAction, string> = {
+  'sell-warning': '매도 경고',
+  'buy-setup': '진입 검토',
+  'buy-watch': '관찰 후보',
+  'risk-sizing': '리스크',
+  'regime-filter': '시장 국면',
+  'review': '복기',
 };
 
 export const AUTHORITY_TIER_LABELS: Record<AuthorityTier, string> = {
