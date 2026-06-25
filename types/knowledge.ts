@@ -183,7 +183,8 @@ export interface MetricCoverage {
 }
 
 // 규칙당 준비도 = 조건 leaf 중 최악 availability (unsupported>missing>partial>complete).
-export type RuleReadiness = 'complete' | 'partial' | 'missing' | 'unsupported';
+// 조건 없는 규칙(no-condition)은 평가할 지표가 없어 준비도 적용 불가 → 'not-applicable'.
+export type RuleReadiness = 'complete' | 'partial' | 'missing' | 'unsupported' | 'not-applicable';
 
 // 조건 leaf별 충족 상세 (실제 지표값 vs 기준). conditionDescribe.explainConditionLeaves 산출.
 export interface LeafExplain {
@@ -208,7 +209,7 @@ export interface DiagnosticSummary {
   total: number;
   eligibility: { eligible: number; inactive: number };
   evaluation: { matched: number; unmatched: number; unknown: number; notEvaluated: number };
-  readiness: { complete: number; partial: number; missing: number; unsupported: number };
+  readiness: Record<RuleReadiness, number>; // 'not-applicable' 포함(조건 없는 규칙)
 }
 
 // ── 4. 매매 복기 (성과 피드백) ─────────────────────────────────────────────

@@ -128,8 +128,9 @@ export function diagnoseAssetRules(params: {
     .map(r => diagnoseRule(r, params.claims, metrics, ohlcvAvailable, params.now));
 }
 
-/** 규칙당 준비도 = 조건 leaf 중 최악 availability (unsupported>missing>partial>complete). 조건 없으면 complete. */
+/** 규칙당 준비도 = 조건 leaf 중 최악 availability (unsupported>missing>partial>complete). 조건/leaf 없으면 not-applicable. */
 export function ruleReadiness(d: RuleDiagnostic): RuleReadiness {
+  if (d.coverage.length === 0) return 'not-applicable'; // 조건 없음(또는 빈 그룹) → 준비도 적용 불가
   if (d.coverage.some(c => c.availability === 'unsupported')) return 'unsupported';
   if (d.coverage.some(c => c.availability === 'missing')) return 'missing';
   if (d.coverage.some(c => c.availability === 'partial')) return 'partial';
@@ -147,7 +148,7 @@ export function summarizeDiagnostics(diags: RuleDiagnostic[]): DiagnosticSummary
     total: diags.length,
     eligibility: { eligible: 0, inactive: 0 },
     evaluation: { matched: 0, unmatched: 0, unknown: 0, notEvaluated: 0 },
-    readiness: { complete: 0, partial: 0, missing: 0, unsupported: 0 },
+    readiness: { complete: 0, partial: 0, missing: 0, unsupported: 0, 'not-applicable': 0 },
   };
   for (const d of diags) {
     if (d.eligibility.eligible) s.eligibility.eligible++; else s.eligibility.inactive++;

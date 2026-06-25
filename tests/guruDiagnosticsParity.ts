@@ -7,7 +7,7 @@
 // 통과 시 exit 0, 불일치 1건이라도 있으면 exit 1.
 
 import {
-  diagnoseRule, diagnoseAssetRules, classifyMetricAvailability, summarizeDiagnostics,
+  diagnoseRule, diagnoseAssetRules, classifyMetricAvailability, summarizeDiagnostics, ruleReadiness,
 } from '../utils/guruDiagnostics';
 import { getSignalEligibility, isActiveSignal } from '../utils/knowledgeScoring';
 import { evaluateGuruSignals, type GuruSignalTarget, type MetricValues } from '../utils/guruSignalEngine';
@@ -153,8 +153,16 @@ check('cov volumeRatio50 not OHLC-partial', classifyMetricAvailability('volumeRa
     total: 4,
     eligibility: { eligible: 3, inactive: 1 },
     evaluation: { matched: 2, unmatched: 1, unknown: 1, notEvaluated: 0 },
-    readiness: { complete: 3, partial: 0, missing: 0, unsupported: 1 },
+    readiness: { complete: 3, partial: 0, missing: 0, unsupported: 1, 'not-applicable': 0 },
   });
+}
+
+// 4c. 조건 없는 규칙 → readiness 'not-applicable' (complete 오분류 방지)
+{
+  const d = diagnoseRule(mkRule({ id: 'nc' }), [], {}, true, NOW);
+  check('no-condition: evaluation not-evaluated', d.evaluation, 'not-evaluated');
+  check('no-condition: readiness not-applicable', ruleReadiness(d), 'not-applicable');
+  check('no-condition: reasons has no-condition', d.eligibility.reasons.includes('no-condition'), true);
 }
 
 // ════════════════════════════════════════════════════════════════════════════
