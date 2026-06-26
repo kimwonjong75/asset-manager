@@ -21,8 +21,9 @@ import PortfolioView from './components/layouts/PortfolioView';
 import AnalyticsView from './components/layouts/AnalyticsView';
 import WatchlistView from './components/layouts/WatchlistView';
 import InvestmentGuideView from './components/layouts/InvestmentGuideView';
+import SignalReplayView from './components/layouts/SignalReplayView';
 
-type ActiveTab = 'dashboard' | 'portfolio' | 'analytics' | 'watchlist' | 'guide' | 'settings';
+type ActiveTab = 'dashboard' | 'portfolio' | 'analytics' | 'watchlist' | 'replay' | 'guide' | 'settings';
 
 const AppContent: React.FC = () => {
   const { data, status, ui, modal, actions, derived } = usePortfolio();
@@ -158,6 +159,7 @@ const AppContent: React.FC = () => {
                   <TabButton tabId="portfolio" onClick={() => actions.setActiveTab('portfolio')}>포트폴리오</TabButton>
                   <TabButton tabId="watchlist" onClick={() => actions.setActiveTab('watchlist')}>관심종목</TabButton>
                   <TabButton tabId="analytics" onClick={() => actions.setActiveTab('analytics')}><span className="sm:hidden">통계</span><span className="hidden sm:inline">수익 통계</span></TabButton>
+                  <TabButton tabId="replay" onClick={() => actions.setActiveTab('replay')}><span className="sm:hidden">리플레이</span><span className="hidden sm:inline">신호 리플레이</span></TabButton>
                 </nav>
                 <div className="flex items-center gap-1.5 sm:gap-2">
                   <UpdateStatusIndicator isLoading={status.isLoading} successMessage={status.successMessage} />
@@ -196,7 +198,7 @@ const AppContent: React.FC = () => {
                     <span className="hidden sm:inline">{status.isLoading ? '중...' : '업데이트'}</span>
                   </button>
                   <div className="hidden sm:flex items-center">
-                    {ui.activeTab !== 'guide' && ui.activeTab !== 'settings' && ui.activeTab !== 'analytics' && (
+                    {ui.activeTab !== 'guide' && ui.activeTab !== 'settings' && ui.activeTab !== 'analytics' && ui.activeTab !== 'replay' && (
                       <PeriodSelector value={ui.globalPeriod} onChange={actions.setGlobalPeriod} />
                     )}
                   </div>
@@ -232,7 +234,7 @@ const AppContent: React.FC = () => {
                 </div>
               </div>
               {/* 모바일 PeriodSelector - 탭바 아래 컴팩트 행 */}
-              {ui.activeTab !== 'guide' && ui.activeTab !== 'settings' && ui.activeTab !== 'analytics' && (
+              {ui.activeTab !== 'guide' && ui.activeTab !== 'settings' && ui.activeTab !== 'analytics' && ui.activeTab !== 'replay' && (
                 <div className="sm:hidden py-1.5 overflow-x-auto scrollbar-hide">
                   <PeriodSelector value={ui.globalPeriod} onChange={actions.setGlobalPeriod} />
                 </div>
@@ -259,6 +261,7 @@ const AppContent: React.FC = () => {
                 {ui.activeTab === 'portfolio' && <PortfolioView />}
                 {ui.activeTab === 'analytics' && <AnalyticsView />}
                 {ui.activeTab === 'watchlist' && <WatchlistView />}
+                {ui.activeTab === 'replay' && <SignalReplayView />}
                 {ui.activeTab === 'guide' && <InvestmentGuideView />}
                 {ui.activeTab === 'settings' && <SettingsPage />}
               </div>

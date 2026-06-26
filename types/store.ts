@@ -39,7 +39,7 @@ export interface PortfolioStatus {
 }
 
 export interface UIState {
-  activeTab: 'dashboard' | 'portfolio' | 'analytics' | 'watchlist' | 'guide' | 'settings';
+  activeTab: 'dashboard' | 'portfolio' | 'analytics' | 'watchlist' | 'replay' | 'guide' | 'settings';
   globalPeriod: GlobalPeriod;
   dashboardFilterCategory: number | 'ALL';
   filterCategory: number | 'ALL';

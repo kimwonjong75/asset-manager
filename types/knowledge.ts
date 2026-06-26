@@ -122,6 +122,12 @@ export interface ConditionLeaf {
   metric: RequiredMetric;
   operator: ConditionOperator;
   value: number | number[] | string | string[];
+  /**
+   * 안정적 조건 식별자 (선택). 신호 리플레이 샌드박스의 leaf 단위 오버라이드 타깃팅용.
+   * 미지정 시 utils/conditionLeafId 에서 `metric__operator__중복순번`으로 결정론적 derive.
+   * 평가 엔진(evaluateCondition/diagnose)은 이 필드를 사용하지 않는다(순수 부가 메타).
+   */
+  id?: string;
 }
 
 export interface ConditionGroup {
