@@ -13,8 +13,19 @@ import {
 import { searchSymbols } from '../services/symbolListService';
 import { buildReplayTimeline } from '../utils/signalReplay';
 import { applyRuleOverrides, mergeOverrides } from '../utils/ruleOverrides';
+import {
+  loadVerdicts, saveVerdicts, upsertVerdict, removeVerdict, findVerdict,
+  verdictsForTicker, datesWithVerdict,
+} from '../utils/replayVerdicts';
+import {
+  loadCases, saveCases, buildVerificationCase, upsertCase, removeCase,
+  collectPerRuleResults, diffCaseResults, type CaseDiff,
+} from '../utils/replayCases';
 import type { SymbolSearchResult } from '../types';
-import type { ReplayMode, ReplayTimeline, RuleOverride } from '../types/signalReplay';
+import type {
+  ReplayMode, ReplayTimeline, RuleOverride, SignalVerdict, SignalVerdictKind,
+  VerificationCase, ReplayCaseRole,
+} from '../types/signalReplay';
 
 const log = createLogger('SignalReplay');
 
@@ -64,6 +75,20 @@ export interface SignalReplayController {
   // 샌드박스(P3에서 UI 연결) — 1차는 빈 상태 유지
   sandboxOverrides: RuleOverride[];
   setSandboxOverrides: (o: RuleOverride[]) => void;
+  // 신호 사용자 판정(P2) — localStorage `asset-manager-replay-verdicts-v1`
+  verdictFor: (date: string, ruleId?: string) => SignalVerdict | undefined;
+  setVerdict: (date: string, kind: SignalVerdictKind, memo?: string, ruleId?: string) => void;
+  clearVerdict: (date: string, ruleId?: string) => void;
+  verdictDates: Set<string>;            // 현재 종목 중 판정 존재 날짜(구분 표시용)
+  tickerVerdicts: SignalVerdict[];      // 현재 종목 판정 목록(최신 날짜 우선)
+  // 검증 사례(P2) — localStorage `asset-manager-replay-cases-v1`
+  cases: VerificationCase[];
+  saveCurrentCase: (caseRole: ReplayCaseRole, memo: string) => VerificationCase | null;
+  deleteCase: (id: string) => void;
+  loadCase: (c: VerificationCase) => void;
+  comparingCase: VerificationCase | null;
+  caseDiff: CaseDiff | null;            // 저장 당시 vs 재실행 신호일 diff
+  endComparison: () => void;
 }
 
 export function useSignalReplay({ enabled }: UseSignalReplayParams): SignalReplayController {
@@ -79,14 +104,24 @@ export function useSignalReplay({ enabled }: UseSignalReplayParams): SignalRepla
   const [isFetching, setIsFetching] = useState(false);
   const [fetchFailed, setFetchFailed] = useState(false);
   const [mode, setMode] = useState<ReplayMode>('replay');
-  const [windowTradingDays, setWindowTradingDays] = useState<number>(252);
-  const [anchorDate] = useState<string | undefined>(undefined);
+  const [windowTradingDays, setWindowTradingDaysState] = useState<number>(252);
+  const [anchorDate, setAnchorDate] = useState<string | undefined>(undefined);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [timeline, setTimeline] = useState<ReplayTimeline | null>(null);
   const [isComputing, setIsComputing] = useState(false);
   const [sandboxOverrides, setSandboxOverrides] = useState<RuleOverride[]>([]);
+  const [verdicts, setVerdicts] = useState<SignalVerdict[]>([]);
+  const [cases, setCases] = useState<VerificationCase[]>([]);
+  const [comparingCase, setComparingCase] = useState<VerificationCase | null>(null);
 
   const fetchReqId = useRef(0);
+  const caseSeq = useRef(0);
+
+  // ── 판정/사례 localStorage 로드(마운트 시 1회 — 탭 재진입마다 최신 반영) ──
+  useEffect(() => {
+    setVerdicts(loadVerdicts());
+    setCases(loadCases());
+  }, []);
 
   // ── 종목 검색 (debounce 250ms) ──
   useEffect(() => {
@@ -202,7 +237,104 @@ export function useSignalReplay({ enabled }: UseSignalReplayParams): SignalRepla
     setSearchResults([]);
     setTimeline(null);
     setSandboxOverrides([]);
+    setAnchorDate(undefined);   // 최신 윈도로 복귀
+    setComparingCase(null);     // 사례 비교 컨텍스트 종료
   }, []);
+
+  // 윈도 변경은 사례 비교 컨텍스트를 깨므로 비교 종료(같은 종목·다른 기간 = 비교 불가).
+  const setWindowTradingDays = useCallback((d: number) => {
+    setWindowTradingDaysState(d);
+    setComparingCase(null);
+  }, []);
+
+  // ── 신호 사용자 판정(P2) ──
+  const verdictFor = useCallback(
+    (date: string, ruleId?: string) =>
+      (selected ? findVerdict(verdicts, selected.ticker, date, ruleId) : undefined),
+    [verdicts, selected],
+  );
+
+  const setVerdict = useCallback(
+    (date: string, kind: SignalVerdictKind, memo?: string, ruleId?: string) => {
+      if (!selected) return;
+      const v: SignalVerdict = {
+        ticker: selected.ticker, date, ruleId,
+        kind, memo: memo?.trim() ? memo.trim() : undefined,
+        createdAt: new Date().toISOString(),
+      };
+      setVerdicts(prev => { const next = upsertVerdict(prev, v); saveVerdicts(next); return next; });
+    },
+    [selected],
+  );
+
+  const clearVerdict = useCallback((date: string, ruleId?: string) => {
+    if (!selected) return;
+    setVerdicts(prev => {
+      const next = removeVerdict(prev, selected.ticker, date, ruleId);
+      saveVerdicts(next);
+      return next;
+    });
+  }, [selected]);
+
+  const verdictDates = useMemo(
+    () => (selected ? datesWithVerdict(verdicts, selected.ticker) : new Set<string>()),
+    [verdicts, selected],
+  );
+  const tickerVerdicts = useMemo(
+    () => (selected ? verdictsForTicker(verdicts, selected.ticker) : []),
+    [verdicts, selected],
+  );
+
+  // ── 검증 사례(P2) ──
+  const saveCurrentCase = useCallback(
+    (caseRole: ReplayCaseRole, memo: string): VerificationCase | null => {
+      if (!selected || !timeline || timeline.days.length === 0) return null;
+      const anchor = timeline.days[timeline.days.length - 1].date; // 실제 윈도 종료 거래일
+      const id = `case-${Date.now().toString(36)}-${caseSeq.current++}`;
+      const c = buildVerificationCase({
+        id, createdAt: new Date().toISOString(),
+        ticker: selected.ticker, name: selected.name, exchange: selected.exchange, categoryId: selected.categoryId,
+        caseRole, anchorDate: anchor, windowTradingDays,
+        effectiveRules: effectiveGuruRules,
+        overridesSnapshot: mergeOverrides([], sandboxOverrides), // P2: []
+        timeline,
+        verdicts: verdictsForTicker(verdicts, selected.ticker),
+        memo,
+      });
+      setCases(prev => { const next = upsertCase(prev, c); saveCases(next); return next; });
+      return c;
+    },
+    [selected, timeline, windowTradingDays, effectiveGuruRules, sandboxOverrides, verdicts],
+  );
+
+  const deleteCase = useCallback((id: string) => {
+    setCases(prev => { const next = removeCase(prev, id); saveCases(next); return next; });
+    setComparingCase(prev => (prev?.id === id ? null : prev));
+  }, []);
+
+  const loadCase = useCallback((c: VerificationCase) => {
+    setSelected({ ticker: c.ticker, name: c.name, exchange: c.exchange, categoryId: c.categoryId });
+    setWindowTradingDaysState(c.windowTradingDays);
+    setAnchorDate(c.anchorDate);
+    setComparingCase(c);
+    setSearchQuery('');
+    setSearchResults([]);
+    setTimeline(null);
+    setSandboxOverrides([]);
+  }, []);
+
+  const endComparison = useCallback(() => {
+    setComparingCase(null);
+    setAnchorDate(undefined); // 최신 윈도로 복귀
+  }, []);
+
+  // 재실행 결과(현재 타임라인)와 저장 당시(comparingCase) 신호일 diff — 종목·윈도가 일치할 때만.
+  const caseDiff = useMemo<CaseDiff | null>(() => {
+    if (!comparingCase || !timeline) return null;
+    if (comparingCase.ticker !== timeline.ticker) return null;
+    if (comparingCase.windowTradingDays !== windowTradingDays) return null;
+    return diffCaseResults(comparingCase.perRuleResults, collectPerRuleResults(timeline.days));
+  }, [comparingCase, timeline, windowTradingDays]);
 
   return {
     selected, selectSymbol,
@@ -212,5 +344,7 @@ export function useSignalReplay({ enabled }: UseSignalReplayParams): SignalRepla
     selectedIndex, selectedDate, selectIndex, selectDate,
     goPrevDay, goNextDay, goPrevSignal, goNextSignal, goLatest,
     sandboxOverrides, setSandboxOverrides,
+    verdictFor, setVerdict, clearVerdict, verdictDates, tickerVerdicts,
+    cases, saveCurrentCase, deleteCase, loadCase, comparingCase, caseDiff, endComparison,
   };
 }

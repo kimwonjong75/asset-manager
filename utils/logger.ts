@@ -12,7 +12,8 @@ const LOG_LEVELS: Record<LogLevel, number> = {
   error: 3,
 };
 
-const IS_PROD = import.meta.env.PROD;
+// import.meta.env 는 Vite 빌드에서만 주입됨 — tsx/Node(테스트) 경로에선 undefined 라 옵셔널 체이닝으로 방어.
+const IS_PROD = import.meta.env?.PROD ?? false;
 const MIN_LEVEL: LogLevel = IS_PROD ? 'warn' : 'debug';
 
 function shouldLog(level: LogLevel): boolean {

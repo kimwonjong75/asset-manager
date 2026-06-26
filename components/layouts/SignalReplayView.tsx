@@ -7,6 +7,8 @@ import React, { useMemo } from 'react';
 import { usePortfolio } from '../../contexts/PortfolioContext';
 import { useSignalReplay, type ReplaySymbol } from '../../hooks/useSignalReplay';
 import SignalReplayChart from '../replay/SignalReplayChart';
+import ReplayVerdictPanel, { VERDICT_KIND_LABELS } from '../replay/ReplayVerdictPanel';
+import ReplayCasesPanel from '../replay/ReplayCasesPanel';
 import { describeRuleStatus } from '../../utils/guruDiagnostics';
 import { describeAlertRuleStatus } from '../../utils/alertDiagnostics';
 import { formatPct } from '../../utils/chartFormat';
@@ -117,6 +119,16 @@ const SignalReplayView: React.FC = () => {
     () => (day ? day.alertDiagnostics.filter(a => a.enabled && a.evaluation === 'matched') : []),
     [day],
   );
+  const currentVerdict = ctrl.selectedDate ? ctrl.verdictFor(ctrl.selectedDate) : undefined;
+  const hasSignal = !!(ctrl.selectedDate && ctrl.timeline?.signalDates.includes(ctrl.selectedDate));
+  const hasAnyVerdict = !!(ctrl.selectedDate && ctrl.verdictDates.has(ctrl.selectedDate));
+  // 판정 대상 선택지(그 날 평가된 구루 규칙) + 목록 라벨용 규칙명 맵.
+  const ruleOptions = useMemo(() => sortedGuru.map(d => ({ ruleId: d.ruleId, title: d.ruleTitle })), [sortedGuru]);
+  const ruleTitleById = useMemo(() => {
+    const m: Record<string, string> = {};
+    for (const r of data.knowledgeBase.rules) m[r.id] = r.title;
+    return m;
+  }, [data.knowledgeBase.rules]);
 
   return (
     <div className="px-2 sm:px-4 pb-10 max-w-6xl mx-auto space-y-4">
@@ -241,6 +253,9 @@ const SignalReplayView: React.FC = () => {
                       {formatPct(day.changePct)}
                     </span>
                   )}
+                  {hasAnyVerdict && (
+                    <span className="ml-2 text-[11px] px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-300 font-sans">📝 {currentVerdict ? VERDICT_KIND_LABELS[currentVerdict.kind] : '판정 있음'}</span>
+                  )}
                 </div>
                 <div className="flex items-center gap-1">
                   <button onClick={ctrl.goPrevSignal} className="text-[11px] px-2 py-1 rounded bg-gray-900 text-gray-300 hover:bg-gray-700">◀ 이전 신호</button>
@@ -304,11 +319,35 @@ const SignalReplayView: React.FC = () => {
                     </ul>
                   )}
                 </div>
+                {/* 신호 사용자 판정(P2) — 날짜 전체 / 특정 구루 규칙(ruleId) */}
+                <ReplayVerdictPanel
+                  date={ctrl.selectedDate}
+                  ruleOptions={ruleOptions}
+                  ruleTitleById={ruleTitleById}
+                  hasSignal={hasSignal}
+                  tickerVerdicts={ctrl.tickerVerdicts}
+                  onSet={(kind, memo, ruleId) => ctrl.selectedDate && ctrl.setVerdict(ctrl.selectedDate, kind, memo, ruleId)}
+                  onClear={(date, ruleId) => ctrl.clearVerdict(date, ruleId)}
+                  onJump={date => ctrl.selectDate(date)}
+                />
               </div>
             </div>
           )}
         </>
       )}
+
+      {/* 검증 사례(P2) — 종목 미선택 상태에서도 저장 사례 재실행 가능하도록 항상 노출 */}
+      <ReplayCasesPanel
+        cases={ctrl.cases}
+        currentTicker={ctrl.selected?.ticker ?? null}
+        canSave={!!ctrl.timeline && ctrl.timeline.days.length > 0}
+        onSave={(role, memo) => ctrl.saveCurrentCase(role, memo)}
+        onLoad={c => ctrl.loadCase(c)}
+        onDelete={id => ctrl.deleteCase(id)}
+        comparingCase={ctrl.comparingCase}
+        caseDiff={ctrl.caseDiff}
+        onEndComparison={ctrl.endComparison}
+      />
 
       <p className="text-[11px] text-gray-600 pt-2 border-t border-gray-700/60">
         지식 규칙 기반 참고 신호이며 투자자문이 아닙니다. 미검증·미구현 지표 규칙은 자동 발화되지 않습니다.

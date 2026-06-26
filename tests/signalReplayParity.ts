@@ -12,12 +12,22 @@
 import { prepareSeries, evaluateReplayDay } from '../utils/replayEval';
 import { buildReplayTimeline } from '../utils/signalReplay';
 import { boundaryDistance } from '../utils/boundaryDistance';
-import { applyRuleOverrides, mergeOverrides } from '../utils/ruleOverrides';
+import { applyRuleOverrides, mergeOverrides, hashRuleset } from '../utils/ruleOverrides';
 import { flattenLeaves } from '../utils/conditionLeafId';
+import {
+  verdictKey, findVerdict, upsertVerdict, removeVerdict, verdictsForTicker,
+  datesWithVerdict, parseVerdicts, serializeVerdicts, isVerdictKind,
+} from '../utils/replayVerdicts';
+import {
+  collectPerRuleResults, buildRuleSnapshot, computeResultMetrics, buildVerificationCase,
+  diffSignalDates, diffCaseResults, upsertCase, removeCase, parseCases,
+} from '../utils/replayCases';
 import { EMPTY_VERIFICATION } from '../types/knowledge';
-import type { KnowledgeRule, KnowledgeClaim, ConditionNode } from '../types/knowledge';
+import type { KnowledgeRule, KnowledgeClaim, ConditionNode, RuleDiagnostic } from '../types/knowledge';
 import type { AlertRule } from '../types/alertRules';
-import type { RuleOverride } from '../types/signalReplay';
+import type {
+  RuleOverride, SignalVerdict, ReplayDay, ReplayTimeline,
+} from '../types/signalReplay';
 import type { HistoricalPriceResult } from '../services/historicalPriceService';
 
 const NOW = new Date('2026-06-26T00:00:00Z');
@@ -190,6 +200,150 @@ check('bd missing value is null', boundaryDistance(null, '>=', 70), null);
   // 마커/신호일은 구루 기준 — 알림-only 날짜가 신호 발생일로 잡히면 안 됨.
   checkTrue('timeline: markers are guru-gated (guruCount>0)', tl.markers.every(m => m.guruCount > 0));
   checkTrue('timeline: signalDates all backed by a guru marker', tl.signalDates.every(d => tl.markers.some(m => m.date === d && m.guruCount > 0)));
+}
+
+// ── ⑥ 신호 사용자 판정 저장(replayVerdicts) ──────────────────────────────────
+{
+  const t = '2026-01-05T00:00:00Z';
+  const v = (ticker: string, date: string, kind: SignalVerdict['kind'], ruleId?: string, memo?: string): SignalVerdict =>
+    ({ ticker, date, ruleId, kind, memo, createdAt: t });
+
+  // 키: ruleId 유무로 구분
+  check('verdictKey: day-level', verdictKey('SLV', '2026-01-05'), 'SLV::2026-01-05::');
+  check('verdictKey: rule-scoped', verdictKey('SLV', '2026-01-05', 'r-overheat'), 'SLV::2026-01-05::r-overheat');
+  checkTrue('verdictKey: day vs rule differ', verdictKey('SLV', '2026-01-05') !== verdictKey('SLV', '2026-01-05', 'r1'));
+
+  checkTrue('isVerdictKind: valid', isVerdictKind('missed-buy'));
+  checkTrue('isVerdictKind: invalid', !isVerdictKind('maybe'));
+
+  // upsert: 생성 → 같은 키 수정(교체, 개수 불변) → ruleId 다르면 별도 추가
+  let list: SignalVerdict[] = [];
+  list = upsertVerdict(list, v('SLV', '2026-01-05', 'good'));
+  check('verdict upsert: created', list.length, 1);
+  list = upsertVerdict(list, v('SLV', '2026-01-05', 'too-late', undefined, '늦음'));
+  check('verdict upsert: same key replaces (count)', list.length, 1);
+  check('verdict upsert: kind updated', findVerdict(list, 'SLV', '2026-01-05')?.kind, 'too-late');
+  check('verdict upsert: memo updated', findVerdict(list, 'SLV', '2026-01-05')?.memo, '늦음');
+  list = upsertVerdict(list, v('SLV', '2026-01-05', 'false', 'r-overheat'));
+  check('verdict upsert: rule-scoped is separate', list.length, 2);
+
+  // 놓친 매수/매도 — 신호 없는(미발화) 날에도 태깅 가능 = 단지 새 날짜의 판정
+  list = upsertVerdict(list, v('SLV', '2026-02-10', 'missed-buy'));
+  check('verdict: false-negative tag on non-signal day', findVerdict(list, 'SLV', '2026-02-10')?.kind, 'missed-buy');
+
+  // 비파괴 — upsert 가 원본 배열을 변형하지 않음
+  const before = list.slice();
+  upsertVerdict(list, v('SLV', '2026-03-01', 'good'));
+  check('verdict upsert: non-destructive', list.length, before.length);
+
+  // 조회/필터/날짜집합
+  check('verdictsForTicker: count', verdictsForTicker(list, 'SLV').length, 3);
+  check('verdictsForTicker: other ticker empty', verdictsForTicker(list, 'GLD').length, 0);
+  check('datesWithVerdict: set', [...datesWithVerdict(list, 'SLV')].sort(), ['2026-01-05', '2026-02-10']);
+
+  // 삭제: day-level 만 제거 → rule-scoped 는 남음
+  const afterDel = removeVerdict(list, 'SLV', '2026-01-05');
+  check('verdict remove: day-level gone', findVerdict(afterDel, 'SLV', '2026-01-05'), undefined);
+  check('verdict remove: rule-scoped remains', findVerdict(afterDel, 'SLV', '2026-01-05', 'r-overheat')?.kind, 'false');
+
+  // 직렬화 라운드트립 + 안전 파싱
+  check('verdict roundtrip', parseVerdicts(serializeVerdicts(list)).length, list.length);
+  check('parseVerdicts: garbage → []', parseVerdicts('not json'), []);
+  check('parseVerdicts: null → []', parseVerdicts(null), []);
+  check('parseVerdicts: drops invalid kind', parseVerdicts(JSON.stringify([{ ticker: 'X', date: '2026-01-01', kind: 'bogus' }])), []);
+}
+
+// ── ⑦ 검증 사례 저장/diff(replayCases) ───────────────────────────────────────
+{
+  // 최소 ReplayDay/RuleDiagnostic fixture — collectPerRuleResults 는 date+guruDiagnostics 만 참조.
+  const mkDiag = (ruleId: string, action: RuleDiagnostic['action'], eligible: boolean, evaluation: RuleDiagnostic['evaluation']): RuleDiagnostic =>
+    ({ ruleId, ruleTitle: ruleId, action, eligibility: { eligible, reasons: [] }, evaluation, coverage: [], leaves: [] });
+  const mkDay = (date: string, diags: RuleDiagnostic[], ret20: number | null = null): ReplayDay =>
+    ({ date, close: 100, previousClose: 99, changePct: 1, enriched: {}, guruDiagnostics: diags, alertDiagnostics: [],
+       guruLeafDistances: {}, outcome: { ret5: null, ret20, ret60: null, maxRise: null, maxDrop: null } } as unknown as ReplayDay);
+
+  const days: ReplayDay[] = [
+    mkDay('2026-01-02', [mkDiag('r-buy', 'buy-watch', true, 'matched')], 5),
+    mkDay('2026-01-03', [mkDiag('r-buy', 'buy-watch', false, 'matched'), mkDiag('r-sell', 'sell-warning', true, 'unmatched')]), // eligible=false → 제외
+    mkDay('2026-01-06', [mkDiag('r-sell', 'sell-warning', true, 'matched')], 10),
+    mkDay('2026-01-07', [mkDiag('r-buy', 'buy-watch', true, 'matched')], -2),
+  ];
+
+  // collectPerRuleResults: eligible&&matched 만, 규칙별 날짜 정렬
+  const per = collectPerRuleResults(days);
+  check('collect: rule count', per.length, 2);
+  const buy = per.find(p => p.ruleId === 'r-buy');
+  check('collect: r-buy dates (eligible&&matched only)', buy?.signalDates, ['2026-01-02', '2026-01-07']);
+  check('collect: r-buy action', buy?.action, 'buy-watch');
+  check('collect: r-sell dates', per.find(p => p.ruleId === 'r-sell')?.signalDates, ['2026-01-06']);
+
+  // 타임라인 fixture(signalDates = 구루 마커일) → resultMetrics
+  const timeline: ReplayTimeline = {
+    ticker: 'SLV', name: 'iShares Silver', days,
+    chartPoints: [], markers: [],
+    signalDates: ['2026-01-02', '2026-01-06', '2026-01-07'],
+  };
+  const metrics = computeResultMetrics(timeline);
+  check('resultMetrics: signalCount', metrics.signalCount, 3);
+  // 신호일 ret20: 5, 10, -2 → 평균 4.333…
+  checkTrue('resultMetrics: avgRet20 ≈ 4.33', Math.abs((metrics.avgRet20 ?? 0) - (13 / 3)) < 1e-9);
+
+  // ruleSnapshot + rulesetHash — signal 규칙만, 해시는 hashRuleset 과 동일
+  const snap = buildRuleSnapshot(guruRules);
+  check('ruleSnapshot: signal rules only', snap.length, 2);
+  checkTrue('ruleSnapshot: has conditionJson', snap.every(s => s.conditionJson.length > 0 && s.leafIds.length > 0));
+
+  // buildVerificationCase — id/createdAt 주입, overridesSnapshot 그대로, 해시 일치
+  // 판정은 윈도 기간(timeline.days) 안의 날짜만 저장 — 기간 밖(2025-12-01)·규칙별(in-window)·in-window 혼재 입력.
+  const c = buildVerificationCase({
+    id: 'case-1', createdAt: '2026-06-26T00:00:00Z',
+    ticker: 'SLV', name: 'iShares Silver', exchange: 'ARCA', categoryId: 2,
+    caseRole: 'holdout', anchorDate: '2026-01-07', windowTradingDays: 252,
+    effectiveRules: guruRules, overridesSnapshot: [], timeline,
+    verdicts: [
+      { ticker: 'SLV', date: '2026-01-02', kind: 'good', createdAt: '2026-06-26T00:00:00Z' },             // in-window
+      { ticker: 'SLV', date: '2026-01-06', ruleId: 'r-sell', kind: 'too-late', createdAt: '2026-06-26T00:00:00Z' }, // in-window, 규칙별
+      { ticker: 'SLV', date: '2025-12-01', kind: 'good', createdAt: '2026-06-26T00:00:00Z' },             // 기간 밖 → 제외
+    ],
+    memo: '은 바닥 검증',
+  });
+  check('case: id preserved', c.id, 'case-1');
+  check('case: caseRole', c.caseRole, 'holdout');
+  check('case: overridesSnapshot empty (P2)', c.overridesSnapshot, []);
+  check('case: rulesetHash == hashRuleset', c.rulesetHash, hashRuleset(guruRules));
+  check('case: perRuleResults captured', c.perRuleResults.length, 2);
+  check('case: out-of-window verdict dropped', c.verdicts.length, 2);
+  check('case: only in-window dates', c.verdicts.map(v => v.date).sort(), ['2026-01-02', '2026-01-06']);
+  checkTrue('case: rule-scoped verdict kept', c.verdicts.some(v => v.ruleId === 'r-sell' && v.kind === 'too-late'));
+
+  // diffSignalDates
+  check('diffSignalDates: added', diffSignalDates(['a', 'b'], ['a', 'b', 'c']).added, ['c']);
+  check('diffSignalDates: removed', diffSignalDates(['a', 'b'], ['b']).removed, ['a']);
+  check('diffSignalDates: identical → empty', diffSignalDates(['a'], ['a']), { added: [], removed: [] });
+
+  // diffCaseResults — 규칙별 added/removed + 전체, 변화 없는 규칙은 perRule 에서 제외
+  const prev = collectPerRuleResults(days);
+  const nextDays = days.slice(0, 3); // 2026-01-07 r-buy 발화 제거됨
+  const diff = diffCaseResults(prev, collectPerRuleResults(nextDays));
+  check('diffCase: overall removed', diff.overall.removed, ['2026-01-07']);
+  check('diffCase: overall added empty', diff.overall.added, []);
+  check('diffCase: perRule only changed rules', diff.perRule.map(r => r.ruleId), ['r-buy']);
+  check('diffCase: r-buy removed', diff.perRule[0].removed, ['2026-01-07']);
+  check('diffCase: identical → no perRule', diffCaseResults(prev, prev).perRule, []);
+
+  // 사례 목록 CRUD + 안전 파싱
+  let cases = upsertCase([], c);
+  check('upsertCase: created', cases.length, 1);
+  const c2 = { ...c, id: 'case-2' };
+  cases = upsertCase(cases, c2);
+  check('upsertCase: newest first', cases[0].id, 'case-2');
+  cases = upsertCase(cases, { ...c, memo: '수정됨' });
+  check('upsertCase: same id replaces (count)', cases.length, 2);
+  check('upsertCase: memo updated', cases.find(x => x.id === 'case-1')?.memo, '수정됨');
+  cases = removeCase(cases, 'case-2');
+  check('removeCase: deleted', cases.map(x => x.id), ['case-1']);
+  check('parseCases: garbage → []', parseCases('{bad'), []);
+  check('parseCases: drops missing fields', parseCases(JSON.stringify([{ id: 'x' }])), []);
 }
 
 // ── 결과 ─────────────────────────────────────────────────────────────────────
