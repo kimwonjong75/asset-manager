@@ -6,8 +6,9 @@ import type { BackupInfo, BackupSettings } from './backup';
 import type { CategoryStore, CategoryBaseType } from './category';
 import type { KnowledgeBase } from './knowledge';
 import type { GuruSignalMatch, GuruSignalChartTarget, GuruSignalTarget } from '../utils/guruSignalEngine';
+import type { PopupDeliveryDiagnosis } from './alertDiagnostics';
 import type { GoldPremiumResult } from '../services/goldPremiumService';
-import type { ColumnConfig, ColumnKey, FixedColumnWidths } from './ui';
+import type { ColumnConfig, ColumnKey, FixedColumnWidths, EnrichedAsset } from './ui';
 import type { MALineConfig } from '../utils/maCalculations';
 
 export type PortfolioHistory = PortfolioSnapshot[];
@@ -74,6 +75,8 @@ export interface DerivedState {
   totalValue: number;
   alertCount: number;
   enrichedMap: Map<string, EnrichedIndicatorData>;
+  /** 메트릭 enrich된 포트폴리오 자산 — 알림/진단이 metrics·indicators까지 필요로 함 (Context 레벨 1회 계산) */
+  enrichedAssets: EnrichedAsset[];
   isEnrichedLoading: boolean;
   alertResults: AlertResult[];
   /** 종합 리스크 매트릭스 — 클라이맥스 + 디스트리뷰션 합성 티어 (위험 우선 정렬됨) */
@@ -84,6 +87,8 @@ export interface DerivedState {
   guruSignalTargets: GuruSignalTarget[];
   /** 신호 종목별 차트 props 맵(assetId 키) — GuruSignalCard 인라인 차트용 */
   guruSignalChartTargets: Record<string, GuruSignalChartTarget>;
+  /** 자동 브리핑 팝업 게이트 진단 (규칙 발화와 직교 — 알림 진단 패널이 표시) */
+  autoPopupDiagnosis: PopupDeliveryDiagnosis;
   showAlertPopup: boolean;
   // 백업
   backupList: BackupInfo[];

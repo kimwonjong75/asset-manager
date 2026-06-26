@@ -8,9 +8,12 @@ import { checkAlertRules, checkBuyRulesForWatchlist } from '../utils/alertChecke
 import { computeRiskTier, sortByRiskPriority, DEFAULT_RISK_MATRIX_THRESHOLDS, type RiskMatrixRow } from '../utils/riskMatrix';
 import { countDistributionDays } from '../utils/marketDistribution';
 import { classifyDistributionTier } from '../utils/distributionTierState';
+import { evaluateAutoPopupGate } from '../utils/alertDiagnostics';
+import type { PopupDeliveryDiagnosis } from '../types/alertDiagnostics';
 
 const STORAGE_KEY = 'asset-manager-alert-settings';
-const POPUP_DATE_KEY = 'asset-manager-alert-popup-date';
+/** 자동 브리핑 "오늘 자동 확인 완료" 일자 키 (발화 0건이어도 기록 — 표시 여부와 무관). */
+export const POPUP_DATE_KEY = 'asset-manager-alert-popup-date';
 
 /** localStorage에서 AlertSettings 로드 (신규 규칙 자동 병합) */
 const loadAlertSettings = (): AlertSettings => {
@@ -122,6 +125,10 @@ export const useAutoAlert = ({
   const [alertResults, setAlertResults] = useState<AlertResult[]>([]);
   const [showAlertPopup, setShowAlertPopup] = useState(false);
   const hasTriggeredRef = useRef(false);
+  // 자동 확인 일자 — localStorage POPUP_DATE_KEY의 반응형 미러. effect가 기록 시 함께 갱신 → 진단이 stale 안 됨.
+  const [lastAutoCheckDate, setLastAutoCheckDate] = useState<string | null>(() => {
+    try { return localStorage.getItem(POPUP_DATE_KEY); } catch { return null; }
+  });
 
   // 설정 변경 시 localStorage 저장
   const updateAlertSettings = useCallback((newSettings: AlertSettings) => {
@@ -162,12 +169,33 @@ export const useAutoAlert = ({
     setShowAlertPopup(true);
   }, [enrichedAssets, runAlertCheck]);
 
-  // alertResults를 데이터 준비 즉시 계산 (팝업 트리거와 무관하게 상단 버튼 표시용)
+  // 결과 계산 + 자동 팝업 트리거를 **한 흐름**으로 (P1 타이밍 수정).
+  // 자동 팝업 게이트는 방금 계산한 `results`(local)를 기준으로 평가한다 — 별도 effect가 stale `alertResults`(state)를
+  // 읽어 실제 매칭이 있어도 no-matches로 일자/triggered를 기록해 팝업을 누락하던 레이스를 원천 제거.
   useEffect(() => {
     if (isEnrichedLoading || enrichedAssets.length === 0) return;
     const results = runAlertCheck();
     setAlertResults(results);
-  }, [isEnrichedLoading, enrichedAssets, runAlertCheck]);
+
+    // 자동 브리핑 팝업 (세션 1회). 부수효과는 여기서, 판정은 공유 순수 게이트로 — 기존 동작 보존.
+    if (hasTriggeredRef.current) return;
+    const today = new Date().toISOString().slice(0, 10);
+    const gate = evaluateAutoPopupGate({
+      enableAutoPopup: alertSettings.enableAutoPopup,
+      hasAutoUpdated,
+      isLoading: isMarketLoading || isEnrichedLoading,
+      assetCount: enrichedAssets.length,
+      lastCheckedDate: localStorage.getItem(POPUP_DATE_KEY),
+      today,
+      matchedRuleCount: results.length, // ← state가 아닌 방금 계산한 결과 기준(stale 없음)
+    });
+    // 준비 안 됨 / 자동팝업 OFF / 오늘 이미 확인 → 트리거·기록 모두 안 함 (기존 가드와 동일)
+    if (gate.reason === 'not-ready' || gate.reason === 'auto-popup-disabled' || gate.reason === 'already-checked-today') return;
+    hasTriggeredRef.current = true;
+    if (gate.willAutoShow) setShowAlertPopup(true);        // will-show (발화 규칙 > 0)
+    localStorage.setItem(POPUP_DATE_KEY, today);           // no-matches·will-show 모두 일자 기록 (기존 동작)
+    setLastAutoCheckDate(today);
+  }, [isEnrichedLoading, enrichedAssets, runAlertCheck, hasAutoUpdated, isMarketLoading, alertSettings]);
 
   // 종합 리스크 매트릭스 — 클라이맥스 플래그 + 디스트리뷰션 카운트 + MA 근접도 합성
   // alertSettings의 distributionWindow/Ratio 등 사용자 임계값이 있으면 적용, 없으면 DEFAULT 사용
@@ -212,26 +240,20 @@ export const useAutoAlert = ({
     return sortByRiskPriority(rows);
   }, [enrichedMap, enrichedAssets, watchlistItems, isEnrichedLoading]);
 
-  // 자동 알림 트리거: 시세 업데이트 + enriched 로드 완료 시 (팝업만 제어)
-  useEffect(() => {
-    if (hasTriggeredRef.current) return;
-    if (!hasAutoUpdated || isMarketLoading || isEnrichedLoading) return;
-    if (enrichedAssets.length === 0) return;
-    if (!alertSettings.enableAutoPopup) return;
-
-    // 오늘 이미 팝업을 띄웠는지 확인
-    const today = new Date().toISOString().slice(0, 10);
-    const lastPopupDate = localStorage.getItem(POPUP_DATE_KEY);
-    if (lastPopupDate === today) return;
-
-    hasTriggeredRef.current = true;
-
-    if (alertResults.length > 0) {
-      setShowAlertPopup(true);
-    }
-
-    localStorage.setItem(POPUP_DATE_KEY, today);
-  }, [hasAutoUpdated, isMarketLoading, isEnrichedLoading, enrichedAssets, alertSettings, alertResults, runAlertCheck]);
+  // 자동 브리핑 팝업 게이트 진단 (규칙 발화와 직교 축) — 진단 패널과 **동일 순수 게이트** 사용.
+  // 반응형: lastAutoCheckDate(state) 기반이라 effect가 일자 기록 시 재계산됨(localStorage 직접 읽기로 인한 stale 제거).
+  const autoPopupDiagnosis = useMemo<PopupDeliveryDiagnosis>(() =>
+    evaluateAutoPopupGate({
+      enableAutoPopup: alertSettings.enableAutoPopup,
+      hasAutoUpdated,
+      isLoading: isMarketLoading || isEnrichedLoading,
+      assetCount: enrichedAssets.length,
+      lastCheckedDate: lastAutoCheckDate,
+      today: new Date().toISOString().slice(0, 10),
+      matchedRuleCount: alertResults.length,
+    }),
+    [alertSettings.enableAutoPopup, hasAutoUpdated, isMarketLoading, isEnrichedLoading, enrichedAssets.length, lastAutoCheckDate, alertResults.length],
+  );
 
   return {
     alertSettings,
@@ -241,5 +263,6 @@ export const useAutoAlert = ({
     showAlertPopup,
     dismissAlertPopup,
     showBriefingPopup,
+    autoPopupDiagnosis,
   };
 };

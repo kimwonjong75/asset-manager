@@ -10,34 +10,41 @@ import type { ExtraFilterConfig } from '../types/smartFilter';
  * 단일 규칙에 대해 자산 매칭 여부 판정
  * 규칙의 모든 filters를 AND로 적용 (스마트필터의 그룹 OR과 다름)
  */
+/** AlertRuleFilterConfig → ExtraFilterConfig 매핑 (단일 소스). matchesRule·alertDiagnostics 공용 — drift 차단. */
+export const buildExtraConfig = (filterConfig: AlertRule['filterConfig']): ExtraFilterConfig => ({
+  profitTargetThreshold: filterConfig.profitTargetThreshold,
+  dailySurgeThreshold: filterConfig.dailySurgeThreshold,
+  dailyCrashThreshold: filterConfig.dailyCrashThreshold,
+  maCrossPeriod: filterConfig.maCrossPeriod,
+  withinDays: filterConfig.withinDays,
+  maxLookbackTradingDays: filterConfig.maxLookbackTradingDays,
+  climaxFlagsRequired: filterConfig.climaxFlagsRequired,
+  climaxSlopeMultiplier: filterConfig.climaxSlopeMultiplier,
+  climaxAtrMultiple: filterConfig.climaxAtrMultiple,
+  climaxRequireBullishCandle: filterConfig.climaxRequireBullishCandle,
+  climaxRequireLongTrendUp: filterConfig.climaxRequireLongTrendUp,
+  distributionWindow: filterConfig.distributionWindow,
+  distributionVolumeRatio: filterConfig.distributionVolumeRatio,
+  distributionThreshold: filterConfig.distributionThreshold,
+});
+
+/** 규칙 기본 임계값(maShort/maLong/drop/loss) 추출 — alertDiagnostics와 공용. */
+export const ruleThresholds = (filterConfig: AlertRule['filterConfig']) => ({
+  maShort: filterConfig.maShortPeriod ?? 20,
+  maLong: filterConfig.maLongPeriod ?? 60,
+  dropThreshold: filterConfig.dropFromHighThreshold ?? 20,
+  lossThreshold: filterConfig.lossThreshold ?? 5,
+});
+
 export const matchesRule = (
   asset: EnrichedAsset,
   rule: AlertRule,
   enriched?: EnrichedIndicatorData
 ): boolean => {
-  const { filters, filterConfig } = rule;
-  const maShort = filterConfig.maShortPeriod ?? 20;
-  const maLong = filterConfig.maLongPeriod ?? 60;
-  const dropThreshold = filterConfig.dropFromHighThreshold ?? 20;
-  const lossThreshold = filterConfig.lossThreshold ?? 5;
-  const extraConfig: ExtraFilterConfig = {
-    profitTargetThreshold: filterConfig.profitTargetThreshold,
-    dailySurgeThreshold: filterConfig.dailySurgeThreshold,
-    dailyCrashThreshold: filterConfig.dailyCrashThreshold,
-    maCrossPeriod: filterConfig.maCrossPeriod,
-    withinDays: filterConfig.withinDays,
-    maxLookbackTradingDays: filterConfig.maxLookbackTradingDays,
-    climaxFlagsRequired: filterConfig.climaxFlagsRequired,
-    climaxSlopeMultiplier: filterConfig.climaxSlopeMultiplier,
-    climaxAtrMultiple: filterConfig.climaxAtrMultiple,
-    climaxRequireBullishCandle: filterConfig.climaxRequireBullishCandle,
-    climaxRequireLongTrendUp: filterConfig.climaxRequireLongTrendUp,
-    distributionWindow: filterConfig.distributionWindow,
-    distributionVolumeRatio: filterConfig.distributionVolumeRatio,
-    distributionThreshold: filterConfig.distributionThreshold,
-  };
+  const { maShort, maLong, dropThreshold, lossThreshold } = ruleThresholds(rule.filterConfig);
+  const extraConfig = buildExtraConfig(rule.filterConfig);
 
-  return filters.every(filterKey =>
+  return rule.filters.every(filterKey =>
     matchesSingleFilter(asset, filterKey, dropThreshold, maShort, maLong, enriched, lossThreshold, extraConfig)
   );
 };
@@ -141,9 +148,9 @@ export const checkAlertRules = (
 };
 
 /**
- * 관심종목을 pseudo-EnrichedAsset으로 변환 (매수 규칙 체크용)
+ * 관심종목을 pseudo-EnrichedAsset으로 변환 (매수 규칙 체크용). 진단 패널도 관심종목 buy 규칙 진단에 재사용.
  */
-const watchlistToPseudoAsset = (w: WatchlistItem): EnrichedAsset => ({
+export const watchlistToPseudoAsset = (w: WatchlistItem): EnrichedAsset => ({
   id: w.id,
   categoryId: w.categoryId,
   ticker: w.ticker,
