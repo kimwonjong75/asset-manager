@@ -1,9 +1,10 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import { Info } from 'lucide-react';
 import { usePortfolio } from '../contexts/PortfolioContext';
 import type { AlertRule, AlertSettings } from '../types/alertRules';
 import { DEFAULT_ALERT_SETTINGS } from '../constants/alertRules';
 import Tooltip from './common/Tooltip';
+import AlertDiagnosticsPanel from './AlertDiagnosticsPanel';
 
 const RULE_SUMMARY_TOOLTIPS: Record<string, string> = {
   'climax-top': "가파르고 뜨겁게 오른 '과열' 상태를 잡는 규칙.",
@@ -34,6 +35,7 @@ const SEVERITY_LABELS: Record<string, string> = {
 const AlertSettingsPage: React.FC = () => {
   const { ui, actions } = usePortfolio();
   const { alertSettings } = ui;
+  const [showDiagnostics, setShowDiagnostics] = useState(false);
 
   const updateRule = useCallback((ruleId: string, updates: Partial<AlertRule>) => {
     const newRules = alertSettings.rules.map(r =>
@@ -434,6 +436,18 @@ const AlertSettingsPage: React.FC = () => {
                 }`}
               />
             </button>
+          </div>
+
+          {/* 알림 진단 — "왜 이 알림이 떴나/안 떴나" (규칙 발화 + 데이터 품질 + 팝업 전달 상태) */}
+          <div>
+            <button
+              onClick={() => setShowDiagnostics(v => !v)}
+              aria-expanded={showDiagnostics}
+              className="text-sm text-cyan-400/90 hover:text-cyan-300"
+            >
+              {showDiagnostics ? '진단 닫기 ▴' : '🔍 왜 이 알림이 안 떴나요? ▾'}
+            </button>
+            {showDiagnostics && <div className="mt-3"><AlertDiagnosticsPanel /></div>}
           </div>
 
           {/* 매도 감지 규칙 */}
