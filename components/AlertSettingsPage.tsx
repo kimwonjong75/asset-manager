@@ -3,8 +3,75 @@ import { Info } from 'lucide-react';
 import { usePortfolio } from '../contexts/PortfolioContext';
 import type { AlertRule, AlertSettings } from '../types/alertRules';
 import { DEFAULT_ALERT_SETTINGS } from '../constants/alertRules';
+import {
+  applySensitivityPreset, detectSensitivityLevel, describeSensitivityPlan,
+} from '../utils/alertSensitivity';
+import type {
+  SensitivityLevel, SensitivityAction, SensitivityActionPlan,
+} from '../types/alertSensitivity';
+import { SENSITIVITY_ORDER, SENSITIVITY_LABELS, SENSITIVITY_SUBLABELS } from '../types/alertSensitivity';
 import Tooltip from './common/Tooltip';
 import AlertDiagnosticsPanel from './AlertDiagnosticsPanel';
+
+/** '지금 할 행동' 초보자 포맷 표시 순서. */
+const PLAN_FIELDS: Array<{ key: keyof SensitivityActionPlan; label: string; emphasize?: boolean }> = [
+  { key: 'conclusion', label: '결론', emphasize: true },
+  { key: 'reason', label: '이유' },
+  { key: 'action', label: '행동' },
+  { key: 'invalidation', label: '되돌리기' },
+  { key: 'dataTrust', label: '데이터' },
+];
+
+/** 매도/매수 민감도 세그먼트(둔감/기본/예민) + '지금 할 행동' 설명. 렌더 전용. */
+const SensitivityControl: React.FC<{
+  title: string;
+  accentClass: string;
+  activeLevel: SensitivityLevel | null;
+  plan: SensitivityActionPlan | null;
+  onSelect: (level: SensitivityLevel) => void;
+}> = ({ title, accentClass, activeLevel, plan, onSelect }) => (
+  <div className="bg-gray-800 border border-gray-700 rounded-lg p-4">
+    <div className="flex items-center justify-between gap-2 flex-wrap mb-2">
+      <span className={`text-sm font-semibold ${accentClass}`}>{title}</span>
+      {activeLevel === null && (
+        <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-700 text-gray-300">사용자 지정</span>
+      )}
+    </div>
+    <div className="inline-flex rounded-md border border-gray-600 overflow-hidden" role="group" aria-label={title}>
+      {SENSITIVITY_ORDER.map((lvl) => {
+        const on = activeLevel === lvl;
+        return (
+          <button
+            key={lvl}
+            type="button"
+            onClick={() => onSelect(lvl)}
+            aria-pressed={on}
+            className={`px-3 py-1.5 text-xs text-center transition-colors ${
+              on ? 'bg-primary text-white' : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+            } ${lvl !== 'insensitive' ? 'border-l border-gray-600' : ''}`}
+          >
+            <div className="font-medium">{SENSITIVITY_LABELS[lvl]}</div>
+            <div className="text-[10px] opacity-70">{SENSITIVITY_SUBLABELS[lvl]}</div>
+          </button>
+        );
+      })}
+    </div>
+    {plan ? (
+      <div className="mt-3 bg-gray-900/60 border border-gray-700/50 rounded-md p-3 space-y-1 text-xs">
+        {PLAN_FIELDS.map((f) => (
+          <div key={f.key} className="flex gap-2">
+            <span className="shrink-0 w-12 text-gray-500">{f.label}</span>
+            <span className={f.emphasize ? 'text-white font-medium' : 'text-gray-300'}>{plan[f.key]}</span>
+          </div>
+        ))}
+      </div>
+    ) : (
+      <p className="mt-3 text-xs text-gray-400">
+        규칙별 임계값을 직접 조정한 상태입니다. 위 단계를 누르면 해당 민감도로 일괄 변경되며, 아래에서 규칙별로 다시 세밀하게 조정할 수 있습니다.
+      </p>
+    )}
+  </div>
+);
 
 const RULE_SUMMARY_TOOLTIPS: Record<string, string> = {
   'climax-top': "가파르고 뜨겁게 오른 '과열' 상태를 잡는 규칙.",
@@ -59,8 +126,19 @@ const AlertSettingsPage: React.FC = () => {
     }
   };
 
+  // 민감도 프리셋 적용 — 비파괴(임계값만 일괄 조정, 규칙 삭제·enabled 변경 없음). 순수 변환은 utils 위임.
+  const applyPreset = useCallback((action: SensitivityAction, level: SensitivityLevel) => {
+    actions.updateAlertSettings({
+      ...alertSettings,
+      rules: applySensitivityPreset(alertSettings.rules, action, level),
+    });
+  }, [alertSettings, actions]);
+
   const sellRules = alertSettings.rules.filter(r => r.action === 'sell');
   const buyRules = alertSettings.rules.filter(r => r.action === 'buy');
+  // 현재 설정이 어느 단계와 일치하는지(없으면 null='사용자 지정'). 렌더 파생값(순수 셀렉터).
+  const sellLevel = detectSensitivityLevel(alertSettings.rules, 'sell');
+  const buyLevel = detectSensitivityLevel(alertSettings.rules, 'buy');
 
   const renderRuleCard = (rule: AlertRule) => {
     const config = rule.filterConfig;
@@ -436,6 +514,30 @@ const AlertSettingsPage: React.FC = () => {
                 }`}
               />
             </button>
+          </div>
+
+          {/* 민감도 빠른 설정 — 매도/매수 분리 둔감·기본·예민 프리셋 (비파괴 일괄 조정) */}
+          <div>
+            <h3 className="text-sm font-semibold text-white mb-1">민감도 빠른 설정</h3>
+            <p className="text-gray-400 text-xs mb-3">
+              매도·매수 알림이 얼마나 자주 뜰지 한 번에 조정합니다. 규칙은 삭제되지 않으며, 켜둔 규칙·이동평균·고급 옵션은 그대로 유지됩니다.
+            </p>
+            <div className="grid gap-3 lg:grid-cols-2">
+              <SensitivityControl
+                title="매도 경고 민감도"
+                accentClass="text-red-400"
+                activeLevel={sellLevel}
+                plan={sellLevel ? describeSensitivityPlan('sell', sellLevel) : null}
+                onSelect={(lvl) => applyPreset('sell', lvl)}
+              />
+              <SensitivityControl
+                title="매수 기회 민감도"
+                accentClass="text-blue-400"
+                activeLevel={buyLevel}
+                plan={buyLevel ? describeSensitivityPlan('buy', buyLevel) : null}
+                onSelect={(lvl) => applyPreset('buy', lvl)}
+              />
+            </div>
           </div>
 
           {/* 알림 진단 — "왜 이 알림이 떴나/안 떴나" (규칙 발화 + 데이터 품질 + 팝업 전달 상태) */}
