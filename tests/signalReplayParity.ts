@@ -304,6 +304,7 @@ check('bd missing value is null', boundaryDistance(null, '>=', 70), null);
       { ticker: 'SLV', date: '2026-01-02', kind: 'good', createdAt: '2026-06-26T00:00:00Z' },             // in-window
       { ticker: 'SLV', date: '2026-01-06', ruleId: 'r-sell', kind: 'too-late', createdAt: '2026-06-26T00:00:00Z' }, // in-window, 규칙별
       { ticker: 'SLV', date: '2025-12-01', kind: 'good', createdAt: '2026-06-26T00:00:00Z' },             // 기간 밖 → 제외
+      { ticker: 'GLD', date: '2026-01-02', kind: 'good', createdAt: '2026-06-26T00:00:00Z' },             // 다른 종목 → 제외
     ],
     memo: '은 바닥 검증',
   });
@@ -312,8 +313,9 @@ check('bd missing value is null', boundaryDistance(null, '>=', 70), null);
   check('case: overridesSnapshot empty (P2)', c.overridesSnapshot, []);
   check('case: rulesetHash == hashRuleset', c.rulesetHash, hashRuleset(guruRules));
   check('case: perRuleResults captured', c.perRuleResults.length, 2);
-  check('case: out-of-window verdict dropped', c.verdicts.length, 2);
-  check('case: only in-window dates', c.verdicts.map(v => v.date).sort(), ['2026-01-02', '2026-01-06']);
+  check('case: out-of-window / other-ticker verdict dropped', c.verdicts.length, 2);
+  check('case: only in-window same-ticker dates', c.verdicts.map(v => v.date).sort(), ['2026-01-02', '2026-01-06']);
+  checkTrue('case: all verdicts match case ticker', c.verdicts.every(v => v.ticker === 'SLV'));
   checkTrue('case: rule-scoped verdict kept', c.verdicts.some(v => v.ruleId === 'r-sell' && v.kind === 'too-late'));
 
   // diffSignalDates

@@ -94,8 +94,8 @@ export interface BuildCaseInput {
 }
 
 /** 현재 화면 상태 → 검증 사례. id/createdAt 은 호출부 주입(순수성·테스트 결정론).
- *  판정은 **이 사례 기간(timeline.days) 안의 날짜만** 저장 — 같은 종목의 다른 기간 판정 오염 방지
- *  (P3 research/holdout 보정 시 데이터 정합 유지). */
+ *  판정은 **이 사례의 종목 + 기간(timeline.days) 안의 날짜만** 저장 — 다른 종목/다른 기간 판정 오염 방지
+ *  (호출부가 이미 종목 필터해도 유틸 자체로 단단하게 — P3 research/holdout 보정 시 데이터 정합 유지). */
 export function buildVerificationCase(input: BuildCaseInput): VerificationCase {
   const windowDates = new Set(input.timeline.days.map(d => d.date));
   return {
@@ -111,7 +111,7 @@ export function buildVerificationCase(input: BuildCaseInput): VerificationCase {
     ruleSnapshot: buildRuleSnapshot(input.effectiveRules),
     overridesSnapshot: input.overridesSnapshot,
     perRuleResults: collectPerRuleResults(input.timeline.days),
-    verdicts: input.verdicts.filter(v => windowDates.has(v.date)),
+    verdicts: input.verdicts.filter(v => v.ticker === input.ticker && windowDates.has(v.date)),
     memo: input.memo,
     resultMetrics: computeResultMetrics(input.timeline),
     createdAt: input.createdAt,
