@@ -121,11 +121,36 @@ export function setBetweenBound(
   return upsertOverride(overrides, ruleId, leaf.leafId, { value: arr });
 }
 
-/** leaf on/off. */
+/**
+ * leaf on/off. **정규화**: enabled=true 로 되돌릴 때 value override가 없으면 no-op override를
+ * 남기지 않고 해당 leaf override를 아예 제거한다(value override가 있으면 value만 보존하고 enabled 플래그 제거).
+ * → "효과 없는 override"가 sandboxOverrides 를 부풀리거나(샌드박스 켜진 것처럼 보임) 사례에 박제되는 걸 방지.
+ */
 export function setLeafEnabled(
   overrides: RuleOverride[], ruleId: string, leafId: string, enabled: boolean,
 ): RuleOverride[] {
-  return upsertOverride(overrides, ruleId, leafId, { enabled });
+  if (enabled === false) {
+    return upsertOverride(overrides, ruleId, leafId, { enabled: false });
+  }
+  // enabled === true: 비활성 해제.
+  const idx = overrides.findIndex(o => o.ruleId === ruleId && o.leafId === leafId);
+  if (idx < 0) return overrides; // 이미 활성(override 없음) → no-op (동일 참조)
+  const existing = overrides[idx];
+  if (existing.value === undefined) {
+    return overrides.filter((_, i) => i !== idx); // value도 없음 → 순수 no-op override 제거
+  }
+  const { enabled: _drop, ...rest } = existing; // value override 유지, enabled 플래그만 제거
+  void _drop;
+  const next = overrides.slice();
+  next[idx] = rest;
+  return next;
+}
+
+/** between 값이 역전(min > max)인지 — 항상 미충족이 되는 입력. UI 경고/검증용(순수). */
+export function isBetweenInverted(value: LeafValue): boolean {
+  return Array.isArray(value) && value.length === 2
+    && typeof value[0] === 'number' && typeof value[1] === 'number'
+    && (value[0] as number) > (value[1] as number);
 }
 
 /** 한 leaf 의 override 제거(시드 값으로 복원). */

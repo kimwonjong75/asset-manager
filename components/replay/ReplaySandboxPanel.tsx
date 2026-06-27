@@ -4,7 +4,7 @@
 // 계산/가드 로직은 utils/ruleSandbox(순수), 저장은 useSignalReplay. 컴포넌트는 렌더 + 콜백만.
 
 import React from 'react';
-import { describeRuleLeaves, wouldKeepActiveLeaf, type SandboxLeaf } from '../../utils/ruleSandbox';
+import { describeRuleLeaves, wouldKeepActiveLeaf, isBetweenInverted, type SandboxLeaf } from '../../utils/ruleSandbox';
 import { metricLabel } from '../../utils/conditionDescribe';
 import type { KnowledgeRule, RequiredMetric, ConditionOperator } from '../../types/knowledge';
 import type { RuleOverride } from '../../types/signalReplay';
@@ -44,6 +44,9 @@ const LeafRow: React.FC<{
   const label = metricLabel(leaf.metric as RequiredMetric);
   // 켜져 있는데 끄면 활성 leaf가 0이 되는 경우(마지막 조건) → off 차단(원본 유지 착시 예방).
   const offBlocked = leaf.enabled && !wouldKeepActiveLeaf(rule, overrides, leaf.leafId, false);
+  // between 역전(min>max) → 항상 미충족. 입력은 막지 않되(편집 중 일시 역전 허용) 경고.
+  const inverted = leaf.kind === 'between' && isBetweenInverted(leaf.value);
+  const betweenInputCls = `${numberInputCls} ${inverted ? 'border-rose-500/70' : ''}`;
 
   return (
     <div className={`rounded px-2 py-1.5 ${leaf.enabled ? 'bg-gray-900/40' : 'bg-gray-900/20 opacity-60'}`}>
@@ -67,13 +70,13 @@ const LeafRow: React.FC<{
               <input
                 type="number" step="any" value={num(leaf.value, 0)} disabled={!leaf.enabled}
                 onChange={e => { const n = parseFloat(e.target.value); if (!Number.isNaN(n)) props.onSetBetween(rule.id, leaf.leafId, 'min', n); }}
-                className={numberInputCls}
+                className={betweenInputCls}
               />
               <span className="text-[10px] text-gray-500">~</span>
               <input
                 type="number" step="any" value={num(leaf.value, 1)} disabled={!leaf.enabled}
                 onChange={e => { const n = parseFloat(e.target.value); if (!Number.isNaN(n)) props.onSetBetween(rule.id, leaf.leafId, 'max', n); }}
-                className={numberInputCls}
+                className={betweenInputCls}
               />
             </div>
           )}
@@ -106,6 +109,9 @@ const LeafRow: React.FC<{
           )}
         </div>
       </div>
+      {inverted && (
+        <p className="text-[10px] text-rose-400 mt-0.5">⚠️ 최솟값이 최댓값보다 큽니다 — 이 조건은 항상 미충족(신호가 사라질 수 있음).</p>
+      )}
     </div>
   );
 };

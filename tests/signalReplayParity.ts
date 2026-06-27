@@ -25,6 +25,7 @@ import {
 import {
   classifyLeaf, describeRuleLeaves, countActiveLeaves, wouldKeepActiveLeaf,
   setLeafValue, setBetweenBound, setLeafEnabled, clearLeafOverride, clearRuleOverrides,
+  isBetweenInverted,
 } from '../utils/ruleSandbox';
 import { EMPTY_VERIFICATION } from '../types/knowledge';
 import type { KnowledgeRule, KnowledgeClaim, ConditionNode, RuleDiagnostic } from '../types/knowledge';
@@ -407,6 +408,26 @@ check('bd missing value is null', boundaryDistance(null, '>=', 70), null);
   // clear — leaf/규칙 복원
   check('sandbox: clearLeafOverride restores', describeRuleLeaves(sandboxRule, clearLeafOverride(ov1, 'sb', L_SINGLE))[1].value, 70);
   check('sandbox: clearRuleOverrides empties rule', clearRuleOverrides(ov2b, 'sb').length, 0);
+
+  // setLeafEnabled 정규화 — enabled=true 로 되돌릴 때 no-op override 제거(샌드박스 부풀림/사례 박제 방지)
+  const offThenOn = setLeafEnabled(setLeafEnabled([], 'sb', L_FIXED, false), 'sb', L_FIXED, true);
+  check('sandbox: off→on with no value removes override', offThenOn.length, 0);
+  // value override가 있으면 value 보존 + enabled 플래그만 제거(다시 활성)
+  const valThenDisableThenEnable = setLeafEnabled(setLeafEnabled(setLeafValue([], 'sb', L_SINGLE, 60), 'sb', L_SINGLE, false), 'sb', L_SINGLE, true);
+  check('sandbox: re-enable keeps value override', valThenDisableThenEnable.length, 1);
+  check('sandbox: re-enabled override value kept', valThenDisableThenEnable[0].value, 60);
+  checkTrue('sandbox: re-enabled override has no enabled flag', valThenDisableThenEnable[0].enabled === undefined);
+  const reLeaf = describeRuleLeaves(sandboxRule, valThenDisableThenEnable)[1];
+  check('sandbox: re-enabled leaf is enabled', reLeaf.enabled, true);
+  check('sandbox: re-enabled leaf still overridden(value)', reLeaf.overridden, true);
+  // enabled=true on a leaf with no existing override = no-op(동일 참조)
+  const someOv = setLeafValue([], 'sb', L_SINGLE, 60);
+  checkTrue('sandbox: enable untouched leaf is identity', setLeafEnabled(someOv, 'sb', L_FIXED, true) === someOv);
+
+  // isBetweenInverted — min>max 감지(UI 경고)
+  checkTrue('sandbox: inverted between detected', isBetweenInverted([3, 1]));
+  checkTrue('sandbox: normal between not inverted', !isBetweenInverted([-3, 3]));
+  checkTrue('sandbox: single value never inverted', !isBetweenInverted(70));
 
   // baseline ↔ sandbox diff — 임계값 override 로 신호일 변화(룩어헤드 무관, buildReplayTimeline 재사용)
   const tlParams = { ticker: 'TST', name: 'TST', history: makeHistory(300), claims, alertRules, now: NOW, windowTradingDays: 120 };
