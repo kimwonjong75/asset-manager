@@ -6,6 +6,9 @@
     "enabled": true
   },
   "assets": {
+    // vite cloudflare() 플러그인 없이 wrangler 단독으로 배포하기 위해
+    // 정적 산출물 디렉터리를 명시한다(기존엔 플러그인이 dist/wrangler.json으로 주입).
+    "directory": "./dist",
     "not_found_handling": "single-page-application"
   },
   "compatibility_flags": [
