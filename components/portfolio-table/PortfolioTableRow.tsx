@@ -131,6 +131,9 @@ const PortfolioTableRow: React.FC<PortfolioTableRowProps> = ({
              </div>
             <div className="flex items-center gap-1.5">
               <span className="text-xs text-gray-500 break-all">{asset.ticker} | {asset.exchange}</span>
+              {asset.bucket === 'SATELLITE' && (
+                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 whitespace-nowrap" title="투더문(위성) 종목">투더문</span>
+              )}
             </div>
           </div>
         </td>

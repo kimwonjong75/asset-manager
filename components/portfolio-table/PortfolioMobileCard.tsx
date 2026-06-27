@@ -80,6 +80,9 @@ const PortfolioMobileCard: React.FC<PortfolioMobileCardProps> = ({
           </div>
           <div className="flex items-center gap-1.5 mt-0.5">
             <span className="text-[11px] text-gray-500">{asset.ticker} | {asset.exchange}</span>
+            {asset.bucket === 'SATELLITE' && (
+              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 whitespace-nowrap" title="투더문(위성) 종목">투더문</span>
+            )}
             <CrossDaysBadge crossDays={gcCrossDays} />
             <CrossDaysBadge crossDays={dcCrossDays} />
           </div>

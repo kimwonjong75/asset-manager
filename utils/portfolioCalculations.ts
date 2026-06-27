@@ -71,6 +71,9 @@ export const mapToNewAssetStructure = (asset: LegacyAssetShape | Asset): Asset =
     newAsset.categoryId = 4; // fallback: OTHER_FOREIGN_STOCK
   }
 
+  // 전략 버킷 기본값 보정 — 기존 값 보존(?? 덮어쓰기 금지). 레거시 자산은 전부 코어.
+  newAsset.bucket = newAsset.bucket ?? 'CORE';
+
   const { region, ...cleaned } = newAsset as any;
   return cleaned as Asset;
 };

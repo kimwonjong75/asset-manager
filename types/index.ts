@@ -116,6 +116,7 @@ export const normalizeExchange = (exchange: string): string => {
 };
 
 import type { Indicators } from './api';
+import type { BucketId } from './bucket';
 
 export interface WatchlistItem {
   id: string;
@@ -178,6 +179,8 @@ export interface Asset {
   sellAlertDropRate?: number;
   memo?: string;
   pinned?: boolean;
+  /** 전략 버킷 (코어=자산배분 본체 / 투더문=개별 위성). 미지정=코어. categoryId와 직교. */
+  bucket?: BucketId;
   sellTransactions?: SellTransaction[];
   changeRate?: number;
   indicators?: Indicators;
@@ -220,8 +223,11 @@ export interface DriveFileMetadata {
 }
 
 export interface AllocationTargets {
+  /** 카테고리 목표 비중(%). 코어 버킷 내부 기준(코어 합계=100%로 운용). 키=categoryId 문자열 */
   weights: Record<string, number>;
   targetTotalAmount?: number;
+  /** 전략 버킷 목표 비중(%). 키='CORE'|'SATELLITE'. 미설정=레거시(전부 코어) */
+  bucketWeights?: Record<string, number>;
 }
 
 export interface LegacyAssetShape {
@@ -244,5 +250,6 @@ export interface LegacyAssetShape {
   previousClosePrice?: number; // Keep for migration
   sellAlertDropRate?: number;
   memo?: string;
+  bucket?: BucketId;
   region?: string;
 }

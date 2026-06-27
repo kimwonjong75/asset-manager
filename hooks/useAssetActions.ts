@@ -97,7 +97,8 @@ export const useAssetActions = ({
       
       const finalNewAsset: Asset = {
         id: new Date().getTime().toString(),
-        ...newAsset
+        ...newAsset,
+        bucket: newAssetData.bucket ?? 'CORE', // 전략 버킷 (미지정=코어)
       };
 
       setAssets(prevAssets => {

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Currency, SymbolSearchResult, normalizeExchange } from '../types';
 import { getAllowedCategories, inferCategoryIdFromExchange, getCategoryBaseType } from '../types/category';
+import { BucketId, ALL_BUCKETS, BUCKET_LABELS, BUCKET_DESCRIPTIONS } from '../types/bucket';
 import { searchSymbols, validateTicker } from '../services/symbolListService';
 import { searchSymbolsAI } from '../services/geminiService';
 import { getGeminiApiKey } from '../services/geminiSettings';
@@ -31,6 +32,7 @@ const AddNewAssetModal: React.FC = () => {
   const [category, setCategory] = useState<number>(2);
   const [exchange, setExchange] = useState<string>('NASDAQ');
   const [currency, setCurrency] = useState<Currency>(Currency.USD);
+  const [bucket, setBucket] = useState<BucketId>('CORE');
 
   const clearForm = useCallback(() => {
     setTicker('');
@@ -43,6 +45,7 @@ const AddNewAssetModal: React.FC = () => {
     setExchange('NASDAQ');
     setPurchaseDate(new Date().toISOString().slice(0, 10));
     setCurrency(Currency.USD);
+    setBucket('CORE');
     setDuplicateError(null);
   }, []);
 
@@ -199,6 +202,7 @@ const AddNewAssetModal: React.FC = () => {
       categoryId: category,
       exchange,
       currency,
+      bucket, // 전략 버킷 (코어/투더문)
       name: selectedName || undefined, // [추가] 검색에서 선택한 이름 전달
     });
   };
@@ -236,6 +240,27 @@ const AddNewAssetModal: React.FC = () => {
                     <option key={cat.id} value={cat.id}>{cat.name}</option>
                   ))}
                 </select>
+            </div>
+            <div>
+                <label className={labelClasses}>전략 버킷</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {ALL_BUCKETS.map((b) => (
+                    <button
+                      key={b}
+                      type="button"
+                      onClick={() => setBucket(b)}
+                      className={`py-2 px-3 rounded-md border text-sm font-medium transition ${
+                        bucket === b
+                          ? 'bg-primary border-primary text-white'
+                          : 'bg-gray-700 border-gray-600 text-gray-300 hover:border-gray-500'
+                      }`}
+                      title={BUCKET_DESCRIPTIONS[b]}
+                    >
+                      {BUCKET_LABELS[b]}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-xs text-gray-400 mt-1">{BUCKET_DESCRIPTIONS[bucket]} · 시세/환율은 자산 구분이 결정하며 버킷은 배분 집계에만 영향.</p>
             </div>
             <div>
                 <label className={labelClasses}>거래소/시장</label>
