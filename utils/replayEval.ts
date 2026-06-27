@@ -15,6 +15,7 @@ import { boundaryDistance } from './boundaryDistance';
 import { Currency } from '../types';
 import type { KnowledgeRule, KnowledgeClaim } from '../types/knowledge';
 import type { AlertRule } from '../types/alertRules';
+import type { SmartFilterKey } from '../types/smartFilter';
 import type { EnrichedAsset } from '../types/ui';
 import type { EnrichedIndicatorData } from '../hooks/useEnrichedIndicators';
 import type { ReplayDay, SignalOutcome } from '../types/signalReplay';
@@ -53,6 +54,33 @@ export function prepareSeries(history: HistoricalPriceResult): PreparedSeries {
     lows: alignSeries(sortedDates, history.low),
     volumes: alignSeries(sortedDates, history.volume),
   };
+}
+
+// ── 리플레이 알림 검증범위 분류 ──────────────────────────────────────────────
+// buildPseudoAsset이 보유 단가를 현재가로 모의(수익률 0%)하고 서버지표(매매신호/거래량)는 미수신 처리하므로,
+// 아래 필터들을 쓰는 규칙의 "발화/미충족" 판정은 실전과 다르다. UI에서 '리플레이 검증 불가'로 분리해
+// 사용자가 "놓친 매수/매도"로 잘못 태깅(데이터 오염)하지 않게 한다.
+
+/** 보유 단가 의존(수익률 0% 모의 → 손절/익절류는 항상 미충족으로 보임). */
+const HOLDING_DEPENDENT_FILTERS: ReadonlySet<SmartFilterKey> = new Set<SmartFilterKey>([
+  'PROFIT_POSITIVE', 'PROFIT_NEGATIVE', 'PROFIT_TARGET', 'LOSS_THRESHOLD',
+]);
+/** 서버 지표 의존(indicators 미수신 → data-missing). */
+const SERVER_DEPENDENT_FILTERS: ReadonlySet<SmartFilterKey> = new Set<SmartFilterKey>([
+  'SIGNAL_STRONG_BUY', 'SIGNAL_BUY', 'SIGNAL_SELL', 'SIGNAL_STRONG_SELL',
+  'VOLUME_SURGE', 'VOLUME_HIGH', 'VOLUME_LOW',
+]);
+
+export type ReplayAlertScope = 'verifiable' | 'holding-dependent' | 'server-dependent';
+
+/**
+ * 규칙 필터 구성 → 리플레이 검증 가능 범위. 서버 의존이 보유가 의존보다 우선(데이터 자체가 없어 더 근본적).
+ * verifiable = MA/RSI/돌파/클라이맥스/디스트리뷰션/고점대비하락/당일변동 등 가격·OHLCV로 재현 가능한 알림.
+ */
+export function classifyReplayAlertScope(filters: SmartFilterKey[]): ReplayAlertScope {
+  if (filters.some(f => SERVER_DEPENDENT_FILTERS.has(f))) return 'server-dependent';
+  if (filters.some(f => HOLDING_DEPENDENT_FILTERS.has(f))) return 'holding-dependent';
+  return 'verifiable';
 }
 
 /** smartFilterLogic/diagnoseAlertRule이 참조하는 필드만 의미있게 채운 pseudo EnrichedAsset(과거 시점). */

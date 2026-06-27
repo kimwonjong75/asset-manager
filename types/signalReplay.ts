@@ -42,6 +42,14 @@ export interface ReplayChartPoint {
   high: number | null;
   low: number | null;
   close: number;
+  /**
+   * 차트 오버레이용 기간별 SMA(그 시점 trailing) — `buildEnrichedIndicator`와 동일한 `calculateSMA`로 산출하므로
+   * as-of 날의 값이 구루 진단 패널의 `enriched.ma[기간]`과 정확히 일치한다(시각=숫자 보장). 워밍업 부족 시 null.
+   * 기간 집합 = `CHART_MA_PERIODS`(5/20/60/120/150).
+   */
+  ma: Record<number, number | null>;
+  /** 14일 RSI(그 시점 trailing, `enriched.rsi`와 동일 계산) — 보조 패널용. 워밍업 부족 시 null. */
+  rsi: number | null;
 }
 
 /** 한 거래일을 asOf로 둔 재현 결과 (룩어헤드 0). */

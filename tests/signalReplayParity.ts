@@ -9,8 +9,10 @@
 //   ④ flattenLeaves/deriveLeafId — 안정적 id(재실행 동일·중복순번·명시 id 우선).
 // 통과 시 exit 0, 실패 1건이라도 있으면 exit 1.
 
-import { prepareSeries, evaluateReplayDay } from '../utils/replayEval';
-import { buildReplayTimeline } from '../utils/signalReplay';
+import { prepareSeries, evaluateReplayDay, classifyReplayAlertScope } from '../utils/replayEval';
+import { buildReplayTimeline, CHART_MA_PERIODS } from '../utils/signalReplay';
+import { computeSignalPerformance } from '../utils/replayPerformance';
+import { buildReplayExport, serializeReplayExport, parseReplayExport } from '../utils/replayExport';
 import { boundaryDistance } from '../utils/boundaryDistance';
 import { applyRuleOverrides, mergeOverrides, hashRuleset } from '../utils/ruleOverrides';
 import { flattenLeaves } from '../utils/conditionLeafId';
@@ -31,8 +33,10 @@ import { EMPTY_VERIFICATION } from '../types/knowledge';
 import type { KnowledgeRule, KnowledgeClaim, ConditionNode, RuleDiagnostic } from '../types/knowledge';
 import type { AlertRule } from '../types/alertRules';
 import type {
-  RuleOverride, SignalVerdict, ReplayDay, ReplayTimeline,
+  RuleOverride, SignalVerdict, ReplayDay, ReplayTimeline, SignalOutcome,
 } from '../types/signalReplay';
+import type { AlertRuleDiagnostic } from '../types/alertDiagnostics';
+import type { SmartFilterKey } from '../types/smartFilter';
 import type { HistoricalPriceResult } from '../services/historicalPriceService';
 
 const NOW = new Date('2026-06-26T00:00:00Z');
@@ -442,6 +446,124 @@ check('bd missing value is null', boundaryDistance(null, '>=', 70), null);
   const sbxDiff = diffSignalDates(baseTl.signalDates, sbxTl.signalDates);
   check('sandbox diff: no added signal dates', sbxDiff.added.length, 0);
   checkTrue('sandbox diff: sandbox ⊆ baseline', sbxTl.signalDates.every(d => baseTl.signalDates.includes(d)));
+}
+
+// ── ⑨ 차트 MA/RSI 오버레이 — chartPoints 부착 + 진단 패널 enriched 값과 일치 ──────
+{
+  const tl = buildReplayTimeline({
+    ticker: 'TST', name: 'TST', history: makeHistory(300),
+    guruRules, claims, alertRules, now: NOW, windowTradingDays: 120,
+  });
+  checkTrue('chart: every point carries ma record', tl.chartPoints.every(p => p.ma && typeof p.ma === 'object'));
+  checkTrue('chart: ma record has exactly CHART_MA_PERIODS keys',
+    tl.chartPoints.every(p => CHART_MA_PERIODS.every(k => k in p.ma)));
+  checkTrue('chart: ma5 present after warmup', tl.chartPoints.some(p => typeof p.ma[5] === 'number'));
+  checkTrue('chart: ma150 present after warmup', tl.chartPoints.some(p => typeof p.ma[150] === 'number'));
+  checkTrue('chart: rsi present after warmup', tl.chartPoints.some(p => typeof p.rsi === 'number'));
+  // 윈도를 충분히 길게(252) 잡으면 chartPoints가 MA150 워밍업 구간(149개 미만)을 포함 → 앞쪽은 null 이어야
+  // (전구간 값이면 trailing 계산이 깨진 것). window=120은 시작 index가 워밍업 뒤라 이 검사는 252로 별도 확인.
+  {
+    const longTl = buildReplayTimeline({
+      ticker: 'TST', name: 'TST', history: makeHistory(300),
+      guruRules, claims, alertRules, now: NOW, windowTradingDays: 252,
+    });
+    checkTrue('chart: ma150 null during warmup', longTl.chartPoints.some(p => p.ma[150] === null));
+    checkTrue('chart: ma150 has value after warmup', longTl.chartPoints.some(p => typeof p.ma[150] === 'number'));
+  }
+
+  // ★핵심 일관성: as-of 날의 chartPoint.ma/rsi == 그 날 진단의 enriched.ma/rsi
+  //   (동일 calculateSMA/RSI trailing → 차트 선과 진단 숫자가 절대 어긋나지 않음).
+  const someDay = tl.days[tl.days.length - 1];
+  const cp = tl.chartPoints.find(p => p.date === someDay.date);
+  checkTrue('chart: chartPoint exists at as-of date', !!cp);
+  checkTrue('chart: ma20 matches enriched.ma20 at as-of', !!cp && cp.ma[20] === someDay.enriched.ma[20]);
+  checkTrue('chart: ma5 matches enriched.ma5 at as-of', !!cp && cp.ma[5] === someDay.enriched.ma[5]);
+  checkTrue('chart: ma60 matches enriched.ma60 at as-of', !!cp && cp.ma[60] === someDay.enriched.ma[60]);
+  checkTrue('chart: rsi matches enriched.rsi at as-of', !!cp && cp.rsi === someDay.enriched.rsi);
+
+  // 중간 시점도 일치(끝점만 우연히 맞는 게 아님을 확인).
+  const midDay = tl.days[Math.floor(tl.days.length / 2)];
+  const midCp = tl.chartPoints.find(p => p.date === midDay.date);
+  checkTrue('chart: ma20 matches enriched at mid as-of', !!midCp && midCp.ma[20] === midDay.enriched.ma[20]);
+  checkTrue('chart: rsi matches enriched at mid as-of', !!midCp && midCp.rsi === midDay.enriched.rsi);
+}
+
+// ── ⑩ 리플레이 알림 검증범위 분류(classifyReplayAlertScope) ─────────────────────
+{
+  // 가격·OHLCV로 재현 가능 = verifiable.
+  check('scope: golden cross verifiable', classifyReplayAlertScope(['MA_GOLDEN_CROSS']), 'verifiable');
+  check('scope: dead cross verifiable', classifyReplayAlertScope(['MA_DEAD_CROSS']), 'verifiable');
+  check('scope: pullback(MA+RSI) verifiable', classifyReplayAlertScope(['PRICE_ABOVE_LONG_MA', 'RSI_OVERSOLD']), 'verifiable');
+  check('scope: climax verifiable', classifyReplayAlertScope(['CLIMAX_TOP']), 'verifiable');
+  check('scope: drop-from-high verifiable', classifyReplayAlertScope(['MA_BEARISH_ALIGN', 'DROP_FROM_HIGH']), 'verifiable');
+  // 보유 단가 의존(손절·익절류) = holding-dependent.
+  check('scope: stop-loss holding-dependent', classifyReplayAlertScope(['LOSS_THRESHOLD']), 'holding-dependent');
+  check('scope: profit-target holding-dependent', classifyReplayAlertScope(['PROFIT_TARGET']), 'holding-dependent');
+  check('scope: trend-break(MA+PROFIT_NEG) holding-dependent', classifyReplayAlertScope(['PRICE_BELOW_SHORT_MA', 'PROFIT_NEGATIVE']), 'holding-dependent');
+  // 서버 매매신호/거래량 의존 = server-dependent (보유가보다 우선).
+  check('scope: volume-confirmed-buy server-dependent', classifyReplayAlertScope(['SIGNAL_STRONG_BUY', 'VOLUME_SURGE']), 'server-dependent');
+  check('scope: server beats holding', classifyReplayAlertScope(['PROFIT_TARGET', 'SIGNAL_STRONG_SELL']), 'server-dependent');
+}
+
+// ── ⑪ 규칙별 성과 집계(computeSignalPerformance) ────────────────────────────────
+{
+  const mkGuru = (ruleId: string, action: RuleDiagnostic['action'], eligible: boolean, evaluation: RuleDiagnostic['evaluation']): RuleDiagnostic =>
+    ({ ruleId, ruleTitle: ruleId, action, eligibility: { eligible, reasons: [] }, evaluation, coverage: [], leaves: [] });
+  const mkAlert = (ruleId: string, action: 'buy' | 'sell', enabled: boolean, evaluation: AlertRuleDiagnostic['evaluation'], filterKeys: SmartFilterKey[]): AlertRuleDiagnostic =>
+    ({ ruleId, ruleName: ruleId, action, enabled, evaluation, dataQuality: 'complete',
+       filters: filterKeys.map(k => ({ filterKey: k, label: k, result: true, reason: 'met', quality: 'complete' })) });
+  const out = (ret20: number | null, maxRise: number | null, maxDrop: number | null): SignalOutcome =>
+    ({ ret5: null, ret20, ret60: null, maxRise, maxDrop });
+  const mkDayP = (date: string, guru: RuleDiagnostic[], alerts: AlertRuleDiagnostic[], outcome: SignalOutcome): ReplayDay =>
+    ({ date, close: 100, previousClose: 99, changePct: 1, enriched: {}, guruDiagnostics: guru, alertDiagnostics: alerts,
+       guruLeafDistances: {}, outcome } as unknown as ReplayDay);
+
+  const days: ReplayDay[] = [
+    mkDayP('2026-01-02', [mkGuru('g-buy', 'buy-watch', true, 'matched')], [mkAlert('golden', 'buy', true, 'matched', ['MA_GOLDEN_CROSS'])], out(5, 8, -2)),
+    mkDayP('2026-01-03', [mkGuru('g-buy', 'buy-watch', true, 'matched')], [], out(-3, 1, -6)),                 // buy 미적중(ret20<0)
+    mkDayP('2026-01-06', [mkGuru('g-buy', 'buy-watch', false, 'matched')], [], out(99, 99, 99)),               // eligible=false → 제외
+    mkDayP('2026-01-07', [mkGuru('g-sell', 'sell-warning', true, 'matched')], [mkAlert('stoploss', 'sell', true, 'matched', ['LOSS_THRESHOLD'])], out(-5, 0, -7)), // sell 적중 / holding 알림 제외
+    mkDayP('2026-01-08', [], [mkAlert('signalbuy', 'buy', true, 'matched', ['SIGNAL_STRONG_BUY', 'VOLUME_SURGE'])], out(2, 4, -1)), // server 알림 제외
+  ];
+  const tl = { ticker: 'X', name: 'X', days, chartPoints: [], markers: [], signalDates: [] } as unknown as ReplayTimeline;
+  const perf = computeSignalPerformance(tl);
+
+  const gbuy = perf.find(p => p.key === 'guru:g-buy');
+  check('perf: g-buy signalCount (eligible&&matched)', gbuy?.signalCount, 2);
+  check('perf: g-buy avgRet20 = (5+-3)/2', gbuy?.avgRet20, 1);
+  check('perf: g-buy evaluable20', gbuy?.evaluable20, 2);
+  check('perf: g-buy hitRate20 (1 of 2 up)', gbuy?.hitRate20, 0.5);
+  check('perf: g-buy avgMaxRise = (8+1)/2', gbuy?.avgMaxRise, 4.5);
+  const gsell = perf.find(p => p.key === 'guru:g-sell');
+  check('perf: g-sell hitRate20 (down=적중)', gsell?.hitRate20, 1);  // ret20=-5<0 → 매도 적중
+  checkTrue('perf: verifiable alert(golden) included', perf.some(p => p.key === 'alert:golden'));
+  checkTrue('perf: holding alert(stoploss) excluded', !perf.some(p => p.key === 'alert:stoploss'));
+  checkTrue('perf: server alert(signalbuy) excluded', !perf.some(p => p.key === 'alert:signalbuy'));
+  check('perf: guru sorted before alert', perf[0].kind, 'guru');
+}
+
+// ── ⑫ 검증 기록 export/import(replayExport) ──────────────────────────────────────
+{
+  const verdicts: SignalVerdict[] = [
+    { ticker: 'SLV', date: '2026-01-05', kind: 'missed-sell', createdAt: '2026-06-27T00:00:00Z' },
+    { ticker: 'GLD', date: '2026-02-01', kind: 'good', memo: 'ok', createdAt: '2026-06-27T00:00:00Z' },
+  ];
+  const bundle = buildReplayExport(verdicts, [], '2026-06-27T00:00:00Z');
+  check('export: schema', bundle.schema, 'asset-manager-replay-export');
+  check('export: version', bundle.version, 1);
+  check('export: exportedAt preserved', bundle.exportedAt, '2026-06-27T00:00:00Z');
+
+  const parsed = parseReplayExport(serializeReplayExport(bundle));
+  check('export: roundtrip verdict count', parsed.verdicts.length, 2);
+  check('export: roundtrip kind', parsed.verdicts.find(v => v.ticker === 'SLV')?.kind, 'missed-sell');
+  check('export: roundtrip cases empty', parsed.cases.length, 0);
+
+  check('export: garbage → empty', parseReplayExport('not json'), { verdicts: [], cases: [] });
+  check('export: null → empty', parseReplayExport(null), { verdicts: [], cases: [] });
+  check('export: wrong-shape verdict dropped',
+    parseReplayExport(JSON.stringify({ verdicts: [{ bogus: 1 }], cases: [] })), { verdicts: [], cases: [] });
+  check('export: missing fields → empty arrays',
+    parseReplayExport(JSON.stringify({ schema: 'asset-manager-replay-export', version: 1 })), { verdicts: [], cases: [] });
 }
 
 // ── 결과 ─────────────────────────────────────────────────────────────────────

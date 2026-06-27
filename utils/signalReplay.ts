@@ -4,6 +4,8 @@
 // 알고리즘은 동일하다(이 함수가 단일 소스 — 테스트가 이걸 검증).
 
 import { prepareSeries, evaluateReplayDay, type PreparedSeries } from './replayEval';
+import { calculateSMA, calculateRSI } from './maCalculations';
+import { RSI_PERIOD } from './buildEnrichedIndicator';
 import type { KnowledgeRule, KnowledgeClaim, RuleAction } from '../types/knowledge';
 import type { AlertRule } from '../types/alertRules';
 import type { HistoricalPriceResult } from '../services/historicalPriceService';
@@ -13,6 +15,9 @@ import type {
 
 const DEFAULT_WINDOW = 252;       // 약 1년
 const MIN_WARMUP_INDEX = 60;      // 백테스트와 동일 — 워밍업 부족일 스킵(이전 indices만큼 history 필요)
+
+/** 차트 오버레이 MA 기간 — 골든/데드크로스(5·20)·중장기 추세(60·120·150). MA200·10은 가격기반 알림 규칙 미사용이라 제외. */
+export const CHART_MA_PERIODS = [5, 20, 60, 120, 150] as const;
 
 /** asOf 이하(포함)에서 가장 큰 인덱스. 없으면 -1. */
 function lastIndexAtOrBefore(sortedDates: string[], date: string): number {
@@ -103,16 +108,26 @@ export function buildReplayTimeline(params: BuildReplayTimelineParams): ReplayTi
     }
   }
 
+  // 차트 오버레이 지표 — 전체 시리즈로 1회 계산(trailing이라 진단 패널 enriched 값과 동일). 윈도 슬라이스만 차트에 부착.
+  const sortedPrices = series.sortedDates.map((date, i) => ({ date, price: series.closes[i] }));
+  const maArrays: Record<number, (number | null)[]> = {};
+  for (const p of CHART_MA_PERIODS) maArrays[p] = calculateSMA(sortedPrices, p);
+  const rsiArray = calculateRSI(sortedPrices, RSI_PERIOD);
+
   // 차트는 윈도 시작 ~ 최신(미래 포함) — replay 모드에서 asOf 이후를 가린다.
   const chartStart = days.length > 0 ? series.sortedDates.indexOf(days[0].date) : 0;
   const chartPoints: ReplayChartPoint[] = [];
   for (let i = Math.max(0, chartStart); i < n; i++) {
+    const ma: Record<number, number | null> = {};
+    for (const p of CHART_MA_PERIODS) ma[p] = maArrays[p][i] ?? null;
     chartPoints.push({
       date: series.sortedDates[i],
       open: series.opens[i],
       high: series.highs[i],
       low: series.lows[i],
       close: series.closes[i],
+      ma,
+      rsi: rsiArray[i] ?? null,
     });
   }
 
