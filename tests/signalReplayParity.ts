@@ -10,9 +10,10 @@
 // 통과 시 exit 0, 실패 1건이라도 있으면 exit 1.
 
 import { prepareSeries, evaluateReplayDay, classifyReplayAlertScope } from '../utils/replayEval';
-import { buildReplayTimeline, CHART_MA_PERIODS } from '../utils/signalReplay';
+import { buildReplayTimeline, CHART_MA_PERIODS, verifiableAlertSummary } from '../utils/signalReplay';
 import { computeSignalPerformance } from '../utils/replayPerformance';
 import { buildReplayExport, serializeReplayExport, parseReplayExport } from '../utils/replayExport';
+import { buildReplayTooltip, rsiZone, maDistancePct } from '../utils/replayTooltip';
 import { boundaryDistance } from '../utils/boundaryDistance';
 import { applyRuleOverrides, mergeOverrides, hashRuleset } from '../utils/ruleOverrides';
 import { flattenLeaves } from '../utils/conditionLeafId';
@@ -33,7 +34,7 @@ import { EMPTY_VERIFICATION } from '../types/knowledge';
 import type { KnowledgeRule, KnowledgeClaim, ConditionNode, RuleDiagnostic } from '../types/knowledge';
 import type { AlertRule } from '../types/alertRules';
 import type {
-  RuleOverride, SignalVerdict, ReplayDay, ReplayTimeline, SignalOutcome,
+  RuleOverride, SignalVerdict, ReplayDay, ReplayTimeline, SignalOutcome, ReplayChartPoint,
 } from '../types/signalReplay';
 import type { AlertRuleDiagnostic } from '../types/alertDiagnostics';
 import type { SmartFilterKey } from '../types/smartFilter';
@@ -486,6 +487,38 @@ check('bd missing value is null', boundaryDistance(null, '>=', 70), null);
   const midCp = tl.chartPoints.find(p => p.date === midDay.date);
   checkTrue('chart: ma20 matches enriched at mid as-of', !!midCp && midCp.ma[20] === midDay.enriched.ma[20]);
   checkTrue('chart: rsi matches enriched at mid as-of', !!midCp && midCp.rsi === midDay.enriched.rsi);
+
+  // 배치2a: chartPoint에 거래량 부착 + 알림 요약 shape(null 또는 {buy,sell} 배열).
+  checkTrue('chart: points carry volume', tl.chartPoints.some(p => typeof p.volume === 'number'));
+  checkTrue('chart: alerts null or {buy,sell} arrays',
+    tl.chartPoints.every(p => p.alerts == null || (Array.isArray(p.alerts.buy) && Array.isArray(p.alerts.sell))));
+}
+
+// ── ⑨b verifiableAlertSummary — 보유가/서버 의존 알림은 툴팁 요약에서 제외 ───────────
+{
+  const mkA = (id: string, action: 'buy' | 'sell', filterKeys: SmartFilterKey[]): AlertRuleDiagnostic =>
+    ({ ruleId: id, ruleName: id, action, enabled: true, evaluation: 'matched', dataQuality: 'complete',
+       filters: filterKeys.map(k => ({ filterKey: k, label: k, result: true, reason: 'met', quality: 'complete' })) });
+  const dayWith = (alerts: AlertRuleDiagnostic[]): ReplayDay =>
+    ({ date: 'd', close: 1, previousClose: 1, changePct: 0, enriched: {}, guruDiagnostics: [],
+       alertDiagnostics: alerts, guruLeafDistances: {},
+       outcome: { ret5: null, ret20: null, ret60: null, maxRise: null, maxDrop: null } } as unknown as ReplayDay);
+
+  const sum = verifiableAlertSummary(dayWith([
+    mkA('골든크로스', 'buy', ['MA_GOLDEN_CROSS']),
+    mkA('RSI 반등', 'buy', ['RSI_BOUNCE']),
+    mkA('데드크로스', 'sell', ['MA_DEAD_CROSS']),
+    mkA('손절', 'sell', ['LOSS_THRESHOLD']),                       // 보유가 의존 → 제외
+    mkA('거래량매수', 'buy', ['SIGNAL_STRONG_BUY', 'VOLUME_SURGE']), // 서버 의존 → 제외
+  ]));
+  check('alertSummary: verifiable buy names', sum?.buy.slice().sort(), ['RSI 반등', '골든크로스']);
+  check('alertSummary: verifiable sell names', sum?.sell, ['데드크로스']);
+  // 발화가 전부 제외 대상이면 null(요약 없음)
+  check('alertSummary: only holding/server → null',
+    verifiableAlertSummary(dayWith([mkA('손절', 'sell', ['LOSS_THRESHOLD'])])), null);
+  // unmatched/disabled는 카운트 안 함
+  const unmatched: AlertRuleDiagnostic = { ...mkA('골든크로스', 'buy', ['MA_GOLDEN_CROSS']), evaluation: 'unmatched' };
+  check('alertSummary: unmatched excluded', verifiableAlertSummary(dayWith([unmatched])), null);
 }
 
 // ── ⑩ 리플레이 알림 검증범위 분류(classifyReplayAlertScope) ─────────────────────
@@ -564,6 +597,71 @@ check('bd missing value is null', boundaryDistance(null, '>=', 70), null);
     parseReplayExport(JSON.stringify({ verdicts: [{ bogus: 1 }], cases: [] })), { verdicts: [], cases: [] });
   check('export: missing fields → empty arrays',
     parseReplayExport(JSON.stringify({ schema: 'asset-manager-replay-export', version: 1 })), { verdicts: [], cases: [] });
+}
+
+// ── ⑬ hover 툴팁 데이터(replayTooltip) ───────────────────────────────────────────
+{
+  // RSI 구간 경계 — 과매도 ≤30 / 중립 / 과열 근접 60~69 / 과열 ≥70
+  check('rsiZone: 29 oversold', rsiZone(29), 'oversold');
+  check('rsiZone: 30 oversold(boundary)', rsiZone(30), 'oversold');
+  check('rsiZone: 31 neutral', rsiZone(31), 'neutral');
+  check('rsiZone: 59 neutral', rsiZone(59), 'neutral');
+  check('rsiZone: 60 near(boundary)', rsiZone(60), 'near-overbought');
+  check('rsiZone: 69 near', rsiZone(69), 'near-overbought');
+  check('rsiZone: 70 overbought(boundary)', rsiZone(70), 'overbought');
+  check('rsiZone: null → null', rsiZone(null), null);
+
+  // 이격률
+  check('maDist: +10%', maDistancePct(110, 100), 10);
+  check('maDist: null ma → null', maDistancePct(110, null), null);
+  check('maDist: zero ma → null', maDistancePct(110, 0), null);
+
+  const pt: ReplayChartPoint = {
+    date: '2026-03-12', open: 121, high: 125.2, low: 120.7, close: 124.3,
+    ma: { 5: 123.1, 20: 119.8, 60: 111.4, 120: 108.2, 150: 105.7 }, rsi: 68.5,
+  };
+  const tip = buildReplayTooltip({
+    point: pt, prevClose: 121.8,
+    markers: [{ date: '2026-03-12', kind: 'buy', guruCount: 1, alertCount: 0 }], maPeriods: [5, 20, 60, 120, 150],
+  });
+  checkTrue('tooltip: changePct from prevClose', Math.abs((tip.changePct ?? 0) - ((124.3 - 121.8) / 121.8 * 100)) < 1e-9);
+  check('tooltip: hasOHLC', tip.hasOHLC, true);
+  check('tooltip: mas count', tip.mas.length, 5);
+  check('tooltip: ma20 value', tip.mas.find(m => m.period === 20)?.value, 119.8);
+  checkTrue('tooltip: ma20 distPct', Math.abs((tip.mas.find(m => m.period === 20)?.distPct ?? 0) - ((124.3 - 119.8) / 119.8 * 100)) < 1e-9);
+  check('tooltip: ma5>ma20 → above', tip.ma5vs20, 'above');
+  check('tooltip: rsiZone near-overbought', tip.rsiZone, 'near-overbought');
+  check('tooltip: guru summary from marker', tip.guru, [{ kind: 'buy', count: 1 }]);
+
+  // 라인 모드(OHLC 없음) → hasOHLC false, 전일종가 없음 → changePct null
+  const linePt: ReplayChartPoint = { ...pt, open: null, high: null, low: null };
+  const lineTip = buildReplayTooltip({ point: linePt, prevClose: null, markers: [], maPeriods: [5, 20] });
+  check('tooltip: line mode hasOHLC false', lineTip.hasOHLC, false);
+  check('tooltip: no prevClose → changePct null', lineTip.changePct, null);
+
+  // ma5<ma20 → below / 한쪽 null → null
+  check('tooltip: ma5<ma20 → below',
+    buildReplayTooltip({ point: { ...pt, ma: { 5: 100, 20: 110 } }, prevClose: 99, markers: [], maPeriods: [5, 20] }).ma5vs20, 'below');
+  check('tooltip: ma20 missing → ma5vs20 null',
+    buildReplayTooltip({ point: { ...pt, ma: { 5: 100 } }, prevClose: 99, markers: [], maPeriods: [5] }).ma5vs20, null);
+
+  // guruCount 0 마커는 요약에서 제외(가격알림-only 날짜는 구루 요약 비대상 — 배치1 범위)
+  check('tooltip: zero-guru marker excluded',
+    buildReplayTooltip({ point: pt, prevClose: 120, markers: [{ date: 'x', kind: 'sell', guruCount: 0, alertCount: 3 }], maPeriods: [5] }).guru, []);
+
+  // 배치2a: volume / alerts / verdicts 출력
+  check('tooltip: volume from point',
+    buildReplayTooltip({ point: { ...pt, volume: 1_500_000 }, prevClose: 120, markers: [], maPeriods: [5] }).volume, 1_500_000);
+  check('tooltip: volume null when absent',
+    buildReplayTooltip({ point: pt, prevClose: 120, markers: [], maPeriods: [5] }).volume, null);
+  check('tooltip: alerts passthrough',
+    buildReplayTooltip({ point: { ...pt, alerts: { buy: ['골든크로스'], sell: [] } }, prevClose: 120, markers: [], maPeriods: [5] }).alerts,
+    { buy: ['골든크로스'], sell: [] });
+  check('tooltip: verdicts from prop',
+    buildReplayTooltip({ point: pt, prevClose: 120, markers: [], maPeriods: [5], verdictKinds: ['missed-buy', 'false'] }).verdicts,
+    ['missed-buy', 'false']);
+  check('tooltip: verdicts default empty',
+    buildReplayTooltip({ point: pt, prevClose: 120, markers: [], maPeriods: [5] }).verdicts, []);
 }
 
 // ── 결과 ─────────────────────────────────────────────────────────────────────

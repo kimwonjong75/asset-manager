@@ -50,6 +50,13 @@ export interface ReplayChartPoint {
   ma: Record<number, number | null>;
   /** 14일 RSI(그 시점 trailing, `enriched.rsi`와 동일 계산) — 보조 패널용. 워밍업 부족 시 null. */
   rsi: number | null;
+  /** 거래량(프록시 적용 후) — 툴팁용. 미수신 종목은 null. */
+  volume?: number | null;
+  /**
+   * 그 날 발화한 **"검증 가능"(classifyReplayAlertScope==='verifiable')** 가격기반 알림 규칙명(action별) — 툴팁 요약용.
+   * 보유가·서버 의존 알림은 리플레이에서 신뢰 불가라 제외(툴팁이 거짓 신호처럼 보이는 것 방지). 평가 안 된 날·발화 없음이면 생략.
+   */
+  alerts?: { buy: string[]; sell: string[] } | null;
 }
 
 /** 한 거래일을 asOf로 둔 재현 결과 (룩어헤드 0). */

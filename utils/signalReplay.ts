@@ -3,7 +3,7 @@
 // 훅(useSignalReplay)은 성능을 위해 evaluateReplayDay 를 청크로 직접 돌리지만,
 // 알고리즘은 동일하다(이 함수가 단일 소스 — 테스트가 이걸 검증).
 
-import { prepareSeries, evaluateReplayDay, type PreparedSeries } from './replayEval';
+import { prepareSeries, evaluateReplayDay, classifyReplayAlertScope, type PreparedSeries } from './replayEval';
 import { calculateSMA, calculateRSI } from './maCalculations';
 import { RSI_PERIOD } from './buildEnrichedIndicator';
 import type { KnowledgeRule, KnowledgeClaim, RuleAction } from '../types/knowledge';
@@ -32,6 +32,22 @@ function guruKind(action: RuleAction): 'buy' | 'sell' | null {
   if (action === 'sell-warning') return 'sell';
   if (action === 'buy-watch' || action === 'buy-setup') return 'buy';
   return null; // risk-sizing/regime-filter/review 는 마커 비대상
+}
+
+/**
+ * 그 날 발화한 "검증 가능" 가격기반 알림 규칙명(action별) — 툴팁 요약용.
+ * **classifyReplayAlertScope==='verifiable'만** 카운트(보유가·서버 의존은 리플레이 신뢰 불가 → 제외).
+ * 발화 없음이면 null(chartPoint 경량 유지).
+ */
+export function verifiableAlertSummary(day: ReplayDay): { buy: string[]; sell: string[] } | null {
+  const buy: string[] = [];
+  const sell: string[] = [];
+  for (const a of day.alertDiagnostics) {
+    if (!(a.enabled && a.evaluation === 'matched')) continue;
+    if (classifyReplayAlertScope(a.filters.map(f => f.filterKey)) !== 'verifiable') continue;
+    (a.action === 'sell' ? sell : buy).push(a.ruleName);
+  }
+  return buy.length || sell.length ? { buy, sell } : null;
 }
 
 /**
@@ -114,20 +130,30 @@ export function buildReplayTimeline(params: BuildReplayTimelineParams): ReplayTi
   for (const p of CHART_MA_PERIODS) maArrays[p] = calculateSMA(sortedPrices, p);
   const rsiArray = calculateRSI(sortedPrices, RSI_PERIOD);
 
+  // 툴팁용 알림 요약(평가된 윈도 날짜만) — 미래 구간 chartPoint는 day가 없어 alerts=null.
+  const alertSummaryByDate = new Map<string, { buy: string[]; sell: string[] }>();
+  for (const d of days) {
+    const s = verifiableAlertSummary(d);
+    if (s) alertSummaryByDate.set(d.date, s);
+  }
+
   // 차트는 윈도 시작 ~ 최신(미래 포함) — replay 모드에서 asOf 이후를 가린다.
   const chartStart = days.length > 0 ? series.sortedDates.indexOf(days[0].date) : 0;
   const chartPoints: ReplayChartPoint[] = [];
   for (let i = Math.max(0, chartStart); i < n; i++) {
     const ma: Record<number, number | null> = {};
     for (const p of CHART_MA_PERIODS) ma[p] = maArrays[p][i] ?? null;
+    const date = series.sortedDates[i];
     chartPoints.push({
-      date: series.sortedDates[i],
+      date,
       open: series.opens[i],
       high: series.highs[i],
       low: series.lows[i],
       close: series.closes[i],
       ma,
       rsi: rsiArray[i] ?? null,
+      volume: series.volumes[i] ?? null,
+      alerts: alertSummaryByDate.get(date) ?? null,
     });
   }
 

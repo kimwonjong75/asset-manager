@@ -12,7 +12,7 @@ import ReplayCasesPanel from '../replay/ReplayCasesPanel';
 import ReplaySandboxPanel from '../replay/ReplaySandboxPanel';
 import ReplayPerformancePanel from '../replay/ReplayPerformancePanel';
 import ReplayMissedPanel from '../replay/ReplayMissedPanel';
-import type { SignalVerdict } from '../../types/signalReplay';
+import type { SignalVerdict, SignalVerdictKind } from '../../types/signalReplay';
 import { describeRuleStatus } from '../../utils/guruDiagnostics';
 import { describeAlertRuleStatus } from '../../utils/alertDiagnostics';
 import { classifyReplayAlertScope, type ReplayAlertScope } from '../../utils/replayEval';
@@ -195,6 +195,17 @@ const SignalReplayView: React.FC = () => {
     return m;
   }, [data.knowledgeBase.rules]);
 
+  // 차트 hover 툴팁용 날짜→내 판정 종류 맵(배치2a) — 타임라인과 무관한 UI 상태라 별도 prop.
+  const verdictKindsByDate = useMemo(() => {
+    const m = new Map<string, SignalVerdictKind[]>();
+    for (const v of ctrl.tickerVerdicts) {
+      const arr = m.get(v.date) ?? [];
+      if (!arr.includes(v.kind)) arr.push(v.kind);
+      m.set(v.date, arr);
+    }
+    return m;
+  }, [ctrl.tickerVerdicts]);
+
   // 놓친 신호 점프(④) — 현재 종목이면 날짜만, 퀵픽에 있으면 종목+시점, 둘 다 아니면 무시.
   const isResolvable = useMemo(() => {
     const set = new Set(quickPicks.map(q => q.ticker));
@@ -322,6 +333,7 @@ const SignalReplayView: React.FC = () => {
                 asOfDate={ctrl.selectedDate}
                 mode={ctrl.mode}
                 onSelectDate={ctrl.selectDate}
+                verdicts={verdictKindsByDate}
               />
             ) : (
               <div className="h-[360px] flex items-center justify-center text-sm text-gray-500">데이터 부족 — 더 긴 기간을 선택하거나 다른 종목을 시도해 주세요.</div>
