@@ -91,9 +91,18 @@ const ReplayCasesPanel: React.FC<ReplayCasesPanelProps> = ({
       {comparingCase && (
         <div className="bg-gray-900/50 rounded p-2.5 space-y-1.5 border border-primary/30">
           <div className="flex items-center justify-between gap-2">
-            <span className="text-xs text-primary font-medium">🔁 재실행 비교 중 — {comparingCase.name} ({comparingCase.ticker})</span>
+            <span className="text-xs text-primary font-medium flex items-center gap-1.5">
+              🔁 재실행 비교 중 — {comparingCase.name} ({comparingCase.ticker})
+              <span className={`text-[10px] px-1.5 py-0.5 rounded border ${ROLE_TONE[comparingCase.caseRole]}`}>{ROLE_LABELS[comparingCase.caseRole]}</span>
+            </span>
             <button onClick={onEndComparison} className="text-[11px] px-2 py-0.5 rounded bg-gray-800 text-gray-400 hover:bg-gray-700">비교 종료</button>
           </div>
+          {/* P3-④ 과적합 경고 — holdout 사례에서 신호가 바뀌면 규칙을 거기 맞추지 말 것 */}
+          {comparingCase.caseRole === 'holdout' && caseDiff && (caseDiff.overall.added.length > 0 || caseDiff.overall.removed.length > 0) && (
+            <p className="text-[11px] text-amber-300 bg-amber-500/10 border border-amber-500/30 rounded px-2 py-1">
+              ⚠️ 검증용(holdout) 사례입니다. 신호가 바뀌었습니다 — 이 사례에 <span className="font-medium">규칙을 맞추지 마세요</span>(과적합). 조정은 연구용 사례로 하고, holdout에서는 유지/개선되는지만 확인하세요.
+            </p>
+          )}
           {!caseDiff ? (
             <p className="text-[11px] text-gray-500">재계산 중… (또는 종목/기간이 사례와 달라 비교 불가)</p>
           ) : caseDiff.overall.added.length === 0 && caseDiff.overall.removed.length === 0 ? (

@@ -22,6 +22,10 @@ import {
   collectPerRuleResults, buildRuleSnapshot, computeResultMetrics, buildVerificationCase,
   diffSignalDates, diffCaseResults, upsertCase, removeCase, parseCases,
 } from '../utils/replayCases';
+import {
+  classifyLeaf, describeRuleLeaves, countActiveLeaves, wouldKeepActiveLeaf,
+  setLeafValue, setBetweenBound, setLeafEnabled, clearLeafOverride, clearRuleOverrides,
+} from '../utils/ruleSandbox';
 import { EMPTY_VERIFICATION } from '../types/knowledge';
 import type { KnowledgeRule, KnowledgeClaim, ConditionNode, RuleDiagnostic } from '../types/knowledge';
 import type { AlertRule } from '../types/alertRules';
@@ -346,6 +350,77 @@ check('bd missing value is null', boundaryDistance(null, '>=', 70), null);
   check('removeCase: deleted', cases.map(x => x.id), ['case-1']);
   check('parseCases: garbage → []', parseCases('{bad'), []);
   check('parseCases: drops missing fields', parseCases(JSON.stringify([{ id: 'x' }])), []);
+}
+
+// ── ⑧ 샌드박스(P3-① ruleSandbox) ──────────────────────────────────────────────
+{
+  const sandboxRule: KnowledgeRule = {
+    id: 'sb', claimIds: [], title: '샌드박스 규칙', ruleType: 'entry-setup', computability: 'signal',
+    action: 'buy-watch', status: 'active', requiredMetrics: [], verification: vfApproved,
+    condition: { all: [
+      { metric: 'priceToMa20Pct', operator: 'between', value: [-3, 3] },  // between → leafId priceToMa20Pct__between__0
+      { metric: 'rsi14', operator: '>=', value: 70 },                      // single  → rsi14__>=__0
+      { metric: 'assetTrendRegime', operator: '=', value: 'uptrend' },     // fixed(문자열) → assetTrendRegime__=__0
+    ] },
+  };
+  const L_BETWEEN = 'priceToMa20Pct__between__0';
+  const L_SINGLE = 'rsi14__>=__0';
+  const L_FIXED = 'assetTrendRegime__=__0';
+
+  // classifyLeaf / describeRuleLeaves — 형태 분류 + override 없을 때 base 값
+  const leaves0 = describeRuleLeaves(sandboxRule, []);
+  check('sandbox: leaf kinds', leaves0.map(l => l.kind), ['between', 'single', 'fixed']);
+  check('sandbox: base value preserved (between)', leaves0[0].value, [-3, 3]);
+  check('sandbox: base value preserved (single)', leaves0[1].value, 70);
+  check('sandbox: all enabled by default', leaves0.every(l => l.enabled && !l.overridden), true);
+
+  // setLeafValue — 단일 number 형태 유지
+  const ov1 = setLeafValue([], 'sb', L_SINGLE, 60);
+  const single1 = describeRuleLeaves(sandboxRule, ov1)[1];
+  check('sandbox: single value patched', single1.value, 60);
+  checkTrue('sandbox: single stays number', typeof single1.value === 'number');
+  check('sandbox: single overridden flag', single1.overridden, true);
+  check('sandbox: base unchanged after patch', leaves0[1].value, 70); // 비파괴(원 배열 불변)
+
+  // setBetweenBound — 길이 2 number 배열 형태 유지
+  const ov2 = setBetweenBound([], 'sb', leaves0[0], 'min', -1);
+  const betw2 = describeRuleLeaves(sandboxRule, ov2)[0];
+  checkTrue('sandbox: between stays length-2 number array',
+    Array.isArray(betw2.value) && betw2.value.length === 2 && betw2.value.every(v => typeof v === 'number'));
+  check('sandbox: between min patched, max kept', betw2.value, [-1, 3]);
+  const ov2b = setBetweenBound(ov2, 'sb', betw2, 'max', 5);
+  check('sandbox: between max patched', describeRuleLeaves(sandboxRule, ov2b)[0].value, [-1, 5]);
+
+  // 가드 — 마지막 활성 leaf off 금지
+  check('sandbox: countActiveLeaves base', countActiveLeaves(sandboxRule, []), 3);
+  checkTrue('sandbox: disabling 1 of 3 ok', wouldKeepActiveLeaf(sandboxRule, [], L_FIXED, false));
+  const ovDis2 = setLeafEnabled(setLeafEnabled([], 'sb', L_FIXED, false), 'sb', L_SINGLE, false);
+  check('sandbox: 2 disabled → 1 active', countActiveLeaves(sandboxRule, ovDis2), 1);
+  checkTrue('sandbox: disabling last active blocked', !wouldKeepActiveLeaf(sandboxRule, ovDis2, L_BETWEEN, false));
+  checkTrue('sandbox: re-enabling always ok', wouldKeepActiveLeaf(sandboxRule, ovDis2, L_SINGLE, true));
+
+  // 단일 leaf 규칙 — 그 하나를 끄면 활성 0 → 차단(applyRuleOverrides 방어로 원본 유지되는 착시 예방)
+  const oneLeafRule: KnowledgeRule = { ...sandboxRule, id: 'one',
+    condition: { all: [{ metric: 'rsi14', operator: '>=', value: 70 }] } };
+  checkTrue('sandbox: single-leaf off blocked', !wouldKeepActiveLeaf(oneLeafRule, [], 'rsi14__>=__0', false));
+
+  // clear — leaf/규칙 복원
+  check('sandbox: clearLeafOverride restores', describeRuleLeaves(sandboxRule, clearLeafOverride(ov1, 'sb', L_SINGLE))[1].value, 70);
+  check('sandbox: clearRuleOverrides empties rule', clearRuleOverrides(ov2b, 'sb').length, 0);
+
+  // baseline ↔ sandbox diff — 임계값 override 로 신호일 변화(룩어헤드 무관, buildReplayTimeline 재사용)
+  const tlParams = { ticker: 'TST', name: 'TST', history: makeHistory(300), claims, alertRules, now: NOW, windowTradingDays: 120 };
+  const baseTl = buildReplayTimeline({ ...tlParams, guruRules });
+  // r-pullback(priceToMa20Pct between [-3,3]) 을 도달 불가 구간으로 → 그 규칙 발화 제거
+  const sbxRules = applyRuleOverrides(guruRules, [{ ruleId: 'r-pullback', leafId: 'priceToMa20Pct__between__0', value: [-100, -99] }]);
+  const sbxTl = buildReplayTimeline({ ...tlParams, guruRules: sbxRules });
+  const basePull = collectPerRuleResults(baseTl.days).find(r => r.ruleId === 'r-pullback');
+  const sbxPull = collectPerRuleResults(sbxTl.days).find(r => r.ruleId === 'r-pullback');
+  checkTrue('sandbox: baseline pullback fires', (basePull?.signalDates.length ?? 0) > 0);
+  check('sandbox: override kills pullback', sbxPull?.signalDates.length ?? 0, 0);
+  const sbxDiff = diffSignalDates(baseTl.signalDates, sbxTl.signalDates);
+  check('sandbox diff: no added signal dates', sbxDiff.added.length, 0);
+  checkTrue('sandbox diff: sandbox ⊆ baseline', sbxTl.signalDates.every(d => baseTl.signalDates.includes(d)));
 }
 
 // ── 결과 ─────────────────────────────────────────────────────────────────────

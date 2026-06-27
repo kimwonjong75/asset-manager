@@ -9,6 +9,7 @@ import { useSignalReplay, type ReplaySymbol } from '../../hooks/useSignalReplay'
 import SignalReplayChart from '../replay/SignalReplayChart';
 import ReplayVerdictPanel, { VERDICT_KIND_LABELS } from '../replay/ReplayVerdictPanel';
 import ReplayCasesPanel from '../replay/ReplayCasesPanel';
+import ReplaySandboxPanel from '../replay/ReplaySandboxPanel';
 import { describeRuleStatus } from '../../utils/guruDiagnostics';
 import { describeAlertRuleStatus } from '../../utils/alertDiagnostics';
 import { formatPct } from '../../utils/chartFormat';
@@ -333,6 +334,19 @@ const SignalReplayView: React.FC = () => {
               </div>
             </div>
           )}
+
+          {/* 규칙 샌드박스(P3) — leaf 값/on·off 즉석 조정 → 마커 즉시 재계산(라이브 미반영) */}
+          <ReplaySandboxPanel
+            rules={ctrl.sandboxRules}
+            overrides={ctrl.sandboxOverrides}
+            diff={ctrl.sandboxDiff}
+            onSetValue={ctrl.sandboxSetValue}
+            onSetBetween={ctrl.sandboxSetBetween}
+            onSetEnabled={ctrl.sandboxSetEnabled}
+            onResetLeaf={ctrl.sandboxResetLeaf}
+            onResetRule={ctrl.sandboxResetRule}
+            onResetAll={ctrl.sandboxResetAll}
+          />
         </>
       )}
 

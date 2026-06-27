@@ -21,7 +21,12 @@ import {
   loadCases, saveCases, buildVerificationCase, upsertCase, removeCase,
   collectPerRuleResults, diffCaseResults, type CaseDiff,
 } from '../utils/replayCases';
+import {
+  setLeafValue, setBetweenBound, setLeafEnabled, clearLeafOverride, clearRuleOverrides,
+  describeRuleLeaves,
+} from '../utils/ruleSandbox';
 import type { SymbolSearchResult } from '../types';
+import type { KnowledgeRule } from '../types/knowledge';
 import type {
   ReplayMode, ReplayTimeline, RuleOverride, SignalVerdict, SignalVerdictKind,
   VerificationCase, ReplayCaseRole,
@@ -72,9 +77,17 @@ export interface SignalReplayController {
   goPrevSignal: () => void;
   goNextSignal: () => void;
   goLatest: () => void;
-  // 샌드박스(P3에서 UI 연결) — 1차는 빈 상태 유지
+  // 샌드박스(P3) — 구루 leaf "값 + on/off" 비파괴 조정. 라이브/시드 불변, 리플레이 화면 state 한정.
   sandboxOverrides: RuleOverride[];
   setSandboxOverrides: (o: RuleOverride[]) => void;
+  sandboxRules: KnowledgeRule[];                    // 조정 대상(시드 signal 규칙) — 패널이 describeRuleLeaves 로 렌더
+  sandboxSetValue: (ruleId: string, leafId: string, value: number) => void;
+  sandboxSetBetween: (ruleId: string, leafId: string, which: 'min' | 'max', n: number) => void;
+  sandboxSetEnabled: (ruleId: string, leafId: string, enabled: boolean) => void;
+  sandboxResetLeaf: (ruleId: string, leafId: string) => void;
+  sandboxResetRule: (ruleId: string) => void;
+  sandboxResetAll: () => void;
+  sandboxDiff: CaseDiff | null;                     // 기준(샌드박스 적용 전) 대비 현재 신호일 변화
   // 신호 사용자 판정(P2) — localStorage `asset-manager-replay-verdicts-v1`
   verdictFor: (date: string, ruleId?: string) => SignalVerdict | undefined;
   setVerdict: (date: string, kind: SignalVerdictKind, memo?: string, ruleId?: string) => void;
@@ -108,6 +121,7 @@ export function useSignalReplay({ enabled }: UseSignalReplayParams): SignalRepla
   const [anchorDate, setAnchorDate] = useState<string | undefined>(undefined);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [timeline, setTimeline] = useState<ReplayTimeline | null>(null);
+  const [baselineTimeline, setBaselineTimeline] = useState<ReplayTimeline | null>(null);
   const [isComputing, setIsComputing] = useState(false);
   const [sandboxOverrides, setSandboxOverrides] = useState<RuleOverride[]>([]);
   const [verdicts, setVerdicts] = useState<SignalVerdict[]>([]);
@@ -116,6 +130,9 @@ export function useSignalReplay({ enabled }: UseSignalReplayParams): SignalRepla
 
   const fetchReqId = useRef(0);
   const caseSeq = useRef(0);
+  const structuralKeyRef = useRef('');   // 종목/윈도/기간/데이터 변경 감지(샌드박스 tweak 시 as-of 보존용)
+
+  const hasSandbox = sandboxOverrides.length > 0;
 
   // ── 판정/사례 localStorage 로드(마운트 시 1회 — 탭 재진입마다 최신 반영) ──
   useEffect(() => {
@@ -182,7 +199,15 @@ export function useSignalReplay({ enabled }: UseSignalReplayParams): SignalRepla
           now: new Date(), anchorDate, windowTradingDays,
         });
         setTimeline(tl);
-        setSelectedIndex(tl.days.length > 0 ? tl.days.length - 1 : 0); // 기본 최신일
+        // 종목/윈도/기간/데이터가 바뀌면 최신일로, 샌드박스 tweak(규칙만 변경)이면 as-of 위치 보존(클램프).
+        const key = `${selected.ticker}|${windowTradingDays}|${anchorDate ?? ''}|${Object.keys(history.data ?? {}).length}`;
+        const lastIdx = tl.days.length > 0 ? tl.days.length - 1 : 0;
+        if (structuralKeyRef.current !== key) {
+          structuralKeyRef.current = key;
+          setSelectedIndex(lastIdx);
+        } else {
+          setSelectedIndex(prev => Math.max(0, Math.min(prev, lastIdx)));
+        }
       } catch (err) {
         log.error('replay timeline build error', err);
         setTimeline(null);
@@ -192,6 +217,25 @@ export function useSignalReplay({ enabled }: UseSignalReplayParams): SignalRepla
     }, 0);
     return () => clearTimeout(id);
   }, [enabled, selected, history, effectiveGuruRules, knowledgeBase.claims, alertRules, anchorDate, windowTradingDays]);
+
+  // ── 기준(baseline) 타임라인 = 샌드박스 적용 *전*(시드 규칙) 결과. 샌드박스 활성일 때만 계산(diff 비교용). ──
+  // 시드/윈도/종목/기간에만 의존 → 샌드박스 값 tweak마다 재계산되지 않음(override 값은 deps 아님).
+  useEffect(() => {
+    if (!enabled || !selected || !history || !history.data || !hasSandbox) { setBaselineTimeline(null); return; }
+    const id = setTimeout(() => {
+      try {
+        setBaselineTimeline(buildReplayTimeline({
+          ticker: selected.ticker, name: selected.name, history,
+          guruRules: knowledgeBase.rules, claims: knowledgeBase.claims, alertRules,
+          now: new Date(), anchorDate, windowTradingDays,
+        }));
+      } catch (err) {
+        log.error('replay baseline build error', err);
+        setBaselineTimeline(null);
+      }
+    }, 0);
+    return () => clearTimeout(id);
+  }, [enabled, selected, history, hasSandbox, knowledgeBase.rules, knowledgeBase.claims, alertRules, anchorDate, windowTradingDays]);
 
   // ── 네비 ──
   const days = timeline?.days ?? [];
@@ -320,7 +364,7 @@ export function useSignalReplay({ enabled }: UseSignalReplayParams): SignalRepla
     setSearchQuery('');
     setSearchResults([]);
     setTimeline(null);
-    setSandboxOverrides([]);
+    setSandboxOverrides(c.overridesSnapshot ?? []); // 튜닝 사례면 그 오버라이드 복원(P2 사례는 [])
   }, []);
 
   const endComparison = useCallback(() => {
@@ -336,6 +380,42 @@ export function useSignalReplay({ enabled }: UseSignalReplayParams): SignalRepla
     return diffCaseResults(comparingCase.perRuleResults, collectPerRuleResults(timeline.days));
   }, [comparingCase, timeline, windowTradingDays]);
 
+  // ── 샌드박스(P3) — 조정 대상 = 시드 signal 규칙(조건 있음). 패널이 describeRuleLeaves(rule, sandboxOverrides)로 렌더 ──
+  const sandboxRules = useMemo(
+    () => knowledgeBase.rules.filter(r => r.computability === 'signal' && r.condition),
+    [knowledgeBase.rules],
+  );
+
+  const sandboxSetValue = useCallback((ruleId: string, leafId: string, value: number) => {
+    setSandboxOverrides(prev => setLeafValue(prev, ruleId, leafId, value));
+  }, []);
+  // between 은 prev(최신 override)에서 현재 leaf 를 다시 읽어 반대쪽 bound 를 보존(스냅샷 stale 방지).
+  const sandboxSetBetween = useCallback((ruleId: string, leafId: string, which: 'min' | 'max', n: number) => {
+    setSandboxOverrides(prev => {
+      const rule = sandboxRules.find(r => r.id === ruleId);
+      if (!rule) return prev;
+      const leaf = describeRuleLeaves(rule, prev).find(l => l.leafId === leafId);
+      if (!leaf) return prev;
+      return setBetweenBound(prev, ruleId, leaf, which, n);
+    });
+  }, [sandboxRules]);
+  const sandboxSetEnabled = useCallback((ruleId: string, leafId: string, enabled: boolean) => {
+    setSandboxOverrides(prev => setLeafEnabled(prev, ruleId, leafId, enabled));
+  }, []);
+  const sandboxResetLeaf = useCallback((ruleId: string, leafId: string) => {
+    setSandboxOverrides(prev => clearLeafOverride(prev, ruleId, leafId));
+  }, []);
+  const sandboxResetRule = useCallback((ruleId: string) => {
+    setSandboxOverrides(prev => clearRuleOverrides(prev, ruleId));
+  }, []);
+  const sandboxResetAll = useCallback(() => setSandboxOverrides([]), []);
+
+  // 기준(샌드박스 적용 전) 대비 현재 신호일 변화 — 샌드박스 활성 + 두 타임라인 준비 시.
+  const sandboxDiff = useMemo<CaseDiff | null>(() => {
+    if (!hasSandbox || !timeline || !baselineTimeline) return null;
+    return diffCaseResults(collectPerRuleResults(baselineTimeline.days), collectPerRuleResults(timeline.days));
+  }, [hasSandbox, timeline, baselineTimeline]);
+
   return {
     selected, selectSymbol,
     searchQuery, setSearchQuery, searchResults, isSearching,
@@ -344,6 +424,8 @@ export function useSignalReplay({ enabled }: UseSignalReplayParams): SignalRepla
     selectedIndex, selectedDate, selectIndex, selectDate,
     goPrevDay, goNextDay, goPrevSignal, goNextSignal, goLatest,
     sandboxOverrides, setSandboxOverrides,
+    sandboxRules, sandboxSetValue, sandboxSetBetween, sandboxSetEnabled,
+    sandboxResetLeaf, sandboxResetRule, sandboxResetAll, sandboxDiff,
     verdictFor, setVerdict, clearVerdict, verdictDates, tickerVerdicts,
     cases, saveCurrentCase, deleteCase, loadCase, comparingCase, caseDiff, endComparison,
   };
