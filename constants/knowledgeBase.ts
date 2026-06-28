@@ -7,7 +7,7 @@
 // (legacy 의존은 전환기 한정 — 큐레이션 규칙이 자동본을 충분히 대체하면 legacy 삭제 예정)
 
 import type {
-  KnowledgeBase, KnowledgeSource, KnowledgeRule, KnowledgeJournalEntry, VerificationFlags,
+  KnowledgeBase, KnowledgeSource, KnowledgeRule, KnowledgeJournalEntry, VerificationFlags, KnowledgeClaim,
 } from '../types/knowledge';
 import { EMPTY_VERIFICATION } from '../types/knowledge';
 import { KNOWLEDGE_ENTRIES as LEGACY_ENTRIES } from './knowledgeBase.legacy';
@@ -35,6 +35,16 @@ export const KNOWLEDGE_SOURCES: KnowledgeSource[] = [
     originPath: 'C:\\Users\\beari\\Downloads\\260620_주간 투자전략_ 시장의 마법사 특집.txt',
     priorityProfile: 'khg-primary',
     note: 'Jack Schwager "Market Wizards" 시리즈(실제 6권+요약본). 트레이더명 교정 반영.',
+  },
+  {
+    id: '260626_19e31a73',
+    title: '한눈에 보는 AI 반도체 산업 — 매수탭 방법론 + 반도체 생태계(투더문)',
+    author: '강환국', sourceDate: '2026-06-26', ingestedAt: '2026-06-28',
+    sourceType: 'lecture-transcript',
+    originPath: 'C:\\Users\\beari\\Desktop\\dev\\asset_manager\\DB\\inbox\\260626_한눈에 보는 AI 반도체 산업.txt',
+    sha256: '19e31a737aa7676165aac4337708aa183f8c6559aea3964f0f094c79f430f83e',
+    priorityProfile: 'khg-primary',
+    note: 'AI 반도체 산업 교양(투더문) + 이지인베스팅 매수탭 방법론 + 시점성 Q&A. 대부분 기존 지식 중복/시점성이라 52주 고점 근접 매수법(near-52w-high-watch)만 seed 반영(audit P2 교정). 나머지 후보는 DB/staging/candidates_final_260626_19e31a73.json 에 대기.',
   },
 ];
 
@@ -114,10 +124,12 @@ const CURATED_RULES: KnowledgeRule[] = [
     note: '근거 claim(ma-pullback-entry)은 "RS 높은 종목" 전제이나, rsRank(시장 유니버스 백분위) 미구현으로 본 규칙은 RS 선별을 뺀 약화판(관찰 후보, buy-watch). 지표는 self-contained(라이브 priceOriginal 기준). distribution 과다 제외로 토핑 회피, pctBelow52wHigh≤15로 강세 종목만(rsRank 대용 근사 — claim pick-among-already-up "이미 많이 오른 종목 중 고른다"). 사용자 승인으로 활성. rsRank 구현 시 엄격판으로 승격 검토.',
   },
   {
-    // 신고가 근처 돌파 관찰 — self-contained. 근거: 신고가 돌파 매수 + 박스권 돌파 + 거래량 동반.
+    // 52주(1년) 고점 근접 관찰 — self-contained. 근거: 52주 고점 근접 매수 + 박스권 돌파 + 거래량 동반.
+    // (audit P2 교정) all-time-high-breakout(역대/5년)이 아니라 near-52w-high-watch(52주)로 relink —
+    //   조건이 실제로 보는 건 pctBelow52wHigh(52주 고점)이지 역대 고점이 아님. all-time은 allTimeHigh 지표 대기.
     id: 'rule-near-high-breakout-watch',
-    claimIds: ['all-time-high-breakout', 'box-breakout-entry', 'volume-confirms-advance'],
-    title: '신고가 근접 돌파 관찰 (거래량 동반)',
+    claimIds: ['near-52w-high-watch', 'box-breakout-entry', 'volume-confirms-advance'],
+    title: '52주 고점 근접 관찰 (거래량 동반)',
     ruleType: 'entry-timing', computability: 'signal', action: 'buy-watch',
     condition: {
       all: [
@@ -131,7 +143,7 @@ const CURATED_RULES: KnowledgeRule[] = [
     requiredMetrics: ['assetTrendRegime', 'pctBelow52wHigh', 'volumeRatio50', 'climaxFlags'],
     riskPolicy: '돌파 실패로 되돌림(직전 박스권/돌파가 아래 마감) 시 무효',
     verification: vf({ sourceVerified: true, factVerified: true, userApproved: true }),
-    note: 'pctBelow52wHigh<=5는 신고가 갱신(지표 음수)을 포함하도록 상한만 둠. 거래량(volumeRatio50) 미수신 종목은 null→미발화(안전). climax 위험은 제외. RS 선별은 rsRank 구현까지 미적용(관찰 후보).',
+    note: '근거 claim을 all-time-high-breakout(역대/5년 신고가·매물벽 없음 논리)에서 near-52w-high-watch(52주 고점)로 교정(audit P2) — pctBelow52wHigh가 측정하는 건 52주이지 역대 고점이 아니라 위쪽 매물벽이 남을 수 있음(allTimeHigh 지표 구현 시 역대 신고가 규칙 별도). pctBelow52wHigh<=5는 신고가 갱신(지표 음수) 포함 상한. 거래량(volumeRatio50) 미수신 종목은 null→미발화(안전). climax 위험은 제외. RS 선별은 rsRank 구현까지 미적용(관찰 후보).',
   },
   {
     // MA20 재돌파(복귀) 관찰 — claim ma-reclaim-entry가 "기준 이평선 20일 추천"이라 MA20 사용(150 아님).
@@ -155,9 +167,30 @@ const CURATED_RULES: KnowledgeRule[] = [
   },
 ];
 
+// 손으로 큐레이션한 seed claim — 인박스 승인 흐름이 아니라 직접 반영(audit P2 교정 등).
+// near-52w-high-watch: 이미 active인 rule-near-high-breakout-watch가 실제로 쓰는 pctBelow52wHigh(52주 고점)
+//   근거를 정확히 매칭(기존 all-time-high-breakout=역대/5년·매물벽 없음 논리와 분리). seed-only(단일 진실원).
+const CURATED_CLAIMS: KnowledgeClaim[] = [
+  {
+    id: 'near-52w-high-watch',
+    sourceId: '260626_19e31a73',
+    sourceSpan: '셋째, 고점 매수로, 20일, 55일 이동 평균선 또는 1년 최고가를 돌파할 때 매수하는 방법입니다.',
+    sourceDate: '2026-06-26',
+    statement: '강세 추세 종목이 1년(52주) 최고가에 근접하거나 돌파할 때 매수 후보(고점 매수)로 본다. 역대/5년 최고가 돌파(위쪽 매물벽 없음)와 달리 1년 고점 기준이라 위쪽 매물 부담이 남아 있을 수 있으므로 "돌파 확정"이 아니라 "근접·관찰" 수준으로 다룬다.',
+    category: 'entry-timing',
+    decayClass: 'strategy-rule',
+    authorityTier: 'kang-recommendation',
+    guru: 'kang-hwanguk',
+    confidence: 'qualified',
+    verification: vf({ sourceVerified: true, factVerified: true, dataVerified: true, userApproved: true }),
+    tags: ['고점매수', '52주신고가', '1년최고가', '돌파', '관찰후보'],
+    note: '≠ all-time-high-breakout(그건 역대/5년 신고가·매물벽 없음 논리, allTimeHigh 지표 대기). 본 claim은 active rule-near-high-breakout-watch가 실제로 쓰는 pctBelow52wHigh(52주 고점 5% 이내)와 의미를 일치시키기 위한 audit P2 교정 claim. 동작은 buy-watch(관찰) 현행 유지.',
+  },
+];
+
 const curatedIds = new Set(CURATED_RULES.map(r => r.id));
 
-export const KNOWLEDGE_CLAIMS = migrated.claims;
+export const KNOWLEDGE_CLAIMS: KnowledgeClaim[] = [...migrated.claims, ...CURATED_CLAIMS];
 export const KNOWLEDGE_RULES: KnowledgeRule[] = [
   ...migrated.rules.filter(r => !curatedIds.has(r.id)),
   ...CURATED_RULES,

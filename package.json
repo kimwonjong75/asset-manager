@@ -16,7 +16,8 @@
     "test:alertdiag": "npx --yes tsx tests/alertDiagnosticsParity.ts",
     "test:sensitivity": "npx --yes tsx tests/alertSensitivityParity.ts",
     "test:replay": "npx --yes tsx tests/signalReplayParity.ts",
-    "test:bucket": "npx --yes tsx tests/bucketRebalancingParity.ts"
+    "test:bucket": "npx --yes tsx tests/bucketRebalancingParity.ts",
+    "test:kb": "npx --yes tsx tests/knowledgeBaseIntegrity.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
