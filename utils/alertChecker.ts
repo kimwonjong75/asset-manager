@@ -1,9 +1,9 @@
-import type { AlertRule, AlertResult, AlertMatchedAsset } from '../types/alertRules';
+import type { AlertRule, AlertResult, AlertMatchedAsset, AlertDataGap, AlertDataGapAsset } from '../types/alertRules';
 import type { EnrichedAsset } from '../types/ui';
 import type { EnrichedIndicatorData } from '../hooks/useEnrichedIndicators';
 import type { WatchlistItem } from '../types';
 import { Currency } from '../types';
-import { matchesSingleFilter } from './smartFilterLogic';
+import { matchesSingleFilter, evaluateSingleFilter } from './smartFilterLogic';
 import type { ExtraFilterConfig } from '../types/smartFilter';
 
 /**
@@ -47,6 +47,29 @@ export const matchesRule = (
   return rule.filters.every(filterKey =>
     matchesSingleFilter(asset, filterKey, dropThreshold, maShort, maLong, enriched, lossThreshold, extraConfig)
   );
+};
+
+/**
+ * 규칙 3치 평가 — filters AND. 하나라도 false → 'unmatched' / null 없이 전부 true → 'matched' /
+ * false 없고 null 있음 → 'unknown'(데이터 누락으로 판정 불가). 빈 filters는 'matched'.
+ * **evaluateRule(...)==='matched'  ⟺  matchesRule(...)===true** (firing 불변, alertFailSafeParity가 강제).
+ * matchesRule을 대체하지 않는다 — fail-safe 진단(collectSellRuleDataGaps)이 not-met과 데이터 누락을 구분하기 위한 additive 레이어.
+ */
+export type RuleEvaluation = 'matched' | 'unmatched' | 'unknown';
+export const evaluateRule = (
+  asset: EnrichedAsset,
+  rule: AlertRule,
+  enriched?: EnrichedIndicatorData
+): RuleEvaluation => {
+  const { maShort, maLong, dropThreshold, lossThreshold } = ruleThresholds(rule.filterConfig);
+  const extraConfig = buildExtraConfig(rule.filterConfig);
+  let hasNull = false;
+  for (const filterKey of rule.filters) {
+    const r = evaluateSingleFilter(asset, filterKey, dropThreshold, maShort, maLong, enriched, lossThreshold, extraConfig).result;
+    if (r === false) return 'unmatched';
+    if (r === null) hasNull = true;
+  }
+  return hasNull ? 'unknown' : 'matched';
 };
 
 /**
@@ -145,6 +168,41 @@ export const checkAlertRules = (
   }
 
   return results;
+};
+
+/**
+ * fail-safe(매도 data-gap): 매도(action==='sell') 규칙이 **데이터 누락으로만 판정 불가**(evaluateRule==='unknown')인
+ * 종목을 수집한다. matchesRule===false 그대로지만(checkAlertRules 발화 불변), "진짜 미충족(not-met)"과 달리
+ * 갭·거래정지 등으로 매도 가드를 **평가하지 못한 침묵**을 호출부가 '데이터 불완전 — 수동 확인' 주의로 노출하게 한다.
+ * 매수 규칙은 fail-open 유지(부실 데이터 매수 진입 방지) — 매도만 fail-safe.
+ * 순수 함수(additive) — checkAlertRules/matchesRule 동작을 바꾸지 않는다.
+ */
+export const collectSellRuleDataGaps = (
+  assets: EnrichedAsset[],
+  enrichedMap: Map<string, EnrichedIndicatorData>,
+  rules: AlertRule[]
+): AlertDataGap[] => {
+  const gaps: AlertDataGap[] = [];
+
+  for (const rule of rules) {
+    if (!rule.enabled || rule.action !== 'sell') continue;
+    const { maShort, maLong, dropThreshold, lossThreshold } = ruleThresholds(rule.filterConfig);
+    const extraConfig = buildExtraConfig(rule.filterConfig);
+
+    const affectedAssets: AlertDataGapAsset[] = [];
+    for (const asset of assets) {
+      const enriched = enrichedMap.get(asset.ticker);
+      if (evaluateRule(asset, rule, enriched) !== 'unknown') continue;
+      const missingFilters = rule.filters.filter(filterKey =>
+        evaluateSingleFilter(asset, filterKey, dropThreshold, maShort, maLong, enriched, lossThreshold, extraConfig).result === null
+      );
+      affectedAssets.push({ assetId: asset.id, assetName: asset.name, ticker: asset.ticker, missingFilters });
+    }
+
+    if (affectedAssets.length > 0) gaps.push({ rule, affectedAssets });
+  }
+
+  return gaps;
 };
 
 /**

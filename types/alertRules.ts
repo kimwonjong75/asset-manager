@@ -75,6 +75,25 @@ export interface AlertResult {
   matchedAssets: AlertMatchedAsset[];
 }
 
+/**
+ * fail-safe(매도 data-gap) — 매도 규칙이 '데이터 누락'으로 판정 불가(evaluateRule==='unknown')였던 종목.
+ * **발화(firing) 아님** — '진짜 미충족(not-met)'과 달리 갭·거래정지로 매도 가드를 평가하지 못한
+ * 침묵을 호출부가 '데이터 불완전 — 수동 확인' 주의로 노출하기 위한 분리 채널.
+ */
+export interface AlertDataGapAsset {
+  assetId: string;
+  assetName: string;
+  ticker: string;
+  /** no-data(null)로 평가 불가였던 필터 키 */
+  missingFilters: SmartFilterKey[];
+}
+
+/** 매도 규칙별 데이터 누락 경고 (collectSellRuleDataGaps 결과) */
+export interface AlertDataGap {
+  rule: AlertRule;
+  affectedAssets: AlertDataGapAsset[];
+}
+
 /** 알림 설정 (사용자 커스터마이징, Google Drive 저장) */
 export interface AlertSettings {
   rules: AlertRule[];
