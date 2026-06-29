@@ -305,6 +305,7 @@ const AppContent: React.FC = () => {
               <AlertPopup
                 results={derived.alertResults}
                 riskMatrix={derived.riskMatrix}
+                sellDataGaps={derived.sellDataGaps}
                 onClose={actions.dismissAlertPopup}
                 onAssetClick={(assetId, source) => {
                   if (source === 'watchlist') {

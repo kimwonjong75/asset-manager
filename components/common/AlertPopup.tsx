@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import type { AlertResult, AlertMatchedAsset } from '../../types/alertRules';
+import type { AlertResult, AlertMatchedAsset, AlertDataGap } from '../../types/alertRules';
 import type { RiskMatrixRow } from '../../utils/riskMatrix';
 import type { DistributionTier } from '../../utils/distributionTierState';
 import Tooltip from './Tooltip';
@@ -28,6 +28,8 @@ interface AlertPopupProps {
   results: AlertResult[];
   /** 종합 리스크 매트릭스 — 위험 우선 정렬된 배열. 빈 배열이면 배너 미표시 */
   riskMatrix: RiskMatrixRow[];
+  /** fail-safe(매도 data-gap) — 데이터 누락으로 평가 불가였던 매도 규칙·종목. 발화 아님(주의 노출용) */
+  sellDataGaps: AlertDataGap[];
   onClose: () => void;
   onAssetClick: (assetId: string, source?: 'portfolio' | 'watchlist') => void;
 }
@@ -71,7 +73,7 @@ const pctColor = (v: number | undefined): string => {
   return 'text-gray-400';
 };
 
-const AlertPopup: React.FC<AlertPopupProps> = ({ results, riskMatrix, onClose, onAssetClick }) => {
+const AlertPopup: React.FC<AlertPopupProps> = ({ results, riskMatrix, sellDataGaps, onClose, onAssetClick }) => {
   const [isMinimized, setIsMinimized] = useState(false);
 
   const today = new Date().toLocaleDateString('ko-KR', {
@@ -83,6 +85,9 @@ const AlertPopup: React.FC<AlertPopupProps> = ({ results, riskMatrix, onClose, o
   const hasResults = results.length > 0 || riskMatrix.length > 0;
   const totalCount = results.reduce((sum, r) => sum + r.matchedAssets.length, 0);
   const riskTieredCount = riskMatrix.filter(r => r.assessment.tier !== null).length;
+  // fail-safe(매도 data-gap) — 발화가 아니라 '데이터 누락으로 평가 불가'. 발화 알림과 별개 주의 섹션으로 표시.
+  const hasDataGaps = sellDataGaps.length > 0;
+  const dataGapAssetCount = new Set(sellDataGaps.flatMap(g => g.affectedAssets.map(a => a.assetId))).size;
 
   // 리스크 매트릭스 — 티어별 그룹
   const tieredRows = {
@@ -297,7 +302,7 @@ const AlertPopup: React.FC<AlertPopupProps> = ({ results, riskMatrix, onClose, o
         <div className="bg-gray-900 flex flex-col" style={{ maxHeight: '70vh' }}>
           <p className="text-gray-500 text-[11px] px-4 pt-2">{today}</p>
           <div className="px-4 py-3 overflow-y-auto space-y-4 flex-1 min-h-0">
-            {hasResults ? (
+            {(hasResults || hasDataGaps) ? (
               <>
                 {/* 종합 리스크 매트릭스 — 클라이맥스 + 디스트리뷰션 합성 (예측 아닌 과열 경고) */}
                 {riskTieredCount > 0 && (
@@ -354,6 +359,42 @@ const AlertPopup: React.FC<AlertPopupProps> = ({ results, riskMatrix, onClose, o
                       })}
                     </div>
                     <p className="text-gray-500 text-[10px] mt-1.5 italic">참고용 경고이며 투자자문이 아닙니다. 예측이 아닌 과열 리스크 경고입니다.</p>
+                  </div>
+                )}
+
+                {hasDataGaps && (
+                  <div>
+                    <h3 className="text-xs font-semibold text-orange-300 mb-2 flex items-center gap-1.5">
+                      <span>🟠 데이터 불완전 — 수동 확인</span>
+                      <span className="text-gray-500 font-normal">({dataGapAssetCount}종목)</span>
+                    </h3>
+                    <div className="space-y-2">
+                      {sellDataGaps.map(gap => (
+                        <div key={gap.rule.id} className="bg-orange-950/30 border border-orange-800/40 rounded-lg p-2.5">
+                          <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-orange-600/80 text-white font-medium">{gap.rule.name}</span>
+                            <span className="text-gray-400 text-[11px]">데이터 누락으로 매도 가드 평가 불가</span>
+                          </div>
+                          <div className="space-y-1">
+                            {gap.affectedAssets.map(a => (
+                              <div
+                                key={a.assetId}
+                                className="flex items-center justify-between text-xs cursor-pointer hover:bg-white/5 rounded px-1 py-0.5 transition-colors"
+                                onClick={() => onAssetClick(a.assetId, 'portfolio')}
+                                title="포트폴리오로 이동"
+                              >
+                                <div className="flex items-center gap-1 min-w-0 overflow-hidden">
+                                  <span className="text-white truncate">{a.assetName}</span>
+                                  <span className="text-gray-600 text-[10px] shrink-0">{a.ticker}</span>
+                                </div>
+                                <span className="text-gray-500 text-[10px] shrink-0 ml-2">미평가 {a.missingFilters.length}개 조건</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <p className="text-gray-500 text-[10px] mt-1.5 italic">발화가 아니라 "평가 불가" 알림입니다 — 데이터 보강 후 수동 확인하세요.</p>
                   </div>
                 )}
 

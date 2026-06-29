@@ -1,10 +1,10 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import type { AlertRule, AlertSettings, AlertResult } from '../types/alertRules';
+import type { AlertRule, AlertSettings, AlertResult, AlertDataGap } from '../types/alertRules';
 import type { EnrichedAsset } from '../types/ui';
 import type { EnrichedIndicatorData } from './useEnrichedIndicators';
 import type { WatchlistItem } from '../types';
 import { DEFAULT_ALERT_SETTINGS } from '../constants/alertRules';
-import { checkAlertRules, checkBuyRulesForWatchlist } from '../utils/alertChecker';
+import { checkAlertRules, checkBuyRulesForWatchlist, collectSellRuleDataGaps } from '../utils/alertChecker';
 import { computeRiskTier, sortByRiskPriority, DEFAULT_RISK_MATRIX_THRESHOLDS, type RiskMatrixRow } from '../utils/riskMatrix';
 import { countDistributionDays } from '../utils/marketDistribution';
 import { classifyDistributionTier } from '../utils/distributionTierState';
@@ -240,6 +240,13 @@ export const useAutoAlert = ({
     return sortByRiskPriority(rows);
   }, [enrichedMap, enrichedAssets, watchlistItems, isEnrichedLoading]);
 
+  // fail-safe(매도 data-gap): 매도 규칙이 '데이터 누락으로 판정 불가'인 종목 — 발화 경로(runAlertCheck/checkAlertRules)와
+  // 무관한 별도 채널(순수·additive). 팝업 게이트·알림 발화 수에 영향 없음. UI가 '데이터 불완전 — 수동 확인'으로 노출.
+  const sellDataGaps = useMemo<AlertDataGap[]>(() => {
+    if (isEnrichedLoading || enrichedMap.size === 0) return [];
+    return collectSellRuleDataGaps(enrichedAssets, enrichedMap, alertSettings.rules);
+  }, [enrichedAssets, enrichedMap, alertSettings.rules, isEnrichedLoading]);
+
   // 자동 브리핑 팝업 게이트 진단 (규칙 발화와 직교 축) — 진단 패널과 **동일 순수 게이트** 사용.
   // 반응형: lastAutoCheckDate(state) 기반이라 effect가 일자 기록 시 재계산됨(localStorage 직접 읽기로 인한 stale 제거).
   const autoPopupDiagnosis = useMemo<PopupDeliveryDiagnosis>(() =>
@@ -260,6 +267,7 @@ export const useAutoAlert = ({
     updateAlertSettings,
     alertResults,
     riskMatrix,
+    sellDataGaps,
     showAlertPopup,
     dismissAlertPopup,
     showBriefingPopup,

@@ -75,6 +75,7 @@ const GuruSignalCard: React.FC = () => {
   const { data, derived } = usePortfolio();
   const signals = derived.guruSignals;
   const chartTargets = derived.guruSignalChartTargets;
+  const caveats = derived.guruSignalCaveats; // 발화 신호의 데이터 품질(firing-partial) — 표시용, 발화 불변
   const history = data.portfolioHistory;
   const activeRuleCount = getActiveSignalRules(
     data.knowledgeBase.rules,
@@ -185,6 +186,9 @@ const GuruSignalCard: React.FC = () => {
                                 </span>
                               ))}
                             </div>
+                            {asset.rules.some(r => caveats.get(`${r.ruleId}__${asset.assetId}`)?.kind === 'firing-partial') && (
+                              <div className="text-[11px] text-amber-300 mt-1">⚠ 일부 데이터 기준 발화 · 수동 확인 필요</div>
+                            )}
                             {invalidations.length > 0 && (
                               <div className="text-[11px] text-gray-500 mt-1">
                                 ⓘ 무효화: {invalidations.join(' / ')}

@@ -26,7 +26,7 @@ import type {
 } from '../types/knowledge';
 import { IMPLEMENTED_METRICS, RULE_STATUS_LABELS, INACTIVE_REASON_LABELS } from '../types/knowledge';
 import { getSignalEligibility } from './knowledgeScoring';
-import { evaluateCondition, buildMetricValues, type MetricValues, type GuruSignalTarget } from './guruSignalEngine';
+import { evaluateCondition, buildMetricValues, type MetricValues, type GuruSignalTarget, type GuruSignalMatch } from './guruSignalEngine';
 import { explainConditionLeaves, metricLabel } from './conditionDescribe';
 
 // OHLC 품질 의존 지표 — 입력이 일부라도 있으면 산출되나 OHLC 품질 저하(ohlcvAvailable=false) 시 (b)/윗꼬리 등
@@ -209,4 +209,37 @@ export function describeRuleStatus(d: RuleDiagnostic): RuleStatusDescriptor {
   // unknown — unsupported는 위에서 걸러졌으므로 남은 건 데이터 없음(missing).
   const names = metricsByAvailability(d, 'missing');
   return mk('data-missing', 'caution', names.length ? `누락 지표: ${names.join(', ')}` : undefined);
+}
+
+/**
+ * 발화한 구루 신호(matches)별 진단 status 맵(순수). key=`${ruleId}__${assetId}`.
+ * **발화 여부는 바꾸지 않는다** — 이미 발화한 신호에 데이터 품질 캐비엇(firing vs firing-partial)을 붙이는 표시 레이어.
+ * GuruSignalCard가 firing-partial이면 '일부 데이터 기준·수동 확인' 캐비엇을 노출한다(buy-watch 0-degrade는 fail-closed로
+ * 이미 차단됐고, 여기는 "부분 입력으로 발화" 케이스의 가시화). 매칭된 (ruleId,assetId)만 진단해 비용 최소화.
+ */
+export function buildGuruSignalCaveats(params: {
+  matches: GuruSignalMatch[];
+  targets: GuruSignalTarget[];
+  rules: KnowledgeRule[];
+  claims: KnowledgeClaim[];
+  now: Date;
+}): Map<string, RuleStatusDescriptor> {
+  const out = new Map<string, RuleStatusDescriptor>();
+  if (params.matches.length === 0) return out;
+  const targetById = new Map(params.targets.map(t => [t.assetId, t]));
+  const ruleIdsByAsset = new Map<string, Set<string>>();
+  for (const m of params.matches) {
+    const set = ruleIdsByAsset.get(m.assetId) ?? new Set<string>();
+    set.add(m.ruleId);
+    ruleIdsByAsset.set(m.assetId, set);
+  }
+  for (const [assetId, ruleIds] of ruleIdsByAsset) {
+    const target = targetById.get(assetId);
+    if (!target) continue;
+    const diags = diagnoseAssetRules({ rules: params.rules, claims: params.claims, target, now: params.now });
+    for (const d of diags) {
+      if (ruleIds.has(d.ruleId)) out.set(`${d.ruleId}__${assetId}`, describeRuleStatus(d));
+    }
+  }
+  return out;
 }

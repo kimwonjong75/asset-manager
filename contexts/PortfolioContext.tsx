@@ -23,6 +23,7 @@ import { CategoryBaseType } from '../types/category';
 import type { CategoryStore } from '../types/category';
 import type { KnowledgeBase } from '../types/knowledge';
 import { evaluateGuruSignals, buildGuruSignalTargets, buildGuruSignalChartTargets, type GuruSignalMatch, type GuruSignalTarget } from '../utils/guruSignalEngine';
+import { buildGuruSignalCaveats } from '../utils/guruDiagnostics';
 import {
   DEFAULT_COLUMN_CONFIG,
   DEFAULT_FIXED_COLUMN_WIDTHS,
@@ -375,6 +376,7 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     updateAlertSettings,
     alertResults,
     riskMatrix,
+    sellDataGaps,
     showAlertPopup,
     dismissAlertPopup,
     showBriefingPopup,
@@ -417,6 +419,18 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       exchangeRates,
     }),
     [guruSignals, enrichedAssets, watchlist, exchangeRates],
+  );
+
+  // 발화한 구루 신호별 데이터 품질 캐비엇 — 발화 여부는 불변(evaluateGuruSignals 결과 그대로), firing-partial만 표시 레이어에 노출.
+  const guruSignalCaveats = useMemo(
+    () => buildGuruSignalCaveats({
+      matches: guruSignals,
+      targets: guruSignalTargets,
+      rules: knowledgeBase.rules,
+      claims: knowledgeBase.claims,
+      now: new Date(),
+    }),
+    [guruSignals, guruSignalTargets, knowledgeBase],
   );
 
   const showExchangeRateWarning = useMemo(() => {
@@ -516,9 +530,11 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       isEnrichedLoading,
       alertResults,
       riskMatrix,
+      sellDataGaps,
       guruSignals,
       guruSignalTargets,
       guruSignalChartTargets,
+      guruSignalCaveats,
       autoPopupDiagnosis,
       showAlertPopup,
       backupList: backup.backupList,

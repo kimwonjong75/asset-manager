@@ -1,10 +1,10 @@
 import { Asset, PortfolioSnapshot, SellRecord, WatchlistItem, ExchangeRates, Currency, BulkUploadResult, AllocationTargets } from './index';
-import type { AlertSettings, AlertResult } from './alertRules';
+import type { AlertSettings, AlertResult, AlertDataGap } from './alertRules';
 import type { EnrichedIndicatorData } from '../hooks/useEnrichedIndicators';
 import type { RiskMatrixRow } from '../utils/riskMatrix';
 import type { BackupInfo, BackupSettings } from './backup';
 import type { CategoryStore, CategoryBaseType } from './category';
-import type { KnowledgeBase } from './knowledge';
+import type { KnowledgeBase, RuleStatusDescriptor } from './knowledge';
 import type { GuruSignalMatch, GuruSignalChartTarget, GuruSignalTarget } from '../utils/guruSignalEngine';
 import type { PopupDeliveryDiagnosis } from './alertDiagnostics';
 import type { GoldPremiumResult } from '../services/goldPremiumService';
@@ -81,12 +81,16 @@ export interface DerivedState {
   alertResults: AlertResult[];
   /** 종합 리스크 매트릭스 — 클라이맥스 + 디스트리뷰션 합성 티어 (위험 우선 정렬됨) */
   riskMatrix: RiskMatrixRow[];
+  /** fail-safe(매도 data-gap) — 매도 규칙이 데이터 누락으로 판정 불가(unknown)인 종목. 발화 아님, '수동 확인' 주의 노출용 */
+  sellDataGaps: AlertDataGap[];
   /** 구루 신호 엔진 매칭 — 활성 지식 규칙(typed condition)을 종목별 평가한 결과 */
   guruSignals: GuruSignalMatch[];
   /** 신호 평가/진단 대상 종목(포트폴리오+관심종목) — 신호 카드와 진단 패널이 공유하는 단일 소스 */
   guruSignalTargets: GuruSignalTarget[];
   /** 신호 종목별 차트 props 맵(assetId 키) — GuruSignalCard 인라인 차트용 */
   guruSignalChartTargets: Record<string, GuruSignalChartTarget>;
+  /** 발화한 구루 신호별 데이터 품질 캐비엇 (key=`${ruleId}__${assetId}`) — firing-partial이면 '일부 데이터 기준' 표시 */
+  guruSignalCaveats: Map<string, RuleStatusDescriptor>;
   /** 자동 브리핑 팝업 게이트 진단 (규칙 발화와 직교 — 알림 진단 패널이 표시) */
   autoPopupDiagnosis: PopupDeliveryDiagnosis;
   showAlertPopup: boolean;

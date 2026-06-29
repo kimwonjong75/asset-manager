@@ -8,10 +8,10 @@
 
 import {
   diagnoseRule, diagnoseAssetRules, classifyMetricAvailability, summarizeDiagnostics, ruleReadiness,
-  describeRuleStatus,
+  describeRuleStatus, buildGuruSignalCaveats,
 } from '../utils/guruDiagnostics';
 import { getSignalEligibility, isActiveSignal } from '../utils/knowledgeScoring';
-import { evaluateGuruSignals, buildGuruSignalTargets, buildMetricValues, type GuruSignalTarget, type MetricValues } from '../utils/guruSignalEngine';
+import { evaluateGuruSignals, buildGuruSignalTargets, buildMetricValues, type GuruSignalTarget, type GuruSignalMatch, type MetricValues } from '../utils/guruSignalEngine';
 import { IMPLEMENTED_METRICS, EMPTY_VERIFICATION } from '../types/knowledge';
 import type {
   KnowledgeRule, KnowledgeClaim, ConditionNode, RequiredMetric, VerificationFlags, InactiveReason,
@@ -329,11 +329,55 @@ check('tone not-met-partial=caution', stat(leaf('climaxFlags', '>=', 2), { clima
   check('targets: priceOriginal→currentPrice fallback', t5[0]?.currentPrice, 77);
 }
 
+// ════════════════════════════════════════════════════════════════════════════
+// 9. buildGuruSignalCaveats — 발화 신호에 데이터 품질 캐비엇(firing vs firing-partial) 매핑.
+//    발화 여부는 불변 — matched 신호에만 status를 붙인다(firing-partial → UI '일부 데이터 기준' 캐비엇).
+// ════════════════════════════════════════════════════════════════════════════
+{
+  const climaxRule = mkRule({ id: 'r-climax-sell', action: 'sell-warning', condition: leaf('climaxFlags', '>=', 2) });
+  const hotFull: Partial<EnrichedIndicatorData> = {
+    slopeRatio: 3, dayRangeOverAtr: 3, isBullishCandle: true,
+    priceIsAt52wHigh: true, volumeIsAt52wMax: true, longTrendUp: true,
+  };
+  const mkTarget = (assetId: string, e: EnrichedIndicatorData): GuruSignalTarget =>
+    ({ assetId, ticker: assetId.toUpperCase(), name: assetId, currentPrice: 1000, enriched: e, source: 'portfolio' });
+  const mkMatch = (assetId: string, ruleId: string): GuruSignalMatch =>
+    ({ ruleId, ruleTitle: 't', action: 'sell-warning', assetId, ticker: assetId.toUpperCase(), name: assetId, source: 'portfolio' });
+
+  // (a) 완전 입력 매칭 → firing
+  const cavComplete = buildGuruSignalCaveats({
+    matches: [mkMatch('a1', 'r-climax-sell')],
+    targets: [mkTarget('a1', mkEnriched({ ...hotFull, ohlcvAvailable: true }))],
+    rules: [climaxRule], claims: [], now: NOW,
+  });
+  check('caveat: 완전입력 발화 → firing', cavComplete.get('r-climax-sell__a1')?.kind, 'firing');
+
+  // (b) 부분 입력(ohlcv=false) 매칭 → firing-partial (UI 캐비엇 대상)
+  const cavPartial = buildGuruSignalCaveats({
+    matches: [mkMatch('a2', 'r-climax-sell')],
+    targets: [mkTarget('a2', mkEnriched({ ...hotFull, ohlcvAvailable: false }))],
+    rules: [climaxRule], claims: [], now: NOW,
+  });
+  check('caveat: 부분입력 발화 → firing-partial', cavPartial.get('r-climax-sell__a2')?.kind, 'firing-partial');
+  check('caveat: firing-partial tone=caution', cavPartial.get('r-climax-sell__a2')?.tone, 'caution');
+
+  // (c) target 없는 매칭 → 스킵(키 없음)
+  const cavGhost = buildGuruSignalCaveats({
+    matches: [mkMatch('ghost', 'r-climax-sell')],
+    targets: [], rules: [climaxRule], claims: [], now: NOW,
+  });
+  check('caveat: target 없으면 스킵', cavGhost.size, 0);
+
+  // (d) 빈 matches → 빈 맵
+  check('caveat: 빈 matches → 빈 맵',
+    buildGuruSignalCaveats({ matches: [], targets: [mkTarget('a1', mkEnriched(hotFull))], rules: [climaxRule], claims: [], now: NOW }).size, 0);
+}
+
 // ── 결과 ─────────────────────────────────────────────────────────────────────
 console.log(`\nguru diagnostics: ${pass} passed, ${fails.length} failed`);
 if (fails.length > 0) {
   for (const f of fails) console.log(f);
   process.exitCode = 1;
 } else {
-  console.log('✓ 진단 3축 + 매치셋 동일성 + describeRuleStatus 정밀 라벨 + buildGuruSignalTargets 대상 선정 고정');
+  console.log('✓ 진단 3축 + 매치셋 동일성 + describeRuleStatus 정밀 라벨 + buildGuruSignalTargets 대상 선정 + buildGuruSignalCaveats(발화 불변·firing-partial) 고정');
 }
