@@ -167,20 +167,34 @@ check('cov volumeRatio50 not OHLC-partial', classifyMetricAvailability('volumeRa
 }
 
 // ════════════════════════════════════════════════════════════════════════════
-// 4b. partial 이 요약에서 숨지 않음 — climaxFlags=0(degrade)+OHLC누락 → unmatched이나 readiness.partial
+// 4b. 입력 결손(missing/fail-closed) vs 부분 데이터(partial) 구분
+//   · slope·atr 전무 → buildMetricValues가 climaxFlags 미설정(null) → coverage=missing, evaluation=unknown
+//     (fail-closed: buy-watch climaxFlags<2 류가 0으로 통과하지 않음 — 0-degrade fail-open 차단).
+//   · 입력은 있으나 OHLC 품질 저하(slope만 있고 ohlcv=false) → climaxFlags 산출(0) → partial/unmatched (요약에서 숨지 않음).
 // ════════════════════════════════════════════════════════════════════════════
 {
-  const target: GuruSignalTarget = {
+  const rule = mkRule({ id: 'climax-sell', action: 'sell-warning', condition: leaf('climaxFlags', '>=', 2) });
+  // (a) 입력 전무 → missing / unknown (fail-closed)
+  const targetMissing: GuruSignalTarget = {
     assetId: 'a2', ticker: 'T2', name: 'n2',
     currentPrice: 1000, enriched: mkEnriched({ ohlcvAvailable: false }), source: 'portfolio',
   };
-  const rule = mkRule({ id: 'climax-sell', action: 'sell-warning', condition: leaf('climaxFlags', '>=', 2) });
-  const diags = diagnoseAssetRules({ rules: [rule], claims: [], target, now: NOW });
-  check('partial: evaluation=unmatched(0<2)', diags[0].evaluation, 'unmatched');
-  check('partial: coverage=partial', diags[0].coverage[0].availability, 'partial');
-  const sum = summarizeDiagnostics(diags);
-  check('partial NOT hidden: readiness.partial=1', sum.readiness.partial, 1);
-  check('partial: evaluation.unmatched=1', sum.evaluation.unmatched, 1);
+  const dMissing = diagnoseAssetRules({ rules: [rule], claims: [], target: targetMissing, now: NOW });
+  check('입력전무: evaluation=unknown(fail-closed)', dMissing[0].evaluation, 'unknown');
+  check('입력전무: coverage=missing', dMissing[0].coverage[0].availability, 'missing');
+  check('입력전무: readiness.missing=1', summarizeDiagnostics(dMissing).readiness.missing, 1);
+
+  // (b) 부분 입력(slope 있음, ohlcv=false) → climaxFlags 산출(0) → partial / unmatched (숨지 않음)
+  const targetPartial: GuruSignalTarget = {
+    assetId: 'a3', ticker: 'T3', name: 'n3',
+    currentPrice: 1000, enriched: mkEnriched({ slopeRatio: 1.0, ohlcvAvailable: false }), source: 'portfolio',
+  };
+  const dPartial = diagnoseAssetRules({ rules: [rule], claims: [], target: targetPartial, now: NOW });
+  check('부분입력: evaluation=unmatched(0<2)', dPartial[0].evaluation, 'unmatched');
+  check('부분입력: coverage=partial', dPartial[0].coverage[0].availability, 'partial');
+  const sum = summarizeDiagnostics(dPartial);
+  check('부분입력 NOT hidden: readiness.partial=1', sum.readiness.partial, 1);
+  check('부분입력: evaluation.unmatched=1', sum.evaluation.unmatched, 1);
 }
 
 // ════════════════════════════════════════════════════════════════════════════

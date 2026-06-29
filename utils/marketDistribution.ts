@@ -114,3 +114,12 @@ export function countDistributionDays(
   }
   return count;
 }
+
+/**
+ * 디스트리뷰션 카운트가 의미 있으려면 메타가 존재하고 volRatio가 산출된 날이 최소 하나 있어야 한다.
+ * volRatio 전부 null(거래량 결손)이면 카운트가 0으로 degrade — fail-closed 판정용 단일 소스.
+ * alertDiagnostics.compositeInputQuality의 'missing' 경계 + guruSignalEngine.buildMetricValues가 공유(drift 차단).
+ */
+export function hasDistributionInputs(meta: DistributionDayMeta[] | undefined | null): boolean {
+  return !!meta && meta.length > 0 && meta.some(m => typeof m.volRatio === 'number');
+}

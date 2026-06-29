@@ -55,3 +55,12 @@ export function countClimaxFlags(e: EnrichedIndicatorData, opts: ClimaxFlagOptio
   }
   return count;
 }
+
+/**
+ * 클라이맥스 카운트가 의미 있으려면 핵심 정량 입력(기울기비 OR 당일범위/ATR) 중 최소 하나가 있어야 한다.
+ * 둘 다 null(OHLCV 결손)이면 (a)(b)를 못 보고 카운트가 0으로 degrade — fail-closed 판정용 단일 소스.
+ * alertDiagnostics.compositeInputQuality의 'missing' 경계 + guruSignalEngine.buildMetricValues가 공유(drift 차단).
+ */
+export function hasClimaxInputs(e: EnrichedIndicatorData): boolean {
+  return typeof e.slopeRatio === 'number' || typeof e.dayRangeOverAtr === 'number';
+}

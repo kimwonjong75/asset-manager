@@ -15,6 +15,7 @@
     "test:filters": "npx --yes tsx tests/smartFilterParity.ts",
     "test:alertdiag": "npx --yes tsx tests/alertDiagnosticsParity.ts",
     "test:failsafe": "npx --yes tsx tests/alertFailSafeParity.ts",
+    "test:gurufailopen": "npx --yes tsx tests/guruFailOpenParity.ts",
     "test:sensitivity": "npx --yes tsx tests/alertSensitivityParity.ts",
     "test:replay": "npx --yes tsx tests/signalReplayParity.ts",
     "test:bucket": "npx --yes tsx tests/bucketRebalancingParity.ts",

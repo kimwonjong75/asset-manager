@@ -11,8 +11,9 @@
 //     → eligibility 는 getSignalEligibility(+no-condition) 로 getActiveSignalRules 멤버십과 일치,
 //       evaluation 은 evaluateCondition 재사용 → 구조적으로 보장(테스트로 재확인).
 //   · IMPLEMENTED_METRICS 는 types/knowledge 단일 소스 재사용 (새로 만들지 않음 → drift 방지).
-//   · partial: climaxFlags/distributionCount 는 OHLC 미수신 시 값이 0으로 degrade(미산출=null 아님)하므로,
-//     ohlcvAvailable=false 면 missing이 아니라 partial로 표기 (종가/거래량 기반 일부 sub-condition은 평가됨).
+//   · coverage: climaxFlags/distributionCount 는 입력 결손(slope·atr 전무 / volRatio 전무) 시 buildMetricValues가
+//     **미설정(null, fail-closed)** → missing. 입력은 있으나 OHLC 품질 저하(ohlcvAvailable=false)면 산출은 되되
+//     일부 sub-condition 평가 불가 → partial. guruSignalEngine fail-closed와 동일 경계(hasClimaxInputs/hasDistributionInputs) 공유.
 //
 // 진단은 평가만 한다 — evaluateGuruSignals/groupGuruSignals 출력은 건드리지 않는다(additive).
 
@@ -28,7 +29,8 @@ import { getSignalEligibility } from './knowledgeScoring';
 import { evaluateCondition, buildMetricValues, type MetricValues, type GuruSignalTarget } from './guruSignalEngine';
 import { explainConditionLeaves, metricLabel } from './conditionDescribe';
 
-// OHLC(open/high/low) 품질 의존 지표 — 미수신 시 값은 0으로 degrade하지만 (b)/윗꼬리 등 일부 조건 평가 불가.
+// OHLC 품질 의존 지표 — 입력이 일부라도 있으면 산출되나 OHLC 품질 저하(ohlcvAvailable=false) 시 (b)/윗꼬리 등
+// 일부 sub-condition 평가 불가 → partial. 입력 전무면 buildMetricValues가 아예 미설정(null) → isPresent=false → missing.
 // volumeRatio50은 OHLC가 아닌 '거래량' 의존이라 별개(없으면 missing).
 const OHLCV_QUALITY_METRICS: ReadonlySet<RequiredMetric> = new Set<RequiredMetric>([
   'climaxFlags', 'distributionCount',

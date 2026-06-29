@@ -27,6 +27,8 @@ import type { Asset, ExchangeRates, WatchlistItem } from '../types';
 import { Currency } from '../types';
 import type { EnrichedIndicatorData } from '../hooks/useEnrichedIndicators';
 import { computeRiskTier } from './riskMatrix';
+import { hasClimaxInputs } from './climaxFlags';
+import { hasDistributionInputs } from './marketDistribution';
 import { isActiveSignal } from './knowledgeScoring';
 
 export type MetricValue = number | string;
@@ -275,9 +277,13 @@ export function buildMetricValues(
   const m: MetricValues = {};
   if (typeof enriched.rsi === 'number') m.rsi14 = enriched.rsi;
 
+  // fail-closed(P1): climax/distribution 입력이 결손이면 computeRiskTier의 0-degrade(무의미한 0)를 metric으로
+  // 내보내지 않는다. 다른 self-contained 지표(ma/regime/pctBelow52wHigh)처럼 미설정 → evaluateLeaf=null →
+  // buy-watch(climaxFlags<2 / distributionCount≤4) 미발화 — "데이터 없는데 위험 없음으로 통과"하던 오발화 차단.
+  // 입력 가용성 경계는 alertDiagnostics.compositeInputQuality와 동일 predicate 공유(drift 차단).
   const risk = computeRiskTier(enriched, currentPrice);
-  m.climaxFlags = risk.climaxFlagCount;
-  m.distributionCount = risk.distributionCount;
+  if (hasClimaxInputs(enriched)) m.climaxFlags = risk.climaxFlagCount;
+  if (hasDistributionInputs(enriched.distributionDayMeta)) m.distributionCount = risk.distributionCount;
 
   const lastMeta = enriched.distributionDayMeta?.[enriched.distributionDayMeta.length - 1];
   if (lastMeta && typeof lastMeta.volRatio === 'number') m.volumeRatio50 = lastMeta.volRatio;

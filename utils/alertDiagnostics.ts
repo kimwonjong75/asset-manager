@@ -21,6 +21,8 @@ import type {
 import { ALERT_RULE_STATUS_LABELS } from '../types/alertDiagnostics';
 import { evaluateSingleFilter } from './smartFilterLogic';
 import { buildExtraConfig, ruleThresholds } from './alertChecker';
+import { hasClimaxInputs } from './climaxFlags';
+import { hasDistributionInputs } from './marketDistribution';
 
 // 필터 표시 라벨 (진단 패널용, 초보 친화 간결). 미정의 키는 원시 키 폴백.
 const FILTER_LABELS: Partial<Record<SmartFilterKey, string>> = {
@@ -71,17 +73,17 @@ const OHLC_QUALITY_FILTERS: ReadonlySet<SmartFilterKey> = new Set<SmartFilterKey
 function compositeInputQuality(filterKey: SmartFilterKey, enriched: EnrichedIndicatorData | undefined): AlertDataQuality {
   if (!enriched) return 'missing';
   if (filterKey === 'CLIMAX_TOP') {
+    // 'missing' 경계는 공유 predicate(guruSignalEngine fail-closed와 동일 기준 — drift 차단)
+    if (!hasClimaxInputs(enriched)) return 'missing';                 // 핵심 정량 입력 전무 → 사실상 계산 불가
     const hasSlope = typeof enriched.slopeRatio === 'number';
     const hasAtr = typeof enriched.dayRangeOverAtr === 'number';
-    if (!hasSlope && !hasAtr) return 'missing';                       // 핵심 정량 입력 전무 → 사실상 계산 불가
     if (!hasSlope || !hasAtr || enriched.ohlcvAvailable === false) return 'partial';
     return 'complete';
   }
   if (filterKey === 'DISTRIBUTION_HIGH') {
     const meta = enriched.distributionDayMeta;
-    if (!meta || meta.length === 0) return 'missing';
-    if (!meta.some(m => typeof m.volRatio === 'number')) return 'missing'; // volRatio 전부 null → 카운트 불가
-    if (!meta.every(m => typeof m.volRatio === 'number') || enriched.ohlcvAvailable === false) return 'partial';
+    if (!hasDistributionInputs(meta)) return 'missing';               // 메타 없음/volRatio 전부 null → 카운트 불가
+    if (!meta || !meta.every(m => typeof m.volRatio === 'number') || enriched.ohlcvAvailable === false) return 'partial';
     return 'complete';
   }
   return 'complete';
