@@ -11,6 +11,7 @@ import ReplayVerdictPanel, { VERDICT_KIND_LABELS } from '../replay/ReplayVerdict
 import ReplayCasesPanel from '../replay/ReplayCasesPanel';
 import ReplaySandboxPanel from '../replay/ReplaySandboxPanel';
 import ReplayPerformancePanel from '../replay/ReplayPerformancePanel';
+import ReplayWinRatePanel from '../replay/ReplayWinRatePanel';
 import ReplayMissedPanel from '../replay/ReplayMissedPanel';
 import type { SignalVerdict, SignalVerdictKind } from '../../types/signalReplay';
 import { describeRuleStatus } from '../../utils/guruDiagnostics';
@@ -439,6 +440,9 @@ const SignalReplayView: React.FC = () => {
 
           {/* 규칙별 성과 집계(③) — 이 기간 신호의 복기 결과(발화수·적중률·평균수익) */}
           <ReplayPerformancePanel performance={ctrl.performance} />
+
+          {/* 손익비×승률 진단 — 내 판정(승/패)을 신호 후 수익률과 묶어 손익분기 대비 위치 표시 */}
+          <ReplayWinRatePanel diag={ctrl.winRateDiagnostics} />
 
           {/* 규칙 샌드박스(P3) — leaf 값/on·off 즉석 조정 → 마커 즉시 재계산(라이브 미반영) */}
           <ReplaySandboxPanel

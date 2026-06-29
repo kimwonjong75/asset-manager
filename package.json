@@ -18,6 +18,7 @@
     "test:gurufailopen": "npx --yes tsx tests/guruFailOpenParity.ts",
     "test:sensitivity": "npx --yes tsx tests/alertSensitivityParity.ts",
     "test:replay": "npx --yes tsx tests/signalReplayParity.ts",
+    "test:winrate": "npx --yes tsx tests/winRateDiagnosticsParity.ts",
     "test:bucket": "npx --yes tsx tests/bucketRebalancingParity.ts",
     "test:kb": "npx --yes tsx tests/knowledgeBaseIntegrity.ts"
   },

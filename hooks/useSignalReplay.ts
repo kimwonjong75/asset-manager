@@ -26,6 +26,7 @@ import {
   describeRuleLeaves,
 } from '../utils/ruleSandbox';
 import { computeSignalPerformance, type SignalPerformance } from '../utils/replayPerformance';
+import { computeWinRateDiagnostics, type WinRateDiagnostics, type VerdictReturn } from '../utils/winRateDiagnostics';
 import { buildReplayExport, serializeReplayExport, parseReplayExport } from '../utils/replayExport';
 import type { SymbolSearchResult } from '../types';
 import type { KnowledgeRule } from '../types/knowledge';
@@ -107,6 +108,8 @@ export interface SignalReplayController {
   endComparison: () => void;
   // 규칙별 성과 집계(③) — 현재 윈도 신호의 복기 성과(미래 종가 기반)
   performance: SignalPerformance[];
+  // 손익비×승률 진단 — 현재 종목·기간 판정(verdict)을 승/패로 분류 + 신호 후 수익률로 손익비/손익분기
+  winRateDiagnostics: WinRateDiagnostics;
   // 놓친 매수/매도 모아보기(④) — 전 종목 누적(최신 날짜 우선)
   missedVerdicts: SignalVerdict[];
   // 검증 기록 백업(⑤) — JSON 파일 내보내기/병합 가져오기
@@ -454,6 +457,19 @@ export function useSignalReplay({ enabled }: UseSignalReplayParams): SignalRepla
   // ── 규칙별 성과 집계(③) — 현재 윈도 신호의 복기 성과(미래 종가 기반, 신호 계산 무관) ──
   const performance = useMemo(() => (timeline ? computeSignalPerformance(timeline) : []), [timeline]);
 
+  // ── 손익비×승률 진단 — 현재 종목·기간(timeline 윈도) 내 판정을 신호 후 실현 수익률(ret20)과 조인 ──
+  // 윈도 거래일에 한정(win-rate 분모와 크기 평균의 표본 정합) — 윈도 밖 판정은 forward-return 이 없어 제외.
+  // 절대값 손익비/손익분기 수학은 utils/winRateDiagnostics(순수)에 위임. 판정 없으면 빈 진단(패널이 안내).
+  const winRateDiagnostics = useMemo<WinRateDiagnostics>(() => {
+    if (!timeline) return computeWinRateDiagnostics([]);
+    const ret20ByDate = new Map<string, number | null>();
+    for (const d of timeline.days) ret20ByDate.set(d.date, d.outcome.ret20);
+    const samples: VerdictReturn[] = tickerVerdicts
+      .filter(v => ret20ByDate.has(v.date))
+      .map(v => ({ kind: v.kind, ret: ret20ByDate.get(v.date) ?? null }));
+    return computeWinRateDiagnostics(samples);
+  }, [timeline, tickerVerdicts]);
+
   // ── 놓친 매수/매도 모아보기(④) — 전 종목 누적(최신 날짜 우선) ──
   const missedVerdicts = useMemo(
     () => verdicts
@@ -511,6 +527,6 @@ export function useSignalReplay({ enabled }: UseSignalReplayParams): SignalRepla
     sandboxResetLeaf, sandboxResetRule, sandboxResetAll, sandboxDiff,
     verdictFor, setVerdict, clearVerdict, verdictDates, tickerVerdicts,
     cases, saveCurrentCase, deleteCase, loadCase, comparingCase, caseDiff, endComparison,
-    performance, missedVerdicts, exportReplayRecords, importReplayRecords,
+    performance, winRateDiagnostics, missedVerdicts, exportReplayRecords, importReplayRecords,
   };
 }
