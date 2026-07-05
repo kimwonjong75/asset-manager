@@ -16,6 +16,7 @@ import { useActionQueue } from '../../hooks/useActionQueue';
 import { ActionItem, ActionKind, isActiveAction } from '../../types/actionQueue';
 import { actionDaysIgnored, actionEscalationLevel } from '../../utils/actionQueueGenerator';
 import TurtleExecuteModal from './TurtleExecuteModal';
+import TurtleSettingsPanel from './TurtleSettingsPanel';
 
 /** 전용 실행 모달을 여는 터틀 kind (진입/불타기/손절/청산). 나머지는 표시만 완료(markDone). */
 const TURTLE_KINDS: ActionKind[] = ['TURTLE_ENTRY', 'TURTLE_PYRAMID', 'TURTLE_STOP', 'TURTLE_EXIT'];
@@ -37,11 +38,10 @@ const fmt = (n: number): string =>
 const todayISO = (): string => new Date().toISOString().slice(0, 10);
 
 const ExecutionView: React.FC = () => {
-  const { data, actions } = usePortfolio();
+  const { actions } = usePortfolio();
   const { actionQueue, refreshActionQueue, markDone, markSkipped, snoozeAction, executeTurtleAction, isRefreshing, refreshError } = useActionQueue();
   const today = todayISO();
 
-  const budget = data.turtleSettings.satelliteBudgetKRW;
   const [skipId, setSkipId] = useState<string | null>(null);
   const [skipText, setSkipText] = useState('');
   const [lastResult, setLastResult] = useState<string | null>(null);
@@ -97,6 +97,9 @@ const ExecutionView: React.FC = () => {
         </button>
       </div>
 
+      {/* 터틀(위성) 예산 설정 — 예산 0이면 진입 주문이 생성되지 않으므로 상단 노출 */}
+      <TurtleSettingsPanel />
+
       {/* 상태 요약 */}
       <div className="flex items-center gap-3 text-xs text-gray-400 mb-3">
         <span>대기 <span className="text-gray-100 font-semibold">{active.length}</span>건</span>
@@ -107,13 +110,6 @@ const ExecutionView: React.FC = () => {
 
       {refreshError && (
         <div className="mb-3 text-sm text-red-300 bg-red-500/10 border border-red-500/30 rounded-md px-3 py-2">{refreshError}</div>
-      )}
-
-      {/* 위성 예산 미설정 안내 */}
-      {budget <= 0 && (
-        <div className="mb-3 text-xs sm:text-sm text-amber-300 bg-amber-500/10 border border-amber-500/30 rounded-md px-3 py-2">
-          위성(투더문) 예산이 설정되지 않아 신규 매수 주문은 생성되지 않습니다. (설정 화면 연결은 다음 단계)
-        </div>
       )}
 
       {/* 주문 카드 목록 */}
