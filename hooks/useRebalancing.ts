@@ -10,6 +10,7 @@ import {
   assetValueKRW,
   type RebalanceRow,
 } from '../utils/bucketRebalancing';
+import { detectRebalanceBands, DEFAULT_REBALANCE_BAND_PCT } from '../utils/rebalanceBands';
 
 interface UseRebalancingProps {
   assets: Asset[];
@@ -131,6 +132,14 @@ export const useRebalancing = ({ assets, exchangeRates, allocationTargets, onSav
   }, [coreCategoryValues, categoryTargetWeights, buckets, coreTargetAmount, categories]);
   const coreTotals = useMemo(() => sumRows(coreTableData), [coreTableData]);
 
+  // 코어 카테고리 밴드 이탈 판정 (Phase 4a — 표시 전용). 코어 목표금액 미설정(0)이면 판정 안 함.
+  const bandDeviations = useMemo(
+    () => (coreTargetAmount > 0
+      ? detectRebalanceBands(coreTableData, { targetTotalAmount, coreCurrentValue: buckets.CORE })
+      : []),
+    [coreTableData, targetTotalAmount, buckets.CORE, coreTargetAmount],
+  );
+
   // --- 5. 투더문 보유 종목 참고 ---
   const satelliteHoldings = useMemo<SatelliteHoldingRow[]>(() => {
     return assets
@@ -209,5 +218,8 @@ export const useRebalancing = ({ assets, exchangeRates, allocationTargets, onSav
     // 투더문 참고
     satelliteHoldings,
     satelliteValue: buckets.SATELLITE,
+    // 코어 카테고리 밴드 이탈 안내 (Phase 4a — 표시 전용, 주문 아님)
+    bandDeviations,
+    rebalanceBandPct: DEFAULT_REBALANCE_BAND_PCT,
   };
 };

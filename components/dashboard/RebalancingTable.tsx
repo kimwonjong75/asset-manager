@@ -109,6 +109,8 @@ const RebalancingTable: React.FC<RebalancingTableProps> = ({ assets, exchangeRat
     core,
     satelliteHoldings,
     satelliteValue,
+    bandDeviations,
+    rebalanceBandPct,
   } = useRebalancing({
     assets,
     exchangeRates,
@@ -181,6 +183,30 @@ const RebalancingTable: React.FC<RebalancingTableProps> = ({ assets, exchangeRat
           emptyMessage="코어 버킷에 자산이 없습니다."
         />
       </section>
+
+      {/* 코어 밴드 이탈 안내 (Phase 4a-2 — 표시 전용, 주문/수량/종목 없음). 이탈 0건이면 미표시 */}
+      {bandDeviations.length > 0 && (
+        <section className="rounded-md border border-amber-500/40 bg-amber-500/5 p-4">
+          <h3 className="text-sm font-bold text-amber-200 mb-1">밴드 이탈 안내 — 코어 카테고리 (±{rebalanceBandPct}%p)</h3>
+          <p className="text-[11px] text-gray-400 mb-3">
+            아래 코어 카테고리가 목표 비중에서 ±{rebalanceBandPct}%p 이상 벗어났습니다. <span className="text-gray-300">참고 안내</span>이며, 실제 주문·수량·종목은 다음 단계에서 다룹니다.
+          </p>
+          <ul className="space-y-1.5">
+            {bandDeviations.map((d) => (
+              <li key={d.key} className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 text-xs">
+                <span className="text-gray-200 font-medium">{d.label}</span>
+                <span className="text-gray-400">
+                  현재 {d.currentWeight.toFixed(1)}% → 목표 {d.targetWeight.toFixed(1)}%
+                  <span className="text-gray-500"> (편차 {d.deviationPct > 0 ? '+' : ''}{d.deviationPct.toFixed(1)}%p)</span>
+                </span>
+                <span className={d.direction === 'BUY' ? 'text-red-300' : 'text-blue-300'}>
+                  {d.direction === 'BUY' ? '목표 대비 부족' : '목표 대비 초과'} {formatKRW(Math.abs(d.difference))}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {/* ③ 투더문 현황 (참고) */}
       {hasSatellite && (
