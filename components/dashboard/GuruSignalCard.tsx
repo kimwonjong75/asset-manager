@@ -9,6 +9,7 @@
 // 표시 수준은 "관찰 후보"이지 매수 추천이 아니다(문구·면책 명시).
 
 import React, { useState } from 'react';
+import { ChevronDown } from 'lucide-react';
 import { usePortfolio } from '../../contexts/PortfolioContext';
 import { getActiveSignalRules, groupGuruSignals } from '../../utils/guruSignalEngine';
 import { buildSignalExplanation, type SignalExplanation } from '../../utils/conditionDescribe';
@@ -71,7 +72,16 @@ const ExplainBlock: React.FC<{ title: string; exp: SignalExplanation }> = ({ tit
   </div>
 );
 
-const GuruSignalCard: React.FC = () => {
+interface GuruSignalCardProps {
+  /** 접이식으로 렌더할지 (Phase 5 UX). 미지정 시 기존처럼 항상 펼침 — 평가/렌더 로직 불변, 표시 상태만 */
+  collapsible?: boolean;
+  /** 최초 접힘 여부 (collapsible이고 저장값 없을 때) */
+  defaultCollapsed?: boolean;
+  /** 접힘/펼침 영속 localStorage 키 (collapsible일 때만) */
+  storageKey?: string;
+}
+
+const GuruSignalCard: React.FC<GuruSignalCardProps> = ({ collapsible = false, defaultCollapsed = false, storageKey }) => {
   const { data, derived } = usePortfolio();
   const signals = derived.guruSignals;
   const chartTargets = derived.guruSignalChartTargets;
@@ -91,6 +101,21 @@ const GuruSignalCard: React.FC = () => {
   const [explainAssetId, setExplainAssetId] = useState<string | null>(null);
   const [fullscreen, setFullscreen] = useState(false);
   const [showDiagnostics, setShowDiagnostics] = useState(false);
+  const [open, setOpen] = useState<boolean>(() => {
+    if (!collapsible) return true;
+    try {
+      const stored = storageKey ? localStorage.getItem(storageKey) : null;
+      if (stored === 'true') return true;
+      if (stored === 'false') return false;
+    } catch { /* ignore */ }
+    return !defaultCollapsed;
+  });
+  const toggleOpen = () => setOpen(prev => {
+    const next = !prev;
+    if (storageKey) { try { localStorage.setItem(storageKey, String(next)); } catch { /* ignore */ } }
+    return next;
+  });
+  const bodyVisible = !collapsible || open;
   const firstAssetId = groups[0]?.assets[0]?.assetId ?? null;
   const effectiveSelectedId =
     selectedAssetId && chartTargets[selectedAssetId] ? selectedAssetId : firstAssetId;
@@ -98,32 +123,52 @@ const GuruSignalCard: React.FC = () => {
 
   return (
     <div className="bg-gray-800 rounded-lg shadow-lg p-4 sm:p-5">
-      <div className="flex items-start justify-between gap-2 mb-3">
+      <div className={`flex items-start justify-between gap-2 ${bodyVisible ? 'mb-3' : ''}`}>
         <div className="min-w-0">
-          <h3 className="text-base font-bold text-white flex items-center gap-1.5">
-            🧭 구루 신호 엔진
-          </h3>
-          <p className="text-xs text-gray-500 mt-0.5">
-            지식 규칙 기반 <span className="text-gray-400">관찰 후보</span> · 매수 추천이 아닙니다
-          </p>
+          {collapsible ? (
+            <button
+              type="button"
+              onClick={toggleOpen}
+              aria-expanded={open}
+              className="flex items-center gap-1.5 min-w-0 text-left"
+            >
+              <ChevronDown className={`h-4 w-4 text-gray-400 shrink-0 transition-transform ${open ? '' : '-rotate-90'}`} />
+              <h3 className="text-base font-bold text-white">🧭 구루 신호 엔진</h3>
+            </button>
+          ) : (
+            <h3 className="text-base font-bold text-white flex items-center gap-1.5">
+              🧭 구루 신호 엔진
+            </h3>
+          )}
+          {bodyVisible && (
+            <p className="text-xs text-gray-500 mt-0.5">
+              지식 규칙 기반 <span className="text-gray-400">관찰 후보</span> · 매수 추천이 아닙니다
+            </p>
+          )}
         </div>
         <div className="flex flex-col items-end gap-1 shrink-0">
           <span className="text-xs text-gray-500 whitespace-nowrap bg-gray-700/60 px-2 py-1 rounded">
             활성 규칙 {activeRuleCount}개 평가
           </span>
-          <button
-            onClick={() => setShowDiagnostics(v => !v)}
-            aria-expanded={showDiagnostics}
-            className="text-[11px] text-cyan-400/80 hover:text-cyan-300 whitespace-nowrap"
-          >
-            {showDiagnostics ? '진단 닫기 ▴' : '왜 신호가 안 뜨나요? ▾'}
-          </button>
+          {bodyVisible ? (
+            <button
+              onClick={() => setShowDiagnostics(v => !v)}
+              aria-expanded={showDiagnostics}
+              className="text-[11px] text-cyan-400/80 hover:text-cyan-300 whitespace-nowrap"
+            >
+              {showDiagnostics ? '진단 닫기 ▴' : '왜 신호가 안 뜨나요? ▾'}
+            </button>
+          ) : (
+            <span className="text-[11px] text-gray-500 whitespace-nowrap">
+              {signals.length > 0 ? `신호 ${distinctAssets}종목` : '신호 없음'}
+            </span>
+          )}
         </div>
       </div>
 
-      {showDiagnostics && <GuruDiagnosticsPanel />}
+      {bodyVisible && showDiagnostics && <GuruDiagnosticsPanel />}
 
-      {signals.length === 0 ? (
+      {bodyVisible && (signals.length === 0 ? (
         <div className="bg-gray-900/60 rounded-md px-3 py-3 text-xs text-gray-400">
           {activeRuleCount === 0
             ? '평가 가능한 활성 규칙이 아직 없습니다. 지표·규칙 검증이 진행되면 여기에 신호가 표시됩니다.'
@@ -254,11 +299,13 @@ const GuruSignalCard: React.FC = () => {
             )}
           </div>
         </div>
-      )}
+      ))}
 
-      <p className="text-xs text-gray-600 mt-3 pt-2 border-t border-gray-700/60">
-        지식 규칙 기반 참고 신호이며 투자자문이 아닙니다. 미검증·미구현 지표 규칙은 자동 발화되지 않습니다.
-      </p>
+      {bodyVisible && (
+        <p className="text-xs text-gray-600 mt-3 pt-2 border-t border-gray-700/60">
+          지식 규칙 기반 참고 신호이며 투자자문이 아닙니다. 미검증·미구현 지표 규칙은 자동 발화되지 않습니다.
+        </p>
+      )}
 
       {fullscreen && chartTarget && (
         <ChartViewerModal

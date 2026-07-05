@@ -11,7 +11,6 @@ import SoldAssetsStats from '../dashboard/SoldAssetsStats';
 import ProfitLossChart from '../dashboard/ProfitLossChart';
 import AllocationChart from '../dashboard/AllocationChart';
 import CategorySummaryTable from '../dashboard/CategorySummaryTable';
-import TopBottomAssets from '../dashboard/TopBottomAssets';
 import RebalancingTable from '../dashboard/RebalancingTable';
 import GoldPremiumWidget from '../GoldPremiumWidget';
 import MarketDistributionBanner from '../MarketDistributionBanner';
@@ -108,13 +107,35 @@ const DashboardView: React.FC = () => {
 
       <GoldPremiumWidget />
 
-      {/* 리스크 계산기(평소 접힘). 구루 신호는 설정에 따라 상단 강조 or 하단 참고 섹션(Phase 5). */}
+      {/* 리스크 계산기(평소 접힘). */}
       <RiskCalculatorCard />
-      {ui.signalDisplay.showGuruSignalsProminently && <GuruSignalCard />}
+
+      {/*
+        구루 신호 엔진 — 항상 상단 위치 유지(Phase 5). 강조 토글이 켜지면 기존처럼 펼쳐 표시,
+        꺼지면 같은 자리에서 접힌 상태로 표시(접힘/펼침은 localStorage 영속). 계산/발화 무변경.
+      */}
+      <GuruSignalCard
+        collapsible={!ui.signalDisplay.showGuruSignalsProminently}
+        defaultCollapsed
+        storageKey="asset-manager-guru-card-open"
+      />
+
+      {/* 참고 지표(리스크 매트릭스 등) — 구루 신호 엔진 바로 아래. 구루 카드는 중복 제외. */}
+      <ReferenceIndicatorsSection />
 
       <SoldAssetsStats stats={soldAssetsStats} globalPeriod={ui.globalPeriod} onPeriodChange={actions.setGlobalPeriod} />
 
-      <ProfitLossChart history={portfolioHistory} assetsToDisplay={dashboardFilteredAssets} title={profitLossChartTitle} globalPeriod={ui.globalPeriod} onPeriodChange={actions.setGlobalPeriod} />
+      {/* 손익 추이 분석 — 기본 접힘(Phase 5 UX). 계산/차트 로직 불변, 렌더 상태만. */}
+      <ProfitLossChart
+        history={portfolioHistory}
+        assetsToDisplay={dashboardFilteredAssets}
+        title={profitLossChartTitle}
+        globalPeriod={ui.globalPeriod}
+        onPeriodChange={actions.setGlobalPeriod}
+        collapsible
+        defaultCollapsed
+        storageKey="asset-manager-profitloss-open"
+      />
       
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="lg:col-span-1">
@@ -130,11 +151,6 @@ const DashboardView: React.FC = () => {
       </div>
       
       <RebalancingTable assets={assets} exchangeRates={exchangeRates} />
-
-      <TopBottomAssets assets={assets} exchangeRates={exchangeRates} />
-
-      {/* 참고 지표 (Phase 5 — 신호 다이어트): 리스크 매트릭스 + (강조 아닐 때) 구루 신호 카드 */}
-      <ReferenceIndicatorsSection />
     </div>
   );
 };

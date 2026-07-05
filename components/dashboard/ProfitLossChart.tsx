@@ -1,4 +1,5 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
+import { ChevronDown } from 'lucide-react';
 import { Asset, PortfolioSnapshot } from '../../types';
 import { GlobalPeriod } from '../../types/store';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
@@ -10,9 +11,30 @@ interface ProfitLossChartProps {
   title: string;
   globalPeriod: GlobalPeriod;
   onPeriodChange: (period: GlobalPeriod) => void;
+  /** 접이식으로 렌더할지 (Phase 5 UX). 미지정 시 기존처럼 항상 펼침 — 계산/차트 로직 불변, 렌더 상태만 */
+  collapsible?: boolean;
+  /** 접힘/펼침 영속 localStorage 키 (collapsible일 때만) */
+  storageKey?: string;
+  /** 최초 접힘 여부 (collapsible이고 저장값 없을 때) */
+  defaultCollapsed?: boolean;
 }
 
-const ProfitLossChart: React.FC<ProfitLossChartProps> = ({ history, assetsToDisplay, title, globalPeriod, onPeriodChange }) => {
+const ProfitLossChart: React.FC<ProfitLossChartProps> = ({ history, assetsToDisplay, title, globalPeriod, onPeriodChange, collapsible = false, storageKey, defaultCollapsed = false }) => {
+  const [open, setOpen] = useState<boolean>(() => {
+    if (!collapsible) return true;
+    try {
+      const stored = storageKey ? localStorage.getItem(storageKey) : null;
+      if (stored === 'true') return true;
+      if (stored === 'false') return false;
+    } catch { /* ignore */ }
+    return !defaultCollapsed;
+  });
+  const toggleOpen = () => setOpen(prev => {
+    const next = !prev;
+    if (storageKey) { try { localStorage.setItem(storageKey, String(next)); } catch { /* ignore */ } }
+    return next;
+  });
+  const bodyVisible = !collapsible || open;
   const chartData = useMemo(() => {
     if (!history || history.length === 0) {
       return [];
@@ -74,12 +96,24 @@ const ProfitLossChart: React.FC<ProfitLossChartProps> = ({ history, assetsToDisp
   };
   
   return (
-    <div className="bg-gray-800 p-6 rounded-lg shadow-lg h-96 mb-6" title="포트폴리오의 평가 손익 추이를 보여줍니다.">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xl font-bold text-white">{title}</h2>
-        <PeriodSelector value={globalPeriod} onChange={onPeriodChange} />
+    <div className={`bg-gray-800 p-6 rounded-lg shadow-lg mb-6 ${bodyVisible ? 'h-96' : ''}`} title="포트폴리오의 평가 손익 추이를 보여줍니다.">
+      <div className={`flex items-center justify-between ${bodyVisible ? 'mb-4' : ''}`}>
+        {collapsible ? (
+          <button
+            type="button"
+            onClick={toggleOpen}
+            className="flex items-center gap-2 min-w-0 text-left"
+            aria-expanded={open}
+          >
+            <ChevronDown className={`h-4 w-4 text-gray-400 shrink-0 transition-transform ${open ? '' : '-rotate-90'}`} />
+            <h2 className="text-xl font-bold text-white truncate">{title}</h2>
+          </button>
+        ) : (
+          <h2 className="text-xl font-bold text-white">{title}</h2>
+        )}
+        {bodyVisible && <PeriodSelector value={globalPeriod} onChange={onPeriodChange} />}
       </div>
-      {chartData.length > 1 ? (
+      {bodyVisible && (chartData.length > 1 ? (
         <ResponsiveContainer width="100%" height="90%">
           <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#4A5568" />
@@ -98,7 +132,7 @@ const ProfitLossChart: React.FC<ProfitLossChartProps> = ({ history, assetsToDisp
         <div className="flex items-center justify-center h-full">
           <p className="text-gray-500">손익 추이를 표시하려면 데이터가 2일 이상 필요합니다.</p>
         </div>
-      )}
+      ))}
     </div>
   );
 };
