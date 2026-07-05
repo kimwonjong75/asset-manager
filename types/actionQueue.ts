@@ -45,3 +45,51 @@ export interface ActionItem {
 export function isActiveAction(status: ActionStatus): boolean {
   return status === 'pending' || status === 'snoozed';
 }
+
+// ── "왜 주문이 안 생겼나" 진단 (Phase 2b-6, 표시 전용) ──
+// 생성 경로(buildTurtleActions)와 분리된 순수 진단(diagnoseTurtleActions)의 산출 타입.
+// generated 계열 사유는 실제로 주문이 생성됐음을 뜻한다(진단≡생성 parity 앵커).
+
+/** 진입 후보별 판정 사유. */
+export type TurtleEntryDiagReason =
+  | 'generated'             // 진입 주문 생성됨
+  | 'already-open'          // 이미 보유(진입 대상 아님 — 피라미딩 축)
+  | 'duplicate-pending'     // 이미 대기 중 진입 주문 존재
+  | 'no-market'             // 시장입력 없음(OHLCV/N 산출 실패)
+  | 'no-n'                  // N 미산출(데이터 부족)
+  | 'no-breakout'           // 55일 신고가 미돌파(정상 대기 — 중립)
+  | 'zero-qty'              // 사이징 0주
+  | 'insufficient-budget'   // 예산 잔여로 1유닛도 불가
+  | 'risk-limit';           // 동시 전멸 한도(12%) 초과
+
+/** 오픈 포지션별 판정 사유. */
+export type TurtlePositionDiagReason =
+  | 'stop-generated'
+  | 'exit-generated'
+  | 'pyramid-generated'
+  | 'no-market'
+  | 'duplicate-pending'
+  | 'no-trigger';           // 손절/청산/피라미딩 조건 미충족(정상)
+
+export interface TurtleEntryDiag { ticker: string; name: string; reason: TurtleEntryDiagReason; }
+export interface TurtlePositionDiag { ticker: string; name: string; positionId: string; reason: TurtlePositionDiagReason; }
+
+/** 생성기(diagnoseTurtleActions) 진단 결과. generatedCount는 buildTurtleActions(...).length와 동치. */
+export interface TurtleActionDiagnostics {
+  positions: TurtlePositionDiag[];
+  candidates: TurtleEntryDiag[];
+  generatedCount: number;
+}
+
+/**
+ * refreshActionQueue가 반환하는 종합 진단 (훅 레벨 사실 + 생성기 진단).
+ * 훅 레벨: 예산 0·터틀 후보 없음·시세 미갱신(생성기에 도달하기 전 스킵된 사유).
+ */
+export interface RefreshDiagnostics {
+  budgetKRW: number;
+  budgetMissing: boolean;         // satelliteBudgetKRW <= 0
+  turtleCandidateCount: number;   // isTurtleCandidate 표시된 관심종목 수(가격 무관)
+  stalePriceTickers: string[];    // 후보인데 priceOriginal<=0 → 시세 미갱신으로 스킵됨
+  openPositionCount: number;
+  actions: TurtleActionDiagnostics;
+}

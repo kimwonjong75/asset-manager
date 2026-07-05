@@ -9,6 +9,8 @@ import MemoTooltip from '../common/MemoTooltip';
 import Tooltip from '../common/Tooltip';
 import ActionMenu from '../common/ActionMenu';
 import { COLUMN_DEFINITIONS } from './columnDefinitions';
+import TurtlePositionInfo from './TurtlePositionInfo';
+import type { TurtlePositionView } from '../../utils/turtlePositionView';
 
 interface PortfolioTableRowProps {
   asset: EnrichedAsset;
@@ -30,6 +32,8 @@ interface PortfolioTableRowProps {
   dcCrossDays?: number | null;
   /** <td>에 적용할 inline 너비 스타일 (종목명 'name' + 중간 ColumnKey). 컬럼 리사이즈와 연동 */
   getTdStyle?: (columnKey: ColumnKey | 'name') => React.CSSProperties | undefined;
+  /** 터틀 오픈 포지션 표시 모델 (있으면 읽기 전용 스트립 행 추가, Phase 2b-5) */
+  turtle?: TurtlePositionView;
 }
 
 const ChartBarIcon: React.FC = () => (
@@ -54,6 +58,7 @@ const PortfolioTableRow: React.FC<PortfolioTableRowProps> = ({
   gcCrossDays,
   dcCrossDays,
   getTdStyle,
+  turtle,
 }) => {
   const [expandedAssetId, setExpandedAssetId] = useState<string | null>(null);
   const [fullscreen, setFullscreen] = useState(false);
@@ -173,6 +178,13 @@ const PortfolioTableRow: React.FC<PortfolioTableRowProps> = ({
           )}
         </td>
       </tr>
+      {turtle && (
+        <tr className="bg-purple-900/10 border-b border-gray-700">
+          <td colSpan={totalColSpan} className="px-4 py-1.5">
+            <TurtlePositionInfo view={turtle} />
+          </td>
+        </tr>
+      )}
       {expandedAssetId === asset.id && (
         <tr className="bg-gray-900/50">
           <td colSpan={totalColSpan} className="p-0 sm:p-2">

@@ -26,6 +26,8 @@
     "test:turtlelifecycle": "npx --yes tsx tests/turtleLifecycleParity.ts",
     "test:turtleexec": "npx --yes tsx tests/turtleExecutionParity.ts",
     "test:assetmut": "npx --yes tsx tests/assetMutationsParity.ts",
+    "test:turtleview": "npx --yes tsx tests/turtlePositionViewParity.ts",
+    "test:actiondiag": "npx --yes tsx tests/actionQueueDiagnosticsParity.ts",
     "test:kb": "npx --yes tsx tests/knowledgeBaseIntegrity.ts"
   },
   "dependencies": {

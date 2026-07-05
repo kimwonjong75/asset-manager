@@ -7,6 +7,8 @@ import CrossDaysBadge from '../common/CrossDaysBadge';
 import { MoreHorizontal } from 'lucide-react';
 import AssetTrendChart from '../AssetTrendChart';
 import ChartViewerModal from '../common/ChartViewerModal';
+import TurtlePositionInfo from './TurtlePositionInfo';
+import type { TurtlePositionView } from '../../utils/turtlePositionView';
 
 
 interface PortfolioMobileCardProps {
@@ -23,6 +25,8 @@ interface PortfolioMobileCardProps {
   gcCrossDays?: number | null;
   /** 데드크로스 신호 (`dead-cross` 알림 룰의 MA 페어 기준 — 음수만, 그 외 null) */
   dcCrossDays?: number | null;
+  /** 터틀 오픈 포지션 표시 모델 (있으면 읽기 전용 스트립, Phase 2b-5) */
+  turtle?: TurtlePositionView;
 }
 
 
@@ -38,6 +42,7 @@ const PortfolioMobileCard: React.FC<PortfolioMobileCardProps> = ({
   onMemoEdit,
   gcCrossDays,
   dcCrossDays,
+  turtle,
 }) => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [expanded, setExpanded] = useState(false);
@@ -129,6 +134,15 @@ const PortfolioMobileCard: React.FC<PortfolioMobileCardProps> = ({
           />
         )}
       </div>
+
+      {/* 터틀 오픈 포지션 스트립 (읽기 전용) — 전폭, flex-wrap으로 모바일 넘침 방지 */}
+      {turtle && (
+        <div className="px-4 pb-2.5 -mt-1">
+          <div className="bg-purple-900/10 border border-purple-500/20 rounded-md px-2.5 py-1.5">
+            <TurtlePositionInfo view={turtle} />
+          </div>
+        </div>
+      )}
 
       {/* Expanded chart */}
       {expanded && (

@@ -17,6 +17,8 @@ import { ActionItem, ActionKind, isActiveAction } from '../../types/actionQueue'
 import { actionDaysIgnored, actionEscalationLevel } from '../../utils/actionQueueGenerator';
 import TurtleExecuteModal from './TurtleExecuteModal';
 import TurtleSettingsPanel from './TurtleSettingsPanel';
+import WhyNoOrderPanel from './WhyNoOrderPanel';
+import type { RefreshDiagnostics } from '../../types/actionQueue';
 
 /** 전용 실행 모달을 여는 터틀 kind (진입/불타기/손절/청산). 나머지는 표시만 완료(markDone). */
 const TURTLE_KINDS: ActionKind[] = ['TURTLE_ENTRY', 'TURTLE_PYRAMID', 'TURTLE_STOP', 'TURTLE_EXIT'];
@@ -45,6 +47,8 @@ const ExecutionView: React.FC = () => {
   const [skipId, setSkipId] = useState<string | null>(null);
   const [skipText, setSkipText] = useState('');
   const [lastResult, setLastResult] = useState<string | null>(null);
+  // 마지막 "오늘 주문 생성" 결과가 0건일 때만 진단 노출 (생성됐으면 null로 숨김)
+  const [noOrderDiag, setNoOrderDiag] = useState<RefreshDiagnostics | null>(null);
 
   const { active, resolvedCount } = useMemo(() => {
     const act = actionQueue.filter(it => isActiveAction(it.status));
@@ -58,8 +62,9 @@ const ExecutionView: React.FC = () => {
   }, [actionQueue, today]);
 
   const handleRefresh = async () => {
-    const { generated } = await refreshActionQueue();
+    const { generated, diagnostics } = await refreshActionQueue();
     setLastResult(generated > 0 ? `${generated}건의 새 주문이 생성되었습니다.` : '새로 생성된 주문이 없습니다.');
+    setNoOrderDiag(generated > 0 ? null : diagnostics);
   };
 
   const startSkip = (id: string) => { setSkipId(id); setSkipText(''); };
@@ -111,6 +116,9 @@ const ExecutionView: React.FC = () => {
       {refreshError && (
         <div className="mb-3 text-sm text-red-300 bg-red-500/10 border border-red-500/30 rounded-md px-3 py-2">{refreshError}</div>
       )}
+
+      {/* 0건일 때 "왜 주문이 없나요?" 진단 */}
+      {noOrderDiag && <WhyNoOrderPanel diagnostics={noOrderDiag} />}
 
       {/* 주문 카드 목록 */}
       {active.length === 0 ? (

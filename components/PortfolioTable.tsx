@@ -19,6 +19,8 @@ import { usePortfolio } from '../contexts/PortfolioContext';
 import type { AlertRule } from '../types/alertRules';
 import { hasResolvableRates } from '../utils/exchangeRateCache';
 import { Currency } from '../types';
+import { buildTurtlePositionViews, computeTurtleRiskGauge } from '../utils/turtlePositionView';
+import TurtleRiskGauge from './portfolio-table/TurtleRiskGauge';
 
 const SortIcon = ({ sortKey, sortConfig }: { sortKey: SortKey, sortConfig: { key: SortKey; direction: SortDirection } | null }) => {
   if (!sortConfig || sortConfig.key !== sortKey) return <span className="opacity-30">↕</span>;
@@ -136,6 +138,17 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
     if (foreignCurrencies.length === 0) return true;
     return hasResolvableRates(foreignCurrencies, exchangeRates);
   }, [assets, exchangeRates]);
+
+  // 터틀 오픈 포지션 표시 모델(assetId 키) + KRW 리스크 게이지 (Phase 2b-5, 읽기 전용)
+  // 매칭은 assetId만 신뢰(ticker fallback 없음), 리스크는 per-position fxRate로 KRW 환산 + fail-safe
+  const turtleViews = useMemo(
+    () => buildTurtlePositionViews(data.turtlePositions, data.assets, exchangeRates, data.turtleSettings),
+    [data.turtlePositions, data.assets, exchangeRates, data.turtleSettings],
+  );
+  const turtleGauge = useMemo(
+    () => computeTurtleRiskGauge(data.turtlePositions, data.assets, exchangeRates, data.turtleSettings),
+    [data.turtlePositions, data.assets, exchangeRates, data.turtleSettings],
+  );
 
   // 현재 가시 컬럼 (Context의 columnConfig 사용)
   const visibleColumns = ui.columnConfig;
@@ -462,6 +475,9 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
         isEnrichedLoading={isEnrichedLoading}
       />
 
+      {/* 터틀 오픈 리스크 게이지 (KRW) — 오픈 포지션 있을 때만. 테이블 위 sibling(overflow wrapper 아님) */}
+      <TurtleRiskGauge gauge={turtleGauge} />
+
       {/* 데스크탑: 테이블 — overflow 없음, thead가 main 스크롤 기준 sticky */}
       {/* table-layout: fixed — 사용자가 지정한 컬럼 너비를 엄격히 적용해 콘텐츠 크기와 무관하게 가로 스크롤 방지 */}
       <div className="hidden md:block">
@@ -547,6 +563,7 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
                 gcCrossDays={gcRaw != null && gcRaw >= 0 ? gcRaw : null}
                 dcCrossDays={dcRaw != null && dcRaw < 0 ? dcRaw : null}
                 getTdStyle={getThStyle}
+                turtle={turtleViews.get(asset.id)}
               />
               );
             }) : (
@@ -582,6 +599,7 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
             onMemoEdit={(asset) => setMemoEditAsset(asset)}
             gcCrossDays={gcRaw != null && gcRaw >= 0 ? gcRaw : null}
             dcCrossDays={dcRaw != null && dcRaw < 0 ? dcRaw : null}
+            turtle={turtleViews.get(asset.id)}
           />
           );
         }) : (

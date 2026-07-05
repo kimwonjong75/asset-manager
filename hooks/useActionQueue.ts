@@ -21,6 +21,7 @@ import {
 } from '../services/historicalPriceService';
 import {
   buildTurtleActions,
+  diagnoseTurtleActions,
   reconcileActionQueue,
   isSnoozeExpired,
   TurtleMarketInput,
@@ -34,7 +35,7 @@ import {
   turtleFxRate,
 } from '../utils/turtleMarketData';
 import { resolveTurtleUpdate, TurtleFill } from '../utils/turtleExecution';
-import { ActionItem } from '../types/actionQueue';
+import { ActionItem, RefreshDiagnostics, TurtleActionDiagnostics } from '../types/actionQueue';
 import { Currency, NewAssetForm } from '../types';
 import type { AddAssetResult } from '../types/assetActionResult';
 import { createLogger } from '../utils/logger';
@@ -67,14 +68,28 @@ export function useActionQueue() {
    * 터틀 규칙을 평가해 실행 큐를 갱신한다 (명시적 호출 전용 — 자동 실행 아님).
    * 오픈 포지션의 손절/청산/피라미딩 + 터틀 후보의 진입을 생성하고, 만료 스누즈를 되살려 저장한다.
    */
-  const refreshActionQueue = useCallback(async (): Promise<{ generated: number }> => {
+  const refreshActionQueue = useCallback(async (): Promise<{ generated: number; diagnostics: RefreshDiagnostics }> => {
     setIsRefreshing(true);
     setRefreshError(null);
+    const today = todayISO();
+
+    const openPositions = turtlePositions.filter(p => p.status === 'open');
+    // 훅 레벨 진단 사실(생성기에 도달하기 전에 알 수 있는 것) — 예산·후보·시세 미갱신
+    const turtleCandidates = watchlist.filter(w => w.isTurtleCandidate);
+    const stalePriceTickers = turtleCandidates.filter(w => !((w.priceOriginal ?? 0) > 0)).map(w => w.ticker);
+    const emptyActionsDiag: TurtleActionDiagnostics = { positions: [], candidates: [], generatedCount: 0 };
+    const makeDiag = (actions: TurtleActionDiagnostics): RefreshDiagnostics => ({
+      budgetKRW: turtleSettings.satelliteBudgetKRW,
+      budgetMissing: !(turtleSettings.satelliteBudgetKRW > 0),
+      turtleCandidateCount: turtleCandidates.length,
+      stalePriceTickers,
+      openPositionCount: openPositions.length,
+      actions,
+    });
+
     try {
-      const today = todayISO();
       const { startDate, endDate } = turtleHistoryWindow(turtleSettings, today);
 
-      const openPositions = turtlePositions.filter(p => p.status === 'open');
       const candidateItems = watchlist.filter(w => w.isTurtleCandidate && (w.priceOriginal ?? 0) > 0);
 
       // ── 종목 메타 해석 (현재가·통화·거래소) ──
@@ -98,7 +113,7 @@ export function useActionQueue() {
         // 대상 없음 — 만료 스누즈만 되살릴 수 있으면 저장, 아니면 무저장(보이지 않는 쓰기 방지)
         const hasRevival = actionQueue.some(it => isSnoozeExpired(it, today));
         if (hasRevival) updateActionQueue(reconcileActionQueue(actionQueue, [], today));
-        return { generated: 0 };
+        return { generated: 0, diagnostics: makeDiag(emptyActionsDiag) };
       }
 
       // ── OHLCV 최소 기간 fetch (주식/코인 분기) ──
@@ -125,7 +140,8 @@ export function useActionQueue() {
       const candidates: TurtleCandidateRef[] = candidateItems.map(w => ({ ticker: w.ticker, name: w.name }));
       const remainingBudgetKRW = Math.max(0, turtleSettings.satelliteBudgetKRW - computeDeployedBudgetKRW(openPositions));
 
-      const generated = buildTurtleActions({
+      // 생성기와 진단이 **동일 입력**을 받도록 공유 (진단이 생성 결과와 어긋나지 않음)
+      const genInput = {
         positions: turtlePositions,
         candidates,
         marketByTicker,
@@ -133,18 +149,19 @@ export function useActionQueue() {
         existingQueue: actionQueue,
         remainingBudgetKRW,
         today,
-        makeId: (seq) => `aq-${today}-${Date.now().toString(36)}-${seq}`,
-      });
+      };
+      const generated = buildTurtleActions({ ...genInput, makeId: (seq) => `aq-${today}-${Date.now().toString(36)}-${seq}` });
+      const actionsDiag = diagnoseTurtleActions(genInput);
 
       const hasRevival = actionQueue.some(it => isSnoozeExpired(it, today));
       if (generated.length > 0 || hasRevival) {
         updateActionQueue(reconcileActionQueue(actionQueue, generated, today));
       }
-      return { generated: generated.length };
+      return { generated: generated.length, diagnostics: makeDiag(actionsDiag) };
     } catch (e) {
       log.error('실행 큐 새로고침 실패:', e);
       setRefreshError('실행 큐를 갱신하지 못했습니다.');
-      return { generated: 0 };
+      return { generated: 0, diagnostics: makeDiag(emptyActionsDiag) };
     } finally {
       setIsRefreshing(false);
     }

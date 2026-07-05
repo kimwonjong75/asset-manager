@@ -18,7 +18,15 @@ import {
   TurtleSettings,
   TurtleUnit,
 } from '../types/turtle';
-import { ActionItem, ActionKind, isActiveAction } from '../types/actionQueue';
+import {
+  ActionItem,
+  ActionKind,
+  isActiveAction,
+  TurtleActionDiagnostics,
+  TurtleEntryDiag,
+  TurtlePositionDiag,
+  TurtleEntryDiagReason,
+} from '../types/actionQueue';
 import {
   evaluateEntry,
   evaluatePyramid,
@@ -180,6 +188,105 @@ export function buildTurtleActions(input: BuildTurtleActionsInput): ActionItem[]
   }
 
   return results;
+}
+
+/**
+ * "왜 주문이 안 생겼나" 진단 (Phase 2b-6, 순수·표시 전용).
+ * **buildTurtleActions의 판정 순서·누적을 1:1로 미러링**하되 ActionItem을 만들지 않고 사유만 수집한다.
+ * 생성 경로(buildTurtleActions)는 절대 건드리지 않는다 — 진단이 생성 동작에 영향 주지 않도록 완전 분리.
+ * `generatedCount`는 buildTurtleActions(...).length와 동치여야 한다(테스트가 강제).
+ */
+export function diagnoseTurtleActions(input: Omit<BuildTurtleActionsInput, 'makeId'>): TurtleActionDiagnostics {
+  const { positions, candidates, marketByTicker, settings, existingQueue } = input;
+
+  const openPositions = positions.filter(p => p.status === 'open');
+  const openTickers = new Set(openPositions.map(p => p.ticker));
+
+  const activeKeys = new Set<string>();
+  for (const item of existingQueue) {
+    if (isActiveAction(item.status)) activeKeys.add(dedupKey(item.kind, item.ticker, item.positionId));
+  }
+  const generatedKeys = new Set<string>();
+  const canEmit = (kind: ActionKind, ticker: string, positionId?: string): boolean => {
+    const key = dedupKey(kind, ticker, positionId);
+    return !activeKeys.has(key) && !generatedKeys.has(key);
+  };
+  const markGen = (kind: ActionKind, ticker: string, positionId?: string): void => {
+    generatedKeys.add(dedupKey(kind, ticker, positionId));
+  };
+
+  const resolveFx = (position: TurtlePosition): number => {
+    const m = marketByTicker.get(position.ticker);
+    if (m && m.fxRate > 0) return m.fxRate;
+    const lastUnit: TurtleUnit | undefined = position.units[position.units.length - 1];
+    return lastUnit?.fxRateAtFill && lastUnit.fxRateAtFill > 0 ? lastUnit.fxRateAtFill : 1;
+  };
+
+  const positionDiags: TurtlePositionDiag[] = [];
+  const candidateDiags: TurtleEntryDiag[] = [];
+  let generatedCount = 0;
+
+  // ── 1. 오픈 포지션: 손절 > 청산 > 피라미딩 (buildTurtleActions와 동일 순서) ──
+  for (const pos of openPositions) {
+    const base = { ticker: pos.ticker, name: pos.name, positionId: pos.id };
+    const m = marketByTicker.get(pos.ticker);
+    if (!m) { positionDiags.push({ ...base, reason: 'no-market' }); continue; }
+
+    const stop = evaluateStop(pos, m.price);
+    const exit = stop ? null : evaluateExit(pos, m.donchianLow, m.price);
+
+    if (stop) {
+      if (canEmit('TURTLE_STOP', pos.ticker, pos.id)) { markGen('TURTLE_STOP', pos.ticker, pos.id); generatedCount++; positionDiags.push({ ...base, reason: 'stop-generated' }); }
+      else positionDiags.push({ ...base, reason: 'duplicate-pending' });
+      continue;
+    }
+    if (exit) {
+      if (canEmit('TURTLE_EXIT', pos.ticker, pos.id)) { markGen('TURTLE_EXIT', pos.ticker, pos.id); generatedCount++; positionDiags.push({ ...base, reason: 'exit-generated' }); }
+      else positionDiags.push({ ...base, reason: 'duplicate-pending' });
+      continue;
+    }
+
+    const pyr = evaluatePyramid(pos, m.price, m.n, settings, {
+      allowFractional: m.allowFractional, dollarPerPoint: m.dollarPerPoint, fxRate: m.fxRate,
+    });
+    if (pyr && pyr.quantity > 0) {
+      if (canEmit('TURTLE_PYRAMID', pos.ticker, pos.id)) { markGen('TURTLE_PYRAMID', pos.ticker, pos.id); generatedCount++; positionDiags.push({ ...base, reason: 'pyramid-generated' }); }
+      else positionDiags.push({ ...base, reason: 'duplicate-pending' });
+    } else {
+      positionDiags.push({ ...base, reason: 'no-trigger' });
+    }
+  }
+
+  // ── 2. 신규 진입 후보 (배치 예산·리스크 누적 동일) ──
+  let runningOpenRiskKRW = computeTotalOpenRisk(openPositions, settings, resolveFx).riskKRW;
+  let runningBudgetKRW = input.remainingBudgetKRW;
+
+  for (const cand of candidates) {
+    const base = { ticker: cand.ticker, name: cand.name };
+    if (openTickers.has(cand.ticker)) { candidateDiags.push({ ...base, reason: 'already-open' }); continue; }
+    const m = marketByTicker.get(cand.ticker);
+    if (!m) { candidateDiags.push({ ...base, reason: 'no-market' }); continue; }
+    if (!canEmit('TURTLE_ENTRY', cand.ticker)) { candidateDiags.push({ ...base, reason: 'duplicate-pending' }); continue; }
+
+    const decision = evaluateEntry({
+      ticker: cand.ticker, name: cand.name, price: m.price, n: m.n,
+      donchianHigh: m.donchianHigh, settings,
+      openRiskKRW: runningOpenRiskKRW, remainingBudgetKRW: runningBudgetKRW,
+      fxRate: m.fxRate, allowFractional: m.allowFractional, dollarPerPoint: m.dollarPerPoint,
+    });
+
+    if (decision.ok && decision.proposal) {
+      markGen('TURTLE_ENTRY', cand.ticker);
+      generatedCount++;
+      candidateDiags.push({ ...base, reason: 'generated' });
+      runningOpenRiskKRW += decision.proposal.riskKRW;
+      runningBudgetKRW -= decision.proposal.positionValueKRW;
+    } else {
+      candidateDiags.push({ ...base, reason: (decision.reason ?? 'no-breakout') as TurtleEntryDiagReason });
+    }
+  }
+
+  return { positions: positionDiags, candidates: candidateDiags, generatedCount };
 }
 
 function dedupKey(kind: ActionKind, ticker: string, positionId?: string): string {
