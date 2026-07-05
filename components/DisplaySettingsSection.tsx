@@ -146,9 +146,64 @@ const DisplaySettingsSection: React.FC = () => {
           </div>
           <div className="mt-2 text-xs text-gray-500">기간은 1~400일 범위로 자동 보정됩니다.</div>
         </div>
+
+        {/* 신호 표시 (Phase 5 — 신호 다이어트) */}
+        <div className="bg-gray-900 rounded-lg p-4">
+          <div className="min-w-0 mb-1">
+            <span className="text-white font-medium text-sm">신호 표시</span>
+            <p className="text-gray-400 text-xs mt-0.5">
+              참고형 신호(구루 신호·리스크 매트릭스)의 표시 위치와 크기를 조정합니다.
+              <br />
+              ※ 실제 실행할 주문은 <span className="text-gray-300">실행 큐</span>가 기준이며, 아래 설정은 표시 방식만 바꿉니다(신호 계산·발화 무관).
+            </p>
+          </div>
+
+          <SignalToggleRow
+            title="구루 신호를 대시보드 상단에 크게 표시"
+            desc="끄면 대시보드 하단 '참고 지표' 접힘 섹션으로 이동합니다 (기본값)."
+            checked={ui.signalDisplay.showGuruSignalsProminently}
+            onChange={(v) => actions.setSignalDisplay({ showGuruSignalsProminently: v })}
+          />
+          <SignalToggleRow
+            title="리스크 매트릭스를 알림 브리핑에서 항상 펼쳐 표시"
+            desc="끄면 알림 브리핑 팝업에서 접힌 상태로 표시되며, 클릭하면 펼쳐집니다 (기본값)."
+            checked={ui.signalDisplay.showRiskMatrixExpanded}
+            onChange={(v) => actions.setSignalDisplay({ showRiskMatrixExpanded: v })}
+          />
+        </div>
       </div>
     </div>
   );
 };
+
+// 신호 표시 토글 행 (렌더 전용)
+const SignalToggleRow: React.FC<{
+  title: string;
+  desc: string;
+  checked: boolean;
+  onChange: (v: boolean) => void;
+}> = ({ title, desc, checked, onChange }) => (
+  <div className="flex items-start justify-between gap-4 mt-3 first:mt-2">
+    <div className="min-w-0">
+      <span className="text-gray-200 text-sm">{title}</span>
+      <p className="text-gray-500 text-xs mt-0.5">{desc}</p>
+    </div>
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      onClick={() => onChange(!checked)}
+      className={`relative shrink-0 w-11 h-6 rounded-full transition-colors ${
+        checked ? 'bg-primary' : 'bg-gray-600'
+      }`}
+    >
+      <span
+        className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform ${
+          checked ? 'translate-x-5' : ''
+        }`}
+      />
+    </button>
+  </div>
+);
 
 export default DisplaySettingsSection;

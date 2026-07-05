@@ -30,8 +30,12 @@ interface AlertPopupProps {
   riskMatrix: RiskMatrixRow[];
   /** fail-safe(매도 data-gap) — 데이터 누락으로 평가 불가였던 매도 규칙·종목. 발화 아님(주의 노출용) */
   sellDataGaps: AlertDataGap[];
+  /** 리스크 매트릭스 배너를 기본 펼침으로 표시할지 (Phase 5, 설정 토글). false면 접힘 — 클릭 시 펼침 */
+  showRiskMatrixExpanded: boolean;
   onClose: () => void;
   onAssetClick: (assetId: string, source?: 'portfolio' | 'watchlist') => void;
+  /** 실행 큐 탭으로 이동 (Phase 5 — 행동 신호의 단일 소스) */
+  onOpenExecution: () => void;
 }
 
 const RISK_TIER_STYLES = {
@@ -73,8 +77,10 @@ const pctColor = (v: number | undefined): string => {
   return 'text-gray-400';
 };
 
-const AlertPopup: React.FC<AlertPopupProps> = ({ results, riskMatrix, sellDataGaps, onClose, onAssetClick }) => {
+const AlertPopup: React.FC<AlertPopupProps> = ({ results, riskMatrix, sellDataGaps, showRiskMatrixExpanded, onClose, onAssetClick, onOpenExecution }) => {
   const [isMinimized, setIsMinimized] = useState(false);
+  // 리스크 매트릭스 배너 펼침 상태 — 기본값은 설정(showRiskMatrixExpanded) 따름 (Phase 5, 표시 전용)
+  const [riskExpanded, setRiskExpanded] = useState(showRiskMatrixExpanded);
 
   const today = new Date().toLocaleDateString('ko-KR', {
     year: 'numeric', month: 'long', day: 'numeric', weekday: 'short'
@@ -304,20 +310,53 @@ const AlertPopup: React.FC<AlertPopupProps> = ({ results, riskMatrix, sellDataGa
           <div className="px-4 py-3 overflow-y-auto space-y-4 flex-1 min-h-0">
             {(hasResults || hasDataGaps) ? (
               <>
-                {/* 종합 리스크 매트릭스 — 클라이맥스 + 디스트리뷰션 합성 (예측 아닌 과열 경고) */}
+                {/* 참고 지표 안내 — 실행할 주문의 단일 소스는 실행 큐 (Phase 5) */}
+                <div className="bg-gray-800/60 border border-gray-700/60 rounded-lg p-2.5">
+                  <p className="text-[11px] text-gray-400 leading-snug">
+                    <span className="text-gray-300 font-medium">이 브리핑은 참고 지표입니다.</span> 실제 실행할 주문(진입·손절·청산·리밸런싱·정리)은{' '}
+                    <span className="text-gray-300">실행 큐</span>가 단일 기준입니다.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={onOpenExecution}
+                    className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded bg-primary/90 hover:bg-primary text-white transition-colors"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                    </svg>
+                    실행 큐 열기
+                  </button>
+                </div>
+
+                {/* 종합 리스크 매트릭스 — 클라이맥스 + 디스트리뷰션 합성 (예측 아닌 과열 경고). Phase 5: 기본 접힘 */}
                 {riskTieredCount > 0 && (
                   <div>
                     <h3 className="text-xs font-semibold text-amber-300 mb-2 flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => setRiskExpanded(v => !v)}
+                        className="flex items-center gap-1 hover:text-amber-200 transition-colors"
+                        aria-expanded={riskExpanded}
+                        title={riskExpanded ? '접기' : '펼치기'}
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className={`h-3 w-3 transition-transform ${riskExpanded ? '' : '-rotate-90'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </button>
                       <Tooltip content={BRIEFING_SECTION_TOOLTIPS.riskWarning} wrap className="cursor-help">
                         <span>⚠️ 과열 리스크 경고</span>
                       </Tooltip>
                       <span className="text-gray-500 font-normal">({riskTieredCount}종목)</span>
-                      <Tooltip content={CLIMAX_SIGNAL_TOOLTIP} position="bottom" wrap className="cursor-help">
-                        <span className="text-[10px] text-gray-500 font-normal underline decoration-dotted underline-offset-2">
-                          클라이맥스란? ⓘ
-                        </span>
-                      </Tooltip>
+                      {riskExpanded && (
+                        <Tooltip content={CLIMAX_SIGNAL_TOOLTIP} position="bottom" wrap className="cursor-help">
+                          <span className="text-[10px] text-gray-500 font-normal underline decoration-dotted underline-offset-2">
+                            클라이맥스란? ⓘ
+                          </span>
+                        </Tooltip>
+                      )}
                     </h3>
+                    {riskExpanded && (
+                    <>
                     <div className="space-y-2">
                       {(['red', 'amber', 'blue'] as const).map(tier => {
                         const rows = tieredRows[tier];
@@ -359,6 +398,8 @@ const AlertPopup: React.FC<AlertPopupProps> = ({ results, riskMatrix, sellDataGa
                       })}
                     </div>
                     <p className="text-gray-500 text-[10px] mt-1.5 italic">참고용 경고이며 투자자문이 아닙니다. 예측이 아닌 과열 리스크 경고입니다.</p>
+                    </>
+                    )}
                   </div>
                 )}
 

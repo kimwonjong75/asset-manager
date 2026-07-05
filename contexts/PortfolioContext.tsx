@@ -30,9 +30,11 @@ import {
   DEFAULT_COLUMN_CONFIG,
   DEFAULT_FIXED_COLUMN_WIDTHS,
   MIN_COLUMN_WIDTH,
+  DEFAULT_SIGNAL_DISPLAY,
   type ColumnConfig,
   type ColumnKey,
   type FixedColumnWidths,
+  type SignalDisplaySettings,
 } from '../types/ui';
 import { DEFAULT_MA_CONFIGS, clampMAPeriod, type MALineConfig } from '../utils/maCalculations';
 import { buildCleanupCommit } from '../utils/cleanupPlan';
@@ -252,6 +254,35 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     const v = Math.max(0, Math.floor(n) || 0);
     setLowValueThresholdState(v);
     try { localStorage.setItem('asset-manager-low-value-threshold', String(v)); } catch { /* ignore */ }
+  };
+
+  // 신호 표시 설정 (Phase 5 — 신호 다이어트). 표시 위치/크기만 제어, localStorage 영속.
+  // 파싱 실패·부분 저장본은 DEFAULT_SIGNAL_DISPLAY로 폴백/병합(신규 필드 누락 방지).
+  const [signalDisplay, setSignalDisplayState] = useState<SignalDisplaySettings>(() => {
+    try {
+      const stored = localStorage.getItem('asset-manager-signal-display-v1');
+      if (stored) {
+        const parsed = JSON.parse(stored) as Partial<SignalDisplaySettings>;
+        return {
+          showGuruSignalsProminently:
+            typeof parsed.showGuruSignalsProminently === 'boolean'
+              ? parsed.showGuruSignalsProminently
+              : DEFAULT_SIGNAL_DISPLAY.showGuruSignalsProminently,
+          showRiskMatrixExpanded:
+            typeof parsed.showRiskMatrixExpanded === 'boolean'
+              ? parsed.showRiskMatrixExpanded
+              : DEFAULT_SIGNAL_DISPLAY.showRiskMatrixExpanded,
+        };
+      }
+    } catch { /* ignore */ }
+    return { ...DEFAULT_SIGNAL_DISPLAY };
+  });
+  const handleSetSignalDisplay = (patch: Partial<SignalDisplaySettings>) => {
+    setSignalDisplayState(prev => {
+      const next = { ...prev, ...patch };
+      try { localStorage.setItem('asset-manager-signal-display-v1', JSON.stringify(next)); } catch { /* ignore */ }
+      return next;
+    });
   };
 
   // 포트폴리오 테이블 컬럼 설정 — localStorage 영속 + 스키마 마이그레이션
@@ -525,6 +556,7 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       columnConfig,
       fixedColumnWidths,
       chartMAConfigs,
+      signalDisplay,
     },
     modal: {
       editingAsset,
@@ -635,6 +667,7 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       setFixedColumnWidth: handleSetFixedColumnWidth,
       setChartMAConfigs: handleSetChartMAConfigs,
       resetChartMAConfigs: handleResetChartMAConfigs,
+      setSignalDisplay: handleSetSignalDisplay,
       updateAllocationTargets: (targets: AllocationTargets) => {
         setAllocationTargets(targets);
         triggerAutoSave(assets, portfolioHistory, sellHistory, watchlist, exchangeRates, targets);

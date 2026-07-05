@@ -8,7 +8,7 @@ import type { KnowledgeBase, RuleStatusDescriptor } from './knowledge';
 import type { GuruSignalMatch, GuruSignalChartTarget, GuruSignalTarget } from '../utils/guruSignalEngine';
 import type { PopupDeliveryDiagnosis } from './alertDiagnostics';
 import type { GoldPremiumResult } from '../services/goldPremiumService';
-import type { ColumnConfig, ColumnKey, FixedColumnWidths, EnrichedAsset } from './ui';
+import type { ColumnConfig, ColumnKey, FixedColumnWidths, EnrichedAsset, SignalDisplaySettings } from './ui';
 import type { MALineConfig } from '../utils/maCalculations';
 import type { ActionItem } from './actionQueue';
 import type { TurtlePosition, TurtleSettings } from './turtle';
@@ -78,6 +78,8 @@ export interface UIState {
   fixedColumnWidths: FixedColumnWidths;
   /** 개별 차트 이동평균선 6슬롯 설정 (기간/색/표시여부) — 차트 표시 전용, 알림/스마트필터 MA와 무관 */
   chartMAConfigs: MALineConfig[];
+  /** 신호 표시 설정 (Phase 5 — 신호 다이어트). 참고형 신호의 표시 위치·크기만 제어, 계산/발화 무관 */
+  signalDisplay: SignalDisplaySettings;
 }
 
 export interface ModalState {
@@ -202,6 +204,8 @@ export interface PortfolioActions {
   setChartMAConfigs: (configs: MALineConfig[]) => void;
   /** 차트 MA 슬롯 설정을 DEFAULT_MA_CONFIGS로 초기화 */
   resetChartMAConfigs: () => void;
+  /** 신호 표시 설정 부분 갱신 (Phase 5). 지정 필드만 병합 후 localStorage 영속 — 표시 계층만 */
+  setSignalDisplay: (patch: Partial<SignalDisplaySettings>) => void;
   updateAllocationTargets: (targets: AllocationTargets) => void;
   openEditModal: (asset: Asset) => void;
   closeEditModal: () => void;

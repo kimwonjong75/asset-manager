@@ -17,6 +17,7 @@ import GoldPremiumWidget from '../GoldPremiumWidget';
 import MarketDistributionBanner from '../MarketDistributionBanner';
 import RiskCalculatorCard from '../dashboard/RiskCalculatorCard';
 import GuruSignalCard from '../dashboard/GuruSignalCard';
+import ReferenceIndicatorsSection from '../dashboard/ReferenceIndicatorsSection';
 
 const DashboardView: React.FC = () => {
   const { data, ui, actions, status, derived } = usePortfolio();
@@ -107,9 +108,9 @@ const DashboardView: React.FC = () => {
 
       <GoldPremiumWidget />
 
-      {/* 리스크 계산기(평소 접힘) + 구루 신호 엔진(풀폭: 좌 신호 리스트 / 우 차트) */}
+      {/* 리스크 계산기(평소 접힘). 구루 신호는 설정에 따라 상단 강조 or 하단 참고 섹션(Phase 5). */}
       <RiskCalculatorCard />
-      <GuruSignalCard />
+      {ui.signalDisplay.showGuruSignalsProminently && <GuruSignalCard />}
 
       <SoldAssetsStats stats={soldAssetsStats} globalPeriod={ui.globalPeriod} onPeriodChange={actions.setGlobalPeriod} />
 
@@ -129,8 +130,11 @@ const DashboardView: React.FC = () => {
       </div>
       
       <RebalancingTable assets={assets} exchangeRates={exchangeRates} />
-      
+
       <TopBottomAssets assets={assets} exchangeRates={exchangeRates} />
+
+      {/* 참고 지표 (Phase 5 — 신호 다이어트): 리스크 매트릭스 + (강조 아닐 때) 구루 신호 카드 */}
+      <ReferenceIndicatorsSection />
     </div>
   );
 };

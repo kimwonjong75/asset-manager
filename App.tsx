@@ -312,6 +312,7 @@ const AppContent: React.FC = () => {
                 results={derived.alertResults}
                 riskMatrix={derived.riskMatrix}
                 sellDataGaps={derived.sellDataGaps}
+                showRiskMatrixExpanded={ui.signalDisplay.showRiskMatrixExpanded}
                 onClose={actions.dismissAlertPopup}
                 onAssetClick={(assetId, source) => {
                   if (source === 'watchlist') {
@@ -321,6 +322,10 @@ const AppContent: React.FC = () => {
                     actions.setActiveTab('portfolio');
                     actions.setFocusedAssetId(assetId);
                   }
+                }}
+                onOpenExecution={() => {
+                  actions.setActiveTab('execution');
+                  actions.dismissAlertPopup();
                 }}
               />
             )}

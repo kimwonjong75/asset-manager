@@ -81,6 +81,24 @@ export const DEFAULT_FIXED_COLUMN_WIDTHS: FixedColumnWidths = {};
 // 컬럼 너비 최소값 (80px 미만 시 헤더 텍스트가 SortIcon과 함께 줄바꿈됨)
 export const MIN_COLUMN_WIDTH = 80;
 
+// ---------------------------------------------------------------------------
+// 신호 표시 설정 (90/10 Phase 5 — 신호 다이어트)
+// ---------------------------------------------------------------------------
+// 참고형 신호(구루 신호 카드 / 리스크 매트릭스)의 "표시 위치·크기"만 제어하는
+// 순수 표시 설정. 계산·발화·저장 로직과 무관하며, localStorage에만 영속된다.
+// 기본값 = 강등(참고 지표) 상태. 토글을 켜면 이전(Phase 5 이전) 배치로 원복된다.
+export interface SignalDisplaySettings {
+  /** 구루 신호 카드를 대시보드 상단에 큰 카드로 표시 (기본 false=하단 '참고 지표' 접힘 섹션으로 강등) */
+  showGuruSignalsProminently: boolean;
+  /** 리스크 매트릭스를 알림 브리핑 팝업에서 항상 펼쳐 표시 (기본 false=접힘, 클릭 시 펼침) */
+  showRiskMatrixExpanded: boolean;
+}
+
+export const DEFAULT_SIGNAL_DISPLAY: SignalDisplaySettings = {
+  showGuruSignalsProminently: false,
+  showRiskMatrixExpanded: false,
+};
+
 // 기존 더보기 ON 상태와 동일한 순서/표시 — 마이그레이션 기본값
 export const DEFAULT_COLUMN_CONFIG: ColumnConfig[] = [
   { key: 'maCrossDays',      visible: true  },

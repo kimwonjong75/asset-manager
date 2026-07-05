@@ -32,6 +32,7 @@
     "test:rebalance": "npx --yes tsx tests/rebalanceBandsParity.ts",
     "test:alloc": "npx --yes tsx tests/allocationTargetsParity.ts",
     "test:rebalaction": "npx --yes tsx tests/rebalanceActionsParity.ts",
+    "test:persist": "npx --yes tsx tests/persistenceRoundTripParity.ts",
     "test:kb": "npx --yes tsx tests/knowledgeBaseIntegrity.ts"
   },
   "dependencies": {
