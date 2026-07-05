@@ -181,8 +181,22 @@ const SKIP_LABEL: Record<Exclude<RebalanceGenReason, 'generated-buy' | 'generate
   'duplicate': '이미 대기 중 주문 있음',
 };
 
-const GenResult: React.FC<{ result: { generated: number; diagnostics: RebalanceGenDiag[] } }> = ({ result }) => {
+export interface GenResultData {
+  generated: number;
+  diagnostics: RebalanceGenDiag[];
+  bandCount: number;          // 밴드 이탈 카테고리 수 (0=전부 밴드 안)
+  targetsConfigured: boolean; // 목표 총액·CORE% 설정 여부
+}
+
+/** 0건 사유 분기(4b-3c): 미설정 → 안내 / 전부 밴드 안 → "(정상)" / 이탈했으나 스킵 → 사유 목록 */
+export const GenResult: React.FC<{ result: GenResultData }> = ({ result }) => {
   const skips = result.diagnostics.filter(d => d.reason !== 'generated-buy' && d.reason !== 'generated-sell');
+  const zeroReason = result.generated > 0 ? null
+    : !result.targetsConfigured
+      ? '목표 총 자산 또는 코어 목표비중(CORE%)이 설정되지 않아 판정할 수 없습니다 — 위에서 설정 후 저장하세요.'
+      : result.bandCount === 0
+        ? '코어 카테고리가 모두 ±5%p 밴드 안입니다 — 지금 조정할 것이 없습니다 (정상).'
+        : '밴드 이탈 카테고리가 있으나 아래 사유로 모두 생성되지 않았습니다.';
   return (
     <div className="mt-3 rounded-md border border-gray-700 bg-gray-800/60 p-3 text-xs">
       <p className="text-gray-200 font-medium">
@@ -190,6 +204,7 @@ const GenResult: React.FC<{ result: { generated: number; diagnostics: RebalanceG
           ? `리밸런싱 주문 ${result.generated}건 생성 — 실행 큐에서 확인하세요.`
           : '생성된 리밸런싱 주문이 없습니다.'}
       </p>
+      {zeroReason && <p className="text-gray-400 mt-1">{zeroReason}</p>}
       {result.generated > 0 && (
         <p className="text-[11px] text-amber-300 mt-1">
           ※ 자동 매매 연결은 다음 단계입니다. 실행 큐의 리밸런싱 카드는 증권사에서 직접 실행 후 완료 표시(현재 자동 체결 아님).
@@ -240,7 +255,7 @@ const RebalancingTable: React.FC<RebalancingTableProps> = ({ assets, exchangeRat
 
   // 리밸런싱 주문 생성 (Phase 4b-3b) — 저장본 기준, 명시적 버튼. useActionQueue는 별도 인스턴스(context 공유)
   const { refreshRebalanceActions, isGeneratingRebalance } = useActionQueue();
-  const [genResult, setGenResult] = useState<{ generated: number; diagnostics: RebalanceGenDiag[] } | null>(null);
+  const [genResult, setGenResult] = useState<GenResultData | null>(null);
   const handleGenerate = async () => {
     if (hasUnsavedChanges || isGeneratingRebalance) return;
     setGenResult(await refreshRebalanceActions());
@@ -370,6 +385,13 @@ const RebalancingTable: React.FC<RebalancingTableProps> = ({ assets, exchangeRat
             </button>
             {hasUnsavedChanges && <span className="text-xs text-amber-300">저장 후 생성 — 미저장 변경이 있습니다.</span>}
           </div>
+
+          {/* 생성 대상 범위 안내 (4b-3c — 항상 표시) */}
+          <p className="mt-2 text-[11px] text-gray-500">
+            리밸런싱 주문은 <span className="text-gray-400">② 코어 카테고리의 ±5%p 밴드 이탈만</span> 대상입니다.
+            <span className="text-gray-400"> ① 전략 배분(코어/투더문) 이탈은 현재 주문 생성 대상이 아닙니다.</span>
+            {' '}코어 카테고리가 모두 밴드 안이면 주문이 없는 것이 정상입니다.
+          </p>
 
           {genResult && <GenResult result={genResult} />}
         </section>

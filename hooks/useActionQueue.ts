@@ -37,7 +37,7 @@ import {
 import { resolveTurtleUpdate, completeQueueItem, TurtleFill } from '../utils/turtleExecution';
 import { computeCoreBands } from '../utils/rebalanceBands';
 import { buildRebalanceActions, instrumentKey, RebalanceGenDiag } from '../utils/rebalanceActions';
-import { fetchBatchAssetPrices } from '../services/priceService';
+import { fetchBatchAssetPrices, fetchAssetData } from '../services/priceService';
 import { fetchUpbitPrice } from '../services/upbitService';
 import { ActionItem, RefreshDiagnostics, TurtleActionDiagnostics } from '../types/actionQueue';
 import { Currency, NewAssetForm, RebalanceInstrument, normalizeExchange } from '../types';
@@ -288,12 +288,15 @@ export function useActionQueue() {
    * 현재가 fetch(services) → `marketByInstrument` 주입 → `buildRebalanceActions` → **`updateActionQueue` append**
    * (reconcileActionQueue 안 씀=터틀 스누즈 부활 방지, commitPortfolioPatch 안 씀=actionQueue만 변경).
    * 자동 실행 없음(실행 연결은 4c). generated=0이어도 diagnostics 반환.
+   * 반환 컨텍스트(4b-3c): bandCount=밴드 이탈 수(0=전부 밴드 안), targetsConfigured=목표 총액·CORE% 설정 여부
+   *   — 0건일 때 "왜 없는지"(미설정 vs 밴드 안 vs 스킵)를 UI가 구분 표시.
    */
-  const refreshRebalanceActions = useCallback(async (): Promise<{ generated: number; diagnostics: RebalanceGenDiag[] }> => {
+  const refreshRebalanceActions = useCallback(async (): Promise<{ generated: number; diagnostics: RebalanceGenDiag[]; bandCount: number; targetsConfigured: boolean }> => {
     setIsGeneratingRebalance(true);
+    const at = allocationTargets;
+    const targetsConfigured = (at.targetTotalAmount ?? 0) > 0 && (at.bucketWeights?.CORE ?? 0) > 0;
     try {
       const today = todayISO();
-      const at = allocationTargets;
       const bands = computeCoreBands({
         assets, rates: exchangeRates, categories: categoryStore.categories,
         weights: at.weights ?? {}, bucketWeights: at.bucketWeights ?? {}, targetTotalAmount: at.targetTotalAmount ?? 0,
@@ -342,14 +345,80 @@ export function useActionQueue() {
       if (result.actions.length > 0) {
         updateActionQueue([...actionQueue, ...result.actions]); // append (dedup은 생성기가 categoryId로 완료)
       }
-      return { generated: result.actions.length, diagnostics: result.diagnostics };
+      return { generated: result.actions.length, diagnostics: result.diagnostics, bandCount: bands.length, targetsConfigured };
     } catch (e) {
       log.error('리밸런싱 주문 생성 실패:', e);
-      return { generated: 0, diagnostics: [] };
+      return { generated: 0, diagnostics: [], bandCount: 0, targetsConfigured };
     } finally {
       setIsGeneratingRebalance(false);
     }
   }, [assets, exchangeRates, categoryStore, allocationTargets, actionQueue, updateActionQueue]);
 
-  return { actionQueue, refreshActionQueue, refreshRebalanceActions, markDone, markSkipped, snoozeAction, executeTurtleAction, executeCleanupAction, isRefreshing, isGeneratingRebalance, refreshError };
+  /**
+   * 리밸런싱 주문 실행 (Phase 4c-1) — RebalanceExecuteModal(4c-2)이 실제 체결값(fill)으로 호출.
+   * kind·assetId로 분기:
+   *   · REBALANCE_SELL(assetId 필수) → `confirmSell`(부분매도, **보유수량 초과 차단**) + linkedSellRecordId.
+   *   · REBALANCE_BUY + assetId(보유 코어) → `confirmBuyMore`(추가매수).
+   *   · REBALANCE_BUY + assetId 없음(미보유) → **저장본 매핑 재조회**(exchange/currency 확보, currency 없으면 fetch→그래도 없으면 차단)
+   *     → `addAsset`(bucket CORE). 임의 기본값 금지.
+   * 저장 성공 시에만 `completeQueueItem` + 단일 `commitPortfolioPatch`. 실패/취소 pending. 포지션 무접촉.
+   */
+  const executeRebalanceAction = useCallback(async (action: ActionItem, fill: TurtleFill): Promise<{ ok: boolean; reason?: string }> => {
+    const today = todayISO();
+    if (action.kind !== 'REBALANCE_BUY' && action.kind !== 'REBALANCE_SELL') return { ok: false, reason: 'unsupported-kind' };
+    if (!(fill.fillPrice > 0)) return { ok: false, reason: 'invalid-price' };
+    if (!(fill.quantity > 0)) return { ok: false, reason: 'invalid-qty' };
+    try {
+      if (action.kind === 'REBALANCE_SELL') {
+        if (!action.assetId) return { ok: false, reason: 'asset-missing' };
+        const asset = assets.find(a => a.id === action.assetId);
+        if (!asset || !(asset.quantity > 0)) return { ok: false, reason: 'asset-missing' };
+        if (fill.quantity > asset.quantity) return { ok: false, reason: 'over-sell' }; // 과매도 방지
+        const res = await confirmSell(asset.id, fill.fillDate, fill.fillPrice, fill.quantity, asset.currency);
+        if (!res.ok) return res;
+        const queue = completeQueueItem(actionQueue, action.id, { resolvedDate: today, linkedSellRecordId: res.sellRecordId });
+        commitPortfolioPatch({ assets: res.nextAssets, sellHistory: res.nextSellHistory, actionQueue: queue });
+        return { ok: true };
+      }
+
+      // REBALANCE_BUY
+      if (action.assetId) {
+        const asset = assets.find(a => a.id === action.assetId);
+        if (!asset) return { ok: false, reason: 'asset-missing' };
+        const res = await confirmBuyMore(asset.id, fill.fillDate, fill.fillPrice, fill.quantity);
+        if (!res.ok) return res;
+        const queue = completeQueueItem(actionQueue, action.id, { resolvedDate: today });
+        commitPortfolioPatch({ assets: res.nextAssets, actionQueue: queue });
+        return { ok: true };
+      }
+
+      // 미보유 신규 매수 — 저장본 매핑 재조회(ActionItem 스키마 미확장)
+      const categoryId = action.ruleSnapshot.categoryId;
+      const inst = typeof categoryId === 'number' ? allocationTargets.categoryInstruments?.[String(categoryId)] : undefined;
+      if (!inst || !inst.exchange || !Number.isFinite(inst.categoryId)) return { ok: false, reason: 'instrument-missing' };
+      let currency = inst.currency;
+      if (!currency) {
+        try {
+          const d = await fetchAssetData({ ticker: inst.ticker, exchange: inst.exchange });
+          if (d && !d.isMocked && d.currency) currency = d.currency;
+        } catch { /* fetch 실패 → 아래 차단 */ }
+      }
+      if (!currency) return { ok: false, reason: 'no-currency' }; // 임의 기본값 금지
+      const form = {
+        ticker: inst.ticker, exchange: inst.exchange, categoryId: inst.categoryId, currency,
+        quantity: fill.quantity, purchasePrice: fill.fillPrice, purchaseDate: fill.fillDate,
+        bucket: 'CORE' as const, name: inst.name,
+      } as unknown as NewAssetForm & { name?: string };
+      const res = await addAsset(form as unknown as Parameters<typeof addAsset>[0]);
+      if (!res.ok) return res;
+      const queue = completeQueueItem(actionQueue, action.id, { resolvedDate: today });
+      commitPortfolioPatch({ assets: res.nextAssets, actionQueue: queue });
+      return { ok: true };
+    } catch (e) {
+      log.error('리밸런싱 실행 실패:', e);
+      return { ok: false, reason: 'exception' };
+    }
+  }, [assets, allocationTargets, actionQueue, addAsset, confirmBuyMore, confirmSell, commitPortfolioPatch]);
+
+  return { actionQueue, refreshActionQueue, refreshRebalanceActions, markDone, markSkipped, snoozeAction, executeTurtleAction, executeCleanupAction, executeRebalanceAction, isRefreshing, isGeneratingRebalance, refreshError };
 }
