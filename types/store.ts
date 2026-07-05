@@ -10,6 +10,8 @@ import type { PopupDeliveryDiagnosis } from './alertDiagnostics';
 import type { GoldPremiumResult } from '../services/goldPremiumService';
 import type { ColumnConfig, ColumnKey, FixedColumnWidths, EnrichedAsset } from './ui';
 import type { MALineConfig } from '../utils/maCalculations';
+import type { ActionItem } from './actionQueue';
+import type { TurtlePosition, TurtleSettings } from './turtle';
 
 export type PortfolioHistory = PortfolioSnapshot[];
 
@@ -24,6 +26,10 @@ export interface PortfolioData {
   allocationTargets: AllocationTargets;
   categoryStore: CategoryStore;
   knowledgeBase: KnowledgeBase;
+  // 90/10 실행 시스템 (Phase 2)
+  actionQueue: ActionItem[];
+  turtlePositions: TurtlePosition[];
+  turtleSettings: TurtleSettings;
 }
 
 export interface PortfolioStatus {
@@ -39,7 +45,7 @@ export interface PortfolioStatus {
 }
 
 export interface UIState {
-  activeTab: 'dashboard' | 'portfolio' | 'analytics' | 'watchlist' | 'replay' | 'guide' | 'settings';
+  activeTab: 'dashboard' | 'portfolio' | 'analytics' | 'watchlist' | 'replay' | 'execution' | 'guide' | 'settings';
   globalPeriod: GlobalPeriod;
   dashboardFilterCategory: number | 'ALL';
   filterCategory: number | 'ALL';
@@ -202,6 +208,11 @@ export interface PortfolioActions {
 
   // 지식 베이스 (구루 지식 DB) — 상태 갱신 + Drive 자동 저장
   updateKnowledgeBase: (kb: KnowledgeBase) => void;
+
+  // 90/10 실행 시스템 (Phase 2) — 상태 갱신 + Drive 자동 저장
+  updateActionQueue: (queue: ActionItem[]) => void;
+  updateTurtlePositions: (positions: TurtlePosition[]) => void;
+  updateTurtleSettings: (settings: TurtleSettings) => void;
 
   // 금 김치프리미엄
   refreshGoldPremium: () => Promise<void>;

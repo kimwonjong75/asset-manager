@@ -22,6 +22,8 @@ import { useGoldPremium } from '../hooks/useGoldPremium';
 import { CategoryBaseType } from '../types/category';
 import type { CategoryStore } from '../types/category';
 import type { KnowledgeBase } from '../types/knowledge';
+import type { ActionItem } from '../types/actionQueue';
+import type { TurtlePosition, TurtleSettings } from '../types/turtle';
 import { evaluateGuruSignals, buildGuruSignalTargets, buildGuruSignalChartTargets, type GuruSignalMatch, type GuruSignalTarget } from '../utils/guruSignalEngine';
 import { buildGuruSignalCaveats } from '../utils/guruDiagnostics';
 import {
@@ -99,6 +101,9 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     setSellAlertDropRate: setPersistedSellAlertDropRate,
     categoryStore, setCategoryStore,
     knowledgeBase, setKnowledgeBase,
+    actionQueue, setActionQueue,
+    turtlePositions, setTurtlePositions,
+    turtleSettings, setTurtleSettings,
     isSignedIn, googleUser, needsReAuth,
     isInitializing: isAuthInitializing,
     isLoading: isAuthLoading,
@@ -483,6 +488,9 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       allocationTargets,
       categoryStore,
       knowledgeBase,
+      actionQueue,
+      turtlePositions,
+      turtleSettings,
     },
     status: {
       isLoading,
@@ -684,6 +692,20 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       updateKnowledgeBase: (kb: KnowledgeBase) => {
         setKnowledgeBase(kb);
         triggerAutoSave(assets, portfolioHistory, sellHistory, watchlist, exchangeRates, undefined, undefined, undefined, kb);
+      },
+
+      // 90/10 실행 시스템 (Phase 2) — 상태 갱신 후 Drive 자동 저장 (10~12번째 인자)
+      updateActionQueue: (queue: ActionItem[]) => {
+        setActionQueue(queue);
+        triggerAutoSave(assets, portfolioHistory, sellHistory, watchlist, exchangeRates, undefined, undefined, undefined, undefined, queue, turtlePositions, turtleSettings);
+      },
+      updateTurtlePositions: (positions: TurtlePosition[]) => {
+        setTurtlePositions(positions);
+        triggerAutoSave(assets, portfolioHistory, sellHistory, watchlist, exchangeRates, undefined, undefined, undefined, undefined, actionQueue, positions, turtleSettings);
+      },
+      updateTurtleSettings: (settings: TurtleSettings) => {
+        setTurtleSettings(settings);
+        triggerAutoSave(assets, portfolioHistory, sellHistory, watchlist, exchangeRates, undefined, undefined, undefined, undefined, actionQueue, turtlePositions, settings);
       },
       // 금 김치프리미엄
       refreshGoldPremium,

@@ -173,7 +173,36 @@ const base = (over: Partial<Parameters<typeof buildTurtleActions>[0]> = {}) => b
 }
 
 // ════════════════════════════════════════════════════════════════════════════
-// 5. 파생 헬퍼 — daysIgnored / escalation / snooze
+// 5. 통화 규약 관통(D6) — 생성기가 fxRate를 엔진에 넘겨도 ruleSnapshot 손절가는 원통화
+// ════════════════════════════════════════════════════════════════════════════
+{
+  // NVDA $109, N $5, fx 1400 → 손절 $99 (원통화), riskKRW = qty×10×1400
+  const market = new Map([['NVDA', mkMarket({ ticker: 'NVDA', name: '엔비디아', price: 109, n: 5, donchianHigh: 108, fxRate: 1400 })]]);
+  const out = base({ candidates: [{ ticker: 'NVDA', name: '엔비디아' }], marketByTicker: market });
+  check('NVDA 진입 1건', out.length, 1);
+  checkClose('★ ruleSnapshot 손절가 원통화 99 (환율 무관)', out[0].ruleSnapshot.stopPrice, 99);
+  check('ruleSnapshot fxRate 1400', out[0].ruleSnapshot.fxRate, 1400);
+  checkClose('riskKRW = qty×2N×fx', out[0].ruleSnapshot.riskKRW, out[0].quantity * 10 * 1400);
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// 6. 중복 방지 granularity — 같은 티커라도 positionId 다르면 각각 주문
+// ════════════════════════════════════════════════════════════════════════════
+{
+  const m = new Map([['DUP', mkMarket({ ticker: 'DUP', price: 76_000, n: 2000, donchianLow: 1 })]]);
+  const posA1: TurtlePosition = { ...mkPos({ ticker: 'DUP', fillPrice: 80_000, qty: 250, n: 2000, stopPrice: 76_000 }), id: 'pos-A1' };
+  const posA2: TurtlePosition = { ...mkPos({ ticker: 'DUP', fillPrice: 80_000, qty: 100, n: 2000, stopPrice: 76_000 }), id: 'pos-A2' };
+  // pos-A1의 손절만 이미 대기 중
+  const existing: ActionItem[] = [{
+    id: 'e', createdDate: '2026-07-04', kind: 'TURTLE_STOP', ticker: 'DUP', name: 'DUP', positionId: 'pos-A1',
+    quantity: 250, refPrice: 76_000, reasonText: '', ruleSnapshot: {}, status: 'pending',
+  }];
+  const out = base({ positions: [posA1, posA2], marketByTicker: m, existingQueue: existing });
+  check('pos-A1 중복 억제, pos-A2만 신규 STOP', out.map(a => a.positionId), ['pos-A2']);
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// 7. 파생 헬퍼 — daysIgnored / escalation / snooze
 // ════════════════════════════════════════════════════════════════════════════
 {
   const item = (over: Partial<ActionItem>): ActionItem => ({

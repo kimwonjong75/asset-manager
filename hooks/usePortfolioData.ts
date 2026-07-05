@@ -10,6 +10,9 @@ import { saveLastKnownRates } from '../utils/exchangeRateCache';
 import type { KnowledgeBase } from '../types/knowledge';
 import { SEED_KNOWLEDGE_BASE } from '../constants/knowledgeBase';
 import { mergeKnowledgeBase } from '../utils/mergeKnowledgeBase';
+import type { ActionItem } from '../types/actionQueue';
+import type { TurtlePosition, TurtleSettings } from '../types/turtle';
+import { DEFAULT_TURTLE_SETTINGS } from '../types/turtle';
 
 const log = createLogger('PortfolioData');
 
@@ -27,6 +30,10 @@ export const usePortfolioData = () => {
   const [sellAlertDropRate, setSellAlertDropRate] = useState<number>(15);
   const [categoryStore, setCategoryStore] = useState<CategoryStore>(DEFAULT_CATEGORY_STORE);
   const [knowledgeBase, setKnowledgeBase] = useState<KnowledgeBase>(SEED_KNOWLEDGE_BASE);
+  // 90/10 실행 큐 + 터틀 (Phase 2b): actionQueue는 배열 그대로 영속(시드/머지 없음)
+  const [actionQueue, setActionQueue] = useState<ActionItem[]>([]);
+  const [turtlePositions, setTurtlePositions] = useState<TurtlePosition[]>([]);
+  const [turtleSettings, setTurtleSettings] = useState<TurtleSettings>({ ...DEFAULT_TURTLE_SETTINGS });
   const [hasAutoUpdated, setHasAutoUpdated] = useState<boolean>(false);
   const [shouldAutoUpdate, setShouldAutoUpdate] = useState<boolean>(false);
   const [lastUpdateDate, setLastUpdateDate] = useState<string | null>(null);
@@ -46,6 +53,12 @@ export const usePortfolioData = () => {
         // 지식 베이스: 앱 시드 ⊕ Drive 저장본 병합 (정의는 시드, 승인/journal은 저장본 보존)
         const mergedKnowledgeBase = mergeKnowledgeBase(SEED_KNOWLEDGE_BASE, loaded.knowledgeBase);
         setKnowledgeBase(mergedKnowledgeBase);
+
+        // 90/10 실행 큐/터틀 로드 (배열은 그대로, 설정은 기본값 폴백)
+        setActionQueue(Array.isArray(loaded.actionQueue) ? loaded.actionQueue : []);
+        setTurtlePositions(Array.isArray(loaded.turtlePositions) ? loaded.turtlePositions : []);
+        // 신규 설정 필드가 추가돼도 오래된 Drive 데이터에서 누락되지 않도록 기본값과 merge
+        setTurtleSettings({ ...DEFAULT_TURTLE_SETTINGS, ...loaded.turtleSettings });
         const loadedCategoryStore: CategoryStore = (data as any).categoryStore?.categories?.length
           ? (data as any).categoryStore as CategoryStore
           : DEFAULT_CATEGORY_STORE;
@@ -75,7 +88,7 @@ export const usePortfolioData = () => {
                   const allocData = loaded.allocationTargets && 'weights' in loaded.allocationTargets
                     ? loaded.allocationTargets
                     : { weights: loaded.allocationTargets || {} };
-                  hookAutoSave(driveAssets, backfilledHistory, sellData, watchlistData, rates, allocData as AllocationTargets, loaded.sellAlertDropRate ?? 15, loadedCategoryStore, mergedKnowledgeBase);
+                  hookAutoSave(driveAssets, backfilledHistory, sellData, watchlistData, rates, allocData as AllocationTargets, loaded.sellAlertDropRate ?? 15, loadedCategoryStore, mergedKnowledgeBase, Array.isArray(loaded.actionQueue) ? loaded.actionQueue : [], Array.isArray(loaded.turtlePositions) ? loaded.turtlePositions : [], { ...DEFAULT_TURTLE_SETTINGS, ...loaded.turtleSettings });
                   log.info('백필 완료, 자동 저장됨');
                 }
               })
@@ -186,12 +199,15 @@ export const usePortfolioData = () => {
     newAllocationTargets?: AllocationTargets,
     newSellAlertDropRate?: number,
     newCategoryStore?: CategoryStore,
-    newKnowledgeBase?: KnowledgeBase
+    newKnowledgeBase?: KnowledgeBase,
+    newActionQueue?: ActionItem[],
+    newTurtlePositions?: TurtlePosition[],
+    newTurtleSettings?: TurtleSettings
   ) => {
     if (isSignedIn) {
-      hookAutoSave(newAssets, newHistory, newSells, newWatchlist, newRates, newAllocationTargets || allocationTargets, newSellAlertDropRate ?? sellAlertDropRate, newCategoryStore || categoryStore, newKnowledgeBase || knowledgeBase);
+      hookAutoSave(newAssets, newHistory, newSells, newWatchlist, newRates, newAllocationTargets || allocationTargets, newSellAlertDropRate ?? sellAlertDropRate, newCategoryStore || categoryStore, newKnowledgeBase || knowledgeBase, newActionQueue ?? actionQueue, newTurtlePositions ?? turtlePositions, newTurtleSettings ?? turtleSettings);
     }
-  }, [isSignedIn, hookAutoSave, allocationTargets, sellAlertDropRate, categoryStore, knowledgeBase]);
+  }, [isSignedIn, hookAutoSave, allocationTargets, sellAlertDropRate, categoryStore, knowledgeBase, actionQueue, turtlePositions, turtleSettings]);
 
   const handleSignOut = useCallback(() => {
     hookSignOut();
@@ -203,6 +219,9 @@ export const usePortfolioData = () => {
     setSellAlertDropRate(15);
     setCategoryStore(DEFAULT_CATEGORY_STORE);
     setKnowledgeBase(SEED_KNOWLEDGE_BASE);
+    setActionQueue([]);
+    setTurtlePositions([]);
+    setTurtleSettings({ ...DEFAULT_TURTLE_SETTINGS });
     setHasAutoUpdated(false);
   }, [hookSignOut]);
 
@@ -237,6 +256,9 @@ export const usePortfolioData = () => {
     sellAlertDropRate, setSellAlertDropRate,
     categoryStore, setCategoryStore,
     knowledgeBase, setKnowledgeBase,
+    actionQueue, setActionQueue,
+    turtlePositions, setTurtlePositions,
+    turtleSettings, setTurtleSettings,
     isSignedIn, googleUser,
     isInitializing, needsReAuth,
     isLoading: isInitializing, // Alias for legacy support

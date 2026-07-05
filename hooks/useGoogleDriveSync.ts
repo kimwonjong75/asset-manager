@@ -3,6 +3,8 @@ import { googleDriveService, GoogleUser } from '../services/googleDriveService';
 import { Asset, PortfolioSnapshot, SellRecord, WatchlistItem, ExchangeRates, AllocationTargets } from '../types';
 import type { CategoryStore } from '../types/category';
 import type { KnowledgeBase } from '../types/knowledge';
+import type { ActionItem } from '../types/actionQueue';
+import type { TurtlePosition, TurtleSettings } from '../types/turtle';
 
 interface UseGoogleDriveSyncOptions {
   onError?: (msg: string) => void;
@@ -19,6 +21,9 @@ interface LoadedData {
   sellAlertDropRate?: number;
   categoryStore?: CategoryStore;
   knowledgeBase?: KnowledgeBase;
+  actionQueue?: ActionItem[];
+  turtlePositions?: TurtlePosition[];
+  turtleSettings?: TurtleSettings;
 }
 
 export function useGoogleDriveSync(options: UseGoogleDriveSyncOptions = {}) {
@@ -113,6 +118,9 @@ export function useGoogleDriveSync(options: UseGoogleDriveSyncOptions = {}) {
     const sellAlertDropRate = typeof data.sellAlertDropRate === 'number' ? data.sellAlertDropRate : undefined;
     const categoryStore = data.categoryStore as CategoryStore | undefined;
     const knowledgeBase = data.knowledgeBase as KnowledgeBase | undefined;
+    const actionQueue = Array.isArray(data.actionQueue) ? data.actionQueue as ActionItem[] : undefined;
+    const turtlePositions = Array.isArray(data.turtlePositions) ? data.turtlePositions as TurtlePosition[] : undefined;
+    const turtleSettings = data.turtleSettings as TurtleSettings | undefined;
 
     // 테이블 레이아웃 복원 — UI 환경설정이므로 localStorage 경유
     // PortfolioContext에서 'table-layout-restored' / 'column-config-restored' 이벤트로 state 동기화
@@ -136,10 +144,10 @@ export function useGoogleDriveSync(options: UseGoogleDriveSyncOptions = {}) {
     }
 
     optionsRef.current.onSuccessMessage?.('Google Drive에서 포트폴리오를 불러왔습니다.');
-    return { assets, portfolioHistory, sellHistory, watchlist, exchangeRates, allocationTargets, sellAlertDropRate, categoryStore, knowledgeBase };
+    return { assets, portfolioHistory, sellHistory, watchlist, exchangeRates, allocationTargets, sellAlertDropRate, categoryStore, knowledgeBase, actionQueue, turtlePositions, turtleSettings };
   }, []);
 
-  const autoSave = useCallback(async (assetsToSave: Asset[], history: PortfolioSnapshot[], sells: SellRecord[], watchlist: WatchlistItem[], exchangeRates?: ExchangeRates, allocationTargets?: AllocationTargets, sellAlertDropRate?: number, categoryStore?: CategoryStore, knowledgeBase?: KnowledgeBase) => {
+  const autoSave = useCallback(async (assetsToSave: Asset[], history: PortfolioSnapshot[], sells: SellRecord[], watchlist: WatchlistItem[], exchangeRates?: ExchangeRates, allocationTargets?: AllocationTargets, sellAlertDropRate?: number, categoryStore?: CategoryStore, knowledgeBase?: KnowledgeBase, actionQueue?: ActionItem[], turtlePositions?: TurtlePosition[], turtleSettings?: TurtleSettings) => {
     if (!isSignedIn || needsReAuth) {
       if (!isSignedIn) optionsRef.current.onError?.('Google Drive 로그인 후 저장할 수 있습니다.');
       return;
@@ -174,6 +182,9 @@ export function useGoogleDriveSync(options: UseGoogleDriveSyncOptions = {}) {
         sellAlertDropRate,
         categoryStore,
         knowledgeBase,
+        actionQueue,
+        turtlePositions,
+        turtleSettings,
         columnConfig,
         tableLayout,
         lastUpdateDate: new Date().toISOString().slice(0, 10),

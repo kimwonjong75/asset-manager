@@ -67,10 +67,12 @@ export function buildTurtleActions(input: BuildTurtleActionsInput): ActionItem[]
   const openPositions = positions.filter(p => p.status === 'open');
   const openTickers = new Set(openPositions.map(p => p.ticker));
 
-  // 중복 방지: 이미 대기 중(pending/snoozed)인 (kind|ticker)
+  // 중복 방지: 이미 대기 중(pending/snoozed)인 주문.
+  // 포지션 주문(stop/exit/pyramid)은 positionId까지 포함해 같은 티커의 다른 포지션을 구분한다.
+  // 진입 후보는 positionId가 없으므로 (kind|ticker)로 판정.
   const activeKeys = new Set<string>();
   for (const item of existingQueue) {
-    if (isActiveAction(item.status)) activeKeys.add(dedupKey(item.kind, item.ticker));
+    if (isActiveAction(item.status)) activeKeys.add(dedupKey(item.kind, item.ticker, item.positionId));
   }
 
   const resolveFx = (position: TurtlePosition): number => {
@@ -84,12 +86,12 @@ export function buildTurtleActions(input: BuildTurtleActionsInput): ActionItem[]
   let seq = 0;
   const generatedKeys = new Set<string>();
 
-  const canEmit = (kind: ActionKind, ticker: string): boolean => {
-    const key = dedupKey(kind, ticker);
+  const canEmit = (kind: ActionKind, ticker: string, positionId?: string): boolean => {
+    const key = dedupKey(kind, ticker, positionId);
     return !activeKeys.has(key) && !generatedKeys.has(key);
   };
   const push = (item: ActionItem): void => {
-    generatedKeys.add(dedupKey(item.kind, item.ticker));
+    generatedKeys.add(dedupKey(item.kind, item.ticker, item.positionId));
     results.push(item);
   };
 
@@ -101,7 +103,7 @@ export function buildTurtleActions(input: BuildTurtleActionsInput): ActionItem[]
     const stop = evaluateStop(pos, m.price);
     const exit = stop ? null : evaluateExit(pos, m.donchianLow, m.price);
 
-    if (stop && canEmit('TURTLE_STOP', pos.ticker)) {
+    if (stop && canEmit('TURTLE_STOP', pos.ticker, pos.id)) {
       push({
         id: makeId(seq++), createdDate: today, kind: 'TURTLE_STOP',
         ticker: pos.ticker, name: pos.name, positionId: pos.id,
@@ -113,7 +115,7 @@ export function buildTurtleActions(input: BuildTurtleActionsInput): ActionItem[]
       continue; // 손절되면 이 포지션은 청산·피라미딩 평가 안 함
     }
 
-    if (exit && canEmit('TURTLE_EXIT', pos.ticker)) {
+    if (exit && canEmit('TURTLE_EXIT', pos.ticker, pos.id)) {
       push({
         id: makeId(seq++), createdDate: today, kind: 'TURTLE_EXIT',
         ticker: pos.ticker, name: pos.name, positionId: pos.id,
@@ -129,7 +131,7 @@ export function buildTurtleActions(input: BuildTurtleActionsInput): ActionItem[]
     const pyr = evaluatePyramid(pos, m.price, m.n, settings, {
       allowFractional: m.allowFractional, dollarPerPoint: m.dollarPerPoint, fxRate: m.fxRate,
     });
-    if (pyr && pyr.quantity > 0 && canEmit('TURTLE_PYRAMID', pos.ticker)) {
+    if (pyr && pyr.quantity > 0 && canEmit('TURTLE_PYRAMID', pos.ticker, pos.id)) {
       push({
         id: makeId(seq++), createdDate: today, kind: 'TURTLE_PYRAMID',
         ticker: pos.ticker, name: pos.name, positionId: pos.id,
@@ -180,8 +182,8 @@ export function buildTurtleActions(input: BuildTurtleActionsInput): ActionItem[]
   return results;
 }
 
-function dedupKey(kind: ActionKind, ticker: string): string {
-  return `${kind}|${ticker}`;
+function dedupKey(kind: ActionKind, ticker: string, positionId?: string): string {
+  return positionId ? `${kind}|${ticker}|${positionId}` : `${kind}|${ticker}`;
 }
 
 /** reasonText용 숫자 포맷 — 천단위 구분, 소수 2자리까지 (결정적, 로케일 고정). */
@@ -214,6 +216,18 @@ export function actionEscalationLevel(item: ActionItem, today: string): 0 | 1 | 
 export function isSnoozeExpired(item: ActionItem, today: string): boolean {
   if (item.status !== 'snoozed' || !item.snoozedUntil) return false;
   return item.snoozedUntil <= today;
+}
+
+/**
+ * 기존 큐 + 신규 생성분 병합 (순수). 만료된 스누즈는 pending으로 되살리고, 신규 주문을 뒤에 추가한다.
+ * done/skipped 이력은 그대로 보존(감사·기록). buildTurtleActions가 이미 활성 항목과 중복을 배제하므로
+ * revived된 항목과 generated 사이에 중복은 생기지 않는다.
+ */
+export function reconcileActionQueue(existing: ActionItem[], generated: ActionItem[], today: string): ActionItem[] {
+  const revived = existing.map(it =>
+    isSnoozeExpired(it, today) ? { ...it, status: 'pending' as const, snoozedUntil: undefined } : it
+  );
+  return [...revived, ...generated];
 }
 
 /** YYYY-MM-DD 두 날짜 사이 일수 (b - a). UTC 기준 파싱으로 타임존 영향 제거. */

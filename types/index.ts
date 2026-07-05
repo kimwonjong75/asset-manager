@@ -135,6 +135,8 @@ export interface WatchlistItem {
   changeRate?: number;
   yesterdayChange?: number;   // 어제대비 변동률 (%), hooks에서 사전 계산
   indicators?: Indicators;
+  /** 터틀 진입 후보 — true면 실행 큐 생성기가 55일 돌파 매수를 감시 (90/10 Phase 2). 미지정=false */
+  isTurtleCandidate?: boolean;
 }
 
 export interface SellTransaction {
