@@ -209,6 +209,25 @@ export const usePortfolioData = () => {
     }
   }, [isSignedIn, hookAutoSave, allocationTargets, sellAlertDropRate, categoryStore, knowledgeBase, actionQueue, turtlePositions, turtleSettings]);
 
+  // 교차도메인 원자 커밋 — 지정 도메인만 set 하고 **단일 triggerAutoSave**(업데이터 밖·타이밍 의존 없음).
+  // 터틀 실행이 assets+sellHistory+actionQueue+turtlePositions를 한 번에 저장해 stale sibling 경합 제거.
+  const commitPortfolioPatch = useCallback((patch: {
+    assets?: Asset[];
+    sellHistory?: SellRecord[];
+    actionQueue?: ActionItem[];
+    turtlePositions?: TurtlePosition[];
+  }) => {
+    const nextAssets = patch.assets ?? assets;
+    const nextSell = patch.sellHistory ?? sellHistory;
+    const nextQueue = patch.actionQueue ?? actionQueue;
+    const nextPositions = patch.turtlePositions ?? turtlePositions;
+    if (patch.assets) setAssets(patch.assets);
+    if (patch.sellHistory) setSellHistory(patch.sellHistory);
+    if (patch.actionQueue) setActionQueue(patch.actionQueue);
+    if (patch.turtlePositions) setTurtlePositions(patch.turtlePositions);
+    triggerAutoSave(nextAssets, portfolioHistory, nextSell, watchlist, exchangeRates, undefined, undefined, undefined, undefined, nextQueue, nextPositions, turtleSettings);
+  }, [assets, sellHistory, actionQueue, turtlePositions, portfolioHistory, watchlist, exchangeRates, turtleSettings, triggerAutoSave]);
+
   const handleSignOut = useCallback(() => {
     hookSignOut();
     setAssets([]);
@@ -273,6 +292,7 @@ export const usePortfolioData = () => {
     handleSignOut,
     loadFromGoogleDrive,
     triggerAutoSave,
+    commitPortfolioPatch,
     updateAllData, // 전체 데이터 교체용
     mapToNewAssetStructure // 외부에서 필요할 경우
   };

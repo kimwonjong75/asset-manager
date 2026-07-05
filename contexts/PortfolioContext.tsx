@@ -114,6 +114,7 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     handleSignIn,
     handleSignOut,
     triggerAutoSave,
+    commitPortfolioPatch,
     updateAllData,
   } = usePortfolioData();
 
@@ -199,6 +200,7 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     exchangeRates,
     isSignedIn,
     triggerAutoSave,
+    commitPortfolioPatch,
     setError,
     setSuccessMessage,
   });
@@ -581,12 +583,12 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         // [수정] Context의 인터페이스와 useAssetActions 구현체의 파라미터 순서 불일치 해결
         // Context: (id, sellDate, sellPrice, sellQuantity, currency)
         // Hook: (assetId, sellQuantity, sellPrice, sellDate, settlementCurrency)
-        await handleConfirmSell(id, sellQuantity, sellPrice, sellDate, currency);
+        return await handleConfirmSell(id, sellQuantity, sellPrice, sellDate, currency);
       },
       editSellRecord: handleEditSellRecord,
       deleteSellRecord: handleDeleteSellRecord,
       confirmBuyMore: async (id: string, buyDate: string, buyPrice: number, buyQuantity: number) => {
-        await handleConfirmBuyMore(id, buyQuantity, buyPrice, buyDate);
+        return await handleConfirmBuyMore(id, buyQuantity, buyPrice, buyDate);
       },
       addSelectedToWatchlist: handleAddAssetsToWatchlist,
       addWatchItem: handleAddWatchItem,
@@ -707,6 +709,7 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         setTurtleSettings(settings);
         triggerAutoSave(assets, portfolioHistory, sellHistory, watchlist, exchangeRates, undefined, undefined, undefined, undefined, actionQueue, turtlePositions, settings);
       },
+      commitPortfolioPatch,
       // 금 김치프리미엄
       refreshGoldPremium,
       // 백업

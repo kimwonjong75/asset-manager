@@ -110,6 +110,12 @@ const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, portfolioAsset
     setExpandedItemId(prev => (prev === itemId ? null : itemId));
   };
 
+  // 터틀 후보 토글 — 시세/카테고리와 독립된 boolean 플래그만 변경 (원본 항목 기준)
+  const toggleTurtle = (id: string) => {
+    const orig = watchlist.find(x => x.id === id);
+    if (orig) actions.updateWatchItem({ ...orig, isTurtleCandidate: !orig.isTurtleCandidate });
+  };
+
   const getExchangeRate = (currency?: Currency): number => {
     if (!currency || currency === Currency.KRW) return 1;
     if (currency === Currency.USD) return exchangeRates.USD || 1;
@@ -265,6 +271,9 @@ const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, portfolioAsset
                                 {portfolioTickers.has(w.ticker.toUpperCase()) && (
                                   <span className="text-[10px] px-1 py-0.5 rounded bg-blue-500/20 text-blue-400 flex-shrink-0" title="보유중">보유</span>
                                 )}
+                                {w.isTurtleCandidate && (
+                                  <span className="text-[10px] px-1 py-0.5 rounded bg-emerald-500/20 text-emerald-300 flex-shrink-0" role="img" aria-label="터틀 후보" title="터틀 후보">🐢</span>
+                                )}
                                 <a
                                   href={`https://www.google.com/search?q=${encodeURIComponent(w.ticker + ' 주가')}`}
                                   target="_blank"
@@ -307,6 +316,7 @@ const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, portfolioAsset
                       {openMenuId === w.id && (
                         <div ref={menuRef} className="absolute right-0 mt-2 w-36 bg-gray-800 border border-gray-700 rounded-md shadow-lg z-30 text-sm">
                           <button onClick={() => { setOpenMenuId(null); onOpenEditModal(w); }} className="block w-full text-left px-3 py-2 hover:bg-gray-700 text-white">수정</button>
+                          <button onClick={() => { setOpenMenuId(null); toggleTurtle(w.id); }} className="block w-full text-left px-3 py-2 text-gray-200 hover:bg-gray-700">{w.isTurtleCandidate ? '🐢 터틀 후보 해제' : '🐢 터틀 후보 지정'}</button>
                           <button onClick={() => { setOpenMenuId(null); handleToggleExpand(w.id); }} className="block w-full text-left px-3 py-2 text-gray-200 hover:bg-gray-700">차트 보기</button>
                           <button onClick={() => { setOpenMenuId(null); setFullscreenItemId(w.id); }} className="block w-full text-left px-3 py-2 text-gray-200 hover:bg-gray-700">차트 확대</button>
                           <button onClick={() => {
@@ -377,6 +387,7 @@ const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, portfolioAsset
             onDelete={onDelete}
             onOpenEditModal={onOpenEditModal}
             onTogglePin={onTogglePin}
+            onToggleTurtle={toggleTurtle}
             onMemoEdit={(item) => setMemoEditItem(item)}
             categories={categories}
             exchangeRates={exchangeRates}

@@ -3,6 +3,9 @@ import { Asset, AssetCategory, BulkUploadResult, Currency, ExchangeRates, NewAss
 import { isBaseType, DEFAULT_CATEGORIES, getCategoryIdByName } from '../types/category';
 import { fetchAssetData as fetchAssetDataNew, fetchExchangeRate, fetchExchangeRateJPY, fetchHistoricalExchangeRate, fetchCurrentExchangeRate } from '../services/priceService';
 import { createLogger } from '../utils/logger';
+import type { AddAssetResult, SellResult, BuyMoreResult } from '../types/assetActionResult';
+import type { PortfolioPatch } from '../types/store';
+import { buildSellMutation, buildBuyMoreMutation } from '../utils/assetMutations';
 
 const log = createLogger('AssetActions');
 
@@ -23,6 +26,7 @@ interface UseAssetActionsProps {
   exchangeRates: ExchangeRates;
   isSignedIn: boolean;
   triggerAutoSave: (assets: Asset[], history: PortfolioSnapshot[], sells: SellRecord[], watchlist: WatchlistItem[], rates: ExchangeRates) => void;
+  commitPortfolioPatch: (patch: PortfolioPatch) => void;
   setError: (msg: string | null) => void;
   setSuccessMessage: (msg: string | null) => void;
 }
@@ -38,6 +42,7 @@ export const useAssetActions = ({
   exchangeRates,
   isSignedIn,
   triggerAutoSave,
+  commitPortfolioPatch,
   setError,
   setSuccessMessage
 }: UseAssetActionsProps) => {
@@ -47,11 +52,11 @@ export const useAssetActions = ({
   const [buyingAsset, setBuyingAsset] = useState<Asset | null>(null);
 
   // 자산 추가 - [수정] name 파라미터 추가
-  const handleAddAsset = useCallback(async (newAssetData: NewAssetForm & { name?: string }) => {
+  const handleAddAsset = useCallback(async (newAssetData: NewAssetForm & { name?: string }): Promise<AddAssetResult> => {
     if (!isSignedIn) {
       setError('Google Drive 로그인 후 자산을 추가할 수 있습니다.');
       setTimeout(() => setError(null), 3000);
-      return;
+      return { ok: false, reason: 'not-signed-in' };
     }
     setIsLoading(true);
     setError(null);
@@ -101,17 +106,16 @@ export const useAssetActions = ({
         bucket: newAssetData.bucket ?? 'CORE', // 전략 버킷 (미지정=코어)
       };
 
-      setAssets(prevAssets => {
-        const newAssets = [...prevAssets, finalNewAsset];
-        triggerAutoSave(newAssets, portfolioHistory, sellHistory, watchlist, exchangeRates);
-        return newAssets;
-      });
+      // 원자 커밋 — assets set + 단일 autosave (미지정 도메인은 현재 상태로 저장)
+      commitPortfolioPatch({ assets: [...assets, finalNewAsset] });
       setSuccessMessage(`${finalNewAsset.name} 자산이 추가되었습니다.`);
       setTimeout(() => setSuccessMessage(null), 3000);
+      return { ok: true, assetId: finalNewAsset.id, asset: finalNewAsset };
     } catch (e) {
       log.error(e);
       setError('자산 정보를 가져오는 데 실패했습니다. 티커, 거래소, 날짜를 확인해주세요.');
       setTimeout(() => setError(null), 3000);
+      return { ok: false, reason: 'fetch-failed' };
     } finally {
       setIsLoading(false);
     }
@@ -224,24 +228,24 @@ export const useAssetActions = ({
     sellPrice: number,
     sellDate: string,
     settlementCurrency?: Currency
-  ) => {
+  ): Promise<SellResult> => {
     if (!isSignedIn) {
       setError('Google Drive 로그인 후 매도를 기록할 수 있습니다.');
       setTimeout(() => setError(null), 3000);
-      return;
+      return { ok: false, reason: 'not-signed-in' };
     }
 
     const asset = assets.find(a => a.id === assetId);
     if (!asset) {
       setError('해당 자산을 찾을 수 없습니다.');
       setTimeout(() => setError(null), 3000);
-      return;
+      return { ok: false, reason: 'asset-not-found' };
     }
 
     if (sellQuantity > asset.quantity) {
       setError('매도 수량이 보유 수량을 초과합니다.');
       setTimeout(() => setError(null), 3000);
-      return;
+      return { ok: false, reason: 'quantity-exceeds' };
     }
 
     setIsLoading(true);
@@ -260,65 +264,29 @@ export const useAssetActions = ({
         }
       }
 
-      const sellPriceSettlement = sellPrice;
-      const sellPriceOriginal = asset.currency !== Currency.KRW && asset.currency === finalSettlementCurrency
-        ? sellPrice
-        : sellPrice / sellExchangeRate;
-
-      const sellTransaction = {
-        id: `${Date.now()}`,
-        sellDate,
-        sellPrice: sellPrice * sellExchangeRate,
-        sellPriceOriginal,
-        sellQuantity,
-        sellExchangeRate,
+      // 다음상태 계산은 공용 순수 helper에 위임(터틀 실행과 동일 로직 공유), 원자 커밋으로 저장
+      const mut = buildSellMutation({
+        asset, assets, sellHistory,
+        sellExchangeRate, sellPrice, sellQuantity, sellDate,
         settlementCurrency: finalSettlementCurrency,
-        sellPriceSettlement,
-      };
-
-      const sellRecord: SellRecord = {
-        ...sellTransaction,
-        assetId: asset.id,
-        ticker: asset.ticker,
-        name: asset.customName?.trim() || asset.name,
-        category: asset.category,
-        categoryId: asset.categoryId,
-        originalPurchasePrice: asset.purchasePrice,
-        originalPurchaseExchangeRate: asset.purchaseExchangeRate,
-        originalCurrency: asset.currency,
-      };
-
-      const newQuantity = asset.quantity - sellQuantity;
-
-      setAssets(prevAssets => {
-        let updated: Asset[];
-        if (newQuantity <= 0) {
-          updated = prevAssets.filter(a => a.id !== assetId);
-        } else {
-          updated = prevAssets.map(a => {
-            if (a.id === assetId) {
-              return {
-                ...a,
-                quantity: newQuantity,
-                sellTransactions: [...(a.sellTransactions || []), sellTransaction],
-              };
-            }
-            return a;
-          });
-        }
-        
-        const newSellHistory = [...sellHistory, sellRecord];
-        setSellHistory(newSellHistory);
-        triggerAutoSave(updated, portfolioHistory, newSellHistory, watchlist, exchangeRates);
-        return updated;
+        transactionId: `${Date.now()}`,
       });
+      commitPortfolioPatch({ assets: mut.nextAssets, sellHistory: mut.nextSellHistory });
 
       setSuccessMessage(`${asset.name} ${sellQuantity}주 매도가 기록되었습니다.`);
       setTimeout(() => setSuccessMessage(null), 3000);
+      return {
+        ok: true,
+        sellRecordId: mut.sellRecord.id,
+        sellRecord: mut.sellRecord,
+        assetClosed: mut.assetClosed,
+        updatedAsset: mut.assetClosed ? undefined : mut.nextAssets.find(a => a.id === asset.id),
+      };
     } catch (e) {
       log.error(e);
       setError('매도 처리 중 오류가 발생했습니다.');
       setTimeout(() => setError(null), 3000);
+      return { ok: false, reason: 'sell-failed' };
     } finally {
       setIsLoading(false);
       setSellingAsset(null);
@@ -476,18 +444,18 @@ export const useAssetActions = ({
     buyQuantity: number,
     buyPrice: number,
     buyDate: string
-  ) => {
+  ): Promise<BuyMoreResult> => {
     if (!isSignedIn) {
       setError('Google Drive 로그인 후 추가매수를 기록할 수 있습니다.');
       setTimeout(() => setError(null), 3000);
-      return;
+      return { ok: false, reason: 'not-signed-in' };
     }
 
     const asset = assets.find(a => a.id === assetId);
     if (!asset) {
       setError('해당 자산을 찾을 수 없습니다.');
       setTimeout(() => setError(null), 3000);
-      return;
+      return { ok: false, reason: 'asset-not-found' };
     }
 
     setIsLoading(true);
@@ -500,48 +468,18 @@ export const useAssetActions = ({
         buyExchangeRate = await fetchHistoricalExchangeRate(buyDate, asset.currency, Currency.KRW);
       }
 
-      const oldQuantity = asset.quantity;
-      const oldPrice = asset.purchasePrice;
-      const newTotalQuantity = oldQuantity + buyQuantity;
-
-      // 가중평균 매수단가 계산
-      const newAvgPrice = (oldQuantity * oldPrice + buyQuantity * buyPrice) / newTotalQuantity;
-
-      // 외화 자산의 경우 가중평균 환율 계산
-      let newExchangeRate = asset.purchaseExchangeRate;
-      if (asset.currency !== Currency.KRW && asset.purchaseExchangeRate) {
-        newExchangeRate = (oldQuantity * asset.purchaseExchangeRate + buyQuantity * buyExchangeRate) / newTotalQuantity;
-      }
-
-      // 메모에 추가매수 이력 기재
-      const d = new Date(buyDate);
-      const dateStr = `${String(d.getFullYear()).slice(2)}.${d.getMonth() + 1}.${d.getDate()}`;
-      const buyMemo = `(${dateStr} ${buyQuantity}주 ${buyPrice.toLocaleString()}${asset.currency !== Currency.KRW ? asset.currency : '원'} 추가매수)`;
-      const newMemo = asset.memo ? `${asset.memo}\n${buyMemo}` : buyMemo;
-
-      setAssets(prevAssets => {
-        const updated = prevAssets.map(a => {
-          if (a.id === assetId) {
-            return {
-              ...a,
-              quantity: newTotalQuantity,
-              purchasePrice: newAvgPrice,
-              purchaseExchangeRate: newExchangeRate,
-              memo: newMemo,
-            };
-          }
-          return a;
-        });
-        triggerAutoSave(updated, portfolioHistory, sellHistory, watchlist, exchangeRates);
-        return updated;
-      });
+      // 다음상태 계산은 공용 순수 helper에 위임(가중평균 단가·환율·메모), 원자 커밋으로 저장
+      const mut = buildBuyMoreMutation({ asset, assets, buyExchangeRate, buyPrice, buyQuantity, buyDate });
+      commitPortfolioPatch({ assets: mut.nextAssets });
 
       setSuccessMessage(`${asset.customName?.trim() || asset.name} ${buyQuantity}주 추가매수가 기록되었습니다.`);
       setTimeout(() => setSuccessMessage(null), 3000);
+      return { ok: true, assetId, updatedAsset: mut.updatedAsset };
     } catch (e) {
       log.error(e);
       setError('추가매수 처리 중 오류가 발생했습니다.');
       setTimeout(() => setError(null), 3000);
+      return { ok: false, reason: 'buy-more-failed' };
     } finally {
       setIsLoading(false);
       setBuyingAsset(null);

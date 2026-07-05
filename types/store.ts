@@ -12,6 +12,7 @@ import type { ColumnConfig, ColumnKey, FixedColumnWidths, EnrichedAsset } from '
 import type { MALineConfig } from '../utils/maCalculations';
 import type { ActionItem } from './actionQueue';
 import type { TurtlePosition, TurtleSettings } from './turtle';
+import type { AddAssetResult, SellResult, BuyMoreResult } from './assetActionResult';
 
 export type PortfolioHistory = PortfolioSnapshot[];
 
@@ -30,6 +31,17 @@ export interface PortfolioData {
   actionQueue: ActionItem[];
   turtlePositions: TurtlePosition[];
   turtleSettings: TurtleSettings;
+}
+
+/**
+ * 교차도메인 원자 커밋용 패치 (Phase 2b-4b-2d) — 지정한 도메인만 갱신하고 **단일 autosave**로 저장.
+ * 터틀 실행이 assets+sellHistory+actionQueue+turtlePositions를 한 번에 커밋해 stale sibling 저장 경합을 제거.
+ */
+export interface PortfolioPatch {
+  assets?: Asset[];
+  sellHistory?: SellRecord[];
+  actionQueue?: ActionItem[];
+  turtlePositions?: TurtlePosition[];
 }
 
 export interface PortfolioStatus {
@@ -129,16 +141,16 @@ export interface PortfolioActions {
   refreshWatchlistPrices: () => Promise<void>;
 
   // 자산
-  addAsset: (asset: Asset) => Promise<void>;
+  addAsset: (asset: Asset) => Promise<AddAssetResult>;
   updateAsset: (asset: Asset) => Promise<void>;
   togglePinAsset: (id: string) => void;
   deleteAsset: (id: string) => void;
-  confirmSell: (id: string, sellDate: string, sellPrice: number, sellQuantity: number, currency: Currency) => Promise<void>;
+  confirmSell: (id: string, sellDate: string, sellPrice: number, sellQuantity: number, currency: Currency) => Promise<SellResult>;
   /** 매도 기록 편집: 입력값은 자산 통화 기준 단가(`sellPriceSettlement`). 날짜 변경 시 환율 재조회 */
   editSellRecord: (recordId: string, patch: { sellDate?: string; sellPriceSettlement?: number; sellQuantity?: number }) => Promise<void>;
   /** 매도 기록 삭제 — `sellHistory` + 자산의 `sellTransactions` 양쪽에서 제거. 보유수량 복구하지 않음 */
   deleteSellRecord: (recordId: string) => void;
-  confirmBuyMore: (id: string, buyDate: string, buyPrice: number, buyQuantity: number) => Promise<void>;
+  confirmBuyMore: (id: string, buyDate: string, buyPrice: number, buyQuantity: number) => Promise<BuyMoreResult>;
   addSelectedToWatchlist: (assets: Asset[]) => void;
 
   // 관심종목
@@ -213,6 +225,8 @@ export interface PortfolioActions {
   updateActionQueue: (queue: ActionItem[]) => void;
   updateTurtlePositions: (positions: TurtlePosition[]) => void;
   updateTurtleSettings: (settings: TurtleSettings) => void;
+  /** 교차도메인 원자 커밋 — 지정 도메인 set + 단일 autosave (터틀 실행의 저장 경합 방지) */
+  commitPortfolioPatch: (patch: PortfolioPatch) => void;
 
   // 금 김치프리미엄
   refreshGoldPremium: () => Promise<void>;

@@ -191,6 +191,47 @@ interface ActionItem {
 - 스킵 필터·System 1(20일)은 **구현하지 않음** (문서 §14 초보 카드: 55일 단독).
 - 앱은 실시간이 아님(앱 열 때/시세 갱신 시 평가) → 주문서의 손절가·청산가를 **증권사 자동감시주문에 등록하는 워크플로를 UI에 명시** (앱 = 계산·감독, 체결 = 증권사 예약주문). 단 스탑 주문은 갭 하락 시 체결가가 손절가보다 나쁠 수 있음(슬리피지) — 리스크 계산은 이를 감안해 보수적(0.5%)으로 시작.
 
+## 5.5 Phase 2b-2 설계 (2026-07-05 조사 결과 — 머니패스 연결 전 확정)
+
+### 조사 결론 (실제 코드 확인)
+세 머니패스 액션 모두 **성공/실패를 반환하지 않고, 생성 id도 반환하지 않는다**:
+- `handleAddAsset(newAssetData)` → `Promise<void>`. 에러 내부 catch(rethrow 없음). `Asset.id = Date.now()` **내부 생성** (호출부 미인지). 입력은 `NewAssetForm`(전체 Asset 아님).
+- `handleConfirmSell(assetId, sellQuantity, sellPrice, sellDate, settlementCurrency?)` → `Promise<void>`. 에러 catch. **인자 순서가 context `confirmSell(id, sellDate, sellPrice, sellQuantity, currency)`와 달라 어댑터가 재배열**. `SellRecord.id = Date.now()` **내부 생성·미반환**. `finally { setSellingAsset(null) }`로 **성공/실패 무관 모달 닫힘**.
+- `handleConfirmBuyMore(assetId, buyQuantity, buyPrice, buyDate)` → `Promise<void>`. 에러 catch. 가중평균 단가 갱신.
+- **모달은 fire-and-forget**: `SellAssetModal`은 `onSell(...)`을 await 안 함 → 모달 내 "성공 시점" 후크가 없음.
+
+### 결론: "저장 성공 콜백"을 만들려면 액션 반환값을 바꿔야 한다
+현재로는 (a) 성공/실패도, (b) 생성 id(assetId/sellRecordId)도 알 수 없음. "최신 SellRecord 찾기"식 추정은 Codex 경고대로 추적이 깨짐 → **금지**.
+
+### 권장 설계 (4b-2c에서 구현, **사용자 승인 필요**)
+1. **세 핸들러를 구조화 결과 반환으로 변경(후방호환)**:
+   - `handleAddAsset → Promise<{ ok: true; assetId: string } | { ok: false }>`
+   - `handleConfirmSell → Promise<{ ok: true; sellRecordId: string; assetClosed: boolean } | { ok: false }>`
+   - `handleConfirmBuyMore → Promise<{ ok: true } | { ok: false }>`
+   - 모든 early-return·catch에서 `{ ok: false }`, 성공 지점에서 `{ ok: true, ...id }`. **기존 호출부는 반환 무시 → 일반 매수/매도 흐름 불변**. context 어댑터 + `store.ts` 반환 타입도 동반 수정.
+2. **모달 turtle-mode 분기(최소)**: prefill에 `turtleActionId`가 있으면 submit에서 **await 결과** 후 `res.ok`일 때만 완료 처리. 일반 모드는 지금처럼 fire-and-forget(불변).
+3. **lifecycle은 실제 저장값 기준**: 사용자가 수량/가격을 바꾸면 그 값으로 `createPositionFromEntry`/`addPyramidUnit`. `ActionItem.refPrice`로 포지션 만들기 **금지**. N·donchianHigh는 `ruleSnapshot`(생성시 원통화)에서, 손절가는 실제 체결가 − stopMultipleN×N로 `recomputeStop`.
+4. **kind별 모달**: ENTRY=`AddNewAssetModal`(bucket=SATELLITE) / PYRAMID=`BuyMoreAssetModal` / STOP·EXIT=`SellAssetModal`.
+5. **linkedSellRecordId**: confirmSell의 새 반환 `sellRecordId`로 정확 연결.
+
+### 4b-2 하위 분할 (승인 대기)
+- **2b-2b**: prefill 타입/상태(ModalState) + done이 kind별 prefilled 모달 열기 + 모달이 prefill로 폼 채움. **저장은 일반 경로(lifecycle 미연결)** — 단, 이 중간상태는 "자산 생성됐으나 포지션 없음"이 될 수 있어 **테스트 전용, 미배포**.
+- **2b-2c**: 위 반환값 변경 + 모달 turtle-mode 분기 + 저장 성공 시에만 `done`+lifecycle+linkedSellRecordId. 취소/실패 시 pending 유지.
+
+### 4b-2c/2d 구현 중 발견한 설계 이슈 2건 (2026-07-05, 승인 필요)
+
+**이슈 A — 3개 기존 모달 개조는 위험/고비용.** `AddNewAssetModal`은 검색 기반이라 prefill이 크고 `onAddAsset`을 `(asset:any)=>void`로 캐스팅해 **반환값을 버림**. 3개 복잡 모달(Add/BuyMore/Sell)에 각각 prefill+turtle-mode submit+결과처리를 넣는 건 머니패스 위험이 큼.
+- **권장: 전용 `TurtleExecuteModal` 신설.** 주문(kind·종목·제안수량·제안가·손절선·N)을 보여주고 사용자가 실제 체결일/가/수량을 확정 → **기존 context 액션(addAsset/confirmBuyMore/confirmSell) 그대로 호출**(로직 중복 없음, 새 반환 `{ok,id}` 사용) → 성공 시 lifecycle+done. **기존 3개 모달 무접촉(일반 흐름 완전 불변).** 오케스트레이션은 훅(useActionQueue 확장)에, 모달은 렌더+입력만.
+
+**이슈 B — 교차도메인 autosave 원자성(데이터 손실 위험).** ⚠️ ENTRY 실행은 `assets`(addAsset)+`turtlePositions`+`actionQueue` **3개 도메인**을 함께 바꾼다. 현재 autosave는 각 setter가 **호출부 클로저의 (stale) 형제 상태**로 `triggerAutoSave`를 부르고 2s 디바운스로 **마지막 호출만 저장**된다. addAsset이 새 asset으로 autosave 예약 후, 별도 position/queue 업데이트가 **stale assets로** autosave하면 → Drive에 **새 asset 누락 + 포지션이 없는 assetId 참조**(orphan) 발생 가능.
+- **⚠️ 더 깊은 순서 문제(2026-07-05 추가 확인)**: 머니 핸들러들은 `triggerAutoSave`를 **`setAssets(prev => {…triggerAutoSave…})` 업데이터 안에서** 호출한다. 업데이터는 React flush 시점(T2)에 실행되는데, `await addAsset()` 직후의 동기 코드(원자 커밋, T1)는 **T2보다 먼저** 실행된다 → 커밋의 autosave(T1) 후 addAsset 업데이터의 autosave(T2)가 **나중에** 발화, **stale positions/queue로 덮어써 Drive에서 포지션·done이 유실**. 즉 "await 후 원자 커밋"만으로는 부족(디바운스 마지막 승자가 stale).
+- **권장 해법(승인 필요)**: **오토세이브 배치 억제 + 지연 재개**.
+  - 머니 핸들러는 Codex 안대로 생성 `Asset`/`SellRecord`(+갱신 asset)를 **반환**만 확장(내부 커밋·autosave·turtle 무결합 유지).
+  - context에 **`commitPortfolioPatch({assets?, sellHistory?, actionQueue?, turtlePositions?})`** — 4도메인 set + **업데이터 밖에서 단일 triggerAutoSave**(전체 next state).
+  - 터틀 실행 훅: **`autoSaveSuspended` 플래그 on** → `await` 머니액션(내부 autosave 억제됨) → 반환값+실제 입력으로 next state 계산 → `commitPortfolioPatch`(단일 저장) → **플래그 off는 flush 이후로 지연**(microtask/`setTimeout 0`)해 T2 업데이터의 autosave도 억제. 플래그는 generic(터틀 미인지).
+  - 대안(근본): 머니 핸들러의 autosave를 **업데이터 밖으로** 이동(직접 set 후 triggerAutoSave) → 순서 결정적. 단 3개 핸들러 동작 변경이라 회귀 위험, 별도 승인.
+- 결정 전까지 **4b-2d 오케스트레이션 구현 보류**. 순수 상태전이(`utils/turtleExecution.ts`)는 완료·테스트됨(교차도메인 저장과 무관).
+
 ## 6. 가드레일 (구현 세션 필수 준수)
 
 1. `CLAUDE.md`/`RULES.md` 전 항목 (any 금지, `authenticatedFetch`, `createLogger`, `categoryId` PRIMARY, `priceOriginal`로 지표 비교, `PortfolioMobileCard` 동시 반영, overflow wrapper 금지).

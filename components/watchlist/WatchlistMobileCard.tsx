@@ -14,6 +14,7 @@ interface WatchlistMobileCardProps {
   onDelete: (id: string) => void;
   onOpenEditModal: (item: WatchlistItem) => void;
   onTogglePin?: (id: string) => void;
+  onToggleTurtle?: (id: string) => void;
   onMemoEdit?: (item: WatchlistItem) => void;
   categories: CategoryDefinition[];
   exchangeRates: ExchangeRates;
@@ -31,6 +32,7 @@ const WatchlistMobileCard: React.FC<WatchlistMobileCardProps> = ({
   onDelete,
   onOpenEditModal,
   onTogglePin,
+  onToggleTurtle,
   onMemoEdit,
   categories,
   exchangeRates,
@@ -73,6 +75,9 @@ const WatchlistMobileCard: React.FC<WatchlistMobileCardProps> = ({
             )}
             {isPortfolioHeld && (
               <span className="text-[10px] px-1 py-0.5 rounded bg-blue-500/20 text-blue-400 flex-shrink-0">보유</span>
+            )}
+            {item.isTurtleCandidate && (
+              <span className="text-[10px] px-1 py-0.5 rounded bg-emerald-500/20 text-emerald-300 flex-shrink-0" role="img" aria-label="터틀 후보" title="터틀 후보">🐢</span>
             )}
             <MemoTooltip memo={item.notes}>
               <span className="font-bold text-primary-light text-sm truncate max-w-[160px]">
@@ -130,6 +135,7 @@ const WatchlistMobileCard: React.FC<WatchlistMobileCardProps> = ({
             onClose={() => setMenuOpen(false)}
             items={[
               { label: '수정', onClick: () => onOpenEditModal(item) },
+              ...(onToggleTurtle ? [{ label: item.isTurtleCandidate ? '🐢 터틀 후보 해제' : '🐢 터틀 후보 지정', onClick: () => onToggleTurtle(item.id), colorClass: 'text-gray-200' }] : []),
               { label: '차트 보기', onClick: () => setExpanded(!expanded), colorClass: 'text-gray-200' },
               { label: '차트 확대', onClick: () => setFullscreen(true), colorClass: 'text-gray-200' },
               { label: '삭제', onClick: () => {
