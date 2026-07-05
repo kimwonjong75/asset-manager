@@ -20,6 +20,8 @@
     "test:replay": "npx --yes tsx tests/signalReplayParity.ts",
     "test:winrate": "npx --yes tsx tests/winRateDiagnosticsParity.ts",
     "test:bucket": "npx --yes tsx tests/bucketRebalancingParity.ts",
+    "test:turtle": "npx --yes tsx tests/turtleEngineParity.ts",
+    "test:actionqueue": "npx --yes tsx tests/actionQueueGeneratorParity.ts",
     "test:kb": "npx --yes tsx tests/knowledgeBaseIntegrity.ts"
   },
   "dependencies": {
