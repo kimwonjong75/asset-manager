@@ -2,7 +2,9 @@ import React, { useState } from 'react';
 import { Asset, ExchangeRates, RebalanceInstrument } from '../../types';
 import { usePortfolio } from '../../contexts/PortfolioContext';
 import { useRebalancing } from '../../hooks/useRebalancing';
+import { useActionQueue } from '../../hooks/useActionQueue';
 import type { RebalanceRow } from '../../utils/bucketRebalancing';
+import type { RebalanceGenDiag, RebalanceGenReason } from '../../utils/rebalanceActions';
 import { getExchangesForCategory } from '../../types/category';
 
 interface RebalancingTableProps {
@@ -169,6 +171,46 @@ const InstrumentRow: React.FC<InstrumentRowProps> = ({ categoryKey, categoryLabe
   );
 };
 
+/** 리밸런싱 주문 생성 결과 — "생성됨"과 "스킵 사유"를 분리 표시 (Phase 4b-3b) */
+const SKIP_LABEL: Record<Exclude<RebalanceGenReason, 'generated-buy' | 'generated-sell'>, string> = {
+  'no-instrument': '대표 매수 종목 미지정',
+  'no-price': '가격 확보 실패',
+  'no-fx': '환율 미지원(원화 환산 불가)',
+  'no-holding': '매도할 코어 보유 없음',
+  'zero-qty': '조정액이 1주 미만',
+  'duplicate': '이미 대기 중 주문 있음',
+};
+
+const GenResult: React.FC<{ result: { generated: number; diagnostics: RebalanceGenDiag[] } }> = ({ result }) => {
+  const skips = result.diagnostics.filter(d => d.reason !== 'generated-buy' && d.reason !== 'generated-sell');
+  return (
+    <div className="mt-3 rounded-md border border-gray-700 bg-gray-800/60 p-3 text-xs">
+      <p className="text-gray-200 font-medium">
+        {result.generated > 0
+          ? `리밸런싱 주문 ${result.generated}건 생성 — 실행 큐에서 확인하세요.`
+          : '생성된 리밸런싱 주문이 없습니다.'}
+      </p>
+      {result.generated > 0 && (
+        <p className="text-[11px] text-amber-300 mt-1">
+          ※ 자동 매매 연결은 다음 단계입니다. 실행 큐의 리밸런싱 카드는 증권사에서 직접 실행 후 완료 표시(현재 자동 체결 아님).
+        </p>
+      )}
+      {skips.length > 0 && (
+        <div className="mt-2 pt-2 border-t border-gray-700">
+          <p className="text-gray-400 mb-1">생성 안 된 카테고리:</p>
+          <ul className="space-y-0.5">
+            {skips.map((d, i) => (
+              <li key={`${d.categoryId}-${i}`} className="text-gray-400">
+                <span className="text-gray-200">{d.label}</span> ({d.direction}) — {SKIP_LABEL[d.reason as keyof typeof SKIP_LABEL] ?? d.reason}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+};
+
 const RebalancingTable: React.FC<RebalancingTableProps> = ({ assets, exchangeRates }) => {
   const { data, actions } = usePortfolio();
 
@@ -187,6 +229,7 @@ const RebalancingTable: React.FC<RebalancingTableProps> = ({ assets, exchangeRat
     categoryInstruments,
     handleInstrumentChange,
     coreHoldingsByCategory,
+    hasUnsavedChanges,
   } = useRebalancing({
     assets,
     exchangeRates,
@@ -194,6 +237,14 @@ const RebalancingTable: React.FC<RebalancingTableProps> = ({ assets, exchangeRat
     onSave: actions.updateAllocationTargets,
     categories: data.categoryStore.categories,
   });
+
+  // 리밸런싱 주문 생성 (Phase 4b-3b) — 저장본 기준, 명시적 버튼. useActionQueue는 별도 인스턴스(context 공유)
+  const { refreshRebalanceActions, isGeneratingRebalance } = useActionQueue();
+  const [genResult, setGenResult] = useState<{ generated: number; diagnostics: RebalanceGenDiag[] } | null>(null);
+  const handleGenerate = async () => {
+    if (hasUnsavedChanges || isGeneratingRebalance) return;
+    setGenResult(await refreshRebalanceActions());
+  };
 
   return (
     <div className="bg-gray-800 p-6 rounded-lg shadow-lg space-y-8">
@@ -306,6 +357,21 @@ const RebalancingTable: React.FC<RebalancingTableProps> = ({ assets, exchangeRat
               />
             ))}
           </ul>
+
+          {/* 리밸런싱 주문 생성 (Phase 4b-3b) — 저장본 기준, 미저장 변경 시 비활성 */}
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <button
+              onClick={handleGenerate}
+              disabled={hasUnsavedChanges || isGeneratingRebalance}
+              className="text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-md transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              title={hasUnsavedChanges ? '변경사항을 먼저 저장하세요' : '저장된 목표 기준으로 리밸런싱 주문을 생성합니다'}
+            >
+              {isGeneratingRebalance ? '생성 중...' : '리밸런싱 주문 생성'}
+            </button>
+            {hasUnsavedChanges && <span className="text-xs text-amber-300">저장 후 생성 — 미저장 변경이 있습니다.</span>}
+          </div>
+
+          {genResult && <GenResult result={genResult} />}
         </section>
       )}
 

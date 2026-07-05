@@ -35,8 +35,13 @@ import {
   turtleFxRate,
 } from '../utils/turtleMarketData';
 import { resolveTurtleUpdate, completeQueueItem, TurtleFill } from '../utils/turtleExecution';
+import { computeCoreBands } from '../utils/rebalanceBands';
+import { buildRebalanceActions, instrumentKey, RebalanceGenDiag } from '../utils/rebalanceActions';
+import { fetchBatchAssetPrices } from '../services/priceService';
+import { fetchUpbitPrice } from '../services/upbitService';
 import { ActionItem, RefreshDiagnostics, TurtleActionDiagnostics } from '../types/actionQueue';
-import { Currency, NewAssetForm } from '../types';
+import { Currency, NewAssetForm, RebalanceInstrument, normalizeExchange } from '../types';
+import { getAssetBucket } from '../types/bucket';
 import type { AddAssetResult } from '../types/assetActionResult';
 import { createLogger } from '../utils/logger';
 
@@ -58,11 +63,12 @@ function todayISO(): string {
 
 export function useActionQueue() {
   const { data, actions } = usePortfolio();
-  const { assets, watchlist, exchangeRates, turtlePositions, turtleSettings, actionQueue } = data;
+  const { assets, watchlist, exchangeRates, turtlePositions, turtleSettings, actionQueue, allocationTargets, categoryStore } = data;
   const { updateActionQueue, addAsset, confirmSell, confirmBuyMore, commitPortfolioPatch } = actions;
 
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [refreshError, setRefreshError] = useState<string | null>(null);
+  const [isGeneratingRebalance, setIsGeneratingRebalance] = useState(false);
 
   /**
    * 터틀 규칙을 평가해 실행 큐를 갱신한다 (명시적 호출 전용 — 자동 실행 아님).
@@ -276,5 +282,74 @@ export function useActionQueue() {
     }
   }, [assets, actionQueue, confirmSell, commitPortfolioPatch]);
 
-  return { actionQueue, refreshActionQueue, markDone, markSkipped, snoozeAction, executeTurtleAction, executeCleanupAction, isRefreshing, refreshError };
+  /**
+   * 코어 리밸런싱 주문 생성 (Phase 4b-3b) — RebalancingTable "리밸런싱 주문 생성" 버튼이 명시적 호출.
+   * **저장본 `allocationTargets` 기준**(편집 state 미사용) → 밴드 계산(computeCoreBands) → 미보유 BUY 대표종목만
+   * 현재가 fetch(services) → `marketByInstrument` 주입 → `buildRebalanceActions` → **`updateActionQueue` append**
+   * (reconcileActionQueue 안 씀=터틀 스누즈 부활 방지, commitPortfolioPatch 안 씀=actionQueue만 변경).
+   * 자동 실행 없음(실행 연결은 4c). generated=0이어도 diagnostics 반환.
+   */
+  const refreshRebalanceActions = useCallback(async (): Promise<{ generated: number; diagnostics: RebalanceGenDiag[] }> => {
+    setIsGeneratingRebalance(true);
+    try {
+      const today = todayISO();
+      const at = allocationTargets;
+      const bands = computeCoreBands({
+        assets, rates: exchangeRates, categories: categoryStore.categories,
+        weights: at.weights ?? {}, bucketWeights: at.bucketWeights ?? {}, targetTotalAmount: at.targetTotalAmount ?? 0,
+      });
+      const instruments = at.categoryInstruments ?? {};
+
+      // 미보유 BUY 대표종목만 fetch 대상 (ticker+거래소 dedup). 보유는 생성기가 priceOriginal 사용.
+      const fetchTargets = new Map<string, RebalanceInstrument>();
+      for (const b of bands) {
+        if (b.direction !== 'BUY') continue;
+        const inst = instruments[b.key];
+        if (!inst) continue;
+        const held = assets.find(a =>
+          getAssetBucket(a) === 'CORE' &&
+          a.ticker.toUpperCase() === inst.ticker.toUpperCase() &&
+          normalizeExchange(a.exchange) === normalizeExchange(inst.exchange) &&
+          a.priceOriginal > 0,
+        );
+        if (!held) fetchTargets.set(instrumentKey(inst.ticker, inst.exchange), inst);
+      }
+
+      // 현재가 fetch (주식=priceService 배치 / 코인=upbit). 실패·mock은 채우지 않음 → 생성기 no-price 스킵.
+      const marketByInstrument: Record<string, { price: number; currency: Currency }> = {};
+      const targets = [...fetchTargets.entries()];
+      const stockTargets = targets.filter(([, i]) => !isCryptoExchange(i.exchange));
+      const cryptoTargets = targets.filter(([, i]) => isCryptoExchange(i.exchange));
+      if (stockTargets.length > 0) {
+        const priceMap = await fetchBatchAssetPrices(stockTargets.map(([k, i]) => ({ ticker: i.ticker, exchange: i.exchange, id: k })));
+        for (const [k] of stockTargets) {
+          const r = priceMap.get(k);
+          if (r && !r.isMocked && r.priceOriginal > 0) marketByInstrument[k] = { price: r.priceOriginal, currency: r.currency };
+        }
+      }
+      for (const [k, i] of cryptoTargets) {
+        try {
+          const t = await fetchUpbitPrice(convertTickerForAPI(i.ticker, i.exchange));
+          if (t && t.trade_price > 0) marketByInstrument[k] = { price: t.trade_price, currency: Currency.KRW };
+        } catch { /* skip → no-price */ }
+      }
+
+      const result = buildRebalanceActions({
+        bandDeviations: bands, categoryInstruments: instruments, assets, rates: exchangeRates,
+        existingQueue: actionQueue, today, makeId: (seq) => `rb-${today}-${Date.now().toString(36)}-${seq}`,
+        marketByInstrument,
+      });
+      if (result.actions.length > 0) {
+        updateActionQueue([...actionQueue, ...result.actions]); // append (dedup은 생성기가 categoryId로 완료)
+      }
+      return { generated: result.actions.length, diagnostics: result.diagnostics };
+    } catch (e) {
+      log.error('리밸런싱 주문 생성 실패:', e);
+      return { generated: 0, diagnostics: [] };
+    } finally {
+      setIsGeneratingRebalance(false);
+    }
+  }, [assets, exchangeRates, categoryStore, allocationTargets, actionQueue, updateActionQueue]);
+
+  return { actionQueue, refreshActionQueue, refreshRebalanceActions, markDone, markSkipped, snoozeAction, executeTurtleAction, executeCleanupAction, isRefreshing, isGeneratingRebalance, refreshError };
 }

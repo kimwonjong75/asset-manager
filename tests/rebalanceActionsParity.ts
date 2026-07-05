@@ -73,7 +73,7 @@ function build(over: Partial<Parameters<typeof buildRebalanceActions>[0]>) {
     bandDeviations: [dev({ key: '3', difference: 700_000, direction: 'BUY' })],
     categoryInstruments: { '3': inst('EIS', 3) }, // 미보유(이스라엘 ETF)
     assets: [],
-    marketByInstrument: { EIS: { price: 50, currency: Currency.USD } }, // 50×1400=70,000/주 → 10주
+    marketByInstrument: { 'EIS|NASDAQ': { price: 50, currency: Currency.USD } }, // 50×1400=70,000/주 → 10주
   });
   check('주입가 BUY 1건', r.actions.length, 1);
   check('주입가 수량 10', r.actions[0].quantity, 10);

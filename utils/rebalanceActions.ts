@@ -18,6 +18,11 @@ import { getAssetBucket } from '../types/bucket';
 import { assetValueKRW } from './bucketRebalancing';
 import { RebalanceBandDeviation } from './rebalanceBands';
 
+/** 주입 가격 맵 키 — ticker+거래소로 안정화(같은 티커 다른 거래소 충돌 방지). */
+export function instrumentKey(ticker: string, exchange: string): string {
+  return `${ticker.toUpperCase()}|${normalizeExchange(exchange)}`;
+}
+
 /** 종목 통화 → KRW 환율 (KRW=1). USD/JPY만 지원, 그 외는 null(FX 미지원 → 스킵). ExchangeRates=USD/JPY. */
 function resolveFxRate(currency: Currency | undefined, rates: ExchangeRates): number | null {
   if (currency === Currency.KRW) return 1;
@@ -107,7 +112,7 @@ export function buildRebalanceActions(input: BuildRebalanceActionsInput): Rebala
       if (heldCore) {
         price = heldCore.priceOriginal; currency = heldCore.currency; assetId = heldCore.id;
       } else {
-        const m = marketByInstrument?.[inst.ticker.toUpperCase()];
+        const m = marketByInstrument?.[instrumentKey(inst.ticker, inst.exchange)];
         if (!m || !(m.price > 0)) { push('no-price'); continue; }
         price = m.price; currency = m.currency; assetId = undefined; // 미보유 → 새 자산(4c addAsset)
       }
