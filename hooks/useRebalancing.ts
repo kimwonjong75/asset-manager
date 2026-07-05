@@ -225,13 +225,13 @@ export const useRebalancing = ({ assets, exchangeRates, allocationTargets, onSav
     setTimeout(() => setIsSaved(false), 3000);
   };
 
-  // 코어 보유 종목을 categoryId별로 (매핑 지정 시 datalist·통화/이름 자동 채움용)
-  const coreHoldingsByCategory = useMemo<Record<string, { ticker: string; name: string; currency: Asset['currency'] }[]>>(() => {
-    const out: Record<string, { ticker: string; name: string; currency: Asset['currency'] }[]> = {};
+  // 코어 보유 종목을 categoryId별로 (매핑 지정 시 datalist·이름/통화/거래소 자동 채움용)
+  const coreHoldingsByCategory = useMemo<Record<string, { ticker: string; name: string; currency: Asset['currency']; exchange: string }[]>>(() => {
+    const out: Record<string, { ticker: string; name: string; currency: Asset['currency']; exchange: string }[]> = {};
     assets.forEach(a => {
       if (getAssetBucket(a) !== 'CORE') return;
       const key = String(a.categoryId);
-      (out[key] ||= []).push({ ticker: a.ticker, name: a.customName?.trim() || a.name, currency: a.currency });
+      (out[key] ||= []).push({ ticker: a.ticker, name: a.customName?.trim() || a.name, currency: a.currency, exchange: a.exchange });
     });
     return out;
   }, [assets]);

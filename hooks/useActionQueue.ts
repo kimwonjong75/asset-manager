@@ -36,12 +36,11 @@ import {
 } from '../utils/turtleMarketData';
 import { resolveTurtleUpdate, completeQueueItem, TurtleFill } from '../utils/turtleExecution';
 import { computeCoreBands } from '../utils/rebalanceBands';
-import { buildRebalanceActions, instrumentKey, RebalanceGenDiag } from '../utils/rebalanceActions';
+import { buildRebalanceActions, instrumentKey, findHeldCoreInstrument, RebalanceGenDiag } from '../utils/rebalanceActions';
 import { fetchBatchAssetPrices, fetchAssetData } from '../services/priceService';
 import { fetchUpbitPrice } from '../services/upbitService';
 import { ActionItem, RefreshDiagnostics, TurtleActionDiagnostics } from '../types/actionQueue';
-import { Currency, NewAssetForm, RebalanceInstrument, normalizeExchange } from '../types';
-import { getAssetBucket } from '../types/bucket';
+import { Currency, NewAssetForm, RebalanceInstrument } from '../types';
 import type { AddAssetResult } from '../types/assetActionResult';
 import { createLogger } from '../utils/logger';
 
@@ -303,18 +302,13 @@ export function useActionQueue() {
       });
       const instruments = at.categoryInstruments ?? {};
 
-      // 미보유 BUY 대표종목만 fetch 대상 (ticker+거래소 dedup). 보유는 생성기가 priceOriginal 사용.
+      // 미보유 BUY 대표종목만 fetch 대상 (ticker+거래소 dedup). 보유 판정은 생성기와 동일 헬퍼(drift 방지).
       const fetchTargets = new Map<string, RebalanceInstrument>();
       for (const b of bands) {
         if (b.direction !== 'BUY') continue;
         const inst = instruments[b.key];
         if (!inst) continue;
-        const held = assets.find(a =>
-          getAssetBucket(a) === 'CORE' &&
-          a.ticker.toUpperCase() === inst.ticker.toUpperCase() &&
-          normalizeExchange(a.exchange) === normalizeExchange(inst.exchange) &&
-          a.priceOriginal > 0,
-        );
+        const held = findHeldCoreInstrument(assets, { ticker: inst.ticker, exchange: inst.exchange, categoryId: Number(b.key) });
         if (!held) fetchTargets.set(instrumentKey(inst.ticker, inst.exchange), inst);
       }
 

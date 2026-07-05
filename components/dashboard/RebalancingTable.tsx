@@ -5,6 +5,7 @@ import { useRebalancing } from '../../hooks/useRebalancing';
 import { useActionQueue } from '../../hooks/useActionQueue';
 import type { RebalanceRow } from '../../utils/bucketRebalancing';
 import type { RebalanceGenDiag, RebalanceGenReason } from '../../utils/rebalanceActions';
+import { buildInstrumentFromPick } from '../../utils/rebalanceActions';
 import { getExchangesForCategory } from '../../types/category';
 
 interface RebalancingTableProps {
@@ -105,7 +106,7 @@ interface InstrumentRowProps {
   categoryLabel: string;
   categoryId: number;
   instrument?: RebalanceInstrument;
-  holdings: { ticker: string; name: string; currency: Asset['currency'] }[];
+  holdings: { ticker: string; name: string; currency: Asset['currency']; exchange: string }[];
   exchanges: string[];
   onChange: (categoryKey: string, instrument: RebalanceInstrument | null) => void;
 }
@@ -121,11 +122,11 @@ const InstrumentRow: React.FC<InstrumentRowProps> = ({ categoryKey, categoryLabe
     setEditing(true);
   };
   const apply = () => {
-    const t = ticker.trim().toUpperCase();
-    if (!t || !exchange) return;
-    // 보유 종목과 티커가 일치하면 이름·통화 자동 채움(없으면 미지정 — 4b-3에서 가격 fetch로 확정)
-    const match = holdings.find(h => h.ticker.toUpperCase() === t);
-    onChange(categoryKey, { ticker: t, exchange, categoryId, name: match?.name, currency: match?.currency });
+    // 보유 종목과 티커 일치 시 이름·통화·**거래소**를 보유 자산 값으로 복사(순수 헬퍼)
+    // — KRX 상장 ETF를 카테고리 고정 거래소로 잘못 저장해 "신규"로 오인되던 버그 차단.
+    const next = buildInstrumentFromPick(ticker, exchange, categoryId, holdings);
+    if (!next) return;
+    onChange(categoryKey, next);
     setEditing(false);
   };
 

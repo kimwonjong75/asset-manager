@@ -10,7 +10,7 @@
 import { Asset, Currency, ExchangeRates, RebalanceInstrument } from '../types';
 import { ActionItem } from '../types/actionQueue';
 import { RebalanceBandDeviation } from '../utils/rebalanceBands';
-import { buildRebalanceActions } from '../utils/rebalanceActions';
+import { buildRebalanceActions, findHeldCoreInstrument, buildInstrumentFromPick } from '../utils/rebalanceActions';
 
 let pass = 0;
 const fails: string[] = [];
@@ -214,6 +214,58 @@ function build(over: Partial<Parameters<typeof buildRebalanceActions>[0]>) {
   check('snapshot 값 전부 number', Object.values(snap).every(v => typeof v === 'number'), true);
   check('snapshot currentWeight', snap.currentWeight, 30);
   check('snapshot targetWeight', snap.targetWeight, 20);
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// 11. findHeldCoreInstrument — 거래소 문자열 달라도 티커+카테고리로 매칭 (KRX ETF 버그 보정)
+// ════════════════════════════════════════════════════════════════════════════
+{
+  // 실제 케이스: PLUS 미국채(464470)는 KRX 상장인데 US_BOND(6) 카테고리·매핑엔 "미국 국채"로 저장됨
+  const krxBond = mkAsset({ id: 'a-bond', ticker: '464470', exchange: 'KRX (코스피/코스닥)', categoryId: 6, currency: Currency.KRW, priceOriginal: 54975, quantity: 350 });
+  const inst = { ticker: '464470', exchange: '미국 국채', categoryId: 6 };
+  check('거래소 불일치+티커 유일 → 매칭', findHeldCoreInstrument([krxBond], inst)?.id, 'a-bond');
+  check('거래소 일치 → 매칭', findHeldCoreInstrument([krxBond], { ...inst, exchange: 'KRX (코스피/코스닥)' })?.id, 'a-bond');
+  check('다른 categoryId → 미매칭', findHeldCoreInstrument([krxBond], { ...inst, categoryId: 5 }), null);
+  // 위성(투더문)은 코어 매칭 대상 아님
+  const sat = mkAsset({ id: 'a-sat', ticker: '464470', exchange: 'KRX (코스피/코스닥)', categoryId: 6, currency: Currency.KRW, priceOriginal: 54975, quantity: 10, bucket: 'SATELLITE' });
+  check('SATELLITE 제외', findHeldCoreInstrument([sat], inst), null);
+  // 같은 카테고리에 같은 티커 2개(거래소 다름) → ambiguous null
+  const dup = mkAsset({ id: 'a-dup', ticker: '464470', exchange: 'KONEX', categoryId: 6, currency: Currency.KRW, priceOriginal: 54975, quantity: 5 });
+  check('티커 중복 → ambiguous null', findHeldCoreInstrument([krxBond, dup], inst), null);
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// 12. BUY 생성 — 거래소 불일치 보유 종목이면 assetId 세팅(추가매수·중복 생성 안 함)
+// ════════════════════════════════════════════════════════════════════════════
+{
+  const krxBond = mkAsset({ id: 'a-bond', ticker: '464470', exchange: 'KRX (코스피/코스닥)', categoryId: 6, currency: Currency.KRW, priceOriginal: 54975, quantity: 350 });
+  const r = build({
+    bandDeviations: [dev({ key: '6', difference: 197_160_357, direction: 'BUY' })],
+    categoryInstruments: { '6': inst('464470', 6, '미국 국채') }, // 저장된 거래소가 틀림
+    assets: [krxBond],
+    // marketByInstrument 없음 — 보유 매칭돼야 하므로 주입가 불필요
+  });
+  check('BUY 1건 생성(보유 매칭)', r.actions.length, 1);
+  check('★ assetId=보유(신규 아님)', r.actions[0].assetId, 'a-bond');
+  check('refPrice=보유 priceOriginal', r.actions[0].refPrice, 54975);
+  // qty = floor(197,160,357 / 54,975) = 3586
+  check('수량 floor', r.actions[0].quantity, 3586);
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// 13. buildInstrumentFromPick — 보유 티커 일치 시 거래소도 보유 값으로 보정
+// ════════════════════════════════════════════════════════════════════════════
+{
+  const holdings = [{ ticker: '464470', name: 'PLUS 미국채30년', currency: Currency.KRW, exchange: 'KRX (코스피/코스닥)' }];
+  const picked = buildInstrumentFromPick('464470', '미국 국채', 6, holdings);
+  check('★ 거래소 보정(보유 값)', picked?.exchange, 'KRX (코스피/코스닥)');
+  check('이름 복사', picked?.name, 'PLUS 미국채30년');
+  check('통화 복사', picked?.currency, Currency.KRW);
+  // 미보유 → fallback 거래소, name/currency 미지정
+  const newInst = buildInstrumentFromPick('SPY', 'NYSE', 2, holdings);
+  check('미보유 fallback 거래소', newInst?.exchange, 'NYSE');
+  check('미보유 name 미지정', newInst?.name, undefined);
+  check('빈 티커 → null', buildInstrumentFromPick('', 'NYSE', 2, holdings), null);
 }
 
 // ── 결과 ──

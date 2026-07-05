@@ -23,6 +23,48 @@ export function instrumentKey(ticker: string, exchange: string): string {
   return `${ticker.toUpperCase()}|${normalizeExchange(exchange)}`;
 }
 
+/**
+ * 대표종목이 이미 보유 중인 코어 자산인지 판정 (Phase 4b 매칭 보정).
+ * 카테고리 ETF가 실제로는 KRX 상장이라 저장된 거래소 문자열이 달라도 "같은 종목"으로 인식하게 한다.
+ * 규칙(엄격): CORE + 같은 categoryId + ticker 일치 종목 중
+ *   ① 거래소까지 일치가 정확히 1개 → 그것.
+ *   ② 거래소 불일치면 → **티커 일치가 카테고리 내 유일할 때만** 폴백.
+ *   ③ 2개 이상(거래소 같은 중복/티커 중복) → **ambiguous → null(fail-closed)**.
+ * 못 찾으면 null(=미보유, 신규 매수 경로).
+ */
+export function findHeldCoreInstrument(
+  assets: Asset[],
+  inst: { ticker: string; exchange: string; categoryId: number },
+): Asset | null {
+  const t = inst.ticker.toUpperCase();
+  const sameCat = assets.filter(a => getAssetBucket(a) === 'CORE' && a.categoryId === inst.categoryId && a.ticker.toUpperCase() === t);
+  if (sameCat.length === 0) return null;
+  const exact = sameCat.filter(a => normalizeExchange(a.exchange) === normalizeExchange(inst.exchange));
+  if (exact.length === 1) return exact[0];
+  if (exact.length > 1) return null;                 // 거래소까지 동일 중복 → ambiguous
+  return sameCat.length === 1 ? sameCat[0] : null;   // 거래소 불일치: 티커 유일할 때만 폴백
+}
+
+/**
+ * 대표종목 지정(InstrumentRow) 시 저장할 RebalanceInstrument 구성 (순수).
+ * 티커가 보유 종목과 일치하면 **name·currency·exchange를 보유 자산 값으로 복사**
+ *   — 카테고리 고정 거래소 드롭다운("미국 국채")이 아니라 실제 상장 거래소("KRX…")를 저장해
+ *     이후 findHeldCoreInstrument 매칭·시세 조회가 어긋나지 않게 한다.
+ * 미일치면 fallbackExchange(드롭다운 선택값) 사용, name/currency 미지정(4b-3b fetch로 확정).
+ */
+export function buildInstrumentFromPick(
+  ticker: string,
+  fallbackExchange: string,
+  categoryId: number,
+  holdings: { ticker: string; name: string; currency?: Currency; exchange: string }[],
+): RebalanceInstrument | null {
+  const t = ticker.trim().toUpperCase();
+  const match = holdings.find(h => h.ticker.toUpperCase() === t);
+  const exchange = match?.exchange ?? fallbackExchange;
+  if (!t || !exchange) return null;
+  return { ticker: t, exchange, categoryId, name: match?.name, currency: match?.currency };
+}
+
 /** 종목 통화 → KRW 환율 (KRW=1). USD/JPY만 지원, 그 외는 null(FX 미지원 → 스킵). ExchangeRates=USD/JPY. */
 function resolveFxRate(currency: Currency | undefined, rates: ExchangeRates): number | null {
   if (currency === Currency.KRW) return 1;
@@ -101,16 +143,13 @@ export function buildRebalanceActions(input: BuildRebalanceActionsInput): Rebala
     if (dev.direction === 'BUY') {
       const inst = categoryInstruments[dev.key];
       if (!inst) { push('no-instrument'); continue; }
-      // 가격/통화/assetId: 코어 보유 대표종목 우선 → 없으면 주입가(marketByInstrument)
-      const heldCore = assets.find(a =>
-        getAssetBucket(a) === 'CORE' &&
-        a.ticker.toUpperCase() === inst.ticker.toUpperCase() &&
-        normalizeExchange(a.exchange) === normalizeExchange(inst.exchange) &&
-        a.priceOriginal > 0,
-      );
+      // 보유 대표종목이면 assetId 세팅(추가매수)·priceOriginal 사용 → 없으면(미보유) 주입가(신규 매수).
+      // 거래소 문자열이 달라도 findHeldCoreInstrument가 티커+카테고리로 매칭(중복 생성 버그 차단).
+      const held = findHeldCoreInstrument(assets, { ticker: inst.ticker, exchange: inst.exchange, categoryId });
       let price: number, currency: Currency | undefined, assetId: string | undefined;
-      if (heldCore) {
-        price = heldCore.priceOriginal; currency = heldCore.currency; assetId = heldCore.id;
+      if (held) {
+        if (!(held.priceOriginal > 0)) { push('no-price'); continue; } // 보유이나 시세 없음 → 스킵(신규 생성 안 함)
+        price = held.priceOriginal; currency = held.currency; assetId = held.id;
       } else {
         const m = marketByInstrument?.[instrumentKey(inst.ticker, inst.exchange)];
         if (!m || !(m.price > 0)) { push('no-price'); continue; }
