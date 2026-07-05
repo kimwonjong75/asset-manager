@@ -74,6 +74,9 @@ export const mapToNewAssetStructure = (asset: LegacyAssetShape | Asset): Asset =
   // 전략 버킷 기본값 보정 — 기존 값 보존(?? 덮어쓰기 금지). 레거시 자산은 전부 코어.
   newAsset.bucket = newAsset.bucket ?? 'CORE';
 
+  // 대청소 필드(cleanupTag/excludedFromCleanup)는 spread로 그대로 보존한다 —
+  // **기본값 강제 주입 금지**: cleanupTag 미지정=미검토(≠'keep'), excludedFromCleanup 미지정=false로 해석(false 저장 안 함).
+
   const { region, ...cleaned } = newAsset as any;
   return cleaned as Asset;
 };

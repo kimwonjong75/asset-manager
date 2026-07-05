@@ -216,17 +216,20 @@ export const usePortfolioData = () => {
     sellHistory?: SellRecord[];
     actionQueue?: ActionItem[];
     turtlePositions?: TurtlePosition[];
+    watchlist?: WatchlistItem[];
   }) => {
     const nextAssets = patch.assets ?? assets;
     const nextSell = patch.sellHistory ?? sellHistory;
     const nextQueue = patch.actionQueue ?? actionQueue;
     const nextPositions = patch.turtlePositions ?? turtlePositions;
+    const nextWatchlist = patch.watchlist ?? watchlist;
     if (patch.assets) setAssets(patch.assets);
     if (patch.sellHistory) setSellHistory(patch.sellHistory);
     if (patch.actionQueue) setActionQueue(patch.actionQueue);
     if (patch.turtlePositions) setTurtlePositions(patch.turtlePositions);
-    triggerAutoSave(nextAssets, portfolioHistory, nextSell, watchlist, exchangeRates, undefined, undefined, undefined, undefined, nextQueue, nextPositions, turtleSettings);
-  }, [assets, sellHistory, actionQueue, turtlePositions, portfolioHistory, watchlist, exchangeRates, turtleSettings, triggerAutoSave]);
+    if (patch.watchlist) setWatchlist(patch.watchlist);
+    triggerAutoSave(nextAssets, portfolioHistory, nextSell, nextWatchlist, exchangeRates, undefined, undefined, undefined, undefined, nextQueue, nextPositions, turtleSettings);
+  }, [assets, sellHistory, actionQueue, turtlePositions, watchlist, portfolioHistory, exchangeRates, turtleSettings, triggerAutoSave]);
 
   const handleSignOut = useCallback(() => {
     hookSignOut();

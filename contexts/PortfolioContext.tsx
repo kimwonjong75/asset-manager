@@ -35,6 +35,8 @@ import {
   type FixedColumnWidths,
 } from '../types/ui';
 import { DEFAULT_MA_CONFIGS, clampMAPeriod, type MALineConfig } from '../utils/maCalculations';
+import { buildCleanupCommit } from '../utils/cleanupPlan';
+import type { CleanupDecision } from '../types/cleanup';
 
 const PortfolioContext = createContext<PortfolioContextValue | null>(null);
 
@@ -232,6 +234,7 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [focusedWatchItemId, setFocusedWatchItemId] = useState<string | null>(null);
   const [editingSellRecord, setEditingSellRecord] = useState<SellRecord | null>(null);
   const [turtleExecAction, setTurtleExecAction] = useState<ActionItem | null>(null);
+  const [cleanupExecAction, setCleanupExecAction] = useState<ActionItem | null>(null);
 
   // 저가 자산 숨김 임계값 (KRW). 환경설정에서 조정, localStorage 영속
   const [lowValueThreshold, setLowValueThresholdState] = useState<number>(() => {
@@ -533,6 +536,7 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       addWatchItemOpen: isAddWatchItemOpen,
       editingSellRecord,
       turtleExecAction,
+      cleanupExecAction,
     },
     derived: {
       totalValue,
@@ -653,6 +657,8 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       closeEditSellRecord: () => setEditingSellRecord(null),
       openTurtleExecution: (action: ActionItem) => setTurtleExecAction(action),
       closeTurtleExecution: () => setTurtleExecAction(null),
+      openCleanupExecution: (action: ActionItem) => setCleanupExecAction(action),
+      closeCleanupExecution: () => setCleanupExecAction(null),
       // 카테고리 관리
       addCategory: (name: string, baseType: CategoryBaseType) => {
         const newCat = {
@@ -714,6 +720,19 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         triggerAutoSave(assets, portfolioHistory, sellHistory, watchlist, exchangeRates, undefined, undefined, undefined, undefined, actionQueue, turtlePositions, settings);
       },
       commitPortfolioPatch,
+      // 대청소 일괄 분류 저장 (Phase 3b/3c-2) — 순수 빌더로 assets+watchlist+actionQueue 계산 후 단일 원자 커밋.
+      // turtle→관심종목 등록, liquidate→CLEANUP_SELL 생성(이번 저장 변경분만·dedup). 실행은 3d.
+      saveCleanupDecisions: (decisions: Record<string, CleanupDecision>) => {
+        const today = new Date().toISOString().slice(0, 10);
+        const seqBase = Date.now().toString(36);
+        const metricsById = new Map(enrichedAssets.map(a => [a.id, { returnPct: a.metrics.returnPercentage, profitLossKRW: a.metrics.profitLossKRW }]));
+        const result = buildCleanupCommit(decisions, { assets, watchlist, actionQueue }, {
+          today,
+          makeId: (seq) => `cl-${today}-${seqBase}-${seq}`,
+          metricsOf: (id) => metricsById.get(id),
+        });
+        commitPortfolioPatch({ assets: result.assets, watchlist: result.watchlist, actionQueue: result.actionQueue });
+      },
       // 금 김치프리미엄
       refreshGoldPremium,
       // 백업

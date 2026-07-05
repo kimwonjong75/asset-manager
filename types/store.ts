@@ -13,6 +13,7 @@ import type { MALineConfig } from '../utils/maCalculations';
 import type { ActionItem } from './actionQueue';
 import type { TurtlePosition, TurtleSettings } from './turtle';
 import type { AddAssetResult, SellResult, BuyMoreResult } from './assetActionResult';
+import type { CleanupDecision } from './cleanup';
 
 export type PortfolioHistory = PortfolioSnapshot[];
 
@@ -42,6 +43,8 @@ export interface PortfolioPatch {
   sellHistory?: SellRecord[];
   actionQueue?: ActionItem[];
   turtlePositions?: TurtlePosition[];
+  /** 관심종목 (Phase 3c-2 — 대청소 turtle 분류가 assets+watchlist+actionQueue를 한 번에 원자 커밋) */
+  watchlist?: WatchlistItem[];
 }
 
 export interface PortfolioStatus {
@@ -57,7 +60,7 @@ export interface PortfolioStatus {
 }
 
 export interface UIState {
-  activeTab: 'dashboard' | 'portfolio' | 'analytics' | 'watchlist' | 'replay' | 'execution' | 'guide' | 'settings';
+  activeTab: 'dashboard' | 'portfolio' | 'analytics' | 'watchlist' | 'replay' | 'execution' | 'cleanup' | 'guide' | 'settings';
   globalPeriod: GlobalPeriod;
   dashboardFilterCategory: number | 'ALL';
   filterCategory: number | 'ALL';
@@ -89,6 +92,8 @@ export interface ModalState {
   editingSellRecord: SellRecord | null;
   /** 터틀 주문 실행 모달 대상 (Phase 2b-4b-2-ii). null=닫힘. 전용 TurtleExecuteModal만 사용 */
   turtleExecAction: ActionItem | null;
+  /** 대청소 청산 실행 모달 대상 (Phase 3d-2). null=닫힘. 전용 CleanupExecuteModal만 사용 */
+  cleanupExecAction: ActionItem | null;
 }
 
 export interface DerivedState {
@@ -217,6 +222,9 @@ export interface PortfolioActions {
   /** 터틀 주문 실행 모달 열기/닫기 (Phase 2b-4b-2-ii). 여는 것만으로는 아무 상태도 바뀌지 않음 */
   openTurtleExecution: (action: ActionItem) => void;
   closeTurtleExecution: () => void;
+  /** 대청소 청산 실행 모달 열기/닫기 (Phase 3d-2). 여는 것만으로는 아무 상태도 바뀌지 않음 */
+  openCleanupExecution: (action: ActionItem) => void;
+  closeCleanupExecution: () => void;
 
   // 카테고리 관리
   addCategory: (name: string, baseType: CategoryBaseType) => void;
@@ -232,6 +240,8 @@ export interface PortfolioActions {
   updateTurtleSettings: (settings: TurtleSettings) => void;
   /** 교차도메인 원자 커밋 — 지정 도메인 set + 단일 autosave (터틀 실행의 저장 경합 방지) */
   commitPortfolioPatch: (patch: PortfolioPatch) => void;
+  /** 대청소 일괄 분류 저장 (Phase 3b) — assetId별 결정을 자산에 적용 후 단일 커밋. 결정 없는 자산 불변 */
+  saveCleanupDecisions: (decisions: Record<string, CleanupDecision>) => void;
 
   // 금 김치프리미엄
   refreshGoldPremium: () => Promise<void>;

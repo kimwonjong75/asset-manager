@@ -23,8 +23,9 @@ import WatchlistView from './components/layouts/WatchlistView';
 import InvestmentGuideView from './components/layouts/InvestmentGuideView';
 import SignalReplayView from './components/layouts/SignalReplayView';
 import ExecutionView from './components/execution/ExecutionView';
+import CleanupView from './components/cleanup/CleanupView';
 
-type ActiveTab = 'dashboard' | 'portfolio' | 'analytics' | 'watchlist' | 'replay' | 'execution' | 'guide' | 'settings';
+type ActiveTab = 'dashboard' | 'portfolio' | 'analytics' | 'watchlist' | 'replay' | 'execution' | 'cleanup' | 'guide' | 'settings';
 
 const AppContent: React.FC = () => {
   const { data, status, ui, modal, actions, derived } = usePortfolio();
@@ -162,6 +163,7 @@ const AppContent: React.FC = () => {
                   <TabButton tabId="analytics" onClick={() => actions.setActiveTab('analytics')}><span className="sm:hidden">통계</span><span className="hidden sm:inline">수익 통계</span></TabButton>
                   <TabButton tabId="replay" onClick={() => actions.setActiveTab('replay')}><span className="sm:hidden">리플레이</span><span className="hidden sm:inline">신호 리플레이</span></TabButton>
                   <TabButton tabId="execution" onClick={() => actions.setActiveTab('execution')}><span className="sm:hidden">실행</span><span className="hidden sm:inline">실행 큐</span></TabButton>
+                  <TabButton tabId="cleanup" onClick={() => actions.setActiveTab('cleanup')}><span className="sm:hidden">정리</span><span className="hidden sm:inline">대청소</span></TabButton>
                 </nav>
                 <div className="flex items-center gap-1.5 sm:gap-2">
                   <UpdateStatusIndicator isLoading={status.isLoading} successMessage={status.successMessage} />
@@ -200,7 +202,7 @@ const AppContent: React.FC = () => {
                     <span className="hidden sm:inline">{status.isLoading ? '중...' : '업데이트'}</span>
                   </button>
                   <div className="hidden sm:flex items-center">
-                    {ui.activeTab !== 'guide' && ui.activeTab !== 'settings' && ui.activeTab !== 'analytics' && ui.activeTab !== 'replay' && ui.activeTab !== 'execution' && (
+                    {ui.activeTab !== 'guide' && ui.activeTab !== 'settings' && ui.activeTab !== 'analytics' && ui.activeTab !== 'replay' && ui.activeTab !== 'execution' && ui.activeTab !== 'cleanup' && (
                       <PeriodSelector value={ui.globalPeriod} onChange={actions.setGlobalPeriod} />
                     )}
                   </div>
@@ -236,7 +238,7 @@ const AppContent: React.FC = () => {
                 </div>
               </div>
               {/* 모바일 PeriodSelector - 탭바 아래 컴팩트 행 */}
-              {ui.activeTab !== 'guide' && ui.activeTab !== 'settings' && ui.activeTab !== 'analytics' && ui.activeTab !== 'replay' && ui.activeTab !== 'execution' && (
+              {ui.activeTab !== 'guide' && ui.activeTab !== 'settings' && ui.activeTab !== 'analytics' && ui.activeTab !== 'replay' && ui.activeTab !== 'execution' && ui.activeTab !== 'cleanup' && (
                 <div className="sm:hidden py-1.5 overflow-x-auto scrollbar-hide">
                   <PeriodSelector value={ui.globalPeriod} onChange={actions.setGlobalPeriod} />
                 </div>
@@ -265,6 +267,7 @@ const AppContent: React.FC = () => {
                 {ui.activeTab === 'watchlist' && <WatchlistView />}
                 {ui.activeTab === 'replay' && <SignalReplayView />}
                 {ui.activeTab === 'execution' && <ExecutionView />}
+                {ui.activeTab === 'cleanup' && <CleanupView />}
                 {ui.activeTab === 'guide' && <InvestmentGuideView />}
                 {ui.activeTab === 'settings' && <SettingsPage />}
               </div>

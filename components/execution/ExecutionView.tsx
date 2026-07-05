@@ -18,11 +18,16 @@ import { actionDaysIgnored, actionEscalationLevel } from '../../utils/actionQueu
 import TurtleExecuteModal from './TurtleExecuteModal';
 import TurtleSettingsPanel from './TurtleSettingsPanel';
 import WhyNoOrderPanel from './WhyNoOrderPanel';
+import CleanupExecuteModal from '../cleanup/CleanupExecuteModal';
 import type { RefreshDiagnostics } from '../../types/actionQueue';
 
 /** 전용 실행 모달을 여는 터틀 kind (진입/불타기/손절/청산). 나머지는 표시만 완료(markDone). */
 const TURTLE_KINDS: ActionKind[] = ['TURTLE_ENTRY', 'TURTLE_PYRAMID', 'TURTLE_STOP', 'TURTLE_EXIT'];
 const isTurtleKind = (kind: ActionKind): boolean => TURTLE_KINDS.includes(kind);
+/** 전용 청산 실행 모달을 여는 kind (대청소). */
+const isCleanupKind = (kind: ActionKind): boolean => kind === 'CLEANUP_SELL';
+/** 전용 실행 모달이 필요한 kind (일반 markDone과 분리). */
+const needsExecuteModal = (kind: ActionKind): boolean => isTurtleKind(kind) || isCleanupKind(kind);
 
 const KIND_META: Record<ActionKind, { label: string; dot: string; badge: string }> = {
   TURTLE_ENTRY:   { label: '신규 매수', dot: 'bg-emerald-400', badge: 'text-emerald-300 border-emerald-500/40 bg-emerald-500/10' },
@@ -41,7 +46,7 @@ const todayISO = (): string => new Date().toISOString().slice(0, 10);
 
 const ExecutionView: React.FC = () => {
   const { actions } = usePortfolio();
-  const { actionQueue, refreshActionQueue, markDone, markSkipped, snoozeAction, executeTurtleAction, isRefreshing, refreshError } = useActionQueue();
+  const { actionQueue, refreshActionQueue, markDone, markSkipped, snoozeAction, executeTurtleAction, executeCleanupAction, isRefreshing, refreshError } = useActionQueue();
   const today = todayISO();
 
   const [skipId, setSkipId] = useState<string | null>(null);
@@ -139,16 +144,20 @@ const ExecutionView: React.FC = () => {
               onStartSkip={() => startSkip(item.id)}
               onConfirmSkip={confirmSkip}
               onCancelSkip={() => setSkipId(null)}
-              onDone={() => (isTurtleKind(item.kind) ? actions.openTurtleExecution(item) : markDone(item.id))}
-              isTurtle={isTurtleKind(item.kind)}
+              onDone={() =>
+                isTurtleKind(item.kind) ? actions.openTurtleExecution(item)
+                : isCleanupKind(item.kind) ? actions.openCleanupExecution(item)
+                : markDone(item.id)}
+              isTurtle={needsExecuteModal(item.kind)}
               onSnooze={() => snoozeAction(item.id, 1)}
             />
           ))}
         </ul>
       )}
 
-      {/* 터틀 주문 실행 모달 — executeTurtleAction을 prop으로 전달(훅 인스턴스 중복 방지) */}
+      {/* 실행 모달 — 각 executeXxxAction을 prop으로 전달(훅 인스턴스 중복 방지) */}
       <TurtleExecuteModal executeTurtleAction={executeTurtleAction} />
+      <CleanupExecuteModal executeCleanupAction={executeCleanupAction} />
     </div>
   );
 };

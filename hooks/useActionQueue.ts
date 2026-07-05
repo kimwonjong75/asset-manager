@@ -34,7 +34,7 @@ import {
   computeDeployedBudgetKRW,
   turtleFxRate,
 } from '../utils/turtleMarketData';
-import { resolveTurtleUpdate, TurtleFill } from '../utils/turtleExecution';
+import { resolveTurtleUpdate, completeQueueItem, TurtleFill } from '../utils/turtleExecution';
 import { ActionItem, RefreshDiagnostics, TurtleActionDiagnostics } from '../types/actionQueue';
 import { Currency, NewAssetForm } from '../types';
 import type { AddAssetResult } from '../types/assetActionResult';
@@ -249,5 +249,32 @@ export function useActionQueue() {
     }
   }, [assets, watchlist, exchangeRates, turtlePositions, turtleSettings, actionQueue, addAsset, confirmSell, confirmBuyMore, commitPortfolioPatch]);
 
-  return { actionQueue, refreshActionQueue, markDone, markSkipped, snoozeAction, executeTurtleAction, isRefreshing, refreshError };
+  /**
+   * 대청소 청산 실행 (Phase 3d) — CLEANUP_SELL 전용. CleanupExecuteModal이 실제 체결값(fill)으로 호출.
+   * 포지션 개념 없음(TurtlePosition 무접촉). 공용 `confirmSell` 저장 성공 시에만 큐 done + 단일 commit.
+   *   · 수량은 **실행 시점의 asset.quantity(전량)** — action.quantity(생성 시점 스냅샷) 신뢰 안 함(그 사이 변동 가능).
+   *   · confirmSell 인자 순서 = (id, sellDate, sellPrice, sellQuantity, currency). 통화=asset.currency.
+   *   · 성공 시 linkedSellRecordId = res.sellRecordId. 실패/취소면 커밋 없음(pending 유지).
+   */
+  const executeCleanupAction = useCallback(async (action: ActionItem, fill: TurtleFill): Promise<{ ok: boolean; reason?: string }> => {
+    const today = todayISO();
+    if (action.kind !== 'CLEANUP_SELL') return { ok: false, reason: 'unsupported-kind' };
+    if (!action.assetId) return { ok: false, reason: 'asset-missing' };
+    const asset = assets.find(a => a.id === action.assetId);
+    if (!asset || !(asset.quantity > 0)) return { ok: false, reason: 'asset-missing' };
+    if (!(fill.fillPrice > 0)) return { ok: false, reason: 'invalid-price' };
+    const sellQty = asset.quantity; // 실행 시점 전량(action.quantity 아님)
+    try {
+      const res = await confirmSell(asset.id, fill.fillDate, fill.fillPrice, sellQty, asset.currency);
+      if (!res.ok) return res;
+      const queue = completeQueueItem(actionQueue, action.id, { resolvedDate: today, linkedSellRecordId: res.sellRecordId });
+      commitPortfolioPatch({ assets: res.nextAssets, sellHistory: res.nextSellHistory, actionQueue: queue });
+      return { ok: true };
+    } catch (e) {
+      log.error('대청소 청산 실행 실패:', e);
+      return { ok: false, reason: 'exception' };
+    }
+  }, [assets, actionQueue, confirmSell, commitPortfolioPatch]);
+
+  return { actionQueue, refreshActionQueue, markDone, markSkipped, snoozeAction, executeTurtleAction, executeCleanupAction, isRefreshing, refreshError };
 }
