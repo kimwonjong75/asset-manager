@@ -206,8 +206,8 @@ export const GenResult: React.FC<{ result: GenResultData }> = ({ result }) => {
       </p>
       {zeroReason && <p className="text-gray-400 mt-1">{zeroReason}</p>}
       {result.generated > 0 && (
-        <p className="text-[11px] text-amber-300 mt-1">
-          ※ 자동 매매 연결은 다음 단계입니다. 실행 큐의 리밸런싱 카드는 증권사에서 직접 실행 후 완료 표시(현재 자동 체결 아님).
+        <p className="text-[11px] text-gray-500 mt-1">
+          실행 큐의 「실행하기」로 실제 체결일·체결가·수량을 입력하면 매수/매도가 기록됩니다.
         </p>
       )}
       {skips.length > 0 && (

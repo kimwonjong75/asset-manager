@@ -94,6 +94,8 @@ export interface ModalState {
   turtleExecAction: ActionItem | null;
   /** 대청소 청산 실행 모달 대상 (Phase 3d-2). null=닫힘. 전용 CleanupExecuteModal만 사용 */
   cleanupExecAction: ActionItem | null;
+  /** 리밸런싱 실행 모달 대상 (Phase 4c-2). null=닫힘. 전용 RebalanceExecuteModal만 사용 */
+  rebalanceExecAction: ActionItem | null;
 }
 
 export interface DerivedState {
@@ -225,6 +227,9 @@ export interface PortfolioActions {
   /** 대청소 청산 실행 모달 열기/닫기 (Phase 3d-2). 여는 것만으로는 아무 상태도 바뀌지 않음 */
   openCleanupExecution: (action: ActionItem) => void;
   closeCleanupExecution: () => void;
+  /** 리밸런싱 실행 모달 열기/닫기 (Phase 4c-2). 여는 것만으로는 아무 상태도 바뀌지 않음 */
+  openRebalanceExecution: (action: ActionItem) => void;
+  closeRebalanceExecution: () => void;
 
   // 카테고리 관리
   addCategory: (name: string, baseType: CategoryBaseType) => void;

@@ -235,6 +235,7 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [editingSellRecord, setEditingSellRecord] = useState<SellRecord | null>(null);
   const [turtleExecAction, setTurtleExecAction] = useState<ActionItem | null>(null);
   const [cleanupExecAction, setCleanupExecAction] = useState<ActionItem | null>(null);
+  const [rebalanceExecAction, setRebalanceExecAction] = useState<ActionItem | null>(null);
 
   // 저가 자산 숨김 임계값 (KRW). 환경설정에서 조정, localStorage 영속
   const [lowValueThreshold, setLowValueThresholdState] = useState<number>(() => {
@@ -537,6 +538,7 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       editingSellRecord,
       turtleExecAction,
       cleanupExecAction,
+      rebalanceExecAction,
     },
     derived: {
       totalValue,
@@ -659,6 +661,8 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       closeTurtleExecution: () => setTurtleExecAction(null),
       openCleanupExecution: (action: ActionItem) => setCleanupExecAction(action),
       closeCleanupExecution: () => setCleanupExecAction(null),
+      openRebalanceExecution: (action: ActionItem) => setRebalanceExecAction(action),
+      closeRebalanceExecution: () => setRebalanceExecAction(null),
       // 카테고리 관리
       addCategory: (name: string, baseType: CategoryBaseType) => {
         const newCat = {

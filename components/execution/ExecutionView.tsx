@@ -19,6 +19,7 @@ import TurtleExecuteModal from './TurtleExecuteModal';
 import TurtleSettingsPanel from './TurtleSettingsPanel';
 import WhyNoOrderPanel from './WhyNoOrderPanel';
 import CleanupExecuteModal from '../cleanup/CleanupExecuteModal';
+import RebalanceExecuteModal from '../dashboard/RebalanceExecuteModal';
 import type { RefreshDiagnostics } from '../../types/actionQueue';
 
 /** 전용 실행 모달을 여는 터틀 kind (진입/불타기/손절/청산). 나머지는 표시만 완료(markDone). */
@@ -26,10 +27,10 @@ const TURTLE_KINDS: ActionKind[] = ['TURTLE_ENTRY', 'TURTLE_PYRAMID', 'TURTLE_ST
 const isTurtleKind = (kind: ActionKind): boolean => TURTLE_KINDS.includes(kind);
 /** 전용 청산 실행 모달을 여는 kind (대청소). */
 const isCleanupKind = (kind: ActionKind): boolean => kind === 'CLEANUP_SELL';
-/** 전용 실행 모달이 필요한 kind (일반 markDone과 분리). */
-const needsExecuteModal = (kind: ActionKind): boolean => isTurtleKind(kind) || isCleanupKind(kind);
-/** 실행 연결이 아직 없는 kind (Phase 4c 전) — 완료 버튼 비활성(markDone만 되어 추적 깨지는 것 방지). */
-const isExecutionPending = (kind: ActionKind): boolean => kind === 'REBALANCE_BUY' || kind === 'REBALANCE_SELL';
+/** 전용 리밸런싱 실행 모달을 여는 kind (Phase 4c-2). */
+const isRebalanceKind = (kind: ActionKind): boolean => kind === 'REBALANCE_BUY' || kind === 'REBALANCE_SELL';
+/** 전용 실행 모달이 필요한 kind (일반 markDone과 분리) — 완료 버튼 라벨 '실행하기'. */
+const needsExecuteModal = (kind: ActionKind): boolean => isTurtleKind(kind) || isCleanupKind(kind) || isRebalanceKind(kind);
 
 const KIND_META: Record<ActionKind, { label: string; dot: string; badge: string }> = {
   TURTLE_ENTRY:   { label: '신규 매수', dot: 'bg-emerald-400', badge: 'text-emerald-300 border-emerald-500/40 bg-emerald-500/10' },
@@ -48,7 +49,7 @@ const todayISO = (): string => new Date().toISOString().slice(0, 10);
 
 const ExecutionView: React.FC = () => {
   const { actions } = usePortfolio();
-  const { actionQueue, refreshActionQueue, markDone, markSkipped, snoozeAction, executeTurtleAction, executeCleanupAction, isRefreshing, refreshError } = useActionQueue();
+  const { actionQueue, refreshActionQueue, markDone, markSkipped, snoozeAction, executeTurtleAction, executeCleanupAction, executeRebalanceAction, isRefreshing, refreshError } = useActionQueue();
   const today = todayISO();
 
   const [skipId, setSkipId] = useState<string | null>(null);
@@ -149,9 +150,9 @@ const ExecutionView: React.FC = () => {
               onDone={() =>
                 isTurtleKind(item.kind) ? actions.openTurtleExecution(item)
                 : isCleanupKind(item.kind) ? actions.openCleanupExecution(item)
+                : isRebalanceKind(item.kind) ? actions.openRebalanceExecution(item)
                 : markDone(item.id)}
               isTurtle={needsExecuteModal(item.kind)}
-              donePending={isExecutionPending(item.kind)}
               onSnooze={() => snoozeAction(item.id, 1)}
             />
           ))}
@@ -161,6 +162,7 @@ const ExecutionView: React.FC = () => {
       {/* 실행 모달 — 각 executeXxxAction을 prop으로 전달(훅 인스턴스 중복 방지) */}
       <TurtleExecuteModal executeTurtleAction={executeTurtleAction} />
       <CleanupExecuteModal executeCleanupAction={executeCleanupAction} />
+      <RebalanceExecuteModal executeRebalanceAction={executeRebalanceAction} />
     </div>
   );
 };
@@ -176,13 +178,11 @@ interface ActionCardProps {
   onCancelSkip: () => void;
   onDone: () => void;
   isTurtle: boolean;
-  /** 실행 연결이 아직 없는 kind(REBALANCE_*, 4c 전) — 완료 버튼 비활성 */
-  donePending: boolean;
   onSnooze: () => void;
 }
 
 const ActionCard: React.FC<ActionCardProps> = ({
-  item, today, isSkipping, skipText, onSkipTextChange, onStartSkip, onConfirmSkip, onCancelSkip, onDone, isTurtle, donePending, onSnooze,
+  item, today, isSkipping, skipText, onSkipTextChange, onStartSkip, onConfirmSkip, onCancelSkip, onDone, isTurtle, onSnooze,
 }) => {
   const meta = KIND_META[item.kind];
   const level = actionEscalationLevel(item, today);
@@ -213,9 +213,6 @@ const ActionCard: React.FC<ActionCardProps> = ({
               </span>
             )}
           </div>
-          {(item.kind === 'REBALANCE_BUY' || item.kind === 'REBALANCE_SELL') && (
-            <p className="text-[11px] text-amber-300 mt-1.5">※ 자동 체결 연결 준비 중 — 증권사에서 직접 실행 후 「실행 완료」 표시(현재 자동 매매 아님)</p>
-          )}
         </div>
       </div>
 
@@ -244,14 +241,11 @@ const ActionCard: React.FC<ActionCardProps> = ({
           <button onClick={onStartSkip} className="text-xs text-gray-300 hover:text-white bg-gray-700 hover:bg-gray-600 px-3 py-1.5 rounded-md transition-colors">건너뜀</button>
           <button
             onClick={onDone}
-            disabled={donePending}
-            className="text-xs font-medium text-white bg-primary hover:bg-primary-dark px-3 py-1.5 rounded-md transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-primary"
-            title={donePending
-              ? '실행 연결 준비 중(다음 단계) — 아직 완료 처리할 수 없습니다'
-              : isTurtle
-                ? '실제 체결일·체결가·수량을 입력해 매수/매도를 기록하고 포지션을 갱신합니다'
-                : '증권사에서 실행한 뒤 완료로 표시합니다'}
-          >{donePending ? '실행 연결 준비 중' : isTurtle ? '실행하기' : '실행 완료'}</button>
+            className="text-xs font-medium text-white bg-primary hover:bg-primary-dark px-3 py-1.5 rounded-md transition-colors"
+            title={isTurtle
+              ? '실제 체결일·체결가·수량을 입력해 매수/매도를 기록합니다'
+              : '증권사에서 실행한 뒤 완료로 표시합니다'}
+          >{isTurtle ? '실행하기' : '실행 완료'}</button>
         </div>
       )}
     </li>
