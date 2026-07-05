@@ -231,6 +231,7 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [focusedAssetId, setFocusedAssetId] = useState<string | null>(null);
   const [focusedWatchItemId, setFocusedWatchItemId] = useState<string | null>(null);
   const [editingSellRecord, setEditingSellRecord] = useState<SellRecord | null>(null);
+  const [turtleExecAction, setTurtleExecAction] = useState<ActionItem | null>(null);
 
   // 저가 자산 숨김 임계값 (KRW). 환경설정에서 조정, localStorage 영속
   const [lowValueThreshold, setLowValueThresholdState] = useState<number>(() => {
@@ -531,6 +532,7 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       editingWatchItem,
       addWatchItemOpen: isAddWatchItemOpen,
       editingSellRecord,
+      turtleExecAction,
     },
     derived: {
       totalValue,
@@ -649,6 +651,8 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       closeEditWatchItem: () => setEditingWatchItem(null),
       openEditSellRecord: (record: SellRecord) => setEditingSellRecord(record),
       closeEditSellRecord: () => setEditingSellRecord(null),
+      openTurtleExecution: (action: ActionItem) => setTurtleExecAction(action),
+      closeTurtleExecution: () => setTurtleExecAction(null),
       // 카테고리 관리
       addCategory: (name: string, baseType: CategoryBaseType) => {
         const newCat = {

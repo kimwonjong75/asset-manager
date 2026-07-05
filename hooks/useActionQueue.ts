@@ -31,8 +31,12 @@ import {
   extractOhlcvSeries,
   turtleHistoryWindow,
   computeDeployedBudgetKRW,
+  turtleFxRate,
 } from '../utils/turtleMarketData';
-import { Currency } from '../types';
+import { resolveTurtleUpdate, TurtleFill } from '../utils/turtleExecution';
+import { ActionItem } from '../types/actionQueue';
+import { Currency, NewAssetForm } from '../types';
+import type { AddAssetResult } from '../types/assetActionResult';
 import { createLogger } from '../utils/logger';
 
 const log = createLogger('ActionQueue');
@@ -54,7 +58,7 @@ function todayISO(): string {
 export function useActionQueue() {
   const { data, actions } = usePortfolio();
   const { assets, watchlist, exchangeRates, turtlePositions, turtleSettings, actionQueue } = data;
-  const { updateActionQueue } = actions;
+  const { updateActionQueue, addAsset, confirmSell, confirmBuyMore, commitPortfolioPatch } = actions;
 
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [refreshError, setRefreshError] = useState<string | null>(null);
@@ -168,5 +172,65 @@ export function useActionQueue() {
     ));
   }, [actionQueue, updateActionQueue]);
 
-  return { actionQueue, refreshActionQueue, markDone, markSkipped, snoozeAction, isRefreshing, refreshError };
+  /**
+   * 터틀 주문 실행 (Phase 2b-4b-2d) — TurtleExecuteModal이 실제 체결값(fill)으로 호출.
+   * 기존 머니 액션(addAsset/confirmBuyMore/confirmSell) 그대로 호출 → **저장 성공(res.ok) 시에만**
+   * resolveTurtleUpdate로 positions/queue 계산 후 **단일 commitPortfolioPatch**(assets/sellHistory는 머니 액션 반환 재사용).
+   * 실패/취소({ok:false})면 커밋 없음 → action pending·position 무변경. 가격/N/stop 원통화(D6).
+   */
+  const executeTurtleAction = useCallback(async (action: ActionItem, fill: TurtleFill): Promise<{ ok: boolean; reason?: string }> => {
+    const today = todayISO();
+    const settings = turtleSettings;
+    try {
+      if (action.kind === 'TURTLE_ENTRY') {
+        const w = watchlist.find(x => x.ticker === action.ticker);
+        if (!w) return { ok: false, reason: 'candidate-missing' };
+        const currency = w.currency ?? Currency.USD;
+        const form = {
+          ticker: w.ticker, exchange: w.exchange, currency, categoryId: w.categoryId,
+          quantity: fill.quantity, purchasePrice: fill.fillPrice, purchaseDate: fill.fillDate,
+          bucket: 'SATELLITE' as const, name: w.name,
+        } as unknown as NewAssetForm;
+        const res = await (addAsset as unknown as (d: NewAssetForm) => Promise<AddAssetResult>)(form);
+        if (!res.ok) return res;
+        const fxRate = action.ruleSnapshot.fxRate ?? turtleFxRate(currency, exchangeRates);
+        const upd = resolveTurtleUpdate({ action, fill, settings, turtlePositions, actionQueue, today, assetId: res.asset.id, fxRate, newPositionId: `tp-${Date.now().toString(36)}` });
+        if (!upd) return { ok: false, reason: 'resolve-failed' };
+        commitPortfolioPatch({ assets: res.nextAssets, turtlePositions: upd.turtlePositions, actionQueue: upd.actionQueue });
+        return { ok: true };
+      }
+
+      if (action.kind === 'TURTLE_PYRAMID') {
+        const pos = turtlePositions.find(p => p.id === action.positionId && p.status === 'open');
+        if (!pos || !pos.assetId) return { ok: false, reason: 'position-missing' };
+        const res = await confirmBuyMore(pos.assetId, fill.fillDate, fill.fillPrice, fill.quantity);
+        if (!res.ok) return res;
+        const asset = assets.find(a => a.id === pos.assetId);
+        const fxRate = action.ruleSnapshot.fxRate ?? turtleFxRate(asset?.currency, exchangeRates);
+        const upd = resolveTurtleUpdate({ action, fill, settings, turtlePositions, actionQueue, today, fxRate });
+        if (!upd) return { ok: false, reason: 'resolve-failed' };
+        commitPortfolioPatch({ assets: res.nextAssets, turtlePositions: upd.turtlePositions, actionQueue: upd.actionQueue });
+        return { ok: true };
+      }
+
+      if (action.kind === 'TURTLE_STOP' || action.kind === 'TURTLE_EXIT') {
+        const pos = turtlePositions.find(p => p.id === action.positionId && p.status === 'open');
+        if (!pos || !pos.assetId) return { ok: false, reason: 'position-missing' };
+        const asset = assets.find(a => a.id === pos.assetId);
+        const res = await confirmSell(pos.assetId, fill.fillDate, fill.fillPrice, fill.quantity, asset?.currency ?? Currency.KRW);
+        if (!res.ok) return res;
+        const upd = resolveTurtleUpdate({ action, fill, settings, turtlePositions, actionQueue, today, sellRecordId: res.sellRecordId });
+        if (!upd) return { ok: false, reason: 'resolve-failed' };
+        commitPortfolioPatch({ assets: res.nextAssets, sellHistory: res.nextSellHistory, turtlePositions: upd.turtlePositions, actionQueue: upd.actionQueue });
+        return { ok: true };
+      }
+
+      return { ok: false, reason: 'unsupported-kind' };
+    } catch (e) {
+      log.error('터틀 실행 실패:', e);
+      return { ok: false, reason: 'exception' };
+    }
+  }, [assets, watchlist, exchangeRates, turtlePositions, turtleSettings, actionQueue, addAsset, confirmSell, confirmBuyMore, commitPortfolioPatch]);
+
+  return { actionQueue, refreshActionQueue, markDone, markSkipped, snoozeAction, executeTurtleAction, isRefreshing, refreshError };
 }

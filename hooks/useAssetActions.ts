@@ -107,10 +107,11 @@ export const useAssetActions = ({
       };
 
       // 원자 커밋 — assets set + 단일 autosave (미지정 도메인은 현재 상태로 저장)
-      commitPortfolioPatch({ assets: [...assets, finalNewAsset] });
+      const nextAssets = [...assets, finalNewAsset];
+      commitPortfolioPatch({ assets: nextAssets });
       setSuccessMessage(`${finalNewAsset.name} 자산이 추가되었습니다.`);
       setTimeout(() => setSuccessMessage(null), 3000);
-      return { ok: true, assetId: finalNewAsset.id, asset: finalNewAsset };
+      return { ok: true, assetId: finalNewAsset.id, asset: finalNewAsset, nextAssets };
     } catch (e) {
       log.error(e);
       setError('자산 정보를 가져오는 데 실패했습니다. 티커, 거래소, 날짜를 확인해주세요.');
@@ -281,6 +282,8 @@ export const useAssetActions = ({
         sellRecord: mut.sellRecord,
         assetClosed: mut.assetClosed,
         updatedAsset: mut.assetClosed ? undefined : mut.nextAssets.find(a => a.id === asset.id),
+        nextAssets: mut.nextAssets,
+        nextSellHistory: mut.nextSellHistory,
       };
     } catch (e) {
       log.error(e);
@@ -474,7 +477,7 @@ export const useAssetActions = ({
 
       setSuccessMessage(`${asset.customName?.trim() || asset.name} ${buyQuantity}주 추가매수가 기록되었습니다.`);
       setTimeout(() => setSuccessMessage(null), 3000);
-      return { ok: true, assetId, updatedAsset: mut.updatedAsset };
+      return { ok: true, assetId, updatedAsset: mut.updatedAsset, nextAssets: mut.nextAssets };
     } catch (e) {
       log.error(e);
       setError('추가매수 처리 중 오류가 발생했습니다.');

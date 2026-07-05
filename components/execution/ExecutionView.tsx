@@ -5,7 +5,9 @@
 // 범위(Codex 리뷰): 큐 UI + 상태 전환(done/skip/snooze)까지만.
 //   · **화면 진입 자동 refresh 금지** — "오늘 주문 생성" 버튼을 눌렀을 때만 refreshActionQueue().
 //   · **건너뜀 사유 필수** — 빈 사유로 skipped 저장 불가 (인라인 textarea).
-//   · 매수/매도 모달 prefill·SellRecord 연결은 2b-4로 분리 → 여기서 done은 "증권사 실행 후 완료 표시"만.
+//   · 터틀 kind(TURTLE_*)의 "실행 완료"는 전용 TurtleExecuteModal을 연다 (Phase 2b-4b-2-ii) —
+//     모달 저장 성공 시에만 done+lifecycle 커밋. 비터틀 kind는 기존 markDone(표시만) 유지.
+//   · TurtleExecuteModal에 executeTurtleAction을 **prop으로 전달** — useActionQueue 인스턴스 중복 방지.
 // UI 렌더만 담당(프로젝트 규칙) — 계산/상태는 useActionQueue 훅.
 
 import React, { useMemo, useState } from 'react';
@@ -13,6 +15,11 @@ import { usePortfolio } from '../../contexts/PortfolioContext';
 import { useActionQueue } from '../../hooks/useActionQueue';
 import { ActionItem, ActionKind, isActiveAction } from '../../types/actionQueue';
 import { actionDaysIgnored, actionEscalationLevel } from '../../utils/actionQueueGenerator';
+import TurtleExecuteModal from './TurtleExecuteModal';
+
+/** 전용 실행 모달을 여는 터틀 kind (진입/불타기/손절/청산). 나머지는 표시만 완료(markDone). */
+const TURTLE_KINDS: ActionKind[] = ['TURTLE_ENTRY', 'TURTLE_PYRAMID', 'TURTLE_STOP', 'TURTLE_EXIT'];
+const isTurtleKind = (kind: ActionKind): boolean => TURTLE_KINDS.includes(kind);
 
 const KIND_META: Record<ActionKind, { label: string; dot: string; badge: string }> = {
   TURTLE_ENTRY:   { label: '신규 매수', dot: 'bg-emerald-400', badge: 'text-emerald-300 border-emerald-500/40 bg-emerald-500/10' },
@@ -30,8 +37,8 @@ const fmt = (n: number): string =>
 const todayISO = (): string => new Date().toISOString().slice(0, 10);
 
 const ExecutionView: React.FC = () => {
-  const { data } = usePortfolio();
-  const { actionQueue, refreshActionQueue, markDone, markSkipped, snoozeAction, isRefreshing, refreshError } = useActionQueue();
+  const { data, actions } = usePortfolio();
+  const { actionQueue, refreshActionQueue, markDone, markSkipped, snoozeAction, executeTurtleAction, isRefreshing, refreshError } = useActionQueue();
   const today = todayISO();
 
   const budget = data.turtleSettings.satelliteBudgetKRW;
@@ -128,12 +135,16 @@ const ExecutionView: React.FC = () => {
               onStartSkip={() => startSkip(item.id)}
               onConfirmSkip={confirmSkip}
               onCancelSkip={() => setSkipId(null)}
-              onDone={() => markDone(item.id)}
+              onDone={() => (isTurtleKind(item.kind) ? actions.openTurtleExecution(item) : markDone(item.id))}
+              isTurtle={isTurtleKind(item.kind)}
               onSnooze={() => snoozeAction(item.id, 1)}
             />
           ))}
         </ul>
       )}
+
+      {/* 터틀 주문 실행 모달 — executeTurtleAction을 prop으로 전달(훅 인스턴스 중복 방지) */}
+      <TurtleExecuteModal executeTurtleAction={executeTurtleAction} />
     </div>
   );
 };
@@ -148,11 +159,12 @@ interface ActionCardProps {
   onConfirmSkip: () => void;
   onCancelSkip: () => void;
   onDone: () => void;
+  isTurtle: boolean;
   onSnooze: () => void;
 }
 
 const ActionCard: React.FC<ActionCardProps> = ({
-  item, today, isSkipping, skipText, onSkipTextChange, onStartSkip, onConfirmSkip, onCancelSkip, onDone, onSnooze,
+  item, today, isSkipping, skipText, onSkipTextChange, onStartSkip, onConfirmSkip, onCancelSkip, onDone, isTurtle, onSnooze,
 }) => {
   const meta = KIND_META[item.kind];
   const level = actionEscalationLevel(item, today);
@@ -212,8 +224,10 @@ const ActionCard: React.FC<ActionCardProps> = ({
           <button
             onClick={onDone}
             className="text-xs font-medium text-white bg-primary hover:bg-primary-dark px-3 py-1.5 rounded-md transition-colors"
-            title="증권사에서 실행한 뒤 완료로 표시합니다 (매수/매도 자동 연결은 다음 단계)"
-          >실행 완료</button>
+            title={isTurtle
+              ? '실제 체결일·체결가·수량을 입력해 매수/매도를 기록하고 포지션을 갱신합니다'
+              : '증권사에서 실행한 뒤 완료로 표시합니다'}
+          >{isTurtle ? '실행하기' : '실행 완료'}</button>
         </div>
       )}
     </li>

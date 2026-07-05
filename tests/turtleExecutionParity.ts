@@ -14,6 +14,7 @@ import {
   applyCloseExecution,
   completeQueueItem,
   exitReasonForKind,
+  resolveTurtleUpdate,
 } from '../utils/turtleExecution';
 
 let pass = 0;
@@ -96,6 +97,73 @@ check('STOP → stop', exitReasonForKind('TURTLE_STOP'), 'stop');
 check('EXIT → channel-exit', exitReasonForKind('TURTLE_EXIT'), 'channel-exit');
 check('ENTRY → null', exitReasonForKind('TURTLE_ENTRY'), null);
 check('PYRAMID → null', exitReasonForKind('TURTLE_PYRAMID'), null);
+
+// ── 6. resolveTurtleUpdate — kind별 저장성공 후 positions+queue (실제 체결값 기준) ──
+function mkAction(over: Partial<ActionItem> & { id: string; kind: ActionItem['kind'] }): ActionItem {
+  return {
+    createdDate: '2026-07-05', ticker: 'ABC', name: '에이', quantity: 250, refPrice: 100,
+    reasonText: '', ruleSnapshot: {}, status: 'pending', ...over,
+  };
+}
+const TODAY = '2026-07-20';
+{
+  // ENTRY: 실제 체결 100/250 → 신규 포지션(손절 90), action done
+  const action = mkAction({ id: 'a-entry', kind: 'TURTLE_ENTRY', ruleSnapshot: { n: 5, donchianHigh: 99 } });
+  const queue = [action];
+  const out = resolveTurtleUpdate({
+    action, fill: { fillDate: '2026-07-05', fillPrice: 100, quantity: 250 }, settings: S(),
+    turtlePositions: [], actionQueue: queue, today: TODAY, assetId: 'asset-1', fxRate: 1400, newPositionId: 'tp-1',
+  })!;
+  check('ENTRY 포지션 1', out.turtlePositions.length, 1);
+  check('ENTRY assetId 연결', out.turtlePositions[0].assetId, 'asset-1');
+  check('ENTRY 실제수량 250', out.turtlePositions[0].units[0].quantity, 250);
+  checkClose('ENTRY 손절 90 (실제가 100−2×5)', out.turtlePositions[0].stopPrice, 90);
+  check('ENTRY action done', out.actionQueue[0].status, 'done');
+  // 가드: assetId/newPositionId 누락 → null
+  check('ENTRY assetId 누락 → null', resolveTurtleUpdate({ action, fill: { fillDate: '2026-07-05', fillPrice: 100, quantity: 250 }, settings: S(), turtlePositions: [], actionQueue: queue, today: TODAY, newPositionId: 'tp-1' }), null);
+  check('ENTRY positionId 누락 → null', resolveTurtleUpdate({ action, fill: { fillDate: '2026-07-05', fillPrice: 100, quantity: 250 }, settings: S(), turtlePositions: [], actionQueue: queue, today: TODAY, assetId: 'asset-1' }), null);
+}
+{
+  // PYRAMID: 기존 포지션에 실제 105/250 추가 → 손절 95, done
+  const pos = openPos('tp-1');
+  const action = mkAction({ id: 'a-pyr', kind: 'TURTLE_PYRAMID', positionId: 'tp-1', ruleSnapshot: { n: 5 } });
+  const out = resolveTurtleUpdate({
+    action, fill: { fillDate: '2026-07-07', fillPrice: 105, quantity: 250 }, settings: S(),
+    turtlePositions: [pos], actionQueue: [action], today: TODAY, fxRate: 1,
+  })!;
+  check('PYRAMID 유닛 2', out.turtlePositions[0].units.length, 2);
+  checkClose('PYRAMID 손절 95', out.turtlePositions[0].stopPrice, 95);
+  check('PYRAMID action done', out.actionQueue[0].status, 'done');
+  // 없는 포지션 → null
+  check('PYRAMID 없는 포지션 → null', resolveTurtleUpdate({ action: mkAction({ id: 'x', kind: 'TURTLE_PYRAMID', positionId: 'nope' }), fill: { fillDate: '2026-07-07', fillPrice: 105, quantity: 250 }, settings: S(), turtlePositions: [pos], actionQueue: [], today: TODAY }), null);
+}
+{
+  // STOP: 실제 매도일 종료 + linkedSellRecordId
+  const pos = openPos('tp-1');
+  const action = mkAction({ id: 'a-stop', kind: 'TURTLE_STOP', positionId: 'tp-1' });
+  const out = resolveTurtleUpdate({
+    action, fill: { fillDate: '2026-07-20', fillPrice: 88, quantity: 250 }, settings: S(),
+    turtlePositions: [pos], actionQueue: [action], today: TODAY, sellRecordId: 'sr-9',
+  })!;
+  check('STOP 포지션 closed', out.turtlePositions[0].status, 'closed');
+  check('STOP exitReason', out.turtlePositions[0].exitReason, 'stop');
+  check('STOP closedAt=실제 매도일', out.turtlePositions[0].closedAt, '2026-07-20');
+  check('STOP action done', out.actionQueue[0].status, 'done');
+  check('STOP linkedSellRecordId', out.actionQueue[0].linkedSellRecordId, 'sr-9');
+}
+{
+  // EXIT: channel-exit
+  const pos = openPos('tp-1');
+  const action = mkAction({ id: 'a-exit', kind: 'TURTLE_EXIT', positionId: 'tp-1' });
+  const out = resolveTurtleUpdate({
+    action, fill: { fillDate: '2026-07-21', fillPrice: 91, quantity: 250 }, settings: S(),
+    turtlePositions: [pos], actionQueue: [action], today: TODAY, sellRecordId: 'sr-10',
+  })!;
+  check('EXIT exitReason channel-exit', out.turtlePositions[0].exitReason, 'channel-exit');
+  check('EXIT action done + link', out.actionQueue[0].linkedSellRecordId, 'sr-10');
+  // positionId 누락 → null
+  check('STOP/EXIT positionId 누락 → null', resolveTurtleUpdate({ action: mkAction({ id: 'y', kind: 'TURTLE_STOP' }), fill: { fillDate: '2026-07-20', fillPrice: 88, quantity: 250 }, settings: S(), turtlePositions: [pos], actionQueue: [], today: TODAY }), null);
+}
 
 // ── 결과 ──
 if (fails.length) {

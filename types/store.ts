@@ -87,6 +87,8 @@ export interface ModalState {
   editingWatchItem: WatchlistItem | null;
   addWatchItemOpen: boolean;
   editingSellRecord: SellRecord | null;
+  /** 터틀 주문 실행 모달 대상 (Phase 2b-4b-2-ii). null=닫힘. 전용 TurtleExecuteModal만 사용 */
+  turtleExecAction: ActionItem | null;
 }
 
 export interface DerivedState {
@@ -212,6 +214,9 @@ export interface PortfolioActions {
   closeEditWatchItem: () => void;
   openEditSellRecord: (record: SellRecord) => void;
   closeEditSellRecord: () => void;
+  /** 터틀 주문 실행 모달 열기/닫기 (Phase 2b-4b-2-ii). 여는 것만으로는 아무 상태도 바뀌지 않음 */
+  openTurtleExecution: (action: ActionItem) => void;
+  closeTurtleExecution: () => void;
 
   // 카테고리 관리
   addCategory: (name: string, baseType: CategoryBaseType) => void;

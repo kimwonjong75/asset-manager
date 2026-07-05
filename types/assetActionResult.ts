@@ -10,14 +10,16 @@
 
 import type { Asset, SellRecord } from './index';
 
+// nextAssets/nextSellHistory: 핸들러가 커밋한 "다음 상태" 배열을 그대로 노출 —
+// 터틀 원자 커밋이 재계산 없이 이 값을 재사용해 divergence를 원천 차단(Phase 2b-4b-2d).
 export type AddAssetResult =
-  | { ok: true; assetId: string; asset: Asset }
+  | { ok: true; assetId: string; asset: Asset; nextAssets: Asset[] }
   | { ok: false; reason?: string };
 
 export type SellResult =
-  | { ok: true; sellRecordId: string; sellRecord: SellRecord; assetClosed: boolean; updatedAsset?: Asset }
+  | { ok: true; sellRecordId: string; sellRecord: SellRecord; assetClosed: boolean; updatedAsset?: Asset; nextAssets: Asset[]; nextSellHistory: SellRecord[] }
   | { ok: false; reason?: string };
 
 export type BuyMoreResult =
-  | { ok: true; assetId: string; updatedAsset: Asset }
+  | { ok: true; assetId: string; updatedAsset: Asset; nextAssets: Asset[] }
   | { ok: false; reason?: string };
