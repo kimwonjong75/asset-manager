@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Asset, ExchangeRates, AllocationTargets } from '../types';
+import { Asset, ExchangeRates, AllocationTargets, RebalanceInstrument } from '../types';
 import { getCategoryName, type CategoryDefinition } from '../types/category';
+import { buildAllocationTargetsSave, isAllocationDirty } from '../utils/allocationTargets';
 import { getAssetBucket, getBucketLabel, BUCKET_LABELS } from '../types/bucket';
 import {
   sumByBucket,
@@ -10,7 +11,7 @@ import {
   assetValueKRW,
   type RebalanceRow,
 } from '../utils/bucketRebalancing';
-import { detectRebalanceBands, DEFAULT_REBALANCE_BAND_PCT } from '../utils/rebalanceBands';
+import { computeCoreBands, DEFAULT_REBALANCE_BAND_PCT } from '../utils/rebalanceBands';
 
 interface UseRebalancingProps {
   assets: Asset[];
@@ -50,6 +51,10 @@ export const useRebalancing = ({ assets, exchangeRates, allocationTargets, onSav
   const [targetTotalAmount, setTargetTotalAmount] = useState<number>(0);
   const [bucketTargetWeights, setBucketTargetWeights] = useState<Record<string, number>>({});
   const [categoryTargetWeights, setCategoryTargetWeights] = useState<Record<string, number>>({});
+  // 대표 매수 종목 매핑 (Phase 4b-1) — 저장본으로 초기화, 저장 시 spread 보존
+  const [categoryInstruments, setCategoryInstruments] = useState<Record<string, RebalanceInstrument>>(
+    () => allocationTargets.categoryInstruments ?? {},
+  );
   const [isSaved, setIsSaved] = useState(false);
 
   // 목표 총 자산액 초기화
@@ -90,6 +95,14 @@ export const useRebalancing = ({ assets, exchangeRates, allocationTargets, onSav
       setCategoryTargetWeights(initial);
     }
   }, [allocationTargets, coreCategoryValues, buckets, categoryTargetWeights]);
+
+  // 대표 종목 매핑 초기화: 저장본 도착 시 채택(로컬 미편집일 때만 — weights와 동일 패턴)
+  useEffect(() => {
+    if (Object.keys(categoryInstruments).length > 0) return;
+    if (allocationTargets.categoryInstruments && Object.keys(allocationTargets.categoryInstruments).length > 0) {
+      setCategoryInstruments(allocationTargets.categoryInstruments);
+    }
+  }, [allocationTargets, categoryInstruments]);
 
   // --- 3. ① 버킷 tier (코어 vs 투더문, 전체 자산 기준) ---
   const bucketRows = useMemo<RebalanceRow[]>(
@@ -132,12 +145,22 @@ export const useRebalancing = ({ assets, exchangeRates, allocationTargets, onSav
   }, [coreCategoryValues, categoryTargetWeights, buckets, coreTargetAmount, categories]);
   const coreTotals = useMemo(() => sumRows(coreTableData), [coreTableData]);
 
-  // 코어 카테고리 밴드 이탈 판정 (Phase 4a — 표시 전용). 코어 목표금액 미설정(0)이면 판정 안 함.
+  // 코어 카테고리 밴드 이탈 판정 (Phase 4a 표시 — 편집 state 주입). 생성(4b-3b)은 저장본 주입, 같은 computeCoreBands 경로 공유.
   const bandDeviations = useMemo(
-    () => (coreTargetAmount > 0
-      ? detectRebalanceBands(coreTableData, { targetTotalAmount, coreCurrentValue: buckets.CORE })
-      : []),
-    [coreTableData, targetTotalAmount, buckets.CORE, coreTargetAmount],
+    () => computeCoreBands({
+      assets, rates: exchangeRates, categories,
+      weights: categoryTargetWeights, bucketWeights: bucketTargetWeights, targetTotalAmount,
+    }),
+    [assets, exchangeRates, categories, categoryTargetWeights, bucketTargetWeights, targetTotalAmount],
+  );
+
+  // 미저장 변경 여부 (Phase 4b-3a) — 편집 state ≠ 저장본. 4b-3b 생성 버튼 게이트("저장 후 생성")용.
+  const hasUnsavedChanges = useMemo(
+    () => isAllocationDirty(
+      { weights: categoryTargetWeights, bucketWeights: bucketTargetWeights, targetTotalAmount, categoryInstruments },
+      allocationTargets,
+    ),
+    [categoryTargetWeights, bucketTargetWeights, targetTotalAmount, categoryInstruments, allocationTargets],
   );
 
   // --- 5. 투더문 보유 종목 참고 ---
@@ -179,15 +202,39 @@ export const useRebalancing = ({ assets, exchangeRates, allocationTargets, onSav
     setIsSaved(false);
   };
 
+  // 대표 종목 지정/변경(instrument)/삭제(null). categoryKey=categoryId 문자열.
+  const handleInstrumentChange = (categoryKey: string, instrument: RebalanceInstrument | null) => {
+    setCategoryInstruments(prev => {
+      const next = { ...prev };
+      if (instrument) next[categoryKey] = instrument;
+      else delete next[categoryKey];
+      return next;
+    });
+    setIsSaved(false);
+  };
+
   const handleSave = () => {
-    onSave({
+    // 기존 allocationTargets를 spread해 부분 갱신 — categoryInstruments 등 유실 방지(4b-1 결함 보정)
+    onSave(buildAllocationTargetsSave(allocationTargets, {
       weights: categoryTargetWeights,
       targetTotalAmount,
       bucketWeights: bucketTargetWeights,
-    });
+      categoryInstruments,
+    }));
     setIsSaved(true);
     setTimeout(() => setIsSaved(false), 3000);
   };
+
+  // 코어 보유 종목을 categoryId별로 (매핑 지정 시 datalist·통화/이름 자동 채움용)
+  const coreHoldingsByCategory = useMemo<Record<string, { ticker: string; name: string; currency: Asset['currency'] }[]>>(() => {
+    const out: Record<string, { ticker: string; name: string; currency: Asset['currency'] }[]> = {};
+    assets.forEach(a => {
+      if (getAssetBucket(a) !== 'CORE') return;
+      const key = String(a.categoryId);
+      (out[key] ||= []).push({ ticker: a.ticker, name: a.customName?.trim() || a.name, currency: a.currency });
+    });
+    return out;
+  }, [assets]);
 
   return {
     targetTotalAmount,
@@ -221,5 +268,11 @@ export const useRebalancing = ({ assets, exchangeRates, allocationTargets, onSav
     // 코어 카테고리 밴드 이탈 안내 (Phase 4a — 표시 전용, 주문 아님)
     bandDeviations,
     rebalanceBandPct: DEFAULT_REBALANCE_BAND_PCT,
+    // 미저장 변경 여부 (Phase 4b-3a) — 4b-3b 생성 버튼 게이트용
+    hasUnsavedChanges,
+    // 대표 매수 종목 매핑 (Phase 4b-1) — 저장/수정/삭제, 생성은 4b-2+
+    categoryInstruments,
+    handleInstrumentChange,
+    coreHoldingsByCategory,
   };
 };

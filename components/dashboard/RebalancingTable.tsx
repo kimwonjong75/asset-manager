@@ -1,8 +1,9 @@
-import React from 'react';
-import { Asset, ExchangeRates } from '../../types';
+import React, { useState } from 'react';
+import { Asset, ExchangeRates, RebalanceInstrument } from '../../types';
 import { usePortfolio } from '../../contexts/PortfolioContext';
 import { useRebalancing } from '../../hooks/useRebalancing';
 import type { RebalanceRow } from '../../utils/bucketRebalancing';
+import { getExchangesForCategory } from '../../types/category';
 
 interface RebalancingTableProps {
   assets: Asset[];
@@ -96,6 +97,78 @@ const TierTable: React.FC<TierTableProps> = ({
   );
 };
 
+/** 코어 카테고리 1개의 대표 매수 종목 지정/변경/삭제 (Phase 4b-1, 로컬 편집 → 저장하기로 영속) */
+interface InstrumentRowProps {
+  categoryKey: string;
+  categoryLabel: string;
+  categoryId: number;
+  instrument?: RebalanceInstrument;
+  holdings: { ticker: string; name: string; currency: Asset['currency'] }[];
+  exchanges: string[];
+  onChange: (categoryKey: string, instrument: RebalanceInstrument | null) => void;
+}
+
+const InstrumentRow: React.FC<InstrumentRowProps> = ({ categoryKey, categoryLabel, categoryId, instrument, holdings, exchanges, onChange }) => {
+  const [editing, setEditing] = useState(false);
+  const [ticker, setTicker] = useState(instrument?.ticker ?? '');
+  const [exchange, setExchange] = useState(instrument?.exchange ?? exchanges[0] ?? '');
+
+  const open = () => {
+    setTicker(instrument?.ticker ?? '');
+    setExchange(instrument?.exchange ?? exchanges[0] ?? '');
+    setEditing(true);
+  };
+  const apply = () => {
+    const t = ticker.trim().toUpperCase();
+    if (!t || !exchange) return;
+    // 보유 종목과 티커가 일치하면 이름·통화 자동 채움(없으면 미지정 — 4b-3에서 가격 fetch로 확정)
+    const match = holdings.find(h => h.ticker.toUpperCase() === t);
+    onChange(categoryKey, { ticker: t, exchange, categoryId, name: match?.name, currency: match?.currency });
+    setEditing(false);
+  };
+
+  return (
+    <li className="flex flex-wrap items-center justify-between gap-2 px-3 py-2.5">
+      <span className="text-sm font-medium text-white min-w-[6rem]">{categoryLabel}</span>
+      {editing ? (
+        <div className="flex flex-wrap items-center gap-1.5">
+          <input
+            list={`hold-${categoryKey}`}
+            value={ticker}
+            onChange={(e) => setTicker(e.target.value)}
+            placeholder="티커"
+            className="bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-sm w-28 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          />
+          <datalist id={`hold-${categoryKey}`}>
+            {holdings.map(h => <option key={h.ticker} value={h.ticker}>{h.name}</option>)}
+          </datalist>
+          <select
+            value={exchange}
+            onChange={(e) => setExchange(e.target.value)}
+            className="bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+          >
+            {exchanges.map(ex => <option key={ex} value={ex}>{ex}</option>)}
+          </select>
+          <button onClick={apply} disabled={!ticker.trim() || !exchange} className="text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 px-2.5 py-1 rounded disabled:opacity-40 disabled:cursor-not-allowed">적용</button>
+          <button onClick={() => setEditing(false)} className="text-xs text-gray-400 hover:text-white px-2 py-1">취소</button>
+        </div>
+      ) : (
+        <div className="flex items-center gap-2">
+          {instrument ? (
+            <span className="text-sm text-gray-200">
+              {instrument.name ? `${instrument.name} ` : ''}<span className="text-gray-400">{instrument.ticker} · {instrument.exchange}</span>
+            </span>
+          ) : (
+            <span className="text-sm text-gray-500">미지정</span>
+          )}
+          <button onClick={open} className="text-xs text-blue-300 hover:text-blue-200 px-2 py-1">{instrument ? '변경' : '지정'}</button>
+          {instrument && <button onClick={() => onChange(categoryKey, null)} className="text-xs text-gray-400 hover:text-red-300 px-1.5 py-1">삭제</button>}
+        </div>
+      )}
+    </li>
+  );
+};
+
 const RebalancingTable: React.FC<RebalancingTableProps> = ({ assets, exchangeRates }) => {
   const { data, actions } = usePortfolio();
 
@@ -111,6 +184,9 @@ const RebalancingTable: React.FC<RebalancingTableProps> = ({ assets, exchangeRat
     satelliteValue,
     bandDeviations,
     rebalanceBandPct,
+    categoryInstruments,
+    handleInstrumentChange,
+    coreHoldingsByCategory,
   } = useRebalancing({
     assets,
     exchangeRates,
@@ -208,10 +284,35 @@ const RebalancingTable: React.FC<RebalancingTableProps> = ({ assets, exchangeRat
         </section>
       )}
 
-      {/* ③ 투더문 현황 (참고) */}
+      {/* ③ 대표 매수 종목 지정 (리밸런싱 매수용) — Phase 4b-1: 매핑 저장까지만, 주문 생성 없음 */}
+      {core.rows.length > 0 && (
+        <section>
+          <h3 className="text-base font-bold text-white mb-1">③ 대표 매수 종목 지정 (코어 리밸런싱 매수용)</h3>
+          <p className="text-xs text-gray-400 mb-3">
+            각 코어 카테고리가 목표 대비 <span className="text-gray-300">부족할 때 어떤 종목을 살지</span> 미리 지정합니다.
+            지정 후 <span className="text-gray-300">저장하기</span>를 눌러야 반영됩니다. (실제 주문·수량 계산은 다음 단계)
+          </p>
+          <ul className="divide-y divide-gray-700 border border-gray-700 rounded-md">
+            {core.rows.map((row) => (
+              <InstrumentRow
+                key={row.key}
+                categoryKey={row.key}
+                categoryLabel={row.label}
+                categoryId={Number(row.key)}
+                instrument={categoryInstruments[row.key]}
+                holdings={coreHoldingsByCategory[row.key] ?? []}
+                exchanges={getExchangesForCategory(Number(row.key), data.categoryStore.categories)}
+                onChange={handleInstrumentChange}
+              />
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {/* ④ 투더문 현황 (참고) */}
       {hasSatellite && (
         <section>
-          <h3 className="text-base font-bold text-white mb-1">③ 투더문 현황 (참고)</h3>
+          <h3 className="text-base font-bold text-white mb-1">④ 투더문 현황 (참고)</h3>
           <p className="text-xs text-gray-400 mb-3">
             위성 종목은 종류가 섞여 있어 합산 한 덩어리로만 관리합니다. 총 {formatKRW(satelliteValue)}.
           </p>

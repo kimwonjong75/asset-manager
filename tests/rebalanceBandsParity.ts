@@ -7,8 +7,10 @@
 //   · fail-closed(targetTotalAmount·coreCurrentValue 0)
 // 수동 실행: npm run test:rebalance (tsx). 통과 시 exit 0.
 
+import { Asset, Currency, ExchangeRates } from '../types';
+import { DEFAULT_CATEGORIES } from '../types/category';
 import { buildRebalanceRows, RebalanceRow } from '../utils/bucketRebalancing';
-import { detectRebalanceBands, DEFAULT_REBALANCE_BAND_PCT } from '../utils/rebalanceBands';
+import { detectRebalanceBands, computeCoreBands, DEFAULT_REBALANCE_BAND_PCT } from '../utils/rebalanceBands';
 
 let pass = 0;
 const fails: string[] = [];
@@ -116,6 +118,40 @@ function coreRows(valuesByKey: Record<string, number>, targetWeights: Record<str
   // 완전 일치 A50/B50 목표 50/50 → 편차 0, diff 0 → 0건
   const rows = coreRows({ '1': 5_000_000, '2': 5_000_000 }, { '1': 50, '2': 50 }, 10_000_000, 10_000_000);
   check('완전 일치 → 0건', detectRebalanceBands(rows, { targetTotalAmount: 10_000_000, coreCurrentValue: 10_000_000 }).length, 0);
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// 8. computeCoreBands — 저장본/편집값 주입 통일 경로 (display=generation 동일 계산)
+// ════════════════════════════════════════════════════════════════════════════
+const rates: ExchangeRates = { USD: 1400, JPY: 9 };
+function mkCoreAsset(id: string, categoryId: number, price: number, qty: number): Asset {
+  return { id, categoryId, ticker: id, exchange: 'KRX (코스피/코스닥)', name: id, quantity: qty, purchasePrice: price, purchaseDate: '2025-01-01', currency: Currency.KRW, currentPrice: price, priceOriginal: price, highestPrice: price } as Asset;
+}
+{
+  // 코어 2카테고리 각 500만(50/50). 목표 40/60, CORE 100%, 총목표=현재 → cat1 SELL, cat2 BUY
+  const assets = [mkCoreAsset('a1', 1, 100, 50_000), mkCoreAsset('a2', 2, 100, 50_000)];
+  const bands = computeCoreBands({
+    assets, rates, categories: DEFAULT_CATEGORIES,
+    weights: { '1': 40, '2': 60 }, bucketWeights: { CORE: 100 }, targetTotalAmount: 10_000_000,
+  });
+  check('computeCoreBands 2건', bands.length, 2);
+  const b1 = bands.find(b => b.key === '1')!;
+  check('cat1 SELL', b1.direction, 'SELL');
+  checkClose('cat1 difference -1,000,000', b1.difference, -1_000_000);
+  const b2 = bands.find(b => b.key === '2')!;
+  check('cat2 BUY', b2.direction, 'BUY');
+}
+{
+  // 편집값 vs 저장본 주입 차이 — 목표 50/50이면 밴드 안(0건)
+  const assets = [mkCoreAsset('a1', 1, 100, 50_000), mkCoreAsset('a2', 2, 100, 50_000)];
+  const inBand = computeCoreBands({ assets, rates, categories: DEFAULT_CATEGORIES, weights: { '1': 50, '2': 50 }, bucketWeights: { CORE: 100 }, targetTotalAmount: 10_000_000 });
+  check('목표 50/50 → 0건', inBand.length, 0);
+}
+{
+  // 코어 목표금액 0 (CORE 0%) → fail-closed
+  const assets = [mkCoreAsset('a1', 1, 100, 50_000)];
+  check('CORE 0% → []', computeCoreBands({ assets, rates, categories: DEFAULT_CATEGORIES, weights: { '1': 40 }, bucketWeights: { CORE: 0 }, targetTotalAmount: 10_000_000 }).length, 0);
+  check('총목표 0 → []', computeCoreBands({ assets, rates, categories: DEFAULT_CATEGORIES, weights: { '1': 40 }, bucketWeights: { CORE: 100 }, targetTotalAmount: 0 }).length, 0);
 }
 
 // ── 결과 ──

@@ -229,12 +229,26 @@ export interface DriveFileMetadata {
   parents?: string[];
 }
 
+/**
+ * 리밸런싱 대표 매수 종목 (Phase 4b) — 코어 카테고리가 목표 대비 부족할 때 "무엇을 살지".
+ * categoryId별 1개 지정. currency/name은 지정 시 보유 종목에서 채우거나(있으면) 미지정(4b-3에서 가격 fetch로 확정).
+ */
+export interface RebalanceInstrument {
+  ticker: string;
+  exchange: string;
+  categoryId: number;
+  name?: string;
+  currency?: Currency;
+}
+
 export interface AllocationTargets {
   /** 카테고리 목표 비중(%). 코어 버킷 내부 기준(코어 합계=100%로 운용). 키=categoryId 문자열 */
   weights: Record<string, number>;
   targetTotalAmount?: number;
   /** 전략 버킷 목표 비중(%). 키='CORE'|'SATELLITE'. 미설정=레거시(전부 코어) */
   bucketWeights?: Record<string, number>;
+  /** 카테고리별 대표 매수 종목 (Phase 4b). 키=categoryId 문자열. 미지정 카테고리는 리밸런싱 매수 스킵 */
+  categoryInstruments?: Record<string, RebalanceInstrument>;
 }
 
 export interface LegacyAssetShape {

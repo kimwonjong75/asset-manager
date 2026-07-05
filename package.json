@@ -30,6 +30,8 @@
     "test:actiondiag": "npx --yes tsx tests/actionQueueDiagnosticsParity.ts",
     "test:cleanup": "npx --yes tsx tests/cleanupPlanParity.ts",
     "test:rebalance": "npx --yes tsx tests/rebalanceBandsParity.ts",
+    "test:alloc": "npx --yes tsx tests/allocationTargetsParity.ts",
+    "test:rebalaction": "npx --yes tsx tests/rebalanceActionsParity.ts",
     "test:kb": "npx --yes tsx tests/knowledgeBaseIntegrity.ts"
   },
   "dependencies": {

@@ -13,7 +13,9 @@
 //     (기본 시나리오: targetTotalAmount=현재총액이면 두 부호가 일치. 자본 증감 설정은 사용자 몫.)
 //   · fail-closed: targetTotalAmount 또는 코어 기준값(coreCurrentValue)이 0이면 판정 안 함(0건).
 
-import { RebalanceRow } from './bucketRebalancing';
+import { Asset, ExchangeRates } from '../types';
+import { CategoryDefinition, getCategoryName } from '../types/category';
+import { RebalanceRow, sumByBucket, sumCategoryValuesForBucket, buildRebalanceRows } from './bucketRebalancing';
 
 export const DEFAULT_REBALANCE_BAND_PCT = 5; // ±5%p 절대 밴드
 
@@ -65,4 +67,35 @@ export function detectRebalanceBands(
     });
   }
   return out;
+}
+
+/**
+ * 저장본/편집값 어느 쪽이든 목표 세트를 주입받아 코어 카테고리 밴드 이탈을 계산 (Phase 4b-3a, 순수).
+ * **표시(편집 state 주입)와 생성(저장본 주입)이 이 한 경로를 공유**해 drift를 없앤다.
+ * 코어 목표금액(=targetTotalAmount×CORE%)이 0이면 판정 안 함(useRebalancing 게이트 통일).
+ */
+export function computeCoreBands(input: {
+  assets: Asset[];
+  rates: ExchangeRates;
+  categories: CategoryDefinition[];
+  weights: Record<string, number>;        // 코어 카테고리 목표% (코어 합계=100 기준)
+  bucketWeights: Record<string, number>;  // CORE/SATELLITE%
+  targetTotalAmount: number;
+  bandPct?: number;
+}): RebalanceBandDeviation[] {
+  const { assets, rates, categories, weights, bucketWeights, targetTotalAmount, bandPct } = input;
+  const coreCurrentValue = sumByBucket(assets, rates).CORE;
+  const coreTargetAmount = (targetTotalAmount * (bucketWeights.CORE || 0)) / 100;
+  if (!(coreTargetAmount > 0)) return [];
+  const coreCategoryValues = sumCategoryValuesForBucket(assets, rates, 'CORE');
+  const keys = Array.from(new Set([...Object.keys(coreCategoryValues), ...Object.keys(weights)]));
+  const rows = buildRebalanceRows({
+    keys,
+    valuesByKey: coreCategoryValues,
+    targetWeights: weights,
+    denominatorValue: coreCurrentValue,
+    targetTotalAmount: coreTargetAmount,
+    labelOf: k => getCategoryName(Number(k), categories),
+  });
+  return detectRebalanceBands(rows, { targetTotalAmount, coreCurrentValue }, { bandPct });
 }
