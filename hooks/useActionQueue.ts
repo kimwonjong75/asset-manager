@@ -41,6 +41,7 @@ import { fetchBatchAssetPrices, fetchAssetData } from '../services/priceService'
 import { fetchUpbitPrice } from '../services/upbitService';
 import { ActionItem, RefreshDiagnostics, TurtleActionDiagnostics } from '../types/actionQueue';
 import { Currency, NewAssetForm, RebalanceInstrument } from '../types';
+import { filterStrategyAssets, isStrategyManaged } from '../types/owner';
 import type { AddAssetResult } from '../types/assetActionResult';
 import { createLogger } from '../utils/logger';
 
@@ -296,8 +297,10 @@ export function useActionQueue() {
     const targetsConfigured = (at.targetTotalAmount ?? 0) > 0 && (at.bucketWeights?.CORE ?? 0) > 0;
     try {
       const today = todayISO();
+      // 유선(가족) 자산 상시 제외 — 밴드 계산·보유 판정·주문 생성 전부 전략 대상(원종)만 (useRebalancing과 동일 정책)
+      const strategyAssets = filterStrategyAssets(assets);
       const bands = computeCoreBands({
-        assets, rates: exchangeRates, categories: categoryStore.categories,
+        assets: strategyAssets, rates: exchangeRates, categories: categoryStore.categories,
         weights: at.weights ?? {}, bucketWeights: at.bucketWeights ?? {}, targetTotalAmount: at.targetTotalAmount ?? 0,
       });
       const instruments = at.categoryInstruments ?? {};
@@ -308,7 +311,7 @@ export function useActionQueue() {
         if (b.direction !== 'BUY') continue;
         const inst = instruments[b.key];
         if (!inst) continue;
-        const held = findHeldCoreInstrument(assets, { ticker: inst.ticker, exchange: inst.exchange, categoryId: Number(b.key) });
+        const held = findHeldCoreInstrument(strategyAssets, { ticker: inst.ticker, exchange: inst.exchange, categoryId: Number(b.key) });
         if (!held) fetchTargets.set(instrumentKey(inst.ticker, inst.exchange), inst);
       }
 
@@ -332,7 +335,7 @@ export function useActionQueue() {
       }
 
       const result = buildRebalanceActions({
-        bandDeviations: bands, categoryInstruments: instruments, assets, rates: exchangeRates,
+        bandDeviations: bands, categoryInstruments: instruments, assets: strategyAssets, rates: exchangeRates,
         existingQueue: actionQueue, today, makeId: (seq) => `rb-${today}-${Date.now().toString(36)}-${seq}`,
         marketByInstrument,
       });
@@ -367,6 +370,7 @@ export function useActionQueue() {
         if (!action.assetId) return { ok: false, reason: 'asset-missing' };
         const asset = assets.find(a => a.id === action.assetId);
         if (!asset || !(asset.quantity > 0)) return { ok: false, reason: 'asset-missing' };
+        if (!isStrategyManaged(asset)) return { ok: false, reason: 'family-asset' }; // 유선 자산 실행 차단(옛 큐 잔존 방어)
         if (fill.quantity > asset.quantity) return { ok: false, reason: 'over-sell' }; // 과매도 방지
         const res = await confirmSell(asset.id, fill.fillDate, fill.fillPrice, fill.quantity, asset.currency);
         if (!res.ok) return res;
@@ -379,6 +383,7 @@ export function useActionQueue() {
       if (action.assetId) {
         const asset = assets.find(a => a.id === action.assetId);
         if (!asset) return { ok: false, reason: 'asset-missing' };
+        if (!isStrategyManaged(asset)) return { ok: false, reason: 'family-asset' }; // 유선 자산 실행 차단(옛 큐 잔존 방어)
         const res = await confirmBuyMore(asset.id, fill.fillDate, fill.fillPrice, fill.quantity);
         if (!res.ok) return res;
         const queue = completeQueueItem(actionQueue, action.id, { resolvedDate: today });

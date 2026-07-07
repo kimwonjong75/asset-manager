@@ -29,12 +29,13 @@ function roundTrip<T>(v: T): T {
     id: 'a1', categoryId: 2, ticker: 'VOO', exchange: 'NASDAQ', name: 'VOO', quantity: 10,
     purchasePrice: 100, purchaseDate: '2025-01-01', currency: Currency.USD,
     currentPrice: 120, priceOriginal: 120, highestPrice: 130,
-    bucket: 'SATELLITE', cleanupTag: 'liquidate', excludedFromCleanup: true,
+    bucket: 'SATELLITE', owner: 'YUSEON', cleanupTag: 'liquidate', excludedFromCleanup: true,
   };
   const loaded = mapToNewAssetStructure(roundTrip(asset));
   check('cleanupTag 보존', loaded.cleanupTag, 'liquidate');
   check('excludedFromCleanup 보존', loaded.excludedFromCleanup, true);
   check('bucket 보존(SATELLITE)', loaded.bucket, 'SATELLITE');
+  check('owner 보존(YUSEON)', loaded.owner, 'YUSEON');
   check('categoryId 보존', loaded.categoryId, 2);
   check('quantity 보존', loaded.quantity, 10);
 }
@@ -52,6 +53,7 @@ function roundTrip<T>(v: T): T {
   check('레거시 cleanupTag 미주입(undefined)', loaded.cleanupTag, undefined);
   check('레거시 excludedFromCleanup 미주입(undefined)', loaded.excludedFromCleanup, undefined);
   check('레거시 bucket 기본 CORE', loaded.bucket, 'CORE');
+  check('레거시 owner 백필(WONJONG — 이름에 유선 없음)', loaded.owner, 'WONJONG');
 }
 
 // ════════════════════════════════════════════════════════════════════════════

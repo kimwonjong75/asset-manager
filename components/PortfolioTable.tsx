@@ -21,6 +21,10 @@ import { hasResolvableRates } from '../utils/exchangeRateCache';
 import { Currency } from '../types';
 import { buildTurtlePositionViews, computeTurtleRiskGauge } from '../utils/turtlePositionView';
 import TurtleRiskGauge from './portfolio-table/TurtleRiskGauge';
+import ActionMenu from './common/ActionMenu';
+import { applyBulkAssetPatch, buildTurtleCandidateRegistration, type BulkAssetPatch } from '../utils/bulkAssetOps';
+import { BUCKET_LABELS } from '../types/bucket';
+import { OWNER_LABELS } from '../types/owner';
 
 const SortIcon = ({ sortKey, sortConfig }: { sortKey: SortKey, sortConfig: { key: SortKey; direction: SortDirection } | null }) => {
   if (!sortConfig || sortConfig.key !== sortKey) return <span className="opacity-30">↕</span>;
@@ -59,6 +63,8 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
   const [smartFilter, setSmartFilter] = useState<SmartFilterState>({ ...EMPTY_SMART_FILTER, activeFilters: new Set() });
   const [showPinnedOnly, setShowPinnedOnly] = useState(false);
   const [memoEditAsset, setMemoEditAsset] = useState<Asset | null>(null);
+  const [bulkMenuOpen, setBulkMenuOpen] = useState(false);
+  const bulkMenuRef = useRef<HTMLButtonElement>(null);
 
   const handleSetHideLowValue = (v: boolean) => {
     setHideLowValue(v);
@@ -241,6 +247,39 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
 
   const allSelected = filteredAssets.length > 0 && filteredAssets.every(a => selectedIds.has(a.id));
 
+  // ── 일괄 변경 (계정/버킷/터틀 후보) — 순수 계산은 utils/bulkAssetOps, 저장은 단일 commitPortfolioPatch ──
+  // 패치 대상은 화면 필터와 무관하게 원본 data.assets 기준 (선택 업데이트와 동일 규약: selectedIds 그대로 사용)
+  const handleBulkPatch = (patch: BulkAssetPatch, label: string) => {
+    const { assets: nextAssets, changedCount } = applyBulkAssetPatch(data.assets, selectedIds, patch);
+    if (changedCount === 0) {
+      window.alert('선택한 자산이 이미 모두 해당 값입니다.');
+      return;
+    }
+    if (!window.confirm(`선택한 ${selectedIds.size}개 자산 중 ${changedCount}개를 '${label}'(으)로 변경합니다.`)) return;
+    actions.commitPortfolioPatch({ assets: nextAssets });
+    setSelectedIds(new Set());
+  };
+
+  const handleBulkTurtleRegister = () => {
+    const today = new Date().toISOString().slice(0, 10);
+    const seqBase = Date.now().toString(36);
+    const result = buildTurtleCandidateRegistration(
+      data.assets, selectedIds, { makeId: (seq) => `bt-${today}-${seqBase}-${seq}` }, data.watchlist,
+    );
+    if (result.registeredCount === 0) {
+      window.alert(
+        result.skippedFamily.length > 0
+          ? `유선 계정 자산은 터틀 후보로 등록하지 않습니다 (${result.skippedFamily.length}건 제외).`
+          : '터틀 후보로 등록할 자산이 없습니다.',
+      );
+      return;
+    }
+    const skipNote = result.skippedFamily.length > 0 ? `\n(유선 계정 ${result.skippedFamily.length}건은 제외됩니다: ${result.skippedFamily.join(', ')})` : '';
+    if (!window.confirm(`선택한 자산 ${result.registeredCount}개를 투더문(위성) 버킷으로 전환하고 관심종목 터틀 후보로 등록합니다.${skipNote}`)) return;
+    actions.commitPortfolioPatch({ assets: result.assets, watchlist: result.watchlist });
+    setSelectedIds(new Set());
+  };
+
   const getReturnHeaderLabel = () => {
     if (!sortConfig) return '수익률';
     if (sortConfig.key === 'returnPercentage') return `수익률 ${sortConfig.direction === 'descending' ? '▼' : '▲'}`;
@@ -317,6 +356,29 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
                 >
                   {isLoading ? '업데이트 중...' : '선택 업데이트'}
                 </button>
+              )}
+              <button
+                ref={bulkMenuRef}
+                onClick={() => setBulkMenuOpen(prev => !prev)}
+                disabled={isLoading}
+                className="bg-gray-600 hover:bg-gray-500 disabled:opacity-50 text-white px-3 py-1 rounded text-xs font-medium transition whitespace-nowrap"
+                title="선택한 자산의 계정/버킷을 한 번에 변경하거나 터틀 후보로 등록합니다"
+              >
+                일괄 변경 ▾
+              </button>
+              {bulkMenuOpen && (
+                <ActionMenu
+                  anchorRef={bulkMenuRef}
+                  header={`${selectedIds.size}개 자산 일괄 변경`}
+                  items={[
+                    { label: `계정 → ${OWNER_LABELS.WONJONG}`, onClick: () => handleBulkPatch({ owner: 'WONJONG' }, `계정: ${OWNER_LABELS.WONJONG}`) },
+                    { label: `계정 → ${OWNER_LABELS.YUSEON}`, onClick: () => handleBulkPatch({ owner: 'YUSEON' }, `계정: ${OWNER_LABELS.YUSEON}`) },
+                    { label: `버킷 → ${BUCKET_LABELS.CORE}`, onClick: () => handleBulkPatch({ bucket: 'CORE' }, `버킷: ${BUCKET_LABELS.CORE}`) },
+                    { label: `버킷 → ${BUCKET_LABELS.SATELLITE}`, onClick: () => handleBulkPatch({ bucket: 'SATELLITE' }, `버킷: ${BUCKET_LABELS.SATELLITE}`) },
+                    { label: '🐢 터틀 후보 등록', onClick: handleBulkTurtleRegister, colorClass: 'text-purple-300' },
+                  ]}
+                  onClose={() => setBulkMenuOpen(false)}
+                />
               )}
             </div>
           )}
@@ -590,6 +652,12 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
             key={asset.id}
             asset={asset}
             history={history}
+            selected={selectedIds.has(asset.id)}
+            onSelect={(id, checked) => {
+              const next = new Set(selectedIds);
+              checked ? next.add(id) : next.delete(id);
+              setSelectedIds(next);
+            }}
             onEdit={onEdit}
             onSell={onSell}
             onBuy={onBuy}

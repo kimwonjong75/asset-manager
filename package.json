@@ -33,6 +33,7 @@
     "test:alloc": "npx --yes tsx tests/allocationTargetsParity.ts",
     "test:rebalaction": "npx --yes tsx tests/rebalanceActionsParity.ts",
     "test:persist": "npx --yes tsx tests/persistenceRoundTripParity.ts",
+    "test:owner": "npx --yes tsx tests/ownerBulkParity.ts",
     "test:kb": "npx --yes tsx tests/knowledgeBaseIntegrity.ts"
   },
   "dependencies": {

@@ -3,6 +3,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Asset, Currency, normalizeExchange } from '../types';
 import { getAllowedCategories, inferCategoryIdFromExchange } from '../types/category';
 import { BucketId, ALL_BUCKETS, BUCKET_LABELS, BUCKET_DESCRIPTIONS, getAssetBucket } from '../types/bucket';
+import { ALL_OWNERS, OWNER_LABELS, OWNER_DESCRIPTIONS, getAssetOwner } from '../types/owner';
 import { searchSymbols } from '../services/symbolListService';
 import { usePortfolio } from '../contexts/PortfolioContext';
 
@@ -53,6 +54,7 @@ const EditAssetModal: React.FC = () => {
       formData.purchaseDate !== normalizedDate ||
       formData.categoryId !== asset.categoryId ||
       getAssetBucket(formData) !== getAssetBucket(asset) ||
+      getAssetOwner(formData) !== getAssetOwner(asset) ||
       formData.sellAlertDropRate !== asset.sellAlertDropRate ||
       (formData.memo || '') !== (asset.memo || '')
     );
@@ -174,6 +176,27 @@ const EditAssetModal: React.FC = () => {
               ))}
             </div>
             <p className="text-xs text-gray-400 mt-1">{BUCKET_DESCRIPTIONS[getAssetBucket(formData)]}</p>
+          </div>
+          <div>
+            <label className={labelClasses}>계정</label>
+            <div className="grid grid-cols-2 gap-2">
+              {ALL_OWNERS.map((o) => (
+                <button
+                  key={o}
+                  type="button"
+                  onClick={() => setFormData(prev => (prev ? { ...prev, owner: o } : prev))}
+                  className={`py-2 px-3 rounded-md border text-sm font-medium transition ${
+                    getAssetOwner(formData) === o
+                      ? 'bg-primary border-primary text-white'
+                      : 'bg-gray-700 border-gray-600 text-gray-300 hover:border-gray-500'
+                  }`}
+                  title={OWNER_DESCRIPTIONS[o]}
+                >
+                  {OWNER_LABELS[o]}
+                </button>
+              ))}
+            </div>
+            <p className="text-xs text-gray-400 mt-1">{OWNER_DESCRIPTIONS[getAssetOwner(formData)]}</p>
           </div>
           <div>
             <label htmlFor="customName-edit" className={labelClasses}>표시용 종목명 (사용자 지정)</label>

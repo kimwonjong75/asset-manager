@@ -139,6 +139,9 @@ const PortfolioTableRow: React.FC<PortfolioTableRowProps> = ({
               {asset.bucket === 'SATELLITE' && (
                 <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 whitespace-nowrap" title="투더문(위성) 종목">투더문</span>
               )}
+              {asset.owner === 'YUSEON' && (
+                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 whitespace-nowrap" title="유선(가족) 계정 자산 — 리밸런싱·터틀 대상에서 제외">유선</span>
+              )}
             </div>
           </div>
         </td>

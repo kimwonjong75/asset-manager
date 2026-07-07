@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { Asset } from '../../types';
 import PortfolioTable from '../PortfolioTable';
 import { usePortfolio } from '../../contexts/PortfolioContext';
+import { matchesOwnerFilter } from '../../types/owner';
 
 const PortfolioView: React.FC = () => {
   const { data, ui, actions, status } = usePortfolio();
@@ -14,6 +15,10 @@ const PortfolioView: React.FC = () => {
   const sellAlertDropRate = ui.sellAlertDropRate;
   const filteredAssets = useMemo(() => {
     let filtered = assets;
+    // 계정 뷰 필터 (통합/원종/유선) — 표시 계층 전용, 원본 data.assets 불변
+    if (ui.accountView !== 'ALL') {
+      filtered = filtered.filter(asset => matchesOwnerFilter(asset, ui.accountView));
+    }
     if (filterCategory !== 'ALL') {
       filtered = filtered.filter(asset => asset.categoryId === filterCategory);
     }
@@ -26,7 +31,7 @@ const PortfolioView: React.FC = () => {
       );
     }
     return filtered;
-  }, [assets, filterCategory, searchQuery]);
+  }, [assets, ui.accountView, filterCategory, searchQuery]);
 
   return (
     <div>

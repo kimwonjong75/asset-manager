@@ -1,5 +1,6 @@
 import { Currency, LegacyAssetShape, Asset } from '../types';
 import { DEFAULT_CATEGORIES } from '../types/category';
+import { inferOwnerFromText } from '../types/owner';
 
 const DEFAULT_EXCHANGE_MAP: { [key: number]: string[] } = {
   1: ['KRX', 'KONEX'],           // KOREAN_STOCK
@@ -73,6 +74,10 @@ export const mapToNewAssetStructure = (asset: LegacyAssetShape | Asset): Asset =
 
   // 전략 버킷 기본값 보정 — 기존 값 보존(?? 덮어쓰기 금지). 레거시 자산은 전부 코어.
   newAsset.bucket = newAsset.bucket ?? 'CORE';
+
+  // 계정(owner) 백필 — 기존 값 보존(?? 덮어쓰기 금지). 미지정 레거시 자산은
+  // 이름/커스텀명/메모에 '유선'이 있으면 YUSEON(가족), 아니면 WONJONG(원종)으로 1회 추론.
+  newAsset.owner = newAsset.owner ?? inferOwnerFromText(newAsset.customName, newAsset.name, newAsset.memo);
 
   // 대청소 필드(cleanupTag/excludedFromCleanup)는 spread로 그대로 보존한다 —
   // **기본값 강제 주입 금지**: cleanupTag 미지정=미검토(≠'keep'), excludedFromCleanup 미지정=false로 해석(false 저장 안 함).

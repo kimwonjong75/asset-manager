@@ -27,6 +27,9 @@ interface PortfolioMobileCardProps {
   dcCrossDays?: number | null;
   /** 터틀 오픈 포지션 표시 모델 (있으면 읽기 전용 스트립, Phase 2b-5) */
   turtle?: TurtlePositionView;
+  /** 선택 상태 (일괄 변경/선택 업데이트용) — onSelect와 함께 전달 시 체크박스 표시 */
+  selected?: boolean;
+  onSelect?: (id: string, checked: boolean) => void;
 }
 
 
@@ -43,6 +46,8 @@ const PortfolioMobileCard: React.FC<PortfolioMobileCardProps> = ({
   gcCrossDays,
   dcCrossDays,
   turtle,
+  selected,
+  onSelect,
 }) => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [expanded, setExpanded] = useState(false);
@@ -64,6 +69,16 @@ const PortfolioMobileCard: React.FC<PortfolioMobileCardProps> = ({
   return (
     <div className="border-b border-gray-700">
       <div className="px-4 py-3 flex items-start gap-3">
+        {/* Left: selection checkbox (일괄 변경/선택 업데이트) */}
+        {onSelect && (
+          <input
+            type="checkbox"
+            checked={!!selected}
+            onChange={(e) => onSelect(asset.id, e.target.checked)}
+            onClick={(e) => e.stopPropagation()}
+            className="mt-1.5 flex-shrink-0"
+          />
+        )}
         {/* Left: name + info */}
         <div className="flex-1 min-w-0" onClick={() => setExpanded(!expanded)}>
           <div className="flex items-center gap-2 flex-wrap">
@@ -87,6 +102,9 @@ const PortfolioMobileCard: React.FC<PortfolioMobileCardProps> = ({
             <span className="text-[11px] text-gray-500">{asset.ticker} | {asset.exchange}</span>
             {asset.bucket === 'SATELLITE' && (
               <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 whitespace-nowrap" title="투더문(위성) 종목">투더문</span>
+            )}
+            {asset.owner === 'YUSEON' && (
+              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 whitespace-nowrap" title="유선(가족) 계정 자산 — 리밸런싱·터틀 대상에서 제외">유선</span>
             )}
             <CrossDaysBadge crossDays={gcCrossDays} />
             <CrossDaysBadge crossDays={dcCrossDays} />

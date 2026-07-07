@@ -37,6 +37,7 @@ import {
   type SignalDisplaySettings,
 } from '../types/ui';
 import { DEFAULT_MA_CONFIGS, clampMAPeriod, type MALineConfig } from '../utils/maCalculations';
+import { OWNER_FILTER_OPTIONS, type OwnerFilter } from '../types/owner';
 import { buildCleanupCommit } from '../utils/cleanupPlan';
 import type { CleanupDecision } from '../types/cleanup';
 
@@ -222,6 +223,19 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     try { localStorage.setItem('asset-manager-global-period', p); } catch { /* ignore */ }
   };
   const [activeTab, setActiveTab] = useState<UIState['activeTab']>('dashboard');
+  // 계정 뷰 필터 (통합/원종/유선) — 표시 계층 전용, localStorage 영속.
+  // 원본 data.assets는 절대 거르지 않는다 (autosave가 걸러진 배열을 저장하면 데이터 유실).
+  const [accountView, setAccountViewState] = useState<OwnerFilter>(() => {
+    try {
+      const stored = localStorage.getItem('asset-manager-account-view');
+      if (stored && (OWNER_FILTER_OPTIONS as string[]).includes(stored)) return stored as OwnerFilter;
+    } catch { /* ignore */ }
+    return 'ALL';
+  });
+  const handleSetAccountView = (f: OwnerFilter) => {
+    setAccountViewState(f);
+    try { localStorage.setItem('asset-manager-account-view', f); } catch { /* ignore */ }
+  };
   const [dashboardFilterCategory, setDashboardFilterCategory] = useState<number | 'ALL'>('ALL');
   const [filterCategory, setFilterCategory] = useState<number | 'ALL'>('ALL');
   const sellAlertDropRate = persistedSellAlertDropRate;
@@ -544,6 +558,7 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     ui: {
       activeTab,
       globalPeriod,
+      accountView,
       dashboardFilterCategory,
       filterCategory,
       filterAlerts,
@@ -652,6 +667,7 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       setFocusedAssetId,
       setFocusedWatchItemId,
       setGlobalPeriod: handleSetGlobalPeriod,
+      setAccountView: handleSetAccountView,
       setDashboardFilterCategory,
       setFilterCategory,
       setFilterAlerts,

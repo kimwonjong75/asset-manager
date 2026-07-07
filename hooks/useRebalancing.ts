@@ -12,6 +12,7 @@ import {
   type RebalanceRow,
 } from '../utils/bucketRebalancing';
 import { computeCoreBands, DEFAULT_REBALANCE_BAND_PCT } from '../utils/rebalanceBands';
+import { filterStrategyAssets } from '../types/owner';
 
 interface UseRebalancingProps {
   assets: Asset[];
@@ -38,7 +39,11 @@ export interface SatelliteHoldingRow {
 
 const BUCKET_KEYS = ['CORE', 'SATELLITE'];
 
-export const useRebalancing = ({ assets, exchangeRates, allocationTargets, onSave, categories }: UseRebalancingProps) => {
+export const useRebalancing = ({ assets: allAssets, exchangeRates, allocationTargets, onSave, categories }: UseRebalancingProps) => {
+  // 유선(가족) 자산 상시 제외 — 계정 뷰 필터와 무관하게 리밸런싱 계산(평가액·밴드·보유 참고)은
+  // 전략 대상(원종) 자산만 본다. 유선 자산이 매도/매수 후보에 섞이는 것을 원천 차단.
+  const assets = useMemo(() => filterStrategyAssets(allAssets), [allAssets]);
+
   // --- 1. 현재 평가액: 버킷별 / 코어 카테고리별 ---
   const buckets = useMemo(() => sumByBucket(assets, exchangeRates), [assets, exchangeRates]);
   const coreCategoryValues = useMemo(

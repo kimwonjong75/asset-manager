@@ -19,6 +19,7 @@ import {
   buildCleanupCommit,
 } from '../../utils/cleanupPlan';
 import { formatKRW } from '../portfolio-table/utils';
+import { isStrategyManaged, type OwnerId } from '../../types/owner';
 
 const TAG_META: Record<CleanupTag, { label: string; active: string; idle: string }> = {
   core:      { label: '코어 편입', active: 'bg-emerald-600 text-white border-emerald-600', idle: 'text-emerald-300 border-emerald-500/40 hover:bg-emerald-500/10' },
@@ -42,9 +43,12 @@ const CleanupView: React.FC = () => {
   const [showExcluded, setShowExcluded] = useState(false);
   const [taxOpen, setTaxOpen] = useState(false);
 
-  // 후보 선정 — showExcluded면 제외 자산도 포함(다시 해제 가능하도록)
+  // 후보 선정 — showExcluded면 제외 자산도 포함(다시 해제 가능하도록).
+  // 유선(owner='YUSEON') 계정 자산은 excludedFromCleanup과 동일하게 기본 제외(전략 대상 아님).
   const candidates = useMemo(() => {
-    const isExcluded = showExcluded ? () => false : (a: { excludedFromCleanup?: boolean }) => !!a.excludedFromCleanup;
+    const isExcluded = showExcluded
+      ? () => false
+      : (a: { excludedFromCleanup?: boolean; owner?: OwnerId }) => !!a.excludedFromCleanup || !isStrategyManaged(a);
     const list = selectCleanupCandidates(derived.enrichedAssets, {}, isExcluded);
     return [...list].sort((a, b) => a.returnPercentage - b.returnPercentage); // 큰 손실 먼저
   }, [derived.enrichedAssets, showExcluded]);

@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { usePortfolio } from '../../contexts/PortfolioContext';
 import { getCategoryName } from '../../types/category';
+import { matchesOwnerFilter } from '../../types/owner';
 import { usePortfolioCalculator } from '../../hooks/usePortfolioCalculator';
 import { useGlobalPeriodDays } from '../../hooks/useGlobalPeriodDays';
 
@@ -35,12 +36,20 @@ const DashboardView: React.FC = () => {
   const onRatesChange = actions.setExchangeRates;
   const showExchangeRateWarning = status.showExchangeRateWarning;
 
+  // 계정 뷰 필터 (통합/원종/유선) — 표시 계층 전용. 매도통계(allSellRecords)와 리밸런싱은
+  // 의도적으로 원본 assets 사용: 매도통계는 SellRecord에 owner가 없어 통합 기준(1차 한계),
+  // 리밸런싱은 뷰와 무관하게 항상 전략 대상(원종)만 계산(useRebalancing 내부 필터).
+  const viewAssets = useMemo(
+    () => assets.filter(a => matchesOwnerFilter(a, ui.accountView)),
+    [assets, ui.accountView]
+  );
+
   const dashboardFilteredAssets = useMemo(() => {
       if (dashboardFilterCategory === 'ALL') {
-          return assets;
+          return viewAssets;
       }
-      return assets.filter(asset => asset.categoryId === dashboardFilterCategory);
-  }, [assets, dashboardFilterCategory]);
+      return viewAssets.filter(asset => asset.categoryId === dashboardFilterCategory);
+  }, [viewAssets, dashboardFilterCategory]);
 
   // Use hook for dashboard specific stats (filtered)
   const { 
@@ -49,6 +58,12 @@ const DashboardView: React.FC = () => {
     totalGainLoss: dashboardTotalGainLoss, 
     totalReturn: dashboardTotalReturn 
   } = useMemo(() => calculatePortfolioStats(dashboardFilteredAssets, exchangeRates), [dashboardFilteredAssets, exchangeRates, calculatePortfolioStats]);
+
+  // 계정 뷰 기준 총 평가액 — 카테고리 비중 분모 (derived.totalValue는 통합 기준이라 뷰 선택 시 어긋남)
+  const viewTotalValue = useMemo(
+    () => calculatePortfolioStats(viewAssets, exchangeRates).totalValue,
+    [viewAssets, exchangeRates, calculatePortfolioStats]
+  );
 
   // sellHistory + 인라인 sellTransactions 병합 (수익통계와 동일한 데이터 소스)
   const allSellRecords = useMemo(() => {
@@ -90,7 +105,7 @@ const DashboardView: React.FC = () => {
       <MarketDistributionBanner />
 
       <DashboardControls
-        assets={assets}
+        assets={viewAssets}
         filterCategory={dashboardFilterCategory}
         onFilterChange={(cat) => setDashboardFilterCategory(cat)}
         exchangeRates={exchangeRates}
@@ -139,13 +154,13 @@ const DashboardView: React.FC = () => {
       
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="lg:col-span-1">
-          <AllocationChart assets={assets} exchangeRates={exchangeRates} />
+          <AllocationChart assets={viewAssets} exchangeRates={exchangeRates} />
         </div>
         <div className="lg:col-span-1">
-           <CategorySummaryTable 
-            assets={assets} 
-            totalPortfolioValue={derived.totalValue} 
-            exchangeRates={exchangeRates} 
+           <CategorySummaryTable
+            assets={viewAssets}
+            totalPortfolioValue={viewTotalValue}
+            exchangeRates={exchangeRates}
            />
         </div>
       </div>

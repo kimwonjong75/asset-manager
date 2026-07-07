@@ -117,6 +117,7 @@ export const normalizeExchange = (exchange: string): string => {
 
 import type { Indicators } from './api';
 import type { BucketId } from './bucket';
+import type { OwnerId } from './owner';
 import type { CleanupTag } from './cleanup';
 
 export interface WatchlistItem {
@@ -184,6 +185,8 @@ export interface Asset {
   pinned?: boolean;
   /** 전략 버킷 (코어=자산배분 본체 / 투더문=개별 위성). 미지정=코어. categoryId와 직교. */
   bucket?: BucketId;
+  /** 계정(소유자) 축 (원종=본인/유선=가족). 미지정=원종. 유선은 리밸런싱·터틀·대청소 상시 제외. bucket과 직교. */
+  owner?: OwnerId;
   /** 대청소 분류 확정 태그 (Phase 3). **미지정=미검토**(≠'keep'). 기본값 강제 주입 금지 */
   cleanupTag?: CleanupTag;
   /** 가족('유선') 등 의사결정 밖 자산 — 대청소 후보에서 제외. **미지정=false로 해석**(false를 저장하지 않음) */
@@ -272,6 +275,7 @@ export interface LegacyAssetShape {
   sellAlertDropRate?: number;
   memo?: string;
   bucket?: BucketId;
+  owner?: OwnerId;
   cleanupTag?: CleanupTag;
   excludedFromCleanup?: boolean;
   region?: string;

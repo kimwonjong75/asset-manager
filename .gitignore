@@ -42,3 +42,6 @@ tmp/
 .dev.vars*
 !.dev.vars.example
 !.env.example
+
+# Backtest private portfolio data
+scripts/backtest/data/

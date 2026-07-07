@@ -15,6 +15,7 @@ import SettingsPage from './components/SettingsPage';
 
 // Hooks
 import { PortfolioProvider, usePortfolio } from './contexts/PortfolioContext';
+import { OWNER_FILTER_OPTIONS, OWNER_FILTER_LABELS } from './types/owner';
 
 // Layouts
 import DashboardView from './components/layouts/DashboardView';
@@ -208,6 +209,25 @@ const AppContent: React.FC = () => {
                     )}
                     <span className="hidden sm:inline">{status.isLoading ? '중...' : '업데이트'}</span>
                   </button>
+                  {/* 계정 뷰 세그먼트 (통합/원종/유선) — 표시 필터 전용, 대시보드·포트폴리오 탭에서만 */}
+                  {(ui.activeTab === 'dashboard' || ui.activeTab === 'portfolio') && (
+                    <div className="flex items-center bg-gray-700 rounded-md p-0.5 flex-shrink-0" role="group" aria-label="계정 뷰">
+                      {OWNER_FILTER_OPTIONS.map(f => (
+                        <button
+                          key={f}
+                          onClick={() => actions.setAccountView(f)}
+                          className={`text-xs px-2 sm:px-2.5 py-1.5 rounded transition-colors whitespace-nowrap ${
+                            ui.accountView === f
+                              ? 'bg-primary text-white font-semibold'
+                              : 'text-gray-300 hover:text-white'
+                          }`}
+                          title={f === 'ALL' ? '모든 계정 자산 표시' : `${OWNER_FILTER_LABELS[f]} 계정 자산만 표시`}
+                        >
+                          {OWNER_FILTER_LABELS[f]}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                   {ui.activeTab !== 'guide' && ui.activeTab !== 'settings' && ui.activeTab !== 'analytics' && ui.activeTab !== 'replay' && ui.activeTab !== 'execution' && ui.activeTab !== 'cleanup' && (
                     <PeriodSelector value={ui.globalPeriod} onChange={actions.setGlobalPeriod} variant="dropdown" />
                   )}

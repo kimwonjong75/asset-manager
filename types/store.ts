@@ -12,6 +12,7 @@ import type { ColumnConfig, ColumnKey, FixedColumnWidths, EnrichedAsset, SignalD
 import type { MALineConfig } from '../utils/maCalculations';
 import type { ActionItem } from './actionQueue';
 import type { TurtlePosition, TurtleSettings } from './turtle';
+import type { OwnerFilter } from './owner';
 import type { AddAssetResult, SellResult, BuyMoreResult } from './assetActionResult';
 import type { CleanupDecision } from './cleanup';
 
@@ -62,6 +63,8 @@ export interface PortfolioStatus {
 export interface UIState {
   activeTab: 'dashboard' | 'portfolio' | 'analytics' | 'watchlist' | 'replay' | 'execution' | 'cleanup' | 'guide' | 'settings';
   globalPeriod: GlobalPeriod;
+  /** 계정 뷰 필터 (통합/원종/유선) — 대시보드·포트폴리오 **표시 계층 전용**. 원본 data.assets는 절대 거르지 않음(저장 유실 방지). 매도통계·히스토리는 통합 기준 유지(1차 한계) */
+  accountView: OwnerFilter;
   dashboardFilterCategory: number | 'ALL';
   filterCategory: number | 'ALL';
   filterAlerts: boolean;
@@ -186,6 +189,8 @@ export interface PortfolioActions {
   setFocusedAssetId: (id: string | null) => void;
   setFocusedWatchItemId: (id: string | null) => void;
   setGlobalPeriod: (p: GlobalPeriod) => void;
+  /** 계정 뷰 필터 변경 (통합/원종/유선) — localStorage 영속. 표시 계층만 영향 */
+  setAccountView: (f: OwnerFilter) => void;
   setDashboardFilterCategory: (c: UIState['dashboardFilterCategory']) => void;
   setFilterCategory: (c: UIState['filterCategory']) => void;
   setFilterAlerts: (v: boolean) => void;
