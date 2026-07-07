@@ -13,24 +13,18 @@
 import { useCallback, useState } from 'react';
 import { usePortfolio } from '../contexts/PortfolioContext';
 import {
-  fetchStockHistoricalPrices,
-  fetchCryptoHistoricalPrices,
   isCryptoExchange,
   convertTickerForAPI,
-  HistoricalPriceResult,
 } from '../services/historicalPriceService';
 import {
   buildTurtleActions,
   diagnoseTurtleActions,
   reconcileActionQueue,
   isSnoozeExpired,
-  TurtleMarketInput,
   TurtleCandidateRef,
 } from '../utils/actionQueueGenerator';
+import { loadTurtleMarketSnapshot, turtleCandidateItems } from './turtleMarketSnapshot';
 import {
-  assembleMarketInput,
-  extractOhlcvSeries,
-  turtleHistoryWindow,
   computeDeployedBudgetKRW,
   turtleFxRate,
 } from '../utils/turtleMarketData';
@@ -46,16 +40,6 @@ import type { AddAssetResult } from '../types/assetActionResult';
 import { createLogger } from '../utils/logger';
 
 const log = createLogger('ActionQueue');
-
-interface TickerMeta {
-  ticker: string;
-  name: string;
-  price: number;          // 현재가 (priceOriginal, 원통화)
-  currency?: Currency;
-  exchange: string;
-  isCrypto: boolean;
-  fetchTicker: string;    // API 조회용 변환 티커
-}
 
 function todayISO(): string {
   return new Date().toISOString().slice(0, 10);
@@ -94,56 +78,19 @@ export function useActionQueue() {
     });
 
     try {
-      const { startDate, endDate } = turtleHistoryWindow(turtleSettings, today);
-
-      const candidateItems = watchlist.filter(w => w.isTurtleCandidate && (w.priceOriginal ?? 0) > 0);
-
-      // ── 종목 메타 해석 (현재가·통화·거래소) ──
-      const metaByTicker = new Map<string, TickerMeta>();
-      const addMeta = (ticker: string, name: string, price: number | undefined, currency: Currency | undefined, exchange: string) => {
-        if (metaByTicker.has(ticker) || !(price && price > 0)) return;
-        metaByTicker.set(ticker, {
-          ticker, name, price, currency, exchange,
-          isCrypto: isCryptoExchange(exchange),
-          fetchTicker: convertTickerForAPI(ticker, exchange),
-        });
-      };
-      for (const p of openPositions) {
-        const asset = (p.assetId ? assets.find(a => a.id === p.assetId) : undefined) ?? assets.find(a => a.ticker === p.ticker);
-        if (asset) addMeta(p.ticker, p.name, asset.priceOriginal, asset.currency, asset.exchange);
-      }
-      for (const w of candidateItems) addMeta(w.ticker, w.name, w.priceOriginal, w.currency, w.exchange);
-
-      const metas = [...metaByTicker.values()];
-      if (metas.length === 0) {
+      // ── 시장 스냅샷 (fetch→조립) — 자동 검토(useTurtleActionReview)와 **동일 경로 공유** ──
+      const snapshot = await loadTurtleMarketSnapshot({
+        assets, watchlist, turtlePositions, turtleSettings, exchangeRates, today,
+      });
+      if (snapshot.targetCount === 0) {
         // 대상 없음 — 만료 스누즈만 되살릴 수 있으면 저장, 아니면 무저장(보이지 않는 쓰기 방지)
         const hasRevival = actionQueue.some(it => isSnoozeExpired(it, today));
         if (hasRevival) updateActionQueue(reconcileActionQueue(actionQueue, [], today));
         return { generated: 0, diagnostics: makeDiag(emptyActionsDiag) };
       }
+      const marketByTicker = snapshot.marketByTicker;
 
-      // ── OHLCV 최소 기간 fetch (주식/코인 분기) ──
-      const cryptoTickers = metas.filter(m => m.isCrypto).map(m => m.fetchTicker);
-      const stockTickers = metas.filter(m => !m.isCrypto).map(m => m.fetchTicker);
-      const empty: Record<string, HistoricalPriceResult> = {};
-      const [cryptoRes, stockRes] = await Promise.all([
-        cryptoTickers.length ? fetchCryptoHistoricalPrices(cryptoTickers, startDate, endDate) : Promise.resolve(empty),
-        stockTickers.length ? fetchStockHistoricalPrices(stockTickers, startDate, endDate) : Promise.resolve(empty),
-      ]);
-
-      // ── 시장 입력 조립 ──
-      const marketByTicker = new Map<string, TurtleMarketInput>();
-      for (const m of metas) {
-        const result = (m.isCrypto ? cryptoRes : stockRes)[m.fetchTicker];
-        const series = extractOhlcvSeries(result);
-        if (series.sortedDates.length === 0) continue; // fetch 실패 → 이 종목 스킵 (fail-closed)
-        marketByTicker.set(m.ticker, assembleMarketInput({
-          ticker: m.ticker, name: m.name, price: m.price, currency: m.currency,
-          isCrypto: m.isCrypto, series, settings: turtleSettings, rates: exchangeRates,
-        }));
-      }
-
-      const candidates: TurtleCandidateRef[] = candidateItems.map(w => ({ ticker: w.ticker, name: w.name }));
+      const candidates: TurtleCandidateRef[] = turtleCandidateItems(watchlist).map(w => ({ ticker: w.ticker, name: w.name }));
       const remainingBudgetKRW = Math.max(0, turtleSettings.satelliteBudgetKRW - computeDeployedBudgetKRW(openPositions));
 
       // 생성기와 진단이 **동일 입력**을 받도록 공유 (진단이 생성 결과와 어긋나지 않음)

@@ -47,6 +47,12 @@ export interface TurtleSettings {
   maxTotalRiskPct: number;       // 동시 전멸 한도 % (위성 예산 대비). 기본 12.
   positionValueCapPct: number;   // 1종목 매수금액 상한 % (위성 예산 대비). 기본 25. 0이면 상한 없음.
   drawdownScalingEnabled: boolean; // 드로다운 감쇄 사용. 기본 true.
+  /**
+   * 오늘 주문 자동 생성 (자동 검토 Phase C, opt-in). true면 앱 시작 후 시세 준비 시
+   * 하루 1회 "오늘 주문 생성"을 자동 실행(큐 저장). 기본 false — "보이지 않는 쓰기 금지"
+   * 원칙상 사용자가 설정으로 명시 동의했을 때만 켜진다. (구 저장본은 필드 없음 → false 취급)
+   */
+  autoGenerateQueue?: boolean;
 }
 
 export const DEFAULT_TURTLE_SETTINGS: TurtleSettings = {
@@ -60,6 +66,7 @@ export const DEFAULT_TURTLE_SETTINGS: TurtleSettings = {
   maxTotalRiskPct: 12,
   positionValueCapPct: 25,
   drawdownScalingEnabled: true,
+  autoGenerateQueue: false, // opt-in — 사용자가 실행 큐 설정 패널에서 명시적으로 켜야 함
 };
 
 // ── 엔진 산출물(주문안) 타입 — Phase 2 실행 큐가 ActionItem으로 변환 ──

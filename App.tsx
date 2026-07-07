@@ -175,18 +175,33 @@ const AppContent: React.FC = () => {
                 </div>
                 <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
                   <UpdateStatusIndicator isLoading={status.isLoading} successMessage={status.successMessage} />
-                  {derived.alertResults.length > 0 && (
-                    <button
-                      onClick={actions.showBriefingPopup}
-                      className="flex items-center gap-1 sm:gap-1.5 text-xs text-amber-400 hover:text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 px-2 sm:px-2.5 py-2 rounded-md transition-colors border border-amber-500/30 whitespace-nowrap flex-shrink-0"
-                      title="투자 브리핑 다시 보기"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                      </svg>
-                      {(() => { const count = derived.alertResults.reduce((s, r) => s + r.matchedAssets.length, 0); return count > 99 ? '99+' : count; })()}<span className="hidden sm:inline">건</span>
-                    </button>
-                  )}
+                  {(() => {
+                    // 브리핑 배지 — 신호(알림 발화) + 실행(큐 대기 + 오늘 생성 가능, 터틀 자동 검토)
+                    const signalCount = derived.alertResults.reduce((s, r) => s + r.matchedAssets.length, 0);
+                    const aqs = derived.actionQueueSummary;
+                    const execCount = aqs.actionableCount;
+                    if (signalCount === 0 && execCount === 0) return null;
+                    const cap = (n: number) => (n > 99 ? '99+' : String(n));
+                    return (
+                      <button
+                        onClick={actions.showBriefingPopup}
+                        className="flex items-center gap-1 sm:gap-1.5 text-xs text-amber-400 hover:text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 px-2 sm:px-2.5 py-2 rounded-md transition-colors border border-amber-500/30 whitespace-nowrap flex-shrink-0"
+                        title={`투자 브리핑 다시 보기 — 신호 ${signalCount}건 · 실행 ${execCount}건${aqs.escalatedCount > 0 ? ` (${aqs.escalatedCount}건 3일+ 미실행)` : ''}`}
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                        </svg>
+                        {execCount > 0 ? (
+                          <span>
+                            {signalCount > 0 && <>{cap(signalCount)}<span className="hidden sm:inline">건</span><span className="text-amber-500/60"> · </span></>}
+                            <span className={aqs.escalatedCount > 0 ? 'text-red-300 font-semibold' : 'font-semibold'}>실행 {cap(execCount)}{aqs.escalatedCount > 0 ? '⚠' : ''}</span>
+                          </span>
+                        ) : (
+                          <span>{cap(signalCount)}<span className="hidden sm:inline">건</span></span>
+                        )}
+                      </button>
+                    );
+                  })()}
                   <button
                     onClick={() => {
                       if (window.confirm('전체 종목을 업데이트 하시겠습니까?')) {
@@ -337,6 +352,7 @@ const AppContent: React.FC = () => {
                 results={derived.alertResults}
                 riskMatrix={derived.riskMatrix}
                 sellDataGaps={derived.sellDataGaps}
+                executionSummary={derived.actionQueueSummary}
                 showRiskMatrixExpanded={ui.signalDisplay.showRiskMatrixExpanded}
                 onClose={actions.dismissAlertPopup}
                 onAssetClick={(assetId, source) => {

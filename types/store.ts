@@ -7,6 +7,7 @@ import type { CategoryStore, CategoryBaseType } from './category';
 import type { KnowledgeBase, RuleStatusDescriptor } from './knowledge';
 import type { GuruSignalMatch, GuruSignalChartTarget, GuruSignalTarget } from '../utils/guruSignalEngine';
 import type { PopupDeliveryDiagnosis } from './alertDiagnostics';
+import type { TurtleReviewSummary } from '../utils/turtleReview';
 import type { GoldPremiumResult } from '../services/goldPremiumService';
 import type { ColumnConfig, ColumnKey, FixedColumnWidths, EnrichedAsset, SignalDisplaySettings } from './ui';
 import type { MALineConfig } from '../utils/maCalculations';
@@ -126,6 +127,8 @@ export interface DerivedState {
   guruSignalCaveats: Map<string, RuleStatusDescriptor>;
   /** 자동 브리핑 팝업 게이트 진단 (규칙 발화와 직교 — 알림 진단 패널이 표시) */
   autoPopupDiagnosis: PopupDeliveryDiagnosis;
+  /** 터틀 실행 요약 (자동 검토 Phase A/B) — 상단 배지 '실행 M'·브리핑 실행 카드가 소비. 읽기 전용(저장 없음) */
+  actionQueueSummary: TurtleReviewSummary;
   showAlertPopup: boolean;
   // 백업
   backupList: BackupInfo[];

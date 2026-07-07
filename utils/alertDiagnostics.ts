@@ -210,11 +210,25 @@ export function evaluateAutoPopupGate(params: {
   lastCheckedDate: string | null; // localStorage 'asset-manager-alert-popup-date'
   today: string;                  // 'YYYY-MM-DD' (호출부 주입 — now 직접 생성 금지)
   matchedRuleCount: number;
+  /**
+   * 실행 축(터틀 자동 검토, 옵션·기본 0): 실행 큐 대기 + 오늘 생성 가능 합계.
+   * 알림 발화 0건이어도 >0이면 will-show — "실행할 게 있다"도 하루 1회 브리핑 대상.
+   * 미주입 시 기존 동작과 100% 동일 (반환 형태 불변 — 기존 골든 테스트 보존).
+   */
+  executionActionableCount?: number;
+  /**
+   * 터틀 자동 검토 미완료(옵션·기본 false): true면 일자 기록 전에 not-ready로 대기 —
+   * 검토 완료 후 재평가되어 실행 건수가 게이트에 반영된다. already-checked 판정보다 뒤
+   * (오늘 이미 확인했으면 대기 의미 없음).
+   */
+  executionReviewPending?: boolean;
 }): PopupDeliveryDiagnosis {
   const { enableAutoPopup, hasAutoUpdated, isLoading, assetCount, lastCheckedDate, today, matchedRuleCount } = params;
+  const actionableCount = params.executionActionableCount ?? 0;
   if (!enableAutoPopup) return { willAutoShow: false, reason: 'auto-popup-disabled', matchedRuleCount };
   if (!hasAutoUpdated || isLoading || assetCount === 0) return { willAutoShow: false, reason: 'not-ready', matchedRuleCount };
   if (lastCheckedDate === today) return { willAutoShow: false, reason: 'already-checked-today', matchedRuleCount };
-  if (matchedRuleCount === 0) return { willAutoShow: false, reason: 'no-matches', matchedRuleCount };
+  if (params.executionReviewPending) return { willAutoShow: false, reason: 'not-ready', matchedRuleCount };
+  if (matchedRuleCount === 0 && actionableCount === 0) return { willAutoShow: false, reason: 'no-matches', matchedRuleCount };
   return { willAutoShow: true, reason: 'will-show', matchedRuleCount };
 }

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import type { AlertResult, AlertMatchedAsset, AlertDataGap } from '../../types/alertRules';
 import type { RiskMatrixRow } from '../../utils/riskMatrix';
 import type { DistributionTier } from '../../utils/distributionTierState';
+import type { TurtleReviewSummary } from '../../utils/turtleReview';
 import Tooltip from './Tooltip';
 import {
   BRIEFING_SECTION_TOOLTIPS,
@@ -30,6 +31,8 @@ interface AlertPopupProps {
   riskMatrix: RiskMatrixRow[];
   /** fail-safe(매도 data-gap) — 데이터 누락으로 평가 불가였던 매도 규칙·종목. 발화 아님(주의 노출용) */
   sellDataGaps: AlertDataGap[];
+  /** 터틀 실행 요약 (자동 검토 Phase A/B) — 실행 큐 대기 + 오늘 생성 가능. 실행할 게 있을 때만 카드 표시 */
+  executionSummary: TurtleReviewSummary;
   /** 리스크 매트릭스 배너를 기본 펼침으로 표시할지 (Phase 5, 설정 토글). false면 접힘 — 클릭 시 펼침 */
   showRiskMatrixExpanded: boolean;
   onClose: () => void;
@@ -77,7 +80,7 @@ const pctColor = (v: number | undefined): string => {
   return 'text-gray-400';
 };
 
-const AlertPopup: React.FC<AlertPopupProps> = ({ results, riskMatrix, sellDataGaps, showRiskMatrixExpanded, onClose, onAssetClick, onOpenExecution }) => {
+const AlertPopup: React.FC<AlertPopupProps> = ({ results, riskMatrix, sellDataGaps, executionSummary, showRiskMatrixExpanded, onClose, onAssetClick, onOpenExecution }) => {
   const [isMinimized, setIsMinimized] = useState(false);
   // 리스크 매트릭스 배너 펼침 상태 — 기본값은 설정(showRiskMatrixExpanded) 따름 (Phase 5, 표시 전용)
   const [riskExpanded, setRiskExpanded] = useState(showRiskMatrixExpanded);
@@ -94,6 +97,63 @@ const AlertPopup: React.FC<AlertPopupProps> = ({ results, riskMatrix, sellDataGa
   // fail-safe(매도 data-gap) — 발화가 아니라 '데이터 누락으로 평가 불가'. 발화 알림과 별개 주의 섹션으로 표시.
   const hasDataGaps = sellDataGaps.length > 0;
   const dataGapAssetCount = new Set(sellDataGaps.flatMap(g => g.affectedAssets.map(a => a.assetId))).size;
+
+  // 터틀 실행 카드 (자동 검토 Phase A/B) — 실행할 게 있거나 검토 진행 중일 때만. 신호(참고)와 별개의 "행동" 축.
+  const exec = executionSummary;
+  const showExecCard = exec.actionableCount > 0 || exec.isChecking;
+  const hasSellSignalPreview = exec.previewStop > 0 || exec.previewExit > 0;
+  const execCard = showExecCard ? (
+    <div className={`rounded-lg border p-2.5 ${hasSellSignalPreview || exec.escalatedCount > 0 ? 'border-red-500/50 bg-red-950/30' : 'border-primary/40 bg-primary/10'}`}>
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-xs font-semibold text-white">🐢 터틀 실행 대기</span>
+        {exec.checkedAt && <span className="text-[10px] text-gray-500">{exec.checkedAt} 검토 기준</span>}
+      </div>
+      {exec.isChecking ? (
+        <p className="text-[11px] text-gray-400 mt-1.5">오늘 신호를 자동 검토하는 중입니다...</p>
+      ) : (
+        <div className="mt-1.5 space-y-1 text-[11px] text-gray-300">
+          {exec.activeCount > 0 && (
+            <p>
+              실행 큐에 <span className="text-white font-semibold">{exec.activeCount}건</span> 대기 중
+              {exec.escalatedCount > 0 && <span className="text-red-300 font-medium"> · {exec.escalatedCount}건 3일+ 미실행 ⚠</span>}
+            </p>
+          )}
+          {exec.previewCount > 0 && (
+            <p>
+              오늘 새로 생성 가능 <span className="text-white font-semibold">{exec.previewCount}건</span>
+              <span className="text-gray-400">
+                {' '}(
+                {[
+                  exec.previewEntry > 0 ? `진입 ${exec.previewEntry}` : null,
+                  exec.previewPyramid > 0 ? `불타기 ${exec.previewPyramid}` : null,
+                  exec.previewStop > 0 ? `손절 ${exec.previewStop}` : null,
+                  exec.previewExit > 0 ? `청산 ${exec.previewExit}` : null,
+                ].filter(Boolean).join(' · ')}
+                )
+              </span>
+              {' '}— 「오늘 주문 생성」으로 확정
+            </p>
+          )}
+          {exec.budgetMissing && exec.turtleCandidateCount > 0 && (
+            <p className="text-amber-300">위성 예산 미설정 — 신규 진입은 검토되지 않습니다.</p>
+          )}
+          {exec.reviewFailed && (
+            <p className="text-amber-300">자동 검토 실패 — 실행 큐에서 수동으로 생성하세요.</p>
+          )}
+        </div>
+      )}
+      <button
+        type="button"
+        onClick={onOpenExecution}
+        className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded bg-primary/90 hover:bg-primary text-white transition-colors"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+        </svg>
+        실행 큐 열기
+      </button>
+    </div>
+  ) : null;
 
   // 리스크 매트릭스 — 티어별 그룹
   const tieredRows = {
@@ -310,22 +370,27 @@ const AlertPopup: React.FC<AlertPopupProps> = ({ results, riskMatrix, sellDataGa
           <div className="px-4 py-3 overflow-y-auto space-y-4 flex-1 min-h-0">
             {(hasResults || hasDataGaps) ? (
               <>
-                {/* 참고 지표 안내 — 실행할 주문의 단일 소스는 실행 큐 (Phase 5) */}
+                {/* 터틀 실행 카드 — 행동 축 최상단 (실행할 게 있을 때만) */}
+                {execCard}
+
+                {/* 참고 지표 안내 — 실행할 주문의 단일 소스는 실행 큐 (Phase 5). CTA는 실행 카드가 있으면 중복이라 숨김 */}
                 <div className="bg-gray-800/60 border border-gray-700/60 rounded-lg p-2.5">
                   <p className="text-[11px] text-gray-400 leading-snug">
                     <span className="text-gray-300 font-medium">이 브리핑은 참고 지표입니다.</span> 실제 실행할 주문(진입·손절·청산·리밸런싱·정리)은{' '}
                     <span className="text-gray-300">실행 큐</span>가 단일 기준입니다.
                   </p>
-                  <button
-                    type="button"
-                    onClick={onOpenExecution}
-                    className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded bg-primary/90 hover:bg-primary text-white transition-colors"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                    </svg>
-                    실행 큐 열기
-                  </button>
+                  {!showExecCard && (
+                    <button
+                      type="button"
+                      onClick={onOpenExecution}
+                      className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded bg-primary/90 hover:bg-primary text-white transition-colors"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                      </svg>
+                      실행 큐 열기
+                    </button>
+                  )}
                 </div>
 
                 {/* 종합 리스크 매트릭스 — 클라이맥스 + 디스트리뷰션 합성 (예측 아닌 과열 경고). Phase 5: 기본 접힘 */}
@@ -460,13 +525,17 @@ const AlertPopup: React.FC<AlertPopupProps> = ({ results, riskMatrix, sellDataGa
                 <p className="text-gray-600 text-[10px] text-center pb-1">종목을 클릭하면 해당 탭으로 이동합니다</p>
               </>
             ) : (
-              <div className="text-center py-6">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 mx-auto text-gray-600 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <p className="text-gray-400 text-sm">현재 특이 시그널이 없습니다.</p>
-                <p className="text-gray-500 text-xs mt-1">모든 보유 종목이 정상 범위 내에 있습니다.</p>
-              </div>
+              <>
+                {/* 알림 발화 0건이어도 실행할 게 있으면 카드 표시 (게이트가 실행 축으로 will-show 가능) */}
+                {execCard}
+                <div className="text-center py-6">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 mx-auto text-gray-600 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <p className="text-gray-400 text-sm">현재 특이 시그널이 없습니다.</p>
+                  <p className="text-gray-500 text-xs mt-1">모든 보유 종목이 정상 범위 내에 있습니다.</p>
+                </div>
+              </>
             )}
           </div>
 

@@ -97,6 +97,27 @@ const TurtleSettingsPanel: React.FC = () => {
         </p>
       )}
 
+      {/* 오늘 주문 자동 생성 (자동 검토 Phase C, opt-in 기본 OFF) — 토글은 명시적 사용자 행동이라 즉시 저장 */}
+      <div className="flex items-start justify-between gap-3 mt-2.5 pt-2.5 border-t border-gray-700/60">
+        <div className="min-w-0">
+          <p className="text-xs font-medium text-gray-200">오늘 주문 자동 생성</p>
+          <p className="text-[11px] text-gray-500 mt-0.5 leading-snug">
+            켜면 앱 시작 후 시세 업데이트가 끝났을 때 하루 1회 「오늘 주문 생성」을 자동 실행합니다.
+            실제 매수/매도가 아니라 <span className="text-gray-400">주문 목록 생성</span>까지만 자동입니다. 꺼져 있으면 버튼을 눌러야 생성됩니다.
+          </p>
+        </div>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={!!settings.autoGenerateQueue}
+          onClick={() => actions.updateTurtleSettings({ ...settings, autoGenerateQueue: !settings.autoGenerateQueue })}
+          className={`relative inline-flex h-5 w-9 flex-shrink-0 items-center rounded-full transition-colors mt-0.5 ${settings.autoGenerateQueue ? 'bg-primary' : 'bg-gray-600'}`}
+          title={settings.autoGenerateQueue ? '자동 생성 끄기' : '자동 생성 켜기 (하루 1회)'}
+        >
+          <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${settings.autoGenerateQueue ? 'translate-x-[18px]' : 'translate-x-[3px]'}`} />
+        </button>
+      </div>
+
       {/* 고정 사이징 파라미터 (기본값 유지 — 읽기 표시만) */}
       <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2.5 pt-2.5 border-t border-gray-700/60 text-[11px] text-gray-500">
         <span>유닛 리스크 <span className="text-gray-300">{settings.riskPerUnitPct}%</span></span>

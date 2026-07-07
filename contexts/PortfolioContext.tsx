@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useMemo, useEffect } from 'react';
+import React, { createContext, useContext, useState, useMemo, useEffect, useCallback } from 'react';
 import {
   Asset,
   Currency,
@@ -16,6 +16,7 @@ import { usePortfolioHistory } from '../hooks/usePortfolioHistory';
 import { usePortfolioExport } from '../hooks/usePortfolioExport';
 import { useEnrichedIndicators } from '../hooks/useEnrichedIndicators';
 import { useAutoAlert } from '../hooks/useAutoAlert';
+import { useTurtleActionReview } from '../hooks/useTurtleActionReview';
 import { usePortfolioCalculator } from '../hooks/usePortfolioCalculator';
 import { useBackup } from '../hooks/useBackup';
 import { useGoldPremium } from '../hooks/useGoldPremium';
@@ -427,6 +428,33 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     return assets.map(a => calculateAssetMetrics(a, exchangeRates, stats.totalValue));
   }, [assets, exchangeRates, calculatePortfolioStats, calculateAssetMetrics]);
 
+  // 실행 큐 저장 액션 — 자동 검토 훅(자동 생성 opt-in)과 value.actions.updateActionQueue가 공유
+  const updateActionQueueAction = useCallback((queue: ActionItem[]) => {
+    setActionQueue(queue);
+    triggerAutoSave(assets, portfolioHistory, sellHistory, watchlist, exchangeRates, undefined, undefined, undefined, undefined, queue, turtlePositions, turtleSettings);
+  }, [assets, portfolioHistory, sellHistory, watchlist, exchangeRates, turtlePositions, turtleSettings, setActionQueue, triggerAutoSave]);
+
+  // 터틀 자동 검토 (읽기 전용, Phase B) + opt-in 자동 생성 (Phase C) — 시세 준비 후 세션 1회.
+  // refreshActionQueue와 동일한 fetch→조립 경로(loadTurtleMarketSnapshot)를 공유해 프리뷰≡생성 정합 보장.
+  const { summary: actionQueueSummary } = useTurtleActionReview({
+    assets,
+    watchlist,
+    exchangeRates,
+    turtlePositions,
+    turtleSettings,
+    actionQueue,
+    hasAutoUpdated,
+    isMarketLoading,
+    updateActionQueue: updateActionQueueAction,
+  });
+
+  // 실행 축 게이트 입력 — **useMemo 필수**: 인라인 객체면 매 렌더 identity가 바뀌어
+  // useAutoAlert의 결과 계산 effect(setAlertResults)가 무한 재실행된다.
+  const executionGate = useMemo(() => ({
+    actionableCount: actionQueueSummary.actionableCount,
+    reviewPending: actionQueueSummary.reviewPending,
+  }), [actionQueueSummary.actionableCount, actionQueueSummary.reviewPending]);
+
   // 자동 알림
   const {
     alertSettings,
@@ -445,6 +473,8 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     hasAutoUpdated,
     isMarketLoading,
     watchlistItems: watchlist,
+    // 실행 축: 알림 0건이어도 실행할 게 있으면 하루 1회 팝업. 검토 완료 전에는 게이트 대기(일자 미기록).
+    executionGate,
   });
 
   // 구루 신호 평가/진단 대상 — 포트폴리오 + 관심종목을 단일 빌더(buildGuruSignalTargets)로 산출.
@@ -601,6 +631,7 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       guruSignalChartTargets,
       guruSignalCaveats,
       autoPopupDiagnosis,
+      actionQueueSummary,
       showAlertPopup,
       backupList: backup.backupList,
       backupSettings: backup.backupSettings,
@@ -759,11 +790,9 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         triggerAutoSave(assets, portfolioHistory, sellHistory, watchlist, exchangeRates, undefined, undefined, undefined, kb);
       },
 
-      // 90/10 실행 시스템 (Phase 2) — 상태 갱신 후 Drive 자동 저장 (10~12번째 인자)
-      updateActionQueue: (queue: ActionItem[]) => {
-        setActionQueue(queue);
-        triggerAutoSave(assets, portfolioHistory, sellHistory, watchlist, exchangeRates, undefined, undefined, undefined, undefined, queue, turtlePositions, turtleSettings);
-      },
+      // 90/10 실행 시스템 (Phase 2) — 상태 갱신 후 Drive 자동 저장 (10~12번째 인자).
+      // 자동 검토 훅(자동 생성 opt-in)과 동일 콜백 공유 (위 updateActionQueueAction)
+      updateActionQueue: updateActionQueueAction,
       updateTurtlePositions: (positions: TurtlePosition[]) => {
         setTurtlePositions(positions);
         triggerAutoSave(assets, portfolioHistory, sellHistory, watchlist, exchangeRates, undefined, undefined, undefined, undefined, actionQueue, positions, turtleSettings);

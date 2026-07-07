@@ -28,6 +28,7 @@
     "test:assetmut": "npx --yes tsx tests/assetMutationsParity.ts",
     "test:turtleview": "npx --yes tsx tests/turtlePositionViewParity.ts",
     "test:actiondiag": "npx --yes tsx tests/actionQueueDiagnosticsParity.ts",
+    "test:turtlereview": "npx --yes tsx tests/turtleReviewParity.ts",
     "test:cleanup": "npx --yes tsx tests/cleanupPlanParity.ts",
     "test:rebalance": "npx --yes tsx tests/rebalanceBandsParity.ts",
     "test:alloc": "npx --yes tsx tests/allocationTargetsParity.ts",

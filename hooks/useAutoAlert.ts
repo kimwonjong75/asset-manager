@@ -111,6 +111,11 @@ interface UseAutoAlertProps {
   hasAutoUpdated: boolean;
   isMarketLoading: boolean;
   watchlistItems?: WatchlistItem[];
+  /**
+   * 실행 축(터틀 자동 검토, 옵션): 알림 발화 0건이어도 실행할 게 있으면 하루 1회 자동 팝업.
+   * reviewPending=true인 동안은 게이트가 not-ready로 대기(일자 미기록) — 검토 완료 시 재평가.
+   */
+  executionGate?: { actionableCount: number; reviewPending: boolean };
 }
 
 export const useAutoAlert = ({
@@ -120,6 +125,7 @@ export const useAutoAlert = ({
   hasAutoUpdated,
   isMarketLoading,
   watchlistItems,
+  executionGate,
 }: UseAutoAlertProps) => {
   const [alertSettings, setAlertSettings] = useState<AlertSettings>(loadAlertSettings);
   const [alertResults, setAlertResults] = useState<AlertResult[]>([]);
@@ -188,14 +194,16 @@ export const useAutoAlert = ({
       lastCheckedDate: localStorage.getItem(POPUP_DATE_KEY),
       today,
       matchedRuleCount: results.length, // ← state가 아닌 방금 계산한 결과 기준(stale 없음)
+      executionActionableCount: executionGate?.actionableCount,
+      executionReviewPending: executionGate?.reviewPending,
     });
-    // 준비 안 됨 / 자동팝업 OFF / 오늘 이미 확인 → 트리거·기록 모두 안 함 (기존 가드와 동일)
+    // 준비 안 됨(터틀 검토 대기 포함) / 자동팝업 OFF / 오늘 이미 확인 → 트리거·기록 모두 안 함 (기존 가드와 동일)
     if (gate.reason === 'not-ready' || gate.reason === 'auto-popup-disabled' || gate.reason === 'already-checked-today') return;
     hasTriggeredRef.current = true;
-    if (gate.willAutoShow) setShowAlertPopup(true);        // will-show (발화 규칙 > 0)
+    if (gate.willAutoShow) setShowAlertPopup(true);        // will-show (발화 규칙 > 0 또는 실행 건 > 0)
     localStorage.setItem(POPUP_DATE_KEY, today);           // no-matches·will-show 모두 일자 기록 (기존 동작)
     setLastAutoCheckDate(today);
-  }, [isEnrichedLoading, enrichedAssets, runAlertCheck, hasAutoUpdated, isMarketLoading, alertSettings]);
+  }, [isEnrichedLoading, enrichedAssets, runAlertCheck, hasAutoUpdated, isMarketLoading, alertSettings, executionGate]);
 
   // 종합 리스크 매트릭스 — 클라이맥스 플래그 + 디스트리뷰션 카운트 + MA 근접도 합성
   // alertSettings의 distributionWindow/Ratio 등 사용자 임계값이 있으면 적용, 없으면 DEFAULT 사용
@@ -258,8 +266,10 @@ export const useAutoAlert = ({
       lastCheckedDate: lastAutoCheckDate,
       today: new Date().toISOString().slice(0, 10),
       matchedRuleCount: alertResults.length,
+      executionActionableCount: executionGate?.actionableCount,
+      executionReviewPending: executionGate?.reviewPending,
     }),
-    [alertSettings.enableAutoPopup, hasAutoUpdated, isMarketLoading, isEnrichedLoading, enrichedAssets.length, lastAutoCheckDate, alertResults.length],
+    [alertSettings.enableAutoPopup, hasAutoUpdated, isMarketLoading, isEnrichedLoading, enrichedAssets.length, lastAutoCheckDate, alertResults.length, executionGate],
   );
 
   return {
