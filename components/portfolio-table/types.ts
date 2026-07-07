@@ -10,8 +10,8 @@ export interface PortfolioTableProps {
   onSell?: (asset: Asset) => void;
   isLoading: boolean;
   sellAlertDropRate: number;
-  filterCategory: number | 'ALL';
-  onFilterChange: (category: number | 'ALL') => void;
+  filterCategory: number | 'ALL' | 'SATELLITE';
+  onFilterChange: (category: number | 'ALL' | 'SATELLITE') => void;
   filterAlerts: boolean;
   onFilterAlertsChange: (isActive: boolean) => void;
   searchQuery?: string;

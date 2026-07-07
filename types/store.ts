@@ -68,7 +68,8 @@ export interface UIState {
   accountView: OwnerFilter;
   /** 대시보드 자산구분 필터. 숫자=코어 버킷의 해당 카테고리만, 'SATELLITE'=투더문 버킷 전체 (카테고리는 코어의 배분 축·투더문은 덩어리 취급) */
   dashboardFilterCategory: number | 'ALL' | 'SATELLITE';
-  filterCategory: number | 'ALL';
+  /** 포트폴리오 탭 자산구분 필터. 숫자=해당 카테고리(버킷 무관), 'SATELLITE'=투더문 버킷 전체 */
+  filterCategory: number | 'ALL' | 'SATELLITE';
   filterAlerts: boolean;
   searchQuery: string;
   sellAlertDropRate: number;

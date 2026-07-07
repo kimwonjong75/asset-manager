@@ -238,7 +238,7 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     try { localStorage.setItem('asset-manager-account-view', f); } catch { /* ignore */ }
   };
   const [dashboardFilterCategory, setDashboardFilterCategory] = useState<number | 'ALL' | 'SATELLITE'>('ALL');
-  const [filterCategory, setFilterCategory] = useState<number | 'ALL'>('ALL');
+  const [filterCategory, setFilterCategory] = useState<number | 'ALL' | 'SATELLITE'>('ALL');
   const sellAlertDropRate = persistedSellAlertDropRate;
   const [filterAlerts, setFilterAlerts] = useState(false);
   const [searchQuery, setSearchQuery] = useState<string>('');

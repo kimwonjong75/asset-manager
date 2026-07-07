@@ -3,6 +3,7 @@ import { Asset } from '../../types';
 import PortfolioTable from '../PortfolioTable';
 import { usePortfolio } from '../../contexts/PortfolioContext';
 import { matchesOwnerFilter } from '../../types/owner';
+import { getAssetBucket } from '../../types/bucket';
 
 const PortfolioView: React.FC = () => {
   const { data, ui, actions, status } = usePortfolio();
@@ -19,7 +20,9 @@ const PortfolioView: React.FC = () => {
     if (ui.accountView !== 'ALL') {
       filtered = filtered.filter(asset => matchesOwnerFilter(asset, ui.accountView));
     }
-    if (filterCategory !== 'ALL') {
+    if (filterCategory === 'SATELLITE') {
+      filtered = filtered.filter(asset => getAssetBucket(asset) === 'SATELLITE');
+    } else if (filterCategory !== 'ALL') {
       filtered = filtered.filter(asset => asset.categoryId === filterCategory);
     }
     if (searchQuery.trim()) {

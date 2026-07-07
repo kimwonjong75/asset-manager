@@ -503,13 +503,14 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
           <div className="relative hidden sm:block">
             <select
               value={filterCategory}
-              onChange={(e) => { const v = e.target.value; onFilterChange(v === 'ALL' ? 'ALL' : Number(v)); }}
+              onChange={(e) => { const v = e.target.value; onFilterChange(v === 'ALL' || v === 'SATELLITE' ? v : Number(v)); }}
               className="appearance-none bg-gray-700 border border-gray-600 text-white text-sm rounded-md py-2 pl-3 pr-8 focus:outline-none focus:ring-2 focus:ring-primary"
             >
               <option value="ALL">전체 자산</option>
               {categoryOptions.map(cat => (
                 <option key={cat.id} value={cat.id}>{cat.name}</option>
               ))}
+              <option value="SATELLITE">🚀 {BUCKET_LABELS.SATELLITE} (위성)</option>
             </select>
             <svg className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
