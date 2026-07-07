@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { usePortfolio } from '../../contexts/PortfolioContext';
 import { getCategoryName } from '../../types/category';
 import { matchesOwnerFilter } from '../../types/owner';
+import { getAssetBucket, BUCKET_LABELS } from '../../types/bucket';
 import { usePortfolioCalculator } from '../../hooks/usePortfolioCalculator';
 import { useGlobalPeriodDays } from '../../hooks/useGlobalPeriodDays';
 
@@ -44,11 +45,16 @@ const DashboardView: React.FC = () => {
     [assets, ui.accountView]
   );
 
+  // 자산구분 필터 — 카테고리는 코어 버킷의 배분 축, 투더문은 카테고리와 무관한 덩어리 취급:
+  //   숫자 = 코어 버킷의 해당 카테고리만 / 'SATELLITE' = 투더문 버킷 전체 (배분 차트·자산군별 요약과 동일 분해)
   const dashboardFilteredAssets = useMemo(() => {
       if (dashboardFilterCategory === 'ALL') {
           return viewAssets;
       }
-      return viewAssets.filter(asset => asset.categoryId === dashboardFilterCategory);
+      if (dashboardFilterCategory === 'SATELLITE') {
+          return viewAssets.filter(asset => getAssetBucket(asset) === 'SATELLITE');
+      }
+      return viewAssets.filter(asset => asset.categoryId === dashboardFilterCategory && getAssetBucket(asset) === 'CORE');
   }, [viewAssets, dashboardFilterCategory]);
 
   // Use hook for dashboard specific stats (filtered)
@@ -96,7 +102,9 @@ const DashboardView: React.FC = () => {
 
   const profitLossChartTitle = useMemo(() => {
       if (dashboardFilterCategory === 'ALL') return '손익 추이 분석';
-      const catName = getCategoryName(dashboardFilterCategory, data.categoryStore.categories);
+      const catName = dashboardFilterCategory === 'SATELLITE'
+        ? BUCKET_LABELS.SATELLITE
+        : getCategoryName(dashboardFilterCategory, data.categoryStore.categories);
       return `${catName} 손익 추이 분석`;
   }, [dashboardFilterCategory, data.categoryStore.categories]);
 

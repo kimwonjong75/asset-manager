@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { Asset, Currency, ExchangeRates } from '../../types';
 import { getCategoryName } from '../../types/category';
+import { getAssetBucket, BUCKET_LABELS } from '../../types/bucket';
 import { usePortfolio } from '../../contexts/PortfolioContext';
 
 interface CategorySummaryTableProps {
@@ -15,20 +16,25 @@ interface SummaryData {
     totalProfitLoss: number;
     totalReturn: number;
     allocation: number;
+    /** 투더문(위성) 합산 행 — 카테고리가 아니라 버킷 덩어리임을 표시로 구분 */
+    isSatellite?: boolean;
 }
 
 const CategorySummaryTable: React.FC<CategorySummaryTableProps> = ({ assets, totalPortfolioValue, exchangeRates }) => {
     const { data: portfolioData } = usePortfolio();
     const categories = portfolioData.categoryStore.categories;
 
+    // 카테고리는 코어 버킷의 배분 축 — 투더문(위성)은 카테고리 행에 섞지 않고 하단 단일 행으로 분리
+    // (배분 차트·2단 리밸런싱과 동일한 분해). 키: 숫자=코어 카테고리, 'SAT'=투더문 합산.
     const summaryData = useMemo((): SummaryData[] => {
-        const categoryMap = new Map<number, { totalValue: number; totalPurchaseValue: number }>();
+        const categoryMap = new Map<number | 'SAT', { totalValue: number; totalPurchaseValue: number }>();
 
         assets.forEach(asset => {
-            if (!categoryMap.has(asset.categoryId)) {
-                categoryMap.set(asset.categoryId, { totalValue: 0, totalPurchaseValue: 0 });
+            const key: number | 'SAT' = getAssetBucket(asset) === 'SATELLITE' ? 'SAT' : asset.categoryId;
+            if (!categoryMap.has(key)) {
+                categoryMap.set(key, { totalValue: 0, totalPurchaseValue: 0 });
             }
-            const data = categoryMap.get(asset.categoryId)!;
+            const data = categoryMap.get(key)!;
 
             // [수정] 현재가 환율 적용
             const rate = asset.currency === Currency.KRW ? 1 : (exchangeRates[asset.currency] || 0);
@@ -52,20 +58,26 @@ const CategorySummaryTable: React.FC<CategorySummaryTableProps> = ({ assets, tot
         });
 
         const result: SummaryData[] = [];
-        for (const [categoryId, data] of categoryMap.entries()) {
+        let satelliteRow: SummaryData | null = null;
+        for (const [key, data] of categoryMap.entries()) {
             const totalProfitLoss = data.totalValue - data.totalPurchaseValue;
             const totalReturn = data.totalPurchaseValue === 0 ? 0 : (totalProfitLoss / data.totalPurchaseValue) * 100;
             const allocation = totalPortfolioValue > 0 ? (data.totalValue / totalPortfolioValue) * 100 : 0;
-            result.push({
-                category: getCategoryName(categoryId, categories),
+            const row: SummaryData = {
+                category: key === 'SAT' ? `🚀 ${BUCKET_LABELS.SATELLITE}` : getCategoryName(key, categories),
                 totalValue: data.totalValue,
                 totalProfitLoss,
                 totalReturn,
                 allocation,
-            });
+                isSatellite: key === 'SAT' || undefined,
+            };
+            if (key === 'SAT') satelliteRow = row;
+            else result.push(row);
         }
 
-        return result.sort((a, b) => b.totalValue - a.totalValue);
+        result.sort((a, b) => b.totalValue - a.totalValue);
+        if (satelliteRow) result.push(satelliteRow); // 투더문은 항상 맨 아래 고정 (카테고리와 다른 축임을 시각적으로 구분)
+        return result;
 
     }, [assets, totalPortfolioValue, exchangeRates, categories]);
 
@@ -97,8 +109,8 @@ const CategorySummaryTable: React.FC<CategorySummaryTableProps> = ({ assets, tot
                     </thead>
                     <tbody>
                         {summaryData.map(item => (
-                            <tr key={item.category} className="border-b border-gray-700">
-                                <td className="px-4 py-3 font-medium text-white">{item.category}</td>
+                            <tr key={item.category} className={`border-b border-gray-700 ${item.isSatellite ? 'bg-purple-900/10' : ''}`}>
+                                <td className={`px-4 py-3 font-medium ${item.isSatellite ? 'text-purple-300' : 'text-white'}`} title={item.isSatellite ? '투더문(위성) 버킷 합산 — 카테고리 배분과 별도로 관리되는 종목들' : undefined}>{item.category}</td>
                                 <td className="px-4 py-3 text-right">{formatKRW(item.totalValue)}</td>
                                 <td className={`px-4 py-3 text-right font-medium ${getChangeColor(item.totalProfitLoss)}`}>{formatKRW(item.totalProfitLoss)}</td>
                                 <td className={`px-4 py-3 text-right font-medium ${getChangeColor(item.totalReturn)}`}>{item.totalReturn.toFixed(2)}%</td>

@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Asset, Currency, normalizeExchange } from '../types';
-import { getAllowedCategories, inferCategoryIdFromExchange } from '../types/category';
+import { getAllowedCategories, inferCategoryIdFromExchange, getCategoryName } from '../types/category';
 import { BucketId, ALL_BUCKETS, BUCKET_LABELS, BUCKET_DESCRIPTIONS, getAssetBucket } from '../types/bucket';
 import { ALL_OWNERS, OWNER_LABELS, OWNER_DESCRIPTIONS, getAssetOwner } from '../types/owner';
 import { searchSymbols } from '../services/symbolListService';
@@ -17,6 +17,8 @@ const EditAssetModal: React.FC = () => {
   const onDelete = actions.deleteAsset;
   const isLoading = status.isLoading;
   const [formData, setFormData] = useState<Asset | null>(null);
+  // 투더문 자산은 자산 구분을 접어둠(배분에 미사용) — '변경'으로 펼쳐 수정 가능
+  const [showCategoryDetail, setShowCategoryDetail] = useState(false);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [searchResults, setSearchResults] = useState<{ ticker: string; name: string; exchange: string }[]>([]);
   const [isSearching, setIsSearching] = useState<boolean>(false);
@@ -38,6 +40,7 @@ const EditAssetModal: React.FC = () => {
         setSearchQuery('');
         setSearchResults([]);
         setIsSearching(false);
+        setShowCategoryDetail(false);
     }
   }, [asset]);
 
@@ -150,11 +153,22 @@ const EditAssetModal: React.FC = () => {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label htmlFor="category-edit" className={labelClasses}>자산 구분</label>
-            <select id="category-edit" name="categoryId" value={formData.categoryId} onChange={handleChange} className={inputClasses}>
-              {categoryOptions.map((cat) => (
-                <option key={cat.id} value={cat.id}>{cat.name}</option>
-              ))}
-            </select>
+            {getAssetBucket(formData) === 'SATELLITE' && !showCategoryDetail ? (
+              // 투더문: 자산 구분은 배분에 쓰이지 않으므로 접어둠 (값은 정확히 보존 — 코어 편입 시 배분 축)
+              <div className="flex items-center justify-between bg-gray-700/50 border border-gray-600 rounded-md py-2 px-3">
+                <span className="text-sm text-gray-300">
+                  <span className="text-white font-medium">{getCategoryName(formData.categoryId, categories)}</span>
+                  <span className="text-xs text-gray-500 ml-2">투더문은 배분에 미사용</span>
+                </span>
+                <button type="button" onClick={() => setShowCategoryDetail(true)} className="text-xs text-primary hover:underline flex-shrink-0">변경</button>
+              </div>
+            ) : (
+              <select id="category-edit" name="categoryId" value={formData.categoryId} onChange={handleChange} className={inputClasses}>
+                {categoryOptions.map((cat) => (
+                  <option key={cat.id} value={cat.id}>{cat.name}</option>
+                ))}
+              </select>
+            )}
           </div>
           <div>
             <label className={labelClasses}>전략 버킷</label>

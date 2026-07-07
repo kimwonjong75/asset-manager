@@ -65,7 +65,8 @@ export interface UIState {
   globalPeriod: GlobalPeriod;
   /** 계정 뷰 필터 (통합/원종/유선) — 대시보드·포트폴리오 **표시 계층 전용**. 원본 data.assets는 절대 거르지 않음(저장 유실 방지). 매도통계·히스토리는 통합 기준 유지(1차 한계) */
   accountView: OwnerFilter;
-  dashboardFilterCategory: number | 'ALL';
+  /** 대시보드 자산구분 필터. 숫자=코어 버킷의 해당 카테고리만, 'SATELLITE'=투더문 버킷 전체 (카테고리는 코어의 배분 축·투더문은 덩어리 취급) */
+  dashboardFilterCategory: number | 'ALL' | 'SATELLITE';
   filterCategory: number | 'ALL';
   filterAlerts: boolean;
   searchQuery: string;

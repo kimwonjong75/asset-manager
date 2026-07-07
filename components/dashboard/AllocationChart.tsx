@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { Asset, ExchangeRates, Currency } from '../../types';
 import { getCategoryName } from '../../types/category';
+import { getAssetBucket, BUCKET_LABELS } from '../../types/bucket';
 import { usePortfolio } from '../../contexts/PortfolioContext';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 
@@ -10,6 +11,8 @@ interface AllocationChartProps {
 }
 
 const COLORS = ['#6366F1', '#10B981', '#F59E0B', '#EF4444', '#3B82F6', '#8B5CF6', '#EC4899', '#F97316', '#84CC16'];
+// 투더문 조각 전용 색 — 테이블/카드의 투더문 뱃지(purple-500)와 동일 계열로 고정
+const SATELLITE_COLOR = '#A855F7';
 
 interface ChartData {
   name: string;
@@ -45,16 +48,25 @@ const AllocationChart: React.FC<AllocationChartProps> = ({ assets, exchangeRates
   const { data } = usePortfolio();
   const categories = data.categoryStore.categories;
 
+  // 카테고리는 코어 버킷의 배분 축 — 투더문(위성)은 카테고리에 섞지 않고 단일 '투더문' 조각으로 분리
+  // (2단 리밸런싱과 동일한 분해: 코어=카테고리 비중, 투더문=덩어리)
   const chartData = useMemo(() => {
     const categoryTotals = new Map<number, number>();
+    let satelliteTotal = 0;
     assets.forEach(asset => {
       // [수정] 환율 적용하여 원화 가치로 변환
       const rate = asset.currency === Currency.KRW ? 1 : (exchangeRates[asset.currency] || 0);
       const value = asset.currentPrice * asset.quantity * rate;
 
-      categoryTotals.set(asset.categoryId, (categoryTotals.get(asset.categoryId) || 0) + value);
+      if (getAssetBucket(asset) === 'SATELLITE') {
+        satelliteTotal += value;
+      } else {
+        categoryTotals.set(asset.categoryId, (categoryTotals.get(asset.categoryId) || 0) + value);
+      }
     });
-    return Array.from(categoryTotals.entries()).map(([id, value]) => ({ name: getCategoryName(id, categories), value }));
+    const rows = Array.from(categoryTotals.entries()).map(([id, value]) => ({ name: getCategoryName(id, categories), value }));
+    if (satelliteTotal > 0) rows.push({ name: BUCKET_LABELS.SATELLITE, value: satelliteTotal });
+    return rows;
   }, [assets, exchangeRates, categories]);
 
   const totalValue = useMemo(() => chartData.reduce((sum, entry) => sum + entry.value, 0), [chartData]);
@@ -77,7 +89,7 @@ const AllocationChart: React.FC<AllocationChartProps> = ({ assets, exchangeRates
               nameKey="name"
             >
               {chartData.map((entry, index) => (
-                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                <Cell key={`cell-${index}`} fill={entry.name === BUCKET_LABELS.SATELLITE ? SATELLITE_COLOR : COLORS[index % COLORS.length]} />
               ))}
             </Pie>
             <Tooltip content={<CustomTooltip totalValue={totalValue} />} />

@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Currency, SymbolSearchResult, normalizeExchange } from '../types';
-import { getAllowedCategories, inferCategoryIdFromExchange, getCategoryBaseType } from '../types/category';
+import { getAllowedCategories, inferCategoryIdFromExchange, getCategoryBaseType, getCategoryName } from '../types/category';
 import { BucketId, ALL_BUCKETS, BUCKET_LABELS, BUCKET_DESCRIPTIONS } from '../types/bucket';
-import { OwnerId, ALL_OWNERS, OWNER_LABELS, OWNER_DESCRIPTIONS } from '../types/owner';
+import { OwnerId, ALL_OWNERS, OWNER_LABELS, OWNER_DESCRIPTIONS, getAssetOwner } from '../types/owner';
 import { searchSymbols, validateTicker } from '../services/symbolListService';
 import { searchSymbolsAI } from '../services/geminiService';
 import { getGeminiApiKey } from '../services/geminiSettings';
@@ -35,6 +35,8 @@ const AddNewAssetModal: React.FC = () => {
   const [currency, setCurrency] = useState<Currency>(Currency.USD);
   const [bucket, setBucket] = useState<BucketId>('CORE');
   const [owner, setOwner] = useState<OwnerId>('WONJONG');
+  // 투더문 선택 시 자산 구분은 자동 인식 값으로 접어둠(배분에 미사용) — '변경'으로 펼쳐 수정 가능
+  const [showCategoryDetail, setShowCategoryDetail] = useState(false);
 
   const clearForm = useCallback(() => {
     setTicker('');
@@ -49,6 +51,7 @@ const AddNewAssetModal: React.FC = () => {
     setCurrency(Currency.USD);
     setBucket('CORE');
     setOwner('WONJONG');
+    setShowCategoryDetail(false);
     setDuplicateError(null);
   }, []);
 
@@ -94,16 +97,7 @@ const AddNewAssetModal: React.FC = () => {
   }, [searchQuery, ticker]);
 
   const handleSelectSymbol = (result: SymbolSearchResult) => {
-     const isDuplicate = assets.some(
-      asset => asset.ticker.toUpperCase() === result.ticker.toUpperCase() &&
-               normalizeExchange(asset.exchange) === normalizeExchange(result.exchange)
-    );
-
-    if (isDuplicate) {
-      setDuplicateError('이미 포트폴리오에 존재하는 자산입니다.');
-    } else {
-      setDuplicateError(null);
-    }
+    // 중복 검사는 계정(owner)까지 반영해 아래 useEffect가 처리 — 여기서는 티커/거래소만 확정
     setSearchResults([]);
     const current = (ticker || '').trim();
     let nextTicker = current;
@@ -158,11 +152,7 @@ const AddNewAssetModal: React.FC = () => {
         setSearchError(`'${t}' 시세를 확인할 수 없습니다. 티커가 정확한지, 자산구분이 맞는지 확인해 주세요.`);
         return;
       }
-      const isDuplicate = assets.some(
-        asset => asset.ticker.toUpperCase() === t &&
-                 normalizeExchange(asset.exchange) === normalizeExchange(exchange)
-      );
-      setDuplicateError(isDuplicate ? '이미 포트폴리오에 존재하는 자산입니다.' : null);
+      // 중복 검사는 계정(owner)까지 반영해 아래 useEffect가 처리
       setTicker(t);
       setSelectedName(v.name || searchQuery.trim());
       setSearchResults([]);
@@ -178,6 +168,18 @@ const AddNewAssetModal: React.FC = () => {
     else if (baseType === 'CRYPTOCURRENCY') setExchange('주요 거래소 (종합)');
   }, [category, categories]);
 
+  // 중복 검사는 계정(owner)까지 함께 봄 — 같은 종목이라도 원종/유선처럼 계정이 다르면 중복 아님(각자 별도 보유).
+  // ticker/exchange/owner 중 하나라도 바뀌면 재평가(선택 후 계정을 바꿔도 최신 상태 반영).
+  useEffect(() => {
+    if (!ticker) { setDuplicateError(null); return; }
+    const isDuplicate = assets.some(
+      asset => asset.ticker.toUpperCase() === ticker.toUpperCase() &&
+               normalizeExchange(asset.exchange) === normalizeExchange(exchange) &&
+               getAssetOwner(asset) === owner
+    );
+    setDuplicateError(isDuplicate ? `이미 ${OWNER_LABELS[owner]} 계정에 존재하는 자산입니다.` : null);
+  }, [ticker, exchange, owner, assets]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!ticker) {
@@ -190,10 +192,11 @@ const AddNewAssetModal: React.FC = () => {
     }
     const isDuplicateSubmit = assets.some(
       asset => asset.ticker.toUpperCase() === ticker.toUpperCase() &&
-               normalizeExchange(asset.exchange) === normalizeExchange(exchange)
+               normalizeExchange(asset.exchange) === normalizeExchange(exchange) &&
+               getAssetOwner(asset) === owner
     );
     if (isDuplicateSubmit) {
-      alert('이미 포트폴리오에 존재하는 자산입니다.');
+      alert(`이미 ${OWNER_LABELS[owner]} 계정에 존재하는 자산입니다.`);
       return;
     }
     // [핵심 수정] selectedName을 name으로 전달
@@ -233,17 +236,29 @@ const AddNewAssetModal: React.FC = () => {
         <form onSubmit={handleSubmit} className="space-y-4">
             <div>
                 <label htmlFor="category" className={labelClasses}>자산 구분</label>
-                <select 
-                  id="category" 
-                  value={category} 
-                  onChange={(e) => setCategory(Number(e.target.value))}
-                  className={inputClasses} 
-                  title="자산의 구분을 선택하세요. 거래소 선택 시 자동으로 설정되며 수동으로 변경할 수 있습니다."
-                >
-                  {getAllowedCategories(categories).map((cat) => (
-                    <option key={cat.id} value={cat.id}>{cat.name}</option>
-                  ))}
-                </select>
+                {bucket === 'SATELLITE' && !showCategoryDetail ? (
+                  // 투더문: 자산 구분은 배분에 쓰이지 않으므로 자동 인식 값으로 접어둠
+                  // (값 자체는 정확히 저장 — 나중에 코어 편입 시 배분 축으로 쓰임)
+                  <div className="flex items-center justify-between bg-gray-700/50 border border-gray-600 rounded-md py-2 px-3">
+                    <span className="text-sm text-gray-300">
+                      자동 인식: <span className="text-white font-medium">{getCategoryName(category, categories)}</span>
+                      <span className="text-xs text-gray-500 ml-2">투더문은 배분에 미사용</span>
+                    </span>
+                    <button type="button" onClick={() => setShowCategoryDetail(true)} className="text-xs text-primary hover:underline flex-shrink-0">변경</button>
+                  </div>
+                ) : (
+                  <select
+                    id="category"
+                    value={category}
+                    onChange={(e) => setCategory(Number(e.target.value))}
+                    className={inputClasses}
+                    title="자산의 구분을 선택하세요. 거래소 선택 시 자동으로 설정되며 수동으로 변경할 수 있습니다."
+                  >
+                    {getAllowedCategories(categories).map((cat) => (
+                      <option key={cat.id} value={cat.id}>{cat.name}</option>
+                    ))}
+                  </select>
+                )}
             </div>
             <div>
                 <label className={labelClasses}>전략 버킷</label>
@@ -264,7 +279,7 @@ const AddNewAssetModal: React.FC = () => {
                     </button>
                   ))}
                 </div>
-                <p className="text-xs text-gray-400 mt-1">{BUCKET_DESCRIPTIONS[bucket]} · 시세/환율은 자산 구분이 결정하며 버킷은 배분 집계에만 영향.</p>
+                <p className="text-xs text-gray-400 mt-1">{BUCKET_DESCRIPTIONS[bucket]} · 시세·거래소는 종목 검색에서 자동 결정되며 버킷은 배분 집계에만 영향.</p>
             </div>
             <div>
                 <label className={labelClasses}>계정</label>
