@@ -8,6 +8,7 @@ import BulkUploadModal from './components/BulkUploadModal';
 import AddNewAssetModal from './components/AddNewAssetModal';
 import PortfolioAssistant from './components/PortfolioAssistant';
 import PeriodSelector from './components/common/PeriodSelector';
+import ActionMenu from './components/common/ActionMenu';
 import AlertPopup from './components/common/AlertPopup';
 import UpdateStatusIndicator from './components/common/UpdateStatusIndicator';
 import SettingsPage from './components/SettingsPage';
@@ -35,6 +36,8 @@ const AppContent: React.FC = () => {
   const [fileName, setFileName] = useState<string>('portfolio.json');
   const mainRef = useRef<HTMLElement | null>(null);
   const [showScrollTop, setShowScrollTop] = useState(false);
+  const [showAccountMenu, setShowAccountMenu] = useState(false);
+  const accountMenuRef = useRef<HTMLButtonElement>(null);
 
   const mainCallbackRef = useCallback((node: HTMLElement | null) => {
     if (mainRef.current) {
@@ -155,22 +158,26 @@ const AppContent: React.FC = () => {
               </div>
             )}
             <div className="flex-shrink-0 border-b border-gray-700">
-              <div className="flex items-center justify-between">
-                <nav className="-mb-px flex space-x-3 sm:space-x-8 overflow-x-auto scrollbar-hide" aria-label="Tabs">
-                  <TabButton tabId="dashboard" onClick={() => actions.setActiveTab('dashboard')}>대시보드</TabButton>
-                  <TabButton tabId="portfolio" onClick={() => actions.setActiveTab('portfolio')}>포트폴리오</TabButton>
-                  <TabButton tabId="watchlist" onClick={() => actions.setActiveTab('watchlist')}>관심종목</TabButton>
-                  <TabButton tabId="analytics" onClick={() => actions.setActiveTab('analytics')}><span className="sm:hidden">통계</span><span className="hidden sm:inline">수익 통계</span></TabButton>
-                  <TabButton tabId="replay" onClick={() => actions.setActiveTab('replay')}><span className="sm:hidden">리플레이</span><span className="hidden sm:inline">신호 리플레이</span></TabButton>
-                  <TabButton tabId="execution" onClick={() => actions.setActiveTab('execution')}><span className="sm:hidden">실행</span><span className="hidden sm:inline">실행 큐</span></TabButton>
-                  <TabButton tabId="cleanup" onClick={() => actions.setActiveTab('cleanup')}><span className="sm:hidden">정리</span><span className="hidden sm:inline">대청소</span></TabButton>
-                </nav>
-                <div className="flex items-center gap-1.5 sm:gap-2">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center min-w-0">
+                  <h1 className="hidden lg:block text-sm font-bold text-white tracking-tight whitespace-nowrap mr-4 flex-shrink-0" title="KIM'S 퀀트자산관리 — 퀀트 투자를 위한 포트폴리오 대시보드">
+                    KIM'S 퀀트
+                  </h1>
+                  <nav className="-mb-px flex space-x-3 sm:space-x-6 overflow-x-auto scrollbar-hide" aria-label="Tabs">
+                    <TabButton tabId="dashboard" onClick={() => actions.setActiveTab('dashboard')}>대시보드</TabButton>
+                    <TabButton tabId="portfolio" onClick={() => actions.setActiveTab('portfolio')}>포트폴리오</TabButton>
+                    <TabButton tabId="watchlist" onClick={() => actions.setActiveTab('watchlist')}>관심종목</TabButton>
+                    <TabButton tabId="analytics" onClick={() => actions.setActiveTab('analytics')}><span className="sm:hidden">통계</span><span className="hidden sm:inline">수익 통계</span></TabButton>
+                    <TabButton tabId="replay" onClick={() => actions.setActiveTab('replay')}><span className="sm:hidden">리플레이</span><span className="hidden sm:inline">신호 리플레이</span></TabButton>
+                    <TabButton tabId="execution" onClick={() => actions.setActiveTab('execution')}><span className="sm:hidden">실행</span><span className="hidden sm:inline">실행 큐</span></TabButton>
+                  </nav>
+                </div>
+                <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
                   <UpdateStatusIndicator isLoading={status.isLoading} successMessage={status.successMessage} />
                   {derived.alertResults.length > 0 && (
                     <button
                       onClick={actions.showBriefingPopup}
-                      className="flex items-center gap-1 sm:gap-1.5 text-xs text-amber-400 hover:text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 px-2 sm:px-2.5 py-2 rounded-md transition-colors border border-amber-500/30"
+                      className="flex items-center gap-1 sm:gap-1.5 text-xs text-amber-400 hover:text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 px-2 sm:px-2.5 py-2 rounded-md transition-colors border border-amber-500/30 whitespace-nowrap flex-shrink-0"
                       title="투자 브리핑 다시 보기"
                     >
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -186,7 +193,7 @@ const AppContent: React.FC = () => {
                       }
                     }}
                     disabled={status.isLoading}
-                    className="flex items-center gap-1.5 text-xs text-gray-300 hover:text-white bg-gray-700 hover:bg-gray-600 px-2 sm:px-2.5 py-2 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex items-center gap-1.5 text-xs text-gray-300 hover:text-white bg-gray-700 hover:bg-gray-600 px-2 sm:px-2.5 py-2 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap flex-shrink-0"
                     title="시세 업데이트"
                   >
                     {status.isLoading ? (
@@ -201,25 +208,43 @@ const AppContent: React.FC = () => {
                     )}
                     <span className="hidden sm:inline">{status.isLoading ? '중...' : '업데이트'}</span>
                   </button>
-                  <div className="hidden sm:flex items-center">
-                    {ui.activeTab !== 'guide' && ui.activeTab !== 'settings' && ui.activeTab !== 'analytics' && ui.activeTab !== 'replay' && ui.activeTab !== 'execution' && ui.activeTab !== 'cleanup' && (
-                      <PeriodSelector value={ui.globalPeriod} onChange={actions.setGlobalPeriod} />
-                    )}
-                  </div>
-                  <div className="flex items-center gap-1.5 border-l border-gray-700 pl-2 ml-1">
+                  {ui.activeTab !== 'guide' && ui.activeTab !== 'settings' && ui.activeTab !== 'analytics' && ui.activeTab !== 'replay' && ui.activeTab !== 'execution' && ui.activeTab !== 'cleanup' && (
+                    <PeriodSelector value={ui.globalPeriod} onChange={actions.setGlobalPeriod} variant="dropdown" />
+                  )}
+                  <button
+                    onClick={actions.openAddAsset}
+                    className="bg-primary hover:bg-primary-dark text-white font-semibold text-xs py-2 px-2.5 sm:px-3 rounded-md transition-colors whitespace-nowrap flex-shrink-0"
+                    title="새로운 자산을 포트폴리오에 추가합니다."
+                  >
+                    <span className="sm:hidden">+ 추가</span>
+                    <span className="hidden sm:inline">+ 자산 추가</span>
+                  </button>
+                  <div className="flex items-center gap-1.5 border-l border-gray-700 pl-2 ml-1 flex-shrink-0">
                     <button
-                      onClick={() => actions.setActiveTab('guide')}
-                      className={`flex items-center p-2 sm:p-1.5 rounded-md transition-colors ${
-                        ui.activeTab === 'guide'
-                          ? 'text-primary bg-primary/10'
-                          : 'text-gray-400 hover:text-white hover:bg-gray-700'
-                      }`}
-                      title="투자 가이드"
+                      ref={accountMenuRef}
+                      onClick={() => setShowAccountMenu(prev => !prev)}
+                      className="w-8 h-8 rounded-full bg-primary/20 text-primary text-sm font-bold flex items-center justify-center hover:bg-primary/30 transition-colors"
+                      title={status.userEmail ? `계정 및 데이터 관리: ${status.userEmail}` : '계정 및 데이터 관리'}
                     >
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                      </svg>
+                      {(status.userEmail?.[0] ?? 'U').toUpperCase()}
                     </button>
+                    {showAccountMenu && (
+                      <ActionMenu
+                        anchorRef={accountMenuRef}
+                        header={status.userEmail ?? undefined}
+                        items={[
+                          { label: '즉시 저장 (Drive)', onClick: actions.saveToDrive },
+                          { label: '일괄 등록 (CSV)', onClick: actions.openBulkUpload },
+                          { label: '가져오기 (JSON)', onClick: actions.importJsonPrompt },
+                          { label: '내보내기 (JSON)', onClick: () => actions.exportJson() },
+                          { label: 'CSV로 내보내기', onClick: actions.exportCsv },
+                          { label: '투자 가이드', onClick: () => actions.setActiveTab('guide') },
+                          { label: '대청소', onClick: () => actions.setActiveTab('cleanup') },
+                          { label: '로그아웃', onClick: actions.signOut, colorClass: 'text-red-400' },
+                        ]}
+                        onClose={() => setShowAccountMenu(false)}
+                      />
+                    )}
                     <button
                       onClick={() => actions.setActiveTab('settings')}
                       className={`flex items-center p-2 sm:p-1.5 rounded-md transition-colors ${
@@ -237,30 +262,10 @@ const AppContent: React.FC = () => {
                   </div>
                 </div>
               </div>
-              {/* 모바일 PeriodSelector - 탭바 아래 컴팩트 행 */}
-              {ui.activeTab !== 'guide' && ui.activeTab !== 'settings' && ui.activeTab !== 'analytics' && ui.activeTab !== 'replay' && ui.activeTab !== 'execution' && ui.activeTab !== 'cleanup' && (
-                <div className="sm:hidden py-1.5 overflow-x-auto scrollbar-hide">
-                  <PeriodSelector value={ui.globalPeriod} onChange={actions.setGlobalPeriod} />
-                </div>
-              )}
             </div>
 
             <main ref={mainCallbackRef} className="flex-1 overflow-y-auto min-h-0">
-              <div className="pt-2 sm:pt-6">
-                <Header
-                  onSave={actions.saveToDrive}
-                  onImport={actions.importJsonPrompt}
-                  onExport={() => actions.exportJson()}
-                  onExportToCsv={actions.exportCsv}
-                  onOpenBulkUploadModal={actions.openBulkUpload}
-                  onOpenAddAssetModal={actions.openAddAsset}
-                  onSignIn={actions.signIn}
-                  onSignOut={actions.signOut}
-                  isSignedIn={status.isSignedIn}
-                  userEmail={status.userEmail}
-                />
-              </div>
-              <div className="mt-2 sm:mt-4">
+              <div className="pt-2 sm:pt-4">
                 {ui.activeTab === 'dashboard' && <DashboardView />}
                 {ui.activeTab === 'portfolio' && <PortfolioView />}
                 {ui.activeTab === 'analytics' && <AnalyticsView />}
@@ -333,18 +338,7 @@ const AppContent: React.FC = () => {
         ) : (
           <main className="flex-1 overflow-y-auto min-h-0">
             <div className="pt-4 sm:pt-6">
-              <Header
-                onSave={actions.saveToDrive}
-                onImport={actions.importJsonPrompt}
-                onExport={() => actions.exportJson()}
-                onExportToCsv={actions.exportCsv}
-                onOpenBulkUploadModal={actions.openBulkUpload}
-                onOpenAddAssetModal={actions.openAddAsset}
-                onSignIn={actions.signIn}
-                onSignOut={actions.signOut}
-                isSignedIn={status.isSignedIn}
-                userEmail={status.userEmail}
-              />
+              <Header onSignIn={actions.signIn} />
             </div>
             <div className="mt-12 bg-gray-800 border border-gray-700 rounded-lg p-8 text-center text-gray-200">
               <h2 className="text-2xl font-semibold mb-4">Google Drive 로그인 필요</h2>
