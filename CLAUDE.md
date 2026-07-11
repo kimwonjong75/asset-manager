@@ -1,53 +1,92 @@
-# Asset Manager - 개발 규칙
+# Asset Manager — Development Rules
 
-## 필수 참조
-- **타입/훅/유틸 수정, 새 기능 추가 시 반드시 `RULES.md`를 먼저 읽을 것** (파일별 책임, 의존관계, 체크리스트 포함)
+## Must-read
+- **Before modifying types/hooks/utils or adding any feature, read `RULES.md` first** (per-file responsibilities, dependency maps, checklists).
 
-## 코드 구조 원칙
-| 영역 | 책임 | 금지 |
-|------|------|------|
-| `components/` | UI 렌더링만 | 비즈니스 로직, API 호출 |
-| `hooks/` | 데이터 처리, API 호출, 상태 관리 | UI 렌더링 |
-| `utils/` | 순수 함수, 계산 로직 | 상태 변경, side effect |
-| `services/` | 외부 API 호출 | 상태 관리 |
+## Project overview
+- Single-user personal quant asset-management system: stocks, crypto, and physical assets combined.
+- Stack: React 19.2+, TypeScript, Vite, Tailwind CSS. State: Context API (`PortfolioContext`). Storage: Google Drive JSON sync (LZ-String compressed).
 
-## 타입 안전성
-- **`any` 타입 절대 금지** — 모든 타입은 `types/` 디렉토리에 정의
-- 컴포넌트 Props 타입 명시 필수
-- 3단계 이상 Props Drilling → `PortfolioContext` 사용
+## Project map
+| Path | Purpose |
+|------|---------|
+| `components/` | UI only. Subdirs: `layouts/` (tab views), `dashboard/`, `portfolio-table/`, `watchlist/`, `knowledge/`, `common/` |
+| `hooks/` | Data/state/API orchestration |
+| `utils/` | Pure functions |
+| `services/` | External API calls |
+| `types/`, `constants/`, `contexts/` (`PortfolioContext`), `config/` | Types, constants, context, config |
+| `tests/` | Offline diagnostic scripts — NOT wired to CI; run manually via `npm run test:*` (parity/golden suites) and `npm run backtest` |
+| `scripts/backtest/` | Backtest engine + data |
+| `scripts/ingest/` | Knowledge-ingest pipeline (`validate_inbox.py`, `triage.workflow.js`, `triage_commit.py`) |
+| `DB/` | LOCAL-ONLY knowledge-ingest data (gitignored): `inbox/` → `staging/` → `queue/knowledge-inbox.jsonl`; `STOP_INGEST.flag` is a kill switch; see `DB/README.md` |
+| `docs/` | User-facing operation manuals (Korean) |
+| Root | `App.tsx`, `index.tsx`, `vite.config.ts`, etc. |
 
-## API 연동
-- 외부 API 호출은 전용 훅(`hooks/`)에서만 수행
-- 실패 시 `try-catch` + fallback 데이터 필수 (부분 성공 허용)
-- 새 Google Drive API fetch → 반드시 `authenticatedFetch()` 사용 (raw fetch 금지)
-- Cloud Run 서버 URL → `constants/api.ts`의 `CLOUD_RUN_BASE_URL` 사용 (하드코딩 금지)
-- 로깅 → `createLogger('모듈명')` 사용 (`console.*` 직접 사용 금지)
+- Naming collision: `components/portfolio-table/usePortfolioData.ts` (table-only enrichment/sort) ≠ `hooks/usePortfolioData.ts` (core data state + Drive sync).
+- Detailed per-file responsibilities and dependency maps: RULES.md §3–§4 (the authoritative deep reference).
 
-## 카테고리 시스템
-- `asset.categoryId` (number)가 PRIMARY — `isBaseType(categoryId, 'CASH')` 사용
-- `asset.category` (string)은 **DEPRECATED** — 새 코드에서 사용 금지
-- 표시명: `getCategoryName(categoryId, categories)`
+## Code structure
+| Area | Responsibility | Forbidden |
+|------|----------------|-----------|
+| `components/` | UI rendering only | Business logic, API calls |
+| `hooks/` | Data processing, API calls, state management | UI rendering |
+| `utils/` | Pure functions, calculation logic | State mutation, side effects |
+| `services/` | External API calls | State management |
 
-## 가격/통화
-- MA/RSI 등 기술적 지표와 가격 비교 시 **`priceOriginal`** 사용 (통화 일치 보장)
-- 당일 변동률 UI 표시: **`metrics.yesterdayChange`** 사용 (`changeRate` 직접 표시 금지)
+## Type safety
+- **`any` is strictly forbidden** — define all types in the `types/` directory.
+- Component Props types are mandatory.
+- Props drilling 3+ levels deep → use `PortfolioContext`.
 
-## UI 제약사항
-- 성공 메시지: `UpdateStatusIndicator` 사용 (**플로팅 토스트 추가 금지**)
-- 드롭다운 메뉴: `ActionMenu` 컴포넌트 사용 (인라인 absolute 포지션 금지)
-- `<main>`과 `<thead>` 사이에 `overflow` 속성 wrapper 추가 금지 (sticky 깨짐)
-- 포트폴리오 테이블 기능 추가 시 `PortfolioMobileCard`에도 반영 필수
+## API rules
+- External API calls only in dedicated hooks (`hooks/`).
+- On failure: `try-catch` + fallback data required (partial success allowed).
+- New Google Drive API fetch → must use `authenticatedFetch()` (raw fetch forbidden).
+- Cloud Run server URL → use `CLOUD_RUN_BASE_URL` from `constants/api.ts` (no hardcoding).
+- Logging → use `createLogger('module')` (direct `console.*` forbidden).
 
-## 데이터 무결성
-- 마이그레이션: 기존 값 보존 (`??` 연산자 사용, `=` 덮어쓰기 금지)
-- 스냅샷 수량 역산: `unitPrice`가 0 또는 undefined이면 반드시 스킵
-- 로드 파이프라인 순서: `repairCorruptedSnapshots` → `fillAllMissingDates` → `backfillWithRealPrices`
+## Category system
+- `asset.categoryId` (number) is PRIMARY — use `isBaseType(categoryId, 'CASH')`.
+- `asset.category` (string) is **DEPRECATED** — forbidden in new code.
+- Display name: `getCategoryName(categoryId, categories)`.
 
-## 문서 유지보수
-- **RULES.md 업데이트는 해당 코드 파일 수정 직후 즉시 수행할 것** (세션 마지막으로 미루지 말 것 — 컨텍스트 초과로 누락될 수 있음)
-- RULES.md 업데이트 후 반드시 아래 자가검증 문구를 기준으로 확인:
-  - 수정된 파일의 함수 시그니처/파라미터 변경이 반영됐는가?
-  - 새로 추가된 헬퍼/유틸 함수가 해당 파일 행에 기술됐는가?
-  - 새로운 주의사항(비정상 값 처리, fallback 로직 등)이 명시됐는가?
-  - 삭제/변경된 함수나 동작이 이전 기술에서 제거됐는가?
-- RULES.md의 삭제된 기능/파일 기술은 발견 즉시 제거 제안
+## Price & currency
+- When comparing price against technical indicators (MA/RSI, etc.), use **`priceOriginal`** (guarantees currency match).
+- Daily change shown in UI: use **`metrics.yesterdayChange`** (never display `changeRate` directly).
+
+## Capability boundaries
+- Backend Python source is NOT in this repo — deployed separately on Cloud Run (`asset-manager-887842923289.asia-northeast3.run.app`). Endpoints/response schemas: RULES.md §14. Backend changes mean the user redeploys; the frontend must auto-fallback when response fields are absent. Never conclude "cannot find backend code" — it is out-of-repo by design.
+- Gemini API is BYOK: the user enters their own key in settings (localStorage, not synced). No key → AI analysis features are silently disabled; that is expected, not a bug.
+- Knowledge ingest is manually triggered by the user ("인제스트 해줘") — no scheduler; the user's PC is not always on.
+- No CI. Verification = run the relevant `npm run test:<suite>` + `npm run build` (tsc) manually.
+- Google Drive access uses the `drive.file` scope via `authenticatedFetch()`; JWT lives in localStorage key `google_drive_jwt`.
+
+## Communication & workflow
+- Respond to the user in **Korean** (documents/code comments may be English; this file is English).
+- Git: the user commits/pushes personally via GitHub Desktop. Claude NEVER runs `git commit`/`git push`. Deliverable = code + passing tests + a report containing: list of changed files, verification results, and a suggested commit message.
+- Proceed WITHOUT asking: display/toggle features, pure utils + tests, read-only dashboards, RULES.md updates, verification runs.
+- ALWAYS confirm BEFORE: real-trade/money-action logic changes, Google Drive save-policy changes, data deletion, changing the default tab, external-API policy changes.
+
+## Lessons learned
+- Engine changes require golden-value parity tests (`tests/*Parity.ts`), not just "it runs" ← a satellite ATR sizing bug once produced 0 trades in 8 of 9 tickers for an entire backtest with no error.
+- Parity tests must pin EXPLICIT golden absolute values ← comparing path-A-vs-path-B becomes a self-referential tautology after the common function is extracted (RULES.md §13).
+- Distribution-day 50-day trailing averages must EXCLUDE day i ← a look-ahead bias was found and fixed.
+- Historical FX values need sanity-bound checks (USD>3000, JPY>50, CNY>400 → replace with current app rate) ← the FX API occasionally returns corrupted values.
+- Success feedback goes through `UpdateStatusIndicator` only ← floating toasts were added and removed once.
+- "Invisible writes" are forbidden: background effects must not auto-save user data without a visible user action or an explicit opt-in setting ← this shaped the `useActionQueue`/`useTurtleActionReview` design.
+- Full pitfall catalog: RULES.md §8.
+
+## Documentation maintenance
+- **Update RULES.md immediately after modifying the corresponding code file** (do not defer to end of session — context overflow can cause it to be dropped).
+- After updating RULES.md, verify against this self-check:
+  - Are function signature/parameter changes of the modified file reflected?
+  - Are newly added helpers/utils described in that file's row?
+  - Are new caveats (abnormal-value handling, fallback logic, etc.) stated?
+  - Are deleted/changed functions removed from the previous description?
+- Propose removing RULES.md descriptions of deleted features/files as soon as they are found.
+
+## Scoped rules & execution model
+- All work follows the Advisor/Worker execution model — see `.claude/rules/execution-model.md`.
+- Path-scoped rules (auto-applied by path):
+  - `.claude/rules/ui-constraints.md` — UI constraints, scoped to `components/**`.
+  - `.claude/rules/data-integrity.md` — data-integrity rules, scoped to `hooks/**` and `utils/**`.
