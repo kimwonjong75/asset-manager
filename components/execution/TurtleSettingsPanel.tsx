@@ -26,6 +26,18 @@ const TurtleSettingsPanel: React.FC = () => {
   const [budgetInput, setBudgetInput] = useState<string>(budget > 0 ? String(budget) : '');
   const [saved, setSaved] = useState<boolean>(false);
 
+  // 완료 주문 정리 (Phase 5) — 인라인 2단 확인. armed=삭제 확인 대기, done=정리 완료 건수.
+  const compactable = derived.compactableActions;
+  const [armed, setArmed] = useState<boolean>(false);
+  const [compactDone, setCompactDone] = useState<number | null>(null);
+  // 큐가 바뀌면(정리·생성 등) 확인 상태 초기화
+  useEffect(() => { setArmed(false); }, [compactable.count]);
+  const runCompact = () => {
+    const n = actions.compactActionQueue();
+    setCompactDone(n);
+    setArmed(false);
+  };
+
   // 외부에서 예산이 바뀌면(로드/다른 경로 저장) 입력 동기화
   useEffect(() => {
     setBudgetInput(budget > 0 ? String(budget) : '');
@@ -125,6 +137,40 @@ const TurtleSettingsPanel: React.FC = () => {
         <span>동시 전멸 한도 <span className="text-gray-300">{settings.maxTotalRiskPct}%</span></span>
         <span>1종목 상한 <span className="text-gray-300">{settings.positionValueCapPct}%</span></span>
         <span>진입 <span className="text-gray-300">{settings.entryLookback}일</span> · 청산 <span className="text-gray-300">{settings.exitLookback}일</span></span>
+      </div>
+
+      {/* 완료 주문 정리 (Phase 5, P5) — done/skipped 중 90일 경과분만 메인 payload에서 제거(자동 백업이 복구원).
+          명시적 버튼 + 인라인 2단 확인(모달·토스트 없음). */}
+      <div className="flex flex-wrap items-center gap-2 mt-2.5 pt-2.5 border-t border-gray-700/60">
+        {compactable.count === 0 ? (
+          <span className="text-[11px] text-gray-500">정리할 완료 주문 없음</span>
+        ) : !armed ? (
+          <>
+            <span className="text-[11px] text-gray-400">완료된 주문 <span className="text-gray-200">{compactable.count}건</span>(90일 경과)</span>
+            <button
+              type="button"
+              onClick={() => { setArmed(true); setCompactDone(null); }}
+              className="text-xs text-gray-200 bg-gray-700 hover:bg-gray-600 px-3 py-1.5 rounded-md transition-colors"
+            >정리</button>
+          </>
+        ) : (
+          <>
+            <span className="text-[11px] text-gray-400">{compactable.count}건 삭제 · 자동 백업에 원본 보존됨</span>
+            <button
+              type="button"
+              onClick={runCompact}
+              className="text-xs font-medium text-white bg-red-600 hover:bg-red-500 px-3 py-1.5 rounded-md transition-colors"
+            >삭제</button>
+            <button
+              type="button"
+              onClick={() => setArmed(false)}
+              className="text-xs text-gray-300 bg-gray-700 hover:bg-gray-600 px-3 py-1.5 rounded-md transition-colors"
+            >취소</button>
+          </>
+        )}
+        {compactDone !== null && compactDone > 0 && !armed && (
+          <span className="text-xs text-emerald-400">✓ {compactDone}건 정리됨</span>
+        )}
       </div>
     </div>
   );

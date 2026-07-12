@@ -130,6 +130,8 @@ export interface DerivedState {
   autoPopupDiagnosis: PopupDeliveryDiagnosis;
   /** 터틀 실행 요약 (자동 검토 Phase A/B) — 상단 배지 '실행 M'·브리핑 실행 카드가 소비. 읽기 전용(저장 없음) */
   actionQueueSummary: TurtleReviewSummary;
+  /** 정리 가능한 완료 주문 요약 (Phase 5) — done/skipped 중 90일 경과분. 표시/버튼 게이팅용(저장 없음) */
+  compactableActions: { count: number; cutoffDate: string };
   showAlertPopup: boolean;
   // 백업
   backupList: BackupInfo[];
@@ -255,6 +257,8 @@ export interface PortfolioActions {
 
   // 90/10 실행 시스템 (Phase 2) — 상태 갱신 + Drive 자동 저장
   updateActionQueue: (queue: ActionItem[]) => void;
+  /** 완료 주문 정리 (Phase 5) — done/skipped 중 90일 경과분을 메인 payload에서 제거 후 원자 커밋. 제거 건수 반환(0이면 미저장) */
+  compactActionQueue: () => number;
   updateTurtlePositions: (positions: TurtlePosition[]) => void;
   updateTurtleSettings: (settings: TurtleSettings) => void;
   /** 교차도메인 원자 커밋 — 지정 도메인 set + 단일 autosave (터틀 실행의 저장 경합 방지) */

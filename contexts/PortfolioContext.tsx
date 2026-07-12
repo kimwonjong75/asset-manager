@@ -41,6 +41,7 @@ import { DEFAULT_MA_CONFIGS, clampMAPeriod, type MALineConfig } from '../utils/m
 import { OWNER_FILTER_OPTIONS, type OwnerFilter } from '../types/owner';
 import { buildCleanupCommit } from '../utils/cleanupPlan';
 import type { CleanupDecision } from '../types/cleanup';
+import { compactResolvedActions, ACTION_QUEUE_RETENTION_DAYS } from '../utils/actionQueueCompaction';
 
 const PortfolioContext = createContext<PortfolioContextValue | null>(null);
 
@@ -121,7 +122,7 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     handleSignOut,
     triggerAutoSave,
     commitPortfolioPatch,
-    updateAllData,
+    restoreFromPayload,
   } = usePortfolioData();
 
   // 시세/환율 훅
@@ -439,6 +440,17 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     updateActionQueue: updateActionQueueAction,
   });
 
+  // 정리 가능한 완료 주문 요약 (Phase 5, P5) — done/skipped 중 90일 경과분.
+  // 표시/버튼 게이팅용 읽기 전용 파생(저장 없음). today는 로컬 날짜 문자열.
+  const compactableActions = useMemo(() => {
+    const today = new Date().toISOString().slice(0, 10);
+    const { removed } = compactResolvedActions(actionQueue, { today });
+    // cutoffDate = today - 보존기간(90일) (util 내부와 동일 계산; 표시용 재산출).
+    const cutoff = new Date(`${today}T00:00:00Z`);
+    cutoff.setUTCDate(cutoff.getUTCDate() - ACTION_QUEUE_RETENTION_DAYS);
+    return { count: removed.length, cutoffDate: cutoff.toISOString().slice(0, 10) };
+  }, [actionQueue]);
+
   // 실행 축 게이트 입력 — **useMemo 필수**: 인라인 객체면 매 렌더 identity가 바뀌어
   // useAutoAlert의 결과 계산 effect(setAlertResults)가 무한 재실행된다.
   const executionGate = useMemo(() => ({
@@ -623,6 +635,7 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       guruSignalCaveats,
       autoPopupDiagnosis,
       actionQueueSummary,
+      compactableActions,
       showAlertPopup,
       backupList: backup.backupList,
       backupSettings: backup.backupSettings,
@@ -784,6 +797,15 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       // 90/10 실행 시스템 (Phase 2) — 상태 갱신 후 Drive 자동 저장 (10~12번째 인자).
       // 자동 검토 훅(자동 생성 opt-in)과 동일 콜백 공유 (위 updateActionQueueAction)
       updateActionQueue: updateActionQueueAction,
+      // 완료 주문 정리 (Phase 5, P5) — done/skipped 중 90일 경과분을 메인 payload에서 제거.
+      // 명시적 사용자 행동(설정 패널 버튼)만 트리거. 복구원은 자동 백업. removed 0이면 미저장(불필요 저장 방지).
+      compactActionQueue: (): number => {
+        const today = new Date().toISOString().slice(0, 10);
+        const { kept, removed } = compactResolvedActions(actionQueue, { today });
+        if (removed.length === 0) return 0;
+        commitPortfolioPatch({ actionQueue: kept });
+        return removed.length;
+      },
       updateTurtlePositions: (positions: TurtlePosition[]) => {
         setTurtlePositions(positions);
         triggerAutoSave(assets, portfolioHistory, sellHistory, watchlist, exchangeRates, undefined, undefined, undefined, undefined, actionQueue, positions, turtleSettings);
@@ -815,15 +837,8 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         const content = await backup.restoreBackup(fileId);
         if (content) {
           try {
-            const parsed = JSON.parse(content);
-            updateAllData(
-              Array.isArray(parsed.assets) ? parsed.assets : [],
-              Array.isArray(parsed.portfolioHistory) ? parsed.portfolioHistory : [],
-              Array.isArray(parsed.sellHistory) ? parsed.sellHistory : [],
-              Array.isArray(parsed.watchlist) ? parsed.watchlist : [],
-              parsed.exchangeRates,
-              parsed.allocationTargets,
-            );
+            // 전 도메인 공용 파이프라인으로 복원(P2 유실 버그 수정) + 복원 데이터 명시 저장
+            restoreFromPayload(content);
             setSuccessMessage('백업에서 데이터가 복원되었습니다.');
             setTimeout(() => setSuccessMessage(null), 3000);
           } catch {

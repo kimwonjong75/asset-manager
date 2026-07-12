@@ -4,13 +4,19 @@ import ReactMarkdown, { type Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { usePortfolio } from '../contexts/PortfolioContext';
 import { useEnrichedIndicators } from '../hooks/useEnrichedIndicators';
+import { setItemSafe, keepLast } from '../utils/safeStorage';
+import { createLogger } from '../utils/logger';
 
 interface Message {
     role: 'user' | 'model';
     content: string;
 }
 
+const log = createLogger('Assistant');
+
 const ASSISTANT_HISTORY_KEY = 'quant-assistant-history';
+// 대화 기록은 최근 N개만 보존 — localStorage 무한 성장 방지(스트리밍 종료 후 1회만 저장).
+const HISTORY_LIMIT = 50;
 
 const PortfolioAssistant: React.FC = () => {
     const { modal, actions, data } = usePortfolio();
@@ -20,15 +26,20 @@ const PortfolioAssistant: React.FC = () => {
     const [messages, setMessages] = useState<Message[]>(() => {
         try {
             const savedHistory = localStorage.getItem(ASSISTANT_HISTORY_KEY);
-            return savedHistory ? JSON.parse(savedHistory) : [];
+            if (!savedHistory) return [];
+            const parsed = JSON.parse(savedHistory) as Message[];
+            return Array.isArray(parsed) ? keepLast(parsed, HISTORY_LIMIT) : [];
         } catch (error) {
-            console.error("Failed to load assistant history:", error);
+            log.error('Failed to load assistant history:', error);
             return [];
         }
     });
 
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
+    // 스트리밍 진행 플래그 — isLoading 은 첫 청크에서 false 로 풀리므로 저장 게이팅엔 부적합.
+    // 스트림 전체 구간(handleSend 시작~finally)을 덮어 청크마다의 재직렬화를 막는다.
+    const [isStreaming, setIsStreaming] = useState(false);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
 
@@ -45,12 +56,15 @@ const PortfolioAssistant: React.FC = () => {
     }, [isOpen]);
 
     useEffect(() => {
-        try {
-            localStorage.setItem(ASSISTANT_HISTORY_KEY, JSON.stringify(messages));
-        } catch (error) {
-            console.error("Failed to save assistant history:", error);
-        }
-    }, [messages]);
+        // 스트리밍 중엔 저장하지 않는다 — 청크마다 전체 기록 재직렬화(매 문자마다 setItem) 방지.
+        // 스트림 종료(finally) 시 isStreaming 이 false 로 바뀌며 최종 messages 상태로 1회만 저장된다.
+        if (isStreaming) return;
+        const result = setItemSafe(
+            ASSISTANT_HISTORY_KEY,
+            JSON.stringify(keepLast(messages, HISTORY_LIMIT)),
+        );
+        if (!result.ok) log.error('Failed to save assistant history:', result);
+    }, [messages, isStreaming]);
 
 
     const handleSend = async () => {
@@ -61,6 +75,7 @@ const PortfolioAssistant: React.FC = () => {
         const question = input;
         setInput('');
         setIsLoading(true);
+        setIsStreaming(true);
 
         let firstChunk = true;
 
@@ -84,7 +99,7 @@ const PortfolioAssistant: React.FC = () => {
                 enrichedMap
             );
         } catch (error) {
-            console.error("Error asking portfolio question:", error);
+            log.error('Error asking portfolio question:', error);
             const errorMessage: Message = { role: 'model', content: "죄송합니다, 답변을 생성하는 중에 오류가 발생했습니다. 잠시 후 다시 시도해주세요." };
             if (firstChunk) {
                 setMessages(prev => [...prev, errorMessage]);
@@ -97,6 +112,8 @@ const PortfolioAssistant: React.FC = () => {
             }
         } finally {
             setIsLoading(false);
+            // 스트림 종료 — 이 시점에 messages 최종 상태 확정 → 저장 게이트 해제(effect 가 1회 저장).
+            setIsStreaming(false);
         }
     };
     

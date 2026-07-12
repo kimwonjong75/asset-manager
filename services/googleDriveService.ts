@@ -17,6 +17,17 @@ export interface DriveFile {
   modifiedTime: string;
 }
 
+/**
+ * portfolio.json 저장 시 다른 기기/탭이 원격 파일을 먼저 수정한 것이 감지되면 던진다.
+ * 업로드는 수행하지 않는다(마지막-쓰기-우선으로 인한 데이터 유실 방지 안전망).
+ */
+export class DriveConflictError extends Error {
+  constructor(message: string = 'Drive file was modified elsewhere since last load/save') {
+    super(message);
+    this.name = 'DriveConflictError';
+  }
+}
+
 import { CLOUD_RUN_BASE_URL } from '../constants/api';
 import { createLogger } from '../utils/logger';
 
@@ -34,6 +45,9 @@ class GoogleDriveService {
   private refreshTimer: ReturnType<typeof setTimeout> | null = null;
   private refreshPromise: Promise<void> | null = null;
   private onAuthStateChange: ((signedIn: boolean) => void) | null = null;
+  // portfolio.json 의 마지막으로 알려진 modifiedTime (stale-write 가드용).
+  // loadFile('portfolio.json') 성공 시 세팅, saveFile('portfolio.json') 성공 시 갱신.
+  private knownModifiedTime: string | null = null;
 
   // UI 레이어에서 인증 상태 변경 콜백 등록
   setAuthStateChangeCallback(callback: (signedIn: boolean) => void): void {
@@ -322,7 +336,7 @@ class GoogleDriveService {
     const searchParams = new URLSearchParams({
       q: query,
       spaces: 'drive',
-      fields: 'files(id,name),nextPageToken',
+      fields: 'files(id,name,modifiedTime),nextPageToken',
       pageSize: '10',
       supportsAllDrives: 'true',
       includeItemsFromAllDrives: 'true',
@@ -379,10 +393,28 @@ class GoogleDriveService {
     if (!this.accessToken) {
       throw new Error('Not authenticated');
     }
+    const isPortfolio = fileName === 'portfolio.json';
+
+    const t0 = (typeof performance !== 'undefined' ? performance.now() : Date.now());
 
     // 기존 파일 확인
     const files = await this.listFiles(fileName);
     const existingFile = files.find(f => f.name === fileName);
+
+    // ── Stale-write 가드 (portfolio.json 전용, 백업 파일은 면제) ──────────────
+    // 마지막으로 알려진 modifiedTime과 현재 원격 파일의 modifiedTime이 다르면
+    // 다른 기기/탭이 먼저 수정한 것이므로 업로드하지 않고 DriveConflictError를 던진다.
+    // 최초 생성(기존 파일 없음) 또는 knownModifiedTime 미설정 시에는 검사를 건너뛴다.
+    // NOTE: 이것은 완전한 CAS가 아니라 경고-차단 안전망이다. 위 listFiles 조회 시점과
+    //       아래 실제 업로드 사이에 TOCTOU 창이 남는다(그 사이 다른 쓰기가 커밋될 수 있음).
+    if (isPortfolio && existingFile && this.knownModifiedTime !== null) {
+      if (existingFile.modifiedTime && existingFile.modifiedTime !== this.knownModifiedTime) {
+        log.warn('save portfolio.json blocked: remote modifiedTime changed', {
+          known: this.knownModifiedTime, remote: existingFile.modifiedTime,
+        });
+        throw new DriveConflictError();
+      }
+    }
 
     // LZ-String UTF16 압축 적용
     const compressed = LZString.compressToUTF16(content);
@@ -392,14 +424,15 @@ class GoogleDriveService {
       mimeType: 'application/json',
     };
 
+    let response: Response;
     if (existingFile) {
-      // 파일 업데이트
+      // 파일 업데이트 (fields=id,modifiedTime → 응답에서 갱신된 modifiedTime 회수)
       const form = new FormData();
       form.append('metadata', new Blob([JSON.stringify(baseMetadata)], { type: 'application/json' }));
       form.append('file', fileContent);
 
-      const response = await this.authenticatedFetch(
-        `https://www.googleapis.com/upload/drive/v3/files/${existingFile.id}?uploadType=multipart&supportsAllDrives=true`,
+      response = await this.authenticatedFetch(
+        `https://www.googleapis.com/upload/drive/v3/files/${existingFile.id}?uploadType=multipart&supportsAllDrives=true&fields=id,modifiedTime`,
         { method: 'PATCH', body: form }
       );
 
@@ -416,8 +449,8 @@ class GoogleDriveService {
       form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
       form.append('file', fileContent);
 
-      const response = await this.authenticatedFetch(
-        'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true',
+      response = await this.authenticatedFetch(
+        'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true&fields=id,modifiedTime',
         { method: 'POST', body: form }
       );
 
@@ -425,6 +458,24 @@ class GoogleDriveService {
         throw new Error('Failed to create file');
       }
     }
+
+    // 저장 성공 → portfolio.json 이면 known modifiedTime 갱신 (다음 stale 검사 기준)
+    if (isPortfolio) {
+      try {
+        const result = await response.json();
+        if (result && typeof result.modifiedTime === 'string') {
+          this.knownModifiedTime = result.modifiedTime;
+        }
+      } catch {
+        // 응답 본문 파싱 실패 시 기존 known 값 유지 (다음 load에서 재동기화됨)
+      }
+    }
+
+    // 관찰성 로그: 압축 전/후 크기(MB, 문자수 기준) + 압축·업로드 소요(ms)
+    const t1 = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+    const rawMB = (content.length / 1024 / 1024).toFixed(2);
+    const compMB = (compressed.length / 1024 / 1024).toFixed(2);
+    log.info(`save ${fileName}: raw ${rawMB}MB → compressed ${compMB}MB, ${Math.round(t1 - t0)}ms`);
   }
 
   // 파일 불러오기 - LZ-String 압축 해제 및 레거시 호환
@@ -438,6 +489,11 @@ class GoogleDriveService {
 
     if (!file) {
       return null;
+    }
+
+    // portfolio.json 을 로드했으면 stale-write 가드 기준을 최신으로 재동기화.
+    if (fileName === 'portfolio.json') {
+      this.knownModifiedTime = file.modifiedTime ?? null;
     }
 
     const response = await this.authenticatedFetch(

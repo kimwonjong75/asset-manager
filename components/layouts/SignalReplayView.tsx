@@ -228,6 +228,17 @@ const SignalReplayView: React.FC = () => {
     setImportMsg(`가져옴: 판정 ${res.verdicts} · 사례 ${res.cases}`);
   };
 
+  // 오래된 기록 정리(P6) — 인라인 2단 확인(모달·토스트 없음). 자동 삭제 없음.
+  const compactable = ctrl.replayCompactablePreview;
+  const compactTotal = compactable.verdicts + compactable.cases;
+  const [compactArmed, setCompactArmed] = useState(false);
+  const [compactMsg, setCompactMsg] = useState<string | null>(null);
+  const handleClearOld = (): void => {
+    const r = ctrl.clearOldReplayRecords();
+    setCompactArmed(false);
+    setCompactMsg(`정리됨: 판정 ${r.removedVerdicts} · 사례 ${r.removedCases}`);
+  };
+
   return (
     <div className="px-2 sm:px-4 pb-10 max-w-6xl mx-auto space-y-4">
       <div>
@@ -485,11 +496,23 @@ const SignalReplayView: React.FC = () => {
         <span className="text-[11px] text-gray-400">💾 검증 기록 백업 <span className="text-gray-600">— 판정·사례 JSON(브라우저 저장소 유실 대비)</span></span>
         <div className="flex-1" />
         {importMsg && <span className="text-[11px] text-emerald-400">{importMsg}</span>}
+        {compactMsg && <span className="text-[11px] text-emerald-400">{compactMsg}</span>}
         <button onClick={ctrl.exportReplayRecords} className="text-[11px] px-2.5 py-1 rounded bg-gray-900 text-gray-300 hover:bg-gray-700">내보내기</button>
         <label className="text-[11px] px-2.5 py-1 rounded bg-gray-900 text-gray-300 hover:bg-gray-700 cursor-pointer">
           가져오기
           <input type="file" accept="application/json,.json" className="hidden" onChange={handleImport} />
         </label>
+        {compactTotal > 0 && (
+          compactArmed ? (
+            <span className="flex items-center gap-1.5 text-[11px] text-gray-400">
+              <span>판정 {compactable.verdicts}건·사례 {compactable.cases}건(1년 경과) 삭제 · 먼저 내보내기 권장</span>
+              <button onClick={handleClearOld} className="text-[11px] px-2.5 py-1 rounded bg-red-900/70 text-red-200 hover:bg-red-800">삭제</button>
+              <button onClick={() => setCompactArmed(false)} className="text-[11px] px-2.5 py-1 rounded bg-gray-900 text-gray-300 hover:bg-gray-700">취소</button>
+            </span>
+          ) : (
+            <button onClick={() => { setCompactMsg(null); setCompactArmed(true); }} className="text-[11px] px-2.5 py-1 rounded bg-gray-900 text-gray-300 hover:bg-gray-700">오래된 기록 정리 ({compactTotal}건)</button>
+          )
+        )}
       </div>
 
       <p className="text-[11px] text-gray-600 pt-2 border-t border-gray-700/60">

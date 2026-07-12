@@ -734,6 +734,9 @@ try {
 - **인증 상태 콜백**: `setAuthStateChangeCallback()`으로 UI 레이어(`useGoogleDriveSync`)가 인증 해제를 구독 — `needsReAuth` 플래그 설정
 - **gapi 제거**: Google API Client Library(gapi) 미사용 — GIS `initCodeClient`만 로드. 사용자 정보는 백엔드에서 조회
 - **자동 저장 디바운스**: 2초 (빈번한 저장 방지)
+- **자동 저장 큐 (`utils/saveQueue.ts`)**: `autoSave`는 payload 문자열을 만들어 `saveQueue.request()`에 넘긴다. 큐는 디바운스 코얼레싱(최신 payload만) + **pending 슬롯**(저장 in-flight 중 도착한 요청을 드롭하지 않고 보관 후 완료 시 자동 저장 — 이전엔 `if (isSavingRef.current) return`으로 유실됐음) + 동일 payload 스킵(마지막 **성공** payload 기준, 실패는 lastSaved 미갱신) + 실패 시 동일 payload 무한 재시도 없음. 큐 인스턴스는 `useRef`로 렌더 간 안정, 언마운트 시 `dispose()`로 타이머 정리. 상태(`idle/saving/saved/error`)는 `onStateChange`로 저장 상태 메시지 구동
+- **payload 미니파이**: 저장 직렬화는 `JSON.stringify(exportData)` (pretty-print 인자 제거) — 원본 메모리/압축시간 대폭 감소. `saveFile`은 `raw/compressed/ms` info 로그로 관측
+- **Stale-write 가드 (`portfolio.json` 전용)**: `listFiles` fields에 `modifiedTime` 포함. `loadFile('portfolio.json')`에서 `knownModifiedTime` 설정, `saveFile` 성공 시 응답(`fields=id,modifiedTime`)으로 갱신. 저장 직전 원격 `modifiedTime`이 `knownModifiedTime`과 다르면 업로드 없이 `DriveConflictError`(export) throw → `useGoogleDriveSync`가 다른 기기/탭 변경 감지 안내 + `conflictBlockedRef`로 다음 `loadFromGoogleDrive` 성공 전까지 자동 저장 차단. **완전한 CAS 아님** — listFiles~업로드 사이 TOCTOU 창 잔존(코드 주석 명시). 백업 파일은 면제, 최초 생성은 검사 건너뜀
 
 ### 카테고리 시스템 (ID 기반)
 - **핵심 원칙**: 자산 카테고리는 숫자 ID(`categoryId: number`)로 참조. 문자열 `category` 필드는 **deprecated** (마이그레이션 호환용으로만 남아있음)
@@ -753,9 +756,9 @@ try {
 - **파일명**: `portfolio_backup_YYYY-MM-DD.json` (Google Drive 같은 폴더)
 - **보관**: Rolling N개 (기본 10개), 초과 시 `createdTime` 기준 오래된 것 자동 삭제
 - **설정**: `localStorage('asset-manager-backup-settings')` — `{ enabled, retentionCount }`
-- **복원**: `loadFileById()` → 전체 데이터 교체 → `updateAllData()` + autoSave (현재 데이터 덮어쓰기)
+- **복원**: `loadFileById()` → `restoreFromPayload(content)` (usePortfolioData). **전 도메인 복원** — `parsePortfolioPayload`(순수)로 파싱 후 Drive 로드와 **동일한 공용 파이프라인** `applyLoadedData`를 거쳐 assets/history/sellHistory/watchlist뿐 아니라 categoryStore·knowledgeBase·actionQueue·turtlePositions·turtleSettings·sellAlertDropRate·tableLayout까지 반영하고, 복원된 전 도메인을 명시적으로 1회 autoSave(현재 상태 기본값 절대 미사용). **과거 버그(P2)**: 구 `updateAllData()` 경로는 6개 도메인만 넘겨 나머지가 현재 상태 기본값으로 재저장돼 복원이 무의미했음
 - **백업 실패 시**: 앱 동작에 영향 없음 (try-catch, log.error만)
-- **관련 파일**: `hooks/useBackup.ts`, `components/BackupSettingsSection.tsx`, `types/backup.ts`, `googleDriveService.ts`
+- **관련 파일**: `hooks/useBackup.ts`, `components/BackupSettingsSection.tsx`, `types/backup.ts`, `googleDriveService.ts`, `utils/parsePortfolioPayload.ts`(순수 파서), `hooks/usePortfolioData.ts`(`applyLoadedData`/`restoreFromPayload`)
 
 ### 글로벌 기간 선택기 (GlobalPeriod)
 - **상태 위치**: `PortfolioContext.ui.globalPeriod` (타입: `'THIS_MONTH' | 'LAST_MONTH' | '1M' | '3M' | '6M' | '1Y' | '2Y' | 'ALL'`)
@@ -913,6 +916,17 @@ log.error('시세 조회 실패:', error);
 - **스냅샷 우선**: 수익통계에서 스냅샷 필드(`originalPurchasePrice` 등) 우선 사용
 - **스냅샷 수량 역산**: `currentValue / unitPrice`로 수량을 역산할 때, `unitPrice`가 0이나 undefined이면 반드시 스킵 (fallback 1 사용 금지 — 데이터 오염의 원인)
 - **로드 파이프라인 순서**: `repairCorruptedSnapshots` → `fillAllMissingDates` → `backfillWithRealPrices` (repair가 반드시 먼저)
+- **백필 결과 365 캡 (P5a)**: `applyLoadedData`의 비동기 `backfillWithRealPrices` 결과는 `setPortfolioHistory`/`hookAutoSave` 전에 `.slice(-365)`로 캡한다. `usePortfolioHistory`의 365 캡은 effect 재실행(deps: assets·exchangeRates) 시에만 적용돼, 백필 결과가 캡 없이 저장되면 과도한 길이가 남을 수 있었음. `fillAllMissingDates` 결과(초기 set)는 `getMissingDateRange` 판정 입력이므로 캡하지 않음
+
+### localStorage 안전 쓰기 (용량 초과 방어)
+- **`utils/safeStorage.ts`**: 성장 키(리플레이 사례/판정·어시스턴트 기록)의 `localStorage.setItem`은 `setItemSafe(key, value)` 경유. 용량 초과(`isQuotaError`: name `QuotaExceededError`/`NS_ERROR_DOM_QUOTA_REACHED`, code 22/1014)면 **재취득 가능한 캐시만**(`EVICTABLE_CACHE_KEYS = ['asset-manager-symbol-index-v1']`) 고정 순서로 축출·재시도. 그래도 실패하면 절대 throw 안 하고 `{ok:false, quotaExceeded:true}` 반환 + `asset-manager:storage-warning` CustomEvent 발화 → `UpdateStatusIndicator`가 상태줄에 에러 표시(플로팅 토스트 아님)
+- **불변식**: 축출 대상은 재취득 가능한 캐시 뿐 — **판정/사례/설정/토큰 등 사용자 데이터는 절대 삭제 금지**(리플레이 사례/판정에 캡·삭제 미적용: 사용자 연구 데이터 조용한 유실 방지)
+- **어시스턴트 기록**: `PortfolioAssistant`는 로드·저장 모두 `keepLast(messages, 50)`로 최근 50개만 유지. 저장은 `isStreaming` 게이트로 스트림 종료 후 1회만(청크마다 재직렬화 방지 — `isLoading`은 첫 청크에서 풀려 게이팅에 부적합)
+
+### 데이터 누적 정리 (컴팩션 — 전부 명시적·수동 트리거)
+- **원칙**: "보이지 않는 쓰기 금지" — 자동 삭제/캡 없음. 모두 사용자가 버튼을 눌러야 실행되고, 인라인 2단 확인(모달·플로팅 토스트 금지) 후 커밋. 삭제 전 원본 보존 경로가 반드시 존재.
+- **완료 실행 큐 정리 (P5, `utils/actionQueueCompaction.ts` 순수)**: `compactResolvedActions(queue, {today, olderThanDays?})` — `status==='done'||'skipped'` AND `resolvedDate` 존재 AND `resolvedDate < today−90일`만 제거(`ACTION_QUEUE_RETENTION_DAYS=90`). pending/snoozed·resolvedDate 없는 항목은 **항상 유지**. `today` 인자 주입(ambient clock 금지). **참조 무결성**: ActionItem을 id로 참조하는 데이터 없음(sellHistory/turtlePositions 독립·유지) → 제거 안전. 복구원 = 자동 백업 `portfolio_backup_*.json`. 배선: `derived.compactableActions {count, cutoffDate}`(읽기전용 파생·저장 없음) + `actions.compactActionQueue(): number`(kept로 `commitPortfolioPatch`, removed 0이면 미커밋). UI = `TurtleSettingsPanel` 유지보수 행. **터틀 포지션·매도기록은 정리 대상 아님**(사용자 결정 — 이중저장 정합성 위험 회피). test:actioncompact
+- **리플레이 검증기록 정리 (P6, `utils/replayRecordsCompaction.ts` 순수)**: `partitionReplayRecordsByAge(verdicts, cases, {nowISO, olderThanDays?})` — `createdAt < nowISO−365일`(`REPLAY_RETENTION_DAYS=365`)만 제거. createdAt 없거나 파싱불가·nowISO 파싱불가 시 방어적 **전량 유지**. `nowISO` 주입. 배선: `useSignalReplay`의 `replayCompactablePreview {verdicts, cases}`(파생 카운트) + `clearOldReplayRecords(opts?)`(제거분 있을 때만 set+save, `{removedVerdicts, removedCases}` 반환). UI = `SignalReplayView` 백업 행(기존 내보내기/가져오기 옆, "먼저 내보내기 권장" 안내). **사용자 연구 데이터라 자동 캡 없음** — 내보내기(`exportReplayRecords`)로 보존 후 수동 정리. test:replaycompact
 
 ### 매도 기록 이중 저장 구조
 - **저장 위치가 2곳**: 매도 시 동일한 거래가 `sellHistory[]`(글로벌)와 `asset.sellTransactions[]`(자산 내부) **양쪽에 저장**됨

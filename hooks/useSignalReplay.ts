@@ -28,6 +28,7 @@ import {
 import { computeSignalPerformance, type SignalPerformance } from '../utils/replayPerformance';
 import { computeWinRateDiagnostics, type WinRateDiagnostics, type VerdictReturn } from '../utils/winRateDiagnostics';
 import { buildReplayExport, serializeReplayExport, parseReplayExport } from '../utils/replayExport';
+import { partitionReplayRecordsByAge } from '../utils/replayRecordsCompaction';
 import type { SymbolSearchResult } from '../types';
 import type { KnowledgeRule } from '../types/knowledge';
 import type {
@@ -115,6 +116,9 @@ export interface SignalReplayController {
   // 검증 기록 백업(⑤) — JSON 파일 내보내기/병합 가져오기
   exportReplayRecords: () => void;
   importReplayRecords: (file: File) => Promise<{ verdicts: number; cases: number }>;
+  // 오래된 기록 정리(P6) — createdAt 1년(365일) 경과분만 명시적 확인 후 삭제(자동 캡 없음)
+  replayCompactablePreview: { verdicts: number; cases: number }; // 정리 대상 미리보기 카운트
+  clearOldReplayRecords: (opts?: { olderThanDays?: number }) => { removedVerdicts: number; removedCases: number };
 }
 
 export function useSignalReplay({ enabled }: UseSignalReplayParams): SignalReplayController {
@@ -515,6 +519,35 @@ export function useSignalReplay({ enabled }: UseSignalReplayParams): SignalRepla
     return { verdicts: vs.length, cases: cs.length };
   }, []);
 
+  // ── 오래된 기록 정리(P6) — createdAt 1년 경과분만 명시적 확인 후 삭제 ──
+  // 정책: 자동 캡/삭제 금지(사용자 연구 데이터). 미리보기 카운트는 훅에서 파생(컴포넌트는 UI-only 유지).
+  const replayCompactablePreview = useMemo(() => {
+    const r = partitionReplayRecordsByAge(verdicts, cases, { nowISO: new Date().toISOString() });
+    return { verdicts: r.removedVerdicts.length, cases: r.removedCases.length };
+  }, [verdicts, cases]);
+
+  const clearOldReplayRecords = useCallback(
+    (opts?: { olderThanDays?: number }): { removedVerdicts: number; removedCases: number } => {
+      const r = partitionReplayRecordsByAge(verdicts, cases, {
+        nowISO: new Date().toISOString(),
+        olderThanDays: opts?.olderThanDays,
+      });
+      if (r.removedVerdicts.length === 0 && r.removedCases.length === 0) {
+        return { removedVerdicts: 0, removedCases: 0 };
+      }
+      if (r.removedVerdicts.length > 0) {
+        setVerdicts(r.keptVerdicts);
+        saveVerdicts(r.keptVerdicts);
+      }
+      if (r.removedCases.length > 0) {
+        setCases(r.keptCases);
+        saveCases(r.keptCases);
+      }
+      return { removedVerdicts: r.removedVerdicts.length, removedCases: r.removedCases.length };
+    },
+    [verdicts, cases],
+  );
+
   return {
     selected, selectSymbol, selectSymbolAtDate,
     searchQuery, setSearchQuery, searchResults, isSearching,
@@ -528,5 +561,6 @@ export function useSignalReplay({ enabled }: UseSignalReplayParams): SignalRepla
     verdictFor, setVerdict, clearVerdict, verdictDates, tickerVerdicts,
     cases, saveCurrentCase, deleteCase, loadCase, comparingCase, caseDiff, endComparison,
     performance, winRateDiagnostics, missedVerdicts, exportReplayRecords, importReplayRecords,
+    replayCompactablePreview, clearOldReplayRecords,
   };
 }

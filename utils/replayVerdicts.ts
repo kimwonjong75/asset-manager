@@ -9,6 +9,7 @@
 //   load/save 만 localStorage 부수효과(distributionTierState 패턴).
 
 import { createLogger } from './logger';
+import { setItemSafe } from './safeStorage';
 import type { SignalVerdict, SignalVerdictKind } from '../types/signalReplay';
 
 const log = createLogger('ReplayVerdicts');
@@ -104,8 +105,11 @@ export function loadVerdicts(): SignalVerdict[] {
 }
 
 export function saveVerdicts(list: SignalVerdict[]): void {
+  // 사용자 연구 데이터 — 조용한 실패 금지. 용량 초과 시 setItemSafe 가 재취득 캐시만 축출·재시도하고,
+  // 그래도 실패하면 'asset-manager:storage-warning' 이벤트로 UI에 표면화한다(판정은 절대 자동 삭제 안 함).
   try {
-    localStorage.setItem(REPLAY_VERDICTS_KEY, serializeVerdicts(list));
+    const result = setItemSafe(REPLAY_VERDICTS_KEY, serializeVerdicts(list));
+    if (!result.ok) log.error('판정 저장 실패', result);
   } catch (e) {
     log.error('판정 저장 실패', e);
   }

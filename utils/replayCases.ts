@@ -10,6 +10,7 @@
 // localStorage 전용(Drive 미동기화). 순수 함수는 state 인자/반환 — id·createdAt 은 호출부(훅)가 주입(결정론).
 
 import { createLogger } from './logger';
+import { setItemSafe } from './safeStorage';
 import { flattenLeaves } from './conditionLeafId';
 import { hashRuleset } from './ruleOverrides';
 import type { KnowledgeRule } from '../types/knowledge';
@@ -205,8 +206,11 @@ export function loadCases(): VerificationCase[] {
 }
 
 export function saveCases(list: VerificationCase[]): void {
+  // 사용자 연구 데이터 — 조용한 실패 금지. 용량 초과 시 setItemSafe 가 재취득 캐시만 축출·재시도하고,
+  // 그래도 실패하면 'asset-manager:storage-warning' 이벤트로 UI에 표면화한다(사례는 절대 자동 삭제 안 함).
   try {
-    localStorage.setItem(REPLAY_CASES_KEY, serializeCases(list));
+    const result = setItemSafe(REPLAY_CASES_KEY, serializeCases(list));
+    if (!result.ok) log.error('사례 저장 실패', result);
   } catch (e) {
     log.error('사례 저장 실패', e);
   }
