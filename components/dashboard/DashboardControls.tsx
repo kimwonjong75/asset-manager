@@ -1,25 +1,19 @@
 import React, { useMemo } from 'react';
-import { Asset, ExchangeRates } from '../../types';
+import { Asset } from '../../types';
 import { getAllowedCategories } from '../../types/category';
 import { usePortfolio } from '../../contexts/PortfolioContext';
-import ExchangeRateInput from '../ExchangeRateInput';
 
 interface DashboardControlsProps {
     assets: Asset[];
     filterCategory: number | 'ALL' | 'SATELLITE';
     onFilterChange: (category: number | 'ALL' | 'SATELLITE') => void;
-    exchangeRates: ExchangeRates;
-    onRatesChange: (rates: ExchangeRates) => void;
-    showExchangeRateWarning: boolean;
 }
 
+// 환율 입력은 MarketOverviewBar(시장 요약 한 줄)로 이전됨 — 여기서는 자산 구분 필터만.
 const DashboardControls: React.FC<DashboardControlsProps> = ({
     assets,
     filterCategory,
     onFilterChange,
-    exchangeRates,
-    onRatesChange,
-    showExchangeRateWarning,
 }) => {
     const { data } = usePortfolio();
     const cats = data.categoryStore.categories;
@@ -56,11 +50,6 @@ const DashboardControls: React.FC<DashboardControlsProps> = ({
                     </div>
                 </div>
             </div>
-            <ExchangeRateInput
-                rates={exchangeRates}
-                onRatesChange={onRatesChange}
-                showWarning={showExchangeRateWarning}
-            />
         </div>
     );
 };

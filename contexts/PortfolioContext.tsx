@@ -19,7 +19,7 @@ import { useAutoAlert } from '../hooks/useAutoAlert';
 import { useTurtleActionReview } from '../hooks/useTurtleActionReview';
 import { usePortfolioCalculator } from '../hooks/usePortfolioCalculator';
 import { useBackup } from '../hooks/useBackup';
-import { useGoldPremium } from '../hooks/useGoldPremium';
+import { useMarketOverview } from '../hooks/useMarketOverview';
 import { CategoryBaseType } from '../types/category';
 import type { CategoryStore } from '../types/category';
 import type { KnowledgeBase } from '../types/knowledge';
@@ -146,16 +146,15 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   // 백업 훅
   const backup = useBackup({ isSignedIn });
 
-  // 금 김치프리미엄 훅 (앱 레벨)
+  // 시장 요약(금 김치 프리미엄 + 환율) 훅 (앱 레벨).
+  // 마운트 즉시 스스로 fresh 조회하므로 별도 초기 fetch 효과가 필요 없다 —
+  // 환율 로딩(exchangeRates.USD) 타이밍과도 완전히 분리됨(과거 1450 왜곡 버그 제거).
   const {
-    data: goldPremiumData,
-    loading: isGoldPremiumLoading,
-    error: goldPremiumError,
-    refresh: refreshGoldPremium,
-  } = useGoldPremium({
-    usdKrwRate: exchangeRates.USD,
-    enableVisibilityRefresh: true,
-  });
+    snapshot: marketOverviewData,
+    status: marketOverviewStatus,
+    error: marketOverviewError,
+    refresh: refreshMarketOverview,
+  } = useMarketOverview();
 
   // 앱 시작 시 자동 업데이트 (오늘 아직 업데이트 안 했으면)
   useEffect(() => {
@@ -165,19 +164,11 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       setShouldAutoUpdate(false);
       // 자동 업데이트 실행 (isAutoUpdate=true로 호출)
       handleRefreshAllPrices(true);
-      refreshGoldPremium();
+      refreshMarketOverview();
       // 시세 갱신 시점에 1일 1회 자동 백업
       backup.performBackup();
     }
-  }, [shouldAutoUpdate, assets.length, hasAutoUpdated, isMarketLoading, handleRefreshAllPrices, refreshGoldPremium, setHasAutoUpdated, setShouldAutoUpdate, backup.performBackup]);
-
-  // 금 프리미엄 초기 fetch (auto-update 여부와 무관, 세션당 1회)
-  useEffect(() => {
-    if (exchangeRates.USD > 0 && !goldPremiumData && !isGoldPremiumLoading) {
-      refreshGoldPremium();
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [exchangeRates.USD]);
+  }, [shouldAutoUpdate, assets.length, hasAutoUpdated, isMarketLoading, handleRefreshAllPrices, refreshMarketOverview, setHasAutoUpdated, setShouldAutoUpdate, backup.performBackup]);
 
   // 자산/관심종목 액션 훅
   const {
@@ -636,9 +627,9 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       backupList: backup.backupList,
       backupSettings: backup.backupSettings,
       isBackingUp: backup.isBackingUp,
-      goldPremium: goldPremiumData,
-      isGoldPremiumLoading,
-      goldPremiumError,
+      marketOverview: marketOverviewData,
+      marketOverviewStatus,
+      marketOverviewError,
     },
     actions: {
       saveToDrive,
@@ -650,7 +641,7 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       setExchangeRates: handleExchangeRatesChange,
       refreshAllPrices: async (force?: boolean) => {
         handleRefreshAllPrices(!!force);
-        refreshGoldPremium();
+        refreshMarketOverview();
       },
       refreshSelectedPrices: handleRefreshSelectedPrices,
       refreshOnePrice: handleRefreshOnePrice,
@@ -815,8 +806,8 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         });
         commitPortfolioPatch({ assets: result.assets, watchlist: result.watchlist, actionQueue: result.actionQueue });
       },
-      // 금 김치프리미엄
-      refreshGoldPremium,
+      // 시장 요약(금 김치 프리미엄 + 환율)
+      refreshMarketOverview,
       // 백업
       performBackup: () => backup.performBackup(),
       loadBackupList: backup.loadBackupList,

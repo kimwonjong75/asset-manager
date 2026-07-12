@@ -14,14 +14,14 @@ import ProfitLossChart from '../dashboard/ProfitLossChart';
 import AllocationChart from '../dashboard/AllocationChart';
 import CategorySummaryTable from '../dashboard/CategorySummaryTable';
 import RebalancingTable from '../dashboard/RebalancingTable';
-import GoldPremiumWidget from '../GoldPremiumWidget';
+import MarketOverviewBar from '../dashboard/MarketOverviewBar';
 import MarketDistributionBanner from '../MarketDistributionBanner';
 import RiskCalculatorCard from '../dashboard/RiskCalculatorCard';
 import GuruSignalCard from '../dashboard/GuruSignalCard';
 import ReferenceIndicatorsSection from '../dashboard/ReferenceIndicatorsSection';
 
 const DashboardView: React.FC = () => {
-  const { data, ui, actions, status, derived } = usePortfolio();
+  const { data, ui, actions, derived } = usePortfolio();
   const assets = data.assets;
   const sellHistory = data.sellHistory;
   const { startDate: periodStart, endDate: periodEnd } = useGlobalPeriodDays(ui.globalPeriod);
@@ -34,8 +34,6 @@ const DashboardView: React.FC = () => {
   const setDashboardFilterCategory = actions.setDashboardFilterCategory;
   const { calculatePortfolioStats, calculateSoldAssetsStats } = usePortfolioCalculator();
 
-  const onRatesChange = actions.setExchangeRates;
-  const showExchangeRateWarning = status.showExchangeRateWarning;
 
   // 계정 뷰 필터 (통합/원종/유선) — 표시 계층 전용. 매도통계(allSellRecords)와 리밸런싱은
   // 의도적으로 원본 assets 사용: 매도통계는 SellRecord에 owner가 없어 통합 기준(1차 한계),
@@ -116,9 +114,6 @@ const DashboardView: React.FC = () => {
         assets={viewAssets}
         filterCategory={dashboardFilterCategory}
         onFilterChange={(cat) => setDashboardFilterCategory(cat)}
-        exchangeRates={exchangeRates}
-        onRatesChange={onRatesChange}
-        showExchangeRateWarning={showExchangeRateWarning}
       />
 
       <DashboardStats
@@ -128,7 +123,7 @@ const DashboardView: React.FC = () => {
         totalReturn={dashboardTotalReturn}
       />
 
-      <GoldPremiumWidget />
+      <MarketOverviewBar />
 
       {/* 리스크 계산기(평소 접힘). */}
       <RiskCalculatorCard />

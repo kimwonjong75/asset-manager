@@ -35,7 +35,8 @@
     "test:rebalaction": "npx --yes tsx tests/rebalanceActionsParity.ts",
     "test:persist": "npx --yes tsx tests/persistenceRoundTripParity.ts",
     "test:owner": "npx --yes tsx tests/ownerBulkParity.ts",
-    "test:kb": "npx --yes tsx tests/knowledgeBaseIntegrity.ts"
+    "test:kb": "npx --yes tsx tests/knowledgeBaseIntegrity.ts",
+    "test:overview": "npx --yes tsx tests/marketOverviewParity.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

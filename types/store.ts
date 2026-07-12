@@ -8,7 +8,7 @@ import type { KnowledgeBase, RuleStatusDescriptor } from './knowledge';
 import type { GuruSignalMatch, GuruSignalChartTarget, GuruSignalTarget } from '../utils/guruSignalEngine';
 import type { PopupDeliveryDiagnosis } from './alertDiagnostics';
 import type { TurtleReviewSummary } from '../utils/turtleReview';
-import type { GoldPremiumResult } from '../services/goldPremiumService';
+import type { MarketOverviewSnapshot, MarketOverviewStatus } from './marketOverview';
 import type { ColumnConfig, ColumnKey, FixedColumnWidths, EnrichedAsset, SignalDisplaySettings } from './ui';
 import type { MALineConfig } from '../utils/maCalculations';
 import type { ActionItem } from './actionQueue';
@@ -135,10 +135,10 @@ export interface DerivedState {
   backupList: BackupInfo[];
   backupSettings: BackupSettings;
   isBackingUp: boolean;
-  // 금 김치프리미엄
-  goldPremium: GoldPremiumResult | null;
-  isGoldPremiumLoading: boolean;
-  goldPremiumError: string | null;
+  // 시장 요약(금 김치 프리미엄 + 환율) — 원시 스냅샷. 프리미엄은 UI에서 유효환율로 파생.
+  marketOverview: MarketOverviewSnapshot | null;
+  marketOverviewStatus: MarketOverviewStatus;
+  marketOverviewError: string | null;
 }
 
 export interface PortfolioActions {
@@ -262,8 +262,8 @@ export interface PortfolioActions {
   /** 대청소 일괄 분류 저장 (Phase 3b) — assetId별 결정을 자산에 적용 후 단일 커밋. 결정 없는 자산 불변 */
   saveCleanupDecisions: (decisions: Record<string, CleanupDecision>) => void;
 
-  // 금 김치프리미엄
-  refreshGoldPremium: () => Promise<void>;
+  // 시장 요약(금 김치 프리미엄 + 환율)
+  refreshMarketOverview: () => Promise<void>;
 
   // 백업
   performBackup: () => Promise<void>;
