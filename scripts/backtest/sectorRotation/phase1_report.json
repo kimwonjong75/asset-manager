@@ -1,0 +1,552 @@
+{
+  "generatedAt": "2026-07-13T13:57:28.442Z",
+  "requestedStart": "1990-01-01",
+  "requestedEnd": "2026-07-13",
+  "source": "yahoo-v8",
+  "preRegistration": "PHASE1_PREREGISTRATION.md",
+  "config": {
+    "windows": [
+      3,
+      6,
+      12
+    ],
+    "hs": [
+      1,
+      3,
+      6
+    ],
+    "lags": [
+      1,
+      3,
+      6
+    ],
+    "bootBlock": 12,
+    "resamples": 5000,
+    "baseSeed": 20260713
+  },
+  "jpDeferred": {
+    "reason": "liquidity(1615.T only)",
+    "candidates": [
+      "1615.T",
+      "1617.T",
+      "1621.T",
+      "1622.T",
+      "1625.T"
+    ]
+  },
+  "tracks": [
+    {
+      "key": "US-Sector",
+      "label": "미국 섹터(주력·1차 증거, 9종·약 1999~)",
+      "mode": "thirds",
+      "minScored": 9,
+      "primary": true,
+      "months": 331,
+      "firstMonth": "1998-12",
+      "lastMonth": "2026-06",
+      "symbols": [
+        "XLK",
+        "XLV",
+        "XLF",
+        "XLE",
+        "XLI",
+        "XLY",
+        "XLP",
+        "XLU",
+        "XLB"
+      ],
+      "effN": 9,
+      "q1": {
+        "distinctLeaders": 9,
+        "leaderLabels": [
+          "기술",
+          "헬스케어",
+          "금융",
+          "에너지",
+          "산업재",
+          "경기소비재",
+          "필수소비재",
+          "유틸리티",
+          "소재"
+        ],
+        "meanRunLengthMonths": 2.5725806451612905,
+        "monthlyChangeProb": 0.3867924528301887,
+        "randomChangeProb": 0.8888888888888888,
+        "spearman": {
+          "L1": 0.7868972746331233,
+          "L3": 0.5217827004219411,
+          "L6": 0.2981363152289669
+        },
+        "crossSectionalDispersion": 0.03243517467667009,
+        "transition": [
+          [
+            52,
+            2,
+            5,
+            4,
+            1,
+            5,
+            0,
+            2,
+            2
+          ],
+          [
+            1,
+            15,
+            2,
+            2,
+            1,
+            5,
+            1,
+            2,
+            1
+          ],
+          [
+            5,
+            2,
+            17,
+            3,
+            0,
+            2,
+            0,
+            4,
+            0
+          ],
+          [
+            6,
+            1,
+            2,
+            65,
+            0,
+            0,
+            3,
+            2,
+            1
+          ],
+          [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            0,
+            1,
+            0
+          ],
+          [
+            0,
+            2,
+            1,
+            2,
+            3,
+            13,
+            2,
+            4,
+            3
+          ],
+          [
+            0,
+            3,
+            3,
+            0,
+            0,
+            0,
+            6,
+            1,
+            1
+          ],
+          [
+            6,
+            2,
+            1,
+            3,
+            1,
+            3,
+            1,
+            22,
+            0
+          ],
+          [
+            2,
+            2,
+            1,
+            0,
+            0,
+            1,
+            1,
+            1,
+            4
+          ]
+        ],
+        "exists": true,
+        "structural": true,
+        "verdict": "존재 O — 주도 섹터가 9종을 오가며 실제로 교체됨 · 리더 유지가 무작위보다 끈끈함(구조적: 관측 교체율 38.7% < 무작위 88.9%)"
+      },
+      "q2": [
+        {
+          "h": 1,
+          "nMonths": 318,
+          "meanSpread": -0.0003058262470154801,
+          "ci": {
+            "lo": -0.0038850653438607954,
+            "hi": 0.003477002248257561,
+            "mean": -0.0003058262470154801
+          },
+          "control": {
+            "actualSpread": -0.0003058262470154801,
+            "nullMean": -0.00000712868821402873,
+            "percentile": 0.4346
+          },
+          "predictable": false,
+          "direction": "none",
+          "lowPower": false,
+          "verdict": "예측가능 X (CI가 0을 못 배제하거나 무작위 대조 초과 못함, 백분위 43.5%)"
+        },
+        {
+          "h": 3,
+          "nMonths": 316,
+          "meanSpread": -0.002143256370410047,
+          "ci": {
+            "lo": -0.010347226958763665,
+            "hi": 0.009192687506645791,
+            "mean": -0.002143256370410047
+          },
+          "control": {
+            "actualSpread": -0.002143256370410047,
+            "nullMean": -0.0000447954975287219,
+            "percentile": 0.2342
+          },
+          "predictable": false,
+          "direction": "none",
+          "lowPower": false,
+          "verdict": "예측가능 X (CI가 0을 못 배제하거나 무작위 대조 초과 못함, 백분위 23.4%)"
+        },
+        {
+          "h": 6,
+          "nMonths": 313,
+          "meanSpread": -0.001324721692735768,
+          "ci": {
+            "lo": -0.016240407888229565,
+            "hi": 0.019517584132814354,
+            "mean": -0.001324721692735768
+          },
+          "control": {
+            "actualSpread": -0.001324721692735768,
+            "nullMean": 0.000024121334649547658,
+            "percentile": 0.3732
+          },
+          "predictable": false,
+          "direction": "none",
+          "lowPower": false,
+          "verdict": "예측가능 X (CI가 0을 못 배제하거나 무작위 대조 초과 못함, 백분위 37.3%)"
+        }
+      ],
+      "q2Verdict": "예측가능 X — 어떤 h에서도 유의한 상위-하위 스프레드가 무작위 대조를 못 넘음"
+    },
+    {
+      "key": "Global",
+      "label": "글로벌(국가/금/원자재, 6종·공통구간 ~2011~)",
+      "mode": "halves",
+      "minScored": 6,
+      "primary": false,
+      "months": 184,
+      "firstMonth": "2011-03",
+      "lastMonth": "2026-06",
+      "symbols": [
+        "SPY",
+        "EWY",
+        "EWJ",
+        "MCHI",
+        "GLD",
+        "DBC"
+      ],
+      "effN": 6,
+      "q1": {
+        "distinctLeaders": 6,
+        "leaderLabels": [
+          "미국",
+          "한국",
+          "일본",
+          "중국",
+          "금",
+          "원자재"
+        ],
+        "meanRunLengthMonths": 3.372549019607843,
+        "monthlyChangeProb": 0.29239766081871343,
+        "randomChangeProb": 0.8333333333333334,
+        "spearman": {
+          "L1": 0.8222222222222211,
+          "L3": 0.593575655114116,
+          "L6": 0.3951807228915666
+        },
+        "crossSectionalDispersion": 0.036216831962655655,
+        "transition": [
+          [
+            34,
+            0,
+            6,
+            3,
+            6,
+            0
+          ],
+          [
+            0,
+            17,
+            0,
+            4,
+            0,
+            1
+          ],
+          [
+            5,
+            0,
+            3,
+            0,
+            2,
+            0
+          ],
+          [
+            2,
+            3,
+            1,
+            19,
+            2,
+            2
+          ],
+          [
+            6,
+            2,
+            0,
+            2,
+            24,
+            0
+          ],
+          [
+            1,
+            1,
+            0,
+            1,
+            0,
+            24
+          ]
+        ],
+        "exists": true,
+        "structural": true,
+        "verdict": "존재 O — 주도 섹터가 6종을 오가며 실제로 교체됨 · 리더 유지가 무작위보다 끈끈함(구조적: 관측 교체율 29.2% < 무작위 83.3%)"
+      },
+      "q2": [
+        {
+          "h": 1,
+          "nMonths": 171,
+          "meanSpread": 0.005028867972939317,
+          "ci": {
+            "lo": -0.001127103130784835,
+            "hi": 0.009252314620806262,
+            "mean": 0.005028867972939317
+          },
+          "control": {
+            "actualSpread": 0.005028867972939317,
+            "nullMean": -0.0000011705388697381237,
+            "percentile": 0.9628
+          },
+          "predictable": false,
+          "direction": "none",
+          "lowPower": false,
+          "verdict": "예측가능 X (CI가 0을 못 배제하거나 무작위 대조 초과 못함, 백분위 96.3%)"
+        },
+        {
+          "h": 3,
+          "nMonths": 169,
+          "meanSpread": 0.0157721867688652,
+          "ci": {
+            "lo": 0.0010047439273244301,
+            "hi": 0.027602293255633292,
+            "mean": 0.0157721867688652
+          },
+          "control": {
+            "actualSpread": 0.0157721867688652,
+            "nullMean": 0.000020274099518516467,
+            "percentile": 0.9996
+          },
+          "predictable": true,
+          "direction": "positive",
+          "lowPower": false,
+          "verdict": "예측가능 O (상위-하위 스프레드 +, CI가 0 초과, 무작위 상위 100.0%)"
+        },
+        {
+          "h": 6,
+          "nMonths": 166,
+          "meanSpread": 0.027539305051847377,
+          "ci": {
+            "lo": 0.0008216822624479007,
+            "hi": 0.046542937303363174,
+            "mean": 0.027539305051847377
+          },
+          "control": {
+            "actualSpread": 0.027539305051847377,
+            "nullMean": -0.0001336374827774546,
+            "percentile": 0.9998
+          },
+          "predictable": true,
+          "direction": "positive",
+          "lowPower": false,
+          "verdict": "예측가능 O (상위-하위 스프레드 +, CI가 0 초과, 무작위 상위 100.0%)"
+        }
+      ],
+      "q2Verdict": "예측가능 O — h=3,6개월에서 스프레드가 유의(+)하고 무작위 대조군 초과"
+    },
+    {
+      "key": "KR-Sector",
+      "label": "한국 섹터 ETF(보조 증거·저검정력, 갭절단·동적편입)",
+      "mode": "halves",
+      "minScored": 3,
+      "primary": false,
+      "months": 207,
+      "firstMonth": "2009-04",
+      "lastMonth": "2026-06",
+      "symbols": [
+        "091160.KS",
+        "091170.KS",
+        "091180.KS",
+        "143860.KS",
+        "266360.KS",
+        "305720.KS"
+      ],
+      "effN": 6,
+      "q1": {
+        "distinctLeaders": 6,
+        "leaderLabels": [
+          "반도체",
+          "은행",
+          "자동차",
+          "헬스케어",
+          "IT",
+          "2차전지"
+        ],
+        "meanRunLengthMonths": 3.9,
+        "monthlyChangeProb": 0.25257731958762886,
+        "randomChangeProb": 0.8333333333333334,
+        "spearman": {
+          "L1": 0.7767304860088352,
+          "L3": 0.5526785714285706,
+          "L6": 0.28798185941043114
+        },
+        "crossSectionalDispersion": 0.050192749788647226,
+        "transition": [
+          [
+            28,
+            5,
+            3,
+            5,
+            0,
+            1
+          ],
+          [
+            7,
+            23,
+            1,
+            2,
+            1,
+            1
+          ],
+          [
+            5,
+            1,
+            29,
+            0,
+            0,
+            2
+          ],
+          [
+            2,
+            3,
+            1,
+            40,
+            1,
+            1
+          ],
+          [
+            0,
+            1,
+            0,
+            1,
+            3,
+            0
+          ],
+          [
+            1,
+            2,
+            2,
+            0,
+            0,
+            22
+          ]
+        ],
+        "exists": true,
+        "structural": true,
+        "verdict": "존재 O — 주도 섹터가 6종을 오가며 실제로 교체됨 · 리더 유지가 무작위보다 끈끈함(구조적: 관측 교체율 25.3% < 무작위 83.3%)"
+      },
+      "q2": [
+        {
+          "h": 1,
+          "nMonths": 194,
+          "meanSpread": 0.005168227511890157,
+          "ci": {
+            "lo": -0.0044766630110794235,
+            "hi": 0.01155999242299499,
+            "mean": 0.005168227511890157
+          },
+          "control": {
+            "actualSpread": 0.005168227511890157,
+            "nullMean": -0.0000534004505805976,
+            "percentile": 0.8774
+          },
+          "predictable": false,
+          "direction": "none",
+          "lowPower": false,
+          "verdict": "예측가능 X (CI가 0을 못 배제하거나 무작위 대조 초과 못함, 백분위 87.7%)"
+        },
+        {
+          "h": 3,
+          "nMonths": 192,
+          "meanSpread": 0.02438403274560656,
+          "ci": {
+            "lo": -0.002735567680610417,
+            "hi": 0.039294092400322604,
+            "mean": 0.02438403274560656
+          },
+          "control": {
+            "actualSpread": 0.02438403274560656,
+            "nullMean": 0.00012161695338970726,
+            "percentile": 0.9972
+          },
+          "predictable": false,
+          "direction": "none",
+          "lowPower": false,
+          "verdict": "예측가능 X (CI가 0을 못 배제하거나 무작위 대조 초과 못함, 백분위 99.7%)"
+        },
+        {
+          "h": 6,
+          "nMonths": 189,
+          "meanSpread": 0.026415042310197676,
+          "ci": {
+            "lo": -0.023892562084500305,
+            "hi": 0.05343784055918135,
+            "mean": 0.026415042310197676
+          },
+          "control": {
+            "actualSpread": 0.026415042310197676,
+            "nullMean": -0.00020116137665820513,
+            "percentile": 0.9752
+          },
+          "predictable": false,
+          "direction": "none",
+          "lowPower": false,
+          "verdict": "예측가능 X (CI가 0을 못 배제하거나 무작위 대조 초과 못함, 백분위 97.5%)"
+        }
+      ],
+      "q2Verdict": "예측가능 X — 어떤 h에서도 유의한 상위-하위 스프레드가 무작위 대조를 못 넘음"
+    }
+  ]
+}
