@@ -11,6 +11,11 @@
     "backtest": "npx --yes tsx tests/walkForwardBacktest.ts",
     "backtest:guru": "npx --yes tsx scripts/backtest/guruSignals.ts",
     "gate0": "npx --yes tsx scripts/backtest/sectorRotation/gate0Audit.ts",
+    "gate0:onboarding": "npx --yes tsx scripts/backtest/onboardingPolicy/phase0Audit.ts",
+    "hash:onboarding": "npx --yes tsx scripts/backtest/onboardingPolicy/printHash.ts",
+    "fetch:onboarding": "npx --yes tsx scripts/backtest/onboardingPolicy/fetchRepr.ts",
+    "backtest:onboarding": "npx --yes tsx scripts/backtest/onboardingPolicy/run.ts",
+    "test:onboarding": "npx --yes tsx tests/onboardingPolicyParity.ts",
     "phase1": "npx --yes tsx scripts/backtest/sectorRotation/phase1.ts",
     "phase2": "npx --yes tsx scripts/backtest/sectorRotation/phase2.ts",
     "test:phase1parity": "npx --yes tsx tests/sectorRotationPhase1Parity.ts",
@@ -46,7 +51,9 @@
     "test:safestorage": "npx --yes tsx tests/safeStorageParity.ts",
     "test:owner": "npx --yes tsx tests/ownerBulkParity.ts",
     "test:kb": "npx --yes tsx tests/knowledgeBaseIntegrity.ts",
-    "test:overview": "npx --yes tsx tests/marketOverviewParity.ts"
+    "test:overview": "npx --yes tsx tests/marketOverviewParity.ts",
+    "test:conditional-channel": "npx --yes tsx tests/conditionalChannelBacktest.ts",
+    "backtest:conditional-channel": "npx --yes tsx scripts/backtest/conditionalChannel/run.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

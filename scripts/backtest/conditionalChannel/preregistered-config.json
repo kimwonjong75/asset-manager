@@ -1,0 +1,140 @@
+{
+  "hypothesisId": "conditional-channel-v1",
+  "preregistrationDate": "2026-07-15",
+  "schemaVersion": 1,
+  "status": "PENDING_DATA",
+  "statusNote": "방법론 파라미터는 동결되었으나, 기간 경계(개발/검증/잠금)는 실제 point-in-time 패널 확보 후에만 확정된다. Phase 0 데이터 게이트 FAIL 상태이므로 잠금 표본은 아직 열리지 않았다.",
+  "primaryEstimand": "I = deltaA - deltaB, where deltaA = mean(R20A - R55A), deltaB = mean(R20B - R55B)",
+  "hypothesisDirection": "deltaA > 0, deltaB < 0, therefore I > 0",
+  "markets": ["US", "KR"],
+  "marketCombination": "시장별 독립 검증 후 50:50 가중 합산(종목 수 가중은 보조)",
+  "universe": {
+    "include": ["US 상장 보통주", "KOSPI 보통주", "KOSDAQ 보통주"],
+    "exclude": ["ETF", "ETN", "REIT", "우선주", "SPAC", "펀드", "채권", "선물", "옵션", "암호자산"],
+    "includeDelistedMergedRenamedHalted": true,
+    "monthEndPointInTimeSelection": true,
+    "newListingNoSignalUntil": "55개 진입 채널 + 20일 ATR + 공통 시작 조건 충족 전까지 신호 없음"
+  },
+  "groups": {
+    "definitionA": "large OR leader",
+    "definitionB": "NOT large AND NOT leader (A의 정확한 여집합)",
+    "largeCapPercentile": 80,
+    "largeTieBreak": "80백분위 동률은 안정적 securityId 오름차순으로 끊음",
+    "leaderMinIndustrySize": 5,
+    "leaderRule": "해당 월 투자 가능 종목 5개 이상인 업종에서 총시가총액 1위",
+    "sectorScheme": "GICS 또는 WICS 등 point-in-time 표준 분류(제공자 일관 표준)",
+    "frozenAtEntry": "포지션 진입 시점 그룹을 청산까지 유지(월 변경 무시)"
+  },
+  "channels": {
+    "entryLookbackShort": 20,
+    "entryLookbackLong": 55,
+    "exitLookback": 20,
+    "exitFixedForPrimary": true,
+    "breakoutExcludesCurrentBar": true,
+    "signalRule": "close[t] > max(high[t-N..t-1]); '>=' 사용 금지",
+    "commonStartBars": 55,
+    "commonStartNote": "20/55 공정 비교 위해 양쪽 모두 55선행바+ATR 준비된 공통 시작일부터 측정"
+  },
+  "strategies": {
+    "ALL_20": { "groupA": { "entry": 20, "exit": 20 }, "groupB": { "entry": 20, "exit": 20 } },
+    "ALL_55": { "groupA": { "entry": 55, "exit": 20 }, "groupB": { "entry": 55, "exit": 20 } },
+    "ADAPTIVE": { "groupA": { "entry": 20, "exit": 20 }, "groupB": { "entry": 55, "exit": 20 } },
+    "REVERSE": { "groupA": { "entry": 55, "exit": 20 }, "groupB": { "entry": 20, "exit": 20 } }
+  },
+  "execution": {
+    "fillRule": "신호일 t 종가 확인 후 다음 실제 거래일 t+1 시가 체결",
+    "gapReflectedInCostModel": true,
+    "haltCarryForward": "다음 바가 거래정지로 없으면 첫 거래 재개일로 이월",
+    "exitFillRule": "20일 저가 채널 종가 하향 돌파 시 다음 거래일 시가 체결",
+    "stopFillRule": "시가가 손절가보다 불리하면 시가, 장중 저가만 손절가 통과 시 손절가+슬리피지",
+    "sameDayOrderPriority": "일봉 다중 주문 순서 불명확 시 가장 보수적 손익 순서 적용·기록",
+    "signalPriceAdjustment": "split-adjusted OHLC 사용, 현금배당은 별도 현금흐름(미래배당 총수익 조정가 금지)"
+  },
+  "risk": {
+    "riskPerTradePct": 0.5,
+    "totalRiskCapPct": 12,
+    "singleNameValueCapPct": 25,
+    "maxUnitsPerPositionPrimary": 1,
+    "maxUnitsPerPositionSecondary": 2,
+    "pyramidingPrimary": false,
+    "atrLookback": 20,
+    "stopMultipleAtr": 2,
+    "sameDayCapAllocation": "가용 위험을 후보에 비례 배분, 정수 주식 내림, 잔여 현금 보유(선착순 금지)",
+    "ledger": "시장별 현지 통화 원장 1차, 통합 KRW 원장은 보조(역사 FX 필요)"
+  },
+  "costModel": {
+    "tiers": ["ZERO", "BASE", "DOUBLE"],
+    "decisionMustPass": ["BASE", "DOUBLE"],
+    "bothSides": "매수·매도 양방향 수수료·스프레드·슬리피지·시장충격 반영",
+    "koreaSellTax": "시점 유효 공식 세율 적용, 시행일·출처 기록, 오늘 세율 소급 금지",
+    "advParticipationCap": 0.05,
+    "advParticipationRule": "주문금액이 이전 60거래일 중앙 거래대금의 5% 초과 시 제한/미체결",
+    "spreadProxyWhenNoQuote": "가격·60일 중앙 거래대금·변동성 이용한 보수적 구간별 비용식(결과 확인 전 동결)"
+  },
+  "statistics": {
+    "blockBootstrapBlockDays": 60,
+    "bootstrapIterations": 10000,
+    "bootstrapSeed": 20260715,
+    "confidenceLevel": 0.95,
+    "twoSidedPValue": true,
+    "permutationCount": 1000,
+    "permutationSeed": 20260715,
+    "permutationRule": "시장·월별 A 그룹 비중 보존 무작위 라벨 순열",
+    "multipleComparison": "HOLM",
+    "reportMarkets": ["US", "KR", "COMBINED_50_50"]
+  },
+  "robustness": {
+    "entryLookbackShortGrid": [15, 20, 25],
+    "entryLookbackLongGrid": [45, 55, 65],
+    "largeCapPercentileGrid": [90, 80, 75],
+    "commonVsNaturalStart": ["common-55bar", "natural-20"],
+    "closeMethods": ["FORCED_CLOSE", "MARK_TO_MARKET", "EXCLUDE_OPEN"],
+    "costTiers": ["ZERO", "BASE", "DOUBLE"],
+    "fillDelayStressDays": [1, 2],
+    "intradayApproxSecondaryOnly": true,
+    "maxUnits": [1, 2],
+    "leaveOneOut": ["top-contributing-security", "top-industry", "top-year"],
+    "auxRegression": "종속=종목별 20일채널이점; 공변량=large,leader,log시총,거래대금,변동성,turnover,시장·연도 고정효과; SE=종목·달력월 이중 군집화"
+  },
+  "sampleSplit": {
+    "ratioDevValidationLockbox": [0.6, 0.2, 0.2],
+    "minLockboxFullYears": 3,
+    "developmentStart": "2010-01-01",
+    "developmentEnd": "2022-12-31",
+    "validationStart": null,
+    "validationEnd": null,
+    "lockboxStart": "2023-01-01",
+    "lockboxEnd": "2025-12-31",
+    "status": "KR_CANDIDATE_REGISTERED_GATE0.5",
+    "amendment": {
+      "amendedAt": "2026-07-16",
+      "reason": "Gate 0.5(한국 데이터 적격성 실측, docs/backtest/DATA_FEASIBILITY_KR.md) 완료 후, marcap 패널의 완전연도 커버리지(2010~2025, 16개 완전연도)를 근거로 PENDING_DATA 자리표시자를 완전연도 기준 실제 후보값으로 교체. 이 시점까지 어떤 성과·수익률도 계산되지 않았다(§4-7 준수 — lockbox 미개봉) — 결과를 본 뒤의 사후변경이 아니라 결과 확인 전 후보 등록이므로 AMENDED/EXPLORATORY 분리 대상이 아니다.",
+      "supersedesHash": "248c9a3533a4eff625e218a6e47aa3a50f58d1692d90a5a086e63d88e2643110"
+    },
+    "boundariesNote": "개발·검증 통합기간(2010-01-01~2022-12-31, 13완전연도) — 개발/검증 세부 내부분할(60:20 비율)은 별도 결정 예정(TBD), 그 안에서는 코드·데이터 오류 확인에만 쓰고 채널·그룹 기준 최적화 금지(§4-7). lockbox(=사전등록일 2026-07-15 이전 데이터의 마지막 구간이므로 §4-9에 따라 반드시 SEALED PSEUDO-OOS로만 지칭, PROSPECTIVE HOLDOUT 아님) = 2023-01-01~2025-12-31, 정확히 3완전연도로 §4-6·§13-7 하한(최소 3완전연도) 충족. PROSPECTIVE HOLDOUT은 2026-07-16(오늘) 이후 새로 발생하는 데이터에만 적용 가능하며 아직 존재하지 않는다."
+  },
+  "openPositionCloseMethodPrimary": "FORCED_CLOSE",
+  "primaryCloseMethodNote": "데이터 종료 시 마지막 공통 거래가능 종가에 비용 반영 강제 청산(미실현·미청산제외는 민감도)",
+  "masterSeed": 20260715,
+  "masterSeedNote": "임의로 정한 고정 placeholder 시드(사전등록일 YYYYMMDD). 결정성 보장용이며 값 자체에 의미 없음.",
+  "evidenceGradePolicy": {
+    "preregistrationDate": "2026-07-15",
+    "sealedPseudoOos": "사전등록일 이전 데이터의 마지막 20% 잠금 → SEALED_PSEUDO_OOS로만 지칭",
+    "prospectiveHoldout": "2026-07-15 이후 새로 발생한 데이터에만 PROSPECTIVE_HOLDOUT"
+  },
+  "adoptionGate": {
+    "verdicts": ["SUPPORTED_FOR_PAPER_PILOT", "NOT_SUPPORTED", "INCONCLUSIVE"],
+    "supportedRequiresAllOf": [
+      "잠금 50:50 합산 I의 95% CI 하한 > 0",
+      "잠금 점추정 deltaA > 0, deltaB < 0",
+      "US·KR I 점추정 모두 양수",
+      "ADAPTIVE가 ALL_20·ALL_55 각각보다 CAGR +1.0%p, Sharpe +0.10",
+      "ADAPTIVE MDD가 더 나은 기준선 대비 2.0%p 초과 악화 없음",
+      "비용 2배에서도 I>0 & ADAPTIVE 열등 아님",
+      "A·B 시장별 30종목+, 잠금 100청산거래+",
+      "최대기여 종목·업종·연도 각각 제거해도 I 부호 양수 유지",
+      "ADAPTIVE > REVERSE & 무작위 라벨 95백분위 초과",
+      "룩어헤드·생존편향·기업행위·중복바·휴장압축·통화오류가 QA에서 미발견"
+    ]
+  }
+}

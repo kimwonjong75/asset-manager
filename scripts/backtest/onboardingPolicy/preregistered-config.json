@@ -1,0 +1,136 @@
+{
+  "hypothesisId": "onboarding-policy-v1",
+  "preregisteredAt": "2026-07-15",
+  "scope": "기존 투더문 보유분의 터틀 편입 정책 비교 (P1 관찰전용 vs P2 오늘부터 편입). 신규 관심종목 진입은 전 정책 OFF.",
+  "policies": {
+    "P1": {
+      "name": "관찰 전용 (Buy & Hold)",
+      "attachStop": false,
+      "attachChannelExit": false,
+      "newEntry": false,
+      "pyramid": false
+    },
+    "P2": {
+      "name": "오늘부터 편입 (강제 트림 없음)",
+      "attachStop": true,
+      "attachChannelExit": true,
+      "newEntry": false,
+      "pyramid": "blocked-by-budget",
+      "preserveLegacyQuantity": true,
+      "forcedTrim": false,
+      "legacyExcessFlag": "LEGACY_EXCESS",
+      "note": "기존 수량 전량 보존. 1유닛 규격 충족으로 간주하지 않음."
+    },
+    "P3": {
+      "status": "DEFERRED",
+      "reason": "거래내역(체결일·체결가·수량) 부재 — 복원 원자료 없음. 대체 정책 작성 금지."
+    }
+  },
+  "tracks": {
+    "trackA": {
+      "status": "DEFERRED",
+      "reason": "과거 보유상태 재구성 불가 — 과거 수익률 계산 금지."
+    },
+    "trackB": { "status": "ACTIVE", "universe": "REPR_19_FROZEN" }
+  },
+  "baselineRules": {
+    "entryLookback": 55,
+    "exitLookback": 20,
+    "stopMultipleN": 2,
+    "pyramidStepN": 0.5,
+    "maxUnitsPerPosition": 2,
+    "atrPeriod": 20,
+    "donchianExcludeToday": true
+  },
+  "riskAccounting": {
+    "riskPerUnitPct": 0.5,
+    "riskPerUnitSemantics": "사이징 값 — 수량 = 예산 × 0.5% ÷ N",
+    "unitStopRiskLimitPct": 1.0,
+    "unitStopRiskDerivation": "riskPerUnitPct × stopMultipleN = 0.5 × 2 = 1.0 (2N 손절 시 실손실, positionRiskAtStop 과 정의 일치)",
+    "maxTotalRiskPct": 12,
+    "positionValueCapPct": 25,
+    "positionValueCapBasis": "전체 포지션 기준",
+    "pyramidPostCheck": "불타기 후 상향된 공통 손절가로 전체 포지션 위험 재계산 (1% 가산 금지) + 잔여예산 재검사",
+    "pyramidTriggerN": "current-market-N",
+    "pyramidTriggerNote": "evaluatePyramid 와 동일하게 현재 N 사용. turtlePositionView 의 nAtLastFill 기준 표시값은 재사용 금지(D-1)."
+  },
+  "budget": {
+    "satelliteBudgetShareOfTotalPct": 10,
+    "raiseToHoldings": false,
+    "deployedIncludesPlainSatellite": true,
+    "remainingBudgetKRW": 0,
+    "remainingBudgetBasis": "Phase 0 실측 — 기존 투더문 deployed 17.65% > 예산 10% (본인분만 14.18% 로도 초과). 잔여 = max(0, 10 − 17.65) = 0.",
+    "legacyValuePctOfBudget": 100,
+    "legacyValuePctNote": "LEGACY_EXCESS 배수 산출용 참조값. 실측 deployed 는 176.5% 이므로 100% 는 보수적 하한이며, 100% 이상 어떤 값이어도 잔여예산 0·불타기 차단 거동은 동일(결과 불변).",
+    "blockedSignalTag": "SIGNAL_BLOCKED_BY_BUDGET",
+    "blockedSignalNote": "가격 조건은 충족했으나 예산으로 차단된 경우 기록 — '신호가 없었던 것'과 구분."
+  },
+  "execution": {
+    "fillRule": "close-signal-next-open",
+    "fillRuleDetail": "종가[t] 판정 → 다음 실제 거래일 시가[t+1] 체결 + 비용",
+    "forbiddenFills": ["min(open,stopPrice)", "min(open,exitLow)", "max(open,trigger)"],
+    "gapHandling": "익일 실제 시가에 이미 반영된 것으로 처리",
+    "intradayTouchMode": "sensitivity-only",
+    "admissionFill": "D+1 실제 시가 (실매매 아님 — 기존 보유분의 터틀 기준가. 편입 시 매매비용 없음)",
+    "priority": ["stop", "channel-exit", "pyramid"],
+    "openPositionAtWindowEnd": "force-close-at-last-close-with-cost"
+  },
+  "costs": {
+    "source": "연구용 가정 — 기존 채널 백테스트(REPORT_종목별채널.md)의 편도 0.1% 재사용. **실제 증권사 비용 아님.**",
+    "baseOneWayRate": 0.001,
+    "sensitivityRates": [0, 0.002],
+    "appliedOn": "매도 (편입 시 매매 없음)"
+  },
+  "universe": {
+    "id": "REPR_19_FROZEN",
+    "source": "docs/backtest/REPORT_종목별채널.md §유니버스 repr (이미 동결된 명단, 추가 금지)",
+    "tickers": ["BTC-USD", "XLK", "DBC", "IWM", "069500", "XLE", "QQQ", "SPY", "TLT", "FXI", "EFA", "EEM", "EWJ", "VNQ", "IEF", "GLD", "LQD", "ETH-USD", "SLV"],
+    "priceSource": "Cloud Run /history (raw split-adjusted OHLC, 배당 미포함)",
+    "dataRange": { "start": "2015-01-01", "end": "2026-07-07" },
+    "survivorshipBias": "1급 한계 — 상장폐지·합병 종목 미포함"
+  },
+  "periods": {
+    "learning": { "start": "2015-01-02", "end": "2021-12-30", "status": "ACTIVE" },
+    "holdout": { "start": "2022-01-03", "end": "2026-07-07", "status": "NOT_RUN" }
+  },
+  "sampling": {
+    "admissionGrid": "학습구간 각 월의 첫 실제 거래일",
+    "evalWindow": "편입체결일 ~ min(편입체결일 + 500 거래일, 학습구간 말)",
+    "holdoutLeakGuard": "평가창을 학습구간 말에서 절단 — 홀드아웃 바 미참조",
+    "warmupGate": "D 시점 유효봉 ≥ 55 AND ATR20 산출 가능 AND 20일 최저가 산출 가능 (미충족 시 편입 거부)",
+    "immediateExitRule": "D 종가 ≤ 20일 최저가면 편입과 동시에 청산 신호 → D+1 시가 매도 (immediate-exit 집계)",
+    "syntheticPurchaseHistory": "불필요 — P3 DEFERRED 이므로 P1·P2 는 편입시점 상태(수량·가격·N·채널)만으로 결정되며 매수이력에 의존하지 않음"
+  },
+  "statistics": {
+    "primaryEstimator": "Δ21 = P2 − P1 (셀별 paired 차이)",
+    "axes": ["총수익률 차이", "MDD 차이", "거래별 R"],
+    "bootstrap": { "method": "block", "blockTradingDays": 60, "iterations": 10000, "seed": 20260715, "ci": 95 },
+    "rNumerator": "pnl (원통화)",
+    "rDenominator": "편입시점 실손절위험 = 수량 × 2N (수량 소거 → 척도 무관)"
+  },
+  "ledger": {
+    "currency": "local",
+    "note": "P1·P2 는 동일 종목·동일 수량이므로 수익률·MDD·R 이 통화·수량에 불변. 환율 원장은 이번 범위 밖."
+  },
+  "adoptionCriteria": {
+    "frozenBeforeResults": true,
+    "P2overP1": [
+      "MDD 상대 20% 이상 감소 + 95% CI 가 0 제외",
+      "총수익 열위는 연환산 −2%p 이내 (CI 하한)",
+      "기본·2배 비용에서 동시 성립",
+      "최대 기여 종목 leave-one-out 후 부호 유지",
+      "감사 지표(한도 위반·중복 진입) 위반 0"
+    ],
+    "inconclusiveIf": [
+      "학습·홀드아웃 부호 반전",
+      "비용 가정(기본↔2배)으로 결론 변경",
+      "편입 가능 종목 비율 < 50%"
+    ]
+  },
+  "auditInvariants": {
+    "duplicateNewEntry": 0,
+    "budgetViolation": 0,
+    "totalRiskViolation": 0,
+    "forcedTrimEvents": 0
+  }
+}
