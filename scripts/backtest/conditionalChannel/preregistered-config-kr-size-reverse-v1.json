@@ -1,0 +1,153 @@
+{
+  "hypothesisId": "conditional-channel-kr-size-reverse-v1",
+  "preregistrationDate": "2026-07-16",
+  "schemaVersion": 1,
+  "status": "KR_SIZE_REVERSE_PREREGISTERED",
+  "statusNote": "conditional-channel-kr-size-v1의 prelock 검증구간(2020-2022)에서 원 가설(I > 0) 방향과 반대인 I = -0.696R(BASE)·-0.899R(DOUBLE)가 관측됐다. 거래 원장 검산(48건 오류 없음)·불변식 15/15 통과·rollingPriorExtreme 불일치 0건으로 엔진이 클린한 상태에서 새 가설을 사전등록한다. 잠금 표본은 G8(합병대가 테이블)·G11(KRX 공식 교차검증) 완료 전까지 열지 않는다.",
+  "derivedFrom": "conditional-channel-kr-size-v1",
+  "derivationNote": "원 가설(대형주는 20일, 비대형주는 55일이 유리, I > 0)의 방향을 뒤집는다. 우주·파라미터·비용·통계 설계는 동일. 2026-07-16 감사 결과 원 가설 기각 후 등록. 이 가설은 아직 잠금표본 데이터로 테스트되지 않았다.",
+  "auditReference": "docs/backtest/LEDGER_AUDIT_KR_SIZE.md (2026-07-16) — 최종 판정 ORIGINAL_NOT_SUPPORTED_REVERSE_PREREGISTERED",
+  "originalPrelockEvidence": {
+    "validationBaseI": -0.6960,
+    "validationDoubleI": -0.8991,
+    "bootstrapMonthlyI_point": -0.213,
+    "bootstrapMonthlyI_ci95": [-1.228, 0.975],
+    "note": "부트스트랩 CI는 36개월×3개월 블록=12블록 표본 한계로 0을 포함하나, 두 비용 조건의 직접추정이 모두 명확히 음수다."
+  },
+  "primaryEstimand": "I = ΔA - ΔB (KR 단독). ΔA = mean(R20,A) - mean(R55,A); ΔB = mean(R20,B) - mean(R55,B). 이 가설은 I < 0을 예상한다.",
+  "hypothesisDirection": "I < 0. 즉, ΔA < 0 (대형주는 55일 채널이 20일보다 유리), ΔB > 0 (비대형주는 20일 채널이 55일보다 유리). 원 가설(ADAPTIVE = A→20, B→55)보다 REVERSE(A→55, B→20) 전략이 더 좋은 그룹별 성과를 낸다.",
+  "primaryStrategy": "REVERSE (A→55일 진입, B→20일 진입) — 원 가설에서 대조 전략이었으나 이 가설에서 주 전략이 된다.",
+  "markets": ["KR"],
+  "marketCombination": "KR 단독 — 미국 데이터 없음. 50:50 합산 통계를 생성하지 않는다.",
+  "universe": {
+    "include": ["KOSPI 보통주", "KOSDAQ 보통주"],
+    "exclude": [
+      "ETF", "ETN", "REIT", "우선주", "SPAC", "펀드", "채권",
+      "선물", "옵션", "KONEX", "암호자산",
+      "관리종목(진입 당월 관리 지정 상태)", "거래정지(진입일 거래정지 상태)"
+    ],
+    "includeDelistedMergedRenamedHalted": true,
+    "survivorshipBiasNote": "marcap은 날짜별 스냅샷 구조라 상장폐지 종목을 구조적으로 포함한다. 생존편향 없음.",
+    "monthEndPointInTimeSelection": true,
+    "monthEndSelectionNote": "월말 m의 종목군으로 m+1월 투자가능 종목군을 확정한다. m+1월 진입 신호를 볼 때 m+1 데이터를 쓰지 않는다.",
+    "newListingNoSignalUntil": "55일 진입 채널 + 20일 ATR + 공통 시작 조건 충족 전까지 신호 없음",
+    "securityTypeFilter": {
+      "preferredSharePattern": "종목코드 끝자리 0 또는 5 (KR 관행: 5가 우선주, 0이 보통주·기타)",
+      "etfPattern": "marcap Market 필드 'ETF' 또는 Name에 'ETF'/'ETN'/'인덱스' 포함",
+      "konexFilter": "marcap Market 필드 'KONEX' 제외",
+      "spac": "공모가 2000원 표준 + Name에 'SPAC'/'기업인수목적' 포함",
+      "implementationNote": "securities_meta.json에 사전 분류 결과를 캐시한다. 미분류(UNKNOWN) 종목은 진입 허용 전까지 UNCLASSIFIABLE로 제외한다."
+    }
+  },
+  "groups": {
+    "definitionA": "large (대형주, 시가총액 상위 20%)",
+    "definitionB": "NOT large — A의 정확한 여집합 (시총 해석 불가 종목은 제외, B로 흡수 금지)",
+    "leaderAxis": "EXCLUDED — WICS 업종 데이터 없음. leader 판정 없음.",
+    "largeCapPercentile": 80,
+    "largeTieBreak": "80백분위 동률은 securityId(=종목코드) 오름차순으로 끊음",
+    "marketCapFormula": "월말 종가(Close) × 발행주식수(Stocks) — marcap 기준(원화, KRW)",
+    "unclassifiableHandling": "월말 시가총액을 산출할 수 없는 종목(결측 Close 또는 Stocks)은 unclassifiable=true. A/B 확증 분석에서 제외하며 그룹 B로 흡수하지 않는다.",
+    "frozenAtEntry": "진입 시점 그룹을 청산까지 유지(월 변경 무시)",
+    "monthlyFlagsMemo": "월말 m 스냅샷 → m+1월 적용. 시뮬레이터는 진입 시 resolveFrozenGroup()을 1회만 호출한다."
+  },
+  "channels": {
+    "entryLookbackShort": 20,
+    "entryLookbackLong": 55,
+    "exitLookback": 20,
+    "exitFixedForPrimary": true,
+    "breakoutExcludesCurrentBar": true,
+    "signalRule": "close[t] > max(high[t-lookback..t-1]); '≥' 사용 금지",
+    "commonStartBars": 55,
+    "commonStartNote": "20/55 공정 비교를 위해 양 전략 모두 55선행바+ATR 준비된 공통 시작일부터 측정"
+  },
+  "strategies": {
+    "ALL_20":   { "groupA": {"entry": 20, "exit": 20}, "groupB": {"entry": 20, "exit": 20} },
+    "ALL_55":   { "groupA": {"entry": 55, "exit": 20}, "groupB": {"entry": 55, "exit": 20} },
+    "ADAPTIVE": { "groupA": {"entry": 20, "exit": 20}, "groupB": {"entry": 55, "exit": 20}, "note": "원 가설의 주 전략. 이 가설의 대조군." },
+    "REVERSE":  { "groupA": {"entry": 55, "exit": 20}, "groupB": {"entry": 20, "exit": 20}, "note": "이 가설의 주 전략 — A에 55일·B에 20일 진입." }
+  },
+  "execution": {
+    "fillRule": "신호일 t 종가 확인 후 다음 실제 거래일 t+1 시가 체결",
+    "pendingOrderSettlement": "진입/채널청산은 fillDate 도달 시에만 현금·포지션 반영",
+    "stopLossImmediate": "손절은 같은 날 즉시 체결(보수적 순서 — 시가≤손절가면 시가, 저가만 통과면 손절가+슬리피지)",
+    "haltCarryForward": "거래정지 바가 없으면 최초 재개일로 이월 — 채널/ATR 계산에 이 carry-forward 사용 금지, 평가만 허용",
+    "exitFillRule": "20일 저가 채널 종가 하향 돌파 시 다음 거래일 시가 체결",
+    "splitAdjustedOhlc": "신호가·ATR 계산에는 split-adjusted OHLC만 사용. 현금배당은 별도 현금흐름",
+    "sameDayOrderPriority": "손절 > 채널청산(같은 날 동시 발생 시 가장 보수적 손익 우선)"
+  },
+  "risk": {
+    "riskPerTradePct": 0.5,
+    "totalRiskCapPct": 12,
+    "singleNameValueCapPct": 25,
+    "maxUnitsPerPositionPrimary": 1,
+    "maxUnitsPerPositionSecondary": 2,
+    "pyramidingPrimary": false,
+    "atrLookback": 20,
+    "stopMultipleAtr": 2,
+    "sameDayCapAllocation": "가용 위험을 후보에 비례 배분, 정수 주식 내림, 잔여 현금 보유(선착순 금지)",
+    "ledgerCurrency": "KRW"
+  },
+  "costModel": {
+    "tiers": ["ZERO", "BASE", "DOUBLE"],
+    "decisionMustPass": ["BASE", "DOUBLE"],
+    "koreaCommissionBps": 10,
+    "koreaSpreadBps": 10,
+    "koreaSlippageBps": 5,
+    "koreaMarketImpactBps": 5,
+    "koreaSellTaxSchedule": [
+      {"effectiveFrom": "2010-01-01", "effectiveTo": "2019-03-31", "taxBps": 30, "source": "구 증권거래세법 제8조"},
+      {"effectiveFrom": "2019-04-01", "effectiveTo": "2021-03-31", "taxBps": 25, "source": "증권거래세법 개정(2019.04 시행)"},
+      {"effectiveFrom": "2021-04-01", "effectiveTo": "2023-04-30", "taxBps": 23, "source": "증권거래세법 개정(2021.04 시행)"},
+      {"effectiveFrom": "2023-05-01", "effectiveTo": null,          "taxBps": 18, "source": "증권거래세법 개정(2023.05 시행)"}
+    ],
+    "taxScheduleNote": "KOSPI/KOSDAQ 동일 적용. 농어촌특별세(KOSPI 전용 0.15%) 제외 — 미래 세율을 과거에 소급하지 않는다.",
+    "advParticipationCap": 0.05,
+    "advParticipationRule": "직전 60거래일 중앙 거래대금의 5% 초과 시 미체결(ADV_CAP)"
+  },
+  "statistics": {
+    "blockBootstrapBlockDays": 60,
+    "bootstrapIterations": 10000,
+    "bootstrapSeed": 20260716,
+    "confidenceLevel": 0.95,
+    "twoSidedPValue": true,
+    "permutationCount": 1000,
+    "permutationSeed": 20260716,
+    "permutationRule": "국가·월별 A그룹 비중 보존 무작위 라벨 순열(stratum=market×month, 복합키 '::' 구분)",
+    "multipleComparison": "HOLM",
+    "reportMarkets": ["KR"]
+  },
+  "adoptionCriteria": {
+    "note": "이 기준은 잠금표본 데이터를 보기 전에 동결한다. 원 가설(kr-size-v1) §4.7을 역전(I < 0 방향)한 것이다.",
+    "requiredAll": [
+      "잠금표본 I의 95% CI 상한 < 0",
+      "점추정 ΔA < 0 (대형주는 55일이 유리), ΔB > 0 (비대형주는 20일이 유리)",
+      "REVERSE가 ALL_20·ALL_55 각각보다 CAGR +1.0%p, Sharpe +0.10 이상",
+      "REVERSE MDD가 더 나은 기준선 대비 2.0%p 초과 악화 없음",
+      "비용 2배(DOUBLE)에서도 I < 0, REVERSE 열등 아님",
+      "A·B 각 30종목+, 잠금 100청산거래+",
+      "최대기여 종목·연도 제거해도 I 부호 음수 유지",
+      "REVERSE > ADAPTIVE, 무작위 라벨 5백분위 미만(I < 0 방향으로)",
+      "룩어헤드·생존편향·기업행위·중복바·통화오류 미발견(QA)"
+    ]
+  },
+  "sampleSplit": {
+    "ratioDevValidationLockbox": [0.625, 0.188, 0.188],
+    "ratioNote": "완전연도 경계 우선: 개발 10년(2010-2019) / 검증 3년(2020-2022) / 잠금 3년(2023-2025).",
+    "developmentStart": "2010-01-01",
+    "developmentEnd": "2019-12-31",
+    "validationStart": "2020-01-01",
+    "validationEnd": "2022-12-31",
+    "lockboxStart": "2023-01-01",
+    "lockboxEnd": "2025-12-31",
+    "status": "KR_SIZE_REVERSE_PREREGISTERED",
+    "lockboxSealNote": "잠금 표본(2023-01-01~2025-12-31)은 G8(합병대가 테이블)·G11(data.go.kr 서비스키로 KRX 공식 데이터 교차검증) 완료 전까지 시뮬레이션하지 않는다.",
+    "minLockboxFullYears": 3,
+    "prospectiveNote": "2026-07-16(오늘) 이후 새로 발생하는 데이터에만 PROSPECTIVE_HOLDOUT이 적용된다."
+  },
+  "dataGateStatus": "KR_SIZE_FEASIBLE_PENDING_IMPLEMENTATION",
+  "officialCrossCheckStatus": "WAITING_FOR_USER_KEY",
+  "officialCrossCheckNote": "data.go.kr 서비스키가 없어 KRX 공식 데이터 교차검증이 완료되지 않았다. 키 발급 후 G11 교차검증 후 잠금표본 열 수 있다.",
+  "openPositionCloseMethodPrimary": "FORCED_CLOSE",
+  "masterSeed": 20260716,
+  "configHashNote": "정규화 SHA-256은 `node scripts/backtest/conditionalChannel/tools/compute_config_hash.cjs --config=scripts/backtest/conditionalChannel/preregistered-config-kr-size-reverse-v1.json`으로 계산한다."
+}

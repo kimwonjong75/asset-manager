@@ -32,6 +32,7 @@ import {
 } from '../utils/actionQueueGenerator';
 import { computeDeployedBudgetKRW } from '../utils/turtleMarketData';
 import { buildTurtleReviewSummary, TurtleReviewSummary } from '../utils/turtleReview';
+import { isTurtleOrderLocked } from '../types/turtleLock';
 import { createLogger } from '../utils/logger';
 
 const log = createLogger('TurtleReview');
@@ -105,7 +106,16 @@ export function useTurtleActionReview({
 
   // ── 자동 검토 (세션 1회, 읽기 전용 — 저장 없음) ──
   useEffect(() => {
-    if (hasReviewedRef.current || !pricesReady) return;
+    if (hasReviewedRef.current) return;
+    // **터틀 안전잠금(C-1)**: 관찰모드에서는 주문용 시장 스냅샷 조회도, 진단(diagnoseTurtleActions →
+    // 내부 evaluatePyramid)도 아예 실행하지 않는다. 잠금 중엔 프리뷰가 의미 없고, 불타기는 검증에서
+    // 탈락했으므로 계산 자체에 도달하지 않아야 한다. 검토 완료로 표시해 reviewPending=false 유지.
+    if (isTurtleOrderLocked()) {
+      hasReviewedRef.current = true;
+      setReviewDone(true);
+      return;
+    }
+    if (!pricesReady) return;
     if (!hasTargets) {
       // 대상 없음 — fetch 없이 검토 완료 처리 (프리뷰 0)
       hasReviewedRef.current = true;
@@ -133,6 +143,8 @@ export function useTurtleActionReview({
 
   // ── 진단 (순수 — 스냅샷 재사용, actionQueue/설정 변경 시 즉시 재계산) ──
   const reviewDiagnostics = useMemo<TurtleActionDiagnostics | null>(() => {
+    // **C-1**: 잠금 중에는 진단을 호출하지 않는다 — diagnoseTurtleActions 내부의 evaluatePyramid 도달 금지.
+    if (isTurtleOrderLocked()) return null;
     if (!snapshot || snapshot.targetCount === 0) return null;
     const candidates: TurtleCandidateRef[] = turtleCandidateItems(watchlist)
       .map(w => ({ ticker: w.ticker, name: w.name }));
@@ -151,7 +163,11 @@ export function useTurtleActionReview({
   // ── Phase C: 오늘 주문 자동 생성 (opt-in, 기본 OFF, 하루 1회) ──
   // refreshActionQueue의 생성 tail과 동일 입력·동일 순수 함수(buildTurtleActions/reconcileActionQueue).
   // 저장은 updateActionQueue(Drive autosave) — 사용자가 설정으로 명시 동의한 "보이는 정책"일 때만.
+  //
+  // **안전잠금(types/turtleLock)**: 잠금 상태에서는 저장본의 autoGenerateQueue 가 true 여도 **무시**한다.
+  // 설정 값 자체는 덮어쓰거나 마이그레이션하지 않는다(사용자 설정 보존 — 잠금 해제 시 원래 값 복원).
   useEffect(() => {
+    if (isTurtleOrderLocked()) return; // 자동 생성 금지 — Drive 무저장
     if (!snapshot || snapshot.targetCount === 0 || autoGenAttemptedRef.current) return;
     if (!turtleSettings.autoGenerateQueue) return; // opt-in 아님 — ref 미설정(세션 중 켜면 즉시 동작)
     let lastGenDate: string | null = null;

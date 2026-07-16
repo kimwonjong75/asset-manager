@@ -53,7 +53,14 @@
     "test:kb": "npx --yes tsx tests/knowledgeBaseIntegrity.ts",
     "test:overview": "npx --yes tsx tests/marketOverviewParity.ts",
     "test:conditional-channel": "npx --yes tsx tests/conditionalChannelBacktest.ts",
-    "backtest:conditional-channel": "npx --yes tsx scripts/backtest/conditionalChannel/run.ts"
+    "test:kr-size": "npx --yes tsx tests/krSizeBacktest.ts",
+    "backtest:conditional-channel": "npx --yes tsx scripts/backtest/conditionalChannel/run.ts",
+    "backtest:kr-size": "npx --yes tsx scripts/backtest/conditionalChannel/run-kr-size.ts",
+    "ingest:kr:download": "python scripts/backtest/conditionalChannel/ingest/download_marcap.py",
+    "ingest:kr:corp-actions": "python scripts/backtest/conditionalChannel/ingest/apply_corporate_actions.py",
+    "ingest:kr:universe": "python scripts/backtest/conditionalChannel/ingest/build_month_end_universe.py",
+    "ingest:kr:manifest": "python scripts/backtest/conditionalChannel/ingest/build_manifest.py",
+    "ingest:kr": "npm run ingest:kr:download && npm run ingest:kr:corp-actions && npm run ingest:kr:universe && npm run ingest:kr:manifest"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

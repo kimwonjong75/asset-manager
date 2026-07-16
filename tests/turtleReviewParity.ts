@@ -167,21 +167,43 @@ check('진단 null → 전부 0', summarizePreview(null),
     turtleCandidateCount: 1, budgetMissing: false,
     isChecking: false, reviewPending: false, reviewFailed: false, checkedAt: '09:30',
   });
-  check('summary activeCount', summary.activeCount, 1);
-  check('summary escalatedCount(6일)', summary.escalatedCount, 1);
-  check('summary previewCount', summary.previewCount, 1);
-  check('summary actionableCount = active+preview', summary.actionableCount, 2);
+  // **터틀 안전잠금(types/turtleLock)**: 공개 요약은 **원시 숫자까지** 잠긴 터틀을 뺀다 —
+  // 소비처(AlertPopup/App 배지)가 activeCount·escalatedCount·preview* 를 직접 읽으므로
+  // actionableCount 만 걸러선 잠긴 터틀 숫자가 그대로 새어 나간다.
+  // 여기 큐 1건은 TURTLE_STOP, 프리뷰 1건도 터틀 → 공개값 전부 0.
+  // 순수 집계 함수(summarizeActiveQueue/summarizePreview)는 잠금을 모른 채 유지된다(위 앵커 테스트가 강제).
+  check('summary activeCount — 잠금 터틀 제외', summary.activeCount, 0);
+  check('summary escalatedCount — 잠금 터틀 제외', summary.escalatedCount, 0);
+  check('summary previewCount — 잠금 중 0', summary.previewCount, 0);
+  check('summary actionableCount — 잠금 중 터틀 제외', summary.actionableCount, 0);
+  check('summary turtleLocked', summary.turtleLocked, true);
+  check('summary lockedCount(대기 터틀 1건)', summary.lockedCount, 1);
   check('summary checkedAt 통과', summary.checkedAt, '09:30');
 }
 { // 진단 없음(검토 전/실패) — 대기 건수만
-  const existing = [mkAction({ id: 'q1', status: 'pending' })];
+  const existing = [mkAction({ id: 'q1', status: 'pending' })]; // 기본 kind = TURTLE_ENTRY → 잠금 대상
   const summary = buildTurtleReviewSummary({
     queue: existing, today: TODAY, diagnostics: null,
     turtleCandidateCount: 0, budgetMissing: true,
     isChecking: false, reviewPending: true, reviewFailed: false, checkedAt: null,
   });
-  check('진단 없음 actionable = activeCount', summary.actionableCount, 1);
+  // 잠금 중: 대기 1건이 터틀이라 공개 요약에서 빠진다(큐 기록 자체는 보존 — lockedCount 로만 노출).
+  check('진단 없음 actionable — 잠금 중 터틀 제외', summary.actionableCount, 0);
+  check('진단 없음 공개 activeCount — 잠금 터틀 제외', summary.activeCount, 0);
+  check('진단 없음 lockedCount 로 보존', summary.lockedCount, 1);
   check('진단 없음 previewCount 0', summary.previewCount, 0);
+  // 잠금은 터틀에만 적용된다 — 비터틀(리밸런싱·대청소)은 실행 가능 건수에 그대로 남는다.
+  const mixed = buildTurtleReviewSummary({
+    queue: [
+      mkAction({ id: 'q1', status: 'pending' }),                          // TURTLE_ENTRY → 제외
+      mkAction({ id: 'q2', kind: 'REBALANCE_BUY', status: 'pending' }),   // 유지
+      mkAction({ id: 'q3', kind: 'CLEANUP_SELL', status: 'pending' }),    // 유지
+    ],
+    today: TODAY, diagnostics: null, turtleCandidateCount: 0, budgetMissing: true,
+    isChecking: false, reviewPending: true, reviewFailed: false, checkedAt: null,
+  });
+  check('잠금은 터틀에만 — 비터틀 2건은 실행 가능 유지', mixed.actionableCount, 2);
+  check('잠금 제외 터틀 1건', mixed.lockedCount, 1);
   check('budgetMissing 통과', summary.budgetMissing, true);
 }
 

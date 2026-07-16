@@ -14,6 +14,7 @@ import React, { useMemo, useState } from 'react';
 import { usePortfolio } from '../../contexts/PortfolioContext';
 import { useActionQueue } from '../../hooks/useActionQueue';
 import { ActionItem, ActionKind, isActiveAction } from '../../types/actionQueue';
+import { isTurtleOrderLocked, isActionExecutionLocked, TURTLE_LOCK_MESSAGE } from '../../types/turtleLock';
 import { actionDaysIgnored, actionEscalationLevel } from '../../utils/actionQueueGenerator';
 import TurtleExecuteModal from './TurtleExecuteModal';
 import TurtleSettingsPanel from './TurtleSettingsPanel';
@@ -50,6 +51,7 @@ const todayISO = (): string => new Date().toISOString().slice(0, 10);
 const ExecutionView: React.FC = () => {
   const { actions } = usePortfolio();
   const { actionQueue, refreshActionQueue, markDone, markSkipped, snoozeAction, executeTurtleAction, executeCleanupAction, executeRebalanceAction, isRefreshing, refreshError } = useActionQueue();
+  const turtleLocked = isTurtleOrderLocked();
   const today = todayISO();
 
   const [skipId, setSkipId] = useState<string | null>(null);
@@ -92,9 +94,9 @@ const ExecutionView: React.FC = () => {
         </div>
         <button
           onClick={handleRefresh}
-          disabled={isRefreshing}
+          disabled={isRefreshing || turtleLocked}
           className="flex-shrink-0 flex items-center gap-1.5 text-xs sm:text-sm font-medium text-white bg-primary hover:bg-primary-dark px-3 py-2 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          title="지금 터틀 규칙을 평가해 오늘 주문을 생성합니다 (화면 진입만으로는 생성되지 않습니다)"
+          title={turtleLocked ? '터틀 주문 잠금 중 — 생성할 수 없습니다' : '지금 터틀 규칙을 평가해 오늘 주문을 생성합니다 (화면 진입만으로는 생성되지 않습니다)'}
         >
           {isRefreshing ? (
             <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -109,6 +111,18 @@ const ExecutionView: React.FC = () => {
           <span>{isRefreshing ? '생성 중...' : '오늘 주문 생성'}</span>
         </button>
       </div>
+
+      {/* 터틀 안전잠금 안내 — 사유를 사용자에게 표시(조용한 무동작 금지). 플로팅 토스트 아님. */}
+      {turtleLocked && (
+        <div className="mb-4 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3">
+          <p className="text-xs font-semibold text-amber-300">터틀 주문 잠금 중</p>
+          <p className="text-[11px] text-amber-200/80 mt-1 leading-relaxed">{TURTLE_LOCK_MESSAGE}</p>
+          <p className="text-[11px] text-amber-200/60 mt-1">
+            기존 터틀 주문 기록은 그대로 보존됩니다. 손절·청산 확인은 대시보드의 «오늘의 터틀 확인» 카드에서 계속 볼 수 있습니다.
+            리밸런싱·대청소 주문은 영향받지 않습니다.
+          </p>
+        </div>
+      )}
 
       {/* 터틀(위성) 예산 설정 — 예산 0이면 진입 주문이 생성되지 않으므로 상단 노출 */}
       <TurtleSettingsPanel />
@@ -147,12 +161,15 @@ const ExecutionView: React.FC = () => {
               onStartSkip={() => startSkip(item.id)}
               onConfirmSkip={confirmSkip}
               onCancelSkip={() => setSkipId(null)}
-              onDone={() =>
-                isTurtleKind(item.kind) ? actions.openTurtleExecution(item)
-                : isCleanupKind(item.kind) ? actions.openCleanupExecution(item)
-                : isRebalanceKind(item.kind) ? actions.openRebalanceExecution(item)
-                : markDone(item.id)}
+              onDone={() => {
+                if (isActionExecutionLocked(item.kind)) return; // fail-closed — 화면에서도 실행 진입 차단
+                if (isTurtleKind(item.kind)) actions.openTurtleExecution(item);
+                else if (isCleanupKind(item.kind)) actions.openCleanupExecution(item);
+                else if (isRebalanceKind(item.kind)) actions.openRebalanceExecution(item);
+                else markDone(item.id);
+              }}
               isTurtle={needsExecuteModal(item.kind)}
+              executionLocked={isActionExecutionLocked(item.kind)}
               onSnooze={() => snoozeAction(item.id, 1)}
             />
           ))}
@@ -178,11 +195,13 @@ interface ActionCardProps {
   onCancelSkip: () => void;
   onDone: () => void;
   isTurtle: boolean;
+  /** 터틀 안전잠금 중 — 기록은 보존하고 실행만 막는다 */
+  executionLocked: boolean;
   onSnooze: () => void;
 }
 
 const ActionCard: React.FC<ActionCardProps> = ({
-  item, today, isSkipping, skipText, onSkipTextChange, onStartSkip, onConfirmSkip, onCancelSkip, onDone, isTurtle, onSnooze,
+  item, today, isSkipping, skipText, onSkipTextChange, onStartSkip, onConfirmSkip, onCancelSkip, onDone, isTurtle, executionLocked, onSnooze,
 }) => {
   const meta = KIND_META[item.kind];
   const level = actionEscalationLevel(item, today);
@@ -201,6 +220,9 @@ const ActionCard: React.FC<ActionCardProps> = ({
             <span className="text-xs text-gray-500">{item.ticker}</span>
             {item.status === 'snoozed' && (
               <span className="text-[11px] text-gray-400 bg-gray-700/60 px-1.5 py-0.5 rounded">내일 다시</span>
+            )}
+            {executionLocked && (
+              <span className="text-[11px] text-amber-300 border border-amber-500/40 bg-amber-500/10 px-1.5 py-0.5 rounded">현재 실행 잠금</span>
             )}
           </div>
           <p className="text-sm text-gray-300 mt-1.5">{item.reasonText}</p>
@@ -241,11 +263,14 @@ const ActionCard: React.FC<ActionCardProps> = ({
           <button onClick={onStartSkip} className="text-xs text-gray-300 hover:text-white bg-gray-700 hover:bg-gray-600 px-3 py-1.5 rounded-md transition-colors">건너뜀</button>
           <button
             onClick={onDone}
-            className="text-xs font-medium text-white bg-primary hover:bg-primary-dark px-3 py-1.5 rounded-md transition-colors"
-            title={isTurtle
-              ? '실제 체결일·체결가·수량을 입력해 매수/매도를 기록합니다'
-              : '증권사에서 실행한 뒤 완료로 표시합니다'}
-          >{isTurtle ? '실행하기' : '실행 완료'}</button>
+            disabled={executionLocked}
+            className="text-xs font-medium text-white bg-primary hover:bg-primary-dark px-3 py-1.5 rounded-md transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            title={executionLocked
+              ? TURTLE_LOCK_MESSAGE
+              : isTurtle
+                ? '실제 체결일·체결가·수량을 입력해 매수/매도를 기록합니다'
+                : '증권사에서 실행한 뒤 완료로 표시합니다'}
+          >{executionLocked ? '실행 잠금' : isTurtle ? '실행하기' : '실행 완료'}</button>
         </div>
       )}
     </li>

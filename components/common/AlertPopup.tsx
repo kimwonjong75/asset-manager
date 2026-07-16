@@ -100,6 +100,8 @@ const AlertPopup: React.FC<AlertPopupProps> = ({ results, riskMatrix, sellDataGa
 
   // 터틀 실행 카드 (자동 검토 Phase A/B) — 실행할 게 있거나 검토 진행 중일 때만. 신호(참고)와 별개의 "행동" 축.
   const exec = executionSummary;
+  // 잠긴 터틀은 실행 가능 건수에서 이미 빠져 있다(utils/turtleReview 합성 지점).
+  // 잠금 기록만 있고 실행 가능 건이 없으면 카드를 띄우지 않는다 — 행동할 수 없는 걸 재촉하지 않기 위함.
   const showExecCard = exec.actionableCount > 0 || exec.isChecking;
   const hasSellSignalPreview = exec.previewStop > 0 || exec.previewExit > 0;
   const execCard = showExecCard ? (
@@ -134,10 +136,15 @@ const AlertPopup: React.FC<AlertPopupProps> = ({ results, riskMatrix, sellDataGa
               {' '}— 「오늘 주문 생성」으로 확정
             </p>
           )}
-          {exec.budgetMissing && exec.turtleCandidateCount > 0 && (
+          {/* 잠긴 터틀 기록 — 허용된 문구만. 실행 가능 건수·프리뷰로 세지 않는다. */}
+          {exec.lockedCount > 0 && (
+            <p className="text-gray-400">기존 터틀 기록 {exec.lockedCount}건 · 현재 실행 잠금</p>
+          )}
+          {/* 예산 미설정 안내는 진입 검토가 실제로 돌 때만 의미가 있다(잠금 중엔 검토 자체를 안 함) */}
+          {!exec.turtleLocked && exec.budgetMissing && exec.turtleCandidateCount > 0 && (
             <p className="text-amber-300">위성 예산 미설정 — 신규 진입은 검토되지 않습니다.</p>
           )}
-          {exec.reviewFailed && (
+          {!exec.turtleLocked && exec.reviewFailed && (
             <p className="text-amber-300">자동 검토 실패 — 실행 큐에서 수동으로 생성하세요.</p>
           )}
         </div>

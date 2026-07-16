@@ -16,6 +16,7 @@ import CategorySummaryTable from '../dashboard/CategorySummaryTable';
 import RebalancingTable from '../dashboard/RebalancingTable';
 import MarketOverviewBar from '../dashboard/MarketOverviewBar';
 import MarketDistributionBanner from '../MarketDistributionBanner';
+import TodayTurtleCard from '../dashboard/TodayTurtleCard';
 import RiskCalculatorCard from '../dashboard/RiskCalculatorCard';
 import GuruSignalCard from '../dashboard/GuruSignalCard';
 import ReferenceIndicatorsSection from '../dashboard/ReferenceIndicatorsSection';
@@ -124,6 +125,12 @@ const DashboardView: React.FC = () => {
       />
 
       <MarketOverviewBar />
+
+      {/*
+        오늘의 터틀 확인 — 읽기 전용. 리스크 계산기·구루 신호보다 위에 둔다(사용자 1순위 목표).
+        주문 버튼 없음. 터틀 주문은 types/turtleLock 정책으로 잠겨 있다.
+      */}
+      <TodayTurtleCard />
 
       {/* 리스크 계산기(평소 접힘). */}
       <RiskCalculatorCard />

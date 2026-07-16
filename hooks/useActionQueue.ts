@@ -36,6 +36,7 @@ import { fetchUpbitPrice } from '../services/upbitService';
 import { ActionItem, RefreshDiagnostics, TurtleActionDiagnostics } from '../types/actionQueue';
 import { Currency, NewAssetForm, RebalanceInstrument } from '../types';
 import { filterStrategyAssets, isStrategyManaged } from '../types/owner';
+import { isTurtleOrderLocked, isActionExecutionLocked, TURTLE_LOCK_MESSAGE } from '../types/turtleLock';
 import type { AddAssetResult } from '../types/assetActionResult';
 import { createLogger } from '../utils/logger';
 
@@ -57,11 +58,33 @@ export function useActionQueue() {
   /**
    * 터틀 규칙을 평가해 실행 큐를 갱신한다 (명시적 호출 전용 — 자동 실행 아님).
    * 오픈 포지션의 손절/청산/피라미딩 + 터틀 후보의 진입을 생성하고, 만료 스누즈를 되살려 저장한다.
+   *
+   * **안전잠금(types/turtleLock)**: 잠금 상태에서는 터틀 주문을 **한 건도 생성하지 않는다**.
+   * 조용히 빈 배열만 돌려주지 않고 `refreshError` 로 사유를 노출한다. 만료 스누즈 부활은
+   * 기존 큐 보존 동작이므로 그대로 두고, 큐 기록은 삭제·완료 처리하지 않는다.
    */
   const refreshActionQueue = useCallback(async (): Promise<{ generated: number; diagnostics: RefreshDiagnostics }> => {
     setIsRefreshing(true);
     setRefreshError(null);
     const today = todayISO();
+
+    if (isTurtleOrderLocked()) {
+      const openPositions = turtlePositions.filter(p => p.status === 'open');
+      const turtleCandidates = watchlist.filter(w => w.isTurtleCandidate);
+      setRefreshError(TURTLE_LOCK_MESSAGE);
+      setIsRefreshing(false);
+      return {
+        generated: 0,
+        diagnostics: {
+          budgetKRW: turtleSettings.satelliteBudgetKRW,
+          budgetMissing: !(turtleSettings.satelliteBudgetKRW > 0),
+          turtleCandidateCount: turtleCandidates.length,
+          stalePriceTickers: [],
+          openPositionCount: openPositions.length,
+          actions: { positions: [], candidates: [], generatedCount: 0 },
+        },
+      };
+    }
 
     const openPositions = turtlePositions.filter(p => p.status === 'open');
     // 훅 레벨 진단 사실(생성기에 도달하기 전에 알 수 있는 것) — 예산·후보·시세 미갱신
@@ -151,6 +174,9 @@ export function useActionQueue() {
   const executeTurtleAction = useCallback(async (action: ActionItem, fill: TurtleFill): Promise<{ ok: boolean; reason?: string }> => {
     const today = todayISO();
     const settings = turtleSettings;
+    // **안전잠금(types/turtleLock)** — 화면 버튼과 무관하게 내부 경계에서 fail-closed.
+    // 기존 큐 항목은 삭제·완료 처리하지 않고 실행만 막는다(사유를 호출자에게 반환).
+    if (isActionExecutionLocked(action.kind)) return { ok: false, reason: 'turtle-locked' };
     try {
       if (action.kind === 'TURTLE_ENTRY') {
         const w = watchlist.find(x => x.ticker === action.ticker);

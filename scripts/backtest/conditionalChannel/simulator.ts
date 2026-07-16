@@ -821,6 +821,9 @@ function buildTradeRecord(
 
 export interface PortfolioSimConfig {
   strategyId: StrategyId;
+  /** Optional inclusive signal window. Bars before the start remain available only as warm-up history. */
+  signalStartDate?: IsoDate;
+  signalEndDate?: IsoDate;
   entryLookback: (group: PositionGroup) => number; // 전략별 그룹→진입 룩백
   exitLookback: number;
   atrLookback: number;
@@ -905,6 +908,33 @@ interface PendingExit {
   stopHitPrice: number | null;
 }
 
+function rollingPriorExtreme(
+  values: readonly number[],
+  lookback: number,
+  mode: 'MAX' | 'MIN'
+): (number | null)[] {
+  const output = new Array<number | null>(values.length).fill(null);
+  const deque: number[] = [];
+  let head = 0;
+  for (let t = 0; t < values.length; t++) {
+    const firstAllowed = Math.max(0, t - lookback);
+    while (head < deque.length && deque[head] < firstAllowed) head++;
+    output[t] = head < deque.length ? values[deque[head]] : null;
+    while (deque.length > head) {
+      const tail = deque[deque.length - 1];
+      const dominated = mode === 'MAX' ? values[tail] <= values[t] : values[tail] >= values[t];
+      if (!dominated) break;
+      deque.pop();
+    }
+    deque.push(t);
+    if (head > 1024 && head * 2 > deque.length) {
+      deque.splice(0, head);
+      head = 0;
+    }
+  }
+  return output;
+}
+
 /** securityId 오름차순 비교자(결정론적 tie-break — 이 파일 전역 규약). */
 function bySecurityIdAsc(a: { securityId: string }, b: { securityId: string }): number {
   return a.securityId < b.securityId ? -1 : a.securityId > b.securityId ? 1 : 0;
@@ -949,11 +979,28 @@ export function simulatePortfolio(
   const startById = new Map<string, number>();
   const idxByDate = new Map<string, Map<IsoDate, number>>();
   const delistById = new Map<string, Map<IsoDate, CorporateActionRecord>>();
+  const entryChannelsById = new Map<string, Map<number, (number | null)[]>>();
+  const exitChannelsById = new Map<string, (number | null)[]>();
   const dateSet = new Set<IsoDate>();
+  const entryLookbacks = Array.from(new Set([
+    config.entryLookback('A'),
+    config.entryLookback('B'),
+  ]));
 
   for (const s of securities) {
     byId.set(s.bars.securityId, s);
     atrById.set(s.bars.securityId, atrSeries(s.bars, config.atrLookback));
+    entryChannelsById.set(
+      s.bars.securityId,
+      new Map(entryLookbacks.map((lookback) => [
+        lookback,
+        rollingPriorExtreme(s.bars.high, lookback, 'MAX'),
+      ]))
+    );
+    exitChannelsById.set(
+      s.bars.securityId,
+      rollingPriorExtreme(s.bars.low, config.exitLookback, 'MIN')
+    );
     startById.set(
       s.bars.securityId,
       commonStartIndex(s.bars, config.atrLookback, config.commonStartBars)
@@ -1068,7 +1115,8 @@ export function simulatePortfolio(
         positions.delete(securityId);
         continue;
       }
-      if (isChannelExitSignal(sec.bars, t, config.exitLookback)) {
+      const exitChannel = exitChannelsById.get(securityId)?.[t] ?? null;
+      if (exitChannel !== null && sec.bars.close[t] < exitChannel) {
         const exitIdx = resolveFillIndex(sec.bars, t, config.fillDelayDays);
         if (exitIdx !== null) {
           // 채널청산은 익일 시가 체결 — 지금 변형하지 않고 fillDate로 큐잉(Bug1 수정).
@@ -1112,6 +1160,8 @@ export function simulatePortfolio(
 
       // 진입 월 동결 분류 해석(§6-5, Bug2): 정적 group이 아니라 월별 플래그에서 진입 시점 그룹 확정.
       const signalDateStr = s.bars.dates[t];
+      if (config.signalStartDate !== undefined && signalDateStr < config.signalStartDate) continue;
+      if (config.signalEndDate !== undefined && signalDateStr > config.signalEndDate) continue;
       const cls = resolveFrozenClassification(s.monthlyFlags, securityId, signalDateStr);
       if (!cls.hasFlag) continue; // 그 달 투자가능 종목군에 없음 → 후보 아님(조용히 스킵)
       let group: PositionGroup;
@@ -1129,7 +1179,8 @@ export function simulatePortfolio(
       }
 
       const entryLb = config.entryLookback(group);
-      if (!isEntrySignal(s.bars, t, entryLb)) continue;
+      const channelHigh = entryChannelsById.get(securityId)?.get(entryLb)?.[t] ?? null;
+      if (channelHigh === null || !(s.bars.close[t] > channelHigh)) continue;
       const atrAtSignal = atrById.get(securityId)?.[t] ?? null;
       if (atrAtSignal === null || !(atrAtSignal > 0)) continue;
       const fillIdx = resolveFillIndex(s.bars, t, config.fillDelayDays);
@@ -1149,7 +1200,7 @@ export function simulatePortfolio(
         stopPrice,
         stopDistance,
         atrAtSignal,
-        channelHigh: entryChannelHigh(s.bars, t, entryLb) as number,
+        channelHigh,
         signalClose: s.bars.close[t],
         group,
       });
