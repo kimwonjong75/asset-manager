@@ -24,6 +24,7 @@
     "test:diagnostics": "npx --yes tsx tests/guruDiagnosticsParity.ts",
     "test:filters": "npx --yes tsx tests/smartFilterParity.ts",
     "test:alertdiag": "npx --yes tsx tests/alertDiagnosticsParity.ts",
+    "test:stockreview": "npx --yes tsx tests/stockReviewParity.ts",
     "test:failsafe": "npx --yes tsx tests/alertFailSafeParity.ts",
     "test:gurufailopen": "npx --yes tsx tests/guruFailOpenParity.ts",
     "test:sensitivity": "npx --yes tsx tests/alertSensitivityParity.ts",

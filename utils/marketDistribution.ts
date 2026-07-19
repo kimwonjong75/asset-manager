@@ -119,7 +119,16 @@ export function countDistributionDays(
  * 디스트리뷰션 카운트가 의미 있으려면 메타가 존재하고 volRatio가 산출된 날이 최소 하나 있어야 한다.
  * volRatio 전부 null(거래량 결손)이면 카운트가 0으로 degrade — fail-closed 판정용 단일 소스.
  * alertDiagnostics.compositeInputQuality의 'missing' 경계 + guruSignalEngine.buildMetricValues가 공유(drift 차단).
+ *
+ * @param windowDays (선택) 지정 시 **최근 windowDays일치 창**에서만 유효 volRatio를 찾는다.
+ *   미지정(기본)이면 전체 meta 대상 — **기존 호출부(alertDiagnostics/guruSignalEngine) 동작 100% 보존**.
+ *   종목 검토 패널은 실제 평가창(distributionWindow=13)을 넘겨 14~30일차 결측이 최근 신호를 가리지 않게 한다.
  */
-export function hasDistributionInputs(meta: DistributionDayMeta[] | undefined | null): boolean {
-  return !!meta && meta.length > 0 && meta.some(m => typeof m.volRatio === 'number');
+export function hasDistributionInputs(
+  meta: DistributionDayMeta[] | undefined | null,
+  windowDays?: number,
+): boolean {
+  if (!meta || meta.length === 0) return false;
+  const scope = typeof windowDays === 'number' && windowDays > 0 ? meta.slice(-windowDays) : meta;
+  return scope.some(m => typeof m.volRatio === 'number');
 }

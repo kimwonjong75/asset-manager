@@ -6,6 +6,8 @@ import MemoTooltip from '../common/MemoTooltip';
 import { MoreHorizontal } from 'lucide-react';
 import AssetTrendChart from '../AssetTrendChart';
 import ChartViewerModal from '../common/ChartViewerModal';
+import StockReviewAccordion from '../stock-review/StockReviewAccordion';
+import { watchlistToPseudoAsset } from '../../utils/alertChecker';
 
 interface WatchlistMobileCardProps {
   item: WatchlistItem & { dropFromHigh: number | null; yesterdayChange: number };
@@ -161,6 +163,12 @@ const WatchlistMobileCard: React.FC<WatchlistMobileCardProps> = ({
             exchange={item.exchange}
             categoryId={item.categoryId}
             onExpand={() => setFullscreen(true)}
+          />
+          <StockReviewAccordion
+            asset={watchlistToPseudoAsset(item)}
+            source="watchlist"
+            displayName={item.name}
+            className="px-4"
           />
         </div>
       )}

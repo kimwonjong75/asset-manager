@@ -6,9 +6,11 @@ import { Asset, Currency, CURRENCY_SYMBOLS, WatchlistItem, ExchangeRates } from 
 import { getAllowedCategories, getCategoryName, type CategoryDefinition } from '../types/category';
 import AssetTrendChart from './AssetTrendChart';
 import ChartViewerModal from './common/ChartViewerModal';
+import StockReviewAccordion from './stock-review/StockReviewAccordion';
 import { useOnClickOutside } from '../hooks/useOnClickOutside';
 import WatchlistMobileCard from './watchlist/WatchlistMobileCard';
 import { usePortfolio } from '../contexts/PortfolioContext';
+import { watchlistToPseudoAsset } from '../utils/alertChecker';
 
 interface WatchlistPageProps {
   watchlist: WatchlistItem[];
@@ -342,6 +344,12 @@ const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, portfolioAsset
                           exchange={w.exchange}
                           categoryId={w.categoryId}
                           onExpand={() => setFullscreenItemId(w.id)}
+                        />
+                        <StockReviewAccordion
+                          asset={watchlistToPseudoAsset(w)}
+                          source="watchlist"
+                          displayName={w.name}
+                          className="px-2 sm:px-0"
                         />
                       </td>
                     </tr>

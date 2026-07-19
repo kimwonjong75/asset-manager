@@ -1,8 +1,37 @@
 # 거래 원장 검산 보고서 — conditional-channel-kr-size-v1
 
-실행일: 2026-07-16  
+실행일: 2026-07-17  
 검산 구간: 개발 2010-2019, 검증 2020-2022. **잠금표본(2023-2025) 미접촉.**  
 최종 판정: **ORIGINAL_NOT_SUPPORTED_REVERSE_PREREGISTERED**
+
+> ⚠ **원 가설도, 역방향 가설도 아직 검증되지 않았다. 어느 쪽도 실전(실계좌) 적용을 금지한다.**
+>
+> - 이 판정(`ORIGINAL_NOT_SUPPORTED_REVERSE_PREREGISTERED`)은 개발·검증 구간(2010-2022)만으로 도출한 **탐색 단계 증거**다.
+> - 원 가설(대형주→20일, 비대형주→55일)은 검증구간에서 **지지되지 않았다**.
+> - 역방향 가설(대형주→55일, 비대형주→20일)은 **후속 가설로 사전등록만** 됐을 뿐, 잠금표본으로 확증되지 않았다.
+> - 잠금표본(2023-2025)은 G8(합병대가 테이블)·G11(KRX 공식 교차검증) 완료 전까지 **봉인** 상태다.
+> - 따라서 두 가설 모두 "검증된 확정 전략"이 아니며, 실매매·자금 배분 근거로 사용해서는 안 된다.
+
+---
+
+## §0. 재현 방법
+
+이 보고서는 아래 명령으로 자동 생성된다. 결정론적(시드 20260716)이라 재실행 시 동일 결과가 나온다.
+
+```bash
+# 원장 검산 + 블록 부트스트랩 재실행 (이 보고서 재생성)
+npx tsx scripts/backtest/conditionalChannel/tools/auditLedgerKrSize.ts
+
+# prelock 결과 재생성 (개발·검증 구간 성과 원본)
+npm run backtest:kr-size -- --phase=prelock
+
+# 타입 검사
+npx tsc --noEmit
+```
+
+**입력 데이터**: `scripts/backtest/data/conditionalChannel/kr/processed/` (3,447종목, 156개월)  
+**비교 기준**: `scripts/backtest/data/conditionalChannel/kr/output/prelock_results.json`  
+**관련 문서**: 원 가설 `docs/backtest/PREREG_조건부채널-KR-Size.md`, 역방향 가설 `docs/backtest/PREREG_조건부채널-KR-Size-REVERSE.md`
 
 ---
 

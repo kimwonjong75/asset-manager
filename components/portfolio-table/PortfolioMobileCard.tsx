@@ -1,6 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { Asset, Currency, PortfolioSnapshot, ExchangeRates } from '../../types';
 import { EnrichedAsset } from '../../types/ui';
+import StockReviewAccordion from '../stock-review/StockReviewAccordion';
 import { formatOriginalCurrency, formatKRW, formatProfitLoss, getChangeColor } from './utils';
 import ActionMenu from '../common/ActionMenu';
 import CrossDaysBadge from '../common/CrossDaysBadge';
@@ -178,6 +179,12 @@ const PortfolioMobileCard: React.FC<PortfolioMobileCardProps> = ({
             categoryId={asset.categoryId}
             purchasePrice={asset.purchasePrice}
             onExpand={() => setFullscreen(true)}
+          />
+          <StockReviewAccordion
+            asset={asset}
+            source="portfolio"
+            displayName={asset.customName?.trim() || asset.name}
+            className="px-4"
           />
         </div>
       )}
