@@ -1,0 +1,6 @@
+# 연구용 원시 일봉 캐시(약 111MB, Yahoo v8 재수집 가능) — 저장소에 커밋하지 않는다.
+# 재생성: npx tsx scripts/backtest/usRoughCheck/usFetch.ts
+*
+!.gitignore
+# 유니버스 스냅샷은 재현성 근거이므로 예외적으로 추적한다(작고, 위키백과가 바뀌면 재현 불가).
+!universe_sp500.json

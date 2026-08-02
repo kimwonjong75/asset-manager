@@ -40,7 +40,15 @@ export type SmartFilterKey =
   | 'CLIMAX_TOP'
   | 'DISTRIBUTION_HIGH'
   // 추세 종료 (와인스타인)
-  | 'SWING_LOW_BREAK';
+  | 'SWING_LOW_BREAK'
+  // 강의검증 급성 매도 경고 (한국 주식 전용, 백테스트 2010-2022 REVIEW_WARNING)
+  // scripts/backtest/lectureSignals S1~S6 정의를 런타임 데이터로 옮긴 것. 비KR 자산은 판정불가(null).
+  | 'KR_RUNUP_1M'        // S1: 21거래일 수익률 ≥ +100%
+  | 'KR_RUNUP_1W'        // S2: 5거래일 수익률 ≥ +40%
+  | 'KR_LIMIT_UP'        // S3: 일간 +29.5%↑ AND 종가==고가
+  | 'KR_GAP_UP_BEARISH'  // S4: 시가갭 ≥ +5% AND 음봉 AND 거래량 ≥ 20일평균×2
+  | 'KR_PANIC_CLIMAX'    // S5(APP_PROXY): 일간 ≤ -10% AND 거래대금 프록시(종가×거래량) 최근 63일 최대
+  | 'KR_CRASH_VOLUME';   // S6: 일간 ≤ -5% AND 거래량 ≥ 20일평균×2
 
 /** 필터 그룹 */
 export type SmartFilterGroup = 'ma' | 'rsi' | 'signal' | 'portfolio' | 'volume';
@@ -79,6 +87,12 @@ export const FILTER_KEY_TO_GROUP: Record<SmartFilterKey, SmartFilterGroup> = {
   CLIMAX_TOP: 'signal',
   DISTRIBUTION_HIGH: 'signal',
   SWING_LOW_BREAK: 'signal',
+  KR_RUNUP_1M: 'signal',
+  KR_RUNUP_1W: 'signal',
+  KR_LIMIT_UP: 'signal',
+  KR_GAP_UP_BEARISH: 'signal',
+  KR_PANIC_CLIMAX: 'signal',
+  KR_CRASH_VOLUME: 'signal',
 };
 
 /** 스마트 필터 전체 상태 */
@@ -158,7 +172,7 @@ export type FilterEvalReason =
   | 'not-met'          // 조건 평가됐으나 미충족 (result=false)
   | 'event-not-found'  // 지표는 있으나 대상 이벤트/구조 미발생 (result=false) — 예: 최근 N일 내 돌파·반등 없음, swing low 미형성, 최근 교차 없음
   | 'no-data'          // 평가에 필요한 지표 미수신 (result=null) — 발화 불가, 데이터 부족
-  | 'not-applicable';  // 알 수 없는 키 (result=null)
+  | 'not-applicable';  // 필터가 이 자산에 적용 대상 아님 (result=null) — 알 수 없는 키, 또는 시장 범위 밖(예: KR 전용 신호를 비KR 종목에)
 
 export interface FilterEvalResult {
   result: boolean | null;      // true=충족, false=미충족/이벤트없음, null=판정 불가(데이터 없음)

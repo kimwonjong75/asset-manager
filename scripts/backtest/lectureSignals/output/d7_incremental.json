@@ -1,0 +1,1628 @@
+{
+  "generatedAt": "2026-07-26T02:51:57.155Z",
+  "plan": "docs/backtest/PLAN_강의가설_전면검증_v2.md §3 P4",
+  "seedBase": 20260725,
+  "config": {
+    "horizonDays": 252,
+    "reentryDelayDays": 20,
+    "falseSellHorizons": [
+      20,
+      63
+    ],
+    "randomCohortSize": 1200,
+    "randomMaxAttempts": 400000,
+    "auditStocks": 40,
+    "auditDaysPerStock": 30,
+    "minWindowDays": 63,
+    "seedRandomCohortDev": 20330726,
+    "seedRandomCohortVal": 20330727,
+    "seedAudit": 20330728
+  },
+  "appRuleConfig": {
+    "lossThreshold": 5,
+    "rsiOverbought": 70,
+    "deadCrossShort": 5,
+    "deadCrossLong": 20,
+    "deadCrossMaxLookback": 252,
+    "trendBreakMa": 20,
+    "longDeclineShort": 20,
+    "longDeclineLong": 60,
+    "dropFromHighThreshold": 20,
+    "profitTarget": 20,
+    "overheatProfitTarget": 15,
+    "overheatWithinDays": 3,
+    "rsiOverheatFloor": 65,
+    "rsiOverheatEntry": 70,
+    "dailyCrashThreshold": 5,
+    "climaxFlagsRequired": 2,
+    "climaxSlopeMultiplier": 2.5,
+    "climaxAtrMultiple": 2.5,
+    "climaxCVolSurgeRatio": 2,
+    "distributionWindow": 13,
+    "distributionVolumeRatio": 1.5,
+    "distributionThreshold": 5,
+    "weinsteinMa": 150,
+    "weinsteinWithinDays": 5,
+    "ma120Period": 120,
+    "ma120WithinDays": 5
+  },
+  "reproducedRules": [
+    "stop-loss",
+    "overheat-drop",
+    "dead-cross",
+    "trend-break",
+    "long-decline",
+    "profit-target",
+    "overheat-profit",
+    "daily-crash",
+    "climax-top",
+    "distribution-high",
+    "weinstein-150-break",
+    "ma120-break",
+    "swing-low-break"
+  ],
+  "excludedRules": [
+    "strong-sell-signal"
+  ],
+  "newSignals": [
+    "S1_RUNUP_21D_100",
+    "S2_RUNUP_5D_40",
+    "S3_LIMIT_UP",
+    "S4_GAP_BEAR_VOLUME",
+    "S5_APP_PROXY",
+    "S6_CRASH_5_VOLUME_2X",
+    "H3_VOL_SPIKE_ROLLING",
+    "H6_RS_90_TO_97_FAST",
+    "H7_RS_BELOW_50"
+  ],
+  "dataGatePrelock": "PASS",
+  "universe": 1438,
+  "rsEntries": {
+    "DEV": 2826,
+    "VALIDATION": 1645
+  },
+  "audit": {
+    "nStocks": 40,
+    "nSamples": 1200,
+    "nComparisons": 15600,
+    "totalMismatches": 0,
+    "overallAgreement": 1,
+    "byRule": [
+      {
+        "rule": "stop-loss",
+        "n": 1200,
+        "mismatches": 0,
+        "agreement": 1,
+        "appOnly": 0,
+        "reproOnly": 0
+      },
+      {
+        "rule": "overheat-drop",
+        "n": 1200,
+        "mismatches": 0,
+        "agreement": 1,
+        "appOnly": 0,
+        "reproOnly": 0
+      },
+      {
+        "rule": "dead-cross",
+        "n": 1200,
+        "mismatches": 0,
+        "agreement": 1,
+        "appOnly": 0,
+        "reproOnly": 0
+      },
+      {
+        "rule": "trend-break",
+        "n": 1200,
+        "mismatches": 0,
+        "agreement": 1,
+        "appOnly": 0,
+        "reproOnly": 0
+      },
+      {
+        "rule": "long-decline",
+        "n": 1200,
+        "mismatches": 0,
+        "agreement": 1,
+        "appOnly": 0,
+        "reproOnly": 0
+      },
+      {
+        "rule": "profit-target",
+        "n": 1200,
+        "mismatches": 0,
+        "agreement": 1,
+        "appOnly": 0,
+        "reproOnly": 0
+      },
+      {
+        "rule": "overheat-profit",
+        "n": 1200,
+        "mismatches": 0,
+        "agreement": 1,
+        "appOnly": 0,
+        "reproOnly": 0
+      },
+      {
+        "rule": "daily-crash",
+        "n": 1200,
+        "mismatches": 0,
+        "agreement": 1,
+        "appOnly": 0,
+        "reproOnly": 0
+      },
+      {
+        "rule": "climax-top",
+        "n": 1200,
+        "mismatches": 0,
+        "agreement": 1,
+        "appOnly": 0,
+        "reproOnly": 0
+      },
+      {
+        "rule": "distribution-high",
+        "n": 1200,
+        "mismatches": 0,
+        "agreement": 1,
+        "appOnly": 0,
+        "reproOnly": 0
+      },
+      {
+        "rule": "weinstein-150-break",
+        "n": 1200,
+        "mismatches": 0,
+        "agreement": 1,
+        "appOnly": 0,
+        "reproOnly": 0
+      },
+      {
+        "rule": "ma120-break",
+        "n": 1200,
+        "mismatches": 0,
+        "agreement": 1,
+        "appOnly": 0,
+        "reproOnly": 0
+      },
+      {
+        "rule": "swing-low-break",
+        "n": 1200,
+        "mismatches": 0,
+        "agreement": 1,
+        "appOnly": 0,
+        "reproOnly": 0
+      }
+    ],
+    "windowBars": 300,
+    "windowSensitivity": {
+      "nComparisons": 15600,
+      "mismatches": 0,
+      "mismatchRate": 0,
+      "byRule": [
+        {
+          "rule": "stop-loss",
+          "mismatches": 0,
+          "rate": 0
+        },
+        {
+          "rule": "overheat-drop",
+          "mismatches": 0,
+          "rate": 0
+        },
+        {
+          "rule": "dead-cross",
+          "mismatches": 0,
+          "rate": 0
+        },
+        {
+          "rule": "trend-break",
+          "mismatches": 0,
+          "rate": 0
+        },
+        {
+          "rule": "long-decline",
+          "mismatches": 0,
+          "rate": 0
+        },
+        {
+          "rule": "profit-target",
+          "mismatches": 0,
+          "rate": 0
+        },
+        {
+          "rule": "overheat-profit",
+          "mismatches": 0,
+          "rate": 0
+        },
+        {
+          "rule": "daily-crash",
+          "mismatches": 0,
+          "rate": 0
+        },
+        {
+          "rule": "climax-top",
+          "mismatches": 0,
+          "rate": 0
+        },
+        {
+          "rule": "distribution-high",
+          "mismatches": 0,
+          "rate": 0
+        },
+        {
+          "rule": "weinstein-150-break",
+          "mismatches": 0,
+          "rate": 0
+        },
+        {
+          "rule": "ma120-break",
+          "mismatches": 0,
+          "rate": 0
+        },
+        {
+          "rule": "swing-low-break",
+          "mismatches": 0,
+          "rate": 0
+        }
+      ]
+    },
+    "samples": []
+  },
+  "summaries": [
+    {
+      "cohort": "RS90_ENTRY",
+      "period": "DEV",
+      "nPositions": 2657,
+      "avgWindowDays": 240.97327813323298,
+      "triggerRateC": 1,
+      "triggerRateD": 1,
+      "medianDaysToFirstC": 0,
+      "medianDaysToFirstD": 0,
+      "hold": {
+        "medianReturn": -0.18301388888888892,
+        "meanReturn": -0.02510253510447528,
+        "p10Return": -0.5184664259831611,
+        "p90Return": 0.5951639992987102,
+        "medianMdd": 0.4754747094148635,
+        "meanMdd": 0.48110524642982483,
+        "medianSells": 0,
+        "meanSells": 0,
+        "meanCostPaid": 0.003000000000000072,
+        "meanBuys": 1
+      },
+      "policyC": {
+        "medianReturn": -0.1278866382851297,
+        "meanReturn": -0.09962314485089521,
+        "p10Return": -0.2998932900541664,
+        "p90Return": 0.1342154617743551,
+        "medianMdd": 0.19324903984812403,
+        "meanMdd": 0.20584907873240074,
+        "medianSells": 12,
+        "meanSells": 11.132856605193828,
+        "meanCostPaid": 0.09452357329152523,
+        "meanBuys": 11.187805796010538
+      },
+      "policyD": {
+        "medianReturn": -0.12314108938914503,
+        "meanReturn": -0.09905885698287346,
+        "p10Return": -0.2975602953949187,
+        "p90Return": 0.13148125807724675,
+        "medianMdd": 0.18832861146740332,
+        "meanMdd": 0.20204925612338442,
+        "medianSells": 12,
+        "meanSells": 11.146029356417012,
+        "meanCostPaid": 0.09471410575108262,
+        "meanBuys": 11.19909672563041
+      },
+      "mddReductionC": {
+        "median": 0.26733987834965933,
+        "mean": 0.2752561676974253
+      },
+      "mddReductionD": {
+        "median": 0.2730865943057186,
+        "mean": 0.2790559903064412
+      },
+      "incrementalReturn": {
+        "median": 0,
+        "mean": 0.0005642878680216343,
+        "winRate": 0.08919834399698909,
+        "loseRate": 0.07376740684983063,
+        "differRate": 0.16296575084681972
+      },
+      "incrementalMdd": {
+        "median": 0,
+        "mean": -0.0037998226090164306
+      },
+      "falseSell": {
+        "h20": {
+          "horizon": 20,
+          "nC": 2657,
+          "falseRateC": 0.39254798645088446,
+          "nD": 2657,
+          "falseRateD": 0.39066616484757244,
+          "nNewOnly": 230,
+          "falseRateNewOnly": 0.34347826086956523
+        },
+        "h63": {
+          "horizon": 63,
+          "nC": 2653,
+          "falseRateC": 0.3663776856388994,
+          "nD": 2653,
+          "falseRateD": 0.3652468903128534,
+          "nNewOnly": 230,
+          "falseRateNewOnly": 0.30869565217391304
+        }
+      },
+      "overlapCvsNew": {
+        "a": "C(기존규칙)",
+        "b": "NEW(신규신호)",
+        "nA": 445441,
+        "nB": 17797,
+        "intersection": 16948,
+        "union": 446290,
+        "jaccard": 0.037975307535459,
+        "recallOfBvsA": 0.03804768757254047,
+        "precisionOfBvsA": 0.9522953306737091
+      },
+      "overlapByNewSignal": [
+        {
+          "signal": "S1_RUNUP_21D_100",
+          "nNew": 2708,
+          "overlapWithC": 2570,
+          "overlapRate": 0.94903988183161
+        },
+        {
+          "signal": "S2_RUNUP_5D_40",
+          "nNew": 2867,
+          "overlapWithC": 2593,
+          "overlapRate": 0.9044297174747122
+        },
+        {
+          "signal": "S3_LIMIT_UP",
+          "nNew": 3372,
+          "overlapWithC": 3094,
+          "overlapRate": 0.9175563463819691
+        },
+        {
+          "signal": "S4_GAP_BEAR_VOLUME",
+          "nNew": 2099,
+          "overlapWithC": 1965,
+          "overlapRate": 0.9361600762267747
+        },
+        {
+          "signal": "S5_APP_PROXY",
+          "nNew": 484,
+          "overlapWithC": 484,
+          "overlapRate": 1
+        },
+        {
+          "signal": "S6_CRASH_5_VOLUME_2X",
+          "nNew": 5989,
+          "overlapWithC": 5989,
+          "overlapRate": 1
+        },
+        {
+          "signal": "H3_VOL_SPIKE_ROLLING",
+          "nNew": 1322,
+          "overlapWithC": 1225,
+          "overlapRate": 0.926626323751891
+        },
+        {
+          "signal": "H6_RS_90_TO_97_FAST",
+          "nNew": 624,
+          "overlapWithC": 522,
+          "overlapRate": 0.8365384615384616
+        },
+        {
+          "signal": "H7_RS_BELOW_50",
+          "nNew": 1831,
+          "overlapWithC": 1818,
+          "overlapRate": 0.9929000546149646
+        }
+      ],
+      "totalEvaluatedDays": 640266,
+      "cDayRate": 0.9101389110151094,
+      "newDayRate": 0.03684249983600566,
+      "ruleFireRate": [
+        {
+          "rule": "stop-loss",
+          "positionsFired": 2488,
+          "rate": 0.9363944298080542,
+          "medianDaysToFire": 4,
+          "dayCount": 364906,
+          "dayRate": 0.5699287483639612
+        },
+        {
+          "rule": "overheat-drop",
+          "positionsFired": 2190,
+          "rate": 0.8242378622506586,
+          "medianDaysToFire": 3,
+          "dayCount": 9142,
+          "dayRate": 0.014278440523157562
+        },
+        {
+          "rule": "dead-cross",
+          "positionsFired": 2657,
+          "rate": 1,
+          "medianDaysToFire": 14,
+          "dayCount": 334614,
+          "dayRate": 0.5226171622419432
+        },
+        {
+          "rule": "trend-break",
+          "positionsFired": 2518,
+          "rate": 0.9476853594279262,
+          "medianDaysToFire": 11,
+          "dayCount": 248264,
+          "dayRate": 0.3877513408489596
+        },
+        {
+          "rule": "long-decline",
+          "positionsFired": 2597,
+          "rate": 0.9774181407602559,
+          "medianDaysToFire": 46,
+          "dayCount": 274741,
+          "dayRate": 0.4291044659563369
+        },
+        {
+          "rule": "profit-target",
+          "positionsFired": 1562,
+          "rate": 0.5878810688746707,
+          "medianDaysToFire": 30,
+          "dayCount": 124262,
+          "dayRate": 0.19407871103572577
+        },
+        {
+          "rule": "overheat-profit",
+          "positionsFired": 1551,
+          "rate": 0.5837410613473842,
+          "medianDaysToFire": 32,
+          "dayCount": 12551,
+          "dayRate": 0.01960279009036869
+        },
+        {
+          "rule": "daily-crash",
+          "positionsFired": 2633,
+          "rate": 0.9909672563041023,
+          "medianDaysToFire": 5,
+          "dayCount": 38982,
+          "dayRate": 0.060884070058381985
+        },
+        {
+          "rule": "climax-top",
+          "positionsFired": 1380,
+          "rate": 0.5193827625141136,
+          "medianDaysToFire": 21.5,
+          "dayCount": 4270,
+          "dayRate": 0.006669103154001618
+        },
+        {
+          "rule": "distribution-high",
+          "positionsFired": 2168,
+          "rate": 0.8159578471960858,
+          "medianDaysToFire": 9,
+          "dayCount": 31926,
+          "dayRate": 0.049863650420294066
+        },
+        {
+          "rule": "weinstein-150-break",
+          "positionsFired": 2580,
+          "rate": 0.9710199473089951,
+          "medianDaysToFire": 60,
+          "dayCount": 50625,
+          "dayRate": 0.0790686995717405
+        },
+        {
+          "rule": "ma120-break",
+          "positionsFired": 2612,
+          "rate": 0.9830636055701919,
+          "medianDaysToFire": 53,
+          "dayCount": 54393,
+          "dayRate": 0.0849537535961616
+        },
+        {
+          "rule": "swing-low-break",
+          "positionsFired": 2655,
+          "rate": 0.9992472713586752,
+          "medianDaysToFire": 24,
+          "dayCount": 151579,
+          "dayRate": 0.23674379086192301
+        }
+      ],
+      "newSignalFireRate": [
+        {
+          "signal": "S1_RUNUP_21D_100",
+          "positionsFired": 450,
+          "rate": 0.16936394429808055,
+          "medianDaysToFire": 9,
+          "dayCount": 3553,
+          "dayRate": 0.005549256090437412
+        },
+        {
+          "signal": "S2_RUNUP_5D_40",
+          "positionsFired": 1009,
+          "rate": 0.3797515995483628,
+          "medianDaysToFire": 5,
+          "dayCount": 3992,
+          "dayRate": 0.006234908616106431
+        },
+        {
+          "signal": "S3_LIMIT_UP",
+          "positionsFired": 1229,
+          "rate": 0.4625517500940911,
+          "medianDaysToFire": 36,
+          "dayCount": 4435,
+          "dayRate": 0.006926808545198402
+        },
+        {
+          "signal": "S4_GAP_BEAR_VOLUME",
+          "positionsFired": 1435,
+          "rate": 0.5400828001505458,
+          "medianDaysToFire": 63,
+          "dayCount": 2863,
+          "dayRate": 0.0044715789999781345
+        },
+        {
+          "signal": "S5_APP_PROXY",
+          "positionsFired": 544,
+          "rate": 0.20474219044034625,
+          "medianDaysToFire": 96.5,
+          "dayCount": 669,
+          "dayRate": 0.001044878222488778
+        },
+        {
+          "signal": "S6_CRASH_5_VOLUME_2X",
+          "positionsFired": 2385,
+          "rate": 0.8976289047798268,
+          "medianDaysToFire": 43,
+          "dayCount": 8081,
+          "dayRate": 0.012621316765219456
+        },
+        {
+          "signal": "H3_VOL_SPIKE_ROLLING",
+          "positionsFired": 1087,
+          "rate": 0.4091080165600301,
+          "medianDaysToFire": 66,
+          "dayCount": 1723,
+          "dayRate": 0.0026910690244367186
+        },
+        {
+          "signal": "H6_RS_90_TO_97_FAST",
+          "positionsFired": 624,
+          "rate": 0.23485133609333836,
+          "medianDaysToFire": 4,
+          "dayCount": 624,
+          "dayRate": 0.0009745949339805643
+        },
+        {
+          "signal": "H7_RS_BELOW_50",
+          "positionsFired": 2238,
+          "rate": 0.8423033496424539,
+          "medianDaysToFire": 60,
+          "dayCount": 2238,
+          "dayRate": 0.0034954222151418316
+        }
+      ]
+    },
+    {
+      "cohort": "RS90_ENTRY",
+      "period": "VALIDATION",
+      "nPositions": 1500,
+      "avgWindowDays": 224.80133333333333,
+      "triggerRateC": 1,
+      "triggerRateD": 1,
+      "medianDaysToFirstC": 0,
+      "medianDaysToFirstD": 0,
+      "hold": {
+        "medianReturn": -0.19701664794608476,
+        "meanReturn": -0.006205790536500771,
+        "p10Return": -0.5428519361105115,
+        "p90Return": 0.685761455003062,
+        "medianMdd": 0.4635207134884799,
+        "meanMdd": 0.4752941103018002,
+        "medianSells": 0,
+        "meanSells": 0,
+        "meanCostPaid": 0.0030000000000000395,
+        "meanBuys": 1
+      },
+      "policyC": {
+        "medianReturn": -0.12218797187039998,
+        "meanReturn": -0.08388842997452163,
+        "p10Return": -0.29023607308893845,
+        "p90Return": 0.1601957461323042,
+        "medianMdd": 0.18157615395415277,
+        "meanMdd": 0.1883324730197233,
+        "medianSells": 12,
+        "meanSells": 10.475333333333333,
+        "meanCostPaid": 0.0837335558909671,
+        "meanBuys": 10.532
+      },
+      "policyD": {
+        "medianReturn": -0.12013960136163554,
+        "meanReturn": -0.08456216912452934,
+        "p10Return": -0.28819189516463045,
+        "p90Return": 0.14779876103140682,
+        "medianMdd": 0.1774627600722693,
+        "meanMdd": 0.18496793250123134,
+        "medianSells": 12,
+        "meanSells": 10.487333333333334,
+        "meanCostPaid": 0.0838291210062489,
+        "meanBuys": 10.542
+      },
+      "mddReductionC": {
+        "median": 0.2786358021493773,
+        "mean": 0.2869616372820772
+      },
+      "mddReductionD": {
+        "median": 0.28176103993472157,
+        "mean": 0.29032617780056896
+      },
+      "incrementalReturn": {
+        "median": 0,
+        "mean": -0.000673739150007747,
+        "winRate": 0.084,
+        "loseRate": 0.072,
+        "differRate": 0.156
+      },
+      "incrementalMdd": {
+        "median": 0,
+        "mean": -0.003364540518491959
+      },
+      "falseSell": {
+        "h20": {
+          "horizon": 20,
+          "nC": 1500,
+          "falseRateC": 0.3913333333333333,
+          "nD": 1500,
+          "falseRateD": 0.3893333333333333,
+          "nNewOnly": 133,
+          "falseRateNewOnly": 0.39097744360902253
+        },
+        "h63": {
+          "horizon": 63,
+          "nC": 1494,
+          "falseRateC": 0.37416331994645247,
+          "nD": 1494,
+          "falseRateD": 0.37215528781793844,
+          "nNewOnly": 133,
+          "falseRateNewOnly": 0.37593984962406013
+        }
+      },
+      "overlapCvsNew": {
+        "a": "C(기존규칙)",
+        "b": "NEW(신규신호)",
+        "nA": 231256,
+        "nB": 8728,
+        "intersection": 8285,
+        "union": 231699,
+        "jaccard": 0.03575759929909063,
+        "recallOfBvsA": 0.035826097485038226,
+        "precisionOfBvsA": 0.949243813015582
+      },
+      "overlapByNewSignal": [
+        {
+          "signal": "S1_RUNUP_21D_100",
+          "nNew": 1822,
+          "overlapWithC": 1730,
+          "overlapRate": 0.9495060373216246
+        },
+        {
+          "signal": "S2_RUNUP_5D_40",
+          "nNew": 2041,
+          "overlapWithC": 1857,
+          "overlapRate": 0.9098481136697697
+        },
+        {
+          "signal": "S3_LIMIT_UP",
+          "nNew": 662,
+          "overlapWithC": 619,
+          "overlapRate": 0.9350453172205438
+        },
+        {
+          "signal": "S4_GAP_BEAR_VOLUME",
+          "nNew": 1337,
+          "overlapWithC": 1238,
+          "overlapRate": 0.9259536275243081
+        },
+        {
+          "signal": "S5_APP_PROXY",
+          "nNew": 145,
+          "overlapWithC": 145,
+          "overlapRate": 1
+        },
+        {
+          "signal": "S6_CRASH_5_VOLUME_2X",
+          "nNew": 2189,
+          "overlapWithC": 2189,
+          "overlapRate": 1
+        },
+        {
+          "signal": "H3_VOL_SPIKE_ROLLING",
+          "nNew": 1007,
+          "overlapWithC": 934,
+          "overlapRate": 0.9275074478649454
+        },
+        {
+          "signal": "H6_RS_90_TO_97_FAST",
+          "nNew": 373,
+          "overlapWithC": 323,
+          "overlapRate": 0.8659517426273459
+        },
+        {
+          "signal": "H7_RS_BELOW_50",
+          "nNew": 1050,
+          "overlapWithC": 1037,
+          "overlapRate": 0.9876190476190476
+        }
+      ],
+      "totalEvaluatedDays": 337202,
+      "cDayRate": 0.9175212483911721,
+      "newDayRate": 0.03615636917930499,
+      "ruleFireRate": [
+        {
+          "rule": "stop-loss",
+          "positionsFired": 1398,
+          "rate": 0.932,
+          "medianDaysToFire": 3,
+          "dayCount": 187081,
+          "dayRate": 0.5548039454095764
+        },
+        {
+          "rule": "overheat-drop",
+          "positionsFired": 1149,
+          "rate": 0.766,
+          "medianDaysToFire": 2,
+          "dayCount": 5003,
+          "dayRate": 0.01483680405217051
+        },
+        {
+          "rule": "dead-cross",
+          "positionsFired": 1500,
+          "rate": 1,
+          "medianDaysToFire": 14,
+          "dayCount": 177683,
+          "dayRate": 0.5269334108338622
+        },
+        {
+          "rule": "trend-break",
+          "positionsFired": 1405,
+          "rate": 0.9366666666666666,
+          "medianDaysToFire": 12,
+          "dayCount": 127259,
+          "dayRate": 0.3773969312163036
+        },
+        {
+          "rule": "long-decline",
+          "positionsFired": 1466,
+          "rate": 0.9773333333333334,
+          "medianDaysToFire": 44,
+          "dayCount": 147259,
+          "dayRate": 0.43670856044744694
+        },
+        {
+          "rule": "profit-target",
+          "positionsFired": 849,
+          "rate": 0.566,
+          "medianDaysToFire": 27,
+          "dayCount": 74580,
+          "dayRate": 0.22117306540293355
+        },
+        {
+          "rule": "overheat-profit",
+          "positionsFired": 865,
+          "rate": 0.5766666666666667,
+          "medianDaysToFire": 27,
+          "dayCount": 6912,
+          "dayRate": 0.020498099062283143
+        },
+        {
+          "rule": "daily-crash",
+          "positionsFired": 1486,
+          "rate": 0.9906666666666667,
+          "medianDaysToFire": 3,
+          "dayCount": 20776,
+          "dayRate": 0.06161292044531171
+        },
+        {
+          "rule": "climax-top",
+          "positionsFired": 827,
+          "rate": 0.5513333333333333,
+          "medianDaysToFire": 20,
+          "dayCount": 2955,
+          "dayRate": 0.00876329321890143
+        },
+        {
+          "rule": "distribution-high",
+          "positionsFired": 1112,
+          "rate": 0.7413333333333333,
+          "medianDaysToFire": 9,
+          "dayCount": 13228,
+          "dayRate": 0.03922871157347821
+        },
+        {
+          "rule": "weinstein-150-break",
+          "positionsFired": 1451,
+          "rate": 0.9673333333333334,
+          "medianDaysToFire": 58,
+          "dayCount": 25926,
+          "dayRate": 0.07688566497233112
+        },
+        {
+          "rule": "ma120-break",
+          "positionsFired": 1464,
+          "rate": 0.976,
+          "medianDaysToFire": 52,
+          "dayCount": 28523,
+          "dayRate": 0.0845872800279951
+        },
+        {
+          "rule": "swing-low-break",
+          "positionsFired": 1493,
+          "rate": 0.9953333333333333,
+          "medianDaysToFire": 25,
+          "dayCount": 79316,
+          "dayRate": 0.2352180592048683
+        }
+      ],
+      "newSignalFireRate": [
+        {
+          "signal": "S1_RUNUP_21D_100",
+          "positionsFired": 329,
+          "rate": 0.21933333333333332,
+          "medianDaysToFire": 8,
+          "dayCount": 2706,
+          "dayRate": 0.008024863434973696
+        },
+        {
+          "signal": "S2_RUNUP_5D_40",
+          "positionsFired": 696,
+          "rate": 0.464,
+          "medianDaysToFire": 1,
+          "dayCount": 2983,
+          "dayRate": 0.00884632949982503
+        },
+        {
+          "signal": "S3_LIMIT_UP",
+          "positionsFired": 498,
+          "rate": 0.332,
+          "medianDaysToFire": 48,
+          "dayCount": 943,
+          "dayRate": 0.002796543318248409
+        },
+        {
+          "signal": "S4_GAP_BEAR_VOLUME",
+          "positionsFired": 938,
+          "rate": 0.6253333333333333,
+          "medianDaysToFire": 49.5,
+          "dayCount": 1950,
+          "dayRate": 0.005782883850036477
+        },
+        {
+          "signal": "S5_APP_PROXY",
+          "positionsFired": 186,
+          "rate": 0.124,
+          "medianDaysToFire": 91,
+          "dayCount": 215,
+          "dayRate": 0.000637600014234791
+        },
+        {
+          "signal": "S6_CRASH_5_VOLUME_2X",
+          "positionsFired": 1186,
+          "rate": 0.7906666666666666,
+          "medianDaysToFire": 49.5,
+          "dayCount": 3029,
+          "dayRate": 0.00898274624705666
+        },
+        {
+          "signal": "H3_VOL_SPIKE_ROLLING",
+          "positionsFired": 813,
+          "rate": 0.542,
+          "medianDaysToFire": 19,
+          "dayCount": 1383,
+          "dayRate": 0.004101399161333562
+        },
+        {
+          "signal": "H6_RS_90_TO_97_FAST",
+          "positionsFired": 373,
+          "rate": 0.24866666666666667,
+          "medianDaysToFire": 3,
+          "dayCount": 373,
+          "dayRate": 0.0011061618851608236
+        },
+        {
+          "signal": "H7_RS_BELOW_50",
+          "positionsFired": 1292,
+          "rate": 0.8613333333333333,
+          "medianDaysToFire": 59,
+          "dayCount": 1292,
+          "dayRate": 0.0038315312483318603
+        }
+      ]
+    },
+    {
+      "cohort": "RANDOM",
+      "period": "DEV",
+      "nPositions": 1183,
+      "avgWindowDays": 234.36094674556213,
+      "triggerRateC": 1,
+      "triggerRateD": 1,
+      "medianDaysToFirstC": 0,
+      "medianDaysToFirstD": 0,
+      "hold": {
+        "medianReturn": -0.1534563636363636,
+        "meanReturn": -0.06017432018397772,
+        "p10Return": -0.5100401569275402,
+        "p90Return": 0.44625862125640636,
+        "medianMdd": 0.4129886506935688,
+        "meanMdd": 0.43261631528396294,
+        "medianSells": 0,
+        "meanSells": 0,
+        "meanCostPaid": 0.00300000000000002,
+        "meanBuys": 1
+      },
+      "policyC": {
+        "medianReturn": -0.12316662340793705,
+        "meanReturn": -0.10483657613995247,
+        "p10Return": -0.2717207640787258,
+        "p90Return": 0.07433103729714394,
+        "medianMdd": 0.17396158054877398,
+        "meanMdd": 0.18505699725426758,
+        "medianSells": 12,
+        "meanSells": 10.776838546069316,
+        "meanCostPaid": 0.09083496565272046,
+        "meanBuys": 10.847844463229078
+      },
+      "policyD": {
+        "medianReturn": -0.12157165575929196,
+        "meanReturn": -0.1041986116070251,
+        "p10Return": -0.26968482747481143,
+        "p90Return": 0.07508780195164837,
+        "medianMdd": 0.1724239799311842,
+        "meanMdd": 0.18362269751990848,
+        "medianSells": 12,
+        "meanSells": 10.78275570583263,
+        "meanCostPaid": 0.09099443700417413,
+        "meanBuys": 10.85207100591716
+      },
+      "mddReductionC": {
+        "median": 0.23286512511331903,
+        "mean": 0.24755931802969536
+      },
+      "mddReductionD": {
+        "median": 0.23510977575852499,
+        "mean": 0.2489936177640544
+      },
+      "incrementalReturn": {
+        "median": 0,
+        "mean": 0.0006379645329273704,
+        "winRate": 0.03296703296703297,
+        "loseRate": 0.030431107354184278,
+        "differRate": 0.06339814032121724
+      },
+      "incrementalMdd": {
+        "median": 0,
+        "mean": -0.0014342997343590558
+      },
+      "falseSell": {
+        "h20": {
+          "horizon": 20,
+          "nC": 1183,
+          "falseRateC": 0.4353338968723584,
+          "nD": 1183,
+          "falseRateD": 0.4353338968723584,
+          "nNewOnly": 9,
+          "falseRateNewOnly": 0.3333333333333333
+        },
+        "h63": {
+          "horizon": 63,
+          "nC": 1177,
+          "falseRateC": 0.3967714528462192,
+          "nD": 1177,
+          "falseRateD": 0.3959218351741716,
+          "nNewOnly": 9,
+          "falseRateNewOnly": 0.2222222222222222
+        }
+      },
+      "overlapCvsNew": {
+        "a": "C(기존규칙)",
+        "b": "NEW(신규신호)",
+        "nA": 218587,
+        "nB": 5678,
+        "intersection": 5476,
+        "union": 218789,
+        "jaccard": 0.02502868060094429,
+        "recallOfBvsA": 0.025051810034448525,
+        "precisionOfBvsA": 0.9644240929904896
+      },
+      "overlapByNewSignal": [
+        {
+          "signal": "S1_RUNUP_21D_100",
+          "nNew": 432,
+          "overlapWithC": 414,
+          "overlapRate": 0.9583333333333334
+        },
+        {
+          "signal": "S2_RUNUP_5D_40",
+          "nNew": 663,
+          "overlapWithC": 636,
+          "overlapRate": 0.9592760180995475
+        },
+        {
+          "signal": "S3_LIMIT_UP",
+          "nNew": 1131,
+          "overlapWithC": 1067,
+          "overlapRate": 0.9434129089301503
+        },
+        {
+          "signal": "S4_GAP_BEAR_VOLUME",
+          "nNew": 833,
+          "overlapWithC": 761,
+          "overlapRate": 0.9135654261704682
+        },
+        {
+          "signal": "S5_APP_PROXY",
+          "nNew": 176,
+          "overlapWithC": 176,
+          "overlapRate": 1
+        },
+        {
+          "signal": "S6_CRASH_5_VOLUME_2X",
+          "nNew": 2686,
+          "overlapWithC": 2686,
+          "overlapRate": 1
+        },
+        {
+          "signal": "H3_VOL_SPIKE_ROLLING",
+          "nNew": 523,
+          "overlapWithC": 487,
+          "overlapRate": 0.9311663479923518
+        },
+        {
+          "signal": "H6_RS_90_TO_97_FAST",
+          "nNew": 0,
+          "overlapWithC": 0,
+          "overlapRate": null
+        },
+        {
+          "signal": "H7_RS_BELOW_50",
+          "nNew": 0,
+          "overlapWithC": 0,
+          "overlapRate": null
+        }
+      ],
+      "totalEvaluatedDays": 277249,
+      "cDayRate": 0.8937669748132545,
+      "newDayRate": 0.02326789276065919,
+      "ruleFireRate": [
+        {
+          "rule": "stop-loss",
+          "positionsFired": 1092,
+          "rate": 0.9230769230769231,
+          "medianDaysToFire": 9,
+          "dayCount": 147841,
+          "dayRate": 0.5332426807671082
+        },
+        {
+          "rule": "overheat-drop",
+          "positionsFired": 698,
+          "rate": 0.5900253592561285,
+          "medianDaysToFire": 91.5,
+          "dayCount": 2189,
+          "dayRate": 0.007895429740053165
+        },
+        {
+          "rule": "dead-cross",
+          "positionsFired": 1182,
+          "rate": 0.9991546914623838,
+          "medianDaysToFire": 0,
+          "dayCount": 151137,
+          "dayRate": 0.5451309112025652
+        },
+        {
+          "rule": "trend-break",
+          "positionsFired": 1154,
+          "rate": 0.9754860524091293,
+          "medianDaysToFire": 2,
+          "dayCount": 111803,
+          "dayRate": 0.4032584427716601
+        },
+        {
+          "rule": "long-decline",
+          "positionsFired": 1153,
+          "rate": 0.9746407438715131,
+          "medianDaysToFire": 12,
+          "dayCount": 133408,
+          "dayRate": 0.4811847833535919
+        },
+        {
+          "rule": "profit-target",
+          "positionsFired": 620,
+          "rate": 0.5240912933220625,
+          "medianDaysToFire": 45,
+          "dayCount": 40317,
+          "dayRate": 0.14541801773856713
+        },
+        {
+          "rule": "overheat-profit",
+          "positionsFired": 595,
+          "rate": 0.5029585798816568,
+          "medianDaysToFire": 51,
+          "dayCount": 4049,
+          "dayRate": 0.014604200556178741
+        },
+        {
+          "rule": "daily-crash",
+          "positionsFired": 1105,
+          "rate": 0.9340659340659341,
+          "medianDaysToFire": 15,
+          "dayCount": 12104,
+          "dayRate": 0.0436575064292387
+        },
+        {
+          "rule": "climax-top",
+          "positionsFired": 301,
+          "rate": 0.25443786982248523,
+          "medianDaysToFire": 58,
+          "dayCount": 829,
+          "dayRate": 0.002990091939015109
+        },
+        {
+          "rule": "distribution-high",
+          "positionsFired": 851,
+          "rate": 0.7193575655114116,
+          "medianDaysToFire": 83,
+          "dayCount": 11153,
+          "dayRate": 0.040227376834542236
+        },
+        {
+          "rule": "weinstein-150-break",
+          "positionsFired": 1084,
+          "rate": 0.9163144547759933,
+          "medianDaysToFire": 42,
+          "dayCount": 22188,
+          "dayRate": 0.08002914347752381
+        },
+        {
+          "rule": "ma120-break",
+          "positionsFired": 1110,
+          "rate": 0.9382924767540152,
+          "medianDaysToFire": 37,
+          "dayCount": 24114,
+          "dayRate": 0.08697596745164095
+        },
+        {
+          "rule": "swing-low-break",
+          "positionsFired": 1181,
+          "rate": 0.9983093829247676,
+          "medianDaysToFire": 9,
+          "dayCount": 70182,
+          "dayRate": 0.25313707172974476
+        }
+      ],
+      "newSignalFireRate": [
+        {
+          "signal": "S1_RUNUP_21D_100",
+          "positionsFired": 69,
+          "rate": 0.058326289095519866,
+          "medianDaysToFire": 82,
+          "dayCount": 472,
+          "dayRate": 0.0017024407662426194
+        },
+        {
+          "signal": "S2_RUNUP_5D_40",
+          "positionsFired": 228,
+          "rate": 0.19273034657650043,
+          "medianDaysToFire": 84,
+          "dayCount": 757,
+          "dayRate": 0.0027303975848425063
+        },
+        {
+          "signal": "S3_LIMIT_UP",
+          "positionsFired": 375,
+          "rate": 0.3169907016060862,
+          "medianDaysToFire": 58,
+          "dayCount": 1274,
+          "dayRate": 0.004595147322443003
+        },
+        {
+          "signal": "S4_GAP_BEAR_VOLUME",
+          "positionsFired": 521,
+          "rate": 0.44040574809805577,
+          "medianDaysToFire": 77,
+          "dayCount": 960,
+          "dayRate": 0.0034625913889680397
+        },
+        {
+          "signal": "S5_APP_PROXY",
+          "positionsFired": 176,
+          "rate": 0.14877430262045646,
+          "medianDaysToFire": 105,
+          "dayCount": 213,
+          "dayRate": 0.0007682624644272838
+        },
+        {
+          "signal": "S6_CRASH_5_VOLUME_2X",
+          "positionsFired": 975,
+          "rate": 0.8241758241758241,
+          "medianDaysToFire": 56,
+          "dayCount": 3049,
+          "dayRate": 0.0109973345260037
+        },
+        {
+          "signal": "H3_VOL_SPIKE_ROLLING",
+          "positionsFired": 406,
+          "rate": 0.3431952662721893,
+          "medianDaysToFire": 113.5,
+          "dayCount": 589,
+          "dayRate": 0.002124444091773099
+        },
+        {
+          "signal": "H6_RS_90_TO_97_FAST",
+          "positionsFired": 0,
+          "rate": 0,
+          "medianDaysToFire": null,
+          "dayCount": 0,
+          "dayRate": 0
+        },
+        {
+          "signal": "H7_RS_BELOW_50",
+          "positionsFired": 0,
+          "rate": 0,
+          "medianDaysToFire": null,
+          "dayCount": 0,
+          "dayRate": 0
+        }
+      ]
+    },
+    {
+      "cohort": "RANDOM",
+      "period": "VALIDATION",
+      "nPositions": 1190,
+      "avgWindowDays": 224.74285714285713,
+      "triggerRateC": 1,
+      "triggerRateD": 1,
+      "medianDaysToFirstC": 0,
+      "medianDaysToFirstD": 0,
+      "hold": {
+        "medianReturn": -0.1539549117367745,
+        "meanReturn": 0.011021169988852853,
+        "p10Return": -0.5016145977011494,
+        "p90Return": 0.657429336253885,
+        "medianMdd": 0.413868006993007,
+        "meanMdd": 0.4238698019929409,
+        "medianSells": 0,
+        "meanSells": 0,
+        "meanCostPaid": 0.0030000000000000204,
+        "meanBuys": 1
+      },
+      "policyC": {
+        "medianReturn": -0.1007906408922778,
+        "meanReturn": -0.07581628357154217,
+        "p10Return": -0.24810406631365256,
+        "p90Return": 0.12339924759651678,
+        "medianMdd": 0.1648110203422713,
+        "meanMdd": 0.17304385944470385,
+        "medianSells": 12,
+        "meanSells": 10.415126050420168,
+        "meanCostPaid": 0.0842381432763423,
+        "meanBuys": 10.483193277310924
+      },
+      "policyD": {
+        "medianReturn": -0.09922759371619305,
+        "meanReturn": -0.07527899918255092,
+        "p10Return": -0.2494392627837812,
+        "p90Return": 0.12292491852718379,
+        "medianMdd": 0.16166462594284947,
+        "meanMdd": 0.17157461946504915,
+        "medianSells": 12,
+        "meanSells": 10.420168067226891,
+        "meanCostPaid": 0.08425146844863925,
+        "meanBuys": 10.489915966386555
+      },
+      "mddReductionC": {
+        "median": 0.2425688350271349,
+        "mean": 0.25082594254823765
+      },
+      "mddReductionD": {
+        "median": 0.24396155920466578,
+        "mean": 0.25229518252789235
+      },
+      "incrementalReturn": {
+        "median": 0,
+        "mean": 0.0005372843889912371,
+        "winRate": 0.041176470588235294,
+        "loseRate": 0.02857142857142857,
+        "differRate": 0.06974789915966387
+      },
+      "incrementalMdd": {
+        "median": 0,
+        "mean": -0.001469239979654692
+      },
+      "falseSell": {
+        "h20": {
+          "horizon": 20,
+          "nC": 1190,
+          "falseRateC": 0.446218487394958,
+          "nD": 1190,
+          "falseRateD": 0.446218487394958,
+          "nNewOnly": 11,
+          "falseRateNewOnly": 0.45454545454545453
+        },
+        "h63": {
+          "horizon": 63,
+          "nC": 1185,
+          "falseRateC": 0.40253164556962023,
+          "nD": 1185,
+          "falseRateD": 0.40337552742616034,
+          "nNewOnly": 11,
+          "falseRateNewOnly": 0.45454545454545453
+        }
+      },
+      "overlapCvsNew": {
+        "a": "C(기존규칙)",
+        "b": "NEW(신규신호)",
+        "nA": 191326,
+        "nB": 4312,
+        "intersection": 4150,
+        "union": 191488,
+        "jaccard": 0.021672376336898395,
+        "recallOfBvsA": 0.02169072682228239,
+        "precisionOfBvsA": 0.962430426716141
+      },
+      "overlapByNewSignal": [
+        {
+          "signal": "S1_RUNUP_21D_100",
+          "nNew": 528,
+          "overlapWithC": 524,
+          "overlapRate": 0.9924242424242424
+        },
+        {
+          "signal": "S2_RUNUP_5D_40",
+          "nNew": 839,
+          "overlapWithC": 806,
+          "overlapRate": 0.9606674612634089
+        },
+        {
+          "signal": "S3_LIMIT_UP",
+          "nNew": 361,
+          "overlapWithC": 351,
+          "overlapRate": 0.9722991689750693
+        },
+        {
+          "signal": "S4_GAP_BEAR_VOLUME",
+          "nNew": 861,
+          "overlapWithC": 773,
+          "overlapRate": 0.8977932636469221
+        },
+        {
+          "signal": "S5_APP_PROXY",
+          "nNew": 85,
+          "overlapWithC": 85,
+          "overlapRate": 1
+        },
+        {
+          "signal": "S6_CRASH_5_VOLUME_2X",
+          "nNew": 1598,
+          "overlapWithC": 1598,
+          "overlapRate": 1
+        },
+        {
+          "signal": "H3_VOL_SPIKE_ROLLING",
+          "nNew": 690,
+          "overlapWithC": 652,
+          "overlapRate": 0.9449275362318841
+        },
+        {
+          "signal": "H6_RS_90_TO_97_FAST",
+          "nNew": 0,
+          "overlapWithC": 0,
+          "overlapRate": null
+        },
+        {
+          "signal": "H7_RS_BELOW_50",
+          "nNew": 0,
+          "overlapWithC": 0,
+          "overlapRate": null
+        }
+      ],
+      "totalEvaluatedDays": 267444,
+      "cDayRate": 0.9040771152091653,
+      "newDayRate": 0.020097665305634078,
+      "ruleFireRate": [
+        {
+          "rule": "stop-loss",
+          "positionsFired": 1054,
+          "rate": 0.8857142857142857,
+          "medianDaysToFire": 9,
+          "dayCount": 131298,
+          "dayRate": 0.4909364203347243
+        },
+        {
+          "rule": "overheat-drop",
+          "positionsFired": 652,
+          "rate": 0.5478991596638656,
+          "medianDaysToFire": 70,
+          "dayCount": 2335,
+          "dayRate": 0.00873079971881964
+        },
+        {
+          "rule": "dead-cross",
+          "positionsFired": 1190,
+          "rate": 1,
+          "medianDaysToFire": 0,
+          "dayCount": 144940,
+          "dayRate": 0.541945229655554
+        },
+        {
+          "rule": "trend-break",
+          "positionsFired": 1133,
+          "rate": 0.9521008403361344,
+          "medianDaysToFire": 2,
+          "dayCount": 101360,
+          "dayRate": 0.37899522890773396
+        },
+        {
+          "rule": "long-decline",
+          "positionsFired": 1158,
+          "rate": 0.973109243697479,
+          "medianDaysToFire": 10,
+          "dayCount": 128600,
+          "dayRate": 0.48084832712642644
+        },
+        {
+          "rule": "profit-target",
+          "positionsFired": 612,
+          "rate": 0.5142857142857142,
+          "medianDaysToFire": 38,
+          "dayCount": 54538,
+          "dayRate": 0.20392306426765977
+        },
+        {
+          "rule": "overheat-profit",
+          "positionsFired": 606,
+          "rate": 0.5092436974789916,
+          "medianDaysToFire": 41,
+          "dayCount": 4956,
+          "dayRate": 0.018530982186925112
+        },
+        {
+          "rule": "daily-crash",
+          "positionsFired": 1148,
+          "rate": 0.9647058823529412,
+          "medianDaysToFire": 17,
+          "dayCount": 11325,
+          "dayRate": 0.04234531341140575
+        },
+        {
+          "rule": "climax-top",
+          "positionsFired": 376,
+          "rate": 0.31596638655462184,
+          "medianDaysToFire": 54.5,
+          "dayCount": 1290,
+          "dayRate": 0.004823439673352178
+        },
+        {
+          "rule": "distribution-high",
+          "positionsFired": 790,
+          "rate": 0.6638655462184874,
+          "medianDaysToFire": 84,
+          "dayCount": 8684,
+          "dayRate": 0.03247034893286071
+        },
+        {
+          "rule": "weinstein-150-break",
+          "positionsFired": 1054,
+          "rate": 0.8857142857142857,
+          "medianDaysToFire": 43,
+          "dayCount": 19734,
+          "dayRate": 0.0737874097007224
+        },
+        {
+          "rule": "ma120-break",
+          "positionsFired": 1095,
+          "rate": 0.9201680672268907,
+          "medianDaysToFire": 34,
+          "dayCount": 21535,
+          "dayRate": 0.08052152974080555
+        },
+        {
+          "rule": "swing-low-break",
+          "positionsFired": 1188,
+          "rate": 0.9983193277310924,
+          "medianDaysToFire": 10,
+          "dayCount": 66530,
+          "dayRate": 0.24876235772722513
+        }
+      ],
+      "newSignalFireRate": [
+        {
+          "signal": "S1_RUNUP_21D_100",
+          "positionsFired": 92,
+          "rate": 0.0773109243697479,
+          "medianDaysToFire": 73,
+          "dayCount": 640,
+          "dayRate": 0.002393024334066197
+        },
+        {
+          "signal": "S2_RUNUP_5D_40",
+          "positionsFired": 269,
+          "rate": 0.22605042016806723,
+          "medianDaysToFire": 64,
+          "dayCount": 1034,
+          "dayRate": 0.0038662299397256997
+        },
+        {
+          "signal": "S3_LIMIT_UP",
+          "positionsFired": 245,
+          "rate": 0.20588235294117646,
+          "medianDaysToFire": 85,
+          "dayCount": 428,
+          "dayRate": 0.0016003350234067692
+        },
+        {
+          "signal": "S4_GAP_BEAR_VOLUME",
+          "positionsFired": 567,
+          "rate": 0.4764705882352941,
+          "medianDaysToFire": 66,
+          "dayCount": 1064,
+          "dayRate": 0.003978402955385053
+        },
+        {
+          "signal": "S5_APP_PROXY",
+          "positionsFired": 100,
+          "rate": 0.08403361344537816,
+          "medianDaysToFire": 81,
+          "dayCount": 109,
+          "dayRate": 0.00040756195689564917
+        },
+        {
+          "signal": "S6_CRASH_5_VOLUME_2X",
+          "positionsFired": 876,
+          "rate": 0.7361344537815127,
+          "medianDaysToFire": 68,
+          "dayCount": 2036,
+          "dayRate": 0.0076128086627480895
+        },
+        {
+          "signal": "H3_VOL_SPIKE_ROLLING",
+          "positionsFired": 527,
+          "rate": 0.44285714285714284,
+          "medianDaysToFire": 88,
+          "dayCount": 842,
+          "dayRate": 0.0031483226395058405
+        },
+        {
+          "signal": "H6_RS_90_TO_97_FAST",
+          "positionsFired": 0,
+          "rate": 0,
+          "medianDaysToFire": null,
+          "dayCount": 0,
+          "dayRate": 0
+        },
+        {
+          "signal": "H7_RS_BELOW_50",
+          "positionsFired": 0,
+          "rate": 0,
+          "medianDaysToFire": null,
+          "dayCount": 0,
+          "dayRate": 0
+        }
+      ]
+    }
+  ],
+  "verdict": {
+    "verdict": "조건부",
+    "reasons": [
+      "**[1차 기준] 페어드 수익률 차(D−C) 평균**: 0.056%(개발) / -0.067%(검증) → **방향 불일치**",
+      "**[1차 기준] 페어드 MDD 차(D−C) 평균**: -0.380%(개발) / -0.336%(검증) → 양쪽 낙폭 축소",
+      "페어드 수익률 차 **중앙값 0.000% / 0.000%** — D 경로가 C와 조금이라도 달라진 포지션 16.30%(개발) / 15.60%(검증), 그중 D 우위 8.92% vs D 열위 7.38%(개발) · 8.40% vs 7.20%(검증)",
+      "실질성 임계(수익률 0.5%p · MDD 2.0%p) 충족: **아니오**",
+      "(참고) 비페어드 중앙값 차 — 수익률 0.47% / 0.20%, MDD -0.49% / -0.41%. 두 분포가 거의 동일하므로 이 값은 페어드 결과보다 신뢰도가 낮다",
+      "추가 거래비용(D−C, 원금대비 평균): 0.019%(개발) / 0.010%(검증)",
+      "**신규신호 발동일의 95.23%(개발) / 94.92%(검증)이 기존 규칙과 같은 날 이미 발동** — 신규신호가 새로 알려주는 날은 5% 남짓",
+      "**기존 규칙 C의 포화**: 보유 평가일의 91.01%(개발) / 91.75%(검증)에서 이미 매도규칙 중 하나가 발동한다. 트리거 발생률 100.00% / 100.00%, 첫 트리거까지 중앙값 0 / 0거래일 — 신규신호가 더 이르게·새롭게 잡아낼 여지 자체가 거의 없다",
+      "편향 대조(무작위 매수일, H6·H7 제외) 페어드 수익률 차 평균: 0.064%(개발) / 0.054%(검증), 경로가 달라진 포지션 6.34% / 6.97%"
+    ]
+  },
+  "elapsedSec": 34.029
+}

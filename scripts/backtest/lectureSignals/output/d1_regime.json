@@ -1,0 +1,362 @@
+{
+  "dev": {
+    "period": "DEV",
+    "proxySymbol": "^KS11",
+    "variants": [
+      {
+        "variant": "KR150_LEVEL",
+        "forwardTest": {
+          "nRisk": 924,
+          "nNormal": 1413,
+          "meanFwdRisk": 0.07810533904531947,
+          "meanFwdNormal": 0.03982812038009804,
+          "medianFwdRisk": 0.07259859280396286,
+          "medianFwdNormal": 0.032786620103823605,
+          "diffMean": 0.03827721866522143,
+          "ciLower": -0.016381243806926602,
+          "ciUpper": 0.09384124399320731,
+          "pValue": 0.1712
+        },
+        "baseline": {
+          "cagr": 0.09898244072944151,
+          "sharpe": 0.66245151171379,
+          "mdd": 0.287682187541593,
+          "finalEquity": 2.5155665792921615
+        },
+        "block": {
+          "cagr": 0.04376441281108234,
+          "sharpe": 0.5294371692692997,
+          "mdd": 0.1343595773624764,
+          "finalEquity": 1.5199074711544003
+        },
+        "halve": {
+          "cagr": 0.07353337595887455,
+          "sharpe": 0.6920624618525881,
+          "mdd": 0.17087741973616832,
+          "finalEquity": 2.000715455223845
+        },
+        "sharpeDeltaBlock": -0.13301434244449029,
+        "sharpeDeltaHalve": 0.02961095013879811,
+        "mddDeltaBlock": 0.15332261017911664,
+        "mddDeltaHalve": 0.1168047678054247,
+        "cagrSacrificeBlock": 0.05521802791835917,
+        "cagrSacrificeHalve": 0.025449064770566965
+      },
+      {
+        "variant": "KR150_SLOPE",
+        "forwardTest": {
+          "nRisk": 944,
+          "nNormal": 1393,
+          "meanFwdRisk": 0.07265241159173062,
+          "meanFwdNormal": 0.04297386276551326,
+          "medianFwdRisk": 0.047605707281735965,
+          "medianFwdNormal": 0.043324232513721306,
+          "diffMean": 0.029678548826217364,
+          "ciLower": -0.023354644691775638,
+          "ciUpper": 0.08588500634300446,
+          "pValue": 0.2816
+        },
+        "baseline": {
+          "cagr": 0.09898244072944151,
+          "sharpe": 0.66245151171379,
+          "mdd": 0.287682187541593,
+          "finalEquity": 2.5155665792921615
+        },
+        "block": {
+          "cagr": 0.003645401431682904,
+          "sharpe": 0.09015993669689534,
+          "mdd": 0.22074352074721293,
+          "finalEquity": 1.036204662275815
+        },
+        "halve": {
+          "cagr": 0.0518523414517309,
+          "sharpe": 0.4497476500100957,
+          "mdd": 0.20240675536955932,
+          "finalEquity": 1.6390108127354526
+        },
+        "sharpeDeltaBlock": -0.5722915750168946,
+        "sharpeDeltaHalve": -0.21270386170369432,
+        "mddDeltaBlock": 0.0669386667943801,
+        "mddDeltaHalve": 0.0852754321720337,
+        "cagrSacrificeBlock": 0.09533703929775861,
+        "cagrSacrificeHalve": 0.04713009927771061
+      },
+      {
+        "variant": "KR150_COMBINED",
+        "forwardTest": {
+          "nRisk": 1251,
+          "nNormal": 1086,
+          "meanFwdRisk": 0.06454736113779104,
+          "meanFwdNormal": 0.04392055118929755,
+          "medianFwdRisk": 0.04791319682521755,
+          "medianFwdNormal": 0.04298392152456343,
+          "diffMean": 0.020626809948493488,
+          "ciLower": -0.030750141654941915,
+          "ciUpper": 0.07263138385889771,
+          "pValue": 0.4448
+        },
+        "baseline": {
+          "cagr": 0.09898244072944151,
+          "sharpe": 0.66245151171379,
+          "mdd": 0.287682187541593,
+          "finalEquity": 2.5155665792921615
+        },
+        "block": {
+          "cagr": 0.007340756617056687,
+          "sharpe": 0.13366693581686104,
+          "mdd": 0.15980435622096179,
+          "finalEquity": 1.0741021458293565
+        },
+        "halve": {
+          "cagr": 0.05488699653956908,
+          "sharpe": 0.5612635922622474,
+          "mdd": 0.17087741973616766,
+          "finalEquity": 1.6858169895634207
+        },
+        "sharpeDeltaBlock": -0.528784575896929,
+        "sharpeDeltaHalve": -0.1011879194515426,
+        "mddDeltaBlock": 0.12787783132063124,
+        "mddDeltaHalve": 0.11680476780542537,
+        "cagrSacrificeBlock": 0.09164168411238482,
+        "cagrSacrificeHalve": 0.044095444189872435
+      },
+      {
+        "variant": "KR200_LEVEL",
+        "forwardTest": {
+          "nRisk": 885,
+          "nNormal": 1452,
+          "meanFwdRisk": 0.08281436367209491,
+          "meanFwdNormal": 0.03798605752420775,
+          "medianFwdRisk": 0.07959328935163756,
+          "medianFwdNormal": 0.03260305659227636,
+          "diffMean": 0.04482830614788716,
+          "ciLower": -0.007770510845558549,
+          "ciUpper": 0.09882711945436634,
+          "pValue": 0.096
+        },
+        "baseline": {
+          "cagr": 0.09898244072944151,
+          "sharpe": 0.66245151171379,
+          "mdd": 0.287682187541593,
+          "finalEquity": 2.5155665792921615
+        },
+        "block": {
+          "cagr": 0.03281746504003791,
+          "sharpe": 0.3957246186776909,
+          "mdd": 0.2081819470145938,
+          "finalEquity": 1.3710829621658036
+        },
+        "halve": {
+          "cagr": 0.06778834412875323,
+          "sharpe": 0.6323673716525021,
+          "mdd": 0.18495641388977202,
+          "finalEquity": 1.8984916127765104
+        },
+        "sharpeDeltaBlock": -0.26672689303609914,
+        "sharpeDeltaHalve": -0.0300841400612879,
+        "mddDeltaBlock": 0.07950024052699922,
+        "mddDeltaHalve": 0.102725773651821,
+        "cagrSacrificeBlock": 0.0661649756894036,
+        "cagrSacrificeHalve": 0.03119409660068828
+      }
+    ],
+    "ewDays": 2463
+  },
+  "val": {
+    "period": "VALIDATION",
+    "proxySymbol": "^KS11",
+    "variants": [
+      {
+        "variant": "KR150_LEVEL",
+        "forwardTest": {
+          "nRisk": 271,
+          "nNormal": 343,
+          "meanFwdRisk": 0.025662861548648407,
+          "meanFwdNormal": 0.1431312165774594,
+          "medianFwdRisk": -0.046964354111860396,
+          "medianFwdNormal": 0.1909810740279898,
+          "diffMean": -0.11746835502881098,
+          "ciLower": -0.29834331585433777,
+          "ciUpper": 0.11679328851832654,
+          "pValue": 0.31
+        },
+        "baseline": {
+          "cagr": 0.07406704903153538,
+          "sharpe": 0.4145527451056431,
+          "mdd": 0.4169139420477317,
+          "finalEquity": 1.233456768335449
+        },
+        "block": {
+          "cagr": 0.14219350996862135,
+          "sharpe": 1.1717940953901804,
+          "mdd": 0.15039442120822377,
+          "finalEquity": 1.4775869694049122
+        },
+        "halve": {
+          "cagr": 0.11424514714609568,
+          "sharpe": 0.7522520389486842,
+          "mdd": 0.26520820106153487,
+          "finalEquity": 1.3739133674745652
+        },
+        "sharpeDeltaBlock": 0.7572413502845373,
+        "sharpeDeltaHalve": 0.3376992938430411,
+        "mddDeltaBlock": 0.2665195208395079,
+        "mddDeltaHalve": 0.15170574098619682,
+        "cagrSacrificeBlock": -0.06812646093708596,
+        "cagrSacrificeHalve": -0.0401780981145603
+      },
+      {
+        "variant": "KR150_SLOPE",
+        "forwardTest": {
+          "nRisk": 239,
+          "nNormal": 375,
+          "meanFwdRisk": 0.03274174808535139,
+          "meanFwdNormal": 0.1285956399289421,
+          "medianFwdRisk": -0.04092665040976895,
+          "medianFwdNormal": 0.1618576096582729,
+          "diffMean": -0.09585389184359072,
+          "ciLower": -0.28558947925071815,
+          "ciUpper": 0.17085227704491948,
+          "pValue": 0.4176
+        },
+        "baseline": {
+          "cagr": 0.07406704903153538,
+          "sharpe": 0.4145527451056431,
+          "mdd": 0.4169139420477317,
+          "finalEquity": 1.233456768335449
+        },
+        "block": {
+          "cagr": 0.026684340681333296,
+          "sharpe": 0.2526653107389362,
+          "mdd": 0.3203660336287495,
+          "finalEquity": 1.0804002087391837
+        },
+        "halve": {
+          "cagr": 0.05534490438670758,
+          "sharpe": 0.39236505484853973,
+          "mdd": 0.3438002095641418,
+          "finalEquity": 1.1713802376653906
+        },
+        "sharpeDeltaBlock": -0.16188743436670688,
+        "sharpeDeltaHalve": -0.022187690257103376,
+        "mddDeltaBlock": 0.0965479084189822,
+        "mddDeltaHalve": 0.07311373248358988,
+        "cagrSacrificeBlock": 0.047382708350202085,
+        "cagrSacrificeHalve": 0.0187221446448278
+      },
+      {
+        "variant": "KR150_COMBINED",
+        "forwardTest": {
+          "nRisk": 280,
+          "nNormal": 334,
+          "meanFwdRisk": 0.03336957470832098,
+          "meanFwdNormal": 0.13983581391443836,
+          "medianFwdRisk": -0.041799754001868805,
+          "medianFwdNormal": 0.18441972562462727,
+          "diffMean": -0.10646623920611739,
+          "ciLower": -0.29281162059018895,
+          "ciUpper": 0.12743504723003646,
+          "pValue": 0.34843484348434844
+        },
+        "baseline": {
+          "cagr": 0.07406704903153538,
+          "sharpe": 0.4145527451056431,
+          "mdd": 0.4169139420477317,
+          "finalEquity": 1.233456768335449
+        },
+        "block": {
+          "cagr": 0.13645465612636754,
+          "sharpe": 1.146907306371175,
+          "mdd": 0.1514560418976143,
+          "finalEquity": 1.4558921979954076
+        },
+        "halve": {
+          "cagr": 0.11150966785623373,
+          "sharpe": 0.7410154828480776,
+          "mdd": 0.26520820106153487,
+          "finalEquity": 1.364032150777305
+        },
+        "sharpeDeltaBlock": 0.7323545612655319,
+        "sharpeDeltaHalve": 0.3264627377424345,
+        "mddDeltaBlock": 0.2654579001501174,
+        "mddDeltaHalve": 0.15170574098619682,
+        "cagrSacrificeBlock": -0.062387607094832154,
+        "cagrSacrificeHalve": -0.03744261882469835
+      },
+      {
+        "variant": "KR200_LEVEL",
+        "forwardTest": {
+          "nRisk": 247,
+          "nNormal": 367,
+          "meanFwdRisk": 0.032036799573522484,
+          "meanFwdNormal": 0.13115954569779895,
+          "medianFwdRisk": -0.03953018069663272,
+          "medianFwdNormal": 0.1755994161666905,
+          "diffMean": -0.09912274612427646,
+          "ciLower": -0.2957936861454431,
+          "ciUpper": 0.16356309325500615,
+          "pValue": 0.405
+        },
+        "baseline": {
+          "cagr": 0.07406704903153538,
+          "sharpe": 0.4145527451056431,
+          "mdd": 0.4169139420477317,
+          "finalEquity": 1.233456768335449
+        },
+        "block": {
+          "cagr": 0.129329710099503,
+          "sharpe": 1.0311473703147107,
+          "mdd": 0.14897427075965675,
+          "finalEquity": 1.4292511888618091
+        },
+        "halve": {
+          "cagr": 0.10774683132833451,
+          "sharpe": 0.7045440002914768,
+          "mdd": 0.26520820106153487,
+          "finalEquity": 1.3505166076052113
+        },
+        "sharpeDeltaBlock": 0.6165946252090676,
+        "sharpeDeltaHalve": 0.2899912551858337,
+        "mddDeltaBlock": 0.26793967128807494,
+        "mddDeltaHalve": 0.15170574098619682,
+        "cagrSacrificeBlock": -0.05526266106796762,
+        "cagrSacrificeHalve": -0.03367978229679913
+      }
+    ],
+    "ewDays": 740
+  },
+  "grades": {
+    "KR150_LEVEL": {
+      "grade": "REJECTED",
+      "reasons": [
+        "dev 126일 레짐차(risk−normal)=3.83%, val=-11.75% [95%CI -29.83%~11.68%]",
+        "검증 포트폴리오: ΔSharpe 차단 0.757/반감 0.338, ΔMDD개선 차단 26.65%/반감 15.17%, CAGR희생(최소) -6.81%",
+        "개발표본 방향 불일치"
+      ]
+    },
+    "KR150_SLOPE": {
+      "grade": "REJECTED",
+      "reasons": [
+        "dev 126일 레짐차(risk−normal)=2.97%, val=-9.59% [95%CI -28.56%~17.09%]",
+        "검증 포트폴리오: ΔSharpe 차단 -0.162/반감 -0.022, ΔMDD개선 차단 9.65%/반감 7.31%, CAGR희생(최소) 1.87%",
+        "개발표본 방향 불일치"
+      ]
+    },
+    "KR150_COMBINED": {
+      "grade": "REJECTED",
+      "reasons": [
+        "dev 126일 레짐차(risk−normal)=2.06%, val=-10.65% [95%CI -29.28%~12.74%]",
+        "검증 포트폴리오: ΔSharpe 차단 0.732/반감 0.326, ΔMDD개선 차단 26.55%/반감 15.17%, CAGR희생(최소) -6.24%",
+        "개발표본 방향 불일치"
+      ]
+    },
+    "KR200_LEVEL": {
+      "grade": "REJECTED",
+      "reasons": [
+        "dev 126일 레짐차(risk−normal)=4.48%, val=-9.91% [95%CI -29.58%~16.36%]",
+        "검증 포트폴리오: ΔSharpe 차단 0.617/반감 0.290, ΔMDD개선 차단 26.79%/반감 15.17%, CAGR희생(최소) -5.53%",
+        "개발표본 방향 불일치"
+      ]
+    }
+  }
+}

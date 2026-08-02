@@ -14,6 +14,7 @@ import type { ActionItem } from '../types/actionQueue';
 import type { TurtlePosition, TurtleSettings } from '../types/turtle';
 import { DEFAULT_TURTLE_SETTINGS } from '../types/turtle';
 import { parsePortfolioPayload, type ParsedPortfolioPayload } from '../utils/parsePortfolioPayload';
+import { applyRestoredAlertSettings } from '../utils/alertSettingsStorage';
 
 const log = createLogger('PortfolioData');
 
@@ -256,6 +257,10 @@ export const usePortfolioData = () => {
         window.dispatchEvent(new CustomEvent('column-config-restored', { detail: parsed.columnConfig }));
       } catch { /* ignore */ }
     }
+
+    // 알림 규칙 설정 복원 — Drive 로드와 동일 경로(localStorage 반영 + 이벤트).
+    // 아래 명시 autoSave가 localStorage를 다시 읽으므로 **저장보다 먼저** 반영해야 한다.
+    applyRestoredAlertSettings(parsed.alertSettings);
 
     // 복원된 전 도메인을 명시적으로 1회 저장 (현재 상태 기본값 절대 사용 안 함).
     // 백필 블록이 뒤늦게 더 완전한 히스토리로 다시 저장할 수 있으나 동일 복원 데이터라 무해.

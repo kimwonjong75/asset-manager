@@ -14,6 +14,7 @@ import type { KnowledgeBase } from '../types/knowledge';
 import type { ActionItem } from '../types/actionQueue';
 import type { TurtlePosition, TurtleSettings } from '../types/turtle';
 import type { ColumnConfig, FixedColumnWidths } from '../types/ui';
+import type { AlertSettings } from '../types/alertRules';
 
 // 신규 백업의 테이블 레이아웃 묶음 (columns + fixedWidths).
 export interface ParsedTableLayout {
@@ -38,6 +39,8 @@ export interface ParsedPortfolioPayload {
   turtleSettings?: TurtleSettings;
   tableLayout?: ParsedTableLayout;
   columnConfig?: ColumnConfig[]; // 레거시 백업(구 버전 클라이언트 호환)
+  /** 알림 규칙 설정 — 병합/localStorage 반영은 훅(alertSettingsStorage)이 담당, 여기선 원본만 통과 */
+  alertSettings?: AlertSettings;
   lastUpdateDate?: string;
 }
 
@@ -82,6 +85,8 @@ export function parsePortfolioPayload(json: string): ParsedPortfolioPayload {
   }
 
   const columnConfig = Array.isArray(data.columnConfig) ? (data.columnConfig as ColumnConfig[]) : undefined;
+  // 알림 규칙 설정 — 객체이면 그대로 통과(기본값 병합은 mergeAlertSettings 담당)
+  const alertSettings = isPlainObject(data.alertSettings) ? (data.alertSettings as unknown as AlertSettings) : undefined;
   const lastUpdateDate = typeof data.lastUpdateDate === 'string' ? data.lastUpdateDate : undefined;
 
   return {
@@ -99,6 +104,7 @@ export function parsePortfolioPayload(json: string): ParsedPortfolioPayload {
     turtleSettings,
     tableLayout,
     columnConfig,
+    alertSettings,
     lastUpdateDate,
   };
 }

@@ -31,6 +31,11 @@ const LONG_TREND_LOOKBACK = 60;
 const LONG_TREND_GROWTH = 1.1;
 const SWING_LOW_LOOKBACK = 60;
 const SWING_LOW_BARS = 5;
+// ── 강의검증 급성 매도 신호 창 상수 (scripts/backtest/lectureSignals/configTypes.ts CONST와 동일) ──
+const RUNUP_1M_LOOKBACK = 21;      // S1: 21거래일
+const RUNUP_1W_LOOKBACK = 5;       // S2: 5거래일
+const ACUTE_VOLUME_BASELINE = 20;  // S4/S6: 20일 평균거래량 (당일 제외)
+const TURNOVER_MAX_WINDOW = 63;    // S5: 거래대금 프록시 최근 63일 최대 (당일 포함)
 
 export interface BuildEnrichedInput {
   /** 날짜 오름차순 정렬된 날짜 키 (YYYY-MM-DD) */
@@ -149,6 +154,73 @@ export function buildEnrichedIndicator(input: BuildEnrichedInput): EnrichedIndic
   const swingLow = detectRecentSwingLow(sortedPrices, SWING_LOW_LOOKBACK, SWING_LOW_BARS, SWING_LOW_BARS);
   const recentSwingLow = swingLow?.price ?? null;
 
+  // ── 강의검증 급성 매도 신호 재료 (KR 전용, 룩어헤드 0 — 아래 규약 준수) ──
+  // · 수익률/가격비: close[i]/close[i-k] (미래참조 없음).
+  // · 20일 평균거래량은 당일 D 제외([i-20 .. i-1], 백테스트 priorMean과 동일) — 룩어헤드 방지.
+  // · 거래대금 프록시 63일 최대는 당일 포함([i-62 .. i]) — "당일이 신고 거래대금" 판정(S5_APP_PROXY 정의).
+  // 판정은 evaluateSingleFilter가 하고, 여기서는 순수 재료만 계산한다.
+  const runup21dRatio = (() => {
+    const j = lastIdx - RUNUP_1M_LOOKBACK;
+    if (j < 0) return null;
+    const base = closes[j];
+    return typeof todayClose === 'number' && base > 0 ? todayClose / base : null;
+  })();
+  const runup5dRatio = (() => {
+    const j = lastIdx - RUNUP_1W_LOOKBACK;
+    if (j < 0) return null;
+    const base = closes[j];
+    return typeof todayClose === 'number' && base > 0 ? todayClose / base : null;
+  })();
+  // 당일 종가/전일 종가 (close-to-close, 백테스트 dailyRatio). **metrics.yesterdayChange 아님** — 백테스트 정합용.
+  const todayDailyRatio =
+    typeof prevClose === 'number' && prevClose > 0 && typeof todayClose === 'number'
+      ? todayClose / prevClose
+      : null;
+  // 종가==고가 (상대 허용오차, 백테스트 S3와 동일: |close-high| ≤ 1e-9·max(1,high))
+  const todayCloseEqualsHigh =
+    typeof todayHigh === 'number' && typeof todayClose === 'number'
+      ? Math.abs(todayClose - todayHigh) <= PRICE_HIGH_TOLERANCE * Math.max(1, todayHigh)
+      : null;
+  // 시가갭 open[i]/close[i-1]
+  const gapUpRatio =
+    typeof todayOpen === 'number' && typeof prevClose === 'number' && prevClose > 0
+      ? todayOpen / prevClose
+      : null;
+  // 당일 음봉 (close < open) — isBullishCandle(close>open)과 별개(도지 close==open은 둘 다 false)
+  const todayIsBearishCandle =
+    typeof todayOpen === 'number' && typeof todayClose === 'number'
+      ? todayClose < todayOpen
+      : null;
+  // 20일 평균거래량 대비 (당일 제외 — 룩어헤드 규약). 창 내 거래량 결측 있으면 판정 불가(null).
+  const volumeVs20dAvg = (() => {
+    const start = lastIdx - ACUTE_VOLUME_BASELINE;
+    if (start < 0 || typeof todayVolume !== 'number') return null;
+    let s = 0;
+    for (let k = start; k <= lastIdx - 1; k++) {
+      const v = volumes[k];
+      if (typeof v !== 'number') return null;
+      s += v;
+    }
+    const base = s / ACUTE_VOLUME_BASELINE;
+    return base > 0 ? todayVolume / base : null;
+  })();
+  // 거래대금 프록시(종가×거래량)가 최근 63일(당일 포함) 최대 여부.
+  // **프록시 주의**: 원천 거래대금(거래대금 amount)이 아니라 조정종가×거래량. 백테스트에서 원천(S5_AMOUNT)과
+  // 프록시(S5_APP_PROXY)가 검증등급 동일(둘 다 REVIEW_WARNING) 확인됨 → 런타임은 프록시만 사용.
+  const turnoverProxyIsMax63d = (() => {
+    const start = lastIdx - TURNOVER_MAX_WINDOW + 1;
+    if (start < 0 || typeof todayVolume !== 'number' || typeof todayClose !== 'number') return null;
+    const today = todayClose * todayVolume;
+    let mx = -Infinity;
+    for (let k = start; k <= lastIdx; k++) {
+      const v = volumes[k];
+      if (typeof v !== 'number') return null;
+      const p = closes[k] * v;
+      if (p > mx) mx = p;
+    }
+    return today >= mx;
+  })();
+
   const distributionDayMeta = buildDistributionMeta(opens, highs, lows, closesNullable, volumes, {
     metaLength: DISTRIBUTION_META_LENGTH,
     volumeAvgPeriod: VOLUME_AVG_PERIOD_DISTRIBUTION,
@@ -177,5 +249,13 @@ export function buildEnrichedIndicator(input: BuildEnrichedInput): EnrichedIndic
     isBullishCandle,
     longTrendUp,
     recentSwingLow,
+    runup21dRatio,
+    runup5dRatio,
+    todayDailyRatio,
+    todayCloseEqualsHigh,
+    gapUpRatio,
+    todayIsBearishCandle,
+    volumeVs20dAvg,
+    turnoverProxyIsMax63d,
   };
 }

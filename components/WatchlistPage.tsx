@@ -11,6 +11,12 @@ import { useOnClickOutside } from '../hooks/useOnClickOutside';
 import WatchlistMobileCard from './watchlist/WatchlistMobileCard';
 import { usePortfolio } from '../contexts/PortfolioContext';
 import { watchlistToPseudoAsset } from '../utils/alertChecker';
+import {
+  nextWatchlistSort,
+  sortWatchlistRows,
+  type WatchlistSortConfig,
+  type WatchlistSortKey,
+} from '../utils/watchlistSort';
 
 interface WatchlistPageProps {
   watchlist: WatchlistItem[];
@@ -25,6 +31,12 @@ interface WatchlistPageProps {
   categories: CategoryDefinition[];
   onTogglePin?: (id: string) => void;
 }
+
+// 정렬 아이콘 (PortfolioTable과 동일 관례: 비활성 ↕, 오름 ▲, 내림 ▼)
+const SortIcon: React.FC<{ sortKey: WatchlistSortKey; sortConfig: WatchlistSortConfig | null }> = ({ sortKey, sortConfig }) => {
+  if (!sortConfig || sortConfig.key !== sortKey) return <span className="opacity-30">↕</span>;
+  return <span>{sortConfig.direction === 'descending' ? '▼' : '▲'}</span>;
+};
 
 // 차트 아이콘
 const ChartBarIcon: React.FC = () => (
@@ -44,7 +56,10 @@ const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, portfolioAsset
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [showPinnedOnly, setShowPinnedOnly] = useState(false);
   const [memoEditItem, setMemoEditItem] = useState<WatchlistItem | null>(null);
+  const [sortConfig, setSortConfig] = useState<WatchlistSortConfig | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
+
+  const requestSort = (key: WatchlistSortKey) => setSortConfig(prev => nextWatchlistSort(prev, key));
 
   useOnClickOutside(menuRef, () => setOpenMenuId(null), !!openMenuId);
 
@@ -77,8 +92,9 @@ const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, portfolioAsset
     return new Set(portfolioAssets.map(a => a.ticker.toUpperCase()));
   }, [portfolioAssets]);
 
+  // 필터 → 파생값 부착 → 헤더 정렬(순수 util). 데스크탑 테이블과 모바일 카드가 같은 목록을 공유한다.
   const filtered = useMemo(() => {
-    return watchlist
+    const rows = watchlist
       .filter(w => !showPinnedOnly || w.pinned)
       .filter(w => (filterCategory === 'ALL' ? true : w.categoryId === filterCategory))
       .filter(w => {
@@ -91,7 +107,8 @@ const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, portfolioAsset
         dropFromHigh: (w.highestPrice && w.highestPrice > 0 && w.currentPrice) ? ((w.currentPrice - w.highestPrice) / w.highestPrice) * 100 : null,
         yesterdayChange: w.yesterdayChange ?? (w.previousClosePrice && w.currentPrice ? ((w.currentPrice - w.previousClosePrice) / w.previousClosePrice) * 100 : 0),
       }));
-  }, [watchlist, filterCategory, search, showPinnedOnly]);
+    return sortWatchlistRows(rows, sortConfig);
+  }, [watchlist, filterCategory, search, showPinnedOnly, sortConfig]);
 
   useEffect(() => {
     setSelectedIds(prev => {
@@ -117,6 +134,11 @@ const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, portfolioAsset
     const orig = watchlist.find(x => x.id === id);
     if (orig) actions.updateWatchItem({ ...orig, isTurtleCandidate: !orig.isTurtleCandidate });
   };
+
+  // 정렬 가능한 헤더 셀 (PortfolioTable의 thClasses와 동일 톤)
+  const sortableThClasses = 'px-4 py-3 cursor-pointer hover:bg-gray-600 transition-colors whitespace-nowrap';
+  const ariaSortFor = (key: WatchlistSortKey): 'ascending' | 'descending' | 'none' =>
+    sortConfig?.key === key ? sortConfig.direction : 'none';
 
   const getExchangeRate = (currency?: Currency): number => {
     if (!currency || currency === Currency.KRW) return 1;
@@ -232,10 +254,42 @@ const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, portfolioAsset
                   setSelectedIds(next);
                 }} />
               </th>
-              <th className="px-4 py-3">종목명</th>
-              <th className="px-4 py-3 text-right">현재가</th>
-              <th className="px-4 py-3 text-right">어제대비</th>
-              <th className="px-4 py-3 text-right">최고가대비</th>
+              <th
+                scope="col"
+                className={sortableThClasses}
+                onClick={() => requestSort('name')}
+                title="종목명 정렬 (한 번 더 누르면 역순)"
+                aria-sort={ariaSortFor('name')}
+              >
+                <div className="flex items-center gap-2">종목명 <SortIcon sortKey="name" sortConfig={sortConfig} /></div>
+              </th>
+              <th
+                scope="col"
+                className={`${sortableThClasses} text-right`}
+                onClick={() => requestSort('currentPrice')}
+                title="현재가 정렬 (한 번 더 누르면 역순)"
+                aria-sort={ariaSortFor('currentPrice')}
+              >
+                <div className="flex items-center justify-end gap-2">현재가 <SortIcon sortKey="currentPrice" sortConfig={sortConfig} /></div>
+              </th>
+              <th
+                scope="col"
+                className={`${sortableThClasses} text-right`}
+                onClick={() => requestSort('yesterdayChange')}
+                title="어제대비 정렬 (한 번 더 누르면 역순)"
+                aria-sort={ariaSortFor('yesterdayChange')}
+              >
+                <div className="flex items-center justify-end gap-2">어제대비 <SortIcon sortKey="yesterdayChange" sortConfig={sortConfig} /></div>
+              </th>
+              <th
+                scope="col"
+                className={`${sortableThClasses} text-right`}
+                onClick={() => requestSort('dropFromHigh')}
+                title="최고가대비 정렬 (한 번 더 누르면 역순)"
+                aria-sort={ariaSortFor('dropFromHigh')}
+              >
+                <div className="flex items-center justify-end gap-2">최고가대비 <SortIcon sortKey="dropFromHigh" sortConfig={sortConfig} /></div>
+              </th>
               <th className="px-4 py-3 text-center">액션</th>
             </tr>
           </thead>
@@ -378,6 +432,29 @@ const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, portfolioAsset
             )}
           </tbody>
         </table>
+      </div>
+
+      {/* 모바일 정렬 바 — 데스크탑 헤더 클릭 정렬과 동일 상태(sortConfig)를 공유 */}
+      <div className="flex md:hidden items-center gap-1.5 overflow-x-auto scrollbar-hide">
+        <span className="text-xs text-gray-500 flex-shrink-0">정렬</span>
+        {([
+          { key: 'name', label: '종목명' },
+          { key: 'currentPrice', label: '현재가' },
+          { key: 'yesterdayChange', label: '어제대비' },
+          { key: 'dropFromHigh', label: '최고가대비' },
+        ] as { key: WatchlistSortKey; label: string }[]).map(({ key, label }) => (
+          <button
+            key={key}
+            onClick={() => requestSort(key)}
+            className={`text-xs px-2 py-1 rounded-md border transition-colors whitespace-nowrap flex items-center gap-1 ${
+              sortConfig?.key === key
+                ? 'bg-primary/20 border-primary/50 text-primary-light'
+                : 'bg-gray-800 border-gray-700 text-gray-400 hover:text-white'
+            }`}
+          >
+            {label} <SortIcon sortKey={key} sortConfig={sortConfig} />
+          </button>
+        ))}
       </div>
 
       {/* 모바일 카드 뷰 */}

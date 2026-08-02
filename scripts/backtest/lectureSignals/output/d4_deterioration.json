@@ -1,0 +1,2767 @@
+{
+  "dev": {
+    "period": "DEV",
+    "bySignal": [
+      {
+        "signal": "H3_VOL_SPIKE_ROLLING",
+        "nEvents": 2555,
+        "primaryHorizon": 63,
+        "summaryByHorizon": {
+          "20": {
+            "events": 2552,
+            "uniqueCodes": 876,
+            "years": 10,
+            "signalMean": -0.013048978754933195,
+            "signalMedian": -0.041553023740768025,
+            "controlMean": -0.00658083353165587,
+            "controlMedian": -0.017763967040472825,
+            "medianExcessDiff": -0.0237890567002952,
+            "meanMatchedDiff": -0.006468145223277331,
+            "maeMean": -0.1565303775444446,
+            "mfeMean": 0.18881820346380151,
+            "p10StockReturn": -0.2209618506493507,
+            "matchRate": 1
+          },
+          "63": {
+            "events": 2546,
+            "uniqueCodes": 876,
+            "years": 10,
+            "signalMean": -0.024945472070128746,
+            "signalMedian": -0.07926677401845578,
+            "controlMean": -0.016529817181301955,
+            "controlMedian": -0.0447097818638524,
+            "medianExcessDiff": -0.03455699215460337,
+            "meanMatchedDiff": -0.008415654888826824,
+            "maeMean": -0.2560268736506565,
+            "mfeMean": 0.3118226381695725,
+            "p10StockReturn": -0.3364104669538004,
+            "matchRate": 0.9992144540455616
+          },
+          "126": {
+            "events": 2537,
+            "uniqueCodes": 876,
+            "years": 10,
+            "signalMean": -0.024244744461021237,
+            "signalMedian": -0.1073589701615727,
+            "controlMean": -0.011281514281754489,
+            "controlMedian": -0.05740621519288121,
+            "medianExcessDiff": -0.04995275496869149,
+            "meanMatchedDiff": -0.012963230179266746,
+            "maeMean": -0.34037949715102855,
+            "mfeMean": 0.4416667130578844,
+            "p10StockReturn": -0.4098626783053012,
+            "matchRate": 0.9976350019708317
+          },
+          "252": {
+            "events": 2505,
+            "uniqueCodes": 876,
+            "years": 10,
+            "signalMean": -0.0066050675592881185,
+            "signalMedian": -0.13431708883840338,
+            "controlMean": -0.027069405537575808,
+            "controlMedian": -0.09267762808591376,
+            "medianExcessDiff": -0.041639460752489615,
+            "meanMatchedDiff": 0.02046433797828771,
+            "maeMean": -0.4315923461780047,
+            "mfeMean": 0.6474565897949435,
+            "p10StockReturn": -0.5003204322108891,
+            "matchRate": 0.9948103792415169
+          }
+        },
+        "primaryBootstrapMedian": {
+          "point": -0.03455699215460337,
+          "ciLower": -0.04633564881239449,
+          "ciUpper": -0.021845678915995963,
+          "pValue": 0
+        },
+        "primaryBootstrapMeanMatched": {
+          "point": -0.008415654888826824,
+          "ciLower": -0.024248154374987937,
+          "ciUpper": 0.007627844353556659,
+          "pValue": 0.304
+        },
+        "yearDecomp": {
+          "byYear": [
+            {
+              "year": 2010,
+              "events": 147,
+              "medianExcessDiff": -0.012692415690367859
+            },
+            {
+              "year": 2011,
+              "events": 191,
+              "medianExcessDiff": -0.04145440666027027
+            },
+            {
+              "year": 2012,
+              "events": 181,
+              "medianExcessDiff": -0.05198001870751208
+            },
+            {
+              "year": 2013,
+              "events": 129,
+              "medianExcessDiff": -0.008639874363823564
+            },
+            {
+              "year": 2014,
+              "events": 160,
+              "medianExcessDiff": -0.04551613460903614
+            },
+            {
+              "year": 2015,
+              "events": 250,
+              "medianExcessDiff": -0.039991685834484834
+            },
+            {
+              "year": 2016,
+              "events": 351,
+              "medianExcessDiff": -0.04803746082681974
+            },
+            {
+              "year": 2017,
+              "events": 356,
+              "medianExcessDiff": 0.000751151198325084
+            },
+            {
+              "year": 2018,
+              "events": 412,
+              "medianExcessDiff": -0.033678658035432116
+            },
+            {
+              "year": 2019,
+              "events": 367,
+              "medianExcessDiff": -0.031081076479523052
+            }
+          ],
+          "leaveOneYearOut": [
+            {
+              "removedYear": 2010,
+              "medianExcessDiff": -0.03684917148347655,
+              "directionKept": true
+            },
+            {
+              "removedYear": 2011,
+              "medianExcessDiff": -0.0338808901427076,
+              "directionKept": true
+            },
+            {
+              "removedYear": 2012,
+              "medianExcessDiff": -0.0337001535807267,
+              "directionKept": true
+            },
+            {
+              "removedYear": 2013,
+              "medianExcessDiff": -0.03626562216659324,
+              "directionKept": true
+            },
+            {
+              "removedYear": 2014,
+              "medianExcessDiff": -0.030607289826137127,
+              "directionKept": true
+            },
+            {
+              "removedYear": 2015,
+              "medianExcessDiff": -0.03195269947834589,
+              "directionKept": true
+            },
+            {
+              "removedYear": 2016,
+              "medianExcessDiff": -0.03125152742717056,
+              "directionKept": true
+            },
+            {
+              "removedYear": 2017,
+              "medianExcessDiff": -0.037967099395974646,
+              "directionKept": true
+            },
+            {
+              "removedYear": 2018,
+              "medianExcessDiff": -0.035191850747759615,
+              "directionKept": true
+            },
+            {
+              "removedYear": 2019,
+              "medianExcessDiff": -0.036127031116577446,
+              "directionKept": true
+            }
+          ],
+          "regimeConcentrated": false
+        },
+        "topContributor": {
+          "removedCode": "034940",
+          "medianExcessDiff": -0.03537033293483011,
+          "directionKept": true
+        },
+        "tradeCf": {
+          "n": 2546,
+          "medianA": -0.005499999999999949,
+          "medianB": -0.08410852085147752,
+          "medianAdvantage": 0.07895296657523115,
+          "p10A": -0.026153987991531902,
+          "p10B": -0.35497709677419353
+        },
+        "factorDecomp": [
+          {
+            "axis": "market",
+            "groups": [
+              {
+                "label": "KOSDAQ",
+                "events": 1778,
+                "medianSignalExcess": -0.08387849465522484,
+                "inconclusive": false
+              },
+              {
+                "label": "KOSPI",
+                "events": 768,
+                "medianSignalExcess": -0.07171891006444575,
+                "inconclusive": false
+              }
+            ]
+          },
+          {
+            "axis": "size",
+            "groups": [
+              {
+                "label": "LARGE",
+                "events": 324,
+                "medianSignalExcess": -0.06087182263473245,
+                "inconclusive": false
+              },
+              {
+                "label": "MID",
+                "events": 1722,
+                "medianSignalExcess": -0.08140394900200715,
+                "inconclusive": false
+              },
+              {
+                "label": "SMALL",
+                "events": 500,
+                "medianSignalExcess": -0.08834083865256898,
+                "inconclusive": false
+              }
+            ]
+          },
+          {
+            "axis": "liquidityTertile",
+            "groups": [
+              {
+                "label": "High",
+                "events": 790,
+                "medianSignalExcess": -0.10369226379907043,
+                "inconclusive": false
+              },
+              {
+                "label": "Low",
+                "events": 867,
+                "medianSignalExcess": -0.05568580613925522,
+                "inconclusive": false
+              },
+              {
+                "label": "Mid",
+                "events": 889,
+                "medianSignalExcess": -0.078657585975629,
+                "inconclusive": false
+              }
+            ]
+          },
+          {
+            "axis": "volumeMultiple",
+            "groups": [
+              {
+                "label": "1-2x",
+                "events": 481,
+                "medianSignalExcess": -0.07587226685934945,
+                "inconclusive": false
+              },
+              {
+                "label": "2-5x",
+                "events": 437,
+                "medianSignalExcess": -0.09253122978214379,
+                "inconclusive": false
+              },
+              {
+                "label": "<1x",
+                "events": 1160,
+                "medianSignalExcess": -0.06337758250899311,
+                "inconclusive": false
+              },
+              {
+                "label": ">=5x",
+                "events": 468,
+                "medianSignalExcess": -0.10346817561929578,
+                "inconclusive": false
+              }
+            ]
+          },
+          {
+            "axis": "ret5Tertile",
+            "groups": [
+              {
+                "label": "High",
+                "events": 1304,
+                "medianSignalExcess": -0.09124811267225275,
+                "inconclusive": false
+              },
+              {
+                "label": "Low",
+                "events": 903,
+                "medianSignalExcess": -0.07275129476279885,
+                "inconclusive": false
+              },
+              {
+                "label": "Mid",
+                "events": 339,
+                "medianSignalExcess": -0.035516800324688624,
+                "inconclusive": false
+              }
+            ]
+          },
+          {
+            "axis": "ret21Tertile",
+            "groups": [
+              {
+                "label": "High",
+                "events": 1779,
+                "medianSignalExcess": -0.0854155414303005,
+                "inconclusive": false
+              },
+              {
+                "label": "Low",
+                "events": 452,
+                "medianSignalExcess": -0.07958391633960027,
+                "inconclusive": false
+              },
+              {
+                "label": "Mid",
+                "events": 315,
+                "medianSignalExcess": -0.044449576360919396,
+                "inconclusive": false
+              }
+            ]
+          },
+          {
+            "axis": "ret63Tertile",
+            "groups": [
+              {
+                "label": "High",
+                "events": 1294,
+                "medianSignalExcess": -0.09236634232237306,
+                "inconclusive": false
+              },
+              {
+                "label": "Low",
+                "events": 632,
+                "medianSignalExcess": -0.08716169835053011,
+                "inconclusive": false
+              },
+              {
+                "label": "Mid",
+                "events": 620,
+                "medianSignalExcess": -0.05162494191528311,
+                "inconclusive": false
+              }
+            ]
+          },
+          {
+            "axis": "dailyReturn",
+            "groups": [
+              {
+                "label": "-10~-5%",
+                "events": 280,
+                "medianSignalExcess": -0.06409538293704575,
+                "inconclusive": false
+              },
+              {
+                "label": "-5~5%",
+                "events": 1795,
+                "medianSignalExcess": -0.07201139017419977,
+                "inconclusive": false
+              },
+              {
+                "label": "5~10%",
+                "events": 197,
+                "medianSignalExcess": -0.11551075278809708,
+                "inconclusive": false
+              },
+              {
+                "label": "<=-10%",
+                "events": 104,
+                "medianSignalExcess": -0.11106753942510728,
+                "inconclusive": false
+              },
+              {
+                "label": ">=10%",
+                "events": 170,
+                "medianSignalExcess": -0.1574972734090508,
+                "inconclusive": false
+              }
+            ]
+          },
+          {
+            "axis": "dailyAbsShock",
+            "groups": [
+              {
+                "label": "3-5%",
+                "events": 482,
+                "medianSignalExcess": -0.09592824578876108,
+                "inconclusive": false
+              },
+              {
+                "label": "5-10%",
+                "events": 477,
+                "medianSignalExcess": -0.0835962697051924,
+                "inconclusive": false
+              },
+              {
+                "label": "<3%",
+                "events": 1313,
+                "medianSignalExcess": -0.06024336063561697,
+                "inconclusive": false
+              },
+              {
+                "label": ">=10%",
+                "events": 274,
+                "medianSignalExcess": -0.14226128703500374,
+                "inconclusive": false
+              }
+            ]
+          },
+          {
+            "axis": "vol20Tertile",
+            "groups": [
+              {
+                "label": "High",
+                "events": 2275,
+                "medianSignalExcess": -0.08766578038944872,
+                "inconclusive": false
+              },
+              {
+                "label": "Low",
+                "events": 49,
+                "medianSignalExcess": -0.05828047033802508,
+                "inconclusive": true
+              },
+              {
+                "label": "Mid",
+                "events": 222,
+                "medianSignalExcess": -0.019367659637618273,
+                "inconclusive": false
+              }
+            ]
+          },
+          {
+            "axis": "vol63Tertile",
+            "groups": [
+              {
+                "label": "High",
+                "events": 1416,
+                "medianSignalExcess": -0.11101449921102619,
+                "inconclusive": false
+              },
+              {
+                "label": "Low",
+                "events": 358,
+                "medianSignalExcess": -0.026311612418675745,
+                "inconclusive": false
+              },
+              {
+                "label": "Mid",
+                "events": 772,
+                "medianSignalExcess": -0.06612223324219557,
+                "inconclusive": false
+              }
+            ]
+          },
+          {
+            "axis": "regime",
+            "groups": [
+              {
+                "label": "NORMAL",
+                "events": 1457,
+                "medianSignalExcess": -0.0854155414303005,
+                "inconclusive": false
+              },
+              {
+                "label": "RISK",
+                "events": 1089,
+                "medianSignalExcess": -0.07328021057713019,
+                "inconclusive": false
+              }
+            ]
+          }
+        ],
+        "matchRate": 0.9992144540455616
+      },
+      {
+        "signal": "H4_UPPER_WICK_CLUSTER",
+        "nEvents": 3872,
+        "primaryHorizon": 63,
+        "summaryByHorizon": {
+          "20": {
+            "events": 3865,
+            "uniqueCodes": 906,
+            "years": 10,
+            "signalMean": -0.000925089424575669,
+            "signalMedian": -0.02288462847781303,
+            "controlMean": 0.001979029906487498,
+            "controlMedian": -0.009564320604884324,
+            "medianExcessDiff": -0.013320307872928705,
+            "meanMatchedDiff": -0.00290411933106317,
+            "maeMean": -0.130057339472995,
+            "mfeMean": 0.1662823436948998,
+            "p10StockReturn": -0.18115288220551382,
+            "matchRate": 1
+          },
+          "63": {
+            "events": 3861,
+            "uniqueCodes": 906,
+            "years": 10,
+            "signalMean": -0.007349827463075332,
+            "signalMedian": -0.056112274645608196,
+            "controlMean": -0.0033667711303040624,
+            "controlMedian": -0.02980490572881067,
+            "medianExcessDiff": -0.026307368916797524,
+            "meanMatchedDiff": -0.003983056332771241,
+            "maeMean": -0.2150299129521584,
+            "mfeMean": 0.28022176032714974,
+            "p10StockReturn": -0.2922374429223744,
+            "matchRate": 0.9994819994819995
+          },
+          "126": {
+            "events": 3853,
+            "uniqueCodes": 906,
+            "years": 10,
+            "signalMean": -0.00933788409233144,
+            "signalMedian": -0.0804524176662641,
+            "controlMean": 0.002077784770727896,
+            "controlMedian": -0.042678253634080884,
+            "medianExcessDiff": -0.03777416403218321,
+            "meanMatchedDiff": -0.011415668863059376,
+            "maeMean": -0.28966072840567775,
+            "mfeMean": 0.398933087825945,
+            "p10StockReturn": -0.37363826669457817,
+            "matchRate": 0.9994809239553595
+          },
+          "252": {
+            "events": 3834,
+            "uniqueCodes": 906,
+            "years": 10,
+            "signalMean": -0.00417878077754577,
+            "signalMedian": -0.12522413813766942,
+            "controlMean": 0.007581575363534198,
+            "controlMedian": -0.06634475066874175,
+            "medianExcessDiff": -0.058879387468927666,
+            "meanMatchedDiff": -0.011760356141079937,
+            "maeMean": -0.3849519183916318,
+            "mfeMean": 0.5835842046370481,
+            "p10StockReturn": -0.4666332218506132,
+            "matchRate": 0.9986958789775692
+          }
+        },
+        "primaryBootstrapMedian": {
+          "point": -0.026307368916797524,
+          "ciLower": -0.03574719311857692,
+          "ciUpper": -0.01824130487685582,
+          "pValue": 0
+        },
+        "primaryBootstrapMeanMatched": {
+          "point": -0.003983056332771241,
+          "ciLower": -0.013545003399803659,
+          "ciUpper": 0.008612179288566108,
+          "pValue": 0.6102
+        },
+        "yearDecomp": {
+          "byYear": [
+            {
+              "year": 2010,
+              "events": 232,
+              "medianExcessDiff": -0.0586758224991136
+            },
+            {
+              "year": 2011,
+              "events": 344,
+              "medianExcessDiff": -0.025794517767331715
+            },
+            {
+              "year": 2012,
+              "events": 300,
+              "medianExcessDiff": -0.029593958396496575
+            },
+            {
+              "year": 2013,
+              "events": 290,
+              "medianExcessDiff": -0.02012353534206862
+            },
+            {
+              "year": 2014,
+              "events": 302,
+              "medianExcessDiff": -0.02094006520116255
+            },
+            {
+              "year": 2015,
+              "events": 446,
+              "medianExcessDiff": -0.05069148170052
+            },
+            {
+              "year": 2016,
+              "events": 469,
+              "medianExcessDiff": -0.011991922359733898
+            },
+            {
+              "year": 2017,
+              "events": 407,
+              "medianExcessDiff": -0.03760637929519724
+            },
+            {
+              "year": 2018,
+              "events": 571,
+              "medianExcessDiff": -0.032694303514957945
+            },
+            {
+              "year": 2019,
+              "events": 498,
+              "medianExcessDiff": -0.028669961549424063
+            }
+          ],
+          "leaveOneYearOut": [
+            {
+              "removedYear": 2010,
+              "medianExcessDiff": -0.026699118144409617,
+              "directionKept": true
+            },
+            {
+              "removedYear": 2011,
+              "medianExcessDiff": -0.02635842902577956,
+              "directionKept": true
+            },
+            {
+              "removedYear": 2012,
+              "medianExcessDiff": -0.02587584767956159,
+              "directionKept": true
+            },
+            {
+              "removedYear": 2013,
+              "medianExcessDiff": -0.02761207675476145,
+              "directionKept": true
+            },
+            {
+              "removedYear": 2014,
+              "medianExcessDiff": -0.026981694653336885,
+              "directionKept": true
+            },
+            {
+              "removedYear": 2015,
+              "medianExcessDiff": -0.025105699726271614,
+              "directionKept": true
+            },
+            {
+              "removedYear": 2016,
+              "medianExcessDiff": -0.028491846135960897,
+              "directionKept": true
+            },
+            {
+              "removedYear": 2017,
+              "medianExcessDiff": -0.02604280713949454,
+              "directionKept": true
+            },
+            {
+              "removedYear": 2018,
+              "medianExcessDiff": -0.026752580536778738,
+              "directionKept": true
+            },
+            {
+              "removedYear": 2019,
+              "medianExcessDiff": -0.026412345689940997,
+              "directionKept": true
+            }
+          ],
+          "regimeConcentrated": false
+        },
+        "topContributor": {
+          "removedCode": "042520",
+          "medianExcessDiff": -0.026948741230207775,
+          "directionKept": true
+        },
+        "tradeCf": {
+          "n": 3861,
+          "medianA": -0.006000000000000005,
+          "medianB": -0.05625842696629213,
+          "medianAdvantage": 0.05123711340206183,
+          "p10A": -0.02673487544483988,
+          "p10B": -0.302302496328928
+        },
+        "factorDecomp": [
+          {
+            "axis": "market",
+            "groups": [
+              {
+                "label": "KOSDAQ",
+                "events": 2761,
+                "medianSignalExcess": -0.05603547959490984,
+                "inconclusive": false
+              },
+              {
+                "label": "KOSPI",
+                "events": 1100,
+                "medianSignalExcess": -0.057209470914132976,
+                "inconclusive": false
+              }
+            ]
+          },
+          {
+            "axis": "size",
+            "groups": [
+              {
+                "label": "LARGE",
+                "events": 775,
+                "medianSignalExcess": -0.04973615730802772,
+                "inconclusive": false
+              },
+              {
+                "label": "MID",
+                "events": 2679,
+                "medianSignalExcess": -0.05767138199633837,
+                "inconclusive": false
+              },
+              {
+                "label": "SMALL",
+                "events": 407,
+                "medianSignalExcess": -0.06978870549474925,
+                "inconclusive": false
+              }
+            ]
+          },
+          {
+            "axis": "liquidityTertile",
+            "groups": [
+              {
+                "label": "High",
+                "events": 1079,
+                "medianSignalExcess": -0.07165462457729166,
+                "inconclusive": false
+              },
+              {
+                "label": "Low",
+                "events": 1360,
+                "medianSignalExcess": -0.04499146988538283,
+                "inconclusive": false
+              },
+              {
+                "label": "Mid",
+                "events": 1422,
+                "medianSignalExcess": -0.06030072539668513,
+                "inconclusive": false
+              }
+            ]
+          },
+          {
+            "axis": "volumeMultiple",
+            "groups": [
+              {
+                "label": "1-2x",
+                "events": 1383,
+                "medianSignalExcess": -0.04518578059007783,
+                "inconclusive": false
+              },
+              {
+                "label": "2-5x",
+                "events": 848,
+                "medianSignalExcess": -0.0802179311094744,
+                "inconclusive": false
+              },
+              {
+                "label": "<1x",
+                "events": 1234,
+                "medianSignalExcess": -0.038405518922340565,
+                "inconclusive": false
+              },
+              {
+                "label": ">=5x",
+                "events": 396,
+                "medianSignalExcess": -0.106617173755853,
+                "inconclusive": false
+              }
+            ]
+          },
+          {
+            "axis": "ret5Tertile",
+            "groups": [
+              {
+                "label": "High",
+                "events": 1492,
+                "medianSignalExcess": -0.08458314915236614,
+                "inconclusive": false
+              },
+              {
+                "label": "Low",
+                "events": 1595,
+                "medianSignalExcess": -0.03914345838197808,
+                "inconclusive": false
+              },
+              {
+                "label": "Mid",
+                "events": 774,
+                "medianSignalExcess": -0.041454804444715,
+                "inconclusive": false
+              }
+            ]
+          },
+          {
+            "axis": "ret21Tertile",
+            "groups": [
+              {
+                "label": "High",
+                "events": 2051,
+                "medianSignalExcess": -0.07811551222203228,
+                "inconclusive": false
+              },
+              {
+                "label": "Low",
+                "events": 971,
+                "medianSignalExcess": -0.03963412646606845,
+                "inconclusive": false
+              },
+              {
+                "label": "Mid",
+                "events": 839,
+                "medianSignalExcess": -0.033530357760967355,
+                "inconclusive": false
+              }
+            ]
+          },
+          {
+            "axis": "ret63Tertile",
+            "groups": [
+              {
+                "label": "High",
+                "events": 1787,
+                "medianSignalExcess": -0.07551382123577288,
+                "inconclusive": false
+              },
+              {
+                "label": "Low",
+                "events": 986,
+                "medianSignalExcess": -0.038579972303407595,
+                "inconclusive": false
+              },
+              {
+                "label": "Mid",
+                "events": 1084,
+                "medianSignalExcess": -0.049936293221008565,
+                "inconclusive": false
+              },
+              {
+                "label": "NA",
+                "events": 4,
+                "medianSignalExcess": 0.12079327698694386,
+                "inconclusive": true
+              }
+            ]
+          },
+          {
+            "axis": "dailyReturn",
+            "groups": [
+              {
+                "label": "-10~-5%",
+                "events": 1280,
+                "medianSignalExcess": -0.059872100964177444,
+                "inconclusive": false
+              },
+              {
+                "label": "-5~5%",
+                "events": 2120,
+                "medianSignalExcess": -0.04847520784149584,
+                "inconclusive": false
+              },
+              {
+                "label": "5~10%",
+                "events": 165,
+                "medianSignalExcess": -0.09413287404871662,
+                "inconclusive": false
+              },
+              {
+                "label": "<=-10%",
+                "events": 212,
+                "medianSignalExcess": -0.05948747115187286,
+                "inconclusive": false
+              },
+              {
+                "label": ">=10%",
+                "events": 84,
+                "medianSignalExcess": -0.13029729297546822,
+                "inconclusive": false
+              }
+            ]
+          },
+          {
+            "axis": "dailyAbsShock",
+            "groups": [
+              {
+                "label": "3-5%",
+                "events": 1135,
+                "medianSignalExcess": -0.03806816438253524,
+                "inconclusive": false
+              },
+              {
+                "label": "5-10%",
+                "events": 1445,
+                "medianSignalExcess": -0.06343503430937458,
+                "inconclusive": false
+              },
+              {
+                "label": "<3%",
+                "events": 985,
+                "medianSignalExcess": -0.06019550190716405,
+                "inconclusive": false
+              },
+              {
+                "label": ">=10%",
+                "events": 296,
+                "medianSignalExcess": -0.07909932915999346,
+                "inconclusive": false
+              }
+            ]
+          },
+          {
+            "axis": "vol20Tertile",
+            "groups": [
+              {
+                "label": "High",
+                "events": 2082,
+                "medianSignalExcess": -0.07242085396482656,
+                "inconclusive": false
+              },
+              {
+                "label": "Low",
+                "events": 489,
+                "medianSignalExcess": -0.04542830564814038,
+                "inconclusive": false
+              },
+              {
+                "label": "Mid",
+                "events": 1290,
+                "medianSignalExcess": -0.041538586304456615,
+                "inconclusive": false
+              }
+            ]
+          },
+          {
+            "axis": "vol63Tertile",
+            "groups": [
+              {
+                "label": "High",
+                "events": 1289,
+                "medianSignalExcess": -0.07534275750526054,
+                "inconclusive": false
+              },
+              {
+                "label": "Low",
+                "events": 531,
+                "medianSignalExcess": -0.033827134943095194,
+                "inconclusive": false
+              },
+              {
+                "label": "Mid",
+                "events": 2035,
+                "medianSignalExcess": -0.055521962871134756,
+                "inconclusive": false
+              },
+              {
+                "label": "NA",
+                "events": 6,
+                "medianSignalExcess": 0.004705158460645287,
+                "inconclusive": true
+              }
+            ]
+          },
+          {
+            "axis": "regime",
+            "groups": [
+              {
+                "label": "NORMAL",
+                "events": 2079,
+                "medianSignalExcess": -0.06087434617814724,
+                "inconclusive": false
+              },
+              {
+                "label": "RISK",
+                "events": 1782,
+                "medianSignalExcess": -0.0515958866972307,
+                "inconclusive": false
+              }
+            ]
+          }
+        ],
+        "matchRate": 0.9994819994819995
+      },
+      {
+        "signal": "H5_BOOM_BUST_REPEAT",
+        "nEvents": 1209,
+        "primaryHorizon": 63,
+        "summaryByHorizon": {
+          "20": {
+            "events": 1207,
+            "uniqueCodes": 605,
+            "years": 9,
+            "signalMean": -0.0015277599356489087,
+            "signalMedian": -0.01219980165667267,
+            "controlMean": -0.006748328855824435,
+            "controlMedian": -0.01526863370677308,
+            "medianExcessDiff": 0.0030688320501004087,
+            "meanMatchedDiff": 0.00522056892017553,
+            "maeMean": -0.1507674483717571,
+            "mfeMean": 0.18303350185827927,
+            "p10StockReturn": -0.19395336254936973,
+            "matchRate": 1
+          },
+          "63": {
+            "events": 1206,
+            "uniqueCodes": 605,
+            "years": 9,
+            "signalMean": -0.012702152260340405,
+            "signalMedian": -0.06311906457709326,
+            "controlMean": -0.018068543046737686,
+            "controlMedian": -0.043141443981892326,
+            "medianExcessDiff": -0.01997762059520094,
+            "meanMatchedDiff": 0.005366390786397296,
+            "maeMean": -0.25647246864221074,
+            "mfeMean": 0.3174611031438125,
+            "p10StockReturn": -0.3245776520024012,
+            "matchRate": 1
+          },
+          "126": {
+            "events": 1199,
+            "uniqueCodes": 605,
+            "years": 9,
+            "signalMean": -0.011889381825945473,
+            "signalMedian": -0.08781386058502194,
+            "controlMean": -0.03345070949597333,
+            "controlMedian": -0.06386053236161293,
+            "medianExcessDiff": -0.02395332822340901,
+            "meanMatchedDiff": 0.02156132767002781,
+            "maeMean": -0.34028304942633547,
+            "mfeMean": 0.4664419381270466,
+            "p10StockReturn": -0.4211310428701733,
+            "matchRate": 0.9983319432860718
+          },
+          "252": {
+            "events": 1180,
+            "uniqueCodes": 605,
+            "years": 9,
+            "signalMean": -0.04948198318219418,
+            "signalMedian": -0.16593944525861326,
+            "controlMean": -0.047564925008883124,
+            "controlMedian": -0.11434601829283605,
+            "medianExcessDiff": -0.051593426965777206,
+            "meanMatchedDiff": -0.0019170581733110482,
+            "maeMean": -0.4390305895270029,
+            "mfeMean": 0.6685107839155437,
+            "p10StockReturn": -0.5270618752509849,
+            "matchRate": 0.9966101694915255
+          }
+        },
+        "primaryBootstrapMedian": {
+          "point": -0.01997762059520094,
+          "ciLower": -0.035885076145109905,
+          "ciUpper": -0.0018941967899953516,
+          "pValue": 0.0296
+        },
+        "primaryBootstrapMeanMatched": {
+          "point": 0.005366390786397296,
+          "ciLower": -0.018494409432475746,
+          "ciUpper": 0.02968101685122823,
+          "pValue": 0.6314
+        },
+        "yearDecomp": {
+          "byYear": [
+            {
+              "year": 2011,
+              "events": 123,
+              "medianExcessDiff": -0.030026697192525577
+            },
+            {
+              "year": 2012,
+              "events": 173,
+              "medianExcessDiff": -0.059512312705779634
+            },
+            {
+              "year": 2013,
+              "events": 96,
+              "medianExcessDiff": -0.0203209688451609
+            },
+            {
+              "year": 2014,
+              "events": 54,
+              "medianExcessDiff": -0.02625302601130628
+            },
+            {
+              "year": 2015,
+              "events": 184,
+              "medianExcessDiff": -0.022341710839878764
+            },
+            {
+              "year": 2016,
+              "events": 163,
+              "medianExcessDiff": -0.00454232651663504
+            },
+            {
+              "year": 2017,
+              "events": 98,
+              "medianExcessDiff": -0.004679733839983949
+            },
+            {
+              "year": 2018,
+              "events": 175,
+              "medianExcessDiff": -0.020728123097804307
+            },
+            {
+              "year": 2019,
+              "events": 140,
+              "medianExcessDiff": -0.02238368476471647
+            }
+          ],
+          "leaveOneYearOut": [
+            {
+              "removedYear": 2011,
+              "medianExcessDiff": -0.018436154219781398,
+              "directionKept": true
+            },
+            {
+              "removedYear": 2012,
+              "medianExcessDiff": -0.0166392611415491,
+              "directionKept": true
+            },
+            {
+              "removedYear": 2013,
+              "medianExcessDiff": -0.020096950635303715,
+              "directionKept": true
+            },
+            {
+              "removedYear": 2014,
+              "medianExcessDiff": -0.018305882447669966,
+              "directionKept": true
+            },
+            {
+              "removedYear": 2015,
+              "medianExcessDiff": -0.019802064841415522,
+              "directionKept": true
+            },
+            {
+              "removedYear": 2016,
+              "medianExcessDiff": -0.02078913722796192,
+              "directionKept": true
+            },
+            {
+              "removedYear": 2017,
+              "medianExcessDiff": -0.025078722335215298,
+              "directionKept": true
+            },
+            {
+              "removedYear": 2018,
+              "medianExcessDiff": -0.017539627564742588,
+              "directionKept": true
+            },
+            {
+              "removedYear": 2019,
+              "medianExcessDiff": -0.022429149773462775,
+              "directionKept": true
+            }
+          ],
+          "regimeConcentrated": false
+        },
+        "topContributor": {
+          "removedCode": "043200",
+          "medianExcessDiff": -0.018994886339521927,
+          "directionKept": true
+        },
+        "tradeCf": {
+          "n": 1206,
+          "medianA": -0.006000000000000005,
+          "medianB": -0.06672844996729882,
+          "medianAdvantage": 0.05948710325431911,
+          "p10A": -0.03591973997146031,
+          "p10B": -0.34866750752202885
+        },
+        "factorDecomp": [
+          {
+            "axis": "market",
+            "groups": [
+              {
+                "label": "KOSDAQ",
+                "events": 928,
+                "medianSignalExcess": -0.07512313079024091,
+                "inconclusive": false
+              },
+              {
+                "label": "KOSPI",
+                "events": 278,
+                "medianSignalExcess": -0.03154909989838034,
+                "inconclusive": false
+              }
+            ]
+          },
+          {
+            "axis": "size",
+            "groups": [
+              {
+                "label": "LARGE",
+                "events": 202,
+                "medianSignalExcess": -0.07577449530648916,
+                "inconclusive": false
+              },
+              {
+                "label": "MID",
+                "events": 874,
+                "medianSignalExcess": -0.054823136725592636,
+                "inconclusive": false
+              },
+              {
+                "label": "SMALL",
+                "events": 130,
+                "medianSignalExcess": -0.08500809087901062,
+                "inconclusive": false
+              }
+            ]
+          },
+          {
+            "axis": "liquidityTertile",
+            "groups": [
+              {
+                "label": "High",
+                "events": 475,
+                "medianSignalExcess": -0.08819453054603332,
+                "inconclusive": false
+              },
+              {
+                "label": "Low",
+                "events": 310,
+                "medianSignalExcess": -0.038303597901905906,
+                "inconclusive": false
+              },
+              {
+                "label": "Mid",
+                "events": 421,
+                "medianSignalExcess": -0.05506260397862872,
+                "inconclusive": false
+              }
+            ]
+          },
+          {
+            "axis": "volumeMultiple",
+            "groups": [
+              {
+                "label": "1-2x",
+                "events": 303,
+                "medianSignalExcess": -0.06309118874027053,
+                "inconclusive": false
+              },
+              {
+                "label": "2-5x",
+                "events": 138,
+                "medianSignalExcess": -0.055570538558304516,
+                "inconclusive": false
+              },
+              {
+                "label": "<1x",
+                "events": 715,
+                "medianSignalExcess": -0.06279582890634516,
+                "inconclusive": false
+              },
+              {
+                "label": ">=5x",
+                "events": 50,
+                "medianSignalExcess": -0.12038789520098425,
+                "inconclusive": false
+              }
+            ]
+          },
+          {
+            "axis": "ret5Tertile",
+            "groups": [
+              {
+                "label": "High",
+                "events": 13,
+                "medianSignalExcess": -0.12662092813184755,
+                "inconclusive": true
+              },
+              {
+                "label": "Low",
+                "events": 1081,
+                "medianSignalExcess": -0.06425357096516537,
+                "inconclusive": false
+              },
+              {
+                "label": "Mid",
+                "events": 112,
+                "medianSignalExcess": -0.03511300219559821,
+                "inconclusive": false
+              }
+            ]
+          },
+          {
+            "axis": "ret21Tertile",
+            "groups": [
+              {
+                "label": "High",
+                "events": 175,
+                "medianSignalExcess": -0.10137802438869403,
+                "inconclusive": false
+              },
+              {
+                "label": "Low",
+                "events": 866,
+                "medianSignalExcess": -0.06388640430150477,
+                "inconclusive": false
+              },
+              {
+                "label": "Mid",
+                "events": 165,
+                "medianSignalExcess": -0.02220970137676459,
+                "inconclusive": false
+              }
+            ]
+          },
+          {
+            "axis": "ret63Tertile",
+            "groups": [
+              {
+                "label": "High",
+                "events": 417,
+                "medianSignalExcess": -0.07346131613987672,
+                "inconclusive": false
+              },
+              {
+                "label": "Low",
+                "events": 482,
+                "medianSignalExcess": -0.06440534116261754,
+                "inconclusive": false
+              },
+              {
+                "label": "Mid",
+                "events": 307,
+                "medianSignalExcess": -0.04275654137588791,
+                "inconclusive": false
+              }
+            ]
+          },
+          {
+            "axis": "dailyReturn",
+            "groups": [
+              {
+                "label": "-10~-5%",
+                "events": 457,
+                "medianSignalExcess": -0.05237092296476398,
+                "inconclusive": false
+              },
+              {
+                "label": "-5~5%",
+                "events": 464,
+                "medianSignalExcess": -0.059042252346334756,
+                "inconclusive": false
+              },
+              {
+                "label": "<=-10%",
+                "events": 285,
+                "medianSignalExcess": -0.08189432827451937,
+                "inconclusive": false
+              }
+            ]
+          },
+          {
+            "axis": "dailyAbsShock",
+            "groups": [
+              {
+                "label": "3-5%",
+                "events": 265,
+                "medianSignalExcess": -0.05506260397862872,
+                "inconclusive": false
+              },
+              {
+                "label": "5-10%",
+                "events": 457,
+                "medianSignalExcess": -0.05237092296476398,
+                "inconclusive": false
+              },
+              {
+                "label": "<3%",
+                "events": 199,
+                "medianSignalExcess": -0.060766493986427195,
+                "inconclusive": false
+              },
+              {
+                "label": ">=10%",
+                "events": 285,
+                "medianSignalExcess": -0.08189432827451937,
+                "inconclusive": false
+              }
+            ]
+          },
+          {
+            "axis": "vol20Tertile",
+            "groups": [
+              {
+                "label": "High",
+                "events": 723,
+                "medianSignalExcess": -0.0822383482030764,
+                "inconclusive": false
+              },
+              {
+                "label": "Low",
+                "events": 158,
+                "medianSignalExcess": -0.04428972464038189,
+                "inconclusive": false
+              },
+              {
+                "label": "Mid",
+                "events": 325,
+                "medianSignalExcess": -0.035059756512464624,
+                "inconclusive": false
+              }
+            ]
+          },
+          {
+            "axis": "vol63Tertile",
+            "groups": [
+              {
+                "label": "High",
+                "events": 872,
+                "medianSignalExcess": -0.07606130288323215,
+                "inconclusive": false
+              },
+              {
+                "label": "Low",
+                "events": 80,
+                "medianSignalExcess": -0.007631546847499782,
+                "inconclusive": false
+              },
+              {
+                "label": "Mid",
+                "events": 254,
+                "medianSignalExcess": -0.05756826930828279,
+                "inconclusive": false
+              }
+            ]
+          },
+          {
+            "axis": "regime",
+            "groups": [
+              {
+                "label": "NORMAL",
+                "events": 533,
+                "medianSignalExcess": -0.09141690753514853,
+                "inconclusive": false
+              },
+              {
+                "label": "RISK",
+                "events": 673,
+                "medianSignalExcess": -0.03880292322035439,
+                "inconclusive": false
+              }
+            ]
+          }
+        ],
+        "matchRate": 1
+      }
+    ],
+    "holmAdjustedP": {
+      "H3_VOL_SPIKE_ROLLING": 0,
+      "H4_UPPER_WICK_CLUSTER": 0,
+      "H5_BOOM_BUST_REPEAT": 0.0296
+    }
+  },
+  "val": {
+    "period": "VALIDATION",
+    "bySignal": [
+      {
+        "signal": "H3_VOL_SPIKE_ROLLING",
+        "nEvents": 1847,
+        "primaryHorizon": 63,
+        "summaryByHorizon": {
+          "20": {
+            "events": 1847,
+            "uniqueCodes": 914,
+            "years": 3,
+            "signalMean": 0.008961005591390708,
+            "signalMedian": -0.019685638776433034,
+            "controlMean": 0.023547744533768133,
+            "controlMedian": 0.0010582618161802209,
+            "medianExcessDiff": -0.020743900592613256,
+            "meanMatchedDiff": -0.014586738942377452,
+            "maeMean": -0.14441402199872128,
+            "mfeMean": 0.23256279313675213,
+            "p10StockReturn": -0.2194022475798622,
+            "matchRate": 1
+          },
+          "63": {
+            "events": 1846,
+            "uniqueCodes": 914,
+            "years": 3,
+            "signalMean": 0.026142465418052305,
+            "signalMedian": -0.05584708525821558,
+            "controlMean": 0.04176490535485626,
+            "controlMedian": -0.0014593691225457174,
+            "medianExcessDiff": -0.05438771613566986,
+            "meanMatchedDiff": -0.01562243993680408,
+            "maeMean": -0.22616610958111974,
+            "mfeMean": 0.4121685186129303,
+            "p10StockReturn": -0.29770550727492057,
+            "matchRate": 1
+          },
+          "126": {
+            "events": 1843,
+            "uniqueCodes": 914,
+            "years": 3,
+            "signalMean": 0.04018837026911599,
+            "signalMedian": -0.07049423589207277,
+            "controlMean": 0.062328991739567526,
+            "controlMedian": -0.013268485152240527,
+            "medianExcessDiff": -0.057225750739832236,
+            "meanMatchedDiff": -0.02214062147045164,
+            "maeMean": -0.2807988149018712,
+            "mfeMean": 0.6079075201093905,
+            "p10StockReturn": -0.3787541337652696,
+            "matchRate": 0.9994574064026045
+          },
+          "252": {
+            "events": 1838,
+            "uniqueCodes": 914,
+            "years": 3,
+            "signalMean": 0.027444752972000993,
+            "signalMedian": -0.08674276625230193,
+            "controlMean": 0.04945097855621694,
+            "controlMedian": -0.0266275939161037,
+            "medianExcessDiff": -0.06011517233619823,
+            "meanMatchedDiff": -0.022006225584216006,
+            "maeMean": -0.35541439420348403,
+            "mfeMean": 0.8776523639866018,
+            "p10StockReturn": -0.4808783999271038,
+            "matchRate": 0.998911860718172
+          }
+        },
+        "primaryBootstrapMedian": {
+          "point": -0.05438771613566986,
+          "ciLower": -0.06783726317907458,
+          "ciUpper": -0.03892397403863522,
+          "pValue": 0
+        },
+        "primaryBootstrapMeanMatched": {
+          "point": -0.01562243993680408,
+          "ciLower": -0.032607981847750676,
+          "ciUpper": 0.0029699744761411185,
+          "pValue": 0.1122
+        },
+        "yearDecomp": {
+          "byYear": [
+            {
+              "year": 2020,
+              "events": 723,
+              "medianExcessDiff": -0.04482614204892303
+            },
+            {
+              "year": 2021,
+              "events": 657,
+              "medianExcessDiff": -0.05725577053073849
+            },
+            {
+              "year": 2022,
+              "events": 466,
+              "medianExcessDiff": -0.05064880941965935
+            }
+          ],
+          "leaveOneYearOut": [
+            {
+              "removedYear": 2020,
+              "medianExcessDiff": -0.05345414185917974,
+              "directionKept": true
+            },
+            {
+              "removedYear": 2021,
+              "medianExcessDiff": -0.04958652915659125,
+              "directionKept": true
+            },
+            {
+              "removedYear": 2022,
+              "medianExcessDiff": -0.0515243617123764,
+              "directionKept": true
+            }
+          ],
+          "regimeConcentrated": false
+        },
+        "topContributor": {
+          "removedCode": "001510",
+          "medianExcessDiff": -0.05478604713136952,
+          "directionKept": true
+        },
+        "tradeCf": {
+          "n": 1846,
+          "medianA": -0.005299999999999971,
+          "medianB": -0.04602933308494783,
+          "medianAdvantage": 0.04140413834703299,
+          "p10A": -0.029390969696969693,
+          "p10B": -0.3110245099287169
+        },
+        "factorDecomp": [
+          {
+            "axis": "market",
+            "groups": [
+              {
+                "label": "KOSDAQ",
+                "events": 1283,
+                "medianSignalExcess": -0.057784927299650124,
+                "inconclusive": false
+              },
+              {
+                "label": "KOSPI",
+                "events": 563,
+                "medianSignalExcess": -0.04799527327449504,
+                "inconclusive": false
+              }
+            ]
+          },
+          {
+            "axis": "size",
+            "groups": [
+              {
+                "label": "LARGE",
+                "events": 298,
+                "medianSignalExcess": -0.03962623827748807,
+                "inconclusive": false
+              },
+              {
+                "label": "MID",
+                "events": 1189,
+                "medianSignalExcess": -0.05625988302490659,
+                "inconclusive": false
+              },
+              {
+                "label": "SMALL",
+                "events": 359,
+                "medianSignalExcess": -0.06092405300844983,
+                "inconclusive": false
+              }
+            ]
+          },
+          {
+            "axis": "liquidityTertile",
+            "groups": [
+              {
+                "label": "High",
+                "events": 693,
+                "medianSignalExcess": -0.09254845533302625,
+                "inconclusive": false
+              },
+              {
+                "label": "Low",
+                "events": 519,
+                "medianSignalExcess": -0.016441413479853617,
+                "inconclusive": false
+              },
+              {
+                "label": "Mid",
+                "events": 634,
+                "medianSignalExcess": -0.03736453252020555,
+                "inconclusive": false
+              }
+            ]
+          },
+          {
+            "axis": "volumeMultiple",
+            "groups": [
+              {
+                "label": "1-2x",
+                "events": 362,
+                "medianSignalExcess": -0.03789060245356013,
+                "inconclusive": false
+              },
+              {
+                "label": "2-5x",
+                "events": 282,
+                "medianSignalExcess": -0.0897005748932444,
+                "inconclusive": false
+              },
+              {
+                "label": "<1x",
+                "events": 835,
+                "medianSignalExcess": -0.020710996035901985,
+                "inconclusive": false
+              },
+              {
+                "label": ">=5x",
+                "events": 367,
+                "medianSignalExcess": -0.10700877638247175,
+                "inconclusive": false
+              }
+            ]
+          },
+          {
+            "axis": "ret5Tertile",
+            "groups": [
+              {
+                "label": "High",
+                "events": 1059,
+                "medianSignalExcess": -0.08346510430565934,
+                "inconclusive": false
+              },
+              {
+                "label": "Low",
+                "events": 497,
+                "medianSignalExcess": -0.03251222574739154,
+                "inconclusive": false
+              },
+              {
+                "label": "Mid",
+                "events": 290,
+                "medianSignalExcess": -0.0010062508764364653,
+                "inconclusive": false
+              }
+            ]
+          },
+          {
+            "axis": "ret21Tertile",
+            "groups": [
+              {
+                "label": "High",
+                "events": 1315,
+                "medianSignalExcess": -0.07653874491453627,
+                "inconclusive": false
+              },
+              {
+                "label": "Low",
+                "events": 266,
+                "medianSignalExcess": -0.012159977226370078,
+                "inconclusive": false
+              },
+              {
+                "label": "Mid",
+                "events": 265,
+                "medianSignalExcess": 0.01778018234251455,
+                "inconclusive": false
+              }
+            ]
+          },
+          {
+            "axis": "ret63Tertile",
+            "groups": [
+              {
+                "label": "High",
+                "events": 871,
+                "medianSignalExcess": -0.08669113750703183,
+                "inconclusive": false
+              },
+              {
+                "label": "Low",
+                "events": 439,
+                "medianSignalExcess": -0.020305154948968562,
+                "inconclusive": false
+              },
+              {
+                "label": "Mid",
+                "events": 536,
+                "medianSignalExcess": -0.02017349617840608,
+                "inconclusive": false
+              }
+            ]
+          },
+          {
+            "axis": "dailyReturn",
+            "groups": [
+              {
+                "label": "-10~-5%",
+                "events": 248,
+                "medianSignalExcess": -0.04770631833230227,
+                "inconclusive": false
+              },
+              {
+                "label": "-5~5%",
+                "events": 1203,
+                "medianSignalExcess": -0.05334341083466365,
+                "inconclusive": false
+              },
+              {
+                "label": "5~10%",
+                "events": 171,
+                "medianSignalExcess": -0.08226187329225387,
+                "inconclusive": false
+              },
+              {
+                "label": "<=-10%",
+                "events": 100,
+                "medianSignalExcess": 0.0071923842658384585,
+                "inconclusive": false
+              },
+              {
+                "label": ">=10%",
+                "events": 124,
+                "medianSignalExcess": -0.10771919869204621,
+                "inconclusive": false
+              }
+            ]
+          },
+          {
+            "axis": "dailyAbsShock",
+            "groups": [
+              {
+                "label": "3-5%",
+                "events": 312,
+                "medianSignalExcess": -0.05229645503414149,
+                "inconclusive": false
+              },
+              {
+                "label": "5-10%",
+                "events": 419,
+                "medianSignalExcess": -0.06309826569097399,
+                "inconclusive": false
+              },
+              {
+                "label": "<3%",
+                "events": 891,
+                "medianSignalExcess": -0.053451318323426755,
+                "inconclusive": false
+              },
+              {
+                "label": ">=10%",
+                "events": 224,
+                "medianSignalExcess": -0.04855043122617425,
+                "inconclusive": false
+              }
+            ]
+          },
+          {
+            "axis": "vol20Tertile",
+            "groups": [
+              {
+                "label": "High",
+                "events": 1542,
+                "medianSignalExcess": -0.06965505801405503,
+                "inconclusive": false
+              },
+              {
+                "label": "Low",
+                "events": 105,
+                "medianSignalExcess": -0.005487078923776867,
+                "inconclusive": false
+              },
+              {
+                "label": "Mid",
+                "events": 199,
+                "medianSignalExcess": 0.04686178390263396,
+                "inconclusive": false
+              }
+            ]
+          },
+          {
+            "axis": "vol63Tertile",
+            "groups": [
+              {
+                "label": "High",
+                "events": 967,
+                "medianSignalExcess": -0.0966667844537683,
+                "inconclusive": false
+              },
+              {
+                "label": "Low",
+                "events": 334,
+                "medianSignalExcess": 0.00018518489614316458,
+                "inconclusive": false
+              },
+              {
+                "label": "Mid",
+                "events": 545,
+                "medianSignalExcess": -0.019867669140448574,
+                "inconclusive": false
+              }
+            ]
+          },
+          {
+            "axis": "regime",
+            "groups": [
+              {
+                "label": "NORMAL",
+                "events": 900,
+                "medianSignalExcess": -0.05474933707054619,
+                "inconclusive": false
+              },
+              {
+                "label": "RISK",
+                "events": 946,
+                "medianSignalExcess": -0.057182627224360016,
+                "inconclusive": false
+              }
+            ]
+          }
+        ],
+        "matchRate": 1
+      },
+      {
+        "signal": "H4_UPPER_WICK_CLUSTER",
+        "nEvents": 2297,
+        "primaryHorizon": 63,
+        "summaryByHorizon": {
+          "20": {
+            "events": 2292,
+            "uniqueCodes": 943,
+            "years": 3,
+            "signalMean": 0.010881368767381919,
+            "signalMedian": -0.015153690256141217,
+            "controlMean": 0.01918397645060569,
+            "controlMedian": 0.005601208013724612,
+            "medianExcessDiff": -0.02075489826986583,
+            "meanMatchedDiff": -0.008302607683223757,
+            "maeMean": -0.132153377632061,
+            "mfeMean": 0.1977491040121395,
+            "p10StockReturn": -0.18218066975527644,
+            "matchRate": 1
+          },
+          "63": {
+            "events": 2291,
+            "uniqueCodes": 943,
+            "years": 3,
+            "signalMean": 0.026963331720183146,
+            "signalMedian": -0.027567886824515386,
+            "controlMean": 0.038790890426246484,
+            "controlMedian": 0.0009804936364679272,
+            "medianExcessDiff": -0.028548380460983312,
+            "meanMatchedDiff": -0.011827558706063338,
+            "maeMean": -0.20785410816072286,
+            "mfeMean": 0.35264658702959184,
+            "p10StockReturn": -0.24857142857142855,
+            "matchRate": 1
+          },
+          "126": {
+            "events": 2287,
+            "uniqueCodes": 943,
+            "years": 3,
+            "signalMean": 0.046411905333035734,
+            "signalMedian": -0.05124603575075204,
+            "controlMean": 0.0788951367771794,
+            "controlMedian": 0.0011301583697515365,
+            "medianExcessDiff": -0.05237619412050357,
+            "meanMatchedDiff": -0.03248323144414361,
+            "maeMean": -0.26897597767982356,
+            "mfeMean": 0.5230552496892549,
+            "p10StockReturn": -0.3432512315270936,
+            "matchRate": 1
+          },
+          "252": {
+            "events": 2278,
+            "uniqueCodes": 943,
+            "years": 3,
+            "signalMean": 0.059767938237272875,
+            "signalMedian": -0.07240055827447711,
+            "controlMean": 0.08793190818212454,
+            "controlMedian": 0.007386065344896988,
+            "medianExcessDiff": -0.0797866236193741,
+            "meanMatchedDiff": -0.028163969944851746,
+            "maeMean": -0.34601630283300927,
+            "mfeMean": 0.7699089695818874,
+            "p10StockReturn": -0.45943555365211997,
+            "matchRate": 0.9991220368744512
+          }
+        },
+        "primaryBootstrapMedian": {
+          "point": -0.028548380460983312,
+          "ciLower": -0.04397015431648499,
+          "ciUpper": -0.01962915848236877,
+          "pValue": 0
+        },
+        "primaryBootstrapMeanMatched": {
+          "point": -0.011827558706063338,
+          "ciLower": -0.023872122992203045,
+          "ciUpper": 0.0002813169914998974,
+          "pValue": 0.0566
+        },
+        "yearDecomp": {
+          "byYear": [
+            {
+              "year": 2020,
+              "events": 786,
+              "medianExcessDiff": -0.03560353812941473
+            },
+            {
+              "year": 2021,
+              "events": 836,
+              "medianExcessDiff": -0.03182538744786464
+            },
+            {
+              "year": 2022,
+              "events": 669,
+              "medianExcessDiff": -0.01941727717303554
+            }
+          ],
+          "leaveOneYearOut": [
+            {
+              "removedYear": 2020,
+              "medianExcessDiff": -0.026303469315617757,
+              "directionKept": true
+            },
+            {
+              "removedYear": 2021,
+              "medianExcessDiff": -0.02640957865562521,
+              "directionKept": true
+            },
+            {
+              "removedYear": 2022,
+              "medianExcessDiff": -0.03467676503213457,
+              "directionKept": true
+            }
+          ],
+          "regimeConcentrated": false
+        },
+        "topContributor": {
+          "removedCode": "036640",
+          "medianExcessDiff": -0.029363856066867578,
+          "directionKept": true
+        },
+        "tradeCf": {
+          "n": 2291,
+          "medianA": -0.005299999999999971,
+          "medianB": -0.01875842558425589,
+          "medianAdvantage": 0.012081376518218612,
+          "p10A": -0.030837579617834288,
+          "p10B": -0.2548825729927008
+        },
+        "factorDecomp": [
+          {
+            "axis": "market",
+            "groups": [
+              {
+                "label": "KOSDAQ",
+                "events": 1606,
+                "medianSignalExcess": -0.031504790582853326,
+                "inconclusive": false
+              },
+              {
+                "label": "KOSPI",
+                "events": 685,
+                "medianSignalExcess": -0.020132554005311443,
+                "inconclusive": false
+              }
+            ]
+          },
+          {
+            "axis": "size",
+            "groups": [
+              {
+                "label": "LARGE",
+                "events": 484,
+                "medianSignalExcess": -0.01965902592047486,
+                "inconclusive": false
+              },
+              {
+                "label": "MID",
+                "events": 1475,
+                "medianSignalExcess": -0.032654112343434294,
+                "inconclusive": false
+              },
+              {
+                "label": "SMALL",
+                "events": 332,
+                "medianSignalExcess": -0.017303843731792,
+                "inconclusive": false
+              }
+            ]
+          },
+          {
+            "axis": "liquidityTertile",
+            "groups": [
+              {
+                "label": "High",
+                "events": 705,
+                "medianSignalExcess": -0.05977365633481446,
+                "inconclusive": false
+              },
+              {
+                "label": "Low",
+                "events": 805,
+                "medianSignalExcess": -0.010374346978534454,
+                "inconclusive": false
+              },
+              {
+                "label": "Mid",
+                "events": 781,
+                "medianSignalExcess": -0.02814647196686082,
+                "inconclusive": false
+              }
+            ]
+          },
+          {
+            "axis": "volumeMultiple",
+            "groups": [
+              {
+                "label": "1-2x",
+                "events": 730,
+                "medianSignalExcess": -0.01965902592047486,
+                "inconclusive": false
+              },
+              {
+                "label": "2-5x",
+                "events": 412,
+                "medianSignalExcess": -0.043620054030282296,
+                "inconclusive": false
+              },
+              {
+                "label": "<1x",
+                "events": 795,
+                "medianSignalExcess": -0.02036499265930891,
+                "inconclusive": false
+              },
+              {
+                "label": ">=5x",
+                "events": 354,
+                "medianSignalExcess": -0.0706146068107355,
+                "inconclusive": false
+              }
+            ]
+          },
+          {
+            "axis": "ret5Tertile",
+            "groups": [
+              {
+                "label": "High",
+                "events": 1053,
+                "medianSignalExcess": -0.05094926983745551,
+                "inconclusive": false
+              },
+              {
+                "label": "Low",
+                "events": 720,
+                "medianSignalExcess": -0.008990705943436761,
+                "inconclusive": false
+              },
+              {
+                "label": "Mid",
+                "events": 518,
+                "medianSignalExcess": -0.024432468064667756,
+                "inconclusive": false
+              }
+            ]
+          },
+          {
+            "axis": "ret21Tertile",
+            "groups": [
+              {
+                "label": "High",
+                "events": 1191,
+                "medianSignalExcess": -0.05669285396917789,
+                "inconclusive": false
+              },
+              {
+                "label": "Low",
+                "events": 482,
+                "medianSignalExcess": -0.011816672061969624,
+                "inconclusive": false
+              },
+              {
+                "label": "Mid",
+                "events": 618,
+                "medianSignalExcess": -0.008889675701460042,
+                "inconclusive": false
+              }
+            ]
+          },
+          {
+            "axis": "ret63Tertile",
+            "groups": [
+              {
+                "label": "High",
+                "events": 968,
+                "medianSignalExcess": -0.05102933214209282,
+                "inconclusive": false
+              },
+              {
+                "label": "Low",
+                "events": 597,
+                "medianSignalExcess": -0.0174157443724674,
+                "inconclusive": false
+              },
+              {
+                "label": "Mid",
+                "events": 725,
+                "medianSignalExcess": -0.01934485370738237,
+                "inconclusive": false
+              },
+              {
+                "label": "NA",
+                "events": 1,
+                "medianSignalExcess": -0.19044789172109478,
+                "inconclusive": true
+              }
+            ]
+          },
+          {
+            "axis": "dailyReturn",
+            "groups": [
+              {
+                "label": "-10~-5%",
+                "events": 740,
+                "medianSignalExcess": -0.010366634587175794,
+                "inconclusive": false
+              },
+              {
+                "label": "-5~5%",
+                "events": 1190,
+                "medianSignalExcess": -0.031987505338055056,
+                "inconclusive": false
+              },
+              {
+                "label": "5~10%",
+                "events": 146,
+                "medianSignalExcess": -0.08621142213416472,
+                "inconclusive": false
+              },
+              {
+                "label": "<=-10%",
+                "events": 122,
+                "medianSignalExcess": -0.0025459378631679797,
+                "inconclusive": false
+              },
+              {
+                "label": ">=10%",
+                "events": 93,
+                "medianSignalExcess": -0.0343908548406755,
+                "inconclusive": false
+              }
+            ]
+          },
+          {
+            "axis": "dailyAbsShock",
+            "groups": [
+              {
+                "label": "3-5%",
+                "events": 566,
+                "medianSignalExcess": -0.02672852772357559,
+                "inconclusive": false
+              },
+              {
+                "label": "5-10%",
+                "events": 886,
+                "medianSignalExcess": -0.021636770854731535,
+                "inconclusive": false
+              },
+              {
+                "label": "<3%",
+                "events": 624,
+                "medianSignalExcess": -0.036828206022550325,
+                "inconclusive": false
+              },
+              {
+                "label": ">=10%",
+                "events": 215,
+                "medianSignalExcess": -0.01464696865808035,
+                "inconclusive": false
+              }
+            ]
+          },
+          {
+            "axis": "vol20Tertile",
+            "groups": [
+              {
+                "label": "High",
+                "events": 1085,
+                "medianSignalExcess": -0.05239734761314019,
+                "inconclusive": false
+              },
+              {
+                "label": "Low",
+                "events": 430,
+                "medianSignalExcess": 0.001888962828597518,
+                "inconclusive": false
+              },
+              {
+                "label": "Mid",
+                "events": 776,
+                "medianSignalExcess": -0.020837346905692944,
+                "inconclusive": false
+              }
+            ]
+          },
+          {
+            "axis": "vol63Tertile",
+            "groups": [
+              {
+                "label": "High",
+                "events": 657,
+                "medianSignalExcess": -0.06370946912053721,
+                "inconclusive": false
+              },
+              {
+                "label": "Low",
+                "events": 550,
+                "medianSignalExcess": 0.0031853947567306307,
+                "inconclusive": false
+              },
+              {
+                "label": "Mid",
+                "events": 1083,
+                "medianSignalExcess": -0.0255527755490933,
+                "inconclusive": false
+              },
+              {
+                "label": "NA",
+                "events": 1,
+                "medianSignalExcess": -0.19044789172109478,
+                "inconclusive": true
+              }
+            ]
+          },
+          {
+            "axis": "regime",
+            "groups": [
+              {
+                "label": "NORMAL",
+                "events": 1005,
+                "medianSignalExcess": -0.038664669162927656,
+                "inconclusive": false
+              },
+              {
+                "label": "RISK",
+                "events": 1286,
+                "medianSignalExcess": -0.02339769074490472,
+                "inconclusive": false
+              }
+            ]
+          }
+        ],
+        "matchRate": 1
+      },
+      {
+        "signal": "H5_BOOM_BUST_REPEAT",
+        "nEvents": 732,
+        "primaryHorizon": 63,
+        "summaryByHorizon": {
+          "20": {
+            "events": 730,
+            "uniqueCodes": 507,
+            "years": 3,
+            "signalMean": 0.003844637818275121,
+            "signalMedian": -0.01714252107476777,
+            "controlMean": 0.007242704706983764,
+            "controlMedian": -0.0025624868090411423,
+            "medianExcessDiff": -0.014580034265726627,
+            "meanMatchedDiff": -0.003398066888708629,
+            "maeMean": -0.15616056433399217,
+            "mfeMean": 0.1890829517412544,
+            "p10StockReturn": -0.1897728566254462,
+            "matchRate": 0.9986301369863013
+          },
+          "63": {
+            "events": 730,
+            "uniqueCodes": 507,
+            "years": 3,
+            "signalMean": 0.013318183878245541,
+            "signalMedian": -0.04152984844606744,
+            "controlMean": 0.005536786776003945,
+            "controlMedian": -0.027118520377316963,
+            "medianExcessDiff": -0.014411328068750479,
+            "meanMatchedDiff": 0.00778139710224162,
+            "maeMean": -0.23048455633085338,
+            "mfeMean": 0.39224289236631177,
+            "p10StockReturn": -0.2547577639751553,
+            "matchRate": 0.9986301369863013
+          },
+          "126": {
+            "events": 728,
+            "uniqueCodes": 507,
+            "years": 3,
+            "signalMean": 0.026331226970599995,
+            "signalMedian": -0.08983969303555567,
+            "controlMean": 0.01741449366093366,
+            "controlMedian": -0.05370238675294651,
+            "medianExcessDiff": -0.03613730628260916,
+            "meanMatchedDiff": 0.008916733309666308,
+            "maeMean": -0.305129184989267,
+            "mfeMean": 0.5605743215264296,
+            "p10StockReturn": -0.3403679653679654,
+            "matchRate": 0.9972527472527473
+          },
+          "252": {
+            "events": 728,
+            "uniqueCodes": 507,
+            "years": 3,
+            "signalMean": -0.011911826186534967,
+            "signalMedian": -0.14297379832609436,
+            "controlMean": -0.043501180173117784,
+            "controlMedian": -0.0909396274480504,
+            "medianExcessDiff": -0.05203417087804396,
+            "meanMatchedDiff": 0.03158935398658279,
+            "maeMean": -0.40349628798664516,
+            "mfeMean": 0.8328947841457882,
+            "p10StockReturn": -0.532119059488202,
+            "matchRate": 0.9972527472527473
+          }
+        },
+        "primaryBootstrapMedian": {
+          "point": -0.014411328068750479,
+          "ciLower": -0.04293243324736494,
+          "ciUpper": 0.01710665258391634,
+          "pValue": 0.5036
+        },
+        "primaryBootstrapMeanMatched": {
+          "point": 0.00778139710224162,
+          "ciLower": -0.033618242251504914,
+          "ciUpper": 0.05017075465978397,
+          "pValue": 0.685
+        },
+        "yearDecomp": {
+          "byYear": [
+            {
+              "year": 2020,
+              "events": 280,
+              "medianExcessDiff": -0.03866646275325827
+            },
+            {
+              "year": 2021,
+              "events": 231,
+              "medianExcessDiff": -0.01057478035173326
+            },
+            {
+              "year": 2022,
+              "events": 218,
+              "medianExcessDiff": 0.00373498429605134
+            }
+          ],
+          "leaveOneYearOut": [
+            {
+              "removedYear": 2020,
+              "medianExcessDiff": -0.00696184924460419,
+              "directionKept": true
+            },
+            {
+              "removedYear": 2021,
+              "medianExcessDiff": -0.013198219263709711,
+              "directionKept": true
+            },
+            {
+              "removedYear": 2022,
+              "medianExcessDiff": -0.02480015067648611,
+              "directionKept": true
+            }
+          ],
+          "regimeConcentrated": false
+        },
+        "topContributor": {
+          "removedCode": "028300",
+          "medianExcessDiff": -0.01195666261085316,
+          "directionKept": true
+        },
+        "tradeCf": {
+          "n": 730,
+          "medianA": -0.005499999999999949,
+          "medianB": -0.010409389361298094,
+          "medianAdvantage": 0.003220124355606313,
+          "p10A": -0.03269055176192879,
+          "p10B": -0.27529941059602653
+        },
+        "factorDecomp": [
+          {
+            "axis": "market",
+            "groups": [
+              {
+                "label": "KOSDAQ",
+                "events": 547,
+                "medianSignalExcess": -0.049273367562894355,
+                "inconclusive": false
+              },
+              {
+                "label": "KOSPI",
+                "events": 183,
+                "medianSignalExcess": -0.020730406741066854,
+                "inconclusive": false
+              }
+            ]
+          },
+          {
+            "axis": "size",
+            "groups": [
+              {
+                "label": "LARGE",
+                "events": 156,
+                "medianSignalExcess": -0.051434043410139074,
+                "inconclusive": false
+              },
+              {
+                "label": "MID",
+                "events": 504,
+                "medianSignalExcess": -0.03180353552219989,
+                "inconclusive": false
+              },
+              {
+                "label": "SMALL",
+                "events": 70,
+                "medianSignalExcess": -0.10212507629324874,
+                "inconclusive": false
+              }
+            ]
+          },
+          {
+            "axis": "liquidityTertile",
+            "groups": [
+              {
+                "label": "High",
+                "events": 355,
+                "medianSignalExcess": -0.07016175757679743,
+                "inconclusive": false
+              },
+              {
+                "label": "Low",
+                "events": 161,
+                "medianSignalExcess": -0.012029814253092797,
+                "inconclusive": false
+              },
+              {
+                "label": "Mid",
+                "events": 214,
+                "medianSignalExcess": -0.034586931537270216,
+                "inconclusive": false
+              }
+            ]
+          },
+          {
+            "axis": "volumeMultiple",
+            "groups": [
+              {
+                "label": "1-2x",
+                "events": 190,
+                "medianSignalExcess": -0.04951860555991616,
+                "inconclusive": false
+              },
+              {
+                "label": "2-5x",
+                "events": 50,
+                "medianSignalExcess": -0.13466490856843388,
+                "inconclusive": false
+              },
+              {
+                "label": "<1x",
+                "events": 471,
+                "medianSignalExcess": -0.033577816844937436,
+                "inconclusive": false
+              },
+              {
+                "label": ">=5x",
+                "events": 19,
+                "medianSignalExcess": -0.07404895761837327,
+                "inconclusive": true
+              }
+            ]
+          },
+          {
+            "axis": "ret5Tertile",
+            "groups": [
+              {
+                "label": "High",
+                "events": 24,
+                "medianSignalExcess": -0.11586882827792877,
+                "inconclusive": true
+              },
+              {
+                "label": "Low",
+                "events": 597,
+                "medianSignalExcess": -0.04138718919924966,
+                "inconclusive": false
+              },
+              {
+                "label": "Mid",
+                "events": 109,
+                "medianSignalExcess": -0.030317175150956333,
+                "inconclusive": false
+              }
+            ]
+          },
+          {
+            "axis": "ret21Tertile",
+            "groups": [
+              {
+                "label": "High",
+                "events": 137,
+                "medianSignalExcess": -0.10567047287656361,
+                "inconclusive": false
+              },
+              {
+                "label": "Low",
+                "events": 475,
+                "medianSignalExcess": -0.041807791357005075,
+                "inconclusive": false
+              },
+              {
+                "label": "Mid",
+                "events": 118,
+                "medianSignalExcess": 0.00023731867922693883,
+                "inconclusive": false
+              }
+            ]
+          },
+          {
+            "axis": "ret63Tertile",
+            "groups": [
+              {
+                "label": "High",
+                "events": 298,
+                "medianSignalExcess": -0.03336547559139047,
+                "inconclusive": false
+              },
+              {
+                "label": "Low",
+                "events": 262,
+                "medianSignalExcess": -0.05243740415813436,
+                "inconclusive": false
+              },
+              {
+                "label": "Mid",
+                "events": 170,
+                "medianSignalExcess": -0.023776275520248302,
+                "inconclusive": false
+              }
+            ]
+          },
+          {
+            "axis": "dailyReturn",
+            "groups": [
+              {
+                "label": "-10~-5%",
+                "events": 288,
+                "medianSignalExcess": -0.02664983682467642,
+                "inconclusive": false
+              },
+              {
+                "label": "-5~5%",
+                "events": 302,
+                "medianSignalExcess": -0.04145851882265855,
+                "inconclusive": false
+              },
+              {
+                "label": "<=-10%",
+                "events": 140,
+                "medianSignalExcess": -0.08303435154246436,
+                "inconclusive": false
+              }
+            ]
+          },
+          {
+            "axis": "dailyAbsShock",
+            "groups": [
+              {
+                "label": "3-5%",
+                "events": 186,
+                "medianSignalExcess": -0.03931317169102588,
+                "inconclusive": false
+              },
+              {
+                "label": "5-10%",
+                "events": 288,
+                "medianSignalExcess": -0.02664983682467642,
+                "inconclusive": false
+              },
+              {
+                "label": "<3%",
+                "events": 116,
+                "medianSignalExcess": -0.049462414383914355,
+                "inconclusive": false
+              },
+              {
+                "label": ">=10%",
+                "events": 140,
+                "medianSignalExcess": -0.08303435154246436,
+                "inconclusive": false
+              }
+            ]
+          },
+          {
+            "axis": "vol20Tertile",
+            "groups": [
+              {
+                "label": "High",
+                "events": 382,
+                "medianSignalExcess": -0.0701064930117512,
+                "inconclusive": false
+              },
+              {
+                "label": "Low",
+                "events": 120,
+                "medianSignalExcess": -0.043497564496074836,
+                "inconclusive": false
+              },
+              {
+                "label": "Mid",
+                "events": 228,
+                "medianSignalExcess": -0.013853177830339292,
+                "inconclusive": false
+              }
+            ]
+          },
+          {
+            "axis": "vol63Tertile",
+            "groups": [
+              {
+                "label": "High",
+                "events": 502,
+                "medianSignalExcess": -0.05261105094194779,
+                "inconclusive": false
+              },
+              {
+                "label": "Low",
+                "events": 66,
+                "medianSignalExcess": -0.0114134158319536,
+                "inconclusive": false
+              },
+              {
+                "label": "Mid",
+                "events": 162,
+                "medianSignalExcess": -0.020704946984793138,
+                "inconclusive": false
+              }
+            ]
+          },
+          {
+            "axis": "regime",
+            "groups": [
+              {
+                "label": "NORMAL",
+                "events": 281,
+                "medianSignalExcess": -0.09080020664212962,
+                "inconclusive": false
+              },
+              {
+                "label": "RISK",
+                "events": 449,
+                "medianSignalExcess": -0.01420979139755274,
+                "inconclusive": false
+              }
+            ]
+          }
+        ],
+        "matchRate": 0.9986301369863013
+      }
+    ],
+    "holmAdjustedP": {
+      "H3_VOL_SPIKE_ROLLING": 0,
+      "H4_UPPER_WICK_CLUSTER": 0,
+      "H5_BOOM_BUST_REPEAT": 0.5036
+    }
+  },
+  "grades": {
+    "H3_VOL_SPIKE_ROLLING": {
+      "grade": "REVIEW_WARNING",
+      "reasons": [
+        "dev 63일 중앙초과차 -3.46%, val -5.44%",
+        "검증: 방향O HolmP=0.0000(O) 경제성(≤-3%p)=O 강건성=O 거래우위=O"
+      ]
+    },
+    "H4_UPPER_WICK_CLUSTER": {
+      "grade": "RESEARCH_ONLY",
+      "reasons": [
+        "dev 63일 중앙초과차 -2.63%, val -2.85%",
+        "검증: 방향O HolmP=0.0000(O) 경제성(≤-3%p)=X 강건성=O 거래우위=O",
+        "개발표본은 방향 일치하나 검증표본에서 통계·경제성 미달"
+      ]
+    },
+    "H5_BOOM_BUST_REPEAT": {
+      "grade": "SEGMENT_ONLY",
+      "reasons": [
+        "dev 63일 중앙초과차 -2.00%, val -1.44%",
+        "검증: 방향O HolmP=0.5036(X) 경제성(≤-3%p)=X 강건성=O 거래우위=O",
+        "전체 표본 미통과이나 사전등록 구간(시장/시총)에서 강한 음의 초과 관측 → SEGMENT_ONLY 후보"
+      ]
+    }
+  }
+}

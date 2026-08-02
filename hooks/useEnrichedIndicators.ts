@@ -70,6 +70,25 @@ export interface EnrichedIndicatorData {
   longTrendUp: boolean | null;
   /** 최근 60거래일 내 가장 최근에 확정된 swing low 종가 (와인스타인 매도 트리거). 미형성 시 null */
   recentSwingLow: number | null;
+
+  // ── 강의검증 급성 매도 신호 재료 (KR 전용, 백테스트 lectureSignals S1~S6와 동일 정의, 룩어헤드 0) ──
+  // 아래 8필드는 buildEnrichedIndicator가 항상 채운다. 옵셔널은 기존 테스트/소비자 호환용(미지정=null과 동일 취급).
+  /** S1 재료: 21거래일 가격비 close[i]/close[i-21] (≥2.0이면 +100%). 창부족/base≤0이면 null */
+  runup21dRatio?: number | null;
+  /** S2 재료: 5거래일 가격비 close[i]/close[i-5] (≥1.4이면 +40%). 창부족/base≤0이면 null */
+  runup5dRatio?: number | null;
+  /** S3/S5/S6 재료: 당일 종가/전일 종가 (close-to-close, 백테스트 dailyRatio). metrics.yesterdayChange 아님. */
+  todayDailyRatio?: number | null;
+  /** S3 재료: 당일 종가==고가 (상대 허용오차 1e-9). 고가 미수신 시 null */
+  todayCloseEqualsHigh?: boolean | null;
+  /** S4 재료: 시가갭 open[i]/close[i-1]. 시가/전일종가 미수신 시 null */
+  gapUpRatio?: number | null;
+  /** S4 재료: 당일 음봉 (close < open). 시가/종가 미수신 시 null */
+  todayIsBearishCandle?: boolean | null;
+  /** S4/S6 재료: 당일 거래량 / 20일 평균거래량(당일 제외, 룩어헤드 규약). 거래량 미수신/창부족이면 null */
+  volumeVs20dAvg?: number | null;
+  /** S5(APP_PROXY) 재료: 거래대금 프록시(종가×거래량)가 최근 63일(당일 포함) 최대. 원천 거래대금 아닌 프록시. 거래량 미수신/창부족이면 null */
+  turnoverProxyIsMax63d?: boolean | null;
 }
 
 /** enriched 지표 계산에 필요한 최소 종목 정보 */

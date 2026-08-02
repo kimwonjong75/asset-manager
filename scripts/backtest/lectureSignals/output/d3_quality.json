@@ -1,0 +1,4817 @@
+{
+  "meta": {
+    "runDate": "2026-07-26",
+    "prelock": "PASS",
+    "masterSeed": 20260725,
+    "bootstrapIterations": 10000,
+    "rankToDate": "2022-12-31",
+    "lockSampleExecuted": false,
+    "rsFormula": "rsRaw = 0.40*R21 + 0.20*R63 + 0.20*R126 + 0.20*R252 (adj_close)",
+    "rsConst": {
+      "weightR21": 0.4,
+      "weightR63": 0.2,
+      "weightR126": 0.2,
+      "weightR252": 0.2,
+      "minBarsForR252": 252,
+      "minAmountKRW": 1000000000,
+      "amountAvgWindow": 20,
+      "entryThreshold": 90,
+      "episodeEndBelowDays": 20,
+      "rs50Threshold": 50,
+      "rs50BelowDays": 20,
+      "rs50LookbackDays": 504,
+      "rs70Threshold": 70,
+      "rs5070StallDays": 50,
+      "rs97Threshold": 97,
+      "h6WindowDays": 21,
+      "hWindowDays": 252,
+      "boomUpMultiple": 1.5,
+      "bustDownMultiple": 0.7,
+      "boomBustWindowDays": 252
+    }
+  },
+  "rs": {
+    "calendarDays": 3208,
+    "calendarFrom": "2010-01-04",
+    "calendarTo": "2022-12-29",
+    "daysRanked": 2956,
+    "avgEligible": 419.54025710419484,
+    "minEligible": 209,
+    "medianEligible": 400,
+    "maxEligible": 776,
+    "computeSeconds": 3.241
+  },
+  "entries": {
+    "dev": {
+      "n": 2826,
+      "uniqueCodes": 828,
+      "years": 9,
+      "kospi": 806,
+      "kosdaq": 2020,
+      "q4CensoredRate": 0.4483368719037509,
+      "qMissingRate": {
+        "Q1": 0,
+        "Q2": 0,
+        "Q3": 0,
+        "Q4": 0,
+        "Q5": 0,
+        "Q6": 0,
+        "Q7": 0,
+        "Q8": 0,
+        "Q9": 0
+      }
+    },
+    "val": {
+      "n": 1645,
+      "uniqueCodes": 757,
+      "years": 3,
+      "kospi": 459,
+      "kosdaq": 1186,
+      "q4CensoredRate": 0.24498480243161094,
+      "qMissingRate": {
+        "Q1": 0,
+        "Q2": 0,
+        "Q3": 0,
+        "Q4": 0,
+        "Q5": 0,
+        "Q6": 0,
+        "Q7": 0,
+        "Q8": 0,
+        "Q9": 0
+      }
+    },
+    "total": 4471
+  },
+  "qDev": [
+    {
+      "code": "Q1",
+      "label": "Q1_RETURN_21D",
+      "direction": "LOW",
+      "nUsed": 1874,
+      "favMeanExcess": 0.00045703049227253814,
+      "midMeanExcess": -0.006829105687090155,
+      "unfavMeanExcess": -0.05317616400941773,
+      "diff": 0.05363319450169027,
+      "rawP": 0.0426,
+      "holmP": 0.213,
+      "ciLower": 0.0016039618854507979,
+      "ciUpper": 0.0928647879576056,
+      "dir1": 0.11205357681996747,
+      "dir2": 0.016934149835442093,
+      "subperiodDirectionOk": true,
+      "monotonic": true,
+      "survives": false
+    },
+    {
+      "code": "Q2",
+      "label": "Q2_MAX_DAILY_RETURN_63D",
+      "direction": "LOW",
+      "nUsed": 1874,
+      "favMeanExcess": 0.0404996144293644,
+      "midMeanExcess": -0.016335045050846896,
+      "unfavMeanExcess": -0.08371280858275283,
+      "diff": 0.12421242301211724,
+      "rawP": 0,
+      "holmP": 0,
+      "ciLower": 0.05617021821993392,
+      "ciUpper": 0.14910965083501784,
+      "dir1": 0.1903247356341934,
+      "dir2": 0.07402368941730139,
+      "subperiodDirectionOk": true,
+      "monotonic": true,
+      "survives": true
+    },
+    {
+      "code": "Q3",
+      "label": "Q3_LIMIT_UP_COUNT_63D",
+      "direction": "LOW",
+      "nUsed": 1874,
+      "favMeanExcess": 0.002399505476917385,
+      "midMeanExcess": -0.026535405258181436,
+      "unfavMeanExcess": -0.035412339422971305,
+      "diff": 0.03781184489988869,
+      "rawP": 0.4072,
+      "holmP": 0.4072,
+      "ciLower": -0.042447803635998545,
+      "ciUpper": 0.09914049981463463,
+      "dir1": 0.19461518895642016,
+      "dir2": -0.024361672779120325,
+      "subperiodDirectionOk": false,
+      "monotonic": true,
+      "survives": false
+    },
+    {
+      "code": "Q4",
+      "label": "Q4_DAYS_RS50_TO_RS90",
+      "direction": "HIGH",
+      "nUsed": 1874,
+      "favMeanExcess": 0.0024690015756392795,
+      "midMeanExcess": -0.02095299732518856,
+      "unfavMeanExcess": -0.04106424345468594,
+      "diff": 0.04353324503032522,
+      "rawP": 0.1362,
+      "holmP": 0.402,
+      "ciLower": -0.015451045345486195,
+      "ciUpper": 0.10611444222875092,
+      "dir1": 0.005160462712328595,
+      "dir2": 0.02650725584555847,
+      "subperiodDirectionOk": true,
+      "monotonic": true,
+      "survives": false
+    },
+    {
+      "code": "Q5",
+      "label": "Q5_SIZE_PERCENTILE",
+      "direction": "HIGH",
+      "nUsed": 1874,
+      "favMeanExcess": 0.033071530052693934,
+      "midMeanExcess": -0.06410903397007917,
+      "unfavMeanExcess": -0.028510735286850008,
+      "diff": 0.061582265339543946,
+      "rawP": 0.0908,
+      "holmP": 0.3632,
+      "ciLower": -0.009963692893945317,
+      "ciUpper": 0.12506010976421766,
+      "dir1": 0.11748649229809882,
+      "dir2": 0.021800839303800973,
+      "subperiodDirectionOk": true,
+      "monotonic": false,
+      "survives": false
+    },
+    {
+      "code": "Q6",
+      "label": "Q6_VOLUME_EXCESS_60D",
+      "direction": "LOW",
+      "nUsed": 1874,
+      "favMeanExcess": 0.02801519268557948,
+      "midMeanExcess": -0.007323595347685894,
+      "unfavMeanExcess": -0.08023983654212889,
+      "diff": 0.10825502922770837,
+      "rawP": 0,
+      "holmP": 0,
+      "ciLower": 0.06326772024115378,
+      "ciUpper": 0.15623418745917325,
+      "dir1": 0.09795088823534598,
+      "dir2": 0.11065137366906125,
+      "subperiodDirectionOk": true,
+      "monotonic": true,
+      "survives": true
+    },
+    {
+      "code": "Q7",
+      "label": "Q7_REALIZED_VOL_63D",
+      "direction": "LOW",
+      "nUsed": 1874,
+      "favMeanExcess": 0.03087178930874396,
+      "midMeanExcess": -0.020526429086219815,
+      "unfavMeanExcess": -0.06989359942675938,
+      "diff": 0.10076538873550334,
+      "rawP": 0.0002,
+      "holmP": 0.0014,
+      "ciLower": 0.0405084451654482,
+      "ciUpper": 0.14809252700416828,
+      "dir1": 0.20143001595230572,
+      "dir2": 0.040542624785972425,
+      "subperiodDirectionOk": true,
+      "monotonic": true,
+      "survives": true
+    },
+    {
+      "code": "Q8",
+      "label": "Q8_UPPER_WICK_COUNT_60D",
+      "direction": "LOW",
+      "nUsed": 1874,
+      "favMeanExcess": 0.037129373441248545,
+      "midMeanExcess": -0.04231148480573334,
+      "unfavMeanExcess": -0.05436612783975049,
+      "diff": 0.09149550128099904,
+      "rawP": 0.0082,
+      "holmP": 0.04920000000000001,
+      "ciLower": 0.021771628947984966,
+      "ciUpper": 0.14326622843283576,
+      "dir1": 0.1955235314921771,
+      "dir2": 0.014637726236773866,
+      "subperiodDirectionOk": true,
+      "monotonic": true,
+      "survives": true
+    },
+    {
+      "code": "Q9",
+      "label": "Q9_BOOM_BUST_COUNT_252D",
+      "direction": "LOW",
+      "nUsed": 1874,
+      "favMeanExcess": -0.005838803700372273,
+      "midMeanExcess": 0.00395538058289354,
+      "unfavMeanExcess": -0.05766481608675666,
+      "diff": 0.05182601238638439,
+      "rawP": 0.134,
+      "holmP": 0.402,
+      "ciLower": -0.0160773592849258,
+      "ciUpper": 0.11880906465398532,
+      "dir1": 0.12141452019405745,
+      "dir2": 0.01820199616810785,
+      "subperiodDirectionOk": true,
+      "monotonic": false,
+      "survives": false
+    }
+  ],
+  "qVal": {
+    "survivors": [
+      "Q2",
+      "Q6",
+      "Q7",
+      "Q8"
+    ],
+    "nEntries": 1639,
+    "topMeanExcess": 0.0314860138905412,
+    "bottomMeanExcess": -0.03598337460685907,
+    "diff": 0.06746938849740027,
+    "ciLower": -0.024327621445266488,
+    "ciUpper": 0.15278679475201265,
+    "pValue": 0.1174,
+    "passes": false,
+    "note": "품질점수 상위1/3(n=547) vs 하위1/3(n=546). 중앙값 이진화·동일가중(가중치 최적화 없음).",
+    "scoreDistribution": [
+      {
+        "score": 0,
+        "events": 315
+      },
+      {
+        "score": 1,
+        "events": 384
+      },
+      {
+        "score": 2,
+        "events": 314
+      },
+      {
+        "score": 3,
+        "events": 221
+      },
+      {
+        "score": 4,
+        "events": 405
+      }
+    ],
+    "topN": 547,
+    "bottomN": 546
+  },
+  "qGrade": {
+    "grade": "RESEARCH_ONLY",
+    "reasons": [
+      "개발표본 생존 4/9 (Q2,Q6,Q7,Q8)",
+      "검증표본 품질점수 상위1/3 − 하위1/3 = 6.75% [95%CI -2.43%~15.28%], p=0.1174",
+      "검증 통과조건(p<0.05 · 차이≥2%p · 방향일치) 미충족"
+    ]
+  },
+  "hDev": {
+    "H1": {
+      "code": "H1",
+      "label": "H1_POST_ENTRY_RUNUP_5D",
+      "family": "POST_ENTRY_RUNUP",
+      "direction": "BAD",
+      "nWarned": 2062,
+      "nCohortControls": 16.61348205625606,
+      "summaryByHorizon": {
+        "20": {
+          "events": 2061,
+          "uniqueCodes": 698,
+          "years": 9,
+          "signalMean": 0.00420290866536562,
+          "signalMedian": -0.046285147038421404,
+          "controlMean": 0.01862626126918347,
+          "controlMedian": 0.008148672445887985,
+          "medianExcessDiff": -0.05443381948430939,
+          "meanMatchedDiff": -0.01442335260381786,
+          "maeMean": -0.1863965483345544,
+          "mfeMean": 0.24036245299351736,
+          "p10StockReturn": -0.2563559322033898,
+          "matchRate": 0.997573993207181
+        },
+        "63": {
+          "events": 2059,
+          "uniqueCodes": 698,
+          "years": 9,
+          "signalMean": -0.010412816159009654,
+          "signalMedian": -0.09701520199293201,
+          "controlMean": 0.039255684809328145,
+          "controlMedian": 0.012161938034813987,
+          "medianExcessDiff": -0.10917714002774599,
+          "meanMatchedDiff": -0.04966850096833776,
+          "maeMean": -0.28801514297441067,
+          "mfeMean": 0.384439004718918,
+          "p10StockReturn": -0.37290211092714837,
+          "matchRate": 0.9975716367168529
+        },
+        "126": {
+          "events": 2049,
+          "uniqueCodes": 698,
+          "years": 9,
+          "signalMean": -0.03516837483840715,
+          "signalMedian": -0.13748318514346886,
+          "controlMean": 0.03831058399441438,
+          "controlMedian": 0.011587407254398899,
+          "medianExcessDiff": -0.14907059239786774,
+          "meanMatchedDiff": -0.07347895883282125,
+          "maeMean": -0.3687342433123406,
+          "mfeMean": 0.5021007598002348,
+          "p10StockReturn": -0.4659675684083633,
+          "matchRate": 0.997559785261103
+        },
+        "252": {
+          "events": 2036,
+          "uniqueCodes": 698,
+          "years": 9,
+          "signalMean": -0.0419780847681791,
+          "signalMedian": -0.20413464861673947,
+          "controlMean": 0.025471936615005627,
+          "controlMedian": 0.001530861969122963,
+          "medianExcessDiff": -0.20566551058586244,
+          "meanMatchedDiff": -0.0674500213831848,
+          "maeMean": -0.47440937144448025,
+          "mfeMean": 0.6840132486611303,
+          "p10StockReturn": -0.5609285503819702,
+          "matchRate": 0.9975442043222004
+        }
+      },
+      "primaryBootstrap": {
+        "point": -0.10917714002774599,
+        "ciLower": -0.12597574201550127,
+        "ciUpper": -0.08401227414004274,
+        "pValue": 0
+      },
+      "yearDecomp": {
+        "byYear": [
+          {
+            "year": 2011,
+            "events": 200,
+            "medianExcessDiff": -0.06362767471266202
+          },
+          {
+            "year": 2012,
+            "events": 195,
+            "medianExcessDiff": -0.12902839463070948
+          },
+          {
+            "year": 2013,
+            "events": 131,
+            "medianExcessDiff": -0.07514223575107457
+          },
+          {
+            "year": 2014,
+            "events": 164,
+            "medianExcessDiff": -0.0794134448824943
+          },
+          {
+            "year": 2015,
+            "events": 286,
+            "medianExcessDiff": -0.11958074074351313
+          },
+          {
+            "year": 2016,
+            "events": 243,
+            "medianExcessDiff": -0.1454591938235777
+          },
+          {
+            "year": 2017,
+            "events": 240,
+            "medianExcessDiff": -0.11180467067616821
+          },
+          {
+            "year": 2018,
+            "events": 326,
+            "medianExcessDiff": -0.08886316519288494
+          },
+          {
+            "year": 2019,
+            "events": 269,
+            "medianExcessDiff": -0.10407262961816222
+          }
+        ],
+        "leaveOneYearOut": [
+          {
+            "removedYear": 2011,
+            "medianExcessDiff": -0.11223376247540105,
+            "directionKept": true
+          },
+          {
+            "removedYear": 2012,
+            "medianExcessDiff": -0.10864567809378066,
+            "directionKept": true
+          },
+          {
+            "removedYear": 2013,
+            "medianExcessDiff": -0.11048014425820721,
+            "directionKept": true
+          },
+          {
+            "removedYear": 2014,
+            "medianExcessDiff": -0.11048593332582173,
+            "directionKept": true
+          },
+          {
+            "removedYear": 2015,
+            "medianExcessDiff": -0.10657490955684683,
+            "directionKept": true
+          },
+          {
+            "removedYear": 2016,
+            "medianExcessDiff": -0.1039304492791111,
+            "directionKept": true
+          },
+          {
+            "removedYear": 2017,
+            "medianExcessDiff": -0.10834468937467301,
+            "directionKept": true
+          },
+          {
+            "removedYear": 2018,
+            "medianExcessDiff": -0.11159188281475474,
+            "directionKept": true
+          },
+          {
+            "removedYear": 2019,
+            "medianExcessDiff": -0.10873691173996218,
+            "directionKept": true
+          }
+        ],
+        "regimeConcentrated": false
+      },
+      "topContributor": {
+        "removedCode": "140410",
+        "medianExcessDiff": -0.11021466155669743,
+        "directionKept": true
+      },
+      "matchRate": 0.9975716367168529,
+      "factorDecomp": [
+        {
+          "axis": "market",
+          "groups": [
+            {
+              "label": "KOSDAQ",
+              "events": 1570,
+              "medianExcess": -0.09809044476737006,
+              "inconclusive": false
+            },
+            {
+              "label": "KOSPI",
+              "events": 489,
+              "medianExcess": -0.08352603809783399,
+              "inconclusive": false
+            }
+          ]
+        },
+        {
+          "axis": "size",
+          "groups": [
+            {
+              "label": "LARGE",
+              "events": 248,
+              "medianExcess": -0.024180084264995072,
+              "inconclusive": false
+            },
+            {
+              "label": "MID",
+              "events": 1401,
+              "medianExcess": -0.10717582288377114,
+              "inconclusive": false
+            },
+            {
+              "label": "SMALL",
+              "events": 410,
+              "medianExcess": -0.09550329456755147,
+              "inconclusive": false
+            }
+          ]
+        },
+        {
+          "axis": "liquidityTertile",
+          "groups": [
+            {
+              "label": "High",
+              "events": 527,
+              "medianExcess": -0.11699408565884872,
+              "inconclusive": false
+            },
+            {
+              "label": "Low",
+              "events": 761,
+              "medianExcess": -0.0613602243130803,
+              "inconclusive": false
+            },
+            {
+              "label": "Mid",
+              "events": 771,
+              "medianExcess": -0.1187663629519422,
+              "inconclusive": false
+            }
+          ]
+        },
+        {
+          "axis": "volumeMultiple",
+          "groups": [
+            {
+              "label": "1-2x",
+              "events": 450,
+              "medianExcess": -0.10640892987092848,
+              "inconclusive": false
+            },
+            {
+              "label": "2-5x",
+              "events": 636,
+              "medianExcess": -0.07945665303080207,
+              "inconclusive": false
+            },
+            {
+              "label": "<1x",
+              "events": 383,
+              "medianExcess": -0.03580254440411079,
+              "inconclusive": false
+            },
+            {
+              "label": ">=5x",
+              "events": 590,
+              "medianExcess": -0.13690635461540224,
+              "inconclusive": false
+            }
+          ]
+        },
+        {
+          "axis": "ret5Tertile",
+          "groups": [
+            {
+              "label": "High",
+              "events": 1930,
+              "medianExcess": -0.10198863871334479,
+              "inconclusive": false
+            },
+            {
+              "label": "Low",
+              "events": 41,
+              "medianExcess": -0.0859443041250596,
+              "inconclusive": true
+            },
+            {
+              "label": "Mid",
+              "events": 88,
+              "medianExcess": 0.010285486497266738,
+              "inconclusive": false
+            }
+          ]
+        },
+        {
+          "axis": "ret21Tertile",
+          "groups": [
+            {
+              "label": "High",
+              "events": 1967,
+              "medianExcess": -0.09800659750557594,
+              "inconclusive": false
+            },
+            {
+              "label": "Low",
+              "events": 34,
+              "medianExcess": -0.0808383925728347,
+              "inconclusive": true
+            },
+            {
+              "label": "Mid",
+              "events": 58,
+              "medianExcess": -0.06570454618867266,
+              "inconclusive": false
+            }
+          ]
+        },
+        {
+          "axis": "ret63Tertile",
+          "groups": [
+            {
+              "label": "High",
+              "events": 1847,
+              "medianExcess": -0.10075291980796774,
+              "inconclusive": false
+            },
+            {
+              "label": "Low",
+              "events": 87,
+              "medianExcess": -0.06894804861217785,
+              "inconclusive": false
+            },
+            {
+              "label": "Mid",
+              "events": 125,
+              "medianExcess": -0.04896471633149191,
+              "inconclusive": false
+            }
+          ]
+        },
+        {
+          "axis": "dailyReturn",
+          "groups": [
+            {
+              "label": "-10~-5%",
+              "events": 16,
+              "medianExcess": -0.0836018145957576,
+              "inconclusive": true
+            },
+            {
+              "label": "-5~5%",
+              "events": 770,
+              "medianExcess": -0.07381749447653524,
+              "inconclusive": false
+            },
+            {
+              "label": "5~10%",
+              "events": 428,
+              "medianExcess": -0.055132197813893835,
+              "inconclusive": false
+            },
+            {
+              "label": "<=-10%",
+              "events": 10,
+              "medianExcess": 0.019733435507561015,
+              "inconclusive": true
+            },
+            {
+              "label": ">=10%",
+              "events": 835,
+              "medianExcess": -0.12862478320483195,
+              "inconclusive": false
+            }
+          ]
+        },
+        {
+          "axis": "dailyAbsShock",
+          "groups": [
+            {
+              "label": "3-5%",
+              "events": 279,
+              "medianExcess": -0.08765723389074587,
+              "inconclusive": false
+            },
+            {
+              "label": "5-10%",
+              "events": 444,
+              "medianExcess": -0.05748614194743734,
+              "inconclusive": false
+            },
+            {
+              "label": "<3%",
+              "events": 491,
+              "medianExcess": -0.07168881204125754,
+              "inconclusive": false
+            },
+            {
+              "label": ">=10%",
+              "events": 845,
+              "medianExcess": -0.12768756256583913,
+              "inconclusive": false
+            }
+          ]
+        },
+        {
+          "axis": "vol20Tertile",
+          "groups": [
+            {
+              "label": "High",
+              "events": 1438,
+              "medianExcess": -0.10699162014898933,
+              "inconclusive": false
+            },
+            {
+              "label": "Low",
+              "events": 105,
+              "medianExcess": -0.11601386900547994,
+              "inconclusive": false
+            },
+            {
+              "label": "Mid",
+              "events": 516,
+              "medianExcess": -0.04933281964663416,
+              "inconclusive": false
+            }
+          ]
+        },
+        {
+          "axis": "vol63Tertile",
+          "groups": [
+            {
+              "label": "High",
+              "events": 1249,
+              "medianExcess": -0.12567417211341625,
+              "inconclusive": false
+            },
+            {
+              "label": "Low",
+              "events": 150,
+              "medianExcess": -0.045964179919780745,
+              "inconclusive": false
+            },
+            {
+              "label": "Mid",
+              "events": 660,
+              "medianExcess": -0.050569560087881715,
+              "inconclusive": false
+            }
+          ]
+        },
+        {
+          "axis": "regime",
+          "groups": [
+            {
+              "label": "NORMAL",
+              "events": 1186,
+              "medianExcess": -0.09867187600122573,
+              "inconclusive": false
+            },
+            {
+              "label": "RISK",
+              "events": 873,
+              "medianExcess": -0.09499928492506371,
+              "inconclusive": false
+            }
+          ]
+        }
+      ]
+    },
+    "H2": {
+      "code": "H2",
+      "label": "H2_POST_ENTRY_RUNUP_21D",
+      "family": "POST_ENTRY_RUNUP",
+      "direction": "BAD",
+      "nWarned": 2455,
+      "nCohortControls": 14.70427698574338,
+      "summaryByHorizon": {
+        "20": {
+          "events": 2454,
+          "uniqueCodes": 777,
+          "years": 9,
+          "signalMean": 0.0023542558306117313,
+          "signalMedian": -0.035684005073339686,
+          "controlMean": 0.004006149574029205,
+          "controlMedian": -0.0011218024638656177,
+          "medianExcessDiff": -0.03456220260947407,
+          "meanMatchedDiff": -0.0016518937434174897,
+          "maeMean": -0.15622235551262031,
+          "mfeMean": 0.19322587579361608,
+          "p10StockReturn": -0.21840479836538126,
+          "matchRate": 0.991442542787286
+        },
+        "63": {
+          "events": 2451,
+          "uniqueCodes": 777,
+          "years": 9,
+          "signalMean": 0.004964730389254419,
+          "signalMedian": -0.06671776787379441,
+          "controlMean": 0.019295634568173382,
+          "controlMedian": -0.004968096944536328,
+          "medianExcessDiff": -0.06174967092925808,
+          "meanMatchedDiff": -0.014330904178919015,
+          "maeMean": -0.253949251269379,
+          "mfeMean": 0.3413023992490568,
+          "p10StockReturn": -0.32586558044806513,
+          "matchRate": 0.9914320685434517
+        },
+        "126": {
+          "events": 2437,
+          "uniqueCodes": 777,
+          "years": 9,
+          "signalMean": -0.006517580679608099,
+          "signalMedian": -0.11427901046955957,
+          "controlMean": 0.023227899540728784,
+          "controlMedian": -0.0030607698263903846,
+          "medianExcessDiff": -0.11121824064316918,
+          "meanMatchedDiff": -0.02974548022033687,
+          "maeMean": -0.33231571773397456,
+          "mfeMean": 0.46692118258144477,
+          "p10StockReturn": -0.435649990455353,
+          "matchRate": 0.9913828477636438
+        },
+        "252": {
+          "events": 2418,
+          "uniqueCodes": 777,
+          "years": 9,
+          "signalMean": -0.015084868911993132,
+          "signalMedian": -0.17215514897821554,
+          "controlMean": 0.023919633734005134,
+          "controlMedian": -0.0027407345722192345,
+          "medianExcessDiff": -0.1694144144059963,
+          "meanMatchedDiff": -0.03900450264599813,
+          "maeMean": -0.4336085698700341,
+          "mfeMean": 0.6547119528100515,
+          "p10StockReturn": -0.5231199241393023,
+          "matchRate": 0.9917287014061208
+        }
+      },
+      "primaryBootstrap": {
+        "point": -0.06174967092925808,
+        "ciLower": -0.07486974000182665,
+        "ciUpper": -0.040516721771674265,
+        "pValue": 0
+      },
+      "yearDecomp": {
+        "byYear": [
+          {
+            "year": 2011,
+            "events": 208,
+            "medianExcessDiff": -0.0375216251435037
+          },
+          {
+            "year": 2012,
+            "events": 206,
+            "medianExcessDiff": -0.05736552194969753
+          },
+          {
+            "year": 2013,
+            "events": 219,
+            "medianExcessDiff": -0.07528433312069174
+          },
+          {
+            "year": 2014,
+            "events": 233,
+            "medianExcessDiff": -0.07329593925863201
+          },
+          {
+            "year": 2015,
+            "events": 293,
+            "medianExcessDiff": -0.1149171558874262
+          },
+          {
+            "year": 2016,
+            "events": 275,
+            "medianExcessDiff": -0.07915631038181795
+          },
+          {
+            "year": 2017,
+            "events": 317,
+            "medianExcessDiff": -0.04309274074556976
+          },
+          {
+            "year": 2018,
+            "events": 348,
+            "medianExcessDiff": -0.03125482927056479
+          },
+          {
+            "year": 2019,
+            "events": 331,
+            "medianExcessDiff": -0.04814496789024602
+          }
+        ],
+        "leaveOneYearOut": [
+          {
+            "removedYear": 2011,
+            "medianExcessDiff": -0.06298136771270732,
+            "directionKept": true
+          },
+          {
+            "removedYear": 2012,
+            "medianExcessDiff": -0.06248023321801626,
+            "directionKept": true
+          },
+          {
+            "removedYear": 2013,
+            "medianExcessDiff": -0.06050896800855751,
+            "directionKept": true
+          },
+          {
+            "removedYear": 2014,
+            "medianExcessDiff": -0.0607450898940707,
+            "directionKept": true
+          },
+          {
+            "removedYear": 2015,
+            "medianExcessDiff": -0.05294240033622186,
+            "directionKept": true
+          },
+          {
+            "removedYear": 2016,
+            "medianExcessDiff": -0.058824464519676864,
+            "directionKept": true
+          },
+          {
+            "removedYear": 2017,
+            "medianExcessDiff": -0.06531186666396997,
+            "directionKept": true
+          },
+          {
+            "removedYear": 2018,
+            "medianExcessDiff": -0.06480328584837546,
+            "directionKept": true
+          },
+          {
+            "removedYear": 2019,
+            "medianExcessDiff": -0.06354887334057548,
+            "directionKept": true
+          }
+        ],
+        "regimeConcentrated": false
+      },
+      "topContributor": {
+        "removedCode": "007110",
+        "medianExcessDiff": -0.06033126360464539,
+        "directionKept": true
+      },
+      "matchRate": 0.9914320685434517,
+      "factorDecomp": [
+        {
+          "axis": "market",
+          "groups": [
+            {
+              "label": "KOSDAQ",
+              "events": 1798,
+              "medianExcess": -0.07039320657998016,
+              "inconclusive": false
+            },
+            {
+              "label": "KOSPI",
+              "events": 653,
+              "medianExcess": -0.06256034499120333,
+              "inconclusive": false
+            }
+          ]
+        },
+        {
+          "axis": "size",
+          "groups": [
+            {
+              "label": "LARGE",
+              "events": 406,
+              "medianExcess": -0.017897599291769928,
+              "inconclusive": false
+            },
+            {
+              "label": "MID",
+              "events": 1614,
+              "medianExcess": -0.07410564932432934,
+              "inconclusive": false
+            },
+            {
+              "label": "SMALL",
+              "events": 431,
+              "medianExcess": -0.07935377136954269,
+              "inconclusive": false
+            }
+          ]
+        },
+        {
+          "axis": "liquidityTertile",
+          "groups": [
+            {
+              "label": "High",
+              "events": 668,
+              "medianExcess": -0.08539446348252533,
+              "inconclusive": false
+            },
+            {
+              "label": "Low",
+              "events": 886,
+              "medianExcess": -0.05207410550957825,
+              "inconclusive": false
+            },
+            {
+              "label": "Mid",
+              "events": 897,
+              "medianExcess": -0.06880950222169102,
+              "inconclusive": false
+            }
+          ]
+        },
+        {
+          "axis": "volumeMultiple",
+          "groups": [
+            {
+              "label": "1-2x",
+              "events": 583,
+              "medianExcess": -0.04916358574290047,
+              "inconclusive": false
+            },
+            {
+              "label": "2-5x",
+              "events": 735,
+              "medianExcess": -0.055508316563693705,
+              "inconclusive": false
+            },
+            {
+              "label": "<1x",
+              "events": 474,
+              "medianExcess": -0.0539916691844079,
+              "inconclusive": false
+            },
+            {
+              "label": ">=5x",
+              "events": 659,
+              "medianExcess": -0.10370296318238537,
+              "inconclusive": false
+            }
+          ]
+        },
+        {
+          "axis": "ret5Tertile",
+          "groups": [
+            {
+              "label": "High",
+              "events": 2300,
+              "medianExcess": -0.07086089153604846,
+              "inconclusive": false
+            },
+            {
+              "label": "Low",
+              "events": 44,
+              "medianExcess": -0.06339725604757951,
+              "inconclusive": true
+            },
+            {
+              "label": "Mid",
+              "events": 107,
+              "medianExcess": 0.010552240377518118,
+              "inconclusive": false
+            }
+          ]
+        },
+        {
+          "axis": "ret21Tertile",
+          "groups": [
+            {
+              "label": "High",
+              "events": 2340,
+              "medianExcess": -0.06655119630538159,
+              "inconclusive": false
+            },
+            {
+              "label": "Low",
+              "events": 36,
+              "medianExcess": -0.07672002368551423,
+              "inconclusive": true
+            },
+            {
+              "label": "Mid",
+              "events": 75,
+              "medianExcess": -0.09533107949344699,
+              "inconclusive": false
+            }
+          ]
+        },
+        {
+          "axis": "ret63Tertile",
+          "groups": [
+            {
+              "label": "High",
+              "events": 2202,
+              "medianExcess": -0.07069652907360874,
+              "inconclusive": false
+            },
+            {
+              "label": "Low",
+              "events": 93,
+              "medianExcess": -0.03576949341614555,
+              "inconclusive": false
+            },
+            {
+              "label": "Mid",
+              "events": 156,
+              "medianExcess": -0.04603405478425959,
+              "inconclusive": false
+            }
+          ]
+        },
+        {
+          "axis": "dailyReturn",
+          "groups": [
+            {
+              "label": "-10~-5%",
+              "events": 18,
+              "medianExcess": -0.1337493698799786,
+              "inconclusive": true
+            },
+            {
+              "label": "-5~5%",
+              "events": 992,
+              "medianExcess": -0.05195642828896513,
+              "inconclusive": false
+            },
+            {
+              "label": "5~10%",
+              "events": 523,
+              "medianExcess": -0.06557554960895762,
+              "inconclusive": false
+            },
+            {
+              "label": "<=-10%",
+              "events": 9,
+              "medianExcess": -0.023063097841102165,
+              "inconclusive": true
+            },
+            {
+              "label": ">=10%",
+              "events": 909,
+              "medianExcess": -0.0853334589247079,
+              "inconclusive": false
+            }
+          ]
+        },
+        {
+          "axis": "dailyAbsShock",
+          "groups": [
+            {
+              "label": "3-5%",
+              "events": 357,
+              "medianExcess": -0.05796143200560888,
+              "inconclusive": false
+            },
+            {
+              "label": "5-10%",
+              "events": 541,
+              "medianExcess": -0.06718223551423175,
+              "inconclusive": false
+            },
+            {
+              "label": "<3%",
+              "events": 635,
+              "medianExcess": -0.044967274995337925,
+              "inconclusive": false
+            },
+            {
+              "label": ">=10%",
+              "events": 918,
+              "medianExcess": -0.0847124348702708,
+              "inconclusive": false
+            }
+          ]
+        },
+        {
+          "axis": "vol20Tertile",
+          "groups": [
+            {
+              "label": "High",
+              "events": 1600,
+              "medianExcess": -0.08411021841274807,
+              "inconclusive": false
+            },
+            {
+              "label": "Low",
+              "events": 168,
+              "medianExcess": -0.0211249541593872,
+              "inconclusive": false
+            },
+            {
+              "label": "Mid",
+              "events": 683,
+              "medianExcess": -0.049016871629683156,
+              "inconclusive": false
+            }
+          ]
+        },
+        {
+          "axis": "vol63Tertile",
+          "groups": [
+            {
+              "label": "High",
+              "events": 1359,
+              "medianExcess": -0.09673112900541003,
+              "inconclusive": false
+            },
+            {
+              "label": "Low",
+              "events": 250,
+              "medianExcess": -0.032704818110525,
+              "inconclusive": false
+            },
+            {
+              "label": "Mid",
+              "events": 842,
+              "medianExcess": -0.030881062459173103,
+              "inconclusive": false
+            }
+          ]
+        },
+        {
+          "axis": "regime",
+          "groups": [
+            {
+              "label": "NORMAL",
+              "events": 1396,
+              "medianExcess": -0.07014331101225918,
+              "inconclusive": false
+            },
+            {
+              "label": "RISK",
+              "events": 1055,
+              "medianExcess": -0.0642011347414212,
+              "inconclusive": false
+            }
+          ]
+        }
+      ]
+    },
+    "H6": {
+      "code": "H6",
+      "label": "H6_RS_90_TO_97_FAST",
+      "family": "RS_DETERIORATION",
+      "direction": "BAD",
+      "nWarned": 679,
+      "nCohortControls": 23.908689248895435,
+      "summaryByHorizon": {
+        "20": {
+          "events": 678,
+          "uniqueCodes": 424,
+          "years": 9,
+          "signalMean": 0.011714982883007775,
+          "signalMedian": -0.06484324323385088,
+          "controlMean": 0.06279545258767162,
+          "controlMedian": 0.041350629775272846,
+          "medianExcessDiff": -0.10619387300912372,
+          "meanMatchedDiff": -0.05108046970466393,
+          "maeMean": -0.2619703110112853,
+          "mfeMean": 0.30978573779561164,
+          "p10StockReturn": -0.3233066755694493,
+          "matchRate": 1
+        },
+        "63": {
+          "events": 677,
+          "uniqueCodes": 424,
+          "years": 9,
+          "signalMean": -0.035104944072681846,
+          "signalMedian": -0.1305136535495861,
+          "controlMean": 0.062352893832081466,
+          "controlMedian": 0.035508760779838555,
+          "medianExcessDiff": -0.16602241432942466,
+          "meanMatchedDiff": -0.09745783790476328,
+          "maeMean": -0.3653051663114018,
+          "mfeMean": 0.44760678919681873,
+          "p10StockReturn": -0.4375757575757575,
+          "matchRate": 1
+        },
+        "126": {
+          "events": 676,
+          "uniqueCodes": 424,
+          "years": 9,
+          "signalMean": -0.07646942766321385,
+          "signalMedian": -0.17150833640452362,
+          "controlMean": 0.06314550899191831,
+          "controlMedian": 0.040021352386848244,
+          "medianExcessDiff": -0.21152968879137185,
+          "meanMatchedDiff": -0.13961493665513183,
+          "maeMean": -0.4424107004368802,
+          "mfeMean": 0.540602341606776,
+          "p10StockReturn": -0.5251659038901602,
+          "matchRate": 1
+        },
+        "252": {
+          "events": 674,
+          "uniqueCodes": 424,
+          "years": 9,
+          "signalMean": -0.10388265986471563,
+          "signalMedian": -0.26012028548578603,
+          "controlMean": 0.06830142129805587,
+          "controlMedian": 0.033301035303384574,
+          "medianExcessDiff": -0.2934213207891706,
+          "meanMatchedDiff": -0.17218408116277156,
+          "maeMean": -0.5410581828827866,
+          "mfeMean": 0.7158162540302789,
+          "p10StockReturn": -0.6182151833362024,
+          "matchRate": 1
+        }
+      },
+      "primaryBootstrap": {
+        "point": -0.16602241432942466,
+        "ciLower": -0.1943099730933592,
+        "ciUpper": -0.13075800131704388,
+        "pValue": 0
+      },
+      "yearDecomp": {
+        "byYear": [
+          {
+            "year": 2011,
+            "events": 57,
+            "medianExcessDiff": -0.2870329185749273
+          },
+          {
+            "year": 2012,
+            "events": 71,
+            "medianExcessDiff": -0.17805895868211163
+          },
+          {
+            "year": 2013,
+            "events": 71,
+            "medianExcessDiff": -0.10257853630243818
+          },
+          {
+            "year": 2014,
+            "events": 61,
+            "medianExcessDiff": -0.18192465826731466
+          },
+          {
+            "year": 2015,
+            "events": 70,
+            "medianExcessDiff": -0.2342375143431732
+          },
+          {
+            "year": 2016,
+            "events": 74,
+            "medianExcessDiff": -0.1913104075976283
+          },
+          {
+            "year": 2017,
+            "events": 103,
+            "medianExcessDiff": -0.15045927089736427
+          },
+          {
+            "year": 2018,
+            "events": 71,
+            "medianExcessDiff": -0.06014363368859291
+          },
+          {
+            "year": 2019,
+            "events": 99,
+            "medianExcessDiff": -0.16827591594832117
+          }
+        ],
+        "leaveOneYearOut": [
+          {
+            "removedYear": 2011,
+            "medianExcessDiff": -0.1598924131415001,
+            "directionKept": true
+          },
+          {
+            "removedYear": 2012,
+            "medianExcessDiff": -0.16551694826426788,
+            "directionKept": true
+          },
+          {
+            "removedYear": 2013,
+            "medianExcessDiff": -0.17399341093682708,
+            "directionKept": true
+          },
+          {
+            "removedYear": 2014,
+            "medianExcessDiff": -0.17031933355670112,
+            "directionKept": true
+          },
+          {
+            "removedYear": 2015,
+            "medianExcessDiff": -0.15777286498730625,
+            "directionKept": true
+          },
+          {
+            "removedYear": 2016,
+            "medianExcessDiff": -0.16315447482513418,
+            "directionKept": true
+          },
+          {
+            "removedYear": 2017,
+            "medianExcessDiff": -0.16633773217228667,
+            "directionKept": true
+          },
+          {
+            "removedYear": 2018,
+            "medianExcessDiff": -0.1770148058124811,
+            "directionKept": true
+          },
+          {
+            "removedYear": 2019,
+            "medianExcessDiff": -0.17222917813324304,
+            "directionKept": true
+          }
+        ],
+        "regimeConcentrated": false
+      },
+      "topContributor": {
+        "removedCode": "063440",
+        "medianExcessDiff": -0.16270220692847182,
+        "directionKept": true
+      },
+      "matchRate": 1,
+      "factorDecomp": [
+        {
+          "axis": "market",
+          "groups": [
+            {
+              "label": "KOSDAQ",
+              "events": 525,
+              "medianExcess": -0.13650076990307702,
+              "inconclusive": false
+            },
+            {
+              "label": "KOSPI",
+              "events": 152,
+              "medianExcess": -0.11504906344980209,
+              "inconclusive": false
+            }
+          ]
+        },
+        {
+          "axis": "size",
+          "groups": [
+            {
+              "label": "LARGE",
+              "events": 60,
+              "medianExcess": 0.04813925323493745,
+              "inconclusive": false
+            },
+            {
+              "label": "MID",
+              "events": 442,
+              "medianExcess": -0.13614456350041437,
+              "inconclusive": false
+            },
+            {
+              "label": "SMALL",
+              "events": 175,
+              "medianExcess": -0.15806013890531057,
+              "inconclusive": false
+            }
+          ]
+        },
+        {
+          "axis": "liquidityTertile",
+          "groups": [
+            {
+              "label": "High",
+              "events": 145,
+              "medianExcess": -0.13786691867954803,
+              "inconclusive": false
+            },
+            {
+              "label": "Low",
+              "events": 293,
+              "medianExcess": -0.07970138065477883,
+              "inconclusive": false
+            },
+            {
+              "label": "Mid",
+              "events": 239,
+              "medianExcess": -0.1627202168682541,
+              "inconclusive": false
+            }
+          ]
+        },
+        {
+          "axis": "volumeMultiple",
+          "groups": [
+            {
+              "label": "1-2x",
+              "events": 119,
+              "medianExcess": -0.12719344614863326,
+              "inconclusive": false
+            },
+            {
+              "label": "2-5x",
+              "events": 193,
+              "medianExcess": -0.13078179312547578,
+              "inconclusive": false
+            },
+            {
+              "label": "<1x",
+              "events": 102,
+              "medianExcess": -0.07031430266471461,
+              "inconclusive": false
+            },
+            {
+              "label": ">=5x",
+              "events": 263,
+              "medianExcess": -0.1571530112955667,
+              "inconclusive": false
+            }
+          ]
+        },
+        {
+          "axis": "ret5Tertile",
+          "groups": [
+            {
+              "label": "High",
+              "events": 651,
+              "medianExcess": -0.13078179312547578,
+              "inconclusive": false
+            },
+            {
+              "label": "Low",
+              "events": 11,
+              "medianExcess": -0.20593049264412477,
+              "inconclusive": true
+            },
+            {
+              "label": "Mid",
+              "events": 15,
+              "medianExcess": 0.08494561412441382,
+              "inconclusive": true
+            }
+          ]
+        },
+        {
+          "axis": "ret21Tertile",
+          "groups": [
+            {
+              "label": "High",
+              "events": 651,
+              "medianExcess": -0.13078179312547578,
+              "inconclusive": false
+            },
+            {
+              "label": "Low",
+              "events": 10,
+              "medianExcess": -0.2106796825602189,
+              "inconclusive": true
+            },
+            {
+              "label": "Mid",
+              "events": 16,
+              "medianExcess": -0.04630734744561549,
+              "inconclusive": true
+            }
+          ]
+        },
+        {
+          "axis": "ret63Tertile",
+          "groups": [
+            {
+              "label": "High",
+              "events": 619,
+              "medianExcess": -0.13977735297290317,
+              "inconclusive": false
+            },
+            {
+              "label": "Low",
+              "events": 22,
+              "medianExcess": -0.033401772528451446,
+              "inconclusive": true
+            },
+            {
+              "label": "Mid",
+              "events": 36,
+              "medianExcess": -0.031787199687783485,
+              "inconclusive": true
+            }
+          ]
+        },
+        {
+          "axis": "dailyReturn",
+          "groups": [
+            {
+              "label": "-10~-5%",
+              "events": 6,
+              "medianExcess": -0.1716336215236759,
+              "inconclusive": true
+            },
+            {
+              "label": "-5~5%",
+              "events": 194,
+              "medianExcess": -0.12509251346520128,
+              "inconclusive": false
+            },
+            {
+              "label": "5~10%",
+              "events": 107,
+              "medianExcess": -0.09190987421240437,
+              "inconclusive": false
+            },
+            {
+              "label": "<=-10%",
+              "events": 4,
+              "medianExcess": -0.2777802287573363,
+              "inconclusive": true
+            },
+            {
+              "label": ">=10%",
+              "events": 366,
+              "medianExcess": -0.1519136874512464,
+              "inconclusive": false
+            }
+          ]
+        },
+        {
+          "axis": "dailyAbsShock",
+          "groups": [
+            {
+              "label": "3-5%",
+              "events": 70,
+              "medianExcess": -0.1556282613485857,
+              "inconclusive": false
+            },
+            {
+              "label": "5-10%",
+              "events": 113,
+              "medianExcess": -0.09276872802622826,
+              "inconclusive": false
+            },
+            {
+              "label": "<3%",
+              "events": 124,
+              "medianExcess": -0.07983896285655995,
+              "inconclusive": false
+            },
+            {
+              "label": ">=10%",
+              "events": 370,
+              "medianExcess": -0.1584243149904873,
+              "inconclusive": false
+            }
+          ]
+        },
+        {
+          "axis": "vol20Tertile",
+          "groups": [
+            {
+              "label": "High",
+              "events": 517,
+              "medianExcess": -0.14528400472924285,
+              "inconclusive": false
+            },
+            {
+              "label": "Low",
+              "events": 23,
+              "medianExcess": -0.11157320424172223,
+              "inconclusive": true
+            },
+            {
+              "label": "Mid",
+              "events": 137,
+              "medianExcess": -0.0852156267736408,
+              "inconclusive": false
+            }
+          ]
+        },
+        {
+          "axis": "vol63Tertile",
+          "groups": [
+            {
+              "label": "High",
+              "events": 444,
+              "medianExcess": -0.1549322798280639,
+              "inconclusive": false
+            },
+            {
+              "label": "Low",
+              "events": 46,
+              "medianExcess": -0.11021434630867011,
+              "inconclusive": true
+            },
+            {
+              "label": "Mid",
+              "events": 187,
+              "medianExcess": -0.08597886331946802,
+              "inconclusive": false
+            }
+          ]
+        },
+        {
+          "axis": "regime",
+          "groups": [
+            {
+              "label": "NORMAL",
+              "events": 410,
+              "medianExcess": -0.13760171851177794,
+              "inconclusive": false
+            },
+            {
+              "label": "RISK",
+              "events": 267,
+              "medianExcess": -0.12324887788584038,
+              "inconclusive": false
+            }
+          ]
+        }
+      ]
+    },
+    "H7": {
+      "code": "H7",
+      "label": "H7_RS_BELOW_50",
+      "family": "RS_DETERIORATION",
+      "direction": "BAD",
+      "nWarned": 2328,
+      "nCohortControls": 15.662371134020619,
+      "summaryByHorizon": {
+        "20": {
+          "events": 2325,
+          "uniqueCodes": 757,
+          "years": 9,
+          "signalMean": 0.003144420352394689,
+          "signalMedian": -0.014106452949313564,
+          "controlMean": 0.004577665040281453,
+          "controlMedian": -0.0005905438119000461,
+          "medianExcessDiff": -0.013515909137413518,
+          "meanMatchedDiff": -0.0014332446878867794,
+          "maeMean": -0.12556737334685406,
+          "mfeMean": 0.1592334958028456,
+          "p10StockReturn": -0.17730496453900713,
+          "matchRate": 0.9982795698924731
+        },
+        "63": {
+          "events": 2321,
+          "uniqueCodes": 757,
+          "years": 9,
+          "signalMean": 0.015970658308680614,
+          "signalMedian": -0.0394501878104756,
+          "controlMean": 0.006158482650843928,
+          "controlMedian": -0.00766124165851545,
+          "medianExcessDiff": -0.03178894615196015,
+          "meanMatchedDiff": 0.009812175657836585,
+          "maeMean": -0.222316490410385,
+          "mfeMean": 0.30922101447203376,
+          "p10StockReturn": -0.3046062407132244,
+          "matchRate": 0.998276604911676
+        },
+        "126": {
+          "events": 2314,
+          "uniqueCodes": 757,
+          "years": 9,
+          "signalMean": 0.008259798149768098,
+          "signalMedian": -0.07024898897598192,
+          "controlMean": 0.008086631444599993,
+          "controlMedian": -0.0014066643440788693,
+          "medianExcessDiff": -0.06884232463190305,
+          "meanMatchedDiff": 0.00017316670516808345,
+          "maeMean": -0.31130504197969183,
+          "mfeMean": 0.4344361383431222,
+          "p10StockReturn": -0.391771684438905,
+          "matchRate": 0.9982713915298185
+        },
+        "252": {
+          "events": 2288,
+          "uniqueCodes": 757,
+          "years": 9,
+          "signalMean": -0.01735661367640151,
+          "signalMedian": -0.1444435595136045,
+          "controlMean": 0.00628399537274619,
+          "controlMedian": -0.020452229662893645,
+          "medianExcessDiff": -0.12399132985071085,
+          "meanMatchedDiff": -0.023640609049147575,
+          "maeMean": -0.4080825153898092,
+          "mfeMean": 0.6241096183277257,
+          "p10StockReturn": -0.49942528735632186,
+          "matchRate": 0.9982517482517482
+        }
+      },
+      "primaryBootstrap": {
+        "point": -0.03178894615196015,
+        "ciLower": -0.04935680187364418,
+        "ciUpper": -0.005498573005488597,
+        "pValue": 0.0148
+      },
+      "yearDecomp": {
+        "byYear": [
+          {
+            "year": 2011,
+            "events": 157,
+            "medianExcessDiff": -0.07159377913379829
+          },
+          {
+            "year": 2012,
+            "events": 221,
+            "medianExcessDiff": -0.06316081765600945
+          },
+          {
+            "year": 2013,
+            "events": 198,
+            "medianExcessDiff": -0.05326373429169362
+          },
+          {
+            "year": 2014,
+            "events": 171,
+            "medianExcessDiff": -0.09817691249969601
+          },
+          {
+            "year": 2015,
+            "events": 247,
+            "medianExcessDiff": -0.003989220259076193
+          },
+          {
+            "year": 2016,
+            "events": 273,
+            "medianExcessDiff": 0.03513108218764739
+          },
+          {
+            "year": 2017,
+            "events": 346,
+            "medianExcessDiff": -0.006105526617888518
+          },
+          {
+            "year": 2018,
+            "events": 365,
+            "medianExcessDiff": -0.023920690021477443
+          },
+          {
+            "year": 2019,
+            "events": 339,
+            "medianExcessDiff": -0.0437897340466704
+          }
+        ],
+        "leaveOneYearOut": [
+          {
+            "removedYear": 2011,
+            "medianExcessDiff": -0.027603293910270353,
+            "directionKept": true
+          },
+          {
+            "removedYear": 2012,
+            "medianExcessDiff": -0.027960655077479822,
+            "directionKept": true
+          },
+          {
+            "removedYear": 2013,
+            "medianExcessDiff": -0.030245671953888345,
+            "directionKept": true
+          },
+          {
+            "removedYear": 2014,
+            "medianExcessDiff": -0.02362399066949401,
+            "directionKept": true
+          },
+          {
+            "removedYear": 2015,
+            "medianExcessDiff": -0.031224258081023675,
+            "directionKept": true
+          },
+          {
+            "removedYear": 2016,
+            "medianExcessDiff": -0.0370491950064635,
+            "directionKept": true
+          },
+          {
+            "removedYear": 2017,
+            "medianExcessDiff": -0.03432330601468003,
+            "directionKept": true
+          },
+          {
+            "removedYear": 2018,
+            "medianExcessDiff": -0.03361809838540656,
+            "directionKept": true
+          },
+          {
+            "removedYear": 2019,
+            "medianExcessDiff": -0.027237390676210345,
+            "directionKept": true
+          }
+        ],
+        "regimeConcentrated": false
+      },
+      "topContributor": {
+        "removedCode": "900130",
+        "medianExcessDiff": -0.03306256761766735,
+        "directionKept": true
+      },
+      "matchRate": 0.998276604911676,
+      "factorDecomp": [
+        {
+          "axis": "market",
+          "groups": [
+            {
+              "label": "KOSDAQ",
+              "events": 1656,
+              "medianExcess": -0.03963037713587764,
+              "inconclusive": false
+            },
+            {
+              "label": "KOSPI",
+              "events": 665,
+              "medianExcess": -0.0394501878104756,
+              "inconclusive": false
+            }
+          ]
+        },
+        {
+          "axis": "size",
+          "groups": [
+            {
+              "label": "LARGE",
+              "events": 435,
+              "medianExcess": -0.006354087893644889,
+              "inconclusive": false
+            },
+            {
+              "label": "MID",
+              "events": 1512,
+              "medianExcess": -0.045601378674566984,
+              "inconclusive": false
+            },
+            {
+              "label": "SMALL",
+              "events": 374,
+              "medianExcess": -0.04189074270200316,
+              "inconclusive": false
+            }
+          ]
+        },
+        {
+          "axis": "liquidityTertile",
+          "groups": [
+            {
+              "label": "High",
+              "events": 718,
+              "medianExcess": -0.041700920740537384,
+              "inconclusive": false
+            },
+            {
+              "label": "Low",
+              "events": 703,
+              "medianExcess": -0.02888993292386821,
+              "inconclusive": false
+            },
+            {
+              "label": "Mid",
+              "events": 900,
+              "medianExcess": -0.04233027198740663,
+              "inconclusive": false
+            }
+          ]
+        },
+        {
+          "axis": "volumeMultiple",
+          "groups": [
+            {
+              "label": "1-2x",
+              "events": 548,
+              "medianExcess": -0.027977638095323776,
+              "inconclusive": false
+            },
+            {
+              "label": "2-5x",
+              "events": 686,
+              "medianExcess": -0.05268160321165655,
+              "inconclusive": false
+            },
+            {
+              "label": "<1x",
+              "events": 417,
+              "medianExcess": -0.018889157905076948,
+              "inconclusive": false
+            },
+            {
+              "label": ">=5x",
+              "events": 670,
+              "medianExcess": -0.04445560251218739,
+              "inconclusive": false
+            }
+          ]
+        },
+        {
+          "axis": "ret5Tertile",
+          "groups": [
+            {
+              "label": "High",
+              "events": 2193,
+              "medianExcess": -0.04194661228548113,
+              "inconclusive": false
+            },
+            {
+              "label": "Low",
+              "events": 32,
+              "medianExcess": -0.03222895938248027,
+              "inconclusive": true
+            },
+            {
+              "label": "Mid",
+              "events": 96,
+              "medianExcess": 0.030769146447317375,
+              "inconclusive": false
+            }
+          ]
+        },
+        {
+          "axis": "ret21Tertile",
+          "groups": [
+            {
+              "label": "High",
+              "events": 2219,
+              "medianExcess": -0.04052091999424157,
+              "inconclusive": false
+            },
+            {
+              "label": "Low",
+              "events": 28,
+              "medianExcess": -0.05119641285910642,
+              "inconclusive": true
+            },
+            {
+              "label": "Mid",
+              "events": 74,
+              "medianExcess": 0.0002694472630259126,
+              "inconclusive": false
+            }
+          ]
+        },
+        {
+          "axis": "ret63Tertile",
+          "groups": [
+            {
+              "label": "High",
+              "events": 2078,
+              "medianExcess": -0.04062584715898343,
+              "inconclusive": false
+            },
+            {
+              "label": "Low",
+              "events": 92,
+              "medianExcess": -0.07677244178432024,
+              "inconclusive": false
+            },
+            {
+              "label": "Mid",
+              "events": 151,
+              "medianExcess": 0.010195643853271541,
+              "inconclusive": false
+            }
+          ]
+        },
+        {
+          "axis": "dailyReturn",
+          "groups": [
+            {
+              "label": "-10~-5%",
+              "events": 15,
+              "medianExcess": 0.011104382816778502,
+              "inconclusive": true
+            },
+            {
+              "label": "-5~5%",
+              "events": 916,
+              "medianExcess": -0.034004216325871806,
+              "inconclusive": false
+            },
+            {
+              "label": "5~10%",
+              "events": 491,
+              "medianExcess": -0.029952502023010585,
+              "inconclusive": false
+            },
+            {
+              "label": "<=-10%",
+              "events": 7,
+              "medianExcess": -0.14597125286699075,
+              "inconclusive": true
+            },
+            {
+              "label": ">=10%",
+              "events": 892,
+              "medianExcess": -0.04591345563470195,
+              "inconclusive": false
+            }
+          ]
+        },
+        {
+          "axis": "dailyAbsShock",
+          "groups": [
+            {
+              "label": "3-5%",
+              "events": 324,
+              "medianExcess": -0.047637566542828635,
+              "inconclusive": false
+            },
+            {
+              "label": "5-10%",
+              "events": 506,
+              "medianExcess": -0.02924164430171311,
+              "inconclusive": false
+            },
+            {
+              "label": "<3%",
+              "events": 592,
+              "medianExcess": -0.018284033647102294,
+              "inconclusive": false
+            },
+            {
+              "label": ">=10%",
+              "events": 899,
+              "medianExcess": -0.046947838735770464,
+              "inconclusive": false
+            }
+          ]
+        },
+        {
+          "axis": "vol20Tertile",
+          "groups": [
+            {
+              "label": "High",
+              "events": 1501,
+              "medianExcess": -0.050156379820273544,
+              "inconclusive": false
+            },
+            {
+              "label": "Low",
+              "events": 196,
+              "medianExcess": -0.0002886175170643823,
+              "inconclusive": false
+            },
+            {
+              "label": "Mid",
+              "events": 624,
+              "medianExcess": -0.025186722869963873,
+              "inconclusive": false
+            }
+          ]
+        },
+        {
+          "axis": "vol63Tertile",
+          "groups": [
+            {
+              "label": "High",
+              "events": 1278,
+              "medianExcess": -0.055453362894421654,
+              "inconclusive": false
+            },
+            {
+              "label": "Low",
+              "events": 261,
+              "medianExcess": 0.009413551655570451,
+              "inconclusive": false
+            },
+            {
+              "label": "Mid",
+              "events": 782,
+              "medianExcess": -0.03993814511001248,
+              "inconclusive": false
+            }
+          ]
+        },
+        {
+          "axis": "regime",
+          "groups": [
+            {
+              "label": "NORMAL",
+              "events": 1338,
+              "medianExcess": -0.05407365631232919,
+              "inconclusive": false
+            },
+            {
+              "label": "RISK",
+              "events": 983,
+              "medianExcess": -0.017990098662968634,
+              "inconclusive": false
+            }
+          ]
+        }
+      ]
+    },
+    "H8": {
+      "code": "H8",
+      "label": "H8_RS_50_70_STALL",
+      "family": "RS_DETERIORATION",
+      "direction": "NEUTRAL",
+      "nWarned": 0,
+      "nCohortControls": 0,
+      "summaryByHorizon": {
+        "20": {
+          "events": 0,
+          "uniqueCodes": 0,
+          "years": 0,
+          "signalMean": null,
+          "signalMedian": null,
+          "controlMean": null,
+          "controlMedian": null,
+          "medianExcessDiff": null,
+          "meanMatchedDiff": null,
+          "maeMean": null,
+          "mfeMean": null,
+          "p10StockReturn": null,
+          "matchRate": 0
+        },
+        "63": {
+          "events": 0,
+          "uniqueCodes": 0,
+          "years": 0,
+          "signalMean": null,
+          "signalMedian": null,
+          "controlMean": null,
+          "controlMedian": null,
+          "medianExcessDiff": null,
+          "meanMatchedDiff": null,
+          "maeMean": null,
+          "mfeMean": null,
+          "p10StockReturn": null,
+          "matchRate": 0
+        },
+        "126": {
+          "events": 0,
+          "uniqueCodes": 0,
+          "years": 0,
+          "signalMean": null,
+          "signalMedian": null,
+          "controlMean": null,
+          "controlMedian": null,
+          "medianExcessDiff": null,
+          "meanMatchedDiff": null,
+          "maeMean": null,
+          "mfeMean": null,
+          "p10StockReturn": null,
+          "matchRate": 0
+        },
+        "252": {
+          "events": 0,
+          "uniqueCodes": 0,
+          "years": 0,
+          "signalMean": null,
+          "signalMedian": null,
+          "controlMean": null,
+          "controlMedian": null,
+          "medianExcessDiff": null,
+          "meanMatchedDiff": null,
+          "maeMean": null,
+          "mfeMean": null,
+          "p10StockReturn": null,
+          "matchRate": 0
+        }
+      },
+      "primaryBootstrap": {
+        "point": 0,
+        "ciLower": null,
+        "ciUpper": null,
+        "pValue": 1
+      },
+      "yearDecomp": {
+        "byYear": [],
+        "leaveOneYearOut": [],
+        "regimeConcentrated": false
+      },
+      "topContributor": {
+        "removedCode": null,
+        "medianExcessDiff": null,
+        "directionKept": true
+      },
+      "matchRate": 0,
+      "factorDecomp": [
+        {
+          "axis": "market",
+          "groups": []
+        },
+        {
+          "axis": "size",
+          "groups": []
+        },
+        {
+          "axis": "liquidityTertile",
+          "groups": []
+        },
+        {
+          "axis": "volumeMultiple",
+          "groups": []
+        },
+        {
+          "axis": "ret5Tertile",
+          "groups": []
+        },
+        {
+          "axis": "ret21Tertile",
+          "groups": []
+        },
+        {
+          "axis": "ret63Tertile",
+          "groups": []
+        },
+        {
+          "axis": "dailyReturn",
+          "groups": []
+        },
+        {
+          "axis": "dailyAbsShock",
+          "groups": []
+        },
+        {
+          "axis": "vol20Tertile",
+          "groups": []
+        },
+        {
+          "axis": "vol63Tertile",
+          "groups": []
+        },
+        {
+          "axis": "regime",
+          "groups": []
+        }
+      ]
+    }
+  },
+  "hVal": {
+    "H1": {
+      "code": "H1",
+      "label": "H1_POST_ENTRY_RUNUP_5D",
+      "family": "POST_ENTRY_RUNUP",
+      "direction": "BAD",
+      "nWarned": 1168,
+      "nCohortControls": 28.085616438356166,
+      "summaryByHorizon": {
+        "20": {
+          "events": 1168,
+          "uniqueCodes": 600,
+          "years": 3,
+          "signalMean": 0.010058891254741026,
+          "signalMedian": -0.04913837370295848,
+          "controlMean": 0.02103690491035055,
+          "controlMedian": 0.006891496091307497,
+          "medianExcessDiff": -0.05602986979426598,
+          "meanMatchedDiff": -0.010978013655609487,
+          "maeMean": -0.1730966664354607,
+          "mfeMean": 0.2764145964338566,
+          "p10StockReturn": -0.24147673783771822,
+          "matchRate": 1
+        },
+        "63": {
+          "events": 1167,
+          "uniqueCodes": 600,
+          "years": 3,
+          "signalMean": -0.011309841834424681,
+          "signalMedian": -0.10561834807347281,
+          "controlMean": 0.030568455198124893,
+          "controlMedian": 0.018223972337617543,
+          "medianExcessDiff": -0.12384232041109036,
+          "meanMatchedDiff": -0.04187829703254971,
+          "maeMean": -0.2707159855610548,
+          "mfeMean": 0.42859298458058515,
+          "p10StockReturn": -0.3515431893319133,
+          "matchRate": 1
+        },
+        "126": {
+          "events": 1162,
+          "uniqueCodes": 600,
+          "years": 3,
+          "signalMean": -0.005305992329938728,
+          "signalMedian": -0.14224715709358804,
+          "controlMean": 0.03951566693167788,
+          "controlMedian": 0.029421347956164204,
+          "medianExcessDiff": -0.17166850504975223,
+          "meanMatchedDiff": -0.044821659261616555,
+          "maeMean": -0.32705385156834815,
+          "mfeMean": 0.6076249503553547,
+          "p10StockReturn": -0.41887648449552256,
+          "matchRate": 1
+        },
+        "252": {
+          "events": 1160,
+          "uniqueCodes": 600,
+          "years": 3,
+          "signalMean": -0.034108762103959724,
+          "signalMedian": -0.16941930389950355,
+          "controlMean": 0.0662133673479839,
+          "controlMedian": 0.06061673983150802,
+          "medianExcessDiff": -0.23003604373101155,
+          "meanMatchedDiff": -0.10032212945194376,
+          "maeMean": -0.42158497336923245,
+          "mfeMean": 0.8575053550187409,
+          "p10StockReturn": -0.5475916949635812,
+          "matchRate": 1
+        }
+      },
+      "primaryBootstrap": {
+        "point": -0.12384232041109036,
+        "ciLower": -0.1391356140617321,
+        "ciUpper": -0.10339418880231879,
+        "pValue": 0
+      },
+      "yearDecomp": {
+        "byYear": [
+          {
+            "year": 2020,
+            "events": 398,
+            "medianExcessDiff": -0.1385691405608869
+          },
+          {
+            "year": 2021,
+            "events": 428,
+            "medianExcessDiff": -0.11937055589240214
+          },
+          {
+            "year": 2022,
+            "events": 341,
+            "medianExcessDiff": -0.11068718279149213
+          }
+        ],
+        "leaveOneYearOut": [
+          {
+            "removedYear": 2020,
+            "medianExcessDiff": -0.11725947790368463,
+            "directionKept": true
+          },
+          {
+            "removedYear": 2021,
+            "medianExcessDiff": -0.1266217675331317,
+            "directionKept": true
+          },
+          {
+            "removedYear": 2022,
+            "medianExcessDiff": -0.12217040324255764,
+            "directionKept": true
+          }
+        ],
+        "regimeConcentrated": false
+      },
+      "topContributor": {
+        "removedCode": "067310",
+        "medianExcessDiff": -0.12470479769292843,
+        "directionKept": true
+      },
+      "matchRate": 1,
+      "factorDecomp": [
+        {
+          "axis": "market",
+          "groups": [
+            {
+              "label": "KOSDAQ",
+              "events": 876,
+              "medianExcess": -0.10676253509970274,
+              "inconclusive": false
+            },
+            {
+              "label": "KOSPI",
+              "events": 291,
+              "medianExcess": -0.09574346200919104,
+              "inconclusive": false
+            }
+          ]
+        },
+        {
+          "axis": "size",
+          "groups": [
+            {
+              "label": "LARGE",
+              "events": 164,
+              "medianExcess": -0.013728098532337252,
+              "inconclusive": false
+            },
+            {
+              "label": "MID",
+              "events": 780,
+              "medianExcess": -0.11368318880062767,
+              "inconclusive": false
+            },
+            {
+              "label": "SMALL",
+              "events": 223,
+              "medianExcess": -0.11148473939377634,
+              "inconclusive": false
+            }
+          ]
+        },
+        {
+          "axis": "liquidityTertile",
+          "groups": [
+            {
+              "label": "High",
+              "events": 460,
+              "medianExcess": -0.09894896694524813,
+              "inconclusive": false
+            },
+            {
+              "label": "Low",
+              "events": 314,
+              "medianExcess": -0.09735956839816762,
+              "inconclusive": false
+            },
+            {
+              "label": "Mid",
+              "events": 393,
+              "medianExcess": -0.1175429448828531,
+              "inconclusive": false
+            }
+          ]
+        },
+        {
+          "axis": "volumeMultiple",
+          "groups": [
+            {
+              "label": "1-2x",
+              "events": 186,
+              "medianExcess": -0.06382162523430868,
+              "inconclusive": false
+            },
+            {
+              "label": "2-5x",
+              "events": 298,
+              "medianExcess": -0.11759326592433283,
+              "inconclusive": false
+            },
+            {
+              "label": "<1x",
+              "events": 131,
+              "medianExcess": -0.06790414864431649,
+              "inconclusive": false
+            },
+            {
+              "label": ">=5x",
+              "events": 552,
+              "medianExcess": -0.11504575759075947,
+              "inconclusive": false
+            }
+          ]
+        },
+        {
+          "axis": "ret5Tertile",
+          "groups": [
+            {
+              "label": "High",
+              "events": 1139,
+              "medianExcess": -0.10573155019511749,
+              "inconclusive": false
+            },
+            {
+              "label": "Low",
+              "events": 9,
+              "medianExcess": 0.029018337408192485,
+              "inconclusive": true
+            },
+            {
+              "label": "Mid",
+              "events": 19,
+              "medianExcess": -0.12303371311858902,
+              "inconclusive": true
+            }
+          ]
+        },
+        {
+          "axis": "ret21Tertile",
+          "groups": [
+            {
+              "label": "High",
+              "events": 1142,
+              "medianExcess": -0.10594166217953671,
+              "inconclusive": false
+            },
+            {
+              "label": "Low",
+              "events": 6,
+              "medianExcess": -0.26656171858952943,
+              "inconclusive": true
+            },
+            {
+              "label": "Mid",
+              "events": 19,
+              "medianExcess": -0.09007175818805246,
+              "inconclusive": true
+            }
+          ]
+        },
+        {
+          "axis": "ret63Tertile",
+          "groups": [
+            {
+              "label": "High",
+              "events": 1055,
+              "medianExcess": -0.10561834807347281,
+              "inconclusive": false
+            },
+            {
+              "label": "Low",
+              "events": 33,
+              "medianExcess": -0.1355892040931459,
+              "inconclusive": true
+            },
+            {
+              "label": "Mid",
+              "events": 79,
+              "medianExcess": -0.07646660335214994,
+              "inconclusive": false
+            }
+          ]
+        },
+        {
+          "axis": "dailyReturn",
+          "groups": [
+            {
+              "label": "-10~-5%",
+              "events": 7,
+              "medianExcess": -0.06292022663823449,
+              "inconclusive": true
+            },
+            {
+              "label": "-5~5%",
+              "events": 325,
+              "medianExcess": -0.06790414864431649,
+              "inconclusive": false
+            },
+            {
+              "label": "5~10%",
+              "events": 233,
+              "medianExcess": -0.0791245470525962,
+              "inconclusive": false
+            },
+            {
+              "label": "<=-10%",
+              "events": 2,
+              "medianExcess": 0.26834877130397994,
+              "inconclusive": true
+            },
+            {
+              "label": ">=10%",
+              "events": 600,
+              "medianExcess": -0.12964351484705988,
+              "inconclusive": false
+            }
+          ]
+        },
+        {
+          "axis": "dailyAbsShock",
+          "groups": [
+            {
+              "label": "3-5%",
+              "events": 124,
+              "medianExcess": -0.102225253051206,
+              "inconclusive": false
+            },
+            {
+              "label": "5-10%",
+              "events": 240,
+              "medianExcess": -0.07102238684541534,
+              "inconclusive": false
+            },
+            {
+              "label": "<3%",
+              "events": 201,
+              "medianExcess": -0.040191313152575514,
+              "inconclusive": false
+            },
+            {
+              "label": ">=10%",
+              "events": 602,
+              "medianExcess": -0.1288427402435654,
+              "inconclusive": false
+            }
+          ]
+        },
+        {
+          "axis": "vol20Tertile",
+          "groups": [
+            {
+              "label": "High",
+              "events": 810,
+              "medianExcess": -0.1141928054490971,
+              "inconclusive": false
+            },
+            {
+              "label": "Low",
+              "events": 67,
+              "medianExcess": -0.05718760060466299,
+              "inconclusive": false
+            },
+            {
+              "label": "Mid",
+              "events": 290,
+              "medianExcess": -0.08085576049051568,
+              "inconclusive": false
+            }
+          ]
+        },
+        {
+          "axis": "vol63Tertile",
+          "groups": [
+            {
+              "label": "High",
+              "events": 674,
+              "medianExcess": -0.127045064798335,
+              "inconclusive": false
+            },
+            {
+              "label": "Low",
+              "events": 84,
+              "medianExcess": -0.05262334587323059,
+              "inconclusive": false
+            },
+            {
+              "label": "Mid",
+              "events": 409,
+              "medianExcess": -0.07969806692705661,
+              "inconclusive": false
+            }
+          ]
+        },
+        {
+          "axis": "regime",
+          "groups": [
+            {
+              "label": "NORMAL",
+              "events": 670,
+              "medianExcess": -0.09412044049274715,
+              "inconclusive": false
+            },
+            {
+              "label": "RISK",
+              "events": 497,
+              "medianExcess": -0.11732005445301152,
+              "inconclusive": false
+            }
+          ]
+        }
+      ]
+    },
+    "H2": {
+      "code": "H2",
+      "label": "H2_POST_ENTRY_RUNUP_21D",
+      "family": "POST_ENTRY_RUNUP",
+      "direction": "BAD",
+      "nWarned": 1321,
+      "nCohortControls": 25.551854655563968,
+      "summaryByHorizon": {
+        "20": {
+          "events": 1320,
+          "uniqueCodes": 655,
+          "years": 3,
+          "signalMean": 0.005230179868725942,
+          "signalMedian": -0.04030998165893074,
+          "controlMean": 0.0082419246823167,
+          "controlMedian": 0.004863585661329394,
+          "medianExcessDiff": -0.045173567320260136,
+          "meanMatchedDiff": -0.0030117448135907514,
+          "maeMean": -0.15032312514386342,
+          "mfeMean": 0.222624900938393,
+          "p10StockReturn": -0.21236241319853388,
+          "matchRate": 0.9977272727272727
+        },
+        "63": {
+          "events": 1318,
+          "uniqueCodes": 655,
+          "years": 3,
+          "signalMean": -0.010517923084079903,
+          "signalMedian": -0.08197724562543729,
+          "controlMean": 0.01203625558574145,
+          "controlMedian": 0.004008285401973168,
+          "medianExcessDiff": -0.08598553102741045,
+          "meanMatchedDiff": -0.022554178669821328,
+          "maeMean": -0.2436035387281495,
+          "mfeMean": 0.36437136165247197,
+          "p10StockReturn": -0.33549337625355946,
+          "matchRate": 0.9977238239757208
+        },
+        "126": {
+          "events": 1315,
+          "uniqueCodes": 655,
+          "years": 3,
+          "signalMean": -0.000962844642108733,
+          "signalMedian": -0.11149459452812782,
+          "controlMean": 0.023522854445259558,
+          "controlMedian": 0.01742705049328464,
+          "medianExcessDiff": -0.12892164502141246,
+          "meanMatchedDiff": -0.024485699087368317,
+          "maeMean": -0.30278231245954657,
+          "mfeMean": 0.5325982296035843,
+          "p10StockReturn": -0.4165167611091071,
+          "matchRate": 0.9977186311787072
+        },
+        "252": {
+          "events": 1314,
+          "uniqueCodes": 655,
+          "years": 3,
+          "signalMean": -0.010099369337256473,
+          "signalMedian": -0.15039621889160992,
+          "controlMean": 0.03823261241876944,
+          "controlMedian": 0.0347488265451298,
+          "medianExcessDiff": -0.1851450454367397,
+          "meanMatchedDiff": -0.0483319817560257,
+          "maeMean": -0.40088176717583585,
+          "mfeMean": 0.775334292742631,
+          "p10StockReturn": -0.5504155547826757,
+          "matchRate": 0.997716894977169
+        }
+      },
+      "primaryBootstrap": {
+        "point": -0.08598553102741045,
+        "ciLower": -0.1113757365457314,
+        "ciUpper": -0.0650031663788546,
+        "pValue": 0
+      },
+      "yearDecomp": {
+        "byYear": [
+          {
+            "year": 2020,
+            "events": 413,
+            "medianExcessDiff": -0.0817745260456123
+          },
+          {
+            "year": 2021,
+            "events": 480,
+            "medianExcessDiff": -0.11001320902767907
+          },
+          {
+            "year": 2022,
+            "events": 422,
+            "medianExcessDiff": -0.04455763164482269
+          }
+        ],
+        "leaveOneYearOut": [
+          {
+            "removedYear": 2020,
+            "medianExcessDiff": -0.07880874636628377,
+            "directionKept": true
+          },
+          {
+            "removedYear": 2021,
+            "medianExcessDiff": -0.06823428303933024,
+            "directionKept": true
+          },
+          {
+            "removedYear": 2022,
+            "medianExcessDiff": -0.10525099305720845,
+            "directionKept": true
+          }
+        ],
+        "regimeConcentrated": false
+      },
+      "topContributor": {
+        "removedCode": "950130",
+        "medianExcessDiff": -0.0850038451414683,
+        "directionKept": true
+      },
+      "matchRate": 0.9977238239757208,
+      "factorDecomp": [
+        {
+          "axis": "market",
+          "groups": [
+            {
+              "label": "KOSDAQ",
+              "events": 966,
+              "medianExcess": -0.09483383589402428,
+              "inconclusive": false
+            },
+            {
+              "label": "KOSPI",
+              "events": 352,
+              "medianExcess": -0.0496739971550651,
+              "inconclusive": false
+            }
+          ]
+        },
+        {
+          "axis": "size",
+          "groups": [
+            {
+              "label": "LARGE",
+              "events": 230,
+              "medianExcess": -0.034440048597337736,
+              "inconclusive": false
+            },
+            {
+              "label": "MID",
+              "events": 864,
+              "medianExcess": -0.09533861573695485,
+              "inconclusive": false
+            },
+            {
+              "label": "SMALL",
+              "events": 224,
+              "medianExcess": -0.09350795970626102,
+              "inconclusive": false
+            }
+          ]
+        },
+        {
+          "axis": "liquidityTertile",
+          "groups": [
+            {
+              "label": "High",
+              "events": 546,
+              "medianExcess": -0.08600216406898303,
+              "inconclusive": false
+            },
+            {
+              "label": "Low",
+              "events": 338,
+              "medianExcess": -0.069387102393064,
+              "inconclusive": false
+            },
+            {
+              "label": "Mid",
+              "events": 434,
+              "medianExcess": -0.08707955577798915,
+              "inconclusive": false
+            }
+          ]
+        },
+        {
+          "axis": "volumeMultiple",
+          "groups": [
+            {
+              "label": "1-2x",
+              "events": 234,
+              "medianExcess": -0.027174947573893438,
+              "inconclusive": false
+            },
+            {
+              "label": "2-5x",
+              "events": 338,
+              "medianExcess": -0.08696075878105791,
+              "inconclusive": false
+            },
+            {
+              "label": "<1x",
+              "events": 152,
+              "medianExcess": -0.05065239580295372,
+              "inconclusive": false
+            },
+            {
+              "label": ">=5x",
+              "events": 594,
+              "medianExcess": -0.10113559448243226,
+              "inconclusive": false
+            }
+          ]
+        },
+        {
+          "axis": "ret5Tertile",
+          "groups": [
+            {
+              "label": "High",
+              "events": 1286,
+              "medianExcess": -0.08238672682014447,
+              "inconclusive": false
+            },
+            {
+              "label": "Low",
+              "events": 11,
+              "medianExcess": -0.1917770028358663,
+              "inconclusive": true
+            },
+            {
+              "label": "Mid",
+              "events": 21,
+              "medianExcess": -0.033578024574288934,
+              "inconclusive": true
+            }
+          ]
+        },
+        {
+          "axis": "ret21Tertile",
+          "groups": [
+            {
+              "label": "High",
+              "events": 1288,
+              "medianExcess": -0.08250557669361774,
+              "inconclusive": false
+            },
+            {
+              "label": "Low",
+              "events": 7,
+              "medianExcess": -0.2747030302631358,
+              "inconclusive": true
+            },
+            {
+              "label": "Mid",
+              "events": 23,
+              "medianExcess": -0.035992906892497345,
+              "inconclusive": true
+            }
+          ]
+        },
+        {
+          "axis": "ret63Tertile",
+          "groups": [
+            {
+              "label": "High",
+              "events": 1197,
+              "medianExcess": -0.08235556748797945,
+              "inconclusive": false
+            },
+            {
+              "label": "Low",
+              "events": 34,
+              "medianExcess": -0.02553301562437199,
+              "inconclusive": true
+            },
+            {
+              "label": "Mid",
+              "events": 87,
+              "medianExcess": -0.08505945089978828,
+              "inconclusive": false
+            }
+          ]
+        },
+        {
+          "axis": "dailyReturn",
+          "groups": [
+            {
+              "label": "-10~-5%",
+              "events": 7,
+              "medianExcess": 0.04476602324622392,
+              "inconclusive": true
+            },
+            {
+              "label": "-5~5%",
+              "events": 401,
+              "medianExcess": -0.030247754575241093,
+              "inconclusive": false
+            },
+            {
+              "label": "5~10%",
+              "events": 262,
+              "medianExcess": -0.0583172291196411,
+              "inconclusive": false
+            },
+            {
+              "label": "<=-10%",
+              "events": 2,
+              "medianExcess": 0.10104053836557475,
+              "inconclusive": true
+            },
+            {
+              "label": ">=10%",
+              "events": 646,
+              "medianExcess": -0.12356341129537762,
+              "inconclusive": false
+            }
+          ]
+        },
+        {
+          "axis": "dailyAbsShock",
+          "groups": [
+            {
+              "label": "3-5%",
+              "events": 156,
+              "medianExcess": -0.03386815684266559,
+              "inconclusive": false
+            },
+            {
+              "label": "5-10%",
+              "events": 269,
+              "medianExcess": -0.05395938285355317,
+              "inconclusive": false
+            },
+            {
+              "label": "<3%",
+              "events": 245,
+              "medianExcess": -0.027065952523404047,
+              "inconclusive": false
+            },
+            {
+              "label": ">=10%",
+              "events": 648,
+              "medianExcess": -0.12356341129537762,
+              "inconclusive": false
+            }
+          ]
+        },
+        {
+          "axis": "vol20Tertile",
+          "groups": [
+            {
+              "label": "High",
+              "events": 864,
+              "medianExcess": -0.10795992636089807,
+              "inconclusive": false
+            },
+            {
+              "label": "Low",
+              "events": 107,
+              "medianExcess": -0.018635990244471268,
+              "inconclusive": false
+            },
+            {
+              "label": "Mid",
+              "events": 347,
+              "medianExcess": -0.04389063573543972,
+              "inconclusive": false
+            }
+          ]
+        },
+        {
+          "axis": "vol63Tertile",
+          "groups": [
+            {
+              "label": "High",
+              "events": 714,
+              "medianExcess": -0.12262139044639742,
+              "inconclusive": false
+            },
+            {
+              "label": "Low",
+              "events": 126,
+              "medianExcess": -0.004436728051509575,
+              "inconclusive": false
+            },
+            {
+              "label": "Mid",
+              "events": 478,
+              "medianExcess": -0.05539793551462391,
+              "inconclusive": false
+            }
+          ]
+        },
+        {
+          "axis": "regime",
+          "groups": [
+            {
+              "label": "NORMAL",
+              "events": 728,
+              "medianExcess": -0.09470175463856856,
+              "inconclusive": false
+            },
+            {
+              "label": "RISK",
+              "events": 590,
+              "medianExcess": -0.06081203491783854,
+              "inconclusive": false
+            }
+          ]
+        }
+      ]
+    },
+    "H6": {
+      "code": "H6",
+      "label": "H6_RS_90_TO_97_FAST",
+      "family": "RS_DETERIORATION",
+      "direction": "BAD",
+      "nWarned": 394,
+      "nCohortControls": 40.37309644670051,
+      "summaryByHorizon": {
+        "20": {
+          "events": 394,
+          "uniqueCodes": 322,
+          "years": 3,
+          "signalMean": -0.004917840221293448,
+          "signalMedian": -0.07702680801292416,
+          "controlMean": 0.062285605022357325,
+          "controlMedian": 0.03284733475245161,
+          "medianExcessDiff": -0.10987414276537577,
+          "meanMatchedDiff": -0.06720344524365084,
+          "maeMean": -0.24307690296111434,
+          "mfeMean": 0.3226496559897761,
+          "p10StockReturn": -0.330607220580368,
+          "matchRate": 1
+        },
+        "63": {
+          "events": 394,
+          "uniqueCodes": 322,
+          "years": 3,
+          "signalMean": -0.026845580995054096,
+          "signalMedian": -0.12349064579797592,
+          "controlMean": 0.07146846741021652,
+          "controlMedian": 0.053915631316006574,
+          "medianExcessDiff": -0.1774062771139825,
+          "meanMatchedDiff": -0.09831404840527064,
+          "maeMean": -0.3507966732104501,
+          "mfeMean": 0.49206722775524653,
+          "p10StockReturn": -0.4153177060297803,
+          "matchRate": 1
+        },
+        "126": {
+          "events": 392,
+          "uniqueCodes": 322,
+          "years": 3,
+          "signalMean": -0.06999714488043358,
+          "signalMedian": -0.20111763217257655,
+          "controlMean": 0.06866734469362264,
+          "controlMedian": 0.03973555580951431,
+          "medianExcessDiff": -0.24085318798209088,
+          "meanMatchedDiff": -0.13866448957405622,
+          "maeMean": -0.40941014433707934,
+          "mfeMean": 0.6581413438396669,
+          "p10StockReturn": -0.5026446356982602,
+          "matchRate": 1
+        },
+        "252": {
+          "events": 392,
+          "uniqueCodes": 322,
+          "years": 3,
+          "signalMean": -0.15841286231431798,
+          "signalMedian": -0.2532757676178414,
+          "controlMean": 0.09635003450627545,
+          "controlMedian": 0.07571118392275047,
+          "medianExcessDiff": -0.3289869515405919,
+          "meanMatchedDiff": -0.2547628968205931,
+          "maeMean": -0.49287664289262,
+          "mfeMean": 0.8553660998078247,
+          "p10StockReturn": -0.6106511304787167,
+          "matchRate": 1
+        }
+      },
+      "primaryBootstrap": {
+        "point": -0.1774062771139825,
+        "ciLower": -0.22599148780660677,
+        "ciUpper": -0.13910009147694555,
+        "pValue": 0
+      },
+      "yearDecomp": {
+        "byYear": [
+          {
+            "year": 2020,
+            "events": 151,
+            "medianExcessDiff": -0.2689940960149868
+          },
+          {
+            "year": 2021,
+            "events": 121,
+            "medianExcessDiff": -0.13825194433212745
+          },
+          {
+            "year": 2022,
+            "events": 122,
+            "medianExcessDiff": -0.1461947754286877
+          }
+        ],
+        "leaveOneYearOut": [
+          {
+            "removedYear": 2020,
+            "medianExcessDiff": -0.15275550138875804,
+            "directionKept": true
+          },
+          {
+            "removedYear": 2021,
+            "medianExcessDiff": -0.18424138942297646,
+            "directionKept": true
+          },
+          {
+            "removedYear": 2022,
+            "medianExcessDiff": -0.19450412150226387,
+            "directionKept": true
+          }
+        ],
+        "regimeConcentrated": false
+      },
+      "topContributor": {
+        "removedCode": "258830",
+        "medianExcessDiff": -0.17895555356742282,
+        "directionKept": true
+      },
+      "matchRate": 1,
+      "factorDecomp": [
+        {
+          "axis": "market",
+          "groups": [
+            {
+              "label": "KOSDAQ",
+              "events": 284,
+              "medianExcess": -0.11647444517803318,
+              "inconclusive": false
+            },
+            {
+              "label": "KOSPI",
+              "events": 110,
+              "medianExcess": -0.13445737179990958,
+              "inconclusive": false
+            }
+          ]
+        },
+        {
+          "axis": "size",
+          "groups": [
+            {
+              "label": "LARGE",
+              "events": 51,
+              "medianExcess": -0.024918977927325225,
+              "inconclusive": false
+            },
+            {
+              "label": "MID",
+              "events": 254,
+              "medianExcess": -0.13363731727793415,
+              "inconclusive": false
+            },
+            {
+              "label": "SMALL",
+              "events": 89,
+              "medianExcess": -0.14905851096958067,
+              "inconclusive": false
+            }
+          ]
+        },
+        {
+          "axis": "liquidityTertile",
+          "groups": [
+            {
+              "label": "High",
+              "events": 139,
+              "medianExcess": -0.13016526139583318,
+              "inconclusive": false
+            },
+            {
+              "label": "Low",
+              "events": 108,
+              "medianExcess": -0.12466066514651819,
+              "inconclusive": false
+            },
+            {
+              "label": "Mid",
+              "events": 147,
+              "medianExcess": -0.1123235532434097,
+              "inconclusive": false
+            }
+          ]
+        },
+        {
+          "axis": "volumeMultiple",
+          "groups": [
+            {
+              "label": "1-2x",
+              "events": 52,
+              "medianExcess": -0.0773483052331767,
+              "inconclusive": false
+            },
+            {
+              "label": "2-5x",
+              "events": 92,
+              "medianExcess": -0.130681047583802,
+              "inconclusive": false
+            },
+            {
+              "label": "<1x",
+              "events": 32,
+              "medianExcess": -0.17360285518516472,
+              "inconclusive": true
+            },
+            {
+              "label": ">=5x",
+              "events": 218,
+              "medianExcess": -0.1268517316652264,
+              "inconclusive": false
+            }
+          ]
+        },
+        {
+          "axis": "ret5Tertile",
+          "groups": [
+            {
+              "label": "High",
+              "events": 391,
+              "medianExcess": -0.12398171448969064,
+              "inconclusive": false
+            },
+            {
+              "label": "Low",
+              "events": 3,
+              "medianExcess": -0.08901370770599915,
+              "inconclusive": true
+            }
+          ]
+        },
+        {
+          "axis": "ret21Tertile",
+          "groups": [
+            {
+              "label": "High",
+              "events": 386,
+              "medianExcess": -0.12254878455537044,
+              "inconclusive": false
+            },
+            {
+              "label": "Low",
+              "events": 3,
+              "medianExcess": -0.2586859700508636,
+              "inconclusive": true
+            },
+            {
+              "label": "Mid",
+              "events": 5,
+              "medianExcess": -0.2891541475940781,
+              "inconclusive": true
+            }
+          ]
+        },
+        {
+          "axis": "ret63Tertile",
+          "groups": [
+            {
+              "label": "High",
+              "events": 361,
+              "medianExcess": -0.12446819627097039,
+              "inconclusive": false
+            },
+            {
+              "label": "Low",
+              "events": 10,
+              "medianExcess": -0.2570532481276765,
+              "inconclusive": true
+            },
+            {
+              "label": "Mid",
+              "events": 23,
+              "medianExcess": -0.012707910942905354,
+              "inconclusive": true
+            }
+          ]
+        },
+        {
+          "axis": "dailyReturn",
+          "groups": [
+            {
+              "label": "-10~-5%",
+              "events": 4,
+              "medianExcess": -0.36093835314569866,
+              "inconclusive": true
+            },
+            {
+              "label": "-5~5%",
+              "events": 78,
+              "medianExcess": -0.12466066514651819,
+              "inconclusive": false
+            },
+            {
+              "label": "5~10%",
+              "events": 59,
+              "medianExcess": -0.09812323271093937,
+              "inconclusive": false
+            },
+            {
+              "label": "<=-10%",
+              "events": 3,
+              "medianExcess": -0.27367306065051833,
+              "inconclusive": true
+            },
+            {
+              "label": ">=10%",
+              "events": 250,
+              "medianExcess": -0.12359170427417498,
+              "inconclusive": false
+            }
+          ]
+        },
+        {
+          "axis": "dailyAbsShock",
+          "groups": [
+            {
+              "label": "3-5%",
+              "events": 29,
+              "medianExcess": -0.04965023514206124,
+              "inconclusive": true
+            },
+            {
+              "label": "5-10%",
+              "events": 63,
+              "medianExcess": -0.10195383749929277,
+              "inconclusive": false
+            },
+            {
+              "label": "<3%",
+              "events": 49,
+              "medianExcess": -0.13837702171318578,
+              "inconclusive": true
+            },
+            {
+              "label": ">=10%",
+              "events": 253,
+              "medianExcess": -0.12446819627097039,
+              "inconclusive": false
+            }
+          ]
+        },
+        {
+          "axis": "vol20Tertile",
+          "groups": [
+            {
+              "label": "High",
+              "events": 289,
+              "medianExcess": -0.14545222647380462,
+              "inconclusive": false
+            },
+            {
+              "label": "Low",
+              "events": 19,
+              "medianExcess": -0.00024867982068998984,
+              "inconclusive": true
+            },
+            {
+              "label": "Mid",
+              "events": 86,
+              "medianExcess": -0.07912936217343985,
+              "inconclusive": false
+            }
+          ]
+        },
+        {
+          "axis": "vol63Tertile",
+          "groups": [
+            {
+              "label": "High",
+              "events": 232,
+              "medianExcess": -0.15157382677858428,
+              "inconclusive": false
+            },
+            {
+              "label": "Low",
+              "events": 28,
+              "medianExcess": -0.10717458099130117,
+              "inconclusive": true
+            },
+            {
+              "label": "Mid",
+              "events": 134,
+              "medianExcess": -0.0888454939859552,
+              "inconclusive": false
+            }
+          ]
+        },
+        {
+          "axis": "regime",
+          "groups": [
+            {
+              "label": "NORMAL",
+              "events": 208,
+              "medianExcess": -0.13235357772243678,
+              "inconclusive": false
+            },
+            {
+              "label": "RISK",
+              "events": 186,
+              "medianExcess": -0.12057376072947446,
+              "inconclusive": false
+            }
+          ]
+        }
+      ]
+    },
+    "H7": {
+      "code": "H7",
+      "label": "H7_RS_BELOW_50",
+      "family": "RS_DETERIORATION",
+      "direction": "BAD",
+      "nWarned": 1351,
+      "nCohortControls": 26.52923760177646,
+      "summaryByHorizon": {
+        "20": {
+          "events": 1351,
+          "uniqueCodes": 673,
+          "years": 3,
+          "signalMean": -0.0006142593774469523,
+          "signalMedian": -0.020128892757944994,
+          "controlMean": 0.004217061464137396,
+          "controlMedian": -0.000006970348842566957,
+          "medianExcessDiff": -0.020121922409102426,
+          "meanMatchedDiff": -0.004831320841584341,
+          "maeMean": -0.12419709295680921,
+          "mfeMean": 0.16437957677116505,
+          "p10StockReturn": -0.16755319148936165,
+          "matchRate": 0.999259807549963
+        },
+        "63": {
+          "events": 1350,
+          "uniqueCodes": 673,
+          "years": 3,
+          "signalMean": 0.025618129043105297,
+          "signalMedian": -0.04471962131096352,
+          "controlMean": 0.005824185797011299,
+          "controlMedian": 0.0007959832656594232,
+          "medianExcessDiff": -0.045515604576622945,
+          "meanMatchedDiff": 0.01979394324609398,
+          "maeMean": -0.21045763495337422,
+          "mfeMean": 0.3419972526164191,
+          "p10StockReturn": -0.2696629213483146,
+          "matchRate": 0.9992592592592593
+        },
+        "126": {
+          "events": 1350,
+          "uniqueCodes": 673,
+          "years": 3,
+          "signalMean": 0.04576496036640835,
+          "signalMedian": -0.0651442705725338,
+          "controlMean": 0.02674452583849072,
+          "controlMedian": 0.02432028227173144,
+          "medianExcessDiff": -0.08946455284426524,
+          "meanMatchedDiff": 0.019020434527917615,
+          "maeMean": -0.2808237708842126,
+          "mfeMean": 0.4957966221991046,
+          "p10StockReturn": -0.3565170421441057,
+          "matchRate": 0.9992592592592593
+        },
+        "252": {
+          "events": 1347,
+          "uniqueCodes": 673,
+          "years": 3,
+          "signalMean": 0.015402331862991631,
+          "signalMedian": -0.0927228112998214,
+          "controlMean": 0.02486087064917965,
+          "controlMedian": 0.037527992530196515,
+          "medianExcessDiff": -0.1302508038300179,
+          "meanMatchedDiff": -0.009458538786187997,
+          "maeMean": -0.37264232257418484,
+          "mfeMean": 0.7296891586391298,
+          "p10StockReturn": -0.48398734815262867,
+          "matchRate": 0.9992576095025983
+        }
+      },
+      "primaryBootstrap": {
+        "point": -0.045515604576622945,
+        "ciLower": -0.07015223912531195,
+        "ciUpper": -0.02180122431540218,
+        "pValue": 0
+      },
+      "yearDecomp": {
+        "byYear": [
+          {
+            "year": 2020,
+            "events": 347,
+            "medianExcessDiff": -0.09670604613157763
+          },
+          {
+            "year": 2021,
+            "events": 498,
+            "medianExcessDiff": -0.018723050084236845
+          },
+          {
+            "year": 2022,
+            "events": 504,
+            "medianExcessDiff": -0.04277992794778389
+          }
+        ],
+        "leaveOneYearOut": [
+          {
+            "removedYear": 2020,
+            "medianExcessDiff": -0.03348949602426091,
+            "directionKept": true
+          },
+          {
+            "removedYear": 2021,
+            "medianExcessDiff": -0.05807128908840966,
+            "directionKept": true
+          },
+          {
+            "removedYear": 2022,
+            "medianExcessDiff": -0.04916934659659904,
+            "directionKept": true
+          }
+        ],
+        "regimeConcentrated": false
+      },
+      "topContributor": {
+        "removedCode": "078600",
+        "medianExcessDiff": -0.04819346845848034,
+        "directionKept": true
+      },
+      "matchRate": 0.9992592592592593,
+      "factorDecomp": [
+        {
+          "axis": "market",
+          "groups": [
+            {
+              "label": "KOSDAQ",
+              "events": 1006,
+              "medianExcess": -0.051520877156964406,
+              "inconclusive": false
+            },
+            {
+              "label": "KOSPI",
+              "events": 344,
+              "medianExcess": -0.026279224362537212,
+              "inconclusive": false
+            }
+          ]
+        },
+        {
+          "axis": "size",
+          "groups": [
+            {
+              "label": "LARGE",
+              "events": 248,
+              "medianExcess": -0.029178925523237476,
+              "inconclusive": false
+            },
+            {
+              "label": "MID",
+              "events": 897,
+              "medianExcess": -0.051520877156964406,
+              "inconclusive": false
+            },
+            {
+              "label": "SMALL",
+              "events": 205,
+              "medianExcess": -0.042758612254760964,
+              "inconclusive": false
+            }
+          ]
+        },
+        {
+          "axis": "liquidityTertile",
+          "groups": [
+            {
+              "label": "High",
+              "events": 598,
+              "medianExcess": -0.045043405489991195,
+              "inconclusive": false
+            },
+            {
+              "label": "Low",
+              "events": 305,
+              "medianExcess": -0.04057368827993635,
+              "inconclusive": false
+            },
+            {
+              "label": "Mid",
+              "events": 447,
+              "medianExcess": -0.046808833350379664,
+              "inconclusive": false
+            }
+          ]
+        },
+        {
+          "axis": "volumeMultiple",
+          "groups": [
+            {
+              "label": "1-2x",
+              "events": 228,
+              "medianExcess": -0.035962396606365576,
+              "inconclusive": false
+            },
+            {
+              "label": "2-5x",
+              "events": 360,
+              "medianExcess": -0.06556672910017541,
+              "inconclusive": false
+            },
+            {
+              "label": "<1x",
+              "events": 158,
+              "medianExcess": -0.0661968061769162,
+              "inconclusive": false
+            },
+            {
+              "label": ">=5x",
+              "events": 604,
+              "medianExcess": -0.028295146013830486,
+              "inconclusive": false
+            }
+          ]
+        },
+        {
+          "axis": "ret5Tertile",
+          "groups": [
+            {
+              "label": "High",
+              "events": 1317,
+              "medianExcess": -0.04471962131096352,
+              "inconclusive": false
+            },
+            {
+              "label": "Low",
+              "events": 10,
+              "medianExcess": -0.053512976041784566,
+              "inconclusive": true
+            },
+            {
+              "label": "Mid",
+              "events": 23,
+              "medianExcess": 0.00522613597691568,
+              "inconclusive": true
+            }
+          ]
+        },
+        {
+          "axis": "ret21Tertile",
+          "groups": [
+            {
+              "label": "High",
+              "events": 1317,
+              "medianExcess": -0.043825530197134865,
+              "inconclusive": false
+            },
+            {
+              "label": "Low",
+              "events": 7,
+              "medianExcess": -0.08554996380449642,
+              "inconclusive": true
+            },
+            {
+              "label": "Mid",
+              "events": 26,
+              "medianExcess": -0.1015780765369142,
+              "inconclusive": true
+            }
+          ]
+        },
+        {
+          "axis": "ret63Tertile",
+          "groups": [
+            {
+              "label": "High",
+              "events": 1221,
+              "medianExcess": -0.0422919732994026,
+              "inconclusive": false
+            },
+            {
+              "label": "Low",
+              "events": 35,
+              "medianExcess": -0.14246791256918057,
+              "inconclusive": true
+            },
+            {
+              "label": "Mid",
+              "events": 94,
+              "medianExcess": -0.05545795156663463,
+              "inconclusive": false
+            }
+          ]
+        },
+        {
+          "axis": "dailyReturn",
+          "groups": [
+            {
+              "label": "-10~-5%",
+              "events": 8,
+              "medianExcess": -0.01840147591527902,
+              "inconclusive": true
+            },
+            {
+              "label": "-5~5%",
+              "events": 420,
+              "medianExcess": -0.042875875173583045,
+              "inconclusive": false
+            },
+            {
+              "label": "5~10%",
+              "events": 266,
+              "medianExcess": -0.054208367078175945,
+              "inconclusive": false
+            },
+            {
+              "label": "<=-10%",
+              "events": 1,
+              "medianExcess": -0.024528183203592735,
+              "inconclusive": true
+            },
+            {
+              "label": ">=10%",
+              "events": 655,
+              "medianExcess": -0.03888721938477635,
+              "inconclusive": false
+            }
+          ]
+        },
+        {
+          "axis": "dailyAbsShock",
+          "groups": [
+            {
+              "label": "3-5%",
+              "events": 164,
+              "medianExcess": -0.04632918113814505,
+              "inconclusive": false
+            },
+            {
+              "label": "5-10%",
+              "events": 274,
+              "medianExcess": -0.054208367078175945,
+              "inconclusive": false
+            },
+            {
+              "label": "<3%",
+              "events": 256,
+              "medianExcess": -0.04148457459075161,
+              "inconclusive": false
+            },
+            {
+              "label": ">=10%",
+              "events": 656,
+              "medianExcess": -0.03886899126972204,
+              "inconclusive": false
+            }
+          ]
+        },
+        {
+          "axis": "vol20Tertile",
+          "groups": [
+            {
+              "label": "High",
+              "events": 900,
+              "medianExcess": -0.04881103912051027,
+              "inconclusive": false
+            },
+            {
+              "label": "Low",
+              "events": 109,
+              "medianExcess": -0.021039123662885295,
+              "inconclusive": false
+            },
+            {
+              "label": "Mid",
+              "events": 341,
+              "medianExcess": -0.03885076315466773,
+              "inconclusive": false
+            }
+          ]
+        },
+        {
+          "axis": "vol63Tertile",
+          "groups": [
+            {
+              "label": "High",
+              "events": 740,
+              "medianExcess": -0.05917880295691952,
+              "inconclusive": false
+            },
+            {
+              "label": "Low",
+              "events": 137,
+              "medianExcess": -0.016058274700505915,
+              "inconclusive": false
+            },
+            {
+              "label": "Mid",
+              "events": 473,
+              "medianExcess": -0.03329849109090499,
+              "inconclusive": false
+            }
+          ]
+        },
+        {
+          "axis": "regime",
+          "groups": [
+            {
+              "label": "NORMAL",
+              "events": 694,
+              "medianExcess": -0.029422699457763324,
+              "inconclusive": false
+            },
+            {
+              "label": "RISK",
+              "events": 656,
+              "medianExcess": -0.06009922748784924,
+              "inconclusive": false
+            }
+          ]
+        }
+      ]
+    },
+    "H8": {
+      "code": "H8",
+      "label": "H8_RS_50_70_STALL",
+      "family": "RS_DETERIORATION",
+      "direction": "NEUTRAL",
+      "nWarned": 1,
+      "nCohortControls": 40,
+      "summaryByHorizon": {
+        "20": {
+          "events": 1,
+          "uniqueCodes": 1,
+          "years": 1,
+          "signalMean": 0.16360163684867057,
+          "signalMedian": 0.16360163684867057,
+          "controlMean": -0.08595112376228937,
+          "controlMedian": -0.08595112376228937,
+          "medianExcessDiff": 0.24955276061095993,
+          "meanMatchedDiff": 0.24955276061095993,
+          "maeMean": -0.006402048655569814,
+          "mfeMean": 0.267605633802817,
+          "p10StockReturn": 0.2509603072983355,
+          "matchRate": 1
+        },
+        "63": {
+          "events": 1,
+          "uniqueCodes": 1,
+          "years": 1,
+          "signalMean": 0.6189017977389522,
+          "signalMedian": 0.6189017977389522,
+          "controlMean": -0.13341019159241943,
+          "controlMedian": -0.13341019159241943,
+          "medianExcessDiff": 0.7523119893313716,
+          "meanMatchedDiff": 0.7523119893313716,
+          "maeMean": -0.006402048655569814,
+          "mfeMean": 0.8565941101152368,
+          "p10StockReturn": 0.7029449423815621,
+          "matchRate": 1
+        },
+        "126": {
+          "events": 1,
+          "uniqueCodes": 1,
+          "years": 1,
+          "signalMean": 0.49980171198274936,
+          "signalMedian": 0.49980171198274936,
+          "controlMean": -0.04858469262422194,
+          "controlMedian": -0.04858469262422194,
+          "medianExcessDiff": 0.5483864046069713,
+          "meanMatchedDiff": 0.5483864046069713,
+          "maeMean": -0.006402048655569814,
+          "mfeMean": 1.0550576184379001,
+          "p10StockReturn": 0.6773367477592829,
+          "matchRate": 1
+        },
+        "252": {
+          "events": 1,
+          "uniqueCodes": 1,
+          "years": 1,
+          "signalMean": 0.7173028616406585,
+          "signalMedian": 0.7173028616406585,
+          "controlMean": -0.1424509355660386,
+          "controlMedian": -0.1424509355660386,
+          "medianExcessDiff": 0.8597537972066971,
+          "meanMatchedDiff": 0.8597537972066971,
+          "maeMean": -0.006402048655569814,
+          "mfeMean": 1.0550576184379001,
+          "p10StockReturn": 0.7989756722151089,
+          "matchRate": 1
+        }
+      },
+      "primaryBootstrap": {
+        "point": 0.7523119893313716,
+        "ciLower": null,
+        "ciUpper": null,
+        "pValue": 1
+      },
+      "yearDecomp": {
+        "byYear": [
+          {
+            "year": 2020,
+            "events": 1,
+            "medianExcessDiff": 0.7523119893313716
+          }
+        ],
+        "leaveOneYearOut": [
+          {
+            "removedYear": 2020,
+            "medianExcessDiff": null,
+            "directionKept": false
+          }
+        ],
+        "regimeConcentrated": true
+      },
+      "topContributor": {
+        "removedCode": null,
+        "medianExcessDiff": 0.7523119893313716,
+        "directionKept": true
+      },
+      "matchRate": 1,
+      "factorDecomp": [
+        {
+          "axis": "market",
+          "groups": [
+            {
+              "label": "KOSDAQ",
+              "events": 1,
+              "medianExcess": 0.6189017977389522,
+              "inconclusive": true
+            }
+          ]
+        },
+        {
+          "axis": "size",
+          "groups": [
+            {
+              "label": "MID",
+              "events": 1,
+              "medianExcess": 0.6189017977389522,
+              "inconclusive": true
+            }
+          ]
+        },
+        {
+          "axis": "liquidityTertile",
+          "groups": [
+            {
+              "label": "Mid",
+              "events": 1,
+              "medianExcess": 0.6189017977389522,
+              "inconclusive": true
+            }
+          ]
+        },
+        {
+          "axis": "volumeMultiple",
+          "groups": [
+            {
+              "label": "<1x",
+              "events": 1,
+              "medianExcess": 0.6189017977389522,
+              "inconclusive": true
+            }
+          ]
+        },
+        {
+          "axis": "ret5Tertile",
+          "groups": [
+            {
+              "label": "High",
+              "events": 1,
+              "medianExcess": 0.6189017977389522,
+              "inconclusive": true
+            }
+          ]
+        },
+        {
+          "axis": "ret21Tertile",
+          "groups": [
+            {
+              "label": "High",
+              "events": 1,
+              "medianExcess": 0.6189017977389522,
+              "inconclusive": true
+            }
+          ]
+        },
+        {
+          "axis": "ret63Tertile",
+          "groups": [
+            {
+              "label": "High",
+              "events": 1,
+              "medianExcess": 0.6189017977389522,
+              "inconclusive": true
+            }
+          ]
+        },
+        {
+          "axis": "dailyReturn",
+          "groups": [
+            {
+              "label": "-5~5%",
+              "events": 1,
+              "medianExcess": 0.6189017977389522,
+              "inconclusive": true
+            }
+          ]
+        },
+        {
+          "axis": "dailyAbsShock",
+          "groups": [
+            {
+              "label": "<3%",
+              "events": 1,
+              "medianExcess": 0.6189017977389522,
+              "inconclusive": true
+            }
+          ]
+        },
+        {
+          "axis": "vol20Tertile",
+          "groups": [
+            {
+              "label": "Mid",
+              "events": 1,
+              "medianExcess": 0.6189017977389522,
+              "inconclusive": true
+            }
+          ]
+        },
+        {
+          "axis": "vol63Tertile",
+          "groups": [
+            {
+              "label": "Mid",
+              "events": 1,
+              "medianExcess": 0.6189017977389522,
+              "inconclusive": true
+            }
+          ]
+        },
+        {
+          "axis": "regime",
+          "groups": [
+            {
+              "label": "NORMAL",
+              "events": 1,
+              "medianExcess": 0.6189017977389522,
+              "inconclusive": true
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "holmByCode": {
+    "H1": 0,
+    "H2": 0,
+    "H6": 0,
+    "H7": 0,
+    "H8": 1
+  },
+  "hGrades": {
+    "H1": {
+      "grade": "REVIEW_WARNING",
+      "reasons": [
+        "dev n=2062(중앙차 -10.92%), val n=1168(중앙차 -12.38%), 평균 대조군 28.1종목",
+        "검증: HolmP=0.0000(O) 경제성(≤-3%p)=O 강건성=O",
+        "§8.3에 따라 자동매도가 아니라 **보유 검토 우선순위 가중치** 후보로만 등록"
+      ]
+    },
+    "H2": {
+      "grade": "REVIEW_WARNING",
+      "reasons": [
+        "dev n=2455(중앙차 -6.17%), val n=1321(중앙차 -8.60%), 평균 대조군 25.6종목",
+        "검증: HolmP=0.0000(O) 경제성(≤-3%p)=O 강건성=O",
+        "§8.3에 따라 자동매도가 아니라 **보유 검토 우선순위 가중치** 후보로만 등록"
+      ]
+    },
+    "H6": {
+      "grade": "REVIEW_WARNING",
+      "reasons": [
+        "dev n=679(중앙차 -16.60%), val n=394(중앙차 -17.74%), 평균 대조군 40.4종목",
+        "검증: HolmP=0.0000(O) 경제성(≤-3%p)=O 강건성=O",
+        "§8.3에 따라 자동매도가 아니라 **보유 검토 우선순위 가중치** 후보로만 등록"
+      ]
+    },
+    "H7": {
+      "grade": "REVIEW_WARNING",
+      "reasons": [
+        "dev n=2328(중앙차 -3.18%), val n=1351(중앙차 -4.55%), 평균 대조군 26.5종목",
+        "검증: HolmP=0.0000(O) 경제성(≤-3%p)=O 강건성=O",
+        "§8.3에 따라 자동매도가 아니라 **보유 검토 우선순위 가중치** 후보로만 등록"
+      ]
+    },
+    "H8": {
+      "grade": "INCONCLUSIVE",
+      "reasons": [
+        "dev n=0(중앙차 n/a), val n=1(중앙차 75.23%), 평균 대조군 40.0종목",
+        "이벤트 부족(50건 미만) → 통계적 채택 판정 보류"
+      ]
+    }
+  },
+  "factorDecomp": {
+    "dev": [
+      {
+        "axis": "market",
+        "groups": [
+          {
+            "label": "KOSDAQ",
+            "events": 2013,
+            "medianExcess": -0.131963137825149,
+            "inconclusive": false
+          },
+          {
+            "label": "KOSPI",
+            "events": 798,
+            "medianExcess": -0.11699160555505966,
+            "inconclusive": false
+          }
+        ]
+      },
+      {
+        "axis": "size",
+        "groups": [
+          {
+            "label": "LARGE",
+            "events": 503,
+            "medianExcess": -0.045721212854632265,
+            "inconclusive": false
+          },
+          {
+            "label": "MID",
+            "events": 1837,
+            "medianExcess": -0.1514883567985189,
+            "inconclusive": false
+          },
+          {
+            "label": "SMALL",
+            "events": 471,
+            "medianExcess": -0.14250296830207965,
+            "inconclusive": false
+          }
+        ]
+      },
+      {
+        "axis": "liquidityTertile",
+        "groups": [
+          {
+            "label": "High",
+            "events": 778,
+            "medianExcess": -0.16681566993247438,
+            "inconclusive": false
+          },
+          {
+            "label": "Low",
+            "events": 994,
+            "medianExcess": -0.08119746134198841,
+            "inconclusive": false
+          },
+          {
+            "label": "Mid",
+            "events": 1039,
+            "medianExcess": -0.14367378096603423,
+            "inconclusive": false
+          }
+        ]
+      },
+      {
+        "axis": "volumeMultiple",
+        "groups": [
+          {
+            "label": "1-2x",
+            "events": 663,
+            "medianExcess": -0.11175357646731832,
+            "inconclusive": false
+          },
+          {
+            "label": "2-5x",
+            "events": 830,
+            "medianExcess": -0.11973693667671337,
+            "inconclusive": false
+          },
+          {
+            "label": "<1x",
+            "events": 542,
+            "medianExcess": -0.0699533595297584,
+            "inconclusive": false
+          },
+          {
+            "label": ">=5x",
+            "events": 776,
+            "medianExcess": -0.18955143858375273,
+            "inconclusive": false
+          }
+        ]
+      },
+      {
+        "axis": "ret5Tertile",
+        "groups": [
+          {
+            "label": "High",
+            "events": 2640,
+            "medianExcess": -0.13199515475534118,
+            "inconclusive": false
+          },
+          {
+            "label": "Low",
+            "events": 45,
+            "medianExcess": -0.01643877007773875,
+            "inconclusive": true
+          },
+          {
+            "label": "Mid",
+            "events": 126,
+            "medianExcess": -0.02981532844272683,
+            "inconclusive": false
+          }
+        ]
+      },
+      {
+        "axis": "ret21Tertile",
+        "groups": [
+          {
+            "label": "High",
+            "events": 2687,
+            "medianExcess": -0.12831312563518393,
+            "inconclusive": false
+          },
+          {
+            "label": "Low",
+            "events": 38,
+            "medianExcess": -0.020228665844437888,
+            "inconclusive": true
+          },
+          {
+            "label": "Mid",
+            "events": 86,
+            "medianExcess": -0.09165207137818232,
+            "inconclusive": false
+          }
+        ]
+      },
+      {
+        "axis": "ret63Tertile",
+        "groups": [
+          {
+            "label": "High",
+            "events": 2540,
+            "medianExcess": -0.1334134282187575,
+            "inconclusive": false
+          },
+          {
+            "label": "Low",
+            "events": 100,
+            "medianExcess": -0.12878298754940998,
+            "inconclusive": false
+          },
+          {
+            "label": "Mid",
+            "events": 171,
+            "medianExcess": -0.027812603520074308,
+            "inconclusive": false
+          }
+        ]
+      },
+      {
+        "axis": "dailyReturn",
+        "groups": [
+          {
+            "label": "-10~-5%",
+            "events": 21,
+            "medianExcess": -0.17713180280718432,
+            "inconclusive": true
+          },
+          {
+            "label": "-5~5%",
+            "events": 1160,
+            "medianExcess": -0.09637125864872981,
+            "inconclusive": false
+          },
+          {
+            "label": "5~10%",
+            "events": 606,
+            "medianExcess": -0.10356399436448926,
+            "inconclusive": false
+          },
+          {
+            "label": "<=-10%",
+            "events": 11,
+            "medianExcess": -0.04083790546239474,
+            "inconclusive": true
+          },
+          {
+            "label": ">=10%",
+            "events": 1013,
+            "medianExcess": -0.18377690120599233,
+            "inconclusive": false
+          }
+        ]
+      },
+      {
+        "axis": "dailyAbsShock",
+        "groups": [
+          {
+            "label": "3-5%",
+            "events": 410,
+            "medianExcess": -0.14478306300656418,
+            "inconclusive": false
+          },
+          {
+            "label": "5-10%",
+            "events": 627,
+            "medianExcess": -0.1051196044284971,
+            "inconclusive": false
+          },
+          {
+            "label": "<3%",
+            "events": 750,
+            "medianExcess": -0.06966894063436108,
+            "inconclusive": false
+          },
+          {
+            "label": ">=10%",
+            "events": 1024,
+            "medianExcess": -0.18313216683319228,
+            "inconclusive": false
+          }
+        ]
+      },
+      {
+        "axis": "vol20Tertile",
+        "groups": [
+          {
+            "label": "High",
+            "events": 1780,
+            "medianExcess": -0.16361517222523153,
+            "inconclusive": false
+          },
+          {
+            "label": "Low",
+            "events": 230,
+            "medianExcess": -0.07551840330955217,
+            "inconclusive": false
+          },
+          {
+            "label": "Mid",
+            "events": 801,
+            "medianExcess": -0.06861664879235907,
+            "inconclusive": false
+          }
+        ]
+      },
+      {
+        "axis": "vol63Tertile",
+        "groups": [
+          {
+            "label": "High",
+            "events": 1490,
+            "medianExcess": -0.17671665365729472,
+            "inconclusive": false
+          },
+          {
+            "label": "Low",
+            "events": 336,
+            "medianExcess": -0.05120354133402144,
+            "inconclusive": false
+          },
+          {
+            "label": "Mid",
+            "events": 985,
+            "medianExcess": -0.08936824630333873,
+            "inconclusive": false
+          }
+        ]
+      },
+      {
+        "axis": "regime",
+        "groups": [
+          {
+            "label": "NORMAL",
+            "events": 1618,
+            "medianExcess": -0.12042924547677153,
+            "inconclusive": false
+          },
+          {
+            "label": "RISK",
+            "events": 1193,
+            "medianExcess": -0.1369592626783136,
+            "inconclusive": false
+          }
+        ]
+      }
+    ],
+    "val": [
+      {
+        "axis": "market",
+        "groups": [
+          {
+            "label": "KOSDAQ",
+            "events": 1181,
+            "medianExcess": -0.15224130368188815,
+            "inconclusive": false
+          },
+          {
+            "label": "KOSPI",
+            "events": 458,
+            "medianExcess": -0.07385113020003764,
+            "inconclusive": false
+          }
+        ]
+      },
+      {
+        "axis": "size",
+        "groups": [
+          {
+            "label": "LARGE",
+            "events": 309,
+            "medianExcess": -0.038267936978287675,
+            "inconclusive": false
+          },
+          {
+            "label": "MID",
+            "events": 1064,
+            "medianExcess": -0.15077594464694366,
+            "inconclusive": false
+          },
+          {
+            "label": "SMALL",
+            "events": 266,
+            "medianExcess": -0.1523300841794693,
+            "inconclusive": false
+          }
+        ]
+      },
+      {
+        "axis": "liquidityTertile",
+        "groups": [
+          {
+            "label": "High",
+            "events": 680,
+            "medianExcess": -0.15938453047931,
+            "inconclusive": false
+          },
+          {
+            "label": "Low",
+            "events": 425,
+            "medianExcess": -0.08475833837215485,
+            "inconclusive": false
+          },
+          {
+            "label": "Mid",
+            "events": 534,
+            "medianExcess": -0.13791978778587044,
+            "inconclusive": false
+          }
+        ]
+      },
+      {
+        "axis": "volumeMultiple",
+        "groups": [
+          {
+            "label": "1-2x",
+            "events": 294,
+            "medianExcess": -0.06873146366251343,
+            "inconclusive": false
+          },
+          {
+            "label": "2-5x",
+            "events": 427,
+            "medianExcess": -0.12624527308812028,
+            "inconclusive": false
+          },
+          {
+            "label": "<1x",
+            "events": 194,
+            "medianExcess": -0.14752700947815295,
+            "inconclusive": false
+          },
+          {
+            "label": ">=5x",
+            "events": 724,
+            "medianExcess": -0.1533031669767479,
+            "inconclusive": false
+          }
+        ]
+      },
+      {
+        "axis": "ret5Tertile",
+        "groups": [
+          {
+            "label": "High",
+            "events": 1598,
+            "medianExcess": -0.13560674510911847,
+            "inconclusive": false
+          },
+          {
+            "label": "Low",
+            "events": 13,
+            "medianExcess": -0.12170280927633204,
+            "inconclusive": true
+          },
+          {
+            "label": "Mid",
+            "events": 28,
+            "medianExcess": -0.052327069428034945,
+            "inconclusive": true
+          }
+        ]
+      },
+      {
+        "axis": "ret21Tertile",
+        "groups": [
+          {
+            "label": "High",
+            "events": 1594,
+            "medianExcess": -0.13560674510911847,
+            "inconclusive": false
+          },
+          {
+            "label": "Low",
+            "events": 7,
+            "medianExcess": -0.3035633382072168,
+            "inconclusive": true
+          },
+          {
+            "label": "Mid",
+            "events": 38,
+            "medianExcess": -0.0439543595548012,
+            "inconclusive": true
+          }
+        ]
+      },
+      {
+        "axis": "ret63Tertile",
+        "groups": [
+          {
+            "label": "High",
+            "events": 1489,
+            "medianExcess": -0.13062675969299176,
+            "inconclusive": false
+          },
+          {
+            "label": "Low",
+            "events": 38,
+            "medianExcess": -0.16044576187187204,
+            "inconclusive": true
+          },
+          {
+            "label": "Mid",
+            "events": 112,
+            "medianExcess": -0.14054139603153276,
+            "inconclusive": false
+          }
+        ]
+      },
+      {
+        "axis": "dailyReturn",
+        "groups": [
+          {
+            "label": "-10~-5%",
+            "events": 11,
+            "medianExcess": -0.10409664229606208,
+            "inconclusive": true
+          },
+          {
+            "label": "-5~5%",
+            "events": 532,
+            "medianExcess": -0.08566723789108593,
+            "inconclusive": false
+          },
+          {
+            "label": "5~10%",
+            "events": 328,
+            "medianExcess": -0.11544062701917712,
+            "inconclusive": false
+          },
+          {
+            "label": "<=-10%",
+            "events": 4,
+            "medianExcess": -0.16623724323947148,
+            "inconclusive": true
+          },
+          {
+            "label": ">=10%",
+            "events": 764,
+            "medianExcess": -0.16584854810949068,
+            "inconclusive": false
+          }
+        ]
+      },
+      {
+        "axis": "dailyAbsShock",
+        "groups": [
+          {
+            "label": "3-5%",
+            "events": 201,
+            "medianExcess": -0.09898601401874263,
+            "inconclusive": false
+          },
+          {
+            "label": "5-10%",
+            "events": 339,
+            "medianExcess": -0.11437740404977437,
+            "inconclusive": false
+          },
+          {
+            "label": "<3%",
+            "events": 331,
+            "medianExcess": -0.07375333954118823,
+            "inconclusive": false
+          },
+          {
+            "label": ">=10%",
+            "events": 768,
+            "medianExcess": -0.16584854810949068,
+            "inconclusive": false
+          }
+        ]
+      },
+      {
+        "axis": "vol20Tertile",
+        "groups": [
+          {
+            "label": "High",
+            "events": 1049,
+            "medianExcess": -0.17857884864442974,
+            "inconclusive": false
+          },
+          {
+            "label": "Low",
+            "events": 154,
+            "medianExcess": -0.018836636754628155,
+            "inconclusive": false
+          },
+          {
+            "label": "Mid",
+            "events": 436,
+            "medianExcess": -0.06561855705223568,
+            "inconclusive": false
+          }
+        ]
+      },
+      {
+        "axis": "vol63Tertile",
+        "groups": [
+          {
+            "label": "High",
+            "events": 857,
+            "medianExcess": -0.18717597439114364,
+            "inconclusive": false
+          },
+          {
+            "label": "Low",
+            "events": 193,
+            "medianExcess": -0.030767301481910203,
+            "inconclusive": false
+          },
+          {
+            "label": "Mid",
+            "events": 589,
+            "medianExcess": -0.08959443443539361,
+            "inconclusive": false
+          }
+        ]
+      },
+      {
+        "axis": "regime",
+        "groups": [
+          {
+            "label": "NORMAL",
+            "events": 805,
+            "medianExcess": -0.14870565284162862,
+            "inconclusive": false
+          },
+          {
+            "label": "RISK",
+            "events": 834,
+            "medianExcess": -0.11742237488414392,
+            "inconclusive": false
+          }
+        ]
+      }
+    ]
+  }
+}

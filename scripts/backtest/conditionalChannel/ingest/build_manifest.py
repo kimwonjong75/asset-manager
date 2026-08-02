@@ -15,6 +15,8 @@ build_manifest.py — 처리된 데이터 파일의 체크섬·통계를 기록�
   G9  개발·검증·잠금 구간에 데이터가 연속으로 존재
   G10 split golden test: 삼성전자(005930) 2018-05-04 전후 Stocks 50배 확인
   G11 공식 교차검증 상태 (WAITING_FOR_USER_KEY → 잠금 비개봉)
+  G12 원천 거래대금(amount) 정합성: processed bars의 amount 결측률 0·음수 0·
+      원천 parquet Amount와 표본(종목 systematic) 완전 일치
 
 사용:
   python scripts/backtest/conditionalChannel/ingest/build_manifest.py \\
@@ -351,6 +353,111 @@ def gate_g11_krx_crosscheck(processed_dir: Path) -> dict:
         "action": "data.go.kr 회원가입 후 공공데이터 포털 > 주식 일별 시세 API 신청",
     }
 
+def gate_g12_amount_integrity(raw_dir: Path, processed_dir: Path) -> dict:
+    """G12: processed bars의 원천 거래대금(amount) 정합성.
+
+    판정 (세 조건 모두 충족 시 passed):
+      (a) 전체 processed bars 대비 amount 결측률 == 0%
+      (b) amount 음수 건수 == 0
+      (c) 원천 parquet의 Amount와 표본 대조 완전 일치(근사 아님).
+          종목을 systematic 추출하고, 표본 종목의 모든 bar를 원천과 1:1 대조한다.
+
+    amount는 실제 당일 거래대금(원)이므로 분할조정하지 않는다 → 원천 Amount와
+    무조정 정수값이 완전히 같아야 한다.
+    """
+    securities_dir = processed_dir / "securities"
+    if not securities_dir.exists():
+        return {"gate": "G12_AMOUNT_INTEGRITY", "passed": False,
+                "detail": "securities/ 디렉터리 없음"}
+
+    sec_files = sorted(securities_dir.glob("*.json"))
+    if not sec_files:
+        return {"gate": "G12_AMOUNT_INTEGRITY", "passed": False,
+                "detail": "securities/*.json 없음"}
+
+    # ── (a)(b) 전체 processed bars 스캔: 결측·음수 집계 ──
+    total_bars = 0
+    missing_amount = 0
+    negative_amount = 0
+    for sf in sec_files:
+        with open(sf, encoding="utf-8") as f:
+            sec = json.load(f)
+        for bar in sec.get("bars", []):
+            total_bars += 1
+            amt = bar.get("amount", None)
+            if amt is None:
+                missing_amount += 1
+            elif amt < 0:
+                negative_amount += 1
+    missing_rate = (missing_amount / total_bars * 100) if total_bars else 0.0
+
+    # ── (c) 원천 대조: 종목 systematic 표본 ──
+    all_codes = [sf.stem for sf in sec_files]
+    target_sample = 80
+    step = max(1, len(all_codes) // target_sample)
+    sample_codes = set(all_codes[::step])
+
+    # 원천 parquet에서 표본 종목의 (code, date) → Amount 조회표 구축
+    raw_amount: dict[tuple[str, str], float] = {}
+    for pf in sorted(raw_dir.glob("marcap-*.parquet")):
+        df = pd.read_parquet(pf, columns=["Date", "Code", "Amount"])
+        df["Code"] = df["Code"].astype(str).str.zfill(6)
+        df = df[df["Code"].isin(sample_codes)]
+        for r in df.itertuples(index=False):
+            raw_amount[(r.Code, str(r.Date)[:10])] = r.Amount
+
+    compared = 0
+    mismatches = 0
+    mismatch_examples = []
+    for code in sorted(sample_codes):
+        sf = securities_dir / f"{code}.json"
+        if not sf.exists():
+            continue
+        with open(sf, encoding="utf-8") as f:
+            sec = json.load(f)
+        for bar in sec.get("bars", []):
+            key = (code, bar["date"])
+            if key not in raw_amount:
+                continue
+            raw_val = raw_amount[key]
+            proc_val = bar.get("amount", None)
+            compared += 1
+            # 무조정 정수 완전 일치 검사(근사 아님).
+            expected = int(raw_val) if pd.notna(raw_val) else None
+            if proc_val != expected:
+                mismatches += 1
+                if len(mismatch_examples) < 10:
+                    mismatch_examples.append(
+                        {"code": code, "date": bar["date"],
+                         "processed": proc_val, "raw": expected})
+
+    match_rate = ((compared - mismatches) / compared * 100) if compared else 0.0
+
+    passed = (
+        missing_amount == 0
+        and negative_amount == 0
+        and compared > 0
+        and mismatches == 0
+    )
+    return {
+        "gate": "G12_AMOUNT_INTEGRITY",
+        "passed": passed,
+        "total_bars": total_bars,
+        "missing_amount": missing_amount,
+        "missing_rate_pct": round(missing_rate, 4),
+        "negative_amount": negative_amount,
+        "sample_codes": len(sample_codes),
+        "compared_bars": compared,
+        "mismatches": mismatches,
+        "match_rate_pct": round(match_rate, 4),
+        "mismatch_examples": mismatch_examples,
+        "detail": (
+            f"amount 결측 {missing_amount}건({missing_rate:.4f}%), 음수 {negative_amount}건, "
+            f"표본 {len(sample_codes)}종목 {compared}bar 대조 일치율 {match_rate:.4f}% "
+            f"→ {'OK' if passed else 'FAIL'}"
+        ),
+    }
+
 # ── 처리 파일 체크섬 ──
 
 def collect_checksums(processed_dir: Path) -> dict:
@@ -389,6 +496,7 @@ def main():
         gate_g9_date_continuity(processed_dir),
         gate_g10_samsung_split(raw_dir),
         gate_g11_krx_crosscheck(processed_dir),
+        gate_g12_amount_integrity(raw_dir, processed_dir),
     ]
 
     for g in gates:

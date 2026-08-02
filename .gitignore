@@ -45,3 +45,12 @@ tmp/
 
 # Backtest private portfolio data
 scripts/backtest/data/
+
+# 백테스트 원시 시세 캐시 (Yahoo v8에서 재수집 가능 — 커밋 금지)
+# 'cache/*' 형태여야 한다: 'cache/' 로 쓰면 git이 폴더 안으로 들어가지 않아
+# usRoughCheck/cache/.gitignore 의 !universe_sp500.json 예외가 무효화된다.
+# 연구 결과물인 */output/ 은 재현 증거이므로 계속 추적한다.
+scripts/backtest/*/cache/*
+
+# Claude Code 개인 설정 (PC별 권한 목록 — 공유 대상 아님)
+.claude/settings.local.json

@@ -161,6 +161,9 @@ def process_security(code: str, source: pd.DataFrame, out_dir: Path, all_events:
             "low":         float(row.Low),
             "close":       float(row.Close),
             "volume":      int(row.Volume),
+            # 원천 거래대금(원, KRW). 실제 당일 거래대금이므로 분할조정하지 않는다
+            # (사전등록 계획서 명시). 무조정 원본값을 그대로 보존한다.
+            "amount":      int(row.Amount) if pd.notna(row.Amount) else None,
             "stocks":      int(row.Stocks) if pd.notna(row.Stocks) else None,
             "marketcap":   float(row.Marcap) if pd.notna(row.Marcap) else None,
             "market":      str(row.Market) if pd.notna(row.Market) else None,
@@ -205,7 +208,7 @@ def main():
     parquet_files = sorted(raw_dir.glob("marcap-*.parquet"))
     columns = [
         "Date", "Code", "Name", "Open", "High", "Low", "Close",
-        "Volume", "Stocks", "Marcap", "Market",
+        "Volume", "Amount", "Stocks", "Marcap", "Market",
     ]
     print(f"원시 parquet 일괄 로드: {len(parquet_files)}개")
     frames = [pd.read_parquet(path, columns=columns) for path in parquet_files]

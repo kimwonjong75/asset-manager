@@ -6,6 +6,7 @@ import type { CategoryStore } from '../types/category';
 import type { KnowledgeBase } from '../types/knowledge';
 import type { ActionItem } from '../types/actionQueue';
 import type { TurtlePosition, TurtleSettings } from '../types/turtle';
+import { applyRestoredAlertSettings, readStoredAlertSettings } from '../utils/alertSettingsStorage';
 
 interface UseGoogleDriveSyncOptions {
   onError?: (msg: string) => void;
@@ -193,6 +194,10 @@ export function useGoogleDriveSync(options: UseGoogleDriveSyncOptions = {}) {
       } catch { /* ignore */ }
     }
 
+    // 알림 규칙 설정 복원 — localStorage 반영 + 'alert-settings-restored' 이벤트로 useAutoAlert 동기화.
+    // 저장본에 alertSettings가 없으면(구 페이로드) 아무것도 하지 않고 로컬 설정을 유지한다.
+    applyRestoredAlertSettings(data.alertSettings);
+
     optionsRef.current.onSuccessMessage?.('Google Drive에서 포트폴리오를 불러왔습니다.');
     return { assets, portfolioHistory, sellHistory, watchlist, exchangeRates, allocationTargets, sellAlertDropRate, categoryStore, knowledgeBase, actionQueue, turtlePositions, turtleSettings };
   }, []);
@@ -222,6 +227,11 @@ export function useGoogleDriveSync(options: UseGoogleDriveSyncOptions = {}) {
     } catch { /* ignore */ }
     const tableLayout = { columns: columnConfig, fixedWidths };
 
+    // 알림 규칙 설정 — 테이블 레이아웃과 동일하게 localStorage에서 읽어 페이로드에 포함.
+    // (호출부 12개 인자를 늘리지 않기 위한 기존 패턴. 값이 없으면 키를 싣지 않아
+    //  구 저장본의 alertSettings를 실수로 지우지 않는다 — 로드 측도 부재 시 무시)
+    const alertSettings = readStoredAlertSettings();
+
     const exportData = {
       assets: assetsToSave,
       portfolioHistory: history,
@@ -237,6 +247,7 @@ export function useGoogleDriveSync(options: UseGoogleDriveSyncOptions = {}) {
       turtleSettings,
       columnConfig,
       tableLayout,
+      alertSettings,
       lastUpdateDate: new Date().toISOString().slice(0, 10),
     };
     // P7: 미니파이(pretty-print 제거). 디바운스·코얼레싱·중복 스킵·pending 재저장은 큐가 처리.

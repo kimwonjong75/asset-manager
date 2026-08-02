@@ -3,56 +3,20 @@ import type { AlertRule, AlertSettings, AlertResult, AlertDataGap } from '../typ
 import type { EnrichedAsset } from '../types/ui';
 import type { EnrichedIndicatorData } from './useEnrichedIndicators';
 import type { WatchlistItem } from '../types';
-import { DEFAULT_ALERT_SETTINGS } from '../constants/alertRules';
 import { checkAlertRules, checkBuyRulesForWatchlist, collectSellRuleDataGaps } from '../utils/alertChecker';
 import { computeRiskTier, sortByRiskPriority, DEFAULT_RISK_MATRIX_THRESHOLDS, type RiskMatrixRow } from '../utils/riskMatrix';
 import { countDistributionDays } from '../utils/marketDistribution';
 import { classifyDistributionTier } from '../utils/distributionTierState';
 import { evaluateAutoPopupGate } from '../utils/alertDiagnostics';
 import type { PopupDeliveryDiagnosis } from '../types/alertDiagnostics';
+import {
+  ALERT_SETTINGS_RESTORED_EVENT,
+  loadAlertSettings,
+  saveAlertSettings,
+} from '../utils/alertSettingsStorage';
 
-const STORAGE_KEY = 'asset-manager-alert-settings';
 /** 자동 브리핑 "오늘 자동 확인 완료" 일자 키 (발화 0건이어도 기록 — 표시 여부와 무관). */
 export const POPUP_DATE_KEY = 'asset-manager-alert-popup-date';
-
-/** localStorage에서 AlertSettings 로드 (신규 규칙 자동 병합) */
-const loadAlertSettings = (): AlertSettings => {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      const parsed = JSON.parse(stored);
-      const settings: AlertSettings = { ...DEFAULT_ALERT_SETTINGS, ...parsed };
-
-      // 기존 사용자에게 새 규칙 자동 추가 (기존 커스터마이징 보존)
-      const existingIds = new Set(settings.rules.map((r: AlertRule) => r.id));
-      for (const defaultRule of DEFAULT_ALERT_SETTINGS.rules) {
-        if (!existingIds.has(defaultRule.id)) {
-          settings.rules.push(defaultRule);
-        }
-      }
-
-      // 기존 규칙에 신규 filterConfig 필드 병합 (withinDays 등)
-      const defaultRuleMap = new Map(DEFAULT_ALERT_SETTINGS.rules.map(r => [r.id, r]));
-      settings.rules = settings.rules.map((r: AlertRule) => {
-        const def = defaultRuleMap.get(r.id);
-        if (!def) return r;
-        // 기본값에 있는데 저장된 config에 없는 필드만 backfill
-        const mergedConfig = { ...def.filterConfig, ...r.filterConfig };
-        return { ...r, filterConfig: mergedConfig };
-      });
-
-      return settings;
-    }
-  } catch { /* ignore */ }
-  return DEFAULT_ALERT_SETTINGS;
-};
-
-/** localStorage에 AlertSettings 저장 */
-const saveAlertSettings = (settings: AlertSettings) => {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
-  } catch { /* ignore */ }
-};
 
 /**
  * P4.5 D1: distribution-high 매칭 자산에 tier 분류(new/ongoing) 첨부
@@ -116,6 +80,12 @@ interface UseAutoAlertProps {
    * reviewPending=true인 동안은 게이트가 not-ready로 대기(일자 미기록) — 검토 완료 시 재평가.
    */
   executionGate?: { actionableCount: number; reviewPending: boolean };
+  /**
+   * 설정이 **사용자 조작으로** 바뀌어 localStorage에 기록된 직후 호출(옵션).
+   * PortfolioContext가 여기서 Drive autoSave를 트리거해 규칙 설정을 기기 간 동기화한다.
+   * Drive 복원(이벤트 수신)으로 바뀐 경우에는 호출하지 않는다 — 되돌려 저장하는 루프 방지.
+   */
+  onSettingsPersisted?: (settings: AlertSettings) => void;
 }
 
 export const useAutoAlert = ({
@@ -126,6 +96,7 @@ export const useAutoAlert = ({
   isMarketLoading,
   watchlistItems,
   executionGate,
+  onSettingsPersisted,
 }: UseAutoAlertProps) => {
   const [alertSettings, setAlertSettings] = useState<AlertSettings>(loadAlertSettings);
   const [alertResults, setAlertResults] = useState<AlertResult[]>([]);
@@ -136,10 +107,29 @@ export const useAutoAlert = ({
     try { return localStorage.getItem(POPUP_DATE_KEY); } catch { return null; }
   });
 
-  // 설정 변경 시 localStorage 저장
+  // 콜백 identity 변화가 updateAlertSettings를 재생성하지 않도록 ref로 고정
+  const onSettingsPersistedRef = useRef(onSettingsPersisted);
+  useEffect(() => { onSettingsPersistedRef.current = onSettingsPersisted; });
+
+  // 설정 변경 시 localStorage 저장 → 이어서 Drive 저장 트리거(콜백)
+  // 순서 중요: localStorage 기록이 먼저여야 autoSave가 최신 설정을 페이로드에 싣는다.
   const updateAlertSettings = useCallback((newSettings: AlertSettings) => {
     setAlertSettings(newSettings);
     saveAlertSettings(newSettings);
+    onSettingsPersistedRef.current?.(newSettings);
+  }, []);
+
+  // Drive 로드/백업 복원 → alertSettingsStorage가 발화하는 이벤트로 state 동기화.
+  // (localStorage 기록은 이벤트 발화측이 이미 수행 — 여기서는 다시 저장하지 않는다)
+  useEffect(() => {
+    const handleRestored = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail && typeof detail === 'object' && Array.isArray((detail as AlertSettings).rules)) {
+        setAlertSettings(detail as AlertSettings);
+      }
+    };
+    window.addEventListener(ALERT_SETTINGS_RESTORED_EVENT, handleRestored);
+    return () => window.removeEventListener(ALERT_SETTINGS_RESTORED_EVENT, handleRestored);
   }, []);
 
   // 팝업 닫기

@@ -1,0 +1,5402 @@
+{
+  "assumptions": {
+    "bonds8": [
+      "TLT",
+      "IEF",
+      "SHY",
+      "LQD",
+      "HYG",
+      "TIP",
+      "EMB",
+      "BWX"
+    ],
+    "equityUs": "SPY",
+    "equityIntl": "VEU",
+    "safeOriginal": "AGG",
+    "staticSleeve": [
+      "SPY",
+      "TLT",
+      "GLD",
+      "BIL"
+    ],
+    "staticWeight": 0.25,
+    "cashProxy": "BIL",
+    "lookback12M": 252,
+    "lookback6M": 126,
+    "costOneWay": 0.001,
+    "bondSlots": 3,
+    "blendStatic": 0.5
+  },
+  "firstDates": {
+    "TLT": "2003-01-02",
+    "IEF": "2003-01-02",
+    "SHY": "2003-01-02",
+    "LQD": "2003-01-02",
+    "HYG": "2007-04-11",
+    "TIP": "2003-12-05",
+    "EMB": "2007-12-19",
+    "BWX": "2007-10-11",
+    "SPY": "2003-01-02",
+    "VEU": "2007-03-08",
+    "AGG": "2003-09-29",
+    "GLD": "2004-11-18",
+    "BIL": "2007-05-30"
+  },
+  "commonStart": "2007-12-19",
+  "result": {
+    "from": "2007-12-19",
+    "to": "2022-12-30",
+    "tradingDays": 3785,
+    "firstSignalDate": "2008-12-31",
+    "firstTradeDate": "2009-01-02",
+    "strategies": [
+      {
+        "strategy": "STATIC",
+        "startIdx": 261,
+        "perf": {
+          "cagr": 0.055403534628603035,
+          "sharpe": 0.8259713033918684,
+          "mdd": 0.16980897019033647,
+          "finalEquity": 2.1256311102737087
+        },
+        "rebalances": 14,
+        "avgMonthlyTurnover": 0.042300025856005265,
+        "totalCost": 0.002099800672256137,
+        "byYear": [
+          {
+            "year": 2009,
+            "ret": 0.07100422325202449
+          },
+          {
+            "year": 2010,
+            "ret": 0.13371413035022428
+          },
+          {
+            "year": 2011,
+            "ret": 0.11435366852764317
+          },
+          {
+            "year": 2012,
+            "ret": 0.06051788659725199
+          },
+          {
+            "year": 2013,
+            "ret": -0.02462369647132534
+          },
+          {
+            "year": 2014,
+            "ret": 0.09523855921979174
+          },
+          {
+            "year": 2015,
+            "ret": -0.028264056415995498
+          },
+          {
+            "year": 2016,
+            "ret": 0.0532564217887459
+          },
+          {
+            "year": 2017,
+            "ret": 0.11096757510380861
+          },
+          {
+            "year": 2018,
+            "ret": -0.015849565877947946
+          },
+          {
+            "year": 2019,
+            "ret": 0.16385534464241625
+          },
+          {
+            "year": 2020,
+            "ret": 0.1540703504515366
+          },
+          {
+            "year": 2021,
+            "ret": 0.050219891641589465
+          },
+          {
+            "year": 2022,
+            "ret": -0.12155535316891108
+          }
+        ]
+      },
+      {
+        "strategy": "BOND_DAA",
+        "startIdx": 261,
+        "perf": {
+          "cagr": 0.04037408524130459,
+          "sharpe": 0.621007976725356,
+          "mdd": 0.12464196175427478,
+          "finalEquity": 1.7393240871445848
+        },
+        "rebalances": 168,
+        "avgMonthlyTurnover": 0.27030454651692254,
+        "totalCost": 0.09128171853665201,
+        "byYear": [
+          {
+            "year": 2009,
+            "ret": 0.06692035927256179
+          },
+          {
+            "year": 2010,
+            "ret": 0.04002897006712436
+          },
+          {
+            "year": 2011,
+            "ret": 0.18989876396295924
+          },
+          {
+            "year": 2012,
+            "ret": 0.07292364134957041
+          },
+          {
+            "year": 2013,
+            "ret": -0.04983767296802133
+          },
+          {
+            "year": 2014,
+            "ret": 0.09084502901294633
+          },
+          {
+            "year": 2015,
+            "ret": -0.05154430542618682
+          },
+          {
+            "year": 2016,
+            "ret": 0.07725513431975717
+          },
+          {
+            "year": 2017,
+            "ret": 0.04799339021318527
+          },
+          {
+            "year": 2018,
+            "ret": -0.03775247273015825
+          },
+          {
+            "year": 2019,
+            "ret": 0.09694561671812396
+          },
+          {
+            "year": 2020,
+            "ret": 0.09440957000433303
+          },
+          {
+            "year": 2021,
+            "ret": -0.01344773252239273
+          },
+          {
+            "year": 2022,
+            "ret": -0.029272499529968576
+          }
+        ]
+      },
+      {
+        "strategy": "DUAL_ORIGINAL",
+        "startIdx": 261,
+        "perf": {
+          "cagr": 0.06984653753393233,
+          "sharpe": 0.4890502787707947,
+          "mdd": 0.337172528469891,
+          "finalEquity": 2.5706051662265383
+        },
+        "rebalances": 168,
+        "avgMonthlyTurnover": 0.11377245508982035,
+        "totalCost": 0.03900000000000002,
+        "byYear": [
+          {
+            "year": 2009,
+            "ret": 0.07534500162976188
+          },
+          {
+            "year": 2010,
+            "ret": 0.03726690155966539
+          },
+          {
+            "year": 2011,
+            "ret": -0.0005817480860124125
+          },
+          {
+            "year": 2012,
+            "ret": 0.15990348619953831
+          },
+          {
+            "year": 2013,
+            "ret": 0.29122572928230017
+          },
+          {
+            "year": 2014,
+            "ret": 0.1346379348409672
+          },
+          {
+            "year": 2015,
+            "ret": -0.07188022913255232
+          },
+          {
+            "year": 2016,
+            "ret": 0.06355364146292453
+          },
+          {
+            "year": 2017,
+            "ret": 0.20567881045127767
+          },
+          {
+            "year": 2018,
+            "ret": -0.08025545744834095
+          },
+          {
+            "year": 2019,
+            "ret": 0.15451138781927543
+          },
+          {
+            "year": 2020,
+            "ret": 0.04059527444780553
+          },
+          {
+            "year": 2021,
+            "ret": 0.23849082258546517
+          },
+          {
+            "year": 2022,
+            "ret": -0.1668306212176376
+          }
+        ]
+      },
+      {
+        "strategy": "DUAL_VARIANT",
+        "startIdx": 261,
+        "perf": {
+          "cagr": 0.07435131306995557,
+          "sharpe": 0.5143585253435112,
+          "mdd": 0.33717252846989143,
+          "finalEquity": 2.72617718818195
+        },
+        "rebalances": 168,
+        "avgMonthlyTurnover": 0.12799971812332586,
+        "totalCost": 0.04375190585319085,
+        "byYear": [
+          {
+            "year": 2009,
+            "ret": 0.08838612186490358
+          },
+          {
+            "year": 2010,
+            "ret": 0.03726690155966539
+          },
+          {
+            "year": 2011,
+            "ret": -0.0005817480860124125
+          },
+          {
+            "year": 2012,
+            "ret": 0.15990348619953831
+          },
+          {
+            "year": 2013,
+            "ret": 0.29122572928230017
+          },
+          {
+            "year": 2014,
+            "ret": 0.1346379348409672
+          },
+          {
+            "year": 2015,
+            "ret": -0.07116792505183211
+          },
+          {
+            "year": 2016,
+            "ret": 0.07643188972229842
+          },
+          {
+            "year": 2017,
+            "ret": 0.20567881045127767
+          },
+          {
+            "year": 2018,
+            "ret": -0.08025545744834095
+          },
+          {
+            "year": 2019,
+            "ret": 0.14197604440250866
+          },
+          {
+            "year": 2020,
+            "ret": 0.022527128960557752
+          },
+          {
+            "year": 2021,
+            "ret": 0.23849082258546517
+          },
+          {
+            "year": 2022,
+            "ret": -0.11324278717367509
+          }
+        ]
+      },
+      {
+        "strategy": "BLEND_50_50",
+        "startIdx": 261,
+        "perf": {
+          "cagr": 0.06683087920487818,
+          "sharpe": 0.6987719481258852,
+          "mdd": 0.20311870706563673,
+          "finalEquity": 2.471110278685234
+        },
+        "rebalances": 167,
+        "avgMonthlyTurnover": 0.09214062420671047,
+        "totalCost": 0.025260764503216494,
+        "byYear": [
+          {
+            "year": 2009,
+            "ret": 0.08029498017894166
+          },
+          {
+            "year": 2010,
+            "ret": 0.08993163615123212
+          },
+          {
+            "year": 2011,
+            "ret": 0.05856969013676405
+          },
+          {
+            "year": 2012,
+            "ret": 0.11005826899630278
+          },
+          {
+            "year": 2013,
+            "ret": 0.1234974309147081
+          },
+          {
+            "year": 2014,
+            "ret": 0.11524667774501873
+          },
+          {
+            "year": 2015,
+            "ret": -0.04827023283687937
+          },
+          {
+            "year": 2016,
+            "ret": 0.06637994123351221
+          },
+          {
+            "year": 2017,
+            "ret": 0.15758782029041485
+          },
+          {
+            "year": 2018,
+            "ret": -0.04664596083961192
+          },
+          {
+            "year": 2019,
+            "ret": 0.15476510512177022
+          },
+          {
+            "year": 2020,
+            "ret": 0.09230265493790646
+          },
+          {
+            "year": 2021,
+            "ret": 0.14161656539176115
+          },
+          {
+            "year": 2022,
+            "ret": -0.11620492956950124
+          }
+        ]
+      }
+    ],
+    "benchmarks": [
+      {
+        "strategy": "BH_SPY",
+        "startIdx": 261,
+        "perf": {
+          "cagr": 0.13019854066935732,
+          "sharpe": 0.7577496062278062,
+          "mdd": 0.3371725284698912,
+          "finalEquity": 5.537613805327223
+        },
+        "rebalances": 1,
+        "avgMonthlyTurnover": 0,
+        "totalCost": 0.001,
+        "byYear": [
+          {
+            "year": 2009,
+            "ret": 0.25946304284838373
+          },
+          {
+            "year": 2010,
+            "ret": 0.1505610543920155
+          },
+          {
+            "year": 2011,
+            "ret": 0.018950016815151738
+          },
+          {
+            "year": 2012,
+            "ret": 0.15990348619953743
+          },
+          {
+            "year": 2013,
+            "ret": 0.3230777637385005
+          },
+          {
+            "year": 2014,
+            "ret": 0.1346379348409672
+          },
+          {
+            "year": 2015,
+            "ret": 0.012342835203186686
+          },
+          {
+            "year": 2016,
+            "ret": 0.11997894877205861
+          },
+          {
+            "year": 2017,
+            "ret": 0.21705404542452933
+          },
+          {
+            "year": 2018,
+            "ret": -0.04568971373440445
+          },
+          {
+            "year": 2019,
+            "ret": 0.3122378917926245
+          },
+          {
+            "year": 2020,
+            "ret": 0.1833166294361328
+          },
+          {
+            "year": 2021,
+            "ret": 0.28728760696788536
+          },
+          {
+            "year": 2022,
+            "ret": -0.18175362536271655
+          }
+        ]
+      },
+      {
+        "strategy": "BH_AGG",
+        "startIdx": 261,
+        "perf": {
+          "cagr": 0.02215650366169486,
+          "sharpe": 0.5073510306639019,
+          "mdd": 0.18432956926777544,
+          "finalEquity": 1.3586027141866057
+        },
+        "rebalances": 1,
+        "avgMonthlyTurnover": 0,
+        "totalCost": 0.001,
+        "byYear": [
+          {
+            "year": 2009,
+            "ret": 0.03312431977894392
+          },
+          {
+            "year": 2010,
+            "ret": 0.0636206203969174
+          },
+          {
+            "year": 2011,
+            "ret": 0.07696670102209868
+          },
+          {
+            "year": 2012,
+            "ret": 0.03754960648863159
+          },
+          {
+            "year": 2013,
+            "ret": -0.019777210628320496
+          },
+          {
+            "year": 2014,
+            "ret": 0.059986332823202426
+          },
+          {
+            "year": 2015,
+            "ret": 0.004806969620435586
+          },
+          {
+            "year": 2016,
+            "ret": 0.024138344311724458
+          },
+          {
+            "year": 2017,
+            "ret": 0.035527305771971385
+          },
+          {
+            "year": 2018,
+            "ret": 0.0034068462288006085
+          },
+          {
+            "year": 2019,
+            "ret": 0.08455700489646678
+          },
+          {
+            "year": 2020,
+            "ret": 0.07476125471278339
+          },
+          {
+            "year": 2021,
+            "ret": -0.017660743216514563
+          },
+          {
+            "year": 2022,
+            "ret": -0.13021648500740524
+          }
+        ]
+      },
+      {
+        "strategy": "BH_GLD",
+        "startIdx": 261,
+        "perf": {
+          "cagr": 0.04976404705063198,
+          "sharpe": 0.3822912274466423,
+          "mdd": 0.45555012734257105,
+          "finalEquity": 1.9721908389199787
+        },
+        "rebalances": 1,
+        "avgMonthlyTurnover": 0,
+        "totalCost": 0.001,
+        "byYear": [
+          {
+            "year": 2009,
+            "ret": 0.24755832864320282
+          },
+          {
+            "year": 2010,
+            "ret": 0.2927034235086856
+          },
+          {
+            "year": 2011,
+            "ret": 0.09566035291009345
+          },
+          {
+            "year": 2012,
+            "ret": 0.06599117321400438
+          },
+          {
+            "year": 2013,
+            "ret": -0.2832983601746555
+          },
+          {
+            "year": 2014,
+            "ret": -0.021873930894323435
+          },
+          {
+            "year": 2015,
+            "ret": -0.10670895008973447
+          },
+          {
+            "year": 2016,
+            "ret": 0.0803272383148117
+          },
+          {
+            "year": 2017,
+            "ret": 0.12809051033069196
+          },
+          {
+            "year": 2018,
+            "ret": -0.01940963603932022
+          },
+          {
+            "year": 2019,
+            "ret": 0.1785566506926557
+          },
+          {
+            "year": 2020,
+            "ret": 0.24814561391481904
+          },
+          {
+            "year": 2021,
+            "ret": -0.04148908875959523
+          },
+          {
+            "year": 2022,
+            "ret": -0.007721146890382835
+          }
+        ]
+      },
+      {
+        "strategy": "BH_TLT",
+        "startIdx": 261,
+        "perf": {
+          "cagr": 0.013693953761644062,
+          "sharpe": 0.16532628386263978,
+          "mdd": 0.44135671282492017,
+          "finalEquity": 1.2094898445037925
+        },
+        "rebalances": 1,
+        "avgMonthlyTurnover": 0,
+        "totalCost": 0.001,
+        "byYear": [
+          {
+            "year": 2009,
+            "ret": -0.22339967711911501
+          },
+          {
+            "year": 2010,
+            "ret": 0.0901277657416788
+          },
+          {
+            "year": 2011,
+            "ret": 0.3400108845731311
+          },
+          {
+            "year": 2012,
+            "ret": 0.024094200582282843
+          },
+          {
+            "year": 2013,
+            "ret": -0.13381333850848598
+          },
+          {
+            "year": 2014,
+            "ret": 0.2730184862642311
+          },
+          {
+            "year": 2015,
+            "ret": -0.017895785925588936
+          },
+          {
+            "year": 2016,
+            "ret": 0.011716579075952138
+          },
+          {
+            "year": 2017,
+            "ret": 0.09182607725157421
+          },
+          {
+            "year": 2018,
+            "ret": -0.016119357810359336
+          },
+          {
+            "year": 2019,
+            "ret": 0.1411844916728675
+          },
+          {
+            "year": 2020,
+            "ret": 0.18152240888077875
+          },
+          {
+            "year": 2021,
+            "ret": -0.04599128082305248
+          },
+          {
+            "year": 2022,
+            "ret": -0.3123454276290537
+          }
+        ]
+      }
+    ],
+    "signalLog": [
+      {
+        "signalDate": "2008-12-31",
+        "tradeDate": "2009-01-02",
+        "dual": {
+          "momUs": -0.3623679448192597,
+          "momIntl": -0.4323011059935459,
+          "winner": "SPY",
+          "momWinner": -0.3623679448192597,
+          "riskOn": false
+        },
+        "bondPicks": [
+          {
+            "symbol": "TLT",
+            "mom": 0.32096461636820117,
+            "toCash": false
+          },
+          {
+            "symbol": "IEF",
+            "mom": 0.14744144817290739,
+            "toCash": false
+          },
+          {
+            "symbol": "SHY",
+            "mom": 0.045465302466692004,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2009-01-30",
+        "tradeDate": "2009-02-02",
+        "dual": {
+          "momUs": -0.38251662081904425,
+          "momIntl": -0.46651968936331956,
+          "winner": "SPY",
+          "momWinner": -0.38251662081904425,
+          "riskOn": false
+        },
+        "bondPicks": [
+          {
+            "symbol": "TLT",
+            "mom": 0.15582030210653008,
+            "toCash": false
+          },
+          {
+            "symbol": "IEF",
+            "mom": 0.09460024566446013,
+            "toCash": false
+          },
+          {
+            "symbol": "SHY",
+            "mom": 0.03625700229514672,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2009-02-27",
+        "tradeDate": "2009-03-02",
+        "dual": {
+          "momUs": -0.44685134174661756,
+          "momIntl": -0.5280500053684165,
+          "winner": "SPY",
+          "momWinner": -0.44685134174661756,
+          "riskOn": false
+        },
+        "bondPicks": [
+          {
+            "symbol": "TLT",
+            "mom": 0.10295016339061003,
+            "toCash": false
+          },
+          {
+            "symbol": "IEF",
+            "mom": 0.06735116050005652,
+            "toCash": false
+          },
+          {
+            "symbol": "SHY",
+            "mom": 0.02994993263114676,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2009-03-31",
+        "tradeDate": "2009-04-01",
+        "dual": {
+          "momUs": -0.4025851166744051,
+          "momIntl": -0.4799840186773673,
+          "winner": "SPY",
+          "momWinner": -0.4025851166744051,
+          "riskOn": false
+        },
+        "bondPicks": [
+          {
+            "symbol": "LQD",
+            "mom": 0.18421342453555578,
+            "toCash": false
+          },
+          {
+            "symbol": "TLT",
+            "mom": 0.10815976676073191,
+            "toCash": false
+          },
+          {
+            "symbol": "IEF",
+            "mom": 0.09261854391433166,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2009-04-30",
+        "tradeDate": "2009-05-01",
+        "dual": {
+          "momUs": -0.3510726681637183,
+          "momIntl": -0.4278990715662435,
+          "winner": "SPY",
+          "momWinner": -0.3510726681637183,
+          "riskOn": false
+        },
+        "bondPicks": [
+          {
+            "symbol": "EMB",
+            "mom": 0.45374507456967006,
+            "toCash": false
+          },
+          {
+            "symbol": "HYG",
+            "mom": 0.2087147393434694,
+            "toCash": false
+          },
+          {
+            "symbol": "LQD",
+            "mom": 0.136575323692824,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2009-05-29",
+        "tradeDate": "2009-06-01",
+        "dual": {
+          "momUs": -0.3216770439275495,
+          "momIntl": -0.35089202879005543,
+          "winner": "SPY",
+          "momWinner": -0.3216770439275495,
+          "riskOn": false
+        },
+        "bondPicks": [
+          {
+            "symbol": "HYG",
+            "mom": 0.2693964850875945,
+            "toCash": false
+          },
+          {
+            "symbol": "EMB",
+            "mom": 0.21298510084218858,
+            "toCash": false
+          },
+          {
+            "symbol": "TIP",
+            "mom": 0.113976067680992,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2009-06-30",
+        "tradeDate": "2009-07-01",
+        "dual": {
+          "momUs": -0.2621449131723389,
+          "momIntl": -0.3056322189683044,
+          "winner": "SPY",
+          "momWinner": -0.2621449131723389,
+          "riskOn": false
+        },
+        "bondPicks": [
+          {
+            "symbol": "HYG",
+            "mom": 0.11273541239364859,
+            "toCash": false
+          },
+          {
+            "symbol": "EMB",
+            "mom": 0.05706784170410861,
+            "toCash": false
+          },
+          {
+            "symbol": "TIP",
+            "mom": 0.027132910096127505,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2009-07-31",
+        "tradeDate": "2009-08-03",
+        "dual": {
+          "momUs": -0.19990739921574474,
+          "momIntl": -0.20265178378633486,
+          "winner": "SPY",
+          "momWinner": -0.19990739921574474,
+          "riskOn": false
+        },
+        "bondPicks": [
+          {
+            "symbol": "HYG",
+            "mom": 0.190516202509722,
+            "toCash": false
+          },
+          {
+            "symbol": "EMB",
+            "mom": 0.14493090707582157,
+            "toCash": false
+          },
+          {
+            "symbol": "BWX",
+            "mom": 0.11590108901130058,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2009-08-31",
+        "tradeDate": "2009-09-01",
+        "dual": {
+          "momUs": -0.18297773103005355,
+          "momIntl": -0.13519490511192778,
+          "winner": "VEU",
+          "momWinner": -0.13519490511192778,
+          "riskOn": false
+        },
+        "bondPicks": [
+          {
+            "symbol": "HYG",
+            "mom": 0.3184708029997323,
+            "toCash": false
+          },
+          {
+            "symbol": "EMB",
+            "mom": 0.2565324769613535,
+            "toCash": false
+          },
+          {
+            "symbol": "BWX",
+            "mom": 0.17695914736869,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2009-09-30",
+        "tradeDate": "2009-10-01",
+        "dual": {
+          "momUs": -0.06605602735113347,
+          "momIntl": 0.04416284278766702,
+          "winner": "VEU",
+          "momWinner": 0.04416284278766702,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "HYG",
+            "mom": 0.3436328839949483,
+            "toCash": false
+          },
+          {
+            "symbol": "EMB",
+            "mom": 0.24308706616736497,
+            "toCash": false
+          },
+          {
+            "symbol": "LQD",
+            "mom": 0.16887505568405303,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2009-10-30",
+        "tradeDate": "2009-11-02",
+        "dual": {
+          "momUs": 0.10327735590066855,
+          "momIntl": 0.3142086786088041,
+          "winner": "VEU",
+          "momWinner": 0.3142086786088041,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "HYG",
+            "mom": 0.18032916541574173,
+            "toCash": false
+          },
+          {
+            "symbol": "EMB",
+            "mom": 0.14532452431019127,
+            "toCash": false
+          },
+          {
+            "symbol": "LQD",
+            "mom": 0.12443921461007501,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2009-11-30",
+        "tradeDate": "2009-12-01",
+        "dual": {
+          "momUs": 0.2519810562067164,
+          "momIntl": 0.47222741375195576,
+          "winner": "VEU",
+          "momWinner": 0.47222741375195576,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "HYG",
+            "mom": 0.13873350036366094,
+            "toCash": false
+          },
+          {
+            "symbol": "LQD",
+            "mom": 0.11802153521493186,
+            "toCash": false
+          },
+          {
+            "symbol": "EMB",
+            "mom": 0.10407818862227414,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2009-12-31",
+        "tradeDate": "2010-01-04",
+        "dual": {
+          "momUs": 0.26351818118173864,
+          "momIntl": 0.3761031001637778,
+          "winner": "VEU",
+          "momWinner": 0.3761031001637778,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "HYG",
+            "mom": 0.18378826265015835,
+            "toCash": false
+          },
+          {
+            "symbol": "EMB",
+            "mom": 0.11522761095838407,
+            "toCash": false
+          },
+          {
+            "symbol": "LQD",
+            "mom": 0.07299453542876266,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2010-01-29",
+        "tradeDate": "2010-02-01",
+        "dual": {
+          "momUs": 0.299539784490509,
+          "momIntl": 0.47903423382277865,
+          "winner": "VEU",
+          "momWinner": 0.47903423382277865,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "HYG",
+            "mom": 0.08797466046635272,
+            "toCash": false
+          },
+          {
+            "symbol": "EMB",
+            "mom": 0.08241229554583374,
+            "toCash": false
+          },
+          {
+            "symbol": "TIP",
+            "mom": 0.06898952703543682,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2010-02-26",
+        "tradeDate": "2010-03-01",
+        "dual": {
+          "momUs": 0.49832901839729193,
+          "momIntl": 0.6177736885828762,
+          "winner": "VEU",
+          "momWinner": 0.6177736885828762,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "HYG",
+            "mom": 0.10946494593538936,
+            "toCash": false
+          },
+          {
+            "symbol": "EMB",
+            "mom": 0.06898266743706838,
+            "toCash": false
+          },
+          {
+            "symbol": "TIP",
+            "mom": 0.03650591613713838,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2010-03-31",
+        "tradeDate": "2010-04-01",
+        "dual": {
+          "momUs": 0.5008467403272634,
+          "momIntl": 0.6117393196648386,
+          "winner": "VEU",
+          "momWinner": 0.6117393196648386,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "HYG",
+            "mom": 0.07077792551234752,
+            "toCash": false
+          },
+          {
+            "symbol": "EMB",
+            "mom": 0.04964145037954082,
+            "toCash": false
+          },
+          {
+            "symbol": "TIP",
+            "mom": 0.02376899420626999,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2010-04-30",
+        "tradeDate": "2010-05-03",
+        "dual": {
+          "momUs": 0.3863379356577441,
+          "momIntl": 0.39844977858233155,
+          "winner": "VEU",
+          "momWinner": 0.39844977858233155,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "HYG",
+            "mom": 0.10251555379452171,
+            "toCash": false
+          },
+          {
+            "symbol": "EMB",
+            "mom": 0.05624498058653793,
+            "toCash": false
+          },
+          {
+            "symbol": "LQD",
+            "mom": 0.05282604013068837,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2010-05-28",
+        "tradeDate": "2010-06-01",
+        "dual": {
+          "momUs": 0.2057085545937254,
+          "momIntl": 0.08186932826218318,
+          "winner": "SPY",
+          "momWinner": 0.2057085545937254,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "TLT",
+            "mom": 0.02573718433584471,
+            "toCash": false
+          },
+          {
+            "symbol": "HYG",
+            "mom": 0.025128396250018614,
+            "toCash": false
+          },
+          {
+            "symbol": "IEF",
+            "mom": 0.02278956303023638,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2010-06-30",
+        "tradeDate": "2010-07-01",
+        "dual": {
+          "momUs": 0.14407370241068107,
+          "momIntl": 0.08999722103963381,
+          "winner": "SPY",
+          "momWinner": 0.14407370241068107,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "TLT",
+            "mom": 0.15371733856863234,
+            "toCash": false
+          },
+          {
+            "symbol": "IEF",
+            "mom": 0.09242527688398128,
+            "toCash": false
+          },
+          {
+            "symbol": "LQD",
+            "mom": 0.0635977181502978,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2010-07-30",
+        "tradeDate": "2010-08-02",
+        "dual": {
+          "momUs": 0.1389746907235323,
+          "momIntl": 0.10539982728828923,
+          "winner": "SPY",
+          "momWinner": 0.1389746907235323,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "TLT",
+            "mom": 0.11085839344896975,
+            "toCash": false
+          },
+          {
+            "symbol": "EMB",
+            "mom": 0.09316264281156306,
+            "toCash": false
+          },
+          {
+            "symbol": "IEF",
+            "mom": 0.08012111945127587,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2010-08-31",
+        "tradeDate": "2010-09-01",
+        "dual": {
+          "momUs": 0.04750682547899299,
+          "momIntl": 0.024090671923010065,
+          "winner": "SPY",
+          "momWinner": 0.04750682547899299,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "TLT",
+            "mom": 0.2133858530884376,
+            "toCash": false
+          },
+          {
+            "symbol": "IEF",
+            "mom": 0.1120135313948738,
+            "toCash": false
+          },
+          {
+            "symbol": "EMB",
+            "mom": 0.09809078257111392,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2010-09-30",
+        "tradeDate": "2010-10-01",
+        "dual": {
+          "momUs": 0.10223453964184914,
+          "momIntl": 0.07178593012418011,
+          "winner": "SPY",
+          "momWinner": 0.10223453964184914,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "TLT",
+            "mom": 0.205442200976508,
+            "toCash": false
+          },
+          {
+            "symbol": "IEF",
+            "mom": 0.12686381909755395,
+            "toCash": false
+          },
+          {
+            "symbol": "EMB",
+            "mom": 0.09545653967500534,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2010-10-29",
+        "tradeDate": "2010-11-01",
+        "dual": {
+          "momUs": 0.13296762485410651,
+          "momIntl": 0.10387864940650382,
+          "winner": "SPY",
+          "momWinner": 0.13296762485410651,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "BWX",
+            "mom": 0.11915179649161112,
+            "toCash": false
+          },
+          {
+            "symbol": "TLT",
+            "mom": 0.11327471734880623,
+            "toCash": false
+          },
+          {
+            "symbol": "EMB",
+            "mom": 0.10999534181772974,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2010-11-30",
+        "tradeDate": "2010-12-01",
+        "dual": {
+          "momUs": 0.09906272761157497,
+          "momIntl": 0.04868214163439921,
+          "winner": "SPY",
+          "momWinner": 0.09906272761157497,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "HYG",
+            "mom": 0.09665457488676954,
+            "toCash": false
+          },
+          {
+            "symbol": "EMB",
+            "mom": 0.08488407189400538,
+            "toCash": false
+          },
+          {
+            "symbol": "BWX",
+            "mom": 0.07865456865666909,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2010-12-31",
+        "tradeDate": "2011-01-03",
+        "dual": {
+          "momUs": 0.15056105439201728,
+          "momIntl": 0.11820230122086461,
+          "winner": "SPY",
+          "momWinner": 0.15056105439201728,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "HYG",
+            "mom": 0.10976164730936966,
+            "toCash": false
+          },
+          {
+            "symbol": "BWX",
+            "mom": 0.07951663919384622,
+            "toCash": false
+          },
+          {
+            "symbol": "EMB",
+            "mom": 0.0617428999176044,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2011-01-31",
+        "tradeDate": "2011-02-01",
+        "dual": {
+          "momUs": 0.20306365226989942,
+          "momIntl": 0.16919750296158287,
+          "winner": "SPY",
+          "momWinner": 0.20306365226989942,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "HYG",
+            "mom": 0.07258373333900803,
+            "toCash": false
+          },
+          {
+            "symbol": "BWX",
+            "mom": 0.037004951288716725,
+            "toCash": false
+          },
+          {
+            "symbol": "TIP",
+            "mom": 0.01901195476806694,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2011-02-28",
+        "tradeDate": "2011-03-01",
+        "dual": {
+          "momUs": 0.21336921696455424,
+          "momIntl": 0.19984983858641847,
+          "winner": "SPY",
+          "momWinner": 0.21336921696455424,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "HYG",
+            "mom": 0.10623335644870391,
+            "toCash": false
+          },
+          {
+            "symbol": "BWX",
+            "mom": 0.03338945815282113,
+            "toCash": false
+          },
+          {
+            "symbol": "TIP",
+            "mom": 0.015947238468492442,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2011-03-31",
+        "tradeDate": "2011-04-01",
+        "dual": {
+          "momUs": 0.14790560124232366,
+          "momIntl": 0.11259187196111875,
+          "winner": "SPY",
+          "momWinner": 0.14790560124232366,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "HYG",
+            "mom": 0.06605731627979039,
+            "toCash": false
+          },
+          {
+            "symbol": "TIP",
+            "mom": 0.012676773976447953,
+            "toCash": false
+          },
+          {
+            "symbol": "BWX",
+            "mom": 0.004209337242905953,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2011-04-29",
+        "tradeDate": "2011-05-02",
+        "dual": {
+          "momUs": 0.17110980917293994,
+          "momIntl": 0.21707712973729154,
+          "winner": "VEU",
+          "momWinner": 0.21707712973729154,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "HYG",
+            "mom": 0.06401725392307323,
+            "toCash": false
+          },
+          {
+            "symbol": "BWX",
+            "mom": 0.037133618531407286,
+            "toCash": false
+          },
+          {
+            "symbol": "TIP",
+            "mom": 0.015090861684034396,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2011-05-31",
+        "tradeDate": "2011-06-01",
+        "dual": {
+          "momUs": 0.2794490730067265,
+          "momIntl": 0.3405901029064511,
+          "winner": "VEU",
+          "momWinner": 0.3405901029064511,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "BWX",
+            "mom": 0.09501886686280181,
+            "toCash": false
+          },
+          {
+            "symbol": "HYG",
+            "mom": 0.08114514509630588,
+            "toCash": false
+          },
+          {
+            "symbol": "LQD",
+            "mom": 0.034533228146039985,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2011-06-30",
+        "tradeDate": "2011-07-01",
+        "dual": {
+          "momUs": 0.3100214666123675,
+          "momIntl": 0.3183912469221841,
+          "winner": "VEU",
+          "momWinner": 0.3183912469221841,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "BWX",
+            "mom": 0.06805878965954015,
+            "toCash": false
+          },
+          {
+            "symbol": "TIP",
+            "mom": 0.061608575278822686,
+            "toCash": false
+          },
+          {
+            "symbol": "EMB",
+            "mom": 0.04735243791959487,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2011-07-29",
+        "tradeDate": "2011-08-01",
+        "dual": {
+          "momUs": 0.19638002031152424,
+          "momIntl": 0.1687683683420147,
+          "winner": "SPY",
+          "momWinner": 0.19638002031152424,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "TIP",
+            "mom": 0.09551702031812526,
+            "toCash": false
+          },
+          {
+            "symbol": "TLT",
+            "mom": 0.08924833941121046,
+            "toCash": false
+          },
+          {
+            "symbol": "EMB",
+            "mom": 0.07568458948551893,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2011-08-31",
+        "tradeDate": "2011-09-01",
+        "dual": {
+          "momUs": 0.1494758996422414,
+          "momIntl": 0.07277656383649167,
+          "winner": "SPY",
+          "momWinner": 0.1494758996422414,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "TLT",
+            "mom": 0.2110386009843661,
+            "toCash": false
+          },
+          {
+            "symbol": "IEF",
+            "mom": 0.13201586232253293,
+            "toCash": false
+          },
+          {
+            "symbol": "TIP",
+            "mom": 0.09422911257862543,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2011-09-30",
+        "tradeDate": "2011-10-03",
+        "dual": {
+          "momUs": 0.006889062854234407,
+          "momIntl": -0.13794994469786526,
+          "winner": "SPY",
+          "momWinner": 0.006889062854234407,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "TLT",
+            "mom": 0.3336833943236688,
+            "toCash": false
+          },
+          {
+            "symbol": "IEF",
+            "mom": 0.14407210222296163,
+            "toCash": false
+          },
+          {
+            "symbol": "TIP",
+            "mom": 0.07860214782386143,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2011-10-31",
+        "tradeDate": "2011-11-01",
+        "dual": {
+          "momUs": 0.07985397640245462,
+          "momIntl": -0.06277264417817541,
+          "winner": "SPY",
+          "momWinner": 0.07985397640245462,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "TLT",
+            "mom": 0.25029704065535086,
+            "toCash": false
+          },
+          {
+            "symbol": "IEF",
+            "mom": 0.10870281717296404,
+            "toCash": false
+          },
+          {
+            "symbol": "TIP",
+            "mom": 0.07461744568411266,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2011-11-30",
+        "tradeDate": "2011-12-01",
+        "dual": {
+          "momUs": 0.05342419853082836,
+          "momIntl": -0.07188173339353632,
+          "winner": "SPY",
+          "momWinner": 0.05342419853082836,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "TLT",
+            "mom": 0.24916737886676055,
+            "toCash": false
+          },
+          {
+            "symbol": "IEF",
+            "mom": 0.08800904356606254,
+            "toCash": false
+          },
+          {
+            "symbol": "TIP",
+            "mom": 0.07712857821611485,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2011-12-30",
+        "tradeDate": "2012-01-03",
+        "dual": {
+          "momUs": 0.01895001681515396,
+          "momIntl": -0.1402677855021912,
+          "winner": "SPY",
+          "momWinner": 0.01895001681515396,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "TLT",
+            "mom": 0.31737670824507913,
+            "toCash": false
+          },
+          {
+            "symbol": "IEF",
+            "mom": 0.12053784232886655,
+            "toCash": false
+          },
+          {
+            "symbol": "TIP",
+            "mom": 0.07338313067252256,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2012-01-31",
+        "tradeDate": "2012-02-01",
+        "dual": {
+          "momUs": 0.04192597422167221,
+          "momIntl": -0.08854639907662654,
+          "winner": "SPY",
+          "momWinner": 0.04192597422167221,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "TLT",
+            "mom": 0.2429606370628441,
+            "toCash": false
+          },
+          {
+            "symbol": "IEF",
+            "mom": 0.08877821951570541,
+            "toCash": false
+          },
+          {
+            "symbol": "TIP",
+            "mom": 0.055049875922743574,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2012-02-29",
+        "tradeDate": "2012-03-01",
+        "dual": {
+          "momUs": 0.06846855718630196,
+          "momIntl": -0.0542972775620455,
+          "winner": "SPY",
+          "momWinner": 0.06846855718630196,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "TLT",
+            "mom": 0.11551494024280973,
+            "toCash": false
+          },
+          {
+            "symbol": "HYG",
+            "mom": 0.10183059076089007,
+            "toCash": false
+          },
+          {
+            "symbol": "LQD",
+            "mom": 0.07921612475149264,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2012-03-30",
+        "tradeDate": "2012-04-02",
+        "dual": {
+          "momUs": 0.084317044610011,
+          "momIntl": -0.07208706091740624,
+          "winner": "SPY",
+          "momWinner": 0.084317044610011,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "HYG",
+            "mom": 0.11309059433094704,
+            "toCash": false
+          },
+          {
+            "symbol": "EMB",
+            "mom": 0.08594479539033317,
+            "toCash": false
+          },
+          {
+            "symbol": "LQD",
+            "mom": 0.05664835451923711,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2012-04-30",
+        "tradeDate": "2012-05-01",
+        "dual": {
+          "momUs": 0.04676278180483151,
+          "momIntl": -0.13599817184515595,
+          "winner": "SPY",
+          "momWinner": 0.04676278180483151,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "TLT",
+            "mom": 0.08028489405046613,
+            "toCash": false
+          },
+          {
+            "symbol": "EMB",
+            "mom": 0.058316469844952534,
+            "toCash": false
+          },
+          {
+            "symbol": "IEF",
+            "mom": 0.05236762763078362,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2012-05-31",
+        "tradeDate": "2012-06-01",
+        "dual": {
+          "momUs": 0.017921387624024288,
+          "momIntl": -0.19241751006538954,
+          "winner": "SPY",
+          "momWinner": 0.017921387624024288,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "LQD",
+            "mom": 0.08353190859286319,
+            "toCash": false
+          },
+          {
+            "symbol": "TLT",
+            "mom": 0.0820408304325353,
+            "toCash": false
+          },
+          {
+            "symbol": "HYG",
+            "mom": 0.06794341097201939,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2012-06-29",
+        "tradeDate": "2012-07-02",
+        "dual": {
+          "momUs": 0.05320593495396442,
+          "momIntl": -0.14853489867341452,
+          "winner": "SPY",
+          "momWinner": 0.05320593495396442,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "EMB",
+            "mom": 0.06771953501274797,
+            "toCash": false
+          },
+          {
+            "symbol": "LQD",
+            "mom": 0.05582035265386742,
+            "toCash": false
+          },
+          {
+            "symbol": "HYG",
+            "mom": 0.05170224951029123,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2012-07-31",
+        "tradeDate": "2012-08-01",
+        "dual": {
+          "momUs": 0.09206175884541401,
+          "momIntl": -0.11726442699413853,
+          "winner": "SPY",
+          "momWinner": 0.09206175884541401,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "EMB",
+            "mom": 0.0935118766479508,
+            "toCash": false
+          },
+          {
+            "symbol": "TLT",
+            "mom": 0.08823999092221135,
+            "toCash": false
+          },
+          {
+            "symbol": "LQD",
+            "mom": 0.06513815909342946,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2012-08-31",
+        "tradeDate": "2012-09-04",
+        "dual": {
+          "momUs": 0.19198838667115248,
+          "momIntl": -0.009586930772552349,
+          "winner": "SPY",
+          "momWinner": 0.19198838667115248,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "TLT",
+            "mom": 0.11146626091010936,
+            "toCash": false
+          },
+          {
+            "symbol": "EMB",
+            "mom": 0.07210988558667975,
+            "toCash": false
+          },
+          {
+            "symbol": "LQD",
+            "mom": 0.051468503308030655,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2012-09-28",
+        "tradeDate": "2012-10-01",
+        "dual": {
+          "momUs": 0.26715008616088287,
+          "momIntl": 0.1286516080836675,
+          "winner": "SPY",
+          "momWinner": 0.26715008616088287,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "TLT",
+            "mom": 0.1221290924229943,
+            "toCash": false
+          },
+          {
+            "symbol": "EMB",
+            "mom": 0.10093250049752767,
+            "toCash": false
+          },
+          {
+            "symbol": "LQD",
+            "mom": 0.07425175218909708,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2012-10-31",
+        "tradeDate": "2012-11-01",
+        "dual": {
+          "momUs": 0.12268036364935764,
+          "momIntl": 0.011709768998780401,
+          "winner": "SPY",
+          "momWinner": 0.12268036364935764,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "EMB",
+            "mom": 0.08787891950919313,
+            "toCash": false
+          },
+          {
+            "symbol": "LQD",
+            "mom": 0.07911151908277358,
+            "toCash": false
+          },
+          {
+            "symbol": "TLT",
+            "mom": 0.07075613483250653,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2012-11-30",
+        "tradeDate": "2012-12-03",
+        "dual": {
+          "momUs": 0.20944463931111756,
+          "momIntl": 0.16099708152288517,
+          "winner": "SPY",
+          "momWinner": 0.20944463931111756,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "EMB",
+            "mom": 0.12936413902847632,
+            "toCash": false
+          },
+          {
+            "symbol": "HYG",
+            "mom": 0.09047163802772862,
+            "toCash": false
+          },
+          {
+            "symbol": "LQD",
+            "mom": 0.06122894099298071,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2012-12-31",
+        "tradeDate": "2013-01-02",
+        "dual": {
+          "momUs": 0.1661289864531963,
+          "momIntl": 0.21224469528224987,
+          "winner": "VEU",
+          "momWinner": 0.21224469528224987,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "EMB",
+            "mom": 0.1005843391909893,
+            "toCash": false
+          },
+          {
+            "symbol": "HYG",
+            "mom": 0.06659779334573601,
+            "toCash": false
+          },
+          {
+            "symbol": "BWX",
+            "mom": 0.055534192257235215,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2013-01-31",
+        "tradeDate": "2013-02-01",
+        "dual": {
+          "momUs": 0.16479843153764695,
+          "momIntl": 0.14616710985107484,
+          "winner": "SPY",
+          "momWinner": 0.16479843153764695,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "HYG",
+            "mom": 0.04693181373674826,
+            "toCash": false
+          },
+          {
+            "symbol": "EMB",
+            "mom": 0.02492443693772084,
+            "toCash": false
+          },
+          {
+            "symbol": "BWX",
+            "mom": 0.02366609199267855,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2013-02-28",
+        "tradeDate": "2013-03-01",
+        "dual": {
+          "momUs": 0.12986217808738987,
+          "momIntl": 0.06887111794725809,
+          "winner": "SPY",
+          "momWinner": 0.12986217808738987,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "HYG",
+            "mom": 0.04825526781512912,
+            "toCash": false
+          },
+          {
+            "symbol": "LQD",
+            "mom": 0.019377280210652437,
+            "toCash": false
+          },
+          {
+            "symbol": "EMB",
+            "mom": 0.01705677437109787,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2013-03-28",
+        "tradeDate": "2013-04-01",
+        "dual": {
+          "momUs": 0.1309543248516103,
+          "momIntl": 0.06857754400429439,
+          "winner": "SPY",
+          "momWinner": 0.1309543248516103,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "HYG",
+            "mom": 0.04163464303825526,
+            "toCash": false
+          },
+          {
+            "symbol": "LQD",
+            "mom": 0.006504120752679254,
+            "toCash": false
+          },
+          {
+            "symbol": "TIP",
+            "mom": 0.005190975874277637,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2013-04-30",
+        "tradeDate": "2013-05-01",
+        "dual": {
+          "momUs": 0.16460739768680854,
+          "momIntl": 0.14231087228214157,
+          "winner": "SPY",
+          "momWinner": 0.16460739768680854,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "HYG",
+            "mom": 0.06359525682205414,
+            "toCash": false
+          },
+          {
+            "symbol": "IEF",
+            "mom": 0.023607099455001945,
+            "toCash": false
+          },
+          {
+            "symbol": "TLT",
+            "mom": 0.023483285149500155,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2013-05-31",
+        "tradeDate": "2013-06-03",
+        "dual": {
+          "momUs": 0.2497027706644408,
+          "momIntl": 0.22315591525330203,
+          "winner": "SPY",
+          "momWinner": 0.2497027706644408,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "HYG",
+            "mom": 0.03670210970551557,
+            "toCash": false
+          },
+          {
+            "symbol": "SHY",
+            "mom": 0.0007702010461663189,
+            "toCash": false
+          },
+          {
+            "symbol": "LQD",
+            "mom": -0.016545292480459883,
+            "toCash": true
+          }
+        ]
+      },
+      {
+        "signalDate": "2013-06-28",
+        "tradeDate": "2013-07-01",
+        "dual": {
+          "momUs": 0.24265593958780873,
+          "momIntl": 0.18021267218083215,
+          "winner": "SPY",
+          "momWinner": 0.24265593958780873,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "HYG",
+            "mom": 0.0007787493236697252,
+            "toCash": false
+          },
+          {
+            "symbol": "SHY",
+            "mom": -0.0005817881561490656,
+            "toCash": true
+          },
+          {
+            "symbol": "IEF",
+            "mom": -0.04310215747183277,
+            "toCash": true
+          }
+        ]
+      },
+      {
+        "signalDate": "2013-07-31",
+        "tradeDate": "2013-08-01",
+        "dual": {
+          "momUs": 0.24373442263403766,
+          "momIntl": 0.16930862780254352,
+          "winner": "SPY",
+          "momWinner": 0.24373442263403766,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "HYG",
+            "mom": 0.021014401361436397,
+            "toCash": false
+          },
+          {
+            "symbol": "SHY",
+            "mom": 0.001043132806307856,
+            "toCash": false
+          },
+          {
+            "symbol": "LQD",
+            "mom": -0.022184688155604704,
+            "toCash": true
+          }
+        ]
+      },
+      {
+        "signalDate": "2013-08-30",
+        "tradeDate": "2013-09-03",
+        "dual": {
+          "momUs": 0.18322493943773122,
+          "momIntl": 0.11752373481741296,
+          "winner": "SPY",
+          "momWinner": 0.18322493943773122,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "HYG",
+            "mom": -0.0002916041924627688,
+            "toCash": true
+          },
+          {
+            "symbol": "SHY",
+            "mom": -0.0007476420003875717,
+            "toCash": true
+          },
+          {
+            "symbol": "BWX",
+            "mom": -0.023420934866838272,
+            "toCash": true
+          }
+        ]
+      },
+      {
+        "signalDate": "2013-09-30",
+        "tradeDate": "2013-10-01",
+        "dual": {
+          "momUs": 0.1981732942391543,
+          "momIntl": 0.16781632694429005,
+          "winner": "SPY",
+          "momWinner": 0.1981732942391543,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "BWX",
+            "mom": 0.0034936329102268626,
+            "toCash": false
+          },
+          {
+            "symbol": "SHY",
+            "mom": 0.00115013151728105,
+            "toCash": false
+          },
+          {
+            "symbol": "HYG",
+            "mom": -0.00014465158621468355,
+            "toCash": true
+          }
+        ]
+      },
+      {
+        "signalDate": "2013-10-31",
+        "tradeDate": "2013-11-01",
+        "dual": {
+          "momUs": 0.27086344637252324,
+          "momIntl": 0.1992175167225052,
+          "winner": "SPY",
+          "momWinner": 0.27086344637252324,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "SHY",
+            "mom": 0.001518859820592633,
+            "toCash": false
+          },
+          {
+            "symbol": "HYG",
+            "mom": -0.0012310928513160624,
+            "toCash": true
+          },
+          {
+            "symbol": "BWX",
+            "mom": -0.005442055584609529,
+            "toCash": true
+          }
+        ]
+      },
+      {
+        "signalDate": "2013-11-29",
+        "tradeDate": "2013-12-02",
+        "dual": {
+          "momUs": 0.30143924901146213,
+          "momIntl": 0.1825164256577123,
+          "winner": "SPY",
+          "momWinner": 0.30143924901146213,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "HYG",
+            "mom": 0.03723400487141171,
+            "toCash": false
+          },
+          {
+            "symbol": "BWX",
+            "mom": 0.01109089764747373,
+            "toCash": false
+          },
+          {
+            "symbol": "SHY",
+            "mom": 0.003201841532792127,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2013-12-31",
+        "tradeDate": "2014-01-02",
+        "dual": {
+          "momUs": 0.3230777637384987,
+          "momIntl": 0.1415430765061425,
+          "winner": "SPY",
+          "momWinner": 0.3230777637384987,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "HYG",
+            "mom": 0.05596134504427264,
+            "toCash": false
+          },
+          {
+            "symbol": "BWX",
+            "mom": 0.04035544603362595,
+            "toCash": false
+          },
+          {
+            "symbol": "LQD",
+            "mom": 0.02150981026105181,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2014-01-31",
+        "tradeDate": "2014-02-03",
+        "dual": {
+          "momUs": 0.2142818362617609,
+          "momIntl": 0.049912564623773026,
+          "winner": "SPY",
+          "momWinner": 0.2142818362617609,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "LQD",
+            "mom": 0.04360853089092065,
+            "toCash": false
+          },
+          {
+            "symbol": "HYG",
+            "mom": 0.04303012748257129,
+            "toCash": false
+          },
+          {
+            "symbol": "TLT",
+            "mom": 0.04237701720222131,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2014-02-28",
+        "tradeDate": "2014-03-03",
+        "dual": {
+          "momUs": 0.25355671750630693,
+          "momIntl": 0.12460920487858274,
+          "winner": "SPY",
+          "momWinner": 0.25355671750630693,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "HYG",
+            "mom": 0.07402307141327058,
+            "toCash": false
+          },
+          {
+            "symbol": "EMB",
+            "mom": 0.06840767405938064,
+            "toCash": false
+          },
+          {
+            "symbol": "LQD",
+            "mom": 0.058734287321137835,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2014-03-31",
+        "tradeDate": "2014-04-01",
+        "dual": {
+          "momUs": 0.22255581032304805,
+          "momIntl": 0.134885759257674,
+          "winner": "SPY",
+          "momWinner": 0.22255581032304805,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "HYG",
+            "mom": 0.058442117932866244,
+            "toCash": false
+          },
+          {
+            "symbol": "LQD",
+            "mom": 0.047303567366561605,
+            "toCash": false
+          },
+          {
+            "symbol": "EMB",
+            "mom": 0.045162085345122005,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2014-04-30",
+        "tradeDate": "2014-05-01",
+        "dual": {
+          "momUs": 0.2030692929940312,
+          "momIntl": 0.09818871500398885,
+          "winner": "SPY",
+          "momWinner": 0.2030692929940312,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "TLT",
+            "mom": 0.04655307639724282,
+            "toCash": false
+          },
+          {
+            "symbol": "LQD",
+            "mom": 0.04259175112513769,
+            "toCash": false
+          },
+          {
+            "symbol": "HYG",
+            "mom": 0.037727875035705516,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2014-05-30",
+        "tradeDate": "2014-06-02",
+        "dual": {
+          "momUs": 0.18533469142453085,
+          "momIntl": 0.133886569852963,
+          "winner": "SPY",
+          "momWinner": 0.18533469142453085,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "TLT",
+            "mom": 0.10864426314531217,
+            "toCash": false
+          },
+          {
+            "symbol": "EMB",
+            "mom": 0.08423819844706348,
+            "toCash": false
+          },
+          {
+            "symbol": "LQD",
+            "mom": 0.06132549935063736,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2014-06-30",
+        "tradeDate": "2014-07-01",
+        "dual": {
+          "momUs": 0.24402357464483782,
+          "momIntl": 0.220941264043496,
+          "winner": "SPY",
+          "momWinner": 0.24402357464483782,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "TLT",
+            "mom": 0.12910102718664196,
+            "toCash": false
+          },
+          {
+            "symbol": "EMB",
+            "mom": 0.0836859474375915,
+            "toCash": false
+          },
+          {
+            "symbol": "BWX",
+            "mom": 0.06307843569613136,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2014-07-31",
+        "tradeDate": "2014-08-01",
+        "dual": {
+          "momUs": 0.16699980262230363,
+          "momIntl": 0.1489201418766828,
+          "winner": "SPY",
+          "momWinner": 0.16699980262230363,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "EMB",
+            "mom": 0.08960462372000655,
+            "toCash": false
+          },
+          {
+            "symbol": "TLT",
+            "mom": 0.07583949954614044,
+            "toCash": false
+          },
+          {
+            "symbol": "BWX",
+            "mom": 0.04091097769911212,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2014-08-29",
+        "tradeDate": "2014-09-02",
+        "dual": {
+          "momUs": 0.24659954147474528,
+          "momIntl": 0.17575257855105453,
+          "winner": "SPY",
+          "momWinner": 0.24659954147474528,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "TLT",
+            "mom": 0.10595070760077618,
+            "toCash": false
+          },
+          {
+            "symbol": "EMB",
+            "mom": 0.07897257618186293,
+            "toCash": false
+          },
+          {
+            "symbol": "LQD",
+            "mom": 0.042937822801268455,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2014-09-30",
+        "tradeDate": "2014-10-01",
+        "dual": {
+          "momUs": 0.1954754138122483,
+          "momIntl": 0.04697659860210757,
+          "winner": "SPY",
+          "momWinner": 0.1954754138122483,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "TLT",
+            "mom": 0.09122083569975215,
+            "toCash": false
+          },
+          {
+            "symbol": "IEF",
+            "mom": 0.03191253580766329,
+            "toCash": false
+          },
+          {
+            "symbol": "LQD",
+            "mom": 0.030944806488806265,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2014-10-31",
+        "tradeDate": "2014-11-03",
+        "dual": {
+          "momUs": 0.16947513196189057,
+          "momIntl": 0.01526017526111989,
+          "winner": "SPY",
+          "momWinner": 0.16947513196189057,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "TLT",
+            "mom": 0.07789969957518439,
+            "toCash": false
+          },
+          {
+            "symbol": "EMB",
+            "mom": 0.04069223374557507,
+            "toCash": false
+          },
+          {
+            "symbol": "IEF",
+            "mom": 0.033841760988180036,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2014-11-28",
+        "tradeDate": "2014-12-01",
+        "dual": {
+          "momUs": 0.16624196862779117,
+          "momIntl": 0.01217021219024006,
+          "winner": "SPY",
+          "momWinner": 0.16624196862779117,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "TLT",
+            "mom": 0.09791040043186872,
+            "toCash": false
+          },
+          {
+            "symbol": "IEF",
+            "mom": 0.03700452672508847,
+            "toCash": false
+          },
+          {
+            "symbol": "LQD",
+            "mom": 0.027018808875241218,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2014-12-31",
+        "tradeDate": "2015-01-02",
+        "dual": {
+          "momUs": 0.1346379348409672,
+          "momIntl": -0.045323126538432734,
+          "winner": "SPY",
+          "momWinner": 0.1346379348409672,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "TLT",
+            "mom": 0.14982840863729185,
+            "toCash": false
+          },
+          {
+            "symbol": "IEF",
+            "mom": 0.043492347019613575,
+            "toCash": false
+          },
+          {
+            "symbol": "LQD",
+            "mom": 0.02868443727806147,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2015-01-30",
+        "tradeDate": "2015-02-02",
+        "dual": {
+          "momUs": 0.13456004904368912,
+          "momIntl": 0.000628262328920437,
+          "winner": "SPY",
+          "momWinner": 0.13456004904368912,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "TLT",
+            "mom": 0.23056624938497383,
+            "toCash": false
+          },
+          {
+            "symbol": "IEF",
+            "mom": 0.082794414103879,
+            "toCash": false
+          },
+          {
+            "symbol": "LQD",
+            "mom": 0.06277680680059894,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2015-02-27",
+        "tradeDate": "2015-03-02",
+        "dual": {
+          "momUs": 0.1558292882571366,
+          "momIntl": 0.01711109405663791,
+          "winner": "SPY",
+          "momWinner": 0.1558292882571366,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "TLT",
+            "mom": 0.10945322583290129,
+            "toCash": false
+          },
+          {
+            "symbol": "IEF",
+            "mom": 0.038024928411021675,
+            "toCash": false
+          },
+          {
+            "symbol": "LQD",
+            "mom": 0.03008775957431631,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2015-03-31",
+        "tradeDate": "2015-04-01",
+        "dual": {
+          "momUs": 0.12547031716510126,
+          "momIntl": -0.003733654775926798,
+          "winner": "SPY",
+          "momWinner": 0.12547031716510126,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "TLT",
+            "mom": 0.13260623976984554,
+            "toCash": false
+          },
+          {
+            "symbol": "IEF",
+            "mom": 0.05558468663462368,
+            "toCash": false
+          },
+          {
+            "symbol": "LQD",
+            "mom": 0.048209724769422646,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2015-04-30",
+        "tradeDate": "2015-05-01",
+        "dual": {
+          "momUs": 0.12869221483450932,
+          "momIntl": 0.028367923343399104,
+          "winner": "SPY",
+          "momWinner": 0.12869221483450932,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "TLT",
+            "mom": 0.0704059540685733,
+            "toCash": false
+          },
+          {
+            "symbol": "IEF",
+            "mom": 0.029909379717747653,
+            "toCash": false
+          },
+          {
+            "symbol": "LQD",
+            "mom": 0.02029898380398487,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2015-05-29",
+        "tradeDate": "2015-06-01",
+        "dual": {
+          "momUs": 0.11907498595890864,
+          "momIntl": -0.0032034920344850004,
+          "winner": "SPY",
+          "momWinner": 0.11907498595890864,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "TLT",
+            "mom": 0.02518083111945879,
+            "toCash": false
+          },
+          {
+            "symbol": "IEF",
+            "mom": 0.022204984892063795,
+            "toCash": false
+          },
+          {
+            "symbol": "HYG",
+            "mom": 0.015524484266557614,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2015-06-30",
+        "tradeDate": "2015-07-01",
+        "dual": {
+          "momUs": 0.07244015071162391,
+          "momIntl": -0.04548035525091576,
+          "winner": "SPY",
+          "momWinner": 0.07244015071162391,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "EMB",
+            "mom": 0.014253029123878491,
+            "toCash": false
+          },
+          {
+            "symbol": "HYG",
+            "mom": 0.008077413214066187,
+            "toCash": false
+          },
+          {
+            "symbol": "SHY",
+            "mom": 0.006906290049685682,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2015-07-31",
+        "tradeDate": "2015-08-03",
+        "dual": {
+          "momUs": 0.11160324935594312,
+          "momIntl": -0.03400760285482429,
+          "winner": "SPY",
+          "momWinner": 0.11160324935594312,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "EMB",
+            "mom": 0.0021198036215628324,
+            "toCash": false
+          },
+          {
+            "symbol": "SHY",
+            "mom": 0.0010742402636865211,
+            "toCash": false
+          },
+          {
+            "symbol": "HYG",
+            "mom": 0.0007829400032739464,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2015-08-31",
+        "tradeDate": "2015-09-01",
+        "dual": {
+          "momUs": 0.0042208274908306365,
+          "momIntl": -0.11774207282176041,
+          "winner": "SPY",
+          "momWinner": 0.0042208274908306365,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "IEF",
+            "mom": 0.007073927572959882,
+            "toCash": false
+          },
+          {
+            "symbol": "SHY",
+            "mom": 0.004552446927707399,
+            "toCash": false
+          },
+          {
+            "symbol": "TIP",
+            "mom": -0.015789293733043497,
+            "toCash": true
+          }
+        ]
+      },
+      {
+        "signalDate": "2015-09-30",
+        "tradeDate": "2015-10-01",
+        "dual": {
+          "momUs": -0.007713217241147152,
+          "momIntl": -0.10991882850948209,
+          "winner": "SPY",
+          "momWinner": -0.007713217241147152,
+          "riskOn": false
+        },
+        "bondPicks": [
+          {
+            "symbol": "SHY",
+            "mom": 0.003517219415317019,
+            "toCash": false
+          },
+          {
+            "symbol": "IEF",
+            "mom": -0.00018452840476823607,
+            "toCash": true
+          },
+          {
+            "symbol": "BWX",
+            "mom": -0.022709915332047914,
+            "toCash": true
+          }
+        ]
+      },
+      {
+        "signalDate": "2015-10-30",
+        "tradeDate": "2015-11-02",
+        "dual": {
+          "momUs": 0.06394621680764812,
+          "momIntl": -0.03671897565759219,
+          "winner": "SPY",
+          "momWinner": 0.06394621680764812,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "IEF",
+            "mom": 0.01214003226760374,
+            "toCash": false
+          },
+          {
+            "symbol": "TLT",
+            "mom": 0.010423944671795526,
+            "toCash": false
+          },
+          {
+            "symbol": "SHY",
+            "mom": 0.002631887931111798,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2015-11-30",
+        "tradeDate": "2015-12-01",
+        "dual": {
+          "momUs": 0.0275332517190634,
+          "momIntl": -0.06179713297800604,
+          "winner": "SPY",
+          "momWinner": 0.0275332517190634,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "TLT",
+            "mom": 0.02786934080613901,
+            "toCash": false
+          },
+          {
+            "symbol": "IEF",
+            "mom": 0.01594379438918403,
+            "toCash": false
+          },
+          {
+            "symbol": "LQD",
+            "mom": 0.0077491307779045115,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2015-12-31",
+        "tradeDate": "2016-01-04",
+        "dual": {
+          "momUs": 0.012342835203188907,
+          "momIntl": -0.04778624883148319,
+          "winner": "SPY",
+          "momWinner": 0.012342835203188907,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "TLT",
+            "mom": 0.05288810444507419,
+            "toCash": false
+          },
+          {
+            "symbol": "IEF",
+            "mom": 0.01817430586006874,
+            "toCash": false
+          },
+          {
+            "symbol": "LQD",
+            "mom": 0.004515425760556413,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2016-01-29",
+        "tradeDate": "2016-02-01",
+        "dual": {
+          "momUs": -0.021152422459484677,
+          "momIntl": -0.11524941558440827,
+          "winner": "SPY",
+          "momWinner": -0.021152422459484677,
+          "riskOn": false
+        },
+        "bondPicks": [
+          {
+            "symbol": "TLT",
+            "mom": 0.060114570014294655,
+            "toCash": false
+          },
+          {
+            "symbol": "IEF",
+            "mom": 0.04068279833194133,
+            "toCash": false
+          },
+          {
+            "symbol": "SHY",
+            "mom": 0.004528618939106055,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2016-02-29",
+        "tradeDate": "2016-03-01",
+        "dual": {
+          "momUs": -0.062212370515488,
+          "momIntl": -0.1713026340354582,
+          "winner": "SPY",
+          "momWinner": -0.062212370515488,
+          "riskOn": false
+        },
+        "bondPicks": [
+          {
+            "symbol": "TLT",
+            "mom": 0.08714087285844285,
+            "toCash": false
+          },
+          {
+            "symbol": "IEF",
+            "mom": 0.04759065965798781,
+            "toCash": false
+          },
+          {
+            "symbol": "BWX",
+            "mom": 0.026285701153123453,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2016-03-31",
+        "tradeDate": "2016-04-01",
+        "dual": {
+          "momUs": 0.01683816526067239,
+          "momIntl": -0.08962497833753647,
+          "winner": "SPY",
+          "momWinner": 0.01683816526067239,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "EMB",
+            "mom": 0.07172449986375562,
+            "toCash": false
+          },
+          {
+            "symbol": "BWX",
+            "mom": 0.06720249916678656,
+            "toCash": false
+          },
+          {
+            "symbol": "TLT",
+            "mom": 0.06655177078987706,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2016-04-29",
+        "tradeDate": "2016-05-02",
+        "dual": {
+          "momUs": 0.010904307360647847,
+          "momIntl": -0.11249737201038124,
+          "winner": "SPY",
+          "momWinner": 0.010904307360647847,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "BWX",
+            "mom": 0.08493052435391801,
+            "toCash": false
+          },
+          {
+            "symbol": "TLT",
+            "mom": 0.05769721390711213,
+            "toCash": false
+          },
+          {
+            "symbol": "EMB",
+            "mom": 0.05443460551742918,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2016-05-31",
+        "tradeDate": "2016-06-01",
+        "dual": {
+          "momUs": 0.01298894565769082,
+          "momIntl": -0.10836731699354973,
+          "winner": "SPY",
+          "momWinner": 0.01298894565769082,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "TLT",
+            "mom": 0.08905031534757124,
+            "toCash": false
+          },
+          {
+            "symbol": "BWX",
+            "mom": 0.07811238423391775,
+            "toCash": false
+          },
+          {
+            "symbol": "LQD",
+            "mom": 0.048171855188713586,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2016-06-30",
+        "tradeDate": "2016-07-01",
+        "dual": {
+          "momUs": 0.03143149012616098,
+          "momIntl": -0.09576805810448907,
+          "winner": "SPY",
+          "momWinner": 0.03143149012616098,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "TLT",
+            "mom": 0.1686546521824357,
+            "toCash": false
+          },
+          {
+            "symbol": "EMB",
+            "mom": 0.10809035547025614,
+            "toCash": false
+          },
+          {
+            "symbol": "BWX",
+            "mom": 0.10627165874595379,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2016-07-29",
+        "tradeDate": "2016-08-01",
+        "dual": {
+          "momUs": 0.05221341929340939,
+          "momIntl": -0.04463447484748462,
+          "winner": "SPY",
+          "momWinner": 0.05221341929340939,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "TLT",
+            "mom": 0.12517574728427783,
+            "toCash": false
+          },
+          {
+            "symbol": "EMB",
+            "mom": 0.12495703709955985,
+            "toCash": false
+          },
+          {
+            "symbol": "BWX",
+            "mom": 0.11606838803171726,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2016-08-31",
+        "tradeDate": "2016-09-01",
+        "dual": {
+          "momUs": 0.15812308931796992,
+          "momIntl": 0.07249826213014243,
+          "winner": "SPY",
+          "momWinner": 0.15812308931796992,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "EMB",
+            "mom": 0.10857897905251668,
+            "toCash": false
+          },
+          {
+            "symbol": "HYG",
+            "mom": 0.10041541011289579,
+            "toCash": false
+          },
+          {
+            "symbol": "LQD",
+            "mom": 0.09378147812010051,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2016-09-30",
+        "tradeDate": "2016-10-03",
+        "dual": {
+          "momUs": 0.15004121769357748,
+          "momIntl": 0.09336763689989169,
+          "winner": "SPY",
+          "momWinner": 0.15004121769357748,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "HYG",
+            "mom": 0.09989292256058313,
+            "toCash": false
+          },
+          {
+            "symbol": "EMB",
+            "mom": 0.0861854725343727,
+            "toCash": false
+          },
+          {
+            "symbol": "TLT",
+            "mom": 0.061706667665555104,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2016-10-31",
+        "tradeDate": "2016-11-01",
+        "dual": {
+          "momUs": 0.04422947059903137,
+          "momIntl": 0.011262426369457401,
+          "winner": "SPY",
+          "momWinner": 0.04422947059903137,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "HYG",
+            "mom": 0.06072729478417327,
+            "toCash": false
+          },
+          {
+            "symbol": "EMB",
+            "mom": 0.05610357679849631,
+            "toCash": false
+          },
+          {
+            "symbol": "TIP",
+            "mom": 0.023926714992445586,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2016-11-30",
+        "tradeDate": "2016-12-01",
+        "dual": {
+          "momUs": 0.06856491395422526,
+          "momIntl": -0.006973642602406405,
+          "winner": "SPY",
+          "momWinner": 0.06856491395422526,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "HYG",
+            "mom": 0.0507583829070648,
+            "toCash": false
+          },
+          {
+            "symbol": "EMB",
+            "mom": 0.004970510346175683,
+            "toCash": false
+          },
+          {
+            "symbol": "TIP",
+            "mom": 0.0044169773800419865,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2016-12-30",
+        "tradeDate": "2017-01-03",
+        "dual": {
+          "momUs": 0.11997894877206061,
+          "momIntl": 0.04882325197881676,
+          "winner": "SPY",
+          "momWinner": 0.11997894877206061,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "HYG",
+            "mom": 0.0510694873049895,
+            "toCash": false
+          },
+          {
+            "symbol": "SHY",
+            "mom": -0.006315741784496343,
+            "toCash": true
+          },
+          {
+            "symbol": "EMB",
+            "mom": -0.019534969632150623,
+            "toCash": true
+          }
+        ]
+      },
+      {
+        "signalDate": "2017-01-31",
+        "tradeDate": "2017-02-01",
+        "dual": {
+          "momUs": 0.20018547019882527,
+          "momIntl": 0.1598656308910038,
+          "winner": "SPY",
+          "momWinner": 0.20018547019882527,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "HYG",
+            "mom": 0.05490695110312216,
+            "toCash": false
+          },
+          {
+            "symbol": "SHY",
+            "mom": -0.0041005720400981716,
+            "toCash": true
+          },
+          {
+            "symbol": "TIP",
+            "mom": -0.007863853272049526,
+            "toCash": true
+          }
+        ]
+      },
+      {
+        "signalDate": "2017-02-28",
+        "tradeDate": "2017-03-01",
+        "dual": {
+          "momUs": 0.24792261238464786,
+          "momIntl": 0.2009256542170832,
+          "winner": "SPY",
+          "momWinner": 0.24792261238464786,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "HYG",
+            "mom": 0.04619447982167646,
+            "toCash": false
+          },
+          {
+            "symbol": "SHY",
+            "mom": -0.0011544471203354112,
+            "toCash": true
+          },
+          {
+            "symbol": "TIP",
+            "mom": -0.003348837574507213,
+            "toCash": true
+          }
+        ]
+      },
+      {
+        "signalDate": "2017-03-31",
+        "tradeDate": "2017-04-03",
+        "dual": {
+          "momUs": 0.16281096758097413,
+          "momIntl": 0.15110436322010945,
+          "winner": "SPY",
+          "momWinner": 0.16281096758097413,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "HYG",
+            "mom": 0.036394104109195746,
+            "toCash": false
+          },
+          {
+            "symbol": "SHY",
+            "mom": -0.003217580618622873,
+            "toCash": true
+          },
+          {
+            "symbol": "EMB",
+            "mom": -0.004841471631025995,
+            "toCash": true
+          }
+        ]
+      },
+      {
+        "signalDate": "2017-04-28",
+        "tradeDate": "2017-05-01",
+        "dual": {
+          "momUs": 0.17135375807817166,
+          "momIntl": 0.1382144763266182,
+          "winner": "SPY",
+          "momWinner": 0.17135375807817166,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "HYG",
+            "mom": 0.038552173202549556,
+            "toCash": false
+          },
+          {
+            "symbol": "EMB",
+            "mom": 0.016716818065333428,
+            "toCash": false
+          },
+          {
+            "symbol": "SHY",
+            "mom": 0.0008944782464581635,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2017-05-31",
+        "tradeDate": "2017-06-01",
+        "dual": {
+          "momUs": 0.17435505304200571,
+          "momIntl": 0.1860947721775459,
+          "winner": "VEU",
+          "momWinner": 0.1860947721775459,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "EMB",
+            "mom": 0.07762536865178515,
+            "toCash": false
+          },
+          {
+            "symbol": "HYG",
+            "mom": 0.060396846440939456,
+            "toCash": false
+          },
+          {
+            "symbol": "BWX",
+            "mom": 0.04954323104699121,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2017-06-30",
+        "tradeDate": "2017-07-03",
+        "dual": {
+          "momUs": 0.1777480951933026,
+          "momIntl": 0.20089012074187007,
+          "winner": "VEU",
+          "momWinner": 0.20089012074187007,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "BWX",
+            "mom": 0.06556139049491061,
+            "toCash": false
+          },
+          {
+            "symbol": "TLT",
+            "mom": 0.0628675771804561,
+            "toCash": false
+          },
+          {
+            "symbol": "EMB",
+            "mom": 0.056162403739939526,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2017-07-31",
+        "tradeDate": "2017-08-01",
+        "dual": {
+          "momUs": 0.15966099038001413,
+          "momIntl": 0.19087517154194478,
+          "winner": "VEU",
+          "momWinner": 0.19087517154194478,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "BWX",
+            "mom": 0.08965557148900283,
+            "toCash": false
+          },
+          {
+            "symbol": "EMB",
+            "mom": 0.055987147016764105,
+            "toCash": false
+          },
+          {
+            "symbol": "TLT",
+            "mom": 0.05303691458837778,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2017-08-31",
+        "tradeDate": "2017-09-01",
+        "dual": {
+          "momUs": 0.16165325490090088,
+          "momIntl": 0.19021358765522822,
+          "winner": "VEU",
+          "momWinner": 0.19021358765522822,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "BWX",
+            "mom": 0.09644147961979255,
+            "toCash": false
+          },
+          {
+            "symbol": "TLT",
+            "mom": 0.08376852234308974,
+            "toCash": false
+          },
+          {
+            "symbol": "EMB",
+            "mom": 0.05508004782551912,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2017-09-29",
+        "tradeDate": "2017-10-02",
+        "dual": {
+          "momUs": 0.19393352852479118,
+          "momIntl": 0.20050272747403963,
+          "winner": "VEU",
+          "momWinner": 0.20050272747403963,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "BWX",
+            "mom": 0.05538735930216876,
+            "toCash": false
+          },
+          {
+            "symbol": "EMB",
+            "mom": 0.048003572710463294,
+            "toCash": false
+          },
+          {
+            "symbol": "TLT",
+            "mom": 0.04666705154050965,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2017-10-31",
+        "tradeDate": "2017-11-01",
+        "dual": {
+          "momUs": 0.2343142185875582,
+          "momIntl": 0.2376655005967856,
+          "winner": "VEU",
+          "momWinner": 0.2376655005967856,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "BWX",
+            "mom": 0.03648274877538138,
+            "toCash": false
+          },
+          {
+            "symbol": "LQD",
+            "mom": 0.035098711647453484,
+            "toCash": false
+          },
+          {
+            "symbol": "TLT",
+            "mom": 0.03272276515031125,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2017-11-30",
+        "tradeDate": "2017-12-01",
+        "dual": {
+          "momUs": 0.22684726854911252,
+          "momIntl": 0.27256540003818985,
+          "winner": "VEU",
+          "momWinner": 0.27256540003818985,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "BWX",
+            "mom": 0.02739812213464954,
+            "toCash": false
+          },
+          {
+            "symbol": "EMB",
+            "mom": 0.015032140752513357,
+            "toCash": false
+          },
+          {
+            "symbol": "LQD",
+            "mom": 0.014593868641721519,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2017-12-29",
+        "tradeDate": "2018-01-02",
+        "dual": {
+          "momUs": 0.21260584607158695,
+          "momIntl": 0.2745642820339451,
+          "winner": "VEU",
+          "momWinner": 0.2745642820339451,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "EMB",
+            "mom": 0.04249704866560067,
+            "toCash": false
+          },
+          {
+            "symbol": "BWX",
+            "mom": 0.033699560571295084,
+            "toCash": false
+          },
+          {
+            "symbol": "TLT",
+            "mom": 0.028800029054413034,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2018-01-31",
+        "tradeDate": "2018-02-01",
+        "dual": {
+          "momUs": 0.2630444845378166,
+          "momIntl": 0.29306652897175645,
+          "winner": "VEU",
+          "momWinner": 0.29306652897175645,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "BWX",
+            "mom": 0.03285164963526799,
+            "toCash": false
+          },
+          {
+            "symbol": "EMB",
+            "mom": 0.022588338778126715,
+            "toCash": false
+          },
+          {
+            "symbol": "TIP",
+            "mom": 0.006434756271172626,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2018-02-28",
+        "tradeDate": "2018-03-01",
+        "dual": {
+          "momUs": 0.17110496763560668,
+          "momIntl": 0.20919130939040653,
+          "winner": "VEU",
+          "momWinner": 0.20919130939040653,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "BWX",
+            "mom": 0.0158702550773695,
+            "toCash": false
+          },
+          {
+            "symbol": "HYG",
+            "mom": 0.0015407302313039661,
+            "toCash": false
+          },
+          {
+            "symbol": "SHY",
+            "mom": -0.008276763584121105,
+            "toCash": true
+          }
+        ]
+      },
+      {
+        "signalDate": "2018-03-29",
+        "tradeDate": "2018-04-02",
+        "dual": {
+          "momUs": 0.13854814540956162,
+          "momIntl": 0.16042369064544348,
+          "winner": "VEU",
+          "momWinner": 0.16042369064544348,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "BWX",
+            "mom": 0.05723475600333772,
+            "toCash": false
+          },
+          {
+            "symbol": "TIP",
+            "mom": 0.0007465105525361615,
+            "toCash": false
+          },
+          {
+            "symbol": "SHY",
+            "mom": -0.004789803528949865,
+            "toCash": true
+          }
+        ]
+      },
+      {
+        "signalDate": "2018-04-30",
+        "tradeDate": "2018-05-01",
+        "dual": {
+          "momUs": 0.1322232188872845,
+          "momIntl": 0.1515052656019611,
+          "winner": "VEU",
+          "momWinner": 0.1515052656019611,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "BWX",
+            "mom": 0.03884810686088125,
+            "toCash": false
+          },
+          {
+            "symbol": "TIP",
+            "mom": 0.00625409116534037,
+            "toCash": false
+          },
+          {
+            "symbol": "HYG",
+            "mom": -0.004293878120826489,
+            "toCash": true
+          }
+        ]
+      },
+      {
+        "signalDate": "2018-05-31",
+        "tradeDate": "2018-06-01",
+        "dual": {
+          "momUs": 0.1436071882729235,
+          "momIntl": 0.09513409813851381,
+          "winner": "SPY",
+          "momWinner": 0.1436071882729235,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "SHY",
+            "mom": -0.001271714330168594,
+            "toCash": true
+          },
+          {
+            "symbol": "TIP",
+            "mom": -0.0013750021820859715,
+            "toCash": true
+          },
+          {
+            "symbol": "HYG",
+            "mom": -0.0038494493863898693,
+            "toCash": true
+          }
+        ]
+      },
+      {
+        "signalDate": "2018-06-29",
+        "tradeDate": "2018-07-02",
+        "dual": {
+          "momUs": 0.1450286497413631,
+          "momIntl": 0.06841103493655276,
+          "winner": "SPY",
+          "momWinner": 0.1450286497413631,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "TIP",
+            "mom": 0.002089255046463512,
+            "toCash": false
+          },
+          {
+            "symbol": "SHY",
+            "mom": 0.00043176882503837,
+            "toCash": false
+          },
+          {
+            "symbol": "HYG",
+            "mom": -0.002802870317632933,
+            "toCash": true
+          }
+        ]
+      },
+      {
+        "signalDate": "2018-07-31",
+        "tradeDate": "2018-08-01",
+        "dual": {
+          "momUs": 0.1613672717152017,
+          "momIntl": 0.061491142158400125,
+          "winner": "SPY",
+          "momWinner": 0.1613672717152017,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "HYG",
+            "mom": 0.013693997378569689,
+            "toCash": false
+          },
+          {
+            "symbol": "TIP",
+            "mom": 0.005231224078100505,
+            "toCash": false
+          },
+          {
+            "symbol": "SHY",
+            "mom": 0.0024624922933520477,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2018-08-31",
+        "tradeDate": "2018-09-04",
+        "dual": {
+          "momUs": 0.19495144890005855,
+          "momIntl": 0.030043311513467064,
+          "winner": "SPY",
+          "momWinner": 0.19495144890005855,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "TLT",
+            "mom": 0.03666077705860604,
+            "toCash": false
+          },
+          {
+            "symbol": "HYG",
+            "mom": 0.029098301884475486,
+            "toCash": false
+          },
+          {
+            "symbol": "TIP",
+            "mom": 0.01811127758604769,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2018-09-28",
+        "tradeDate": "2018-10-01",
+        "dual": {
+          "momUs": 0.1824556158885553,
+          "momIntl": 0.022551637768664534,
+          "winner": "SPY",
+          "momWinner": 0.1824556158885553,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "HYG",
+            "mom": 0.03986058544267279,
+            "toCash": false
+          },
+          {
+            "symbol": "SHY",
+            "mom": 0.002743427057102954,
+            "toCash": false
+          },
+          {
+            "symbol": "TIP",
+            "mom": -0.0012333768144699997,
+            "toCash": true
+          }
+        ]
+      },
+      {
+        "signalDate": "2018-10-31",
+        "tradeDate": "2018-11-01",
+        "dual": {
+          "momUs": 0.07163488853349254,
+          "momIntl": -0.0862215187023816,
+          "winner": "SPY",
+          "momWinner": 0.07163488853349254,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "HYG",
+            "mom": 0.010231139048014537,
+            "toCash": false
+          },
+          {
+            "symbol": "SHY",
+            "mom": 0.0062908250803555,
+            "toCash": false
+          },
+          {
+            "symbol": "IEF",
+            "mom": 0.0002329170687258575,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2018-11-30",
+        "tradeDate": "2018-12-03",
+        "dual": {
+          "momUs": 0.05913939650752287,
+          "momIntl": -0.07864940317889202,
+          "winner": "SPY",
+          "momWinner": 0.05913939650752287,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "IEF",
+            "mom": 0.012136305197097963,
+            "toCash": false
+          },
+          {
+            "symbol": "SHY",
+            "mom": 0.008842629757176201,
+            "toCash": false
+          },
+          {
+            "symbol": "HYG",
+            "mom": 0.0015567350392657886,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2018-12-31",
+        "tradeDate": "2019-01-02",
+        "dual": {
+          "momUs": -0.04928800938506539,
+          "momIntl": -0.14071648096899603,
+          "winner": "SPY",
+          "momWinner": -0.04928800938506539,
+          "riskOn": false
+        },
+        "bondPicks": [
+          {
+            "symbol": "IEF",
+            "mom": 0.03097830152218295,
+            "toCash": false
+          },
+          {
+            "symbol": "TLT",
+            "mom": 0.014461306825474196,
+            "toCash": false
+          },
+          {
+            "symbol": "SHY",
+            "mom": 0.01443528091242463,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2019-01-31",
+        "tradeDate": "2019-02-01",
+        "dual": {
+          "momUs": -0.023788852788283466,
+          "momIntl": -0.12499041846208969,
+          "winner": "SPY",
+          "momWinner": -0.023788852788283466,
+          "riskOn": false
+        },
+        "bondPicks": [
+          {
+            "symbol": "IEF",
+            "mom": 0.04321211382764356,
+            "toCash": false
+          },
+          {
+            "symbol": "TLT",
+            "mom": 0.03314683292506504,
+            "toCash": false
+          },
+          {
+            "symbol": "EMB",
+            "mom": 0.03240357773987834,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2019-02-28",
+        "tradeDate": "2019-03-01",
+        "dual": {
+          "momUs": 0.0347757905827073,
+          "momIntl": -0.07364662854180637,
+          "winner": "SPY",
+          "momWinner": 0.0347757905827073,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "EMB",
+            "mom": 0.0469168196886105,
+            "toCash": false
+          },
+          {
+            "symbol": "IEF",
+            "mom": 0.026812459169728742,
+            "toCash": false
+          },
+          {
+            "symbol": "HYG",
+            "mom": 0.020112039741127408,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2019-03-29",
+        "tradeDate": "2019-04-01",
+        "dual": {
+          "momUs": 0.10826406662928911,
+          "momIntl": -0.03791422863552907,
+          "winner": "SPY",
+          "momWinner": 0.10826406662928911,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "TLT",
+            "mom": 0.09093671385715263,
+            "toCash": false
+          },
+          {
+            "symbol": "IEF",
+            "mom": 0.06798100220211611,
+            "toCash": false
+          },
+          {
+            "symbol": "EMB",
+            "mom": 0.056744114532397694,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2019-04-30",
+        "tradeDate": "2019-05-01",
+        "dual": {
+          "momUs": 0.12441512649815478,
+          "momIntl": -0.031036037027724395,
+          "winner": "SPY",
+          "momWinner": 0.12441512649815478,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "TLT",
+            "mom": 0.09670267559991963,
+            "toCash": false
+          },
+          {
+            "symbol": "EMB",
+            "mom": 0.07822402473236023,
+            "toCash": false
+          },
+          {
+            "symbol": "LQD",
+            "mom": 0.0774626266844145,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2019-05-31",
+        "tradeDate": "2019-06-03",
+        "dual": {
+          "momUs": 0.029347090485825067,
+          "momIntl": -0.06656370896441055,
+          "winner": "SPY",
+          "momWinner": 0.029347090485825067,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "TLT",
+            "mom": 0.1616559148028811,
+            "toCash": false
+          },
+          {
+            "symbol": "EMB",
+            "mom": 0.1097502190255315,
+            "toCash": false
+          },
+          {
+            "symbol": "LQD",
+            "mom": 0.10329154268273477,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2019-06-28",
+        "tradeDate": "2019-07-01",
+        "dual": {
+          "momUs": 0.10931995939292083,
+          "momIntl": 0.027861290244209247,
+          "winner": "SPY",
+          "momWinner": 0.10931995939292083,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "LQD",
+            "mom": 0.12761558651106508,
+            "toCash": false
+          },
+          {
+            "symbol": "TLT",
+            "mom": 0.1183001379650992,
+            "toCash": false
+          },
+          {
+            "symbol": "EMB",
+            "mom": 0.11754520405310753,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2019-07-31",
+        "tradeDate": "2019-08-01",
+        "dual": {
+          "momUs": 0.08345418926956882,
+          "momIntl": -0.030859652275891825,
+          "winner": "SPY",
+          "momWinner": 0.08345418926956882,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "TLT",
+            "mom": 0.11291738358763159,
+            "toCash": false
+          },
+          {
+            "symbol": "LQD",
+            "mom": 0.0930943743700956,
+            "toCash": false
+          },
+          {
+            "symbol": "EMB",
+            "mom": 0.07803158787685005,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2019-08-30",
+        "tradeDate": "2019-09-03",
+        "dual": {
+          "momUs": 0.023172638033574167,
+          "momIntl": -0.04929725356780823,
+          "winner": "SPY",
+          "momWinner": 0.023172638033574167,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "TLT",
+            "mom": 0.24428726851281968,
+            "toCash": false
+          },
+          {
+            "symbol": "LQD",
+            "mom": 0.1294219411058397,
+            "toCash": false
+          },
+          {
+            "symbol": "IEF",
+            "mom": 0.1079094661277975,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2019-09-30",
+        "tradeDate": "2019-10-01",
+        "dual": {
+          "momUs": 0.04120308863810607,
+          "momIntl": -0.017230843940170715,
+          "winner": "SPY",
+          "momWinner": 0.04120308863810607,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "TLT",
+            "mom": 0.1618409158701053,
+            "toCash": false
+          },
+          {
+            "symbol": "LQD",
+            "mom": 0.09360620945599529,
+            "toCash": false
+          },
+          {
+            "symbol": "IEF",
+            "mom": 0.07361903290984717,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2019-10-31",
+        "tradeDate": "2019-11-01",
+        "dual": {
+          "momUs": 0.1553112421880305,
+          "momIntl": 0.1257624610024486,
+          "winner": "SPY",
+          "momWinner": 0.1553112421880305,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "TLT",
+            "mom": 0.1530822435630037,
+            "toCash": false
+          },
+          {
+            "symbol": "LQD",
+            "mom": 0.0890609660661974,
+            "toCash": false
+          },
+          {
+            "symbol": "IEF",
+            "mom": 0.07592644572644924,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2019-11-29",
+        "tradeDate": "2019-12-02",
+        "dual": {
+          "momUs": 0.16744122517414906,
+          "momIntl": 0.10191836077821104,
+          "winner": "SPY",
+          "momWinner": 0.16744122517414906,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "LQD",
+            "mom": 0.07372078046539077,
+            "toCash": false
+          },
+          {
+            "symbol": "TLT",
+            "mom": 0.07006058946349802,
+            "toCash": false
+          },
+          {
+            "symbol": "HYG",
+            "mom": 0.04897908767730064,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2019-12-31",
+        "tradeDate": "2020-01-02",
+        "dual": {
+          "momUs": 0.3122378917926274,
+          "momIntl": 0.21827720919736926,
+          "winner": "SPY",
+          "momWinner": 0.3122378917926274,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "LQD",
+            "mom": 0.04382037853057996,
+            "toCash": false
+          },
+          {
+            "symbol": "HYG",
+            "mom": 0.035427766415786044,
+            "toCash": false
+          },
+          {
+            "symbol": "EMB",
+            "mom": 0.030499596474236945,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2020-01-31",
+        "tradeDate": "2020-02-03",
+        "dual": {
+          "momUs": 0.21447129495479111,
+          "momIntl": 0.09399329313044569,
+          "winner": "SPY",
+          "momWinner": 0.21447129495479111,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "TLT",
+            "mom": 0.08795306960014115,
+            "toCash": false
+          },
+          {
+            "symbol": "LQD",
+            "mom": 0.06294731784466623,
+            "toCash": false
+          },
+          {
+            "symbol": "EMB",
+            "mom": 0.03834031708741836,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2020-02-28",
+        "tradeDate": "2020-03-02",
+        "dual": {
+          "momUs": 0.08321338456288863,
+          "momIntl": 0.005317445118844244,
+          "winner": "SPY",
+          "momWinner": 0.08321338456288863,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "TLT",
+            "mom": 0.06162220025257725,
+            "toCash": false
+          },
+          {
+            "symbol": "LQD",
+            "mom": 0.0403390903063483,
+            "toCash": false
+          },
+          {
+            "symbol": "IEF",
+            "mom": 0.03595026637373189,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2020-03-31",
+        "tradeDate": "2020-04-01",
+        "dual": {
+          "momUs": -0.07981477278533577,
+          "momIntl": -0.16675717664489798,
+          "winner": "SPY",
+          "momWinner": -0.07981477278533577,
+          "riskOn": false
+        },
+        "bondPicks": [
+          {
+            "symbol": "TLT",
+            "mom": 0.16451350703615408,
+            "toCash": false
+          },
+          {
+            "symbol": "IEF",
+            "mom": 0.08922494084649957,
+            "toCash": false
+          },
+          {
+            "symbol": "SHY",
+            "mom": 0.031554214799834446,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2020-04-30",
+        "tradeDate": "2020-05-01",
+        "dual": {
+          "momUs": 0.01578155047244545,
+          "momIntl": -0.11668588336460162,
+          "winner": "SPY",
+          "momWinner": 0.01578155047244545,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "TLT",
+            "mom": 0.225736736626583,
+            "toCash": false
+          },
+          {
+            "symbol": "IEF",
+            "mom": 0.10242282713289086,
+            "toCash": false
+          },
+          {
+            "symbol": "TIP",
+            "mom": 0.057211371208993,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2020-05-29",
+        "tradeDate": "2020-06-01",
+        "dual": {
+          "momUs": 0.11292020709646655,
+          "momIntl": -0.03385491351450598,
+          "winner": "SPY",
+          "momWinner": 0.11292020709646655,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "TLT",
+            "mom": 0.1698473837735568,
+            "toCash": false
+          },
+          {
+            "symbol": "IEF",
+            "mom": 0.09757466932083458,
+            "toCash": false
+          },
+          {
+            "symbol": "TIP",
+            "mom": 0.04925735281145416,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2020-06-30",
+        "tradeDate": "2020-07-01",
+        "dual": {
+          "momUs": 0.06377460468399132,
+          "momIntl": -0.048933199379405656,
+          "winner": "SPY",
+          "momWinner": 0.06377460468399132,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "TLT",
+            "mom": 0.20675319605474063,
+            "toCash": false
+          },
+          {
+            "symbol": "IEF",
+            "mom": 0.10808222803794099,
+            "toCash": false
+          },
+          {
+            "symbol": "LQD",
+            "mom": 0.0601033906401387,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2020-07-31",
+        "tradeDate": "2020-08-03",
+        "dual": {
+          "momUs": 0.12955577301117915,
+          "momIntl": 0.022046049499114817,
+          "winner": "SPY",
+          "momWinner": 0.12955577301117915,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "TLT",
+            "mom": 0.18184202848355802,
+            "toCash": false
+          },
+          {
+            "symbol": "IEF",
+            "mom": 0.08403217820771913,
+            "toCash": false
+          },
+          {
+            "symbol": "LQD",
+            "mom": 0.07128993156103003,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2020-08-31",
+        "tradeDate": "2020-09-01",
+        "dual": {
+          "momUs": 0.21827049775917584,
+          "momIntl": 0.08520612707128583,
+          "winner": "SPY",
+          "momWinner": 0.21827049775917584,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "TIP",
+            "mom": 0.04898340688366609,
+            "toCash": false
+          },
+          {
+            "symbol": "TLT",
+            "mom": 0.04405036520667838,
+            "toCash": false
+          },
+          {
+            "symbol": "BWX",
+            "mom": 0.03237716277602409,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2020-09-30",
+        "tradeDate": "2020-10-01",
+        "dual": {
+          "momUs": 0.16411911929483747,
+          "momIntl": 0.04644710539184138,
+          "winner": "SPY",
+          "momWinner": 0.16411911929483747,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "EMB",
+            "mom": 0.20040381888283276,
+            "toCash": false
+          },
+          {
+            "symbol": "HYG",
+            "mom": 0.1485324292232264,
+            "toCash": false
+          },
+          {
+            "symbol": "LQD",
+            "mom": 0.1224273573154735,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2020-10-30",
+        "tradeDate": "2020-11-02",
+        "dual": {
+          "momUs": 0.0973352483551817,
+          "momIntl": -0.017612793654874004,
+          "winner": "SPY",
+          "momWinner": 0.0973352483551817,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "EMB",
+            "mom": 0.12068706858372114,
+            "toCash": false
+          },
+          {
+            "symbol": "HYG",
+            "mom": 0.0895818711602645,
+            "toCash": false
+          },
+          {
+            "symbol": "BWX",
+            "mom": 0.07104145483066926,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2020-11-30",
+        "tradeDate": "2020-12-01",
+        "dual": {
+          "momUs": 0.174195924038411,
+          "momIntl": 0.09480128880230176,
+          "winner": "SPY",
+          "momWinner": 0.174195924038411,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "EMB",
+            "mom": 0.07858916238979319,
+            "toCash": false
+          },
+          {
+            "symbol": "BWX",
+            "mom": 0.07702102446660852,
+            "toCash": false
+          },
+          {
+            "symbol": "LQD",
+            "mom": 0.06013162719641563,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2020-12-31",
+        "tradeDate": "2021-01-04",
+        "dual": {
+          "momUs": 0.17235274821864555,
+          "momIntl": 0.09689999040737507,
+          "winner": "SPY",
+          "momWinner": 0.17235274821864555,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "HYG",
+            "mom": 0.08950183413282708,
+            "toCash": false
+          },
+          {
+            "symbol": "BWX",
+            "mom": 0.08816743046263809,
+            "toCash": false
+          },
+          {
+            "symbol": "EMB",
+            "mom": 0.07738443421729158,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2021-01-29",
+        "tradeDate": "2021-02-01",
+        "dual": {
+          "momUs": 0.15045491308998016,
+          "momIntl": 0.13437455594776804,
+          "winner": "SPY",
+          "momWinner": 0.15045491308998016,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "HYG",
+            "mom": 0.04590644884853967,
+            "toCash": false
+          },
+          {
+            "symbol": "EMB",
+            "mom": 0.0290676531466576,
+            "toCash": false
+          },
+          {
+            "symbol": "TIP",
+            "mom": 0.027166574277878386,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2021-02-26",
+        "tradeDate": "2021-03-01",
+        "dual": {
+          "momUs": 0.3023531809394471,
+          "momIntl": 0.25489491378920826,
+          "winner": "SPY",
+          "momWinner": 0.3023531809394471,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "HYG",
+            "mom": 0.03942472575740674,
+            "toCash": false
+          },
+          {
+            "symbol": "BWX",
+            "mom": 0.008523400726048402,
+            "toCash": false
+          },
+          {
+            "symbol": "TIP",
+            "mom": 0.001689984483701945,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2021-03-31",
+        "tradeDate": "2021-04-01",
+        "dual": {
+          "momUs": 0.5623113358609078,
+          "momIntl": 0.512791415141687,
+          "winner": "SPY",
+          "momWinner": 0.5623113358609078,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "HYG",
+            "mom": 0.0685322993441273,
+            "toCash": false
+          },
+          {
+            "symbol": "EMB",
+            "mom": 0.0068052121482458094,
+            "toCash": false
+          },
+          {
+            "symbol": "SHY",
+            "mom": -0.0006254080986078936,
+            "toCash": true
+          }
+        ]
+      },
+      {
+        "signalDate": "2021-04-30",
+        "tradeDate": "2021-05-03",
+        "dual": {
+          "momUs": 0.45962573854727506,
+          "momIntl": 0.4528655653946667,
+          "winner": "SPY",
+          "momWinner": 0.45962573854727506,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "HYG",
+            "mom": 0.07205211265041878,
+            "toCash": false
+          },
+          {
+            "symbol": "EMB",
+            "mom": 0.028247689058377823,
+            "toCash": false
+          },
+          {
+            "symbol": "TIP",
+            "mom": 0.013772184828658052,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2021-05-28",
+        "tradeDate": "2021-06-01",
+        "dual": {
+          "momUs": 0.4023921690309493,
+          "momIntl": 0.4318505975000002,
+          "winner": "VEU",
+          "momWinner": 0.4318505975000002,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "HYG",
+            "mom": 0.03309724271911829,
+            "toCash": false
+          },
+          {
+            "symbol": "TIP",
+            "mom": 0.022119685706858183,
+            "toCash": false
+          },
+          {
+            "symbol": "SHY",
+            "mom": 0.0009039736705591661,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2021-06-30",
+        "tradeDate": "2021-07-01",
+        "dual": {
+          "momUs": 0.40885893297198805,
+          "momIntl": 0.3653136878479555,
+          "winner": "SPY",
+          "momWinner": 0.40885893297198805,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "HYG",
+            "mom": 0.02903288798552639,
+            "toCash": false
+          },
+          {
+            "symbol": "TIP",
+            "mom": 0.017674083793867812,
+            "toCash": false
+          },
+          {
+            "symbol": "SHY",
+            "mom": -0.0014481410712381404,
+            "toCash": true
+          }
+        ]
+      },
+      {
+        "signalDate": "2021-07-30",
+        "tradeDate": "2021-08-02",
+        "dual": {
+          "momUs": 0.37375443472027303,
+          "momIntl": 0.2736967191649091,
+          "winner": "SPY",
+          "momWinner": 0.37375443472027303,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "TIP",
+            "mom": 0.039109233590461256,
+            "toCash": false
+          },
+          {
+            "symbol": "HYG",
+            "mom": 0.031058570114845807,
+            "toCash": false
+          },
+          {
+            "symbol": "LQD",
+            "mom": 0.014874086779931739,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2021-08-31",
+        "tradeDate": "2021-09-01",
+        "dual": {
+          "momUs": 0.3119741465672956,
+          "momIntl": 0.2592691048121851,
+          "winner": "SPY",
+          "momWinner": 0.3119741465672956,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "TLT",
+            "mom": 0.07384430296774025,
+            "toCash": false
+          },
+          {
+            "symbol": "TIP",
+            "mom": 0.0571443789022712,
+            "toCash": false
+          },
+          {
+            "symbol": "EMB",
+            "mom": 0.05145520216568222,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2021-09-30",
+        "tradeDate": "2021-10-01",
+        "dual": {
+          "momUs": 0.29948654032334443,
+          "momIntl": 0.2380809518843201,
+          "winner": "SPY",
+          "momWinner": 0.29948654032334443,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "TLT",
+            "mom": 0.05657436799759252,
+            "toCash": false
+          },
+          {
+            "symbol": "TIP",
+            "mom": 0.04672351628917748,
+            "toCash": false
+          },
+          {
+            "symbol": "LQD",
+            "mom": 0.02804835798711358,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2021-10-29",
+        "tradeDate": "2021-11-01",
+        "dual": {
+          "momUs": 0.41135609220939706,
+          "momIntl": 0.2896366502404808,
+          "winner": "SPY",
+          "momWinner": 0.41135609220939706,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "TLT",
+            "mom": 0.07315160017753364,
+            "toCash": false
+          },
+          {
+            "symbol": "TIP",
+            "mom": 0.04381958073794956,
+            "toCash": false
+          },
+          {
+            "symbol": "LQD",
+            "mom": 0.026780577547803164,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2021-11-30",
+        "tradeDate": "2021-12-01",
+        "dual": {
+          "momUs": 0.2759688640554616,
+          "momIntl": 0.10381146490994753,
+          "winner": "SPY",
+          "momWinner": 0.2759688640554616,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "TLT",
+            "mom": 0.1012295201834632,
+            "toCash": false
+          },
+          {
+            "symbol": "TIP",
+            "mom": 0.04304227292980389,
+            "toCash": false
+          },
+          {
+            "symbol": "LQD",
+            "mom": 0.019908594015160652,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2021-12-31",
+        "tradeDate": "2022-01-03",
+        "dual": {
+          "momUs": 0.28728760696788735,
+          "momIntl": 0.08265469804775649,
+          "winner": "SPY",
+          "momWinner": 0.28728760696788735,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "TIP",
+            "mom": 0.03603546534582658,
+            "toCash": false
+          },
+          {
+            "symbol": "TLT",
+            "mom": 0.02927840142371063,
+            "toCash": false
+          },
+          {
+            "symbol": "HYG",
+            "mom": 0.007601363807383743,
+            "toCash": false
+          }
+        ]
+      },
+      {
+        "signalDate": "2022-01-31",
+        "tradeDate": "2022-02-01",
+        "dual": {
+          "momUs": 0.21177789054529406,
+          "momIntl": 0.03504656451156474,
+          "winner": "SPY",
+          "momWinner": 0.21177789054529406,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "TIP",
+            "mom": -0.0069460762557796984,
+            "toCash": true
+          },
+          {
+            "symbol": "HYG",
+            "mom": -0.014249773108702013,
+            "toCash": true
+          },
+          {
+            "symbol": "SHY",
+            "mom": -0.014575696804867033,
+            "toCash": true
+          }
+        ]
+      },
+      {
+        "signalDate": "2022-02-28",
+        "tradeDate": "2022-03-01",
+        "dual": {
+          "momUs": 0.13571077802165243,
+          "momIntl": -0.02142378273408707,
+          "winner": "SPY",
+          "momWinner": 0.13571077802165243,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "TIP",
+            "mom": 0.0004727375413395851,
+            "toCash": false
+          },
+          {
+            "symbol": "SHY",
+            "mom": -0.018036884566398848,
+            "toCash": true
+          },
+          {
+            "symbol": "HYG",
+            "mom": -0.029606540249139446,
+            "toCash": true
+          }
+        ]
+      },
+      {
+        "signalDate": "2022-03-31",
+        "tradeDate": "2022-04-01",
+        "dual": {
+          "momUs": 0.1422163277051307,
+          "momIntl": -0.034512766194507494,
+          "winner": "SPY",
+          "momWinner": 0.1422163277051307,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "TIP",
+            "mom": -0.007519204275791447,
+            "toCash": true
+          },
+          {
+            "symbol": "SHY",
+            "mom": -0.03093691661718445,
+            "toCash": true
+          },
+          {
+            "symbol": "HYG",
+            "mom": -0.0399572958879969,
+            "toCash": true
+          }
+        ]
+      },
+      {
+        "signalDate": "2022-04-29",
+        "tradeDate": "2022-05-02",
+        "dual": {
+          "momUs": 0.00029179156646219617,
+          "momIntl": -0.10850647282233161,
+          "winner": "SPY",
+          "momWinner": 0.00029179156646219617,
+          "riskOn": true
+        },
+        "bondPicks": [
+          {
+            "symbol": "SHY",
+            "mom": -0.03239371894187426,
+            "toCash": true
+          },
+          {
+            "symbol": "TIP",
+            "mom": -0.04229452129117106,
+            "toCash": true
+          },
+          {
+            "symbol": "HYG",
+            "mom": -0.07965694798051814,
+            "toCash": true
+          }
+        ]
+      },
+      {
+        "signalDate": "2022-05-31",
+        "tradeDate": "2022-06-01",
+        "dual": {
+          "momUs": -0.003112428670094536,
+          "momIntl": -0.12946700000506262,
+          "winner": "SPY",
+          "momWinner": -0.003112428670094536,
+          "riskOn": false
+        },
+        "bondPicks": [
+          {
+            "symbol": "SHY",
+            "mom": -0.026976359669826366,
+            "toCash": true
+          },
+          {
+            "symbol": "HYG",
+            "mom": -0.055060357381712444,
+            "toCash": true
+          },
+          {
+            "symbol": "TIP",
+            "mom": -0.0566457753172106,
+            "toCash": true
+          }
+        ]
+      },
+      {
+        "signalDate": "2022-06-30",
+        "tradeDate": "2022-07-01",
+        "dual": {
+          "momUs": -0.10616788795824184,
+          "momIntl": -0.1851009551711711,
+          "winner": "SPY",
+          "momWinner": -0.10616788795824184,
+          "riskOn": false
+        },
+        "bondPicks": [
+          {
+            "symbol": "SHY",
+            "mom": -0.029457108868255477,
+            "toCash": true
+          },
+          {
+            "symbol": "TIP",
+            "mom": -0.08694224229874092,
+            "toCash": true
+          },
+          {
+            "symbol": "IEF",
+            "mom": -0.1036214506695442,
+            "toCash": true
+          }
+        ]
+      },
+      {
+        "signalDate": "2022-07-29",
+        "tradeDate": "2022-08-01",
+        "dual": {
+          "momUs": -0.05174741416315454,
+          "momIntl": -0.15124212241139645,
+          "winner": "SPY",
+          "momWinner": -0.05174741416315454,
+          "riskOn": false
+        },
+        "bondPicks": [
+          {
+            "symbol": "SHY",
+            "mom": -0.018823306692227204,
+            "toCash": true
+          },
+          {
+            "symbol": "TIP",
+            "mom": -0.02540131545524582,
+            "toCash": true
+          },
+          {
+            "symbol": "HYG",
+            "mom": -0.051912739527222196,
+            "toCash": true
+          }
+        ]
+      },
+      {
+        "signalDate": "2022-08-31",
+        "tradeDate": "2022-09-01",
+        "dual": {
+          "momUs": -0.1124132983577747,
+          "momIntl": -0.1951960143462741,
+          "winner": "SPY",
+          "momWinner": -0.1124132983577747,
+          "riskOn": false
+        },
+        "bondPicks": [
+          {
+            "symbol": "SHY",
+            "mom": -0.021908203078853994,
+            "toCash": true
+          },
+          {
+            "symbol": "TIP",
+            "mom": -0.06617806887348843,
+            "toCash": true
+          },
+          {
+            "symbol": "HYG",
+            "mom": -0.08735093648675862,
+            "toCash": true
+          }
+        ]
+      },
+      {
+        "signalDate": "2022-09-30",
+        "tradeDate": "2022-10-03",
+        "dual": {
+          "momUs": -0.15508967048769273,
+          "momIntl": -0.24790453012807578,
+          "winner": "SPY",
+          "momWinner": -0.15508967048769273,
+          "riskOn": false
+        },
+        "bondPicks": [
+          {
+            "symbol": "SHY",
+            "mom": -0.020816871211699617,
+            "toCash": true
+          },
+          {
+            "symbol": "IEF",
+            "mom": -0.09907460830837933,
+            "toCash": true
+          },
+          {
+            "symbol": "HYG",
+            "mom": -0.11038504437368579,
+            "toCash": true
+          }
+        ]
+      },
+      {
+        "signalDate": "2022-10-31",
+        "tradeDate": "2022-11-01",
+        "dual": {
+          "momUs": -0.14631665492680002,
+          "momIntl": -0.24304036150305952,
+          "winner": "SPY",
+          "momWinner": -0.14631665492680002,
+          "riskOn": false
+        },
+        "bondPicks": [
+          {
+            "symbol": "SHY",
+            "mom": -0.01709271921939759,
+            "toCash": true
+          },
+          {
+            "symbol": "HYG",
+            "mom": -0.040386652632889875,
+            "toCash": true
+          },
+          {
+            "symbol": "TIP",
+            "mom": -0.06557813571602988,
+            "toCash": true
+          }
+        ]
+      },
+      {
+        "signalDate": "2022-11-30",
+        "tradeDate": "2022-12-01",
+        "dual": {
+          "momUs": -0.0915598561343417,
+          "momIntl": -0.1050948544821485,
+          "winner": "SPY",
+          "momWinner": -0.0915598561343417,
+          "riskOn": false
+        },
+        "bondPicks": [
+          {
+            "symbol": "SHY",
+            "mom": -0.014376894738700519,
+            "toCash": true
+          },
+          {
+            "symbol": "HYG",
+            "mom": -0.01968766510781972,
+            "toCash": true
+          },
+          {
+            "symbol": "EMB",
+            "mom": -0.027021295777663767,
+            "toCash": true
+          }
+        ]
+      }
+    ]
+  }
+}

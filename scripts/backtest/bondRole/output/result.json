@@ -1,0 +1,4831 @@
+{
+  "generatedAt": "2026-07-24T13:30:17.326Z",
+  "requestedStart": "2023-07-24",
+  "requestedEnd": "2026-07-24",
+  "source": "yahoo-v8 adjusted (total return)",
+  "fxSymbol": "KRW=X",
+  "costRate": 0.001,
+  "initialCapitalKRW": 100000000,
+  "alignedStart": "2023-07-24",
+  "alignedEnd": "2026-07-24",
+  "tradingDays": 871,
+  "rebalanceDates": [
+    "2023-07-24",
+    "2024-01-01",
+    "2024-07-01",
+    "2025-01-02",
+    "2025-07-01",
+    "2026-01-02",
+    "2026-07-01"
+  ],
+  "grvtRedistribution": {
+    "note": "채권 티어 GRVT 4.0%를 한국채(4.0)·미국채(4.5)에 pro-rata 흡수, 티어 합 12.5 유지. 현금 티어(GRVT 17%/USDT/CMA)는 전면 제외.",
+    "krBondRaw": 5.882353,
+    "usBondRaw": 6.617647
+  },
+  "dataAvailability": [
+    {
+      "ticker": "EFA",
+      "intended": "iShares MSCI EAFE",
+      "ok": true,
+      "firstDate": "2023-07-24",
+      "lastDate": "2026-07-23",
+      "coversWindowStart": true
+    },
+    {
+      "ticker": "069500.KS",
+      "intended": "KODEX 200",
+      "ok": true,
+      "firstDate": "2023-07-24",
+      "lastDate": "2026-07-24",
+      "coversWindowStart": true
+    },
+    {
+      "ticker": "XLE",
+      "intended": "KIWOOM 미국원유에너지기업(US 에너지)",
+      "ok": true,
+      "firstDate": "2023-07-24",
+      "lastDate": "2026-07-23",
+      "coversWindowStart": true
+    },
+    {
+      "ticker": "379810.KS",
+      "intended": "KODEX 미국나스닥100(379810)",
+      "ok": true,
+      "firstDate": "2023-07-24",
+      "lastDate": "2026-07-24",
+      "coversWindowStart": true
+    },
+    {
+      "ticker": "EIS",
+      "intended": "iShares MSCI Israel",
+      "ok": true,
+      "firstDate": "2023-07-24",
+      "lastDate": "2026-07-23",
+      "coversWindowStart": true
+    },
+    {
+      "ticker": "283580.KS",
+      "intended": "KODEX 차이나CSI300(283580)",
+      "ok": true,
+      "firstDate": "2023-07-24",
+      "lastDate": "2026-07-24",
+      "coversWindowStart": true
+    },
+    {
+      "ticker": "372330.KS",
+      "intended": "KODEX 차이나항셍테크(372330)",
+      "ok": true,
+      "firstDate": "2023-07-24",
+      "lastDate": "2026-07-24",
+      "coversWindowStart": true
+    },
+    {
+      "ticker": "ECH",
+      "intended": "iShares MSCI Chile",
+      "ok": true,
+      "firstDate": "2023-07-24",
+      "lastDate": "2026-07-23",
+      "coversWindowStart": true
+    },
+    {
+      "ticker": "EWZ",
+      "intended": "iShares MSCI Brazil",
+      "ok": true,
+      "firstDate": "2023-07-24",
+      "lastDate": "2026-07-23",
+      "coversWindowStart": true
+    },
+    {
+      "ticker": "EIDO",
+      "intended": "iShares MSCI Indonesia",
+      "ok": true,
+      "firstDate": "2023-07-24",
+      "lastDate": "2026-07-23",
+      "coversWindowStart": true
+    },
+    {
+      "ticker": "385560.KS",
+      "intended": "RISE KIS국고채30년Enhanced(385560)",
+      "ok": true,
+      "firstDate": "2023-07-24",
+      "lastDate": "2026-07-24",
+      "coversWindowStart": true
+    },
+    {
+      "ticker": "TLT",
+      "intended": "PLUS 미국채30년액티브(464470)",
+      "ok": true,
+      "firstDate": "2023-07-24",
+      "lastDate": "2026-07-23",
+      "coversWindowStart": true
+    },
+    {
+      "ticker": "411060.KS",
+      "intended": "ACE KRX금현물(411060)",
+      "ok": true,
+      "firstDate": "2023-07-24",
+      "lastDate": "2026-07-24",
+      "coversWindowStart": true
+    },
+    {
+      "ticker": "SLV",
+      "intended": "TIGER 은액티브(0189B0)",
+      "ok": true,
+      "firstDate": "2023-07-24",
+      "lastDate": "2026-07-23",
+      "coversWindowStart": true
+    },
+    {
+      "ticker": "160580.KS",
+      "intended": "TIGER 구리실물(160580)",
+      "ok": true,
+      "firstDate": "2023-07-24",
+      "lastDate": "2026-07-24",
+      "coversWindowStart": true
+    },
+    {
+      "ticker": "URA",
+      "intended": "Global X Uranium",
+      "ok": true,
+      "firstDate": "2023-07-24",
+      "lastDate": "2026-07-23",
+      "coversWindowStart": true
+    }
+  ],
+  "scenarioA": {
+    "label": "채권 포함 (16개 다리)",
+    "weights": [
+      {
+        "key": "선진국 주식",
+        "intended": "iShares MSCI EAFE",
+        "ticker": "EFA",
+        "currency": "USD",
+        "weightPct": 20,
+        "isBond": false
+      },
+      {
+        "key": "한국 주식",
+        "intended": "KODEX 200",
+        "ticker": "069500.KS",
+        "currency": "KRW",
+        "weightPct": 8,
+        "isBond": false
+      },
+      {
+        "key": "미국 주식-가치주",
+        "intended": "KIWOOM 미국원유에너지기업(US 에너지)",
+        "ticker": "XLE",
+        "currency": "USD",
+        "weightPct": 4,
+        "isBond": false,
+        "note": "KIWOOM 미국원유에너지기업(한국상장)의 직접 총수익 히스토리 확보가 어렵고 브리프가 XLE 프록시를 지정 → XLE(US 에너지 섹터) 대체."
+      },
+      {
+        "key": "미국 주식-성장주",
+        "intended": "KODEX 미국나스닥100(379810)",
+        "ticker": "379810.KS",
+        "currency": "KRW",
+        "weightPct": 4,
+        "isBond": false,
+        "note": "KODEX 미국나스닥100 (KRX 379810, 2021-04 상장, 무헤지 TR) — 창 전체 커버. 한국투자자 실제 보유형태(원화표시)라 QQQ 폴백보다 충실."
+      },
+      {
+        "key": "이스라엘 주식",
+        "intended": "iShares MSCI Israel",
+        "ticker": "EIS",
+        "currency": "USD",
+        "weightPct": 4,
+        "isBond": false
+      },
+      {
+        "key": "중국주식(CSI300)",
+        "intended": "KODEX 차이나CSI300(283580)",
+        "ticker": "283580.KS",
+        "currency": "KRW",
+        "weightPct": 6.4,
+        "isBond": false,
+        "note": "KODEX 차이나CSI300 (KRX 283580, 2017-11 상장) — 창 전체 커버."
+      },
+      {
+        "key": "중국주식(항셍테크)",
+        "intended": "KODEX 차이나항셍테크(372330)",
+        "ticker": "372330.KS",
+        "currency": "KRW",
+        "weightPct": 3.2,
+        "isBond": false,
+        "note": "KODEX 차이나항셍테크 (KRX 372330, 2021-08 상장) — 창 전체 커버."
+      },
+      {
+        "key": "칠레 주식",
+        "intended": "iShares MSCI Chile",
+        "ticker": "ECH",
+        "currency": "USD",
+        "weightPct": 4,
+        "isBond": false
+      },
+      {
+        "key": "브라질 주식",
+        "intended": "iShares MSCI Brazil",
+        "ticker": "EWZ",
+        "currency": "USD",
+        "weightPct": 3.2,
+        "isBond": false
+      },
+      {
+        "key": "인도네시아 주식",
+        "intended": "iShares MSCI Indonesia",
+        "ticker": "EIDO",
+        "currency": "USD",
+        "weightPct": 3.2,
+        "isBond": false
+      },
+      {
+        "key": "한국채권",
+        "intended": "RISE KIS국고채30년Enhanced(385560)",
+        "ticker": "385560.KS",
+        "currency": "KRW",
+        "weightPct": 9.411765,
+        "isBond": true,
+        "note": "RISE(구 KBSTAR) KIS국고채30년Enhanced (KRX 385560, 2021-05 상장) — 창 전체 커버. GRVT 4.0% pro-rata 흡수 후 원비중 4.0→5.882."
+      },
+      {
+        "key": "미국채권",
+        "intended": "PLUS 미국채30년액티브(464470)",
+        "ticker": "TLT",
+        "currency": "USD",
+        "weightPct": 10.588235,
+        "isBond": true,
+        "note": "PLUS 미국채30년액티브(KRX 464470)는 2023-08-22 상장으로 창 시작(2023-07-24)을 커버 못함 → TLT(20년+ 미국채) 대체. GRVT 4.0% pro-rata 흡수 후 원비중 4.5→6.618."
+      },
+      {
+        "key": "금",
+        "intended": "ACE KRX금현물(411060)",
+        "ticker": "411060.KS",
+        "currency": "KRW",
+        "weightPct": 9.6,
+        "isBond": false,
+        "note": "ACE KRX금현물 (KRX 411060, 2021-12 상장) — 창 전체 커버."
+      },
+      {
+        "key": "은",
+        "intended": "TIGER 은액티브(0189B0)",
+        "ticker": "SLV",
+        "currency": "USD",
+        "weightPct": 4.8,
+        "isBond": false,
+        "note": "TIGER 은액티브(KRX 0189B0)는 2026-04-28 상장으로 히스토리 부재 → SLV(은 현물) 대체."
+      },
+      {
+        "key": "구리",
+        "intended": "TIGER 구리실물(160580)",
+        "ticker": "160580.KS",
+        "currency": "KRW",
+        "weightPct": 2.4,
+        "isBond": false,
+        "note": "TIGER 구리실물 (KRX 160580, 2012-12 상장) — 창 전체 커버."
+      },
+      {
+        "key": "우라늄",
+        "intended": "Global X Uranium",
+        "ticker": "URA",
+        "currency": "USD",
+        "weightPct": 3.2,
+        "isBond": false
+      }
+    ],
+    "metrics": {
+      "cagrPct": 21.36127459123951,
+      "mddPct": -10.102189945782278,
+      "mddTroughDate": "2026-07-24",
+      "annualizedVolPct": 10.557198465210968,
+      "sharpe": 1.6473563675840588,
+      "finalValueKRW": 178592585.57589397,
+      "calendarYearReturns": [
+        {
+          "year": "2023",
+          "returnPct": 3.374592256133968
+        },
+        {
+          "year": "2024",
+          "returnPct": 19.4318052625611
+        },
+        {
+          "year": "2025",
+          "returnPct": 35.03743228380414
+        },
+        {
+          "year": "2026",
+          "returnPct": 7.2284328551499355
+        }
+      ]
+    }
+  },
+  "scenarioB": {
+    "label": "채권 제외 (14개 다리, 채권비중 pro-rata 재분배)",
+    "weights": [
+      {
+        "key": "선진국 주식",
+        "intended": "iShares MSCI EAFE",
+        "ticker": "EFA",
+        "currency": "USD",
+        "weightPct": 25,
+        "isBond": false
+      },
+      {
+        "key": "한국 주식",
+        "intended": "KODEX 200",
+        "ticker": "069500.KS",
+        "currency": "KRW",
+        "weightPct": 10,
+        "isBond": false
+      },
+      {
+        "key": "미국 주식-가치주",
+        "intended": "KIWOOM 미국원유에너지기업(US 에너지)",
+        "ticker": "XLE",
+        "currency": "USD",
+        "weightPct": 5,
+        "isBond": false,
+        "note": "KIWOOM 미국원유에너지기업(한국상장)의 직접 총수익 히스토리 확보가 어렵고 브리프가 XLE 프록시를 지정 → XLE(US 에너지 섹터) 대체."
+      },
+      {
+        "key": "미국 주식-성장주",
+        "intended": "KODEX 미국나스닥100(379810)",
+        "ticker": "379810.KS",
+        "currency": "KRW",
+        "weightPct": 5,
+        "isBond": false,
+        "note": "KODEX 미국나스닥100 (KRX 379810, 2021-04 상장, 무헤지 TR) — 창 전체 커버. 한국투자자 실제 보유형태(원화표시)라 QQQ 폴백보다 충실."
+      },
+      {
+        "key": "이스라엘 주식",
+        "intended": "iShares MSCI Israel",
+        "ticker": "EIS",
+        "currency": "USD",
+        "weightPct": 5,
+        "isBond": false
+      },
+      {
+        "key": "중국주식(CSI300)",
+        "intended": "KODEX 차이나CSI300(283580)",
+        "ticker": "283580.KS",
+        "currency": "KRW",
+        "weightPct": 8,
+        "isBond": false,
+        "note": "KODEX 차이나CSI300 (KRX 283580, 2017-11 상장) — 창 전체 커버."
+      },
+      {
+        "key": "중국주식(항셍테크)",
+        "intended": "KODEX 차이나항셍테크(372330)",
+        "ticker": "372330.KS",
+        "currency": "KRW",
+        "weightPct": 4,
+        "isBond": false,
+        "note": "KODEX 차이나항셍테크 (KRX 372330, 2021-08 상장) — 창 전체 커버."
+      },
+      {
+        "key": "칠레 주식",
+        "intended": "iShares MSCI Chile",
+        "ticker": "ECH",
+        "currency": "USD",
+        "weightPct": 5,
+        "isBond": false
+      },
+      {
+        "key": "브라질 주식",
+        "intended": "iShares MSCI Brazil",
+        "ticker": "EWZ",
+        "currency": "USD",
+        "weightPct": 4,
+        "isBond": false
+      },
+      {
+        "key": "인도네시아 주식",
+        "intended": "iShares MSCI Indonesia",
+        "ticker": "EIDO",
+        "currency": "USD",
+        "weightPct": 4,
+        "isBond": false
+      },
+      {
+        "key": "금",
+        "intended": "ACE KRX금현물(411060)",
+        "ticker": "411060.KS",
+        "currency": "KRW",
+        "weightPct": 12,
+        "isBond": false,
+        "note": "ACE KRX금현물 (KRX 411060, 2021-12 상장) — 창 전체 커버."
+      },
+      {
+        "key": "은",
+        "intended": "TIGER 은액티브(0189B0)",
+        "ticker": "SLV",
+        "currency": "USD",
+        "weightPct": 6,
+        "isBond": false,
+        "note": "TIGER 은액티브(KRX 0189B0)는 2026-04-28 상장으로 히스토리 부재 → SLV(은 현물) 대체."
+      },
+      {
+        "key": "구리",
+        "intended": "TIGER 구리실물(160580)",
+        "ticker": "160580.KS",
+        "currency": "KRW",
+        "weightPct": 3,
+        "isBond": false,
+        "note": "TIGER 구리실물 (KRX 160580, 2012-12 상장) — 창 전체 커버."
+      },
+      {
+        "key": "우라늄",
+        "intended": "Global X Uranium",
+        "ticker": "URA",
+        "currency": "USD",
+        "weightPct": 4,
+        "isBond": false
+      }
+    ],
+    "metrics": {
+      "cagrPct": 26.995375800353116,
+      "mddPct": -11.381172813367185,
+      "mddTroughDate": "2025-04-07",
+      "annualizedVolPct": 12.340462715286044,
+      "sharpe": 1.7457885082861395,
+      "finalValueKRW": 204644581.41170248,
+      "calendarYearReturns": [
+        {
+          "year": "2023",
+          "returnPct": 2.7457248854343863
+        },
+        {
+          "year": "2024",
+          "returnPct": 22.334193787602352
+        },
+        {
+          "year": "2025",
+          "returnPct": 45.23571797140045
+        },
+        {
+          "year": "2026",
+          "returnPct": 12.214686613960923
+        }
+      ]
+    }
+  },
+  "equityCurve": [
+    {
+      "date": "2023-07-24",
+      "scenarioA": 99900000,
+      "scenarioB": 99900000
+    },
+    {
+      "date": "2023-07-25",
+      "scenarioA": 99728151,
+      "scenarioB": 99776035
+    },
+    {
+      "date": "2023-07-26",
+      "scenarioA": 100149163,
+      "scenarioB": 100393958
+    },
+    {
+      "date": "2023-07-27",
+      "scenarioA": 99720574,
+      "scenarioB": 100026026
+    },
+    {
+      "date": "2023-07-28",
+      "scenarioA": 100441708,
+      "scenarioB": 101003779
+    },
+    {
+      "date": "2023-07-30",
+      "scenarioA": 99931481,
+      "scenarioB": 100482819
+    },
+    {
+      "date": "2023-07-31",
+      "scenarioA": 100577177,
+      "scenarioB": 101202367
+    },
+    {
+      "date": "2023-08-01",
+      "scenarioA": 100449355,
+      "scenarioB": 101144546
+    },
+    {
+      "date": "2023-08-02",
+      "scenarioA": 99745613,
+      "scenarioB": 100340449
+    },
+    {
+      "date": "2023-08-03",
+      "scenarioA": 99701460,
+      "scenarioB": 100578574
+    },
+    {
+      "date": "2023-08-04",
+      "scenarioA": 100064888,
+      "scenarioB": 100984448
+    },
+    {
+      "date": "2023-08-06",
+      "scenarioA": 100353514,
+      "scenarioB": 101279658
+    },
+    {
+      "date": "2023-08-07",
+      "scenarioA": 100498488,
+      "scenarioB": 101412179
+    },
+    {
+      "date": "2023-08-08",
+      "scenarioA": 100785933,
+      "scenarioB": 101436005
+    },
+    {
+      "date": "2023-08-09",
+      "scenarioA": 100790977,
+      "scenarioB": 101394801
+    },
+    {
+      "date": "2023-08-10",
+      "scenarioA": 100856658,
+      "scenarioB": 101672527
+    },
+    {
+      "date": "2023-08-11",
+      "scenarioA": 100496484,
+      "scenarioB": 101363092
+    },
+    {
+      "date": "2023-08-13",
+      "scenarioA": 100984096,
+      "scenarioB": 101862717
+    },
+    {
+      "date": "2023-08-14",
+      "scenarioA": 100586738,
+      "scenarioB": 101449805
+    },
+    {
+      "date": "2023-08-15",
+      "scenarioA": 100161627,
+      "scenarioB": 100958851
+    },
+    {
+      "date": "2023-08-16",
+      "scenarioA": 99732272,
+      "scenarioB": 100511241
+    },
+    {
+      "date": "2023-08-17",
+      "scenarioA": 99199821,
+      "scenarioB": 100106579
+    },
+    {
+      "date": "2023-08-18",
+      "scenarioA": 99198397,
+      "scenarioB": 99907137
+    },
+    {
+      "date": "2023-08-20",
+      "scenarioA": 99202198,
+      "scenarioB": 99911025
+    },
+    {
+      "date": "2023-08-21",
+      "scenarioA": 99165099,
+      "scenarioB": 100084547
+    },
+    {
+      "date": "2023-08-22",
+      "scenarioA": 99430997,
+      "scenarioB": 100436556
+    },
+    {
+      "date": "2023-08-23",
+      "scenarioA": 99935063,
+      "scenarioB": 100745255
+    },
+    {
+      "date": "2023-08-24",
+      "scenarioA": 99482548,
+      "scenarioB": 100201334
+    },
+    {
+      "date": "2023-08-25",
+      "scenarioA": 99276608,
+      "scenarioB": 100052702
+    },
+    {
+      "date": "2023-08-27",
+      "scenarioA": 99147620,
+      "scenarioB": 99920745
+    },
+    {
+      "date": "2023-08-28",
+      "scenarioA": 99684046,
+      "scenarioB": 100488076
+    },
+    {
+      "date": "2023-08-29",
+      "scenarioA": 100462727,
+      "scenarioB": 101264729
+    },
+    {
+      "date": "2023-08-30",
+      "scenarioA": 100648577,
+      "scenarioB": 101493860
+    },
+    {
+      "date": "2023-08-31",
+      "scenarioA": 100647023,
+      "scenarioB": 101306748
+    },
+    {
+      "date": "2023-09-01",
+      "scenarioA": 100783207,
+      "scenarioB": 101566082
+    },
+    {
+      "date": "2023-09-03",
+      "scenarioA": 100471908,
+      "scenarioB": 101246734
+    },
+    {
+      "date": "2023-09-04",
+      "scenarioA": 100738797,
+      "scenarioB": 101672096
+    },
+    {
+      "date": "2023-09-05",
+      "scenarioA": 100707799,
+      "scenarioB": 101715371
+    },
+    {
+      "date": "2023-09-06",
+      "scenarioA": 100442675,
+      "scenarioB": 101376471
+    },
+    {
+      "date": "2023-09-07",
+      "scenarioA": 99897037,
+      "scenarioB": 100738158
+    },
+    {
+      "date": "2023-09-08",
+      "scenarioA": 99877154,
+      "scenarioB": 100576799
+    },
+    {
+      "date": "2023-09-10",
+      "scenarioA": 99932484,
+      "scenarioB": 100633394
+    },
+    {
+      "date": "2023-09-11",
+      "scenarioA": 99625203,
+      "scenarioB": 100648288
+    },
+    {
+      "date": "2023-09-12",
+      "scenarioA": 99745936,
+      "scenarioB": 100711979
+    },
+    {
+      "date": "2023-09-13",
+      "scenarioA": 99926764,
+      "scenarioB": 100837500
+    },
+    {
+      "date": "2023-09-14",
+      "scenarioA": 100454519,
+      "scenarioB": 101476488
+    },
+    {
+      "date": "2023-09-15",
+      "scenarioA": 100478507,
+      "scenarioB": 101643935
+    },
+    {
+      "date": "2023-09-17",
+      "scenarioA": 100537202,
+      "scenarioB": 101704351
+    },
+    {
+      "date": "2023-09-18",
+      "scenarioA": 100345102,
+      "scenarioB": 101505426
+    },
+    {
+      "date": "2023-09-19",
+      "scenarioA": 100081013,
+      "scenarioB": 101276527
+    },
+    {
+      "date": "2023-09-20",
+      "scenarioA": 100166793,
+      "scenarioB": 101365255
+    },
+    {
+      "date": "2023-09-21",
+      "scenarioA": 99405787,
+      "scenarioB": 100714627
+    },
+    {
+      "date": "2023-09-22",
+      "scenarioA": 99714660,
+      "scenarioB": 100975719
+    },
+    {
+      "date": "2023-09-24",
+      "scenarioA": 99437563,
+      "scenarioB": 100690331
+    },
+    {
+      "date": "2023-09-25",
+      "scenarioA": 99115562,
+      "scenarioB": 100609371
+    },
+    {
+      "date": "2023-09-26",
+      "scenarioA": 98962244,
+      "scenarioB": 100399398
+    },
+    {
+      "date": "2023-09-27",
+      "scenarioA": 98910989,
+      "scenarioB": 100383749
+    },
+    {
+      "date": "2023-09-28",
+      "scenarioA": 99217747,
+      "scenarioB": 100774931
+    },
+    {
+      "date": "2023-09-29",
+      "scenarioA": 98870830,
+      "scenarioB": 100339903
+    },
+    {
+      "date": "2023-10-01",
+      "scenarioA": 99042134,
+      "scenarioB": 100516867
+    },
+    {
+      "date": "2023-10-02",
+      "scenarioA": 98097167,
+      "scenarioB": 99521210
+    },
+    {
+      "date": "2023-10-03",
+      "scenarioA": 97504483,
+      "scenarioB": 98996653
+    },
+    {
+      "date": "2023-10-04",
+      "scenarioA": 95836096,
+      "scenarioB": 97562722
+    },
+    {
+      "date": "2023-10-05",
+      "scenarioA": 95755834,
+      "scenarioB": 97573274
+    },
+    {
+      "date": "2023-10-06",
+      "scenarioA": 96258910,
+      "scenarioB": 98174940
+    },
+    {
+      "date": "2023-10-08",
+      "scenarioA": 96148593,
+      "scenarioB": 98060575
+    },
+    {
+      "date": "2023-10-09",
+      "scenarioA": 96341416,
+      "scenarioB": 97995358
+    },
+    {
+      "date": "2023-10-10",
+      "scenarioA": 96972991,
+      "scenarioB": 98845089
+    },
+    {
+      "date": "2023-10-11",
+      "scenarioA": 97087641,
+      "scenarioB": 98682715
+    },
+    {
+      "date": "2023-10-12",
+      "scenarioA": 97243321,
+      "scenarioB": 98948080
+    },
+    {
+      "date": "2023-10-13",
+      "scenarioA": 97233437,
+      "scenarioB": 98884551
+    },
+    {
+      "date": "2023-10-15",
+      "scenarioA": 97386585,
+      "scenarioB": 99042398
+    },
+    {
+      "date": "2023-10-16",
+      "scenarioA": 97110678,
+      "scenarioB": 98977498
+    },
+    {
+      "date": "2023-10-17",
+      "scenarioA": 97491231,
+      "scenarioB": 99665049
+    },
+    {
+      "date": "2023-10-18",
+      "scenarioA": 96921948,
+      "scenarioB": 99129632
+    },
+    {
+      "date": "2023-10-19",
+      "scenarioA": 96169133,
+      "scenarioB": 98586332
+    },
+    {
+      "date": "2023-10-20",
+      "scenarioA": 95809698,
+      "scenarioB": 98001858
+    },
+    {
+      "date": "2023-10-22",
+      "scenarioA": 95533013,
+      "scenarioB": 97714949
+    },
+    {
+      "date": "2023-10-23",
+      "scenarioA": 94444855,
+      "scenarioB": 96456177
+    },
+    {
+      "date": "2023-10-24",
+      "scenarioA": 95215515,
+      "scenarioB": 97045475
+    },
+    {
+      "date": "2023-10-25",
+      "scenarioA": 95477771,
+      "scenarioB": 97410890
+    },
+    {
+      "date": "2023-10-26",
+      "scenarioA": 94980242,
+      "scenarioB": 96768957
+    },
+    {
+      "date": "2023-10-27",
+      "scenarioA": 95286393,
+      "scenarioB": 96749262
+    },
+    {
+      "date": "2023-10-30",
+      "scenarioA": 95897590,
+      "scenarioB": 97627039
+    },
+    {
+      "date": "2023-10-31",
+      "scenarioA": 95669570,
+      "scenarioB": 97401471
+    },
+    {
+      "date": "2023-11-01",
+      "scenarioA": 96434470,
+      "scenarioB": 98006156
+    },
+    {
+      "date": "2023-11-02",
+      "scenarioA": 97468914,
+      "scenarioB": 98983767
+    },
+    {
+      "date": "2023-11-03",
+      "scenarioA": 97466296,
+      "scenarioB": 98875667
+    },
+    {
+      "date": "2023-11-06",
+      "scenarioA": 96228368,
+      "scenarioB": 97580328
+    },
+    {
+      "date": "2023-11-07",
+      "scenarioA": 95852446,
+      "scenarioB": 96962918
+    },
+    {
+      "date": "2023-11-08",
+      "scenarioA": 96062187,
+      "scenarioB": 96767894
+    },
+    {
+      "date": "2023-11-09",
+      "scenarioA": 95984271,
+      "scenarioB": 96767305
+    },
+    {
+      "date": "2023-11-10",
+      "scenarioA": 96464444,
+      "scenarioB": 97253036
+    },
+    {
+      "date": "2023-11-13",
+      "scenarioA": 96924313,
+      "scenarioB": 97852019
+    },
+    {
+      "date": "2023-11-14",
+      "scenarioA": 98484336,
+      "scenarioB": 99598030
+    },
+    {
+      "date": "2023-11-15",
+      "scenarioA": 98091823,
+      "scenarioB": 99021799
+    },
+    {
+      "date": "2023-11-16",
+      "scenarioA": 98116544,
+      "scenarioB": 98878239
+    },
+    {
+      "date": "2023-11-17",
+      "scenarioA": 98105531,
+      "scenarioB": 98945726
+    },
+    {
+      "date": "2023-11-20",
+      "scenarioA": 98665419,
+      "scenarioB": 99503744
+    },
+    {
+      "date": "2023-11-21",
+      "scenarioA": 98502040,
+      "scenarioB": 99256581
+    },
+    {
+      "date": "2023-11-22",
+      "scenarioA": 98944889,
+      "scenarioB": 99772196
+    },
+    {
+      "date": "2023-11-23",
+      "scenarioA": 99186307,
+      "scenarioB": 99995260
+    },
+    {
+      "date": "2023-11-24",
+      "scenarioA": 99437950,
+      "scenarioB": 100585758
+    },
+    {
+      "date": "2023-11-27",
+      "scenarioA": 99056850,
+      "scenarioB": 100036941
+    },
+    {
+      "date": "2023-11-28",
+      "scenarioA": 99849082,
+      "scenarioB": 100706736
+    },
+    {
+      "date": "2023-11-29",
+      "scenarioA": 99319198,
+      "scenarioB": 99767784
+    },
+    {
+      "date": "2023-11-30",
+      "scenarioA": 99362889,
+      "scenarioB": 100092433
+    },
+    {
+      "date": "2023-12-01",
+      "scenarioA": 100481565,
+      "scenarioB": 101152697
+    },
+    {
+      "date": "2023-12-04",
+      "scenarioA": 100351932,
+      "scenarioB": 100897887
+    },
+    {
+      "date": "2023-12-05",
+      "scenarioA": 100336328,
+      "scenarioB": 100462256
+    },
+    {
+      "date": "2023-12-06",
+      "scenarioA": 100778994,
+      "scenarioB": 100607329
+    },
+    {
+      "date": "2023-12-07",
+      "scenarioA": 100844503,
+      "scenarioB": 100880422
+    },
+    {
+      "date": "2023-12-08",
+      "scenarioA": 100629975,
+      "scenarioB": 100687986
+    },
+    {
+      "date": "2023-12-11",
+      "scenarioA": 100619355,
+      "scenarioB": 100737574
+    },
+    {
+      "date": "2023-12-12",
+      "scenarioA": 100726364,
+      "scenarioB": 100734517
+    },
+    {
+      "date": "2023-12-13",
+      "scenarioA": 101644200,
+      "scenarioB": 101480053
+    },
+    {
+      "date": "2023-12-14",
+      "scenarioA": 102209466,
+      "scenarioB": 101590670
+    },
+    {
+      "date": "2023-12-15",
+      "scenarioA": 101782395,
+      "scenarioB": 101148813
+    },
+    {
+      "date": "2023-12-18",
+      "scenarioA": 101219826,
+      "scenarioB": 100625499
+    },
+    {
+      "date": "2023-12-19",
+      "scenarioA": 102904581,
+      "scenarioB": 102343785
+    },
+    {
+      "date": "2023-12-20",
+      "scenarioA": 102490309,
+      "scenarioB": 101710286
+    },
+    {
+      "date": "2023-12-21",
+      "scenarioA": 103056685,
+      "scenarioB": 102540222
+    },
+    {
+      "date": "2023-12-22",
+      "scenarioA": 102780068,
+      "scenarioB": 102301842
+    },
+    {
+      "date": "2023-12-25",
+      "scenarioA": 103036690,
+      "scenarioB": 102564868
+    },
+    {
+      "date": "2023-12-26",
+      "scenarioA": 103291329,
+      "scenarioB": 102789311
+    },
+    {
+      "date": "2023-12-27",
+      "scenarioA": 103779580,
+      "scenarioB": 103086713
+    },
+    {
+      "date": "2023-12-28",
+      "scenarioA": 104122583,
+      "scenarioB": 103412586
+    },
+    {
+      "date": "2023-12-29",
+      "scenarioA": 103271218,
+      "scenarioB": 102642979
+    },
+    {
+      "date": "2024-01-01",
+      "scenarioA": 103981001,
+      "scenarioB": 103370544
+    },
+    {
+      "date": "2024-01-02",
+      "scenarioA": 103347734,
+      "scenarioB": 102994572
+    },
+    {
+      "date": "2024-01-03",
+      "scenarioA": 103308809,
+      "scenarioB": 102727921
+    },
+    {
+      "date": "2024-01-04",
+      "scenarioA": 103067500,
+      "scenarioB": 102510213
+    },
+    {
+      "date": "2024-01-05",
+      "scenarioA": 103022785,
+      "scenarioB": 102657293
+    },
+    {
+      "date": "2024-01-08",
+      "scenarioA": 103161440,
+      "scenarioB": 102641402
+    },
+    {
+      "date": "2024-01-09",
+      "scenarioA": 102784762,
+      "scenarioB": 102217037
+    },
+    {
+      "date": "2024-01-10",
+      "scenarioA": 103009743,
+      "scenarioB": 102539499
+    },
+    {
+      "date": "2024-01-11",
+      "scenarioA": 103191290,
+      "scenarioB": 102681996
+    },
+    {
+      "date": "2024-01-12",
+      "scenarioA": 103238815,
+      "scenarioB": 102887456
+    },
+    {
+      "date": "2024-01-15",
+      "scenarioA": 103482794,
+      "scenarioB": 103117410
+    },
+    {
+      "date": "2024-01-16",
+      "scenarioA": 102651717,
+      "scenarioB": 102294841
+    },
+    {
+      "date": "2024-01-17",
+      "scenarioA": 102577937,
+      "scenarioB": 102128915
+    },
+    {
+      "date": "2024-01-18",
+      "scenarioA": 103049983,
+      "scenarioB": 102778631
+    },
+    {
+      "date": "2024-01-19",
+      "scenarioA": 102950436,
+      "scenarioB": 102732420
+    },
+    {
+      "date": "2024-01-22",
+      "scenarioA": 102652552,
+      "scenarioB": 102267654
+    },
+    {
+      "date": "2024-01-23",
+      "scenarioA": 103076873,
+      "scenarioB": 102901852
+    },
+    {
+      "date": "2024-01-24",
+      "scenarioA": 103331272,
+      "scenarioB": 103360559
+    },
+    {
+      "date": "2024-01-25",
+      "scenarioA": 103381342,
+      "scenarioB": 103514197
+    },
+    {
+      "date": "2024-01-26",
+      "scenarioA": 103652281,
+      "scenarioB": 103753763
+    },
+    {
+      "date": "2024-01-29",
+      "scenarioA": 104081558,
+      "scenarioB": 104324945
+    },
+    {
+      "date": "2024-01-30",
+      "scenarioA": 103957596,
+      "scenarioB": 103894448
+    },
+    {
+      "date": "2024-01-31",
+      "scenarioA": 103289232,
+      "scenarioB": 102940067
+    },
+    {
+      "date": "2024-02-01",
+      "scenarioA": 104594155,
+      "scenarioB": 104224582
+    },
+    {
+      "date": "2024-02-02",
+      "scenarioA": 103811226,
+      "scenarioB": 103412325
+    },
+    {
+      "date": "2024-02-05",
+      "scenarioA": 103599017,
+      "scenarioB": 103495861
+    },
+    {
+      "date": "2024-02-06",
+      "scenarioA": 104070861,
+      "scenarioB": 104033821
+    },
+    {
+      "date": "2024-02-07",
+      "scenarioA": 103814862,
+      "scenarioB": 103881490
+    },
+    {
+      "date": "2024-02-08",
+      "scenarioA": 103649910,
+      "scenarioB": 103796315
+    },
+    {
+      "date": "2024-02-09",
+      "scenarioA": 103901512,
+      "scenarioB": 104097264
+    },
+    {
+      "date": "2024-02-12",
+      "scenarioA": 104055061,
+      "scenarioB": 104286573
+    },
+    {
+      "date": "2024-02-13",
+      "scenarioA": 103001513,
+      "scenarioB": 103330410
+    },
+    {
+      "date": "2024-02-14",
+      "scenarioA": 103917749,
+      "scenarioB": 104333454
+    },
+    {
+      "date": "2024-02-15",
+      "scenarioA": 104163550,
+      "scenarioB": 104596455
+    },
+    {
+      "date": "2024-02-16",
+      "scenarioA": 104555663,
+      "scenarioB": 105219647
+    },
+    {
+      "date": "2024-02-19",
+      "scenarioA": 104851999,
+      "scenarioB": 105505437
+    },
+    {
+      "date": "2024-02-20",
+      "scenarioA": 104654242,
+      "scenarioB": 105332878
+    },
+    {
+      "date": "2024-02-21",
+      "scenarioA": 104825323,
+      "scenarioB": 105631832
+    },
+    {
+      "date": "2024-02-22",
+      "scenarioA": 105163863,
+      "scenarioB": 105909991
+    },
+    {
+      "date": "2024-02-23",
+      "scenarioA": 104972080,
+      "scenarioB": 105573446
+    },
+    {
+      "date": "2024-02-26",
+      "scenarioA": 104975430,
+      "scenarioB": 105450713
+    },
+    {
+      "date": "2024-02-27",
+      "scenarioA": 105325270,
+      "scenarioB": 105978576
+    },
+    {
+      "date": "2024-02-28",
+      "scenarioA": 105275766,
+      "scenarioB": 105906046
+    },
+    {
+      "date": "2024-02-29",
+      "scenarioA": 105506221,
+      "scenarioB": 106155227
+    },
+    {
+      "date": "2024-03-01",
+      "scenarioA": 106233811,
+      "scenarioB": 106956898
+    },
+    {
+      "date": "2024-03-04",
+      "scenarioA": 106249079,
+      "scenarioB": 107034628
+    },
+    {
+      "date": "2024-03-05",
+      "scenarioA": 106305068,
+      "scenarioB": 106835834
+    },
+    {
+      "date": "2024-03-06",
+      "scenarioA": 107216827,
+      "scenarioB": 107786840
+    },
+    {
+      "date": "2024-03-07",
+      "scenarioA": 107451384,
+      "scenarioB": 108225739
+    },
+    {
+      "date": "2024-03-08",
+      "scenarioA": 107058520,
+      "scenarioB": 107696939
+    },
+    {
+      "date": "2024-03-11",
+      "scenarioA": 106684390,
+      "scenarioB": 107254053
+    },
+    {
+      "date": "2024-03-12",
+      "scenarioA": 106868919,
+      "scenarioB": 107600452
+    },
+    {
+      "date": "2024-03-13",
+      "scenarioA": 107147382,
+      "scenarioB": 107982164
+    },
+    {
+      "date": "2024-03-14",
+      "scenarioA": 106997579,
+      "scenarioB": 108034021
+    },
+    {
+      "date": "2024-03-15",
+      "scenarioA": 107311660,
+      "scenarioB": 108457633
+    },
+    {
+      "date": "2024-03-18",
+      "scenarioA": 107805477,
+      "scenarioB": 109093015
+    },
+    {
+      "date": "2024-03-19",
+      "scenarioA": 108167104,
+      "scenarioB": 109464806
+    },
+    {
+      "date": "2024-03-20",
+      "scenarioA": 109078890,
+      "scenarioB": 110577240
+    },
+    {
+      "date": "2024-03-21",
+      "scenarioA": 109103581,
+      "scenarioB": 110524242
+    },
+    {
+      "date": "2024-03-22",
+      "scenarioA": 109122331,
+      "scenarioB": 110309742
+    },
+    {
+      "date": "2024-03-25",
+      "scenarioA": 109407166,
+      "scenarioB": 110669387
+    },
+    {
+      "date": "2024-03-26",
+      "scenarioA": 109185945,
+      "scenarioB": 110448044
+    },
+    {
+      "date": "2024-03-27",
+      "scenarioA": 109926556,
+      "scenarioB": 111131757
+    },
+    {
+      "date": "2024-03-28",
+      "scenarioA": 110454160,
+      "scenarioB": 111733596
+    },
+    {
+      "date": "2024-03-29",
+      "scenarioA": 110887522,
+      "scenarioB": 112378178
+    },
+    {
+      "date": "2024-03-31",
+      "scenarioA": 110675914,
+      "scenarioB": 112160954
+    },
+    {
+      "date": "2024-04-01",
+      "scenarioA": 111272175,
+      "scenarioB": 112963921
+    },
+    {
+      "date": "2024-04-02",
+      "scenarioA": 111356110,
+      "scenarioB": 113267891
+    },
+    {
+      "date": "2024-04-03",
+      "scenarioA": 111649218,
+      "scenarioB": 113703446
+    },
+    {
+      "date": "2024-04-04",
+      "scenarioA": 111381714,
+      "scenarioB": 113200036
+    },
+    {
+      "date": "2024-04-05",
+      "scenarioA": 111294209,
+      "scenarioB": 113259844
+    },
+    {
+      "date": "2024-04-07",
+      "scenarioA": 111242799,
+      "scenarioB": 113206717
+    },
+    {
+      "date": "2024-04-08",
+      "scenarioA": 112076936,
+      "scenarioB": 114302755
+    },
+    {
+      "date": "2024-04-09",
+      "scenarioA": 112199192,
+      "scenarioB": 114388576
+    },
+    {
+      "date": "2024-04-10",
+      "scenarioA": 112061099,
+      "scenarioB": 114361420
+    },
+    {
+      "date": "2024-04-11",
+      "scenarioA": 112316960,
+      "scenarioB": 114832553
+    },
+    {
+      "date": "2024-04-12",
+      "scenarioA": 111828303,
+      "scenarioB": 114071371
+    },
+    {
+      "date": "2024-04-14",
+      "scenarioA": 112375144,
+      "scenarioB": 114636133
+    },
+    {
+      "date": "2024-04-15",
+      "scenarioA": 112501312,
+      "scenarioB": 115017867
+    },
+    {
+      "date": "2024-04-16",
+      "scenarioA": 111680231,
+      "scenarioB": 114175438
+    },
+    {
+      "date": "2024-04-17",
+      "scenarioA": 111024100,
+      "scenarioB": 113318059
+    },
+    {
+      "date": "2024-04-18",
+      "scenarioA": 110978272,
+      "scenarioB": 113165891
+    },
+    {
+      "date": "2024-04-19",
+      "scenarioA": 111095596,
+      "scenarioB": 113302648
+    },
+    {
+      "date": "2024-04-21",
+      "scenarioA": 110845011,
+      "scenarioB": 113043924
+    },
+    {
+      "date": "2024-04-22",
+      "scenarioA": 110953947,
+      "scenarioB": 113265353
+    },
+    {
+      "date": "2024-04-23",
+      "scenarioA": 110589329,
+      "scenarioB": 112928460
+    },
+    {
+      "date": "2024-04-24",
+      "scenarioA": 110994342,
+      "scenarioB": 113509083
+    },
+    {
+      "date": "2024-04-25",
+      "scenarioA": 110227430,
+      "scenarioB": 112866784
+    },
+    {
+      "date": "2024-04-26",
+      "scenarioA": 111147867,
+      "scenarioB": 113952293
+    },
+    {
+      "date": "2024-04-28",
+      "scenarioA": 111396346,
+      "scenarioB": 114209700
+    },
+    {
+      "date": "2024-04-29",
+      "scenarioA": 112111158,
+      "scenarioB": 115041050
+    },
+    {
+      "date": "2024-04-30",
+      "scenarioA": 111547864,
+      "scenarioB": 114203640
+    },
+    {
+      "date": "2024-05-01",
+      "scenarioA": 111180856,
+      "scenarioB": 113750668
+    },
+    {
+      "date": "2024-05-02",
+      "scenarioA": 111305185,
+      "scenarioB": 113895782
+    },
+    {
+      "date": "2024-05-03",
+      "scenarioA": 111881957,
+      "scenarioB": 114351970
+    },
+    {
+      "date": "2024-05-05",
+      "scenarioA": 111434682,
+      "scenarioB": 113889535
+    },
+    {
+      "date": "2024-05-06",
+      "scenarioA": 111889561,
+      "scenarioB": 114431543
+    },
+    {
+      "date": "2024-05-07",
+      "scenarioA": 112547587,
+      "scenarioB": 114985711
+    },
+    {
+      "date": "2024-05-08",
+      "scenarioA": 112619868,
+      "scenarioB": 115094757
+    },
+    {
+      "date": "2024-05-09",
+      "scenarioA": 113417225,
+      "scenarioB": 116105060
+    },
+    {
+      "date": "2024-05-10",
+      "scenarioA": 113578204,
+      "scenarioB": 116337821
+    },
+    {
+      "date": "2024-05-12",
+      "scenarioA": 113801436,
+      "scenarioB": 116569219
+    },
+    {
+      "date": "2024-05-13",
+      "scenarioA": 113588131,
+      "scenarioB": 116340929
+    },
+    {
+      "date": "2024-05-14",
+      "scenarioA": 114088293,
+      "scenarioB": 116872157
+    },
+    {
+      "date": "2024-05-15",
+      "scenarioA": 114461057,
+      "scenarioB": 117241602
+    },
+    {
+      "date": "2024-05-16",
+      "scenarioA": 114094514,
+      "scenarioB": 116660941
+    },
+    {
+      "date": "2024-05-17",
+      "scenarioA": 114871777,
+      "scenarioB": 117733707
+    },
+    {
+      "date": "2024-05-19",
+      "scenarioA": 115229735,
+      "scenarioB": 118105726
+    },
+    {
+      "date": "2024-05-20",
+      "scenarioA": 116308133,
+      "scenarioB": 119525438
+    },
+    {
+      "date": "2024-05-21",
+      "scenarioA": 116483961,
+      "scenarioB": 119581443
+    },
+    {
+      "date": "2024-05-22",
+      "scenarioA": 115839631,
+      "scenarioB": 118682380
+    },
+    {
+      "date": "2024-05-23",
+      "scenarioA": 114807790,
+      "scenarioB": 117497568
+    },
+    {
+      "date": "2024-05-24",
+      "scenarioA": 114666152,
+      "scenarioB": 117386774
+    },
+    {
+      "date": "2024-05-26",
+      "scenarioA": 114574420,
+      "scenarioB": 117291699
+    },
+    {
+      "date": "2024-05-27",
+      "scenarioA": 114532747,
+      "scenarioB": 117274923
+    },
+    {
+      "date": "2024-05-28",
+      "scenarioA": 114625668,
+      "scenarioB": 117544379
+    },
+    {
+      "date": "2024-05-29",
+      "scenarioA": 113925005,
+      "scenarioB": 116859038
+    },
+    {
+      "date": "2024-05-30",
+      "scenarioA": 114003085,
+      "scenarioB": 116838148
+    },
+    {
+      "date": "2024-05-31",
+      "scenarioA": 114345382,
+      "scenarioB": 117207092
+    },
+    {
+      "date": "2024-06-02",
+      "scenarioA": 114655215,
+      "scenarioB": 117528585
+    },
+    {
+      "date": "2024-06-03",
+      "scenarioA": 114265658,
+      "scenarioB": 116785092
+    },
+    {
+      "date": "2024-06-04",
+      "scenarioA": 114244947,
+      "scenarioB": 116434662
+    },
+    {
+      "date": "2024-06-05",
+      "scenarioA": 114295970,
+      "scenarioB": 116383730
+    },
+    {
+      "date": "2024-06-06",
+      "scenarioA": 114657315,
+      "scenarioB": 116888975
+    },
+    {
+      "date": "2024-06-07",
+      "scenarioA": 113597411,
+      "scenarioB": 115696682
+    },
+    {
+      "date": "2024-06-09",
+      "scenarioA": 114249553,
+      "scenarioB": 116369751
+    },
+    {
+      "date": "2024-06-10",
+      "scenarioA": 113758713,
+      "scenarioB": 116001084
+    },
+    {
+      "date": "2024-06-11",
+      "scenarioA": 113435465,
+      "scenarioB": 115396210
+    },
+    {
+      "date": "2024-06-12",
+      "scenarioA": 113816314,
+      "scenarioB": 115754655
+    },
+    {
+      "date": "2024-06-13",
+      "scenarioA": 113634359,
+      "scenarioB": 115205536
+    },
+    {
+      "date": "2024-06-14",
+      "scenarioA": 113389440,
+      "scenarioB": 114728895
+    },
+    {
+      "date": "2024-06-16",
+      "scenarioA": 113789374,
+      "scenarioB": 115137952
+    },
+    {
+      "date": "2024-06-17",
+      "scenarioA": 113710242,
+      "scenarioB": 115181678
+    },
+    {
+      "date": "2024-06-18",
+      "scenarioA": 114265270,
+      "scenarioB": 115674694
+    },
+    {
+      "date": "2024-06-19",
+      "scenarioA": 114784491,
+      "scenarioB": 116161412
+    },
+    {
+      "date": "2024-06-20",
+      "scenarioA": 115624979,
+      "scenarioB": 117295046
+    },
+    {
+      "date": "2024-06-21",
+      "scenarioA": 115061553,
+      "scenarioB": 116612164
+    },
+    {
+      "date": "2024-06-23",
+      "scenarioA": 114900858,
+      "scenarioB": 116447522
+    },
+    {
+      "date": "2024-06-24",
+      "scenarioA": 114788977,
+      "scenarioB": 116290130
+    },
+    {
+      "date": "2024-06-25",
+      "scenarioA": 114722547,
+      "scenarioB": 116141739
+    },
+    {
+      "date": "2024-06-26",
+      "scenarioA": 114600273,
+      "scenarioB": 116217279
+    },
+    {
+      "date": "2024-06-27",
+      "scenarioA": 114219484,
+      "scenarioB": 115817546
+    },
+    {
+      "date": "2024-06-28",
+      "scenarioA": 114040100,
+      "scenarioB": 115806110
+    },
+    {
+      "date": "2024-06-30",
+      "scenarioA": 113728615,
+      "scenarioB": 115485514
+    },
+    {
+      "date": "2024-07-01",
+      "scenarioA": 113835014,
+      "scenarioB": 115851317
+    },
+    {
+      "date": "2024-07-02",
+      "scenarioA": 114177768,
+      "scenarioB": 116116777
+    },
+    {
+      "date": "2024-07-03",
+      "scenarioA": 115555806,
+      "scenarioB": 117578878
+    },
+    {
+      "date": "2024-07-04",
+      "scenarioA": 115495813,
+      "scenarioB": 117458929
+    },
+    {
+      "date": "2024-07-05",
+      "scenarioA": 116195180,
+      "scenarioB": 118172779
+    },
+    {
+      "date": "2024-07-07",
+      "scenarioA": 116018170,
+      "scenarioB": 117989588
+    },
+    {
+      "date": "2024-07-08",
+      "scenarioA": 116143337,
+      "scenarioB": 118006047
+    },
+    {
+      "date": "2024-07-09",
+      "scenarioA": 116288428,
+      "scenarioB": 118212155
+    },
+    {
+      "date": "2024-07-10",
+      "scenarioA": 117037688,
+      "scenarioB": 119105663
+    },
+    {
+      "date": "2024-07-11",
+      "scenarioA": 117132244,
+      "scenarioB": 119246746
+    },
+    {
+      "date": "2024-07-12",
+      "scenarioA": 117586447,
+      "scenarioB": 119589421
+    },
+    {
+      "date": "2024-07-14",
+      "scenarioA": 117725902,
+      "scenarioB": 119733939
+    },
+    {
+      "date": "2024-07-15",
+      "scenarioA": 117906074,
+      "scenarioB": 120064344
+    },
+    {
+      "date": "2024-07-16",
+      "scenarioA": 118570757,
+      "scenarioB": 120578597
+    },
+    {
+      "date": "2024-07-17",
+      "scenarioA": 117755007,
+      "scenarioB": 119523273
+    },
+    {
+      "date": "2024-07-18",
+      "scenarioA": 117231836,
+      "scenarioB": 118859487
+    },
+    {
+      "date": "2024-07-19",
+      "scenarioA": 116378339,
+      "scenarioB": 117922547
+    },
+    {
+      "date": "2024-07-21",
+      "scenarioA": 116548950,
+      "scenarioB": 118098695
+    },
+    {
+      "date": "2024-07-22",
+      "scenarioA": 116550915,
+      "scenarioB": 118214411
+    },
+    {
+      "date": "2024-07-23",
+      "scenarioA": 115921652,
+      "scenarioB": 117412872
+    },
+    {
+      "date": "2024-07-24",
+      "scenarioA": 115015124,
+      "scenarioB": 116367296
+    },
+    {
+      "date": "2024-07-25",
+      "scenarioA": 114024284,
+      "scenarioB": 114986337
+    },
+    {
+      "date": "2024-07-26",
+      "scenarioA": 114674731,
+      "scenarioB": 115649302
+    },
+    {
+      "date": "2024-07-28",
+      "scenarioA": 114706052,
+      "scenarioB": 115681582
+    },
+    {
+      "date": "2024-07-29",
+      "scenarioA": 114746823,
+      "scenarioB": 115500322
+    },
+    {
+      "date": "2024-07-30",
+      "scenarioA": 114797850,
+      "scenarioB": 115441016
+    },
+    {
+      "date": "2024-07-31",
+      "scenarioA": 115293370,
+      "scenarioB": 116137216
+    },
+    {
+      "date": "2024-08-01",
+      "scenarioA": 114169548,
+      "scenarioB": 114459574
+    },
+    {
+      "date": "2024-08-02",
+      "scenarioA": 113353903,
+      "scenarioB": 112788778
+    },
+    {
+      "date": "2024-08-04",
+      "scenarioA": 112801875,
+      "scenarioB": 112229959
+    },
+    {
+      "date": "2024-08-05",
+      "scenarioA": 110969573,
+      "scenarioB": 109433568
+    },
+    {
+      "date": "2024-08-06",
+      "scenarioA": 111243646,
+      "scenarioB": 110452553
+    },
+    {
+      "date": "2024-08-07",
+      "scenarioA": 111861790,
+      "scenarioB": 111268563
+    },
+    {
+      "date": "2024-08-08",
+      "scenarioA": 112773353,
+      "scenarioB": 112522878
+    },
+    {
+      "date": "2024-08-09",
+      "scenarioA": 113167186,
+      "scenarioB": 112918149
+    },
+    {
+      "date": "2024-08-11",
+      "scenarioA": 112700624,
+      "scenarioB": 112442724
+    },
+    {
+      "date": "2024-08-12",
+      "scenarioA": 113364045,
+      "scenarioB": 113113923
+    },
+    {
+      "date": "2024-08-13",
+      "scenarioA": 113860151,
+      "scenarioB": 113615993
+    },
+    {
+      "date": "2024-08-14",
+      "scenarioA": 113945677,
+      "scenarioB": 113587627
+    },
+    {
+      "date": "2024-08-15",
+      "scenarioA": 114917397,
+      "scenarioB": 114862586
+    },
+    {
+      "date": "2024-08-16",
+      "scenarioA": 115544389,
+      "scenarioB": 115656847
+    },
+    {
+      "date": "2024-08-18",
+      "scenarioA": 114839732,
+      "scenarioB": 114935538
+    },
+    {
+      "date": "2024-08-19",
+      "scenarioA": 114381741,
+      "scenarioB": 114523960
+    },
+    {
+      "date": "2024-08-20",
+      "scenarioA": 114278035,
+      "scenarioB": 114401632
+    },
+    {
+      "date": "2024-08-21",
+      "scenarioA": 114788032,
+      "scenarioB": 115007267
+    },
+    {
+      "date": "2024-08-22",
+      "scenarioA": 114359475,
+      "scenarioB": 114549857
+    },
+    {
+      "date": "2024-08-23",
+      "scenarioA": 115485468,
+      "scenarioB": 115959069
+    },
+    {
+      "date": "2024-08-25",
+      "scenarioA": 114708747,
+      "scenarioB": 115161544
+    },
+    {
+      "date": "2024-08-26",
+      "scenarioA": 114706116,
+      "scenarioB": 115091181
+    },
+    {
+      "date": "2024-08-27",
+      "scenarioA": 114690443,
+      "scenarioB": 115102528
+    },
+    {
+      "date": "2024-08-28",
+      "scenarioA": 114605887,
+      "scenarioB": 115121366
+    },
+    {
+      "date": "2024-08-29",
+      "scenarioA": 114248800,
+      "scenarioB": 114816215
+    },
+    {
+      "date": "2024-08-30",
+      "scenarioA": 114482256,
+      "scenarioB": 115231608
+    },
+    {
+      "date": "2024-09-01",
+      "scenarioA": 114664357,
+      "scenarioB": 115419110
+    },
+    {
+      "date": "2024-09-02",
+      "scenarioA": 114467362,
+      "scenarioB": 115241616
+    },
+    {
+      "date": "2024-09-03",
+      "scenarioA": 113486938,
+      "scenarioB": 113772141
+    },
+    {
+      "date": "2024-09-04",
+      "scenarioA": 112637402,
+      "scenarioB": 112456794
+    },
+    {
+      "date": "2024-09-05",
+      "scenarioA": 112828085,
+      "scenarioB": 112516015
+    },
+    {
+      "date": "2024-09-06",
+      "scenarioA": 111814367,
+      "scenarioB": 111136221
+    },
+    {
+      "date": "2024-09-08",
+      "scenarioA": 112052998,
+      "scenarioB": 111378269
+    },
+    {
+      "date": "2024-09-09",
+      "scenarioA": 112319239,
+      "scenarioB": 111728112
+    },
+    {
+      "date": "2024-09-10",
+      "scenarioA": 112573016,
+      "scenarioB": 111791149
+    },
+    {
+      "date": "2024-09-11",
+      "scenarioA": 112813008,
+      "scenarioB": 111995997
+    },
+    {
+      "date": "2024-09-12",
+      "scenarioA": 113595661,
+      "scenarioB": 113093229
+    },
+    {
+      "date": "2024-09-13",
+      "scenarioA": 114084752,
+      "scenarioB": 113557969
+    },
+    {
+      "date": "2024-09-15",
+      "scenarioA": 113780756,
+      "scenarioB": 113248243
+    },
+    {
+      "date": "2024-09-16",
+      "scenarioA": 113620229,
+      "scenarioB": 113023023
+    },
+    {
+      "date": "2024-09-17",
+      "scenarioA": 113577798,
+      "scenarioB": 113001453
+    },
+    {
+      "date": "2024-09-18",
+      "scenarioA": 113142726,
+      "scenarioB": 112661457
+    },
+    {
+      "date": "2024-09-19",
+      "scenarioA": 114621145,
+      "scenarioB": 114643158
+    },
+    {
+      "date": "2024-09-20",
+      "scenarioA": 114632752,
+      "scenarioB": 114711059
+    },
+    {
+      "date": "2024-09-22",
+      "scenarioA": 114825223,
+      "scenarioB": 114908180
+    },
+    {
+      "date": "2024-09-23",
+      "scenarioA": 115434422,
+      "scenarioB": 115815964
+    },
+    {
+      "date": "2024-09-24",
+      "scenarioA": 116396089,
+      "scenarioB": 117167508
+    },
+    {
+      "date": "2024-09-25",
+      "scenarioA": 116624702,
+      "scenarioB": 117434766
+    },
+    {
+      "date": "2024-09-26",
+      "scenarioA": 117106346,
+      "scenarioB": 118253206
+    },
+    {
+      "date": "2024-09-27",
+      "scenarioA": 117468867,
+      "scenarioB": 118597178
+    },
+    {
+      "date": "2024-09-29",
+      "scenarioA": 117267200,
+      "scenarioB": 118389554
+    },
+    {
+      "date": "2024-09-30",
+      "scenarioA": 117687017,
+      "scenarioB": 118895327
+    },
+    {
+      "date": "2024-10-01",
+      "scenarioA": 118113529,
+      "scenarioB": 119205708
+    },
+    {
+      "date": "2024-10-02",
+      "scenarioA": 118971605,
+      "scenarioB": 120233798
+    },
+    {
+      "date": "2024-10-03",
+      "scenarioA": 119051794,
+      "scenarioB": 120362444
+    },
+    {
+      "date": "2024-10-04",
+      "scenarioA": 119575742,
+      "scenarioB": 121374396
+    },
+    {
+      "date": "2024-10-06",
+      "scenarioA": 120147639,
+      "scenarioB": 121965495
+    },
+    {
+      "date": "2024-10-07",
+      "scenarioA": 120468931,
+      "scenarioB": 122840286
+    },
+    {
+      "date": "2024-10-08",
+      "scenarioA": 119248190,
+      "scenarioB": 121198316
+    },
+    {
+      "date": "2024-10-09",
+      "scenarioA": 119152238,
+      "scenarioB": 121146315
+    },
+    {
+      "date": "2024-10-10",
+      "scenarioA": 119135268,
+      "scenarioB": 121042535
+    },
+    {
+      "date": "2024-10-11",
+      "scenarioA": 118925178,
+      "scenarioB": 120866590
+    },
+    {
+      "date": "2024-10-13",
+      "scenarioA": 118855334,
+      "scenarioB": 120794185
+    },
+    {
+      "date": "2024-10-14",
+      "scenarioA": 119958430,
+      "scenarioB": 122125876
+    },
+    {
+      "date": "2024-10-15",
+      "scenarioA": 119542981,
+      "scenarioB": 121295146
+    },
+    {
+      "date": "2024-10-16",
+      "scenarioA": 119966499,
+      "scenarioB": 121635565
+    },
+    {
+      "date": "2024-10-17",
+      "scenarioA": 120308796,
+      "scenarioB": 122303650
+    },
+    {
+      "date": "2024-10-18",
+      "scenarioA": 121627918,
+      "scenarioB": 124079677
+    },
+    {
+      "date": "2024-10-20",
+      "scenarioA": 121575853,
+      "scenarioB": 124025596
+    },
+    {
+      "date": "2024-10-21",
+      "scenarioA": 121772385,
+      "scenarioB": 124450168
+    },
+    {
+      "date": "2024-10-22",
+      "scenarioA": 121939510,
+      "scenarioB": 124812533
+    },
+    {
+      "date": "2024-10-23",
+      "scenarioA": 122084302,
+      "scenarioB": 125014393
+    },
+    {
+      "date": "2024-10-24",
+      "scenarioA": 121802614,
+      "scenarioB": 124444481
+    },
+    {
+      "date": "2024-10-25",
+      "scenarioA": 121719133,
+      "scenarioB": 124350670
+    },
+    {
+      "date": "2024-10-28",
+      "scenarioA": 122703034,
+      "scenarioB": 125682120
+    },
+    {
+      "date": "2024-10-29",
+      "scenarioA": 122121040,
+      "scenarioB": 125028202
+    },
+    {
+      "date": "2024-10-30",
+      "scenarioA": 121802782,
+      "scenarioB": 124562974
+    },
+    {
+      "date": "2024-10-31",
+      "scenarioA": 120641220,
+      "scenarioB": 122990367
+    },
+    {
+      "date": "2024-11-01",
+      "scenarioA": 119491617,
+      "scenarioB": 121748349
+    },
+    {
+      "date": "2024-11-04",
+      "scenarioA": 120005281,
+      "scenarioB": 122134439
+    },
+    {
+      "date": "2024-11-05",
+      "scenarioA": 120159420,
+      "scenarioB": 122321162
+    },
+    {
+      "date": "2024-11-06",
+      "scenarioA": 120417922,
+      "scenarioB": 123068393
+    },
+    {
+      "date": "2024-11-07",
+      "scenarioA": 122134106,
+      "scenarioB": 124737398
+    },
+    {
+      "date": "2024-11-08",
+      "scenarioA": 120572381,
+      "scenarioB": 122754442
+    },
+    {
+      "date": "2024-11-11",
+      "scenarioA": 121176394,
+      "scenarioB": 123285593
+    },
+    {
+      "date": "2024-11-12",
+      "scenarioA": 120063852,
+      "scenarioB": 121965226
+    },
+    {
+      "date": "2024-11-13",
+      "scenarioA": 119907561,
+      "scenarioB": 121979121
+    },
+    {
+      "date": "2024-11-14",
+      "scenarioA": 118859559,
+      "scenarioB": 120700516
+    },
+    {
+      "date": "2024-11-15",
+      "scenarioA": 118608399,
+      "scenarioB": 120430763
+    },
+    {
+      "date": "2024-11-18",
+      "scenarioA": 119113791,
+      "scenarioB": 121114003
+    },
+    {
+      "date": "2024-11-19",
+      "scenarioA": 119312414,
+      "scenarioB": 121282797
+    },
+    {
+      "date": "2024-11-20",
+      "scenarioA": 119639559,
+      "scenarioB": 121654864
+    },
+    {
+      "date": "2024-11-21",
+      "scenarioA": 120331831,
+      "scenarioB": 122378135
+    },
+    {
+      "date": "2024-11-22",
+      "scenarioA": 120673860,
+      "scenarioB": 122747117
+    },
+    {
+      "date": "2024-11-25",
+      "scenarioA": 120982590,
+      "scenarioB": 122567117
+    },
+    {
+      "date": "2024-11-26",
+      "scenarioA": 120236432,
+      "scenarioB": 121696026
+    },
+    {
+      "date": "2024-11-27",
+      "scenarioA": 120246596,
+      "scenarioB": 121530682
+    },
+    {
+      "date": "2024-11-28",
+      "scenarioA": 120138908,
+      "scenarioB": 121160173
+    },
+    {
+      "date": "2024-11-29",
+      "scenarioA": 121210774,
+      "scenarioB": 122008868
+    },
+    {
+      "date": "2024-12-02",
+      "scenarioA": 121581994,
+      "scenarioB": 122263303
+    },
+    {
+      "date": "2024-12-03",
+      "scenarioA": 122308187,
+      "scenarioB": 123254643
+    },
+    {
+      "date": "2024-12-04",
+      "scenarioA": 123066279,
+      "scenarioB": 123950539
+    },
+    {
+      "date": "2024-12-05",
+      "scenarioA": 123441606,
+      "scenarioB": 124307123
+    },
+    {
+      "date": "2024-12-06",
+      "scenarioA": 123035604,
+      "scenarioB": 123879562
+    },
+    {
+      "date": "2024-12-09",
+      "scenarioA": 124609208,
+      "scenarioB": 125536025
+    },
+    {
+      "date": "2024-12-10",
+      "scenarioA": 124842152,
+      "scenarioB": 125809273
+    },
+    {
+      "date": "2024-12-11",
+      "scenarioA": 125563800,
+      "scenarioB": 126891587
+    },
+    {
+      "date": "2024-12-12",
+      "scenarioA": 124789862,
+      "scenarioB": 126210479
+    },
+    {
+      "date": "2024-12-13",
+      "scenarioA": 123815225,
+      "scenarioB": 124965214
+    },
+    {
+      "date": "2024-12-16",
+      "scenarioA": 123275647,
+      "scenarioB": 124471142
+    },
+    {
+      "date": "2024-12-17",
+      "scenarioA": 122863861,
+      "scenarioB": 124286723
+    },
+    {
+      "date": "2024-12-18",
+      "scenarioA": 121375865,
+      "scenarioB": 122500468
+    },
+    {
+      "date": "2024-12-19",
+      "scenarioA": 121282431,
+      "scenarioB": 122666389
+    },
+    {
+      "date": "2024-12-20",
+      "scenarioA": 120682364,
+      "scenarioB": 122100407
+    },
+    {
+      "date": "2024-12-23",
+      "scenarioA": 121729294,
+      "scenarioB": 123363157
+    },
+    {
+      "date": "2024-12-24",
+      "scenarioA": 121868032,
+      "scenarioB": 123736344
+    },
+    {
+      "date": "2024-12-25",
+      "scenarioA": 122369459,
+      "scenarioB": 124255702
+    },
+    {
+      "date": "2024-12-26",
+      "scenarioA": 123006055,
+      "scenarioB": 125060581
+    },
+    {
+      "date": "2024-12-27",
+      "scenarioA": 123217815,
+      "scenarioB": 125472867
+    },
+    {
+      "date": "2024-12-30",
+      "scenarioA": 123567615,
+      "scenarioB": 125712144
+    },
+    {
+      "date": "2024-12-31",
+      "scenarioA": 123338680,
+      "scenarioB": 125567461
+    },
+    {
+      "date": "2025-01-02",
+      "scenarioA": 123486205,
+      "scenarioB": 125279985
+    },
+    {
+      "date": "2025-01-03",
+      "scenarioA": 123724073,
+      "scenarioB": 125589322
+    },
+    {
+      "date": "2025-01-06",
+      "scenarioA": 124044130,
+      "scenarioB": 126217052
+    },
+    {
+      "date": "2025-01-07",
+      "scenarioA": 123320097,
+      "scenarioB": 125521870
+    },
+    {
+      "date": "2025-01-08",
+      "scenarioA": 122925451,
+      "scenarioB": 125048606
+    },
+    {
+      "date": "2025-01-09",
+      "scenarioA": 123391771,
+      "scenarioB": 125516194
+    },
+    {
+      "date": "2025-01-10",
+      "scenarioA": 122552208,
+      "scenarioB": 124712039
+    },
+    {
+      "date": "2025-01-13",
+      "scenarioA": 123071974,
+      "scenarioB": 125263428
+    },
+    {
+      "date": "2025-01-14",
+      "scenarioA": 123212817,
+      "scenarioB": 125442902
+    },
+    {
+      "date": "2025-01-15",
+      "scenarioA": 124296394,
+      "scenarioB": 126527771
+    },
+    {
+      "date": "2025-01-16",
+      "scenarioA": 123575857,
+      "scenarioB": 125754870
+    },
+    {
+      "date": "2025-01-17",
+      "scenarioA": 124820994,
+      "scenarioB": 127122228
+    },
+    {
+      "date": "2025-01-20",
+      "scenarioA": 125085210,
+      "scenarioB": 127482597
+    },
+    {
+      "date": "2025-01-21",
+      "scenarioA": 125099361,
+      "scenarioB": 127594299
+    },
+    {
+      "date": "2025-01-22",
+      "scenarioA": 124834195,
+      "scenarioB": 127436280
+    },
+    {
+      "date": "2025-01-23",
+      "scenarioA": 125041964,
+      "scenarioB": 127861571
+    },
+    {
+      "date": "2025-01-24",
+      "scenarioA": 125429336,
+      "scenarioB": 128354529
+    },
+    {
+      "date": "2025-01-27",
+      "scenarioA": 124524932,
+      "scenarioB": 127089261
+    },
+    {
+      "date": "2025-01-28",
+      "scenarioA": 124085729,
+      "scenarioB": 126653322
+    },
+    {
+      "date": "2025-01-29",
+      "scenarioA": 125506693,
+      "scenarioB": 128201547
+    },
+    {
+      "date": "2025-01-30",
+      "scenarioA": 126352249,
+      "scenarioB": 129211964
+    },
+    {
+      "date": "2025-01-31",
+      "scenarioA": 126141888,
+      "scenarioB": 129084032
+    },
+    {
+      "date": "2025-02-03",
+      "scenarioA": 126644100,
+      "scenarioB": 129349437
+    },
+    {
+      "date": "2025-02-04",
+      "scenarioA": 128458131,
+      "scenarioB": 131536568
+    },
+    {
+      "date": "2025-02-05",
+      "scenarioA": 129264090,
+      "scenarioB": 132245413
+    },
+    {
+      "date": "2025-02-06",
+      "scenarioA": 129080217,
+      "scenarioB": 131996479
+    },
+    {
+      "date": "2025-02-07",
+      "scenarioA": 128487104,
+      "scenarioB": 131428802
+    },
+    {
+      "date": "2025-02-10",
+      "scenarioA": 130199992,
+      "scenarioB": 133597927
+    },
+    {
+      "date": "2025-02-11",
+      "scenarioA": 131013211,
+      "scenarioB": 134711684
+    },
+    {
+      "date": "2025-02-12",
+      "scenarioA": 130583722,
+      "scenarioB": 134494856
+    },
+    {
+      "date": "2025-02-13",
+      "scenarioA": 132177692,
+      "scenarioB": 136292038
+    },
+    {
+      "date": "2025-02-14",
+      "scenarioA": 131918645,
+      "scenarioB": 135950488
+    },
+    {
+      "date": "2025-02-17",
+      "scenarioA": 131358971,
+      "scenarioB": 135319388
+    },
+    {
+      "date": "2025-02-18",
+      "scenarioA": 131669708,
+      "scenarioB": 135777340
+    },
+    {
+      "date": "2025-02-19",
+      "scenarioA": 130878722,
+      "scenarioB": 134736200
+    },
+    {
+      "date": "2025-02-20",
+      "scenarioA": 130649802,
+      "scenarioB": 134417114
+    },
+    {
+      "date": "2025-02-21",
+      "scenarioA": 129986157,
+      "scenarioB": 133404393
+    },
+    {
+      "date": "2025-02-24",
+      "scenarioA": 129675261,
+      "scenarioB": 132802172
+    },
+    {
+      "date": "2025-02-25",
+      "scenarioA": 129257206,
+      "scenarioB": 132063465
+    },
+    {
+      "date": "2025-02-26",
+      "scenarioA": 129418782,
+      "scenarioB": 131994810
+    },
+    {
+      "date": "2025-02-27",
+      "scenarioA": 128737649,
+      "scenarioB": 131109588
+    },
+    {
+      "date": "2025-02-28",
+      "scenarioA": 129106145,
+      "scenarioB": 131059330
+    },
+    {
+      "date": "2025-03-03",
+      "scenarioA": 129786065,
+      "scenarioB": 131721885
+    },
+    {
+      "date": "2025-03-04",
+      "scenarioA": 129684457,
+      "scenarioB": 131857321
+    },
+    {
+      "date": "2025-03-05",
+      "scenarioA": 130689839,
+      "scenarioB": 133530311
+    },
+    {
+      "date": "2025-03-06",
+      "scenarioA": 130144828,
+      "scenarioB": 133026711
+    },
+    {
+      "date": "2025-03-07",
+      "scenarioA": 130387939,
+      "scenarioB": 133246156
+    },
+    {
+      "date": "2025-03-10",
+      "scenarioA": 129130966,
+      "scenarioB": 131528049
+    },
+    {
+      "date": "2025-03-11",
+      "scenarioA": 129497157,
+      "scenarioB": 131881018
+    },
+    {
+      "date": "2025-03-12",
+      "scenarioA": 129729141,
+      "scenarioB": 132352302
+    },
+    {
+      "date": "2025-03-13",
+      "scenarioA": 129477809,
+      "scenarioB": 131938219
+    },
+    {
+      "date": "2025-03-14",
+      "scenarioA": 131159969,
+      "scenarioB": 134157260
+    },
+    {
+      "date": "2025-03-17",
+      "scenarioA": 131880907,
+      "scenarioB": 135038651
+    },
+    {
+      "date": "2025-03-18",
+      "scenarioA": 131898915,
+      "scenarioB": 135027219
+    },
+    {
+      "date": "2025-03-19",
+      "scenarioA": 132842859,
+      "scenarioB": 136085914
+    },
+    {
+      "date": "2025-03-20",
+      "scenarioA": 132291118,
+      "scenarioB": 135331583
+    },
+    {
+      "date": "2025-03-21",
+      "scenarioA": 132521788,
+      "scenarioB": 135483541
+    },
+    {
+      "date": "2025-03-24",
+      "scenarioA": 132257879,
+      "scenarioB": 135416238
+    },
+    {
+      "date": "2025-03-25",
+      "scenarioA": 132664234,
+      "scenarioB": 135979680
+    },
+    {
+      "date": "2025-03-26",
+      "scenarioA": 131907358,
+      "scenarioB": 135258925
+    },
+    {
+      "date": "2025-03-27",
+      "scenarioA": 132133641,
+      "scenarioB": 135524727
+    },
+    {
+      "date": "2025-03-28",
+      "scenarioA": 131250122,
+      "scenarioB": 134277878
+    },
+    {
+      "date": "2025-03-30",
+      "scenarioA": 131631217,
+      "scenarioB": 134673476
+    },
+    {
+      "date": "2025-03-31",
+      "scenarioA": 131441443,
+      "scenarioB": 134068453
+    },
+    {
+      "date": "2025-04-01",
+      "scenarioA": 131778552,
+      "scenarioB": 134472838
+    },
+    {
+      "date": "2025-04-02",
+      "scenarioA": 131468390,
+      "scenarioB": 134044135
+    },
+    {
+      "date": "2025-04-03",
+      "scenarioA": 128776813,
+      "scenarioB": 130631473
+    },
+    {
+      "date": "2025-04-04",
+      "scenarioA": 124075322,
+      "scenarioB": 124393787
+    },
+    {
+      "date": "2025-04-06",
+      "scenarioA": 124445811,
+      "scenarioB": 124769117
+    },
+    {
+      "date": "2025-04-07",
+      "scenarioA": 121167425,
+      "scenarioB": 120780406
+    },
+    {
+      "date": "2025-04-08",
+      "scenarioA": 121581952,
+      "scenarioB": 121602831
+    },
+    {
+      "date": "2025-04-09",
+      "scenarioA": 123346899,
+      "scenarioB": 124418875
+    },
+    {
+      "date": "2025-04-10",
+      "scenarioA": 123645912,
+      "scenarioB": 125046812
+    },
+    {
+      "date": "2025-04-11",
+      "scenarioA": 125380872,
+      "scenarioB": 127223749
+    },
+    {
+      "date": "2025-04-13",
+      "scenarioA": 123787019,
+      "scenarioB": 125574649
+    },
+    {
+      "date": "2025-04-14",
+      "scenarioA": 124621981,
+      "scenarioB": 126450655
+    },
+    {
+      "date": "2025-04-15",
+      "scenarioA": 125285554,
+      "scenarioB": 127029515
+    },
+    {
+      "date": "2025-04-16",
+      "scenarioA": 124621250,
+      "scenarioB": 126100459
+    },
+    {
+      "date": "2025-04-17",
+      "scenarioA": 125351175,
+      "scenarioB": 127231042
+    },
+    {
+      "date": "2025-04-18",
+      "scenarioA": 125499532,
+      "scenarioB": 127329344
+    },
+    {
+      "date": "2025-04-21",
+      "scenarioA": 125605399,
+      "scenarioB": 127616413
+    },
+    {
+      "date": "2025-04-22",
+      "scenarioA": 127290587,
+      "scenarioB": 129738601
+    },
+    {
+      "date": "2025-04-23",
+      "scenarioA": 127845482,
+      "scenarioB": 130285163
+    },
+    {
+      "date": "2025-04-24",
+      "scenarioA": 129225144,
+      "scenarioB": 131881135
+    },
+    {
+      "date": "2025-04-25",
+      "scenarioA": 129716093,
+      "scenarioB": 132260543
+    },
+    {
+      "date": "2025-04-27",
+      "scenarioA": 130089197,
+      "scenarioB": 132649453
+    },
+    {
+      "date": "2025-04-28",
+      "scenarioA": 130308811,
+      "scenarioB": 132840646
+    },
+    {
+      "date": "2025-04-29",
+      "scenarioA": 130403278,
+      "scenarioB": 132953039
+    },
+    {
+      "date": "2025-04-30",
+      "scenarioA": 129491861,
+      "scenarioB": 131928187
+    },
+    {
+      "date": "2025-05-01",
+      "scenarioA": 129915606,
+      "scenarioB": 132418245
+    },
+    {
+      "date": "2025-05-02",
+      "scenarioA": 130429214,
+      "scenarioB": 133256363
+    },
+    {
+      "date": "2025-05-04",
+      "scenarioA": 128560347,
+      "scenarioB": 131300177
+    },
+    {
+      "date": "2025-05-05",
+      "scenarioA": 127214467,
+      "scenarioB": 129961565
+    },
+    {
+      "date": "2025-05-06",
+      "scenarioA": 127524848,
+      "scenarioB": 130298682
+    },
+    {
+      "date": "2025-05-07",
+      "scenarioA": 128991641,
+      "scenarioB": 131876325
+    },
+    {
+      "date": "2025-05-08",
+      "scenarioA": 129212524,
+      "scenarioB": 132383986
+    },
+    {
+      "date": "2025-05-09",
+      "scenarioA": 129240514,
+      "scenarioB": 132537267
+    },
+    {
+      "date": "2025-05-11",
+      "scenarioA": 128788870,
+      "scenarioB": 132062969
+    },
+    {
+      "date": "2025-05-12",
+      "scenarioA": 130346624,
+      "scenarioB": 134067439
+    },
+    {
+      "date": "2025-05-13",
+      "scenarioA": 130986908,
+      "scenarioB": 134995158
+    },
+    {
+      "date": "2025-05-14",
+      "scenarioA": 130788485,
+      "scenarioB": 134905165
+    },
+    {
+      "date": "2025-05-15",
+      "scenarioA": 129628936,
+      "scenarioB": 133452694
+    },
+    {
+      "date": "2025-05-16",
+      "scenarioA": 129787392,
+      "scenarioB": 133508319
+    },
+    {
+      "date": "2025-05-18",
+      "scenarioA": 129845778,
+      "scenarioB": 133569880
+    },
+    {
+      "date": "2025-05-19",
+      "scenarioA": 129597521,
+      "scenarioB": 133644862
+    },
+    {
+      "date": "2025-05-20",
+      "scenarioA": 129934680,
+      "scenarioB": 134010134
+    },
+    {
+      "date": "2025-05-21",
+      "scenarioA": 128733783,
+      "scenarioB": 133085688
+    },
+    {
+      "date": "2025-05-22",
+      "scenarioA": 128701045,
+      "scenarioB": 132923057
+    },
+    {
+      "date": "2025-05-23",
+      "scenarioA": 129191368,
+      "scenarioB": 133517849
+    },
+    {
+      "date": "2025-05-25",
+      "scenarioA": 128310128,
+      "scenarioB": 132583298
+    },
+    {
+      "date": "2025-05-26",
+      "scenarioA": 128455409,
+      "scenarioB": 132704997
+    },
+    {
+      "date": "2025-05-27",
+      "scenarioA": 129854175,
+      "scenarioB": 134027577
+    },
+    {
+      "date": "2025-05-28",
+      "scenarioA": 129397900,
+      "scenarioB": 133484115
+    },
+    {
+      "date": "2025-05-29",
+      "scenarioA": 129782174,
+      "scenarioB": 133963853
+    },
+    {
+      "date": "2025-05-30",
+      "scenarioA": 129180791,
+      "scenarioB": 133299589
+    },
+    {
+      "date": "2025-06-01",
+      "scenarioA": 129797032,
+      "scenarioB": 133950886
+    },
+    {
+      "date": "2025-06-02",
+      "scenarioA": 129886732,
+      "scenarioB": 134327813
+    },
+    {
+      "date": "2025-06-03",
+      "scenarioA": 129909563,
+      "scenarioB": 134365417
+    },
+    {
+      "date": "2025-06-04",
+      "scenarioA": 129535858,
+      "scenarioB": 134355249
+    },
+    {
+      "date": "2025-06-05",
+      "scenarioA": 129713460,
+      "scenarioB": 134514884
+    },
+    {
+      "date": "2025-06-06",
+      "scenarioA": 129814221,
+      "scenarioB": 134837543
+    },
+    {
+      "date": "2025-06-08",
+      "scenarioA": 130065317,
+      "scenarioB": 135104176
+    },
+    {
+      "date": "2025-06-09",
+      "scenarioA": 130252906,
+      "scenarioB": 135395725
+    },
+    {
+      "date": "2025-06-10",
+      "scenarioA": 131110168,
+      "scenarioB": 136290484
+    },
+    {
+      "date": "2025-06-11",
+      "scenarioA": 132218323,
+      "scenarioB": 137586372
+    },
+    {
+      "date": "2025-06-12",
+      "scenarioA": 131332276,
+      "scenarioB": 136510841
+    },
+    {
+      "date": "2025-06-13",
+      "scenarioA": 130908354,
+      "scenarioB": 135994490
+    },
+    {
+      "date": "2025-06-15",
+      "scenarioA": 131743955,
+      "scenarioB": 136880843
+    },
+    {
+      "date": "2025-06-16",
+      "scenarioA": 131978578,
+      "scenarioB": 137501292
+    },
+    {
+      "date": "2025-06-17",
+      "scenarioA": 132949075,
+      "scenarioB": 138225869
+    },
+    {
+      "date": "2025-06-18",
+      "scenarioA": 132611869,
+      "scenarioB": 137897080
+    },
+    {
+      "date": "2025-06-19",
+      "scenarioA": 132705509,
+      "scenarioB": 137999764
+    },
+    {
+      "date": "2025-06-20",
+      "scenarioA": 131926255,
+      "scenarioB": 137101120
+    },
+    {
+      "date": "2025-06-22",
+      "scenarioA": 131632599,
+      "scenarioB": 136790030
+    },
+    {
+      "date": "2025-06-23",
+      "scenarioA": 131921773,
+      "scenarioB": 137213831
+    },
+    {
+      "date": "2025-06-24",
+      "scenarioA": 132574166,
+      "scenarioB": 137931476
+    },
+    {
+      "date": "2025-06-25",
+      "scenarioA": 132775919,
+      "scenarioB": 138078027
+    },
+    {
+      "date": "2025-06-26",
+      "scenarioA": 133187520,
+      "scenarioB": 138472110
+    },
+    {
+      "date": "2025-06-27",
+      "scenarioA": 132912020,
+      "scenarioB": 138270817
+    },
+    {
+      "date": "2025-06-29",
+      "scenarioA": 133511821,
+      "scenarioB": 138907673
+    },
+    {
+      "date": "2025-06-30",
+      "scenarioA": 133201728,
+      "scenarioB": 138617804
+    },
+    {
+      "date": "2025-07-01",
+      "scenarioA": 133781866,
+      "scenarioB": 139070822
+    },
+    {
+      "date": "2025-07-02",
+      "scenarioA": 134055627,
+      "scenarioB": 139669387
+    },
+    {
+      "date": "2025-07-03",
+      "scenarioA": 134665233,
+      "scenarioB": 140523479
+    },
+    {
+      "date": "2025-07-04",
+      "scenarioA": 134475153,
+      "scenarioB": 140316330
+    },
+    {
+      "date": "2025-07-06",
+      "scenarioA": 134763987,
+      "scenarioB": 140623317
+    },
+    {
+      "date": "2025-07-07",
+      "scenarioA": 134532799,
+      "scenarioB": 140433603
+    },
+    {
+      "date": "2025-07-08",
+      "scenarioA": 134886617,
+      "scenarioB": 140981144
+    },
+    {
+      "date": "2025-07-09",
+      "scenarioA": 135313455,
+      "scenarioB": 141282745
+    },
+    {
+      "date": "2025-07-10",
+      "scenarioA": 135765307,
+      "scenarioB": 141773372
+    },
+    {
+      "date": "2025-07-11",
+      "scenarioA": 135748540,
+      "scenarioB": 141968474
+    },
+    {
+      "date": "2025-07-13",
+      "scenarioA": 136059896,
+      "scenarioB": 142299970
+    },
+    {
+      "date": "2025-07-14",
+      "scenarioA": 136055115,
+      "scenarioB": 142433739
+    },
+    {
+      "date": "2025-07-15",
+      "scenarioA": 135974089,
+      "scenarioB": 142366171
+    },
+    {
+      "date": "2025-07-16",
+      "scenarioA": 136056237,
+      "scenarioB": 142522139
+    },
+    {
+      "date": "2025-07-17",
+      "scenarioA": 136970125,
+      "scenarioB": 143728206
+    },
+    {
+      "date": "2025-07-18",
+      "scenarioA": 136933271,
+      "scenarioB": 143555830
+    },
+    {
+      "date": "2025-07-20",
+      "scenarioA": 136876712,
+      "scenarioB": 143495599
+    },
+    {
+      "date": "2025-07-21",
+      "scenarioA": 137087577,
+      "scenarioB": 143716740
+    },
+    {
+      "date": "2025-07-22",
+      "scenarioA": 137301303,
+      "scenarioB": 143807358
+    },
+    {
+      "date": "2025-07-23",
+      "scenarioA": 138093905,
+      "scenarioB": 145046524
+    },
+    {
+      "date": "2025-07-24",
+      "scenarioA": 137398210,
+      "scenarioB": 144239862
+    },
+    {
+      "date": "2025-07-25",
+      "scenarioA": 137187825,
+      "scenarioB": 143861316
+    },
+    {
+      "date": "2025-07-27",
+      "scenarioA": 137800788,
+      "scenarioB": 144514277
+    },
+    {
+      "date": "2025-07-28",
+      "scenarioA": 137507217,
+      "scenarioB": 144117449
+    },
+    {
+      "date": "2025-07-29",
+      "scenarioA": 137963290,
+      "scenarioB": 144385328
+    },
+    {
+      "date": "2025-07-30",
+      "scenarioA": 137341134,
+      "scenarioB": 143528555
+    },
+    {
+      "date": "2025-07-31",
+      "scenarioA": 136449284,
+      "scenarioB": 142330635
+    },
+    {
+      "date": "2025-08-01",
+      "scenarioA": 135908960,
+      "scenarioB": 141531980
+    },
+    {
+      "date": "2025-08-03",
+      "scenarioA": 135835137,
+      "scenarioB": 141454116
+    },
+    {
+      "date": "2025-08-04",
+      "scenarioA": 136340239,
+      "scenarioB": 141980257
+    },
+    {
+      "date": "2025-08-05",
+      "scenarioA": 137147995,
+      "scenarioB": 142894400
+    },
+    {
+      "date": "2025-08-06",
+      "scenarioA": 137206762,
+      "scenarioB": 143167635
+    },
+    {
+      "date": "2025-08-07",
+      "scenarioA": 137714619,
+      "scenarioB": 143835868
+    },
+    {
+      "date": "2025-08-08",
+      "scenarioA": 138133598,
+      "scenarioB": 144423830
+    },
+    {
+      "date": "2025-08-10",
+      "scenarioA": 138294486,
+      "scenarioB": 144594554
+    },
+    {
+      "date": "2025-08-11",
+      "scenarioA": 137992507,
+      "scenarioB": 144137998
+    },
+    {
+      "date": "2025-08-12",
+      "scenarioA": 138133425,
+      "scenarioB": 144611354
+    },
+    {
+      "date": "2025-08-13",
+      "scenarioA": 138717282,
+      "scenarioB": 145330246
+    },
+    {
+      "date": "2025-08-14",
+      "scenarioA": 139028450,
+      "scenarioB": 145723953
+    },
+    {
+      "date": "2025-08-15",
+      "scenarioA": 139150755,
+      "scenarioB": 146015944
+    },
+    {
+      "date": "2025-08-17",
+      "scenarioA": 139157051,
+      "scenarioB": 146022656
+    },
+    {
+      "date": "2025-08-18",
+      "scenarioA": 138868547,
+      "scenarioB": 145820273
+    },
+    {
+      "date": "2025-08-19",
+      "scenarioA": 138433569,
+      "scenarioB": 145154204
+    },
+    {
+      "date": "2025-08-20",
+      "scenarioA": 139184579,
+      "scenarioB": 145969574
+    },
+    {
+      "date": "2025-08-21",
+      "scenarioA": 139310630,
+      "scenarioB": 146130410
+    },
+    {
+      "date": "2025-08-22",
+      "scenarioA": 140935601,
+      "scenarioB": 148172140
+    },
+    {
+      "date": "2025-08-24",
+      "scenarioA": 139965396,
+      "scenarioB": 147136514
+    },
+    {
+      "date": "2025-08-25",
+      "scenarioA": 140480240,
+      "scenarioB": 147784259
+    },
+    {
+      "date": "2025-08-26",
+      "scenarioA": 140915114,
+      "scenarioB": 148390969
+    },
+    {
+      "date": "2025-08-27",
+      "scenarioA": 140746916,
+      "scenarioB": 148093501
+    },
+    {
+      "date": "2025-08-28",
+      "scenarioA": 140753597,
+      "scenarioB": 148085929
+    },
+    {
+      "date": "2025-08-29",
+      "scenarioA": 140895000,
+      "scenarioB": 148373517
+    },
+    {
+      "date": "2025-08-31",
+      "scenarioA": 141151631,
+      "scenarioB": 148647662
+    },
+    {
+      "date": "2025-09-01",
+      "scenarioA": 141614611,
+      "scenarioB": 149280027
+    },
+    {
+      "date": "2025-09-02",
+      "scenarioA": 141166388,
+      "scenarioB": 148879497
+    },
+    {
+      "date": "2025-09-03",
+      "scenarioA": 141297804,
+      "scenarioB": 149032693
+    },
+    {
+      "date": "2025-09-04",
+      "scenarioA": 141514787,
+      "scenarioB": 149035771
+    },
+    {
+      "date": "2025-09-05",
+      "scenarioA": 142632095,
+      "scenarioB": 150127507
+    },
+    {
+      "date": "2025-09-07",
+      "scenarioA": 142249008,
+      "scenarioB": 149719762
+    },
+    {
+      "date": "2025-09-08",
+      "scenarioA": 143077445,
+      "scenarioB": 150504791
+    },
+    {
+      "date": "2025-09-09",
+      "scenarioA": 143403514,
+      "scenarioB": 150934179
+    },
+    {
+      "date": "2025-09-10",
+      "scenarioA": 144115884,
+      "scenarioB": 151746677
+    },
+    {
+      "date": "2025-09-11",
+      "scenarioA": 145493607,
+      "scenarioB": 153324957
+    },
+    {
+      "date": "2025-09-12",
+      "scenarioA": 145621064,
+      "scenarioB": 153565604
+    },
+    {
+      "date": "2025-09-14",
+      "scenarioA": 145870052,
+      "scenarioB": 153830501
+    },
+    {
+      "date": "2025-09-15",
+      "scenarioA": 146303477,
+      "scenarioB": 154482014
+    },
+    {
+      "date": "2025-09-16",
+      "scenarioA": 146217566,
+      "scenarioB": 154310679
+    },
+    {
+      "date": "2025-09-17",
+      "scenarioA": 146259265,
+      "scenarioB": 154354920
+    },
+    {
+      "date": "2025-09-18",
+      "scenarioA": 146854207,
+      "scenarioB": 155087162
+    },
+    {
+      "date": "2025-09-19",
+      "scenarioA": 147348998,
+      "scenarioB": 155877803
+    },
+    {
+      "date": "2025-09-21",
+      "scenarioA": 147917406,
+      "scenarioB": 156485403
+    },
+    {
+      "date": "2025-09-22",
+      "scenarioA": 148118389,
+      "scenarioB": 156958579
+    },
+    {
+      "date": "2025-09-23",
+      "scenarioA": 148806761,
+      "scenarioB": 157711497
+    },
+    {
+      "date": "2025-09-24",
+      "scenarioA": 149458013,
+      "scenarioB": 158570233
+    },
+    {
+      "date": "2025-09-25",
+      "scenarioA": 149926184,
+      "scenarioB": 159242146
+    },
+    {
+      "date": "2025-09-26",
+      "scenarioA": 150043812,
+      "scenarioB": 159591270
+    },
+    {
+      "date": "2025-09-28",
+      "scenarioA": 150031156,
+      "scenarioB": 159577724
+    },
+    {
+      "date": "2025-09-29",
+      "scenarioA": 150753144,
+      "scenarioB": 160527169
+    },
+    {
+      "date": "2025-09-30",
+      "scenarioA": 151895371,
+      "scenarioB": 162074467
+    },
+    {
+      "date": "2025-10-01",
+      "scenarioA": 152109342,
+      "scenarioB": 162259122
+    },
+    {
+      "date": "2025-10-02",
+      "scenarioA": 152749541,
+      "scenarioB": 162971995
+    },
+    {
+      "date": "2025-10-03",
+      "scenarioA": 153134864,
+      "scenarioB": 163509913
+    },
+    {
+      "date": "2025-10-05",
+      "scenarioA": 153161153,
+      "scenarioB": 163538085
+    },
+    {
+      "date": "2025-10-06",
+      "scenarioA": 153668378,
+      "scenarioB": 164299374
+    },
+    {
+      "date": "2025-10-07",
+      "scenarioA": 153535723,
+      "scenarioB": 163950396
+    },
+    {
+      "date": "2025-10-08",
+      "scenarioA": 154475312,
+      "scenarioB": 165045367
+    },
+    {
+      "date": "2025-10-09",
+      "scenarioA": 154235192,
+      "scenarioB": 164762891
+    },
+    {
+      "date": "2025-10-10",
+      "scenarioA": 154715926,
+      "scenarioB": 165077801
+    },
+    {
+      "date": "2025-10-12",
+      "scenarioA": 155171837,
+      "scenarioB": 165564068
+    },
+    {
+      "date": "2025-10-13",
+      "scenarioA": 157155356,
+      "scenarioB": 167950959
+    },
+    {
+      "date": "2025-10-14",
+      "scenarioA": 158134981,
+      "scenarioB": 169038193
+    },
+    {
+      "date": "2025-10-15",
+      "scenarioA": 159555283,
+      "scenarioB": 171006658
+    },
+    {
+      "date": "2025-10-16",
+      "scenarioA": 158574980,
+      "scenarioB": 169832459
+    },
+    {
+      "date": "2025-10-17",
+      "scenarioA": 158005953,
+      "scenarioB": 169089586
+    },
+    {
+      "date": "2025-10-19",
+      "scenarioA": 158254634,
+      "scenarioB": 169355618
+    },
+    {
+      "date": "2025-10-20",
+      "scenarioA": 158493418,
+      "scenarioB": 169596578
+    },
+    {
+      "date": "2025-10-21",
+      "scenarioA": 158139917,
+      "scenarioB": 168946732
+    },
+    {
+      "date": "2025-10-22",
+      "scenarioA": 157035368,
+      "scenarioB": 167403984
+    },
+    {
+      "date": "2025-10-23",
+      "scenarioA": 157899873,
+      "scenarioB": 168727600
+    },
+    {
+      "date": "2025-10-24",
+      "scenarioA": 158510273,
+      "scenarioB": 169544137
+    },
+    {
+      "date": "2025-10-27",
+      "scenarioA": 158617870,
+      "scenarioB": 169745928
+    },
+    {
+      "date": "2025-10-28",
+      "scenarioA": 158257770,
+      "scenarioB": 169264842
+    },
+    {
+      "date": "2025-10-29",
+      "scenarioA": 158594794,
+      "scenarioB": 170160808
+    },
+    {
+      "date": "2025-10-30",
+      "scenarioA": 158019170,
+      "scenarioB": 169801621
+    },
+    {
+      "date": "2025-10-31",
+      "scenarioA": 157995048,
+      "scenarioB": 169994666
+    },
+    {
+      "date": "2025-11-03",
+      "scenarioA": 158468689,
+      "scenarioB": 170684700
+    },
+    {
+      "date": "2025-11-04",
+      "scenarioA": 156744924,
+      "scenarioB": 168461741
+    },
+    {
+      "date": "2025-11-05",
+      "scenarioA": 157720411,
+      "scenarioB": 169887375
+    },
+    {
+      "date": "2025-11-06",
+      "scenarioA": 157742719,
+      "scenarioB": 169939282
+    },
+    {
+      "date": "2025-11-07",
+      "scenarioA": 158622322,
+      "scenarioB": 171165291
+    },
+    {
+      "date": "2025-11-10",
+      "scenarioA": 160727522,
+      "scenarioB": 173825006
+    },
+    {
+      "date": "2025-11-11",
+      "scenarioA": 162113275,
+      "scenarioB": 175445517
+    },
+    {
+      "date": "2025-11-12",
+      "scenarioA": 163138489,
+      "scenarioB": 177012666
+    },
+    {
+      "date": "2025-11-13",
+      "scenarioA": 163292117,
+      "scenarioB": 177119411
+    },
+    {
+      "date": "2025-11-14",
+      "scenarioA": 160906420,
+      "scenarioB": 174353101
+    },
+    {
+      "date": "2025-11-17",
+      "scenarioA": 158431605,
+      "scenarioB": 171419925
+    },
+    {
+      "date": "2025-11-18",
+      "scenarioA": 157974715,
+      "scenarioB": 170525994
+    },
+    {
+      "date": "2025-11-19",
+      "scenarioA": 158028158,
+      "scenarioB": 170723136
+    },
+    {
+      "date": "2025-11-20",
+      "scenarioA": 157493330,
+      "scenarioB": 169902713
+    },
+    {
+      "date": "2025-11-21",
+      "scenarioA": 157240726,
+      "scenarioB": 169307926
+    },
+    {
+      "date": "2025-11-24",
+      "scenarioA": 158052699,
+      "scenarioB": 170308080
+    },
+    {
+      "date": "2025-11-25",
+      "scenarioA": 159893443,
+      "scenarioB": 172388039
+    },
+    {
+      "date": "2025-11-26",
+      "scenarioA": 161018893,
+      "scenarioB": 173865758
+    },
+    {
+      "date": "2025-11-27",
+      "scenarioA": 161254525,
+      "scenarioB": 174337038
+    },
+    {
+      "date": "2025-11-28",
+      "scenarioA": 161634388,
+      "scenarioB": 175037890
+    },
+    {
+      "date": "2025-12-01",
+      "scenarioA": 162040408,
+      "scenarioB": 175838016
+    },
+    {
+      "date": "2025-12-02",
+      "scenarioA": 163098525,
+      "scenarioB": 177182778
+    },
+    {
+      "date": "2025-12-03",
+      "scenarioA": 163638174,
+      "scenarioB": 177917120
+    },
+    {
+      "date": "2025-12-04",
+      "scenarioA": 163816841,
+      "scenarioB": 178254792
+    },
+    {
+      "date": "2025-12-05",
+      "scenarioA": 164524936,
+      "scenarioB": 179043237
+    },
+    {
+      "date": "2025-12-08",
+      "scenarioA": 164717306,
+      "scenarioB": 179330685
+    },
+    {
+      "date": "2025-12-09",
+      "scenarioA": 164636753,
+      "scenarioB": 179314406
+    },
+    {
+      "date": "2025-12-10",
+      "scenarioA": 165460652,
+      "scenarioB": 180348029
+    },
+    {
+      "date": "2025-12-11",
+      "scenarioA": 166112822,
+      "scenarioB": 181240068
+    },
+    {
+      "date": "2025-12-12",
+      "scenarioA": 166061598,
+      "scenarioB": 181245630
+    },
+    {
+      "date": "2025-12-15",
+      "scenarioA": 166215210,
+      "scenarioB": 181277899
+    },
+    {
+      "date": "2025-12-16",
+      "scenarioA": 164567017,
+      "scenarioB": 178978949
+    },
+    {
+      "date": "2025-12-17",
+      "scenarioA": 165608318,
+      "scenarioB": 180437213
+    },
+    {
+      "date": "2025-12-18",
+      "scenarioA": 165659560,
+      "scenarioB": 180481594
+    },
+    {
+      "date": "2025-12-19",
+      "scenarioA": 166869028,
+      "scenarioB": 182135492
+    },
+    {
+      "date": "2025-12-22",
+      "scenarioA": 168329957,
+      "scenarioB": 184132228
+    },
+    {
+      "date": "2025-12-23",
+      "scenarioA": 170041947,
+      "scenarioB": 186294454
+    },
+    {
+      "date": "2025-12-24",
+      "scenarioA": 169960996,
+      "scenarioB": 185967889
+    },
+    {
+      "date": "2025-12-26",
+      "scenarioA": 168927404,
+      "scenarioB": 185242701
+    },
+    {
+      "date": "2025-12-29",
+      "scenarioA": 167483966,
+      "scenarioB": 183235604
+    },
+    {
+      "date": "2025-12-30",
+      "scenarioA": 167680491,
+      "scenarioB": 183719135
+    },
+    {
+      "date": "2025-12-31",
+      "scenarioA": 166553386,
+      "scenarioB": 182368804
+    },
+    {
+      "date": "2026-01-02",
+      "scenarioA": 169635416,
+      "scenarioB": 186316953
+    },
+    {
+      "date": "2026-01-05",
+      "scenarioA": 171657573,
+      "scenarioB": 189163108
+    },
+    {
+      "date": "2026-01-06",
+      "scenarioA": 173628509,
+      "scenarioB": 191686159
+    },
+    {
+      "date": "2026-01-07",
+      "scenarioA": 173071951,
+      "scenarioB": 190620850
+    },
+    {
+      "date": "2026-01-08",
+      "scenarioA": 172762167,
+      "scenarioB": 190283097
+    },
+    {
+      "date": "2026-01-09",
+      "scenarioA": 174422281,
+      "scenarioB": 192493440
+    },
+    {
+      "date": "2026-01-12",
+      "scenarioA": 177102591,
+      "scenarioB": 196059637
+    },
+    {
+      "date": "2026-01-13",
+      "scenarioA": 177954398,
+      "scenarioB": 197244778
+    },
+    {
+      "date": "2026-01-14",
+      "scenarioA": 180607018,
+      "scenarioB": 200607622
+    },
+    {
+      "date": "2026-01-15",
+      "scenarioA": 179205357,
+      "scenarioB": 199187138
+    },
+    {
+      "date": "2026-01-16",
+      "scenarioA": 179686856,
+      "scenarioB": 199842837
+    },
+    {
+      "date": "2026-01-19",
+      "scenarioA": 179917353,
+      "scenarioB": 200425673
+    },
+    {
+      "date": "2026-01-20",
+      "scenarioA": 179201930,
+      "scenarioB": 200351306
+    },
+    {
+      "date": "2026-01-21",
+      "scenarioA": 181350608,
+      "scenarioB": 202913781
+    },
+    {
+      "date": "2026-01-22",
+      "scenarioA": 181676556,
+      "scenarioB": 203263848
+    },
+    {
+      "date": "2026-01-23",
+      "scenarioA": 183271025,
+      "scenarioB": 205625762
+    },
+    {
+      "date": "2026-01-26",
+      "scenarioA": 182551205,
+      "scenarioB": 204739489
+    },
+    {
+      "date": "2026-01-27",
+      "scenarioA": 185141561,
+      "scenarioB": 208448292
+    },
+    {
+      "date": "2026-01-28",
+      "scenarioA": 185397164,
+      "scenarioB": 208947342
+    },
+    {
+      "date": "2026-01-29",
+      "scenarioA": 186879083,
+      "scenarioB": 211268356
+    },
+    {
+      "date": "2026-01-30",
+      "scenarioA": 180086756,
+      "scenarioB": 202263768
+    },
+    {
+      "date": "2026-02-02",
+      "scenarioA": 177332787,
+      "scenarioB": 198212408
+    },
+    {
+      "date": "2026-02-03",
+      "scenarioA": 181613536,
+      "scenarioB": 204300896
+    },
+    {
+      "date": "2026-02-04",
+      "scenarioA": 181459979,
+      "scenarioB": 204390442
+    },
+    {
+      "date": "2026-02-05",
+      "scenarioA": 178372803,
+      "scenarioB": 199620148
+    },
+    {
+      "date": "2026-02-06",
+      "scenarioA": 180548177,
+      "scenarioB": 202333050
+    },
+    {
+      "date": "2026-02-09",
+      "scenarioA": 183231636,
+      "scenarioB": 206417612
+    },
+    {
+      "date": "2026-02-10",
+      "scenarioA": 182752360,
+      "scenarioB": 205379893
+    },
+    {
+      "date": "2026-02-11",
+      "scenarioA": 183793637,
+      "scenarioB": 206889015
+    },
+    {
+      "date": "2026-02-12",
+      "scenarioA": 181526278,
+      "scenarioB": 203511341
+    },
+    {
+      "date": "2026-02-13",
+      "scenarioA": 180938456,
+      "scenarioB": 202397495
+    },
+    {
+      "date": "2026-02-16",
+      "scenarioA": 180838857,
+      "scenarioB": 202285147
+    },
+    {
+      "date": "2026-02-17",
+      "scenarioA": 180324370,
+      "scenarioB": 201523681
+    },
+    {
+      "date": "2026-02-18",
+      "scenarioA": 181112418,
+      "scenarioB": 202706674
+    },
+    {
+      "date": "2026-02-19",
+      "scenarioA": 182158059,
+      "scenarioB": 204121094
+    },
+    {
+      "date": "2026-02-20",
+      "scenarioA": 184474955,
+      "scenarioB": 206963725
+    },
+    {
+      "date": "2026-02-23",
+      "scenarioA": 184969950,
+      "scenarioB": 207781420
+    },
+    {
+      "date": "2026-02-24",
+      "scenarioA": 185516070,
+      "scenarioB": 208722396
+    },
+    {
+      "date": "2026-02-25",
+      "scenarioA": 186166371,
+      "scenarioB": 209481582
+    },
+    {
+      "date": "2026-02-26",
+      "scenarioA": 185925686,
+      "scenarioB": 208904340
+    },
+    {
+      "date": "2026-02-27",
+      "scenarioA": 186940721,
+      "scenarioB": 209900073
+    },
+    {
+      "date": "2026-03-02",
+      "scenarioA": 186448790,
+      "scenarioB": 209372592
+    },
+    {
+      "date": "2026-03-03",
+      "scenarioA": 182591413,
+      "scenarioB": 204613627
+    },
+    {
+      "date": "2026-03-04",
+      "scenarioA": 182434668,
+      "scenarioB": 203948384
+    },
+    {
+      "date": "2026-03-05",
+      "scenarioA": 181061220,
+      "scenarioB": 202278885
+    },
+    {
+      "date": "2026-03-06",
+      "scenarioA": 182183601,
+      "scenarioB": 203649120
+    },
+    {
+      "date": "2026-03-09",
+      "scenarioA": 182089450,
+      "scenarioB": 203633179
+    },
+    {
+      "date": "2026-03-10",
+      "scenarioA": 182496568,
+      "scenarioB": 204376583
+    },
+    {
+      "date": "2026-03-11",
+      "scenarioA": 182869758,
+      "scenarioB": 205017546
+    },
+    {
+      "date": "2026-03-12",
+      "scenarioA": 181154375,
+      "scenarioB": 202937254
+    },
+    {
+      "date": "2026-03-13",
+      "scenarioA": 179068225,
+      "scenarioB": 200446909
+    },
+    {
+      "date": "2026-03-16",
+      "scenarioA": 182750533,
+      "scenarioB": 204762436
+    },
+    {
+      "date": "2026-03-17",
+      "scenarioA": 182459365,
+      "scenarioB": 204459851
+    },
+    {
+      "date": "2026-03-18",
+      "scenarioA": 181748638,
+      "scenarioB": 203304017
+    },
+    {
+      "date": "2026-03-19",
+      "scenarioA": 181451307,
+      "scenarioB": 202731097
+    },
+    {
+      "date": "2026-03-20",
+      "scenarioA": 176910477,
+      "scenarioB": 197342061
+    },
+    {
+      "date": "2026-03-23",
+      "scenarioA": 176234373,
+      "scenarioB": 196556297
+    },
+    {
+      "date": "2026-03-24",
+      "scenarioA": 175390741,
+      "scenarioB": 195825242
+    },
+    {
+      "date": "2026-03-25",
+      "scenarioA": 179057730,
+      "scenarioB": 200495931
+    },
+    {
+      "date": "2026-03-26",
+      "scenarioA": 175899810,
+      "scenarioB": 196553511
+    },
+    {
+      "date": "2026-03-27",
+      "scenarioA": 176139473,
+      "scenarioB": 197068565
+    },
+    {
+      "date": "2026-03-29",
+      "scenarioA": 176049107,
+      "scenarioB": 196967183
+    },
+    {
+      "date": "2026-03-30",
+      "scenarioA": 176130663,
+      "scenarioB": 196545469
+    },
+    {
+      "date": "2026-03-31",
+      "scenarioA": 178082815,
+      "scenarioB": 199355398
+    },
+    {
+      "date": "2026-04-01",
+      "scenarioA": 181544468,
+      "scenarioB": 203251026
+    },
+    {
+      "date": "2026-04-02",
+      "scenarioA": 179000567,
+      "scenarioB": 200089812
+    },
+    {
+      "date": "2026-04-03",
+      "scenarioA": 180014490,
+      "scenarioB": 201086543
+    },
+    {
+      "date": "2026-04-05",
+      "scenarioA": 180017263,
+      "scenarioB": 201089660
+    },
+    {
+      "date": "2026-04-06",
+      "scenarioA": 180400464,
+      "scenarioB": 201585879
+    },
+    {
+      "date": "2026-04-07",
+      "scenarioA": 179542864,
+      "scenarioB": 200693690
+    },
+    {
+      "date": "2026-04-08",
+      "scenarioA": 183332895,
+      "scenarioB": 205605636
+    },
+    {
+      "date": "2026-04-09",
+      "scenarioA": 182363068,
+      "scenarioB": 204642928
+    },
+    {
+      "date": "2026-04-10",
+      "scenarioA": 183475527,
+      "scenarioB": 206286774
+    },
+    {
+      "date": "2026-04-12",
+      "scenarioA": 184111642,
+      "scenarioB": 207007338
+    },
+    {
+      "date": "2026-04-13",
+      "scenarioA": 183939911,
+      "scenarioB": 206886242
+    },
+    {
+      "date": "2026-04-14",
+      "scenarioA": 185605753,
+      "scenarioB": 208943272
+    },
+    {
+      "date": "2026-04-15",
+      "scenarioA": 186735583,
+      "scenarioB": 210367807
+    },
+    {
+      "date": "2026-04-16",
+      "scenarioA": 187658647,
+      "scenarioB": 211807081
+    },
+    {
+      "date": "2026-04-17",
+      "scenarioA": 188541746,
+      "scenarioB": 212956303
+    },
+    {
+      "date": "2026-04-19",
+      "scenarioA": 187606655,
+      "scenarioB": 211893168
+    },
+    {
+      "date": "2026-04-20",
+      "scenarioA": 187445812,
+      "scenarioB": 211591399
+    },
+    {
+      "date": "2026-04-21",
+      "scenarioA": 187029209,
+      "scenarioB": 210698838
+    },
+    {
+      "date": "2026-04-22",
+      "scenarioA": 187565581,
+      "scenarioB": 211666541
+    },
+    {
+      "date": "2026-04-23",
+      "scenarioA": 186530556,
+      "scenarioB": 210646636
+    },
+    {
+      "date": "2026-04-24",
+      "scenarioA": 186415916,
+      "scenarioB": 210561943
+    },
+    {
+      "date": "2026-04-26",
+      "scenarioA": 186039678,
+      "scenarioB": 210135917
+    },
+    {
+      "date": "2026-04-27",
+      "scenarioA": 186042033,
+      "scenarioB": 210350638
+    },
+    {
+      "date": "2026-04-28",
+      "scenarioA": 184864014,
+      "scenarioB": 208872356
+    },
+    {
+      "date": "2026-04-29",
+      "scenarioA": 185308555,
+      "scenarioB": 209331602
+    },
+    {
+      "date": "2026-04-30",
+      "scenarioA": 185873021,
+      "scenarioB": 210801509
+    },
+    {
+      "date": "2026-05-01",
+      "scenarioA": 185833974,
+      "scenarioB": 210658342
+    },
+    {
+      "date": "2026-05-03",
+      "scenarioA": 185670709,
+      "scenarioB": 210473075
+    },
+    {
+      "date": "2026-05-04",
+      "scenarioA": 185911206,
+      "scenarioB": 211008904
+    },
+    {
+      "date": "2026-05-05",
+      "scenarioA": 186673459,
+      "scenarioB": 211952791
+    },
+    {
+      "date": "2026-05-06",
+      "scenarioA": 188284912,
+      "scenarioB": 214629973
+    },
+    {
+      "date": "2026-05-07",
+      "scenarioA": 189101915,
+      "scenarioB": 215579270
+    },
+    {
+      "date": "2026-05-08",
+      "scenarioA": 190055778,
+      "scenarioB": 216814634
+    },
+    {
+      "date": "2026-05-10",
+      "scenarioA": 190472480,
+      "scenarioB": 217287964
+    },
+    {
+      "date": "2026-05-11",
+      "scenarioA": 193508446,
+      "scenarioB": 221485466
+    },
+    {
+      "date": "2026-05-12",
+      "scenarioA": 193699970,
+      "scenarioB": 222072847
+    },
+    {
+      "date": "2026-05-13",
+      "scenarioA": 194444577,
+      "scenarioB": 223244223
+    },
+    {
+      "date": "2026-05-14",
+      "scenarioA": 194358169,
+      "scenarioB": 223117396
+    },
+    {
+      "date": "2026-05-15",
+      "scenarioA": 188918420,
+      "scenarioB": 216622334
+    },
+    {
+      "date": "2026-05-17",
+      "scenarioA": 189185174,
+      "scenarioB": 216925072
+    },
+    {
+      "date": "2026-05-18",
+      "scenarioA": 188892670,
+      "scenarioB": 216884121
+    },
+    {
+      "date": "2026-05-19",
+      "scenarioA": 188188170,
+      "scenarioB": 215897764
+    },
+    {
+      "date": "2026-05-20",
+      "scenarioA": 188772863,
+      "scenarioB": 216434363
+    },
+    {
+      "date": "2026-05-21",
+      "scenarioA": 191834763,
+      "scenarioB": 220362306
+    },
+    {
+      "date": "2026-05-22",
+      "scenarioA": 192280704,
+      "scenarioB": 220805197
+    },
+    {
+      "date": "2026-05-24",
+      "scenarioA": 192876410,
+      "scenarioB": 221480857
+    },
+    {
+      "date": "2026-05-25",
+      "scenarioA": 193014920,
+      "scenarioB": 221637958
+    },
+    {
+      "date": "2026-05-26",
+      "scenarioA": 194367251,
+      "scenarioB": 223345253
+    },
+    {
+      "date": "2026-05-27",
+      "scenarioA": 194163377,
+      "scenarioB": 222955191
+    },
+    {
+      "date": "2026-05-28",
+      "scenarioA": 193253678,
+      "scenarioB": 221898629
+    },
+    {
+      "date": "2026-05-29",
+      "scenarioA": 195170828,
+      "scenarioB": 224036539
+    },
+    {
+      "date": "2026-05-31",
+      "scenarioA": 195991620,
+      "scenarioB": 224966110
+    },
+    {
+      "date": "2026-06-01",
+      "scenarioA": 196819705,
+      "scenarioB": 226493778
+    },
+    {
+      "date": "2026-06-02",
+      "scenarioA": 198661775,
+      "scenarioB": 228837726
+    },
+    {
+      "date": "2026-06-03",
+      "scenarioA": 198038494,
+      "scenarioB": 227854641
+    },
+    {
+      "date": "2026-06-04",
+      "scenarioA": 197696873,
+      "scenarioB": 227582407
+    },
+    {
+      "date": "2026-06-05",
+      "scenarioA": 192124332,
+      "scenarioB": 220345406
+    },
+    {
+      "date": "2026-06-07",
+      "scenarioA": 193580923,
+      "scenarioB": 221980993
+    },
+    {
+      "date": "2026-06-08",
+      "scenarioA": 187790238,
+      "scenarioB": 214936295
+    },
+    {
+      "date": "2026-06-09",
+      "scenarioA": 190089280,
+      "scenarioB": 217655048
+    },
+    {
+      "date": "2026-06-10",
+      "scenarioA": 186899923,
+      "scenarioB": 213603410
+    },
+    {
+      "date": "2026-06-11",
+      "scenarioA": 188620435,
+      "scenarioB": 215799734
+    },
+    {
+      "date": "2026-06-12",
+      "scenarioA": 191428614,
+      "scenarioB": 219388136
+    },
+    {
+      "date": "2026-06-14",
+      "scenarioA": 190879248,
+      "scenarioB": 218769062
+    },
+    {
+      "date": "2026-06-15",
+      "scenarioA": 194405755,
+      "scenarioB": 223240749
+    },
+    {
+      "date": "2026-06-16",
+      "scenarioA": 194736128,
+      "scenarioB": 223642992
+    },
+    {
+      "date": "2026-06-17",
+      "scenarioA": 195262162,
+      "scenarioB": 223994497
+    },
+    {
+      "date": "2026-06-18",
+      "scenarioA": 197394548,
+      "scenarioB": 226655807
+    },
+    {
+      "date": "2026-06-19",
+      "scenarioA": 196707123,
+      "scenarioB": 225956139
+    },
+    {
+      "date": "2026-06-21",
+      "scenarioA": 196274702,
+      "scenarioB": 225470542
+    },
+    {
+      "date": "2026-06-22",
+      "scenarioA": 197417109,
+      "scenarioB": 227297177
+    },
+    {
+      "date": "2026-06-23",
+      "scenarioA": 190933452,
+      "scenarioB": 218518618
+    },
+    {
+      "date": "2026-06-24",
+      "scenarioA": 191908682,
+      "scenarioB": 219400232
+    },
+    {
+      "date": "2026-06-25",
+      "scenarioA": 194131247,
+      "scenarioB": 222321891
+    },
+    {
+      "date": "2026-06-26",
+      "scenarioA": 191185710,
+      "scenarioB": 218361425
+    },
+    {
+      "date": "2026-06-28",
+      "scenarioA": 190423041,
+      "scenarioB": 217510711
+    },
+    {
+      "date": "2026-06-29",
+      "scenarioA": 191734195,
+      "scenarioB": 219333484
+    },
+    {
+      "date": "2026-06-30",
+      "scenarioA": 193004679,
+      "scenarioB": 221210279
+    },
+    {
+      "date": "2026-07-01",
+      "scenarioA": 191414974,
+      "scenarioB": 219427969
+    },
+    {
+      "date": "2026-07-02",
+      "scenarioA": 190667243,
+      "scenarioB": 218201030
+    },
+    {
+      "date": "2026-07-03",
+      "scenarioA": 191642071,
+      "scenarioB": 219498316
+    },
+    {
+      "date": "2026-07-05",
+      "scenarioA": 190853295,
+      "scenarioB": 218576324
+    },
+    {
+      "date": "2026-07-06",
+      "scenarioA": 191541530,
+      "scenarioB": 219816381
+    },
+    {
+      "date": "2026-07-07",
+      "scenarioA": 188321654,
+      "scenarioB": 215855291
+    },
+    {
+      "date": "2026-07-08",
+      "scenarioA": 184818342,
+      "scenarioB": 211387848
+    },
+    {
+      "date": "2026-07-09",
+      "scenarioA": 186115902,
+      "scenarioB": 213137634
+    },
+    {
+      "date": "2026-07-10",
+      "scenarioA": 187221522,
+      "scenarioB": 214594923
+    },
+    {
+      "date": "2026-07-12",
+      "scenarioA": 186692989,
+      "scenarioB": 213974915
+    },
+    {
+      "date": "2026-07-13",
+      "scenarioA": 183076990,
+      "scenarioB": 208920720
+    },
+    {
+      "date": "2026-07-14",
+      "scenarioA": 183389914,
+      "scenarioB": 209865918
+    },
+    {
+      "date": "2026-07-15",
+      "scenarioA": 184095995,
+      "scenarioB": 210769127
+    },
+    {
+      "date": "2026-07-16",
+      "scenarioA": 181304378,
+      "scenarioB": 206821836
+    },
+    {
+      "date": "2026-07-17",
+      "scenarioA": 181351782,
+      "scenarioB": 206789440
+    },
+    {
+      "date": "2026-07-19",
+      "scenarioA": 181952867,
+      "scenarioB": 207492797
+    },
+    {
+      "date": "2026-07-20",
+      "scenarioA": 178963110,
+      "scenarioB": 204027178
+    },
+    {
+      "date": "2026-07-21",
+      "scenarioA": 182047802,
+      "scenarioB": 208617502
+    },
+    {
+      "date": "2026-07-22",
+      "scenarioA": 182150606,
+      "scenarioB": 209279904
+    },
+    {
+      "date": "2026-07-23",
+      "scenarioA": 181160443,
+      "scenarioB": 208050264
+    },
+    {
+      "date": "2026-07-24",
+      "scenarioA": 178592586,
+      "scenarioB": 204644581
+    }
+  ]
+}

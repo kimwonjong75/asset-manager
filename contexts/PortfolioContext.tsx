@@ -458,6 +458,13 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     reviewPending: actionQueueSummary.reviewPending,
   }), [actionQueueSummary.actionableCount, actionQueueSummary.reviewPending]);
 
+  // 알림 규칙 설정이 사용자 조작으로 저장된 직후 → Drive autoSave 트리거.
+  // 컬럼 설정(persistColumnConfig)과 동일 패턴: hookAutoSave가 localStorage에서
+  // 최신 alertSettings를 읽어 페이로드에 싣는다(디바운스됨). 이로써 규칙 설정이 기기 간 유지된다.
+  const handleAlertSettingsPersisted = useCallback(() => {
+    triggerAutoSave(assets, portfolioHistory, sellHistory, watchlist, exchangeRates);
+  }, [assets, portfolioHistory, sellHistory, watchlist, exchangeRates, triggerAutoSave]);
+
   // 자동 알림
   const {
     alertSettings,
@@ -478,6 +485,7 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     watchlistItems: watchlist,
     // 실행 축: 알림 0건이어도 실행할 게 있으면 하루 1회 팝업. 검토 완료 전에는 게이트 대기(일자 미기록).
     executionGate,
+    onSettingsPersisted: handleAlertSettingsPersisted,
   });
 
   // 구루 신호 평가/진단 대상 — 포트폴리오 + 관심종목을 단일 빌더(buildGuruSignalTargets)로 산출.
