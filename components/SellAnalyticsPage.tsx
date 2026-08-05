@@ -4,6 +4,7 @@ import { getAllowedCategories, type CategoryDefinition } from '../types/category
 import StatCard from './StatCard';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar, Cell } from 'recharts';
 import { usePortfolio } from '../contexts/PortfolioContext';
+import { splitRealizedPL, buildSoldPLBreakdownRows } from '../utils/soldPLBreakdown';
 
 const MAX_REASONABLE_EXCHANGE_RATES: Partial<Record<Currency, number>> = {
   [Currency.USD]: 3000,
@@ -165,7 +166,9 @@ const SellAnalyticsPage: React.FC<SellAnalyticsPageProps> = ({ assets, sellHisto
     const totalProfit = totalSoldAmount - totalPurchase;
     const totalReturn = totalPurchase === 0 ? 0 : (totalProfit / totalPurchase) * 100;
     const soldCount = recordWithCalc.length;
-    return { totalSoldAmount, totalPurchase, totalProfit, totalReturn, soldCount };
+    // 이익/손실 분해 — 합계는 totalProfit과 항상 일치(같은 realized를 부호로만 나눔)
+    const breakdown = splitRealizedPL(recordWithCalc.map(r => r.realized));
+    return { totalSoldAmount, totalPurchase, totalProfit, totalReturn, soldCount, ...breakdown };
   }, [recordWithCalc]);
 
   const groupKey = (dateStr: string): string => {
@@ -329,7 +332,13 @@ const SellAnalyticsPage: React.FC<SellAnalyticsPageProps> = ({ assets, sellHisto
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
         <StatCard title="총 매도금액" value={formatKRW(overview.totalSoldAmount)} tooltip="선택된 필터에 해당하는 매도 합계" />
-        <StatCard title="매도 수익" value={formatKRW(overview.totalProfit)} isProfit={overview.totalProfit >= 0} tooltip="매도금액 - 매수원가" />
+        <StatCard
+          title="매도 수익"
+          value={formatKRW(overview.totalProfit)}
+          isProfit={overview.totalProfit >= 0}
+          tooltip="매도금액 - 매수원가 (하단은 이익 건 합계 / 손실 건 합계, 둘을 더하면 매도 수익)"
+          breakdown={buildSoldPLBreakdownRows(overview, formatKRW)}
+        />
         <StatCard title="매도 수익률" value={`${overview.totalReturn.toFixed(2)}%`} isProfit={overview.totalReturn >= 0} tooltip="수익/매수원가" />
         <StatCard title="매도 횟수" value={String(overview.soldCount)} tooltip="거래 수" />
       </div>

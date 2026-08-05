@@ -2,6 +2,7 @@ import { useCallback } from 'react';
 import { Asset, Currency, ExchangeRates, SellRecord } from '../types';
 import { AssetMetrics, EnrichedAsset } from '../types/ui';
 import { resolveRate } from '../utils/exchangeRateCache';
+import { splitRealizedPL } from '../utils/soldPLBreakdown';
 
 const MAX_REASONABLE_EXCHANGE_RATES: Partial<Record<Currency, number>> = {
   [Currency.USD]: 3000,
@@ -156,6 +157,7 @@ export const usePortfolioCalculator = () => {
     let totalSoldPurchaseValue = 0;
     let totalSoldProfit = 0;
     let soldCount = 0;
+    const realizedPerRecord: number[] = [];
 
     sellHistory.forEach(record => {
       // 매도 금액 합산 (비정상 환율 보정 포함)
@@ -199,10 +201,13 @@ export const usePortfolioCalculator = () => {
       }
       
       totalSoldPurchaseValue += purchaseValueForSold;
+      realizedPerRecord.push(sellAmount - purchaseValueForSold);
     });
 
     totalSoldProfit = totalSoldAmount - totalSoldPurchaseValue;
     const soldReturn = totalSoldPurchaseValue === 0 ? 0 : (totalSoldProfit / totalSoldPurchaseValue) * 100;
+    // 이익/손실 분해 — 케이스 3(자산 삭제 + 매수정보 없음)은 realized가 정확히 0이라 양쪽 건수 모두에서 빠진다
+    const breakdown = splitRealizedPL(realizedPerRecord);
 
     return {
       totalSoldAmount,
@@ -210,6 +215,7 @@ export const usePortfolioCalculator = () => {
       totalSoldProfit,
       soldReturn,
       soldCount,
+      ...breakdown,
     };
   }, []);
 

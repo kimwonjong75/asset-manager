@@ -97,7 +97,11 @@ const DashboardView: React.FC = () => {
     () => allSellRecords.filter(r => r.sellDate >= periodStart && r.sellDate <= periodEnd),
     [allSellRecords, periodStart, periodEnd]
   );
-  const soldAssetsStats = useMemo(() => calculateSoldAssetsStats(filteredSellHistory, assets), [filteredSellHistory, assets, calculateSoldAssetsStats]);
+  // exchangeRates 전달 필수 — 생략하면 기본값(USD 1450)으로 비정상 환율을 보정해 수익통계 탭과 값이 어긋난다
+  const soldAssetsStats = useMemo(
+    () => calculateSoldAssetsStats(filteredSellHistory, assets, exchangeRates),
+    [filteredSellHistory, assets, exchangeRates, calculateSoldAssetsStats]
+  );
 
   const profitLossChartTitle = useMemo(() => {
       if (dashboardFilterCategory === 'ALL') return '손익 추이 분석';
