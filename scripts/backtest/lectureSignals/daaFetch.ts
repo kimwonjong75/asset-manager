@@ -119,7 +119,7 @@ async function fetchRaw(
       },
     });
     if (!res.ok) return { ok: false, error: `HTTP ${res.status}` };
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
     const json: any = await res.json();
     const result = json?.chart?.result?.[0] as RawResult | undefined;
     if (!result) {
@@ -256,7 +256,7 @@ export async function fetchDaaMany(
     }
     out.set(sym, series);
     const tag = didNetwork ? 'net' : 'cache';
-    // eslint-disable-next-line no-console
+
     console.log(
       `  ${series.ok ? '✓' : '✗'} ${sym.padEnd(6)} [${tag}]` +
         (series.ok
@@ -265,22 +265,22 @@ export async function fetchDaaMany(
           : ` — ${series.error}`)
     );
   }
-  // eslint-disable-next-line no-console
+
   console.log(`  (네트워크 조회 ${networkCount}건 / 캐시 히트 ${uniq.length - networkCount}건)`);
   return out;
 }
 
 // --- CLI 드라이버 (직접 실행 시에만) ---------------------------------------
 async function main(): Promise<void> {
-  // eslint-disable-next-line no-console
+
   console.log(`DAA 캐시 채우기: ${DAA_SYMBOLS.length}종목, ${DATA_START}~${DATA_END}`);
   const map = await fetchDaaMany(DAA_SYMBOLS, DATA_START, DATA_END);
   const failed = Array.from(map.values()).filter((s) => !s.ok);
   if (failed.length > 0) {
-    // eslint-disable-next-line no-console
+
     console.log(`\n실패 티커 ${failed.length}건: ${failed.map((s) => `${s.symbol}(${s.error})`).join(', ')}`);
   } else {
-    // eslint-disable-next-line no-console
+
     console.log('\n전체 성공.');
   }
 }
@@ -290,7 +290,7 @@ const invokedDirectly =
   process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href;
 if (invokedDirectly) {
   main().catch((e) => {
-    // eslint-disable-next-line no-console
+
     console.error('FETCH ERROR:', e);
     process.exit(1);
   });

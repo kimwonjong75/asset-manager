@@ -9,7 +9,7 @@
 // 산출: scripts/backtest/usRoughCheck/output/us_rough_check.json + 콘솔 요약
 //
 // 규칙: `any`·`Math.random` 금지. `console.*`는 이 파일(런너)에서만 허용.
-/* eslint-disable no-console */
+
 // ---------------------------------------------------------------------------
 
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';

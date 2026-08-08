@@ -128,7 +128,7 @@ const gset = S({ satelliteBudgetKRW: 100_000_000, maxUnitsPerPosition: 4, stopMu
 const N = 2.50;
 
 // 최초 진입 310, 1유닛
-let gold: TurtlePosition = {
+const gold: TurtlePosition = {
   id: 'gold', ticker: 'GC', name: '금', status: 'open', openedAt: '2024-01-01',
   entryDonchianHigh: 310,
   units: [{ fillDate: '2024-01-01', fillPrice: 310, quantity: 1, nAtFill: N }],

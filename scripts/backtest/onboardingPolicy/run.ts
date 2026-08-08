@@ -24,7 +24,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const CACHE_DIR = path.join(__dirname, '..', 'data', 'cache');
 
 const { hash, config } = configHash();
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 const C = config as any;
 
 const LEARN_START: string = C.periods.learning.start;

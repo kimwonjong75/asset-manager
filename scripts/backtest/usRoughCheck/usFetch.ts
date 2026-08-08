@@ -113,7 +113,7 @@ async function fetchRaw(
       },
     });
     if (!res.ok) return { ok: false, error: `HTTP ${res.status}` };
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
     const json: any = await res.json();
     const result = json?.chart?.result?.[0] as RawResult | undefined;
     if (!result) {
@@ -264,7 +264,7 @@ export async function fetchUsMany(
 
 // --- CLI 드라이버 (직접 실행 시에만 캐시 채우기) ----------------------------
 async function main(): Promise<void> {
-  /* eslint-disable no-console */
+
   const snap = await loadSp500Universe(() => console.log('위키백과 S&P500 구성종목 조회...'));
   if (!snap) {
     console.error('유니버스 확보 실패');
@@ -287,14 +287,14 @@ async function main(): Promise<void> {
   if (res.failures.length > 0) {
     console.log(`실패 목록: ${res.failures.map((f) => `${f.symbol}(${f.error})`).join(', ')}`);
   }
-  /* eslint-enable no-console */
+
 }
 
 const invokedDirectly =
   process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href;
 if (invokedDirectly) {
   main().catch((e) => {
-    // eslint-disable-next-line no-console
+
     console.error('FETCH ERROR:', e);
     process.exit(1);
   });

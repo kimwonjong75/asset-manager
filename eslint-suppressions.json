@@ -1,0 +1,517 @@
+{
+  "App.tsx": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 5
+    },
+    "no-empty": {
+      "count": 1
+    }
+  },
+  "components/AddNewAssetModal.tsx": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    },
+    "no-restricted-imports": {
+      "count": 3
+    },
+    "react-hooks/set-state-in-effect": {
+      "count": 5
+    }
+  },
+  "components/AiSettingsSection.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
+    "react-hooks/set-state-in-effect": {
+      "count": 2
+    }
+  },
+  "components/AlertSettingsPage.tsx": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "components/AssetTrendChart.tsx": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    },
+    "react-hooks/preserve-manual-memoization": {
+      "count": 1
+    },
+    "react-hooks/refs": {
+      "count": 4
+    }
+  },
+  "components/BackupSettingsSection.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "components/BuyMoreAssetModal.tsx": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    },
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "components/DisplaySettingsSection.tsx": {
+    "react-hooks/set-state-in-effect": {
+      "count": 2
+    }
+  },
+  "components/EditAssetModal.tsx": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    },
+    "no-restricted-imports": {
+      "count": 1
+    },
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "components/EditSellRecordModal.tsx": {
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "components/PortfolioAssistant.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "components/PortfolioTable.tsx": {
+    "@typescript-eslint/no-unused-expressions": {
+      "count": 2
+    },
+    "react-hooks/preserve-manual-memoization": {
+      "count": 1
+    },
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "components/SellAnalyticsPage.tsx": {
+    "no-console": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "components/SellAssetModal.tsx": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    },
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "components/WatchlistAddModal.tsx": {
+    "no-restricted-imports": {
+      "count": 3
+    },
+    "react-hooks/set-state-in-effect": {
+      "count": 3
+    }
+  },
+  "components/WatchlistEditModal.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
+    "react-hooks/refs": {
+      "count": 4
+    },
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "components/WatchlistPage.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    },
+    "react-hooks/set-state-in-effect": {
+      "count": 2
+    }
+  },
+  "components/cleanup/CleanupExecuteModal.tsx": {
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "components/common/ErrorBoundary.tsx": {
+    "no-console": {
+      "count": 1
+    }
+  },
+  "components/common/MemoEditPopup.tsx": {
+    "react-hooks/refs": {
+      "count": 1
+    }
+  },
+  "components/common/MemoTooltip.tsx": {
+    "react-hooks/refs": {
+      "count": 3
+    }
+  },
+  "components/dashboard/ProfitLossChart.tsx": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 2
+    },
+    "react-hooks/static-components": {
+      "count": 1
+    }
+  },
+  "components/dashboard/RebalanceExecuteModal.tsx": {
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "components/execution/TurtleExecuteModal.tsx": {
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "components/execution/TurtleSettingsPanel.tsx": {
+    "react-hooks/set-state-in-effect": {
+      "count": 2
+    }
+  },
+  "components/layouts/DashboardView.tsx": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "components/layouts/InvestmentGuideView.tsx": {
+    "react-hooks/static-components": {
+      "count": 7
+    }
+  },
+  "components/portfolio-table/PortfolioMobileCard.tsx": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    }
+  },
+  "components/portfolio-table/PortfolioTableRow.tsx": {
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "components/portfolio-table/columnDefinitions.tsx": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    }
+  },
+  "components/portfolio-table/usePortfolioData.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 3
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "components/replay/ReplayVerdictPanel.tsx": {
+    "react-hooks/set-state-in-effect": {
+      "count": 2
+    }
+  },
+  "components/replay/SignalReplayChart.tsx": {
+    "react-hooks/refs": {
+      "count": 7
+    }
+  },
+  "contexts/PortfolioContext.tsx": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "hooks/useAssetActions.ts": {
+    "react-hooks/exhaustive-deps": {
+      "count": 3
+    }
+  },
+  "hooks/useAutoAlert.ts": {
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "hooks/useBackup.ts": {
+    "react-hooks/immutability": {
+      "count": 1
+    }
+  },
+  "hooks/useEnrichedIndicators.ts": {
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "hooks/useGoogleDriveSync.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    },
+    "no-empty": {
+      "count": 1
+    },
+    "react-hooks/refs": {
+      "count": 1
+    }
+  },
+  "hooks/useHistoricalPriceData.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    },
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "hooks/useMarketData.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 5
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "hooks/useMarketDistributionDays.ts": {
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "hooks/useMarketOverview.ts": {
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "hooks/usePortfolioCalculator.ts": {
+    "no-useless-assignment": {
+      "count": 4
+    }
+  },
+  "hooks/usePortfolioData.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    },
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "hooks/usePortfolioExport.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 3
+    }
+  },
+  "hooks/useRebalancing.ts": {
+    "react-hooks/set-state-in-effect": {
+      "count": 4
+    }
+  },
+  "hooks/useSignalReplay.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    },
+    "react-hooks/set-state-in-effect": {
+      "count": 5
+    }
+  },
+  "hooks/useTodayTurtle.ts": {
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "hooks/useTopBottomAssets.ts": {
+    "no-useless-assignment": {
+      "count": 1
+    }
+  },
+  "hooks/useTurtleActionReview.ts": {
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "scripts/backtest/bondRole/lib/yahooData.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "scripts/backtest/conditionalChannel/pipeline/dataLoader.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "scripts/backtest/conditionalChannel/run-kr-size.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    }
+  },
+  "scripts/backtest/conditionalChannel/simulator.ts": {
+    "no-useless-assignment": {
+      "count": 2
+    }
+  },
+  "scripts/backtest/conditionalChannel/tools/compute_config_hash.cjs": {
+    "@typescript-eslint/no-var-requires": {
+      "count": 3
+    }
+  },
+  "scripts/backtest/conditionalChannel/tools/compute_config_hash.js": {
+    "@typescript-eslint/no-require-imports": {
+      "count": 3
+    }
+  },
+  "scripts/backtest/guruSignals.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    }
+  },
+  "scripts/backtest/lectureSignals/dataAccess.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    }
+  },
+  "scripts/backtest/lectureSignals/matching.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "scripts/backtest/onboardingPolicy/simulator.ts": {
+    "no-useless-assignment": {
+      "count": 2
+    }
+  },
+  "scripts/backtest/sectorRotation/lib/perfMetrics.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "scripts/backtest/sectorRotation/lib/strategy.ts": {
+    "no-useless-assignment": {
+      "count": 1
+    }
+  },
+  "scripts/backtest/sectorRotation/lib/yahooData.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "scripts/backtest/sectorRotation/phase2.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "scripts/backtest/turtlePortfolio.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "scripts/backtest/usRoughCheck/universe.ts": {
+    "no-useless-assignment": {
+      "count": 1
+    }
+  },
+  "services/geminiService.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    }
+  },
+  "services/googleDriveService.ts": {
+    "@typescript-eslint/no-namespace": {
+      "count": 3
+    }
+  },
+  "services/historicalPriceService.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 4
+    },
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "services/priceService.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 4
+    },
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    }
+  },
+  "services/upbitService.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/assetMutationsParity.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/conditionalChannelBacktest.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    }
+  },
+  "tests/krSizeBacktest.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 4
+    }
+  },
+  "tests/lectureBatch2Parity.ts": {
+    "no-loss-of-precision": {
+      "count": 1
+    }
+  },
+  "tests/lectureSignalsParity.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 3
+    }
+  },
+  "tests/signalReplayParity.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/turtleEngineParity.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    }
+  },
+  "types/smartFilter.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    }
+  },
+  "utils/distributionTierState.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "utils/migrateData.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 9
+    },
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "utils/portfolioCalculations.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "utils/safeStorage.ts": {
+    "no-useless-assignment": {
+      "count": 1
+    }
+  },
+  "utils/smartFilterLogic.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  }
+}

@@ -12,7 +12,7 @@
 //   §6 전방수익·구간 라벨·통계 결정론
 //
 // 실행: npx tsx tests/usRoughCheckParity.ts   (package.json 미등록 — 수동 실행)
-/* eslint-disable no-console */
+
 // ---------------------------------------------------------------------------
 
 import {

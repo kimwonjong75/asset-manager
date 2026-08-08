@@ -29,7 +29,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # deploy.yml 과 같은 Node 버전 — 배포와 동일한 환경에서 검증한다
+      # deploy.yml 과 같은 Node 버전 — 배포와 동일한 환경에서 검증한다.
+      # '20' 은 최신 20.x 로 해석되며 ESLint 10 요구사항(^20.19)을 충족한다.
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -39,7 +40,7 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # 타입검사 + tests/ 의 *Parity.ts / *Integrity.ts 전수 실행 (자동 발견)
+      # 타입검사 + ESLint(신규 위반만) + tests/ 의 *Parity.ts / *Integrity.ts 전수 실행(자동 발견).
       # 분류되지 않은 테스트 파일이 있으면 여기서 실패한다 — 조용히 빠지는 테스트 방지
       - name: Verify
         run: npm run verify

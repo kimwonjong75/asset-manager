@@ -10,11 +10,11 @@
 
 'use strict';
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires
+
 const fs   = require('fs');
-// eslint-disable-next-line @typescript-eslint/no-var-requires
+
 const path = require('path');
-// eslint-disable-next-line @typescript-eslint/no-var-requires
+
 const crypto = require('crypto');
 
 function sortedJson(val) {

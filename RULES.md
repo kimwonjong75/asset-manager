@@ -1080,10 +1080,12 @@ log.error('시세 조회 실패:', error);
 **변경 후에는 개별 `npm run test:*`를 골라 돌리지 말고 `npm test` 한 번으로 전수 확인한다.**
 
 ```
-npm test                      # 타입검사 + tests/ 의 *Parity.ts·*Integrity.ts 전수 (48개, 약 18초)
+npm test                      # 타입검사 + ESLint + tests/ 전수 (48개) — 약 24초, 3겹 병렬
 npm run verify -- --filter turtle    # 이름에 turtle 이 든 것만
-npm run verify -- --skip-typecheck
+npm run verify -- --skip-typecheck / --skip-lint
 npm run typecheck             # 타입검사만
+npm run lint                  # ESLint 만
+npm run lint:debt             # 기준선에 남은 미해결 위반 목록 (--files 로 파일별)
 ```
 
 설계 원칙 (`scripts/verify.mjs` 주석에 동일 내용):
@@ -1094,7 +1096,27 @@ npm run typecheck             # 타입검사만
 - **로컬 `tsx` 직접 호출** — `npx --yes`의 매회 네트워크 조회 제거(오프라인·CI 안전).
 - 타입검사와 테스트 **병렬** 실행(전체 약 18초; 순차 실행이면 2분+).
 
-⚠️ **`tsx`는 타입검사를 하지 않는다.** 테스트가 전부 통과해도 타입 오류는 남을 수 있으므로 `npm test`가 두 겹을 함께 돌린다(도입 당시 실제로 테스트 48/48 통과 + 타입 오류 1건 상태가 잡혔다).
+⚠️ **`tsx`는 타입검사를 하지 않는다.** 테스트가 전부 통과해도 타입 오류는 남을 수 있으므로 `npm test`가 세 겹을 함께 돌린다(도입 당시 실제로 테스트 48/48 통과 + 타입 오류 1건 상태가 잡혔다).
+
+### ESLint — 신규 위반만 차단 (`eslint.config.js`)
+
+ESLint 10 flat config + typescript-eslint 8 + **eslint-plugin-react-hooks 7**(React Compiler 기반 규칙 16종 포함).
+
+**기존 위반은 `eslint-suppressions.json` 기준선에 박아 두고 새 위반만 실패시킨다**(ESLint 일괄 억제). 도입 시점 기준선 **217건 / 85파일** — 억제는 "괜찮다"가 아니라 "아직 안 고쳤다"는 뜻이므로 `npm run lint:debt`로 항상 보이게 하고, 고친 뒤 `npm run lint:prune`으로 제거한다.
+
+도구로 강제하는 프로젝트 규칙(전에는 문서에만 있었다):
+| 규칙 | 근거 | 도입 시 위반 |
+|---|---|---|
+| `no-restricted-imports` — components/ → services/ 직접 import 금지 | CLAUDE.md "UI는 렌더링만" | 10건 |
+| `@typescript-eslint/no-explicit-any` | CLAUDE.md "any 엄격 금지" | 22건 |
+| `no-console` (예외: `utils/logger.ts` = createLogger 구현부) | CLAUDE.md "createLogger 사용" | 2건 |
+| `react-hooks/exhaustive-deps` — 기본 warn을 **error로 승격** | 훅 401곳 무검사 + 미설치 검사기용 disable 주석 7곳 방치 | 10건 |
+
+⚠️ **`exhaustive-deps` 10건 중 3건이 `hooks/useAssetActions.ts`의 `commitPortfolioPatch` 누락**이다 — 자산 변경 저장 경로에서 stale 클로저가 생길 수 있는 자리라 로드맵 4·5단계와 함께 다뤄야 한다.
+
+타입 정보 기반 검사(`recommendedTypeChecked`)는 아직 **미도입** — 더 강력하지만 느리고 초기 위반이 많다. 3단계 `strict` 이후 별도 검토.
+
+⚠️ **TypeScript 7은 도입 금지(현재)**: typescript-eslint가 `typescript <6.1`만 지원하므로 올리는 순간 ESLint가 설치 불가가 된다. 7.1에서 프로그래매틱 API가 안정화된 뒤 재검토.
 
 CI: `.github/workflows/ci.yml`(Verify)이 push·PR마다 `npm run verify` 실행. **현재는 배포와 분리** — 연속 초록불 확인 후 `deploy.yml`에 `needs: verify`를 붙여 "테스트 실패 시 배포 중단"으로 승격한다.
 

@@ -89,7 +89,7 @@ async function fetchRaw(
       },
     });
     if (!res.ok) return { ok: false, error: `HTTP ${res.status}` };
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
     const json: any = await res.json();
     const result = json?.chart?.result?.[0] as RawResult | undefined;
     if (!result) {

@@ -3,8 +3,9 @@
 // ---------------------------------------------------------------------------
 // 통합 검문소 — 변경 하나가 다른 곳을 깨뜨리지 않았는지 한 번에 확인한다.
 //
-//   node scripts/verify.mjs            타입검사 + 빠른 회귀 테스트 전부
+//   node scripts/verify.mjs            타입검사 + ESLint + 빠른 회귀 테스트 전부
 //   node scripts/verify.mjs --skip-typecheck
+//   node scripts/verify.mjs --skip-lint
 //   node scripts/verify.mjs --filter turtle       (이름에 turtle이 든 것만)
 //
 // 설계 원칙
@@ -30,6 +31,7 @@ process.chdir(ROOT); // 원칙 3
 
 const TSX = path.join(ROOT, 'node_modules', 'tsx', 'dist', 'cli.mjs');
 const TSC = path.join(ROOT, 'node_modules', 'typescript', 'bin', 'tsc');
+const ESLINT = path.join(ROOT, 'node_modules', 'eslint', 'bin', 'eslint.js');
 
 // ── 분류 ─────────────────────────────────────────────────────────────────────
 /** 빠른 회귀 — 네트워크·로컬 데이터 없이 도는 순수 테스트. 검문소의 기본 대상. */
@@ -49,6 +51,7 @@ const EXCLUDED = {
 // ── 인자 ─────────────────────────────────────────────────────────────────────
 const argv = process.argv.slice(2);
 const skipTypecheck = argv.includes('--skip-typecheck');
+const skipLint = argv.includes('--skip-lint');
 const filterIdx = argv.indexOf('--filter');
 const filter = filterIdx >= 0 ? argv[filterIdx + 1] : null;
 
@@ -100,14 +103,22 @@ async function pool(items, limit, worker) {
 
 // ── 본체 ─────────────────────────────────────────────────────────────────────
 const started = Date.now();
-console.log(`\n🔎 검문소 시작 — 테스트 ${targets.length}개${skipTypecheck ? '' : ' + 타입검사'}\n`);
+const extras = [skipTypecheck ? null : '타입검사', skipLint ? null : 'ESLint'].filter(Boolean);
+console.log(`\n🔎 검문소 시작 — 테스트 ${targets.length}개${extras.length ? ' + ' + extras.join(' + ') : ''}\n`);
 
-// 원칙 5: 타입검사를 먼저 띄워 놓고 테스트를 병렬로 돌린다.
+// 원칙 5: 타입검사·ESLint 를 먼저 띄워 놓고 테스트를 병렬로 돌린다.
 const typecheckPromise = skipTypecheck
   ? Promise.resolve(null)
   : existsSync(TSC)
     ? run(process.execPath, [TSC, '--noEmit'])
     : Promise.resolve({ code: 1, out: `typescript 가 설치되어 있지 않습니다: ${TSC}` });
+
+// 기존 위반은 eslint-suppressions.json 기준선에 있으므로 통과한다 — **새 위반만** 실패한다.
+const lintPromise = skipLint
+  ? Promise.resolve(null)
+  : existsSync(ESLINT)
+    ? run(process.execPath, [ESLINT, '.'])
+    : Promise.resolve({ code: 1, out: `eslint 가 설치되어 있지 않습니다: ${ESLINT}` });
 
 if (!existsSync(TSX)) {
   console.error(`❌ tsx 가 설치되어 있지 않습니다: ${TSX}\n   npm install 을 먼저 실행하세요.`);
@@ -125,6 +136,7 @@ const results = await pool(targets, limit, async file => {
 process.stdout.write('\n');
 
 const typecheck = await typecheckPromise;
+const lint = await lintPromise;
 const failed = results.filter(r => r.code !== 0);
 
 // ── 보고 ─────────────────────────────────────────────────────────────────────
@@ -141,16 +153,27 @@ if (typecheck && typecheck.code !== 0) {
   console.log(typecheck.out.trimEnd());
 }
 
+if (lint && lint.code !== 0) {
+  console.log('\n──────────────────────── ESLint (새 위반) ────────────────────────');
+  console.log(lint.out.trimEnd());
+  console.log('\n   ※ 기존 위반은 eslint-suppressions.json 기준선에 있어 통과합니다.');
+  console.log('     여기 뜬 것은 **이번 변경으로 새로 생긴 위반**이므로 고쳐야 합니다.');
+  console.log('     자동 수정 가능한 것: npm run lint:fix');
+}
+
 const secs = ((Date.now() - started) / 1000).toFixed(1);
 const slowest = [...results].sort((a, b) => b.ms - a.ms).slice(0, 3);
 
 console.log('\n═══════════════════════════════════════════════════════════════════════');
 console.log(`테스트   ${results.length - failed.length}/${results.length} 통과`);
 if (typecheck) console.log(`타입검사 ${typecheck.code === 0 ? '통과' : '실패'}`);
+if (lint) console.log(`ESLint   ${lint.code === 0 ? '통과 (새 위반 없음)' : '실패 — 새 위반 있음'}`);
 console.log(`제외     ${Object.keys(EXCLUDED).length}개 (백테스트·수동 스크립트 — 이유는 scripts/verify.mjs 참조)`);
 console.log(`소요     ${secs}초  (가장 느린: ${slowest.map(s => `${s.file.replace(/\.ts$/, '')} ${(s.ms / 1000).toFixed(1)}s`).join(', ')})`);
 console.log('═══════════════════════════════════════════════════════════════════════');
 
-const ok = failed.length === 0 && (!typecheck || typecheck.code === 0);
+const ok = failed.length === 0
+  && (!typecheck || typecheck.code === 0)
+  && (!lint || lint.code === 0);
 console.log(ok ? '\n✅ 전부 통과 — 안심하고 커밋하세요.\n' : '\n❌ 실패 — 위 내용을 먼저 해결하세요.\n');
 process.exit(ok ? 0 : 1);

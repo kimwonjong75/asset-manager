@@ -352,7 +352,7 @@ function pickN(
   positive: boolean | null,
   count: number
 ): SampledTrade[] {
-  let pool = trades.filter((t) =>
+  const pool = trades.filter((t) =>
     t.group === group &&
     (exitTypes.length === 0 || exitTypes.includes(classifyExit(t))) &&
     (positive === null ||

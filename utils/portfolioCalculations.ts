@@ -15,7 +15,7 @@ const DEFAULT_EXCHANGE_MAP: { [key: number]: string[] } = {
 };
 
 export const mapToNewAssetStructure = (asset: LegacyAssetShape | Asset): Asset => {
-  let newAsset = { ...asset };
+  const newAsset = { ...asset };
 
   if (!newAsset.exchange) newAsset.exchange = DEFAULT_EXCHANGE_MAP[newAsset.categoryId]?.[0] || '';
   if (!newAsset.currency) {
