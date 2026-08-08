@@ -95,6 +95,33 @@ export const FILTER_KEY_TO_GROUP: Record<SmartFilterKey, SmartFilterGroup> = {
   KR_CRASH_VOLUME: 'signal',
 };
 
+/**
+ * **구현 예정(미판정) 필터 키** — 타입·그룹에는 등록됐으나 `utils/smartFilterLogic`에 판정 분기가 없어
+ * 항상 `{ result: null, reason: 'not-applicable' }`로 떨어지는(=발화하지 않는) 키.
+ *
+ * 배경: 강의검증 급성 매도 6종(S1~S6). 백테스트 2010-2022에서 유일하게 자체 검증을 통과했고
+ *   (검증표본 63일 시장초과 -4~-12%p·Holm 유의·연도 강건 → 등급 REVIEW_WARNING),
+ *   `docs/GUIDE_기능정비_투자스타일_260726.md` §3 보완개발 **우선순위 1번**으로 승인된 신규 구현 대상이다.
+ *   현재는 타입 등록까지만 선행된 상태 — 판정 로직·UI 노출 모두 없음.
+ *   ※ REVIEW_WARNING은 "검토 큐 플래그"이지 자동매도가 아니다(RULES §13-4).
+ *
+ * 이 목록이 지키는 불변식 — 회귀 가드 `tests/smartFilterParity.ts`가 강제한다:
+ *   (1) 여기 있는 키에는 판정 로직이 **없어야** 한다. 구현되는 순간 테스트가 실패하며
+ *       "목록에서 빼고 골든 단언을 추가하라"고 요구한다.
+ *   (2) 여기 있는 키는 UI 칩(`constants/smartFilterChips`)에 **노출되면 안 된다**.
+ *       노출되면 사용자가 켤 수 있는데 영원히 울리지 않는 "조용한 알림"이 되기 때문.
+ *
+ * 즉 미구현을 눈감아 주는 예외구멍이 아니라, **구현 의무를 코드에 못박아 두는 추적표**다.
+ */
+export const PENDING_IMPLEMENTATION_FILTER_KEYS: readonly SmartFilterKey[] = [
+  'KR_RUNUP_1M',
+  'KR_RUNUP_1W',
+  'KR_LIMIT_UP',
+  'KR_GAP_UP_BEARISH',
+  'KR_PANIC_CLIMAX',
+  'KR_CRASH_VOLUME',
+] as const;
+
 /** 스마트 필터 전체 상태 */
 export interface SmartFilterState {
   activeFilters: Set<SmartFilterKey>;

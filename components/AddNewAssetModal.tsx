@@ -3,7 +3,7 @@ import { Currency, SymbolSearchResult, normalizeExchange } from '../types';
 import { getAllowedCategories, inferCategoryIdFromExchange, getCategoryBaseType, getCategoryName } from '../types/category';
 import { BucketId, ALL_BUCKETS, BUCKET_LABELS, BUCKET_DESCRIPTIONS } from '../types/bucket';
 import { OwnerId, ALL_OWNERS, OWNER_LABELS, OWNER_DESCRIPTIONS, getAssetOwner } from '../types/owner';
-import { searchSymbols, validateTicker } from '../services/symbolListService';
+import { searchSymbols, validateTicker, clearSymbolIndexCache, loadSymbolList } from '../services/symbolListService';
 import { searchSymbolsAI } from '../services/geminiService';
 import { getGeminiApiKey } from '../services/geminiSettings';
 import { usePortfolio } from '../contexts/PortfolioContext';
@@ -26,6 +26,8 @@ const AddNewAssetModal: React.FC = () => {
   const [isFocused, setIsFocused] = useState(false);
   const [duplicateError, setDuplicateError] = useState<string | null>(null);
   const [searchError, setSearchError] = useState<string | null>(null);
+  // 목록 프리페치가 '체감될 만큼' 오래 걸리는 중인지 — 안내 문구 노출 + 오해 유발 '결과 없음' 억제용
+  const [isListLoading, setIsListLoading] = useState(false);
   
   const [quantity, setQuantity] = useState('');
   const [purchasePrice, setPurchasePrice] = useState('');
@@ -61,6 +63,27 @@ const AddNewAssetModal: React.FC = () => {
     }
   }, [isOpen, clearForm]);
 
+  // 모달이 열리는 순간 종목 목록(약 1.3MB, 백엔드 gzip 미적용)을 미리 받아 둔다.
+  // 사용자가 거래소/수량을 고르고 2글자 이상 입력하는 동안 다운로드가 겹쳐 첫 검색의 체감 대기가 사라진다.
+  // 캐시(메모리/localStorage)가 있으면 네트워크를 타지 않고 즉시 끝난다(loadSymbolList가 inflight 공유·중복 fetch 방지).
+  // 실패는 여기서 무시 — 실제 검색 시 searchError로 사유를 표시한다.
+  useEffect(() => {
+    if (!isOpen) { setIsListLoading(false); return; }
+
+    let alive = true;
+    // 400ms 넘게 걸릴 때만 안내를 띄운다(캐시 히트 시 문구가 번쩍이지 않도록).
+    const hintTimer = setTimeout(() => { if (alive) setIsListLoading(true); }, 400);
+
+    loadSymbolList()
+      .catch(() => { /* 사유 표시는 검색 경로에서 */ })
+      .finally(() => {
+        if (!alive) return;
+        clearTimeout(hintTimer);
+        setIsListLoading(false);
+      });
+
+    return () => { alive = false; clearTimeout(hintTimer); };
+  }, [isOpen]);
 
   const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const newQuery = e.target.value;
@@ -118,6 +141,25 @@ const AddNewAssetModal: React.FC = () => {
     setCategory(inferredCategoryId);
 
     setSearchResults([]);
+  };
+
+  // 목록 캐시(24h TTL)가 오래됐거나(신규상장 미포함) 서버 오류로 못 받았을 때의 수동 복구.
+  // 캐시를 비우고 서버에서 다시 받아 같은 쿼리로 재검색한다.
+  const handleReloadSymbols = async () => {
+    clearSymbolIndexCache();
+    setIsSearching(true);
+    setIsListLoading(true); // 캐시를 비웠으므로 반드시 네트워크 — 안내를 바로 띄운다
+    setSearchError(null);
+    try {
+      const results = await searchSymbols(searchQuery);
+      setSearchResults(results);
+    } catch (error) {
+      setSearchResults([]);
+      setSearchError(error instanceof Error ? error.message : '검색 중 오류가 발생했습니다.');
+    } finally {
+      setIsSearching(false);
+      setIsListLoading(false);
+    }
   };
 
   // 키 있을 때만 노출되는 "AI로 더 찾기" — 자연어/별칭 검색을 Gemini로 보강해 기존 결과에 병합
@@ -334,6 +376,11 @@ const AddNewAssetModal: React.FC = () => {
             )}
             {showSearchPanel && (
                 <div className="absolute z-10 w-full bg-gray-700 border border-gray-600 rounded-md mt-1 max-h-72 overflow-y-auto shadow-lg">
+                {isListLoading && (
+                    <div className="px-3 py-2 text-xs text-gray-400 border-b border-gray-600">
+                        ⏳ 종목 목록을 받고 있습니다 — 곧 결과가 나타납니다 <span className="text-gray-500">(약 1.3MB · 기기당 하루 1회)</span>
+                    </div>
+                )}
                 {searchResults.length > 0 && (
                     <ul>
                     {searchResults.map((result) => (
@@ -350,12 +397,16 @@ const AddNewAssetModal: React.FC = () => {
                     ))}
                     </ul>
                 )}
-                {!isSearching && !searchError && searchResults.length === 0 && (
+                {/* 목록 수신 중에는 '결과 없음'을 띄우지 않는다 — 아직 검색할 목록이 없는 상태라 오해를 준다 */}
+                {!isSearching && !isListLoading && !searchError && searchResults.length === 0 && (
                     <div className="px-3 py-2 text-sm text-gray-400">검색 결과가 없습니다.</div>
                 )}
                 <div className="border-t border-gray-600">
                     <button type="button" onMouseDown={(e) => { e.preventDefault(); handleManualAdd(); }} disabled={isSearching} className="w-full text-left px-3 py-2 text-sm text-gray-200 hover:bg-primary-dark transition-colors disabled:opacity-50">
                         ✏ '<span className="font-mono">{searchQuery.trim().toUpperCase()}</span>' 티커로 직접 추가
+                    </button>
+                    <button type="button" onMouseDown={(e) => { e.preventDefault(); handleReloadSymbols(); }} disabled={isSearching} className="w-full text-left px-3 py-2 text-sm text-gray-300 hover:bg-primary-dark transition-colors disabled:opacity-50" title="종목 목록을 서버에서 다시 받아옵니다 (검색이 안 되거나 신규상장 종목이 없을 때)">
+                        🔄 종목 목록 새로 받기
                     </button>
                     {hasGeminiKey && (
                         <button type="button" onMouseDown={(e) => { e.preventDefault(); handleAiSearch(); }} disabled={isSearching} className="w-full text-left px-3 py-2 text-sm text-primary hover:bg-primary-dark transition-colors disabled:opacity-50">

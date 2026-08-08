@@ -15,7 +15,7 @@
 | `utils/` | Pure functions |
 | `services/` | External API calls |
 | `types/`, `constants/`, `contexts/` (`PortfolioContext`), `config/` | Types, constants, context, config |
-| `tests/` | Offline diagnostic scripts — NOT wired to CI; run manually via `npm run test:*` (parity/golden suites) and `npm run backtest` |
+| `tests/` | Offline parity/golden suites. Run them **all** with `npm test` (auto-discovers `*Parity.ts`/`*Integrity.ts` + typecheck, ~18s); individual `npm run test:*` for iteration; `npm run backtest` for the slow backtests |
 | `scripts/backtest/` | Backtest engine + data |
 | `scripts/ingest/` | Knowledge-ingest pipeline (`validate_inbox.py`, `triage.workflow.js`, `triage_commit.py`) |
 | `DB/` | LOCAL-ONLY knowledge-ingest data (gitignored): `inbox/` → `staging/` → `queue/knowledge-inbox.jsonl`; `STOP_INGEST.flag` is a kill switch; see `DB/README.md` |
@@ -58,7 +58,7 @@
 - Backend Python source is NOT in this repo — deployed separately on Cloud Run (`asset-manager-887842923289.asia-northeast3.run.app`). Endpoints/response schemas: RULES.md §14. Backend changes mean the user redeploys; the frontend must auto-fallback when response fields are absent. Never conclude "cannot find backend code" — it is out-of-repo by design.
 - Gemini API is BYOK: the user enters their own key in settings (localStorage, not synced). No key → AI analysis features are silently disabled; that is expected, not a bug.
 - Knowledge ingest is manually triggered by the user ("인제스트 해줘") — no scheduler; the user's PC is not always on.
-- No CI. Verification = run the relevant `npm run test:<suite>` + `npm run build` (tsc) manually.
+- Verification = **`npm test`** (typecheck + all parity/integrity suites via `scripts/verify.mjs`). Never hand-pick suites for a final check — picking is exactly how a red test sat unnoticed. `.github/workflows/ci.yml` runs the same command on push/PR; it is deliberately **not yet wired to block deploys** (see RULES.md §13 통합 검문소) — promote it with `needs: verify` in `deploy.yml` once consecutive green runs are confirmed.
 - Google Drive access uses the `drive.file` scope via `authenticatedFetch()`; JWT lives in localStorage key `google_drive_jwt`.
 
 ## Communication & workflow

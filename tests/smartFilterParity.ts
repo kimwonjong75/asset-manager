@@ -12,7 +12,11 @@
 import { matchesSingleFilter, evaluateSingleFilter } from '../utils/smartFilterLogic';
 import { matchesRule, checkAlertRules, checkBuyRulesForWatchlist } from '../utils/alertChecker';
 import { DEFAULT_ALERT_RULES } from '../constants/alertRules';
-import { FILTER_KEY_TO_GROUP, type SmartFilterKey, type FilterEvalReason, type ExtraFilterConfig } from '../types/smartFilter';
+import {
+  FILTER_KEY_TO_GROUP, PENDING_IMPLEMENTATION_FILTER_KEYS,
+  type SmartFilterKey, type FilterEvalReason, type ExtraFilterConfig,
+} from '../types/smartFilter';
+import { SMART_FILTER_CHIPS } from '../constants/smartFilterChips';
 import type { AlertRule } from '../types/alertRules';
 import type { EnrichedAsset, AssetMetrics } from '../types/ui';
 import type { Indicators } from '../types/api';
@@ -176,10 +180,48 @@ const ALL_KEYS: SmartFilterKey[] = [
   'DAILY_SURGE', 'DAILY_CRASH', 'LOSS_THRESHOLD',
   'VOLUME_SURGE', 'VOLUME_HIGH', 'VOLUME_LOW',
   'CLIMAX_TOP', 'SWING_LOW_BREAK', 'DISTRIBUTION_HIGH',
+  // 구현 예정(미판정) — 강의검증 급성 매도 6종. 아래 ②-b 블록이 "미구현 상태"를 명시적으로 고정한다.
+  'KR_RUNUP_1M', 'KR_RUNUP_1W', 'KR_LIMIT_UP', 'KR_GAP_UP_BEARISH', 'KR_PANIC_CLIMAX', 'KR_CRASH_VOLUME',
 ];
-check('32개 키 전부 정의됨', ALL_KEYS.length, 32);
+check('38개 키 전부 정의됨', ALL_KEYS.length, 38);
 // 집합 동일성 — ALL_KEYS === FILTER_KEY_TO_GROUP 키 (향후 키 추가 시 테스트 누락을 잡음)
 check('ALL_KEYS === FILTER_KEY_TO_GROUP 키 집합', sortedKeys(ALL_KEYS), sortedKeys(Object.keys(FILTER_KEY_TO_GROUP)));
+
+// ── ②-b 구현 예정 키의 "미구현 상태" 고정 ──────────────────────────────────────
+// PENDING_IMPLEMENTATION_FILTER_KEYS는 미구현을 눈감아 주는 예외구멍이 아니다.
+// 세 방향으로 조여서, 목록에 넣는 것만으로는 아무것도 회피되지 않게 한다:
+//   (1) 목록의 키는 ALL_KEYS(=타입/그룹)에 실재해야 한다  — 오타·유령 키 차단
+//   (2) 판정 로직이 없어야 한다(not-applicable)          — 구현되면 실패 → 목록 정리 + 골든 단언 강제
+//   (3) UI 칩에 노출되면 안 된다                          — "켤 수 있는데 안 울리는 알림" 원천 차단
+const PENDING = sortedKeys([...PENDING_IMPLEMENTATION_FILTER_KEYS]);
+check('구현예정 6종(강의검증 급성 매도)', PENDING, sortedKeys([
+  'KR_RUNUP_1M', 'KR_RUNUP_1W', 'KR_LIMIT_UP', 'KR_GAP_UP_BEARISH', 'KR_PANIC_CLIMAX', 'KR_CRASH_VOLUME',
+]));
+check('(1) 구현예정 키는 전부 ALL_KEYS에 실재', PENDING.filter(k => !ALL_KEYS.includes(k as SmartFilterKey)), []);
+
+// (2) 데이터를 풍족하게 줘도 판정 분기가 없으므로 not-applicable이어야 한다.
+//     여기서 result가 true/false로 바뀌면 = 구현이 들어온 것 → 실패시켜 목록 정리를 요구한다.
+const richAsset = mkAsset({ ticker: '005930', priceOriginal: 70000, changeRate: -12 });
+const richEnriched = mkEnriched({ rsi: 80, ma: { 20: 100, 60: 120 } });
+const notImplemented = PENDING.filter(k => {
+  const e = E(k as SmartFilterKey, richAsset, richEnriched);
+  return !(e.result === null && e.reason === 'not-applicable');
+});
+check('(2) 구현예정 키는 전부 not-applicable(판정 로직 없음)', notImplemented, []);
+// 발화 불변: not-applicable도 matchesSingleFilter는 false (조용히 true가 되는 일 없음)
+check('(2) 구현예정 키는 발화하지 않음',
+  PENDING.filter(k => M(k as SmartFilterKey, richAsset, richEnriched) !== false), []);
+
+// (3) UI 칩에 새면 사용자가 켤 수 있게 되고, 켜도 영원히 안 울린다 → 노출 금지.
+const chipKeys = new Set<string>();
+for (const c of SMART_FILTER_CHIPS) {
+  chipKeys.add(c.key);
+  if (c.pairKey) chipKeys.add(c.pairKey);
+}
+check('(3) 구현예정 키는 UI 칩에 미노출', PENDING.filter(k => chipKeys.has(k)), []);
+// 역방향: 칩에 있는 키는 전부 타입에 실재해야 한다(칩만 남은 유령 키 차단)
+check('(3) 칩의 모든 키가 ALL_KEYS에 실재',
+  [...chipKeys].filter(k => !ALL_KEYS.includes(k as SmartFilterKey)).sort(), []);
 
 // 발화 동일성: 여러 (key, asset, enriched) 조합에서 matchesSingleFilter === (evaluateSingleFilter.result === true)
 const parityCases: Array<{ key: SmartFilterKey; asset: EnrichedAsset; enriched?: EnrichedIndicatorData; extra?: ExtraFilterConfig }> = [
@@ -376,5 +418,5 @@ if (fails.length > 0) {
   for (const f of fails) console.log(f);
   process.exitCode = 1;
 } else {
-  console.log('✓ 32키 골든 + tri-state(no-data/event-not-found 구분) + 발화 동일성 + 기본 21규칙 발화집합·설정전달·buy-only 고정');
+  console.log('✓ 38키(구현 32 + 구현예정 6) 골든 + tri-state(no-data/event-not-found 구분) + 발화 동일성 + 구현예정 키 미구현·미노출 고정 + 기본 21규칙 발화집합·설정전달·buy-only 고정');
 }

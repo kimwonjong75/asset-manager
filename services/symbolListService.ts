@@ -5,6 +5,10 @@
 // - 사용자 Gemini API 키가 전혀 필요 없다 (기본 검색 경로).
 // - 키스트로크마다 서버를 호출하지 않는다 (목록 1회 fetch 후 로컬 필터).
 // - 자연어/별칭 검색이 필요하면 모달의 "AI로 더 찾기"(geminiService.searchSymbolsAI)로 보강.
+//
+// 불변식: **빈 목록은 유효한 캐시가 아니다.** 서버가 빈/이상 응답을 준 순간을 캐시하면
+//         TTL(24h) 동안 모든 모달에서 검색이 "결과 없음"으로만 보인다(원인 표시 없음).
+//         → 빈 응답은 캐시 금지 + throw, 기존 오염 캐시는 읽는 즉시 폐기(자가 복구).
 
 import { SymbolSearchResult } from '../types';
 import { CLOUD_RUN_BASE_URL } from '../constants/api';
@@ -21,18 +25,44 @@ const TTL = 24 * 60 * 60 * 1000; // 24시간
 interface SymbolIndexPayload {
   updatedAt?: number;
   count?: number;
-  symbols?: SymbolSearchResult[];
+  symbols?: unknown;
 }
 
 let memoryList: SymbolSearchResult[] | null = null;
 let inflight: Promise<SymbolSearchResult[]> | null = null;
 
+/**
+ * 쓸 수 있는 목록인지 판정 — **빈 배열은 유효하지 않다**.
+ * 빈/깨진 목록을 캐시하거나 사용하면 모달이 "검색 결과가 없습니다"만 보여주어
+ * 목록 로드 실패와 진짜 무매칭을 구분할 수 없다(조용한 검색 불능이 TTL 24h 동안 지속).
+ */
+function isUsableSymbolList(value: unknown): value is SymbolSearchResult[] {
+  if (!Array.isArray(value) || value.length === 0) return false;
+  const first = value[0] as Partial<SymbolSearchResult> | null;
+  return !!first && typeof first.ticker === 'string' && typeof first.name === 'string';
+}
+
+/** 목록 캐시(메모리+localStorage)를 비운다. 오염 캐시 자동 폐기 / "목록 새로 받기" 수동 복구용. */
+export function clearSymbolIndexCache(): void {
+  memoryList = null;
+  try {
+    localStorage.removeItem(LS_KEY);
+  } catch {
+    /* localStorage 접근 불가 환경 — 메모리 캐시만 비움 */
+  }
+}
+
 function readLocal(): SymbolSearchResult[] | null {
   try {
     const raw = localStorage.getItem(LS_KEY);
     if (!raw) return null;
-    const parsed = JSON.parse(raw) as { savedAt: number; symbols: SymbolSearchResult[] };
-    if (!Array.isArray(parsed.symbols) || Date.now() - parsed.savedAt > TTL) return null;
+    const parsed = JSON.parse(raw) as { savedAt?: number; symbols?: unknown };
+    if (typeof parsed?.savedAt !== 'number' || Date.now() - parsed.savedAt > TTL) return null;
+    if (!isUsableSymbolList(parsed.symbols)) {
+      // 빈/깨진 캐시는 즉시 폐기 — 남겨두면 24시간 동안 검색이 조용히 0건이 된다.
+      clearSymbolIndexCache();
+      return null;
+    }
     return parsed.symbols;
   } catch {
     return null;
@@ -53,7 +83,7 @@ function writeLocal(symbols: SymbolSearchResult[]): void {
  * 백엔드 조회 실패 시 throw (호출부가 사유를 표시).
  */
 export async function loadSymbolList(): Promise<SymbolSearchResult[]> {
-  if (memoryList) return memoryList;
+  if (memoryList && memoryList.length > 0) return memoryList;
 
   const cached = readLocal();
   if (cached) {
@@ -67,7 +97,11 @@ export async function loadSymbolList(): Promise<SymbolSearchResult[]> {
     const res = await fetch(SYMBOLS_URL);
     if (!res.ok) throw new Error(`종목 목록 조회 실패 (${res.status})`);
     const data = (await res.json()) as SymbolIndexPayload;
-    const list = Array.isArray(data.symbols) ? data.symbols : [];
+    if (!isUsableSymbolList(data.symbols)) {
+      // 빈/이상 응답은 절대 캐시하지 않는다 — 캐시하면 TTL(24h) 내내 검색이 조용히 0건이 된다.
+      throw new Error('종목 목록이 비어 있습니다. 잠시 후 다시 시도해 주세요.');
+    }
+    const list = data.symbols;
     memoryList = list;
     writeLocal(list);
     log.debug(`Loaded ${list.length} symbols`);

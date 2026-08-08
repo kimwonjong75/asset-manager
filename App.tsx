@@ -15,6 +15,7 @@ import SettingsPage from './components/SettingsPage';
 
 // Hooks
 import { PortfolioProvider, usePortfolio } from './contexts/PortfolioContext';
+import { useSymbolListPrefetch } from './hooks/useSymbolListPrefetch';
 import { OWNER_FILTER_OPTIONS, OWNER_FILTER_LABELS } from './types/owner';
 
 // Layouts
@@ -31,7 +32,10 @@ type ActiveTab = 'dashboard' | 'portfolio' | 'analytics' | 'watchlist' | 'replay
 
 const AppContent: React.FC = () => {
   const { data, status, ui, modal, actions, derived } = usePortfolio();
-  
+
+  // 로그인 + 초기 시세 로딩 후 종목 목록(1.3MB)을 백그라운드로 미리 받아 첫 종목검색 대기를 없앤다.
+  useSymbolListPrefetch(status.isSignedIn, status.isLoading);
+
 
   const [updateAvailable, setUpdateAvailable] = useState<boolean>(false);
   const [fileName, setFileName] = useState<string>('portfolio.json');
