@@ -1,0 +1,2548 @@
+{
+  "generatedAt": "2026-08-08T10:43:46.245Z",
+  "endDate": "2026-08-08",
+  "source": "yahoo-v8",
+  "config": {
+    "riskPercentPerTrade": 0.01,
+    "investedBudget": 0.96,
+    "initialEquity": 100000000,
+    "horizons": [
+      1,
+      3,
+      5,
+      10
+    ],
+    "stopLossPercents": [
+      0.03,
+      0.05,
+      0.07,
+      0.1
+    ],
+    "rebalance": "semi-annual(Jan/Jul first trading day)",
+    "spliceMap": {
+      "474800.KS": "XLE",
+      "379810.KS": "QQQ",
+      "283580.KS": "ASHR",
+      "372330.KS": "KWEB",
+      "385560.KS": "TLT",
+      "464470.KS": "TLT",
+      "411060.KS": "GLD"
+    },
+    "legCount": 14
+  },
+  "legs": [
+    {
+      "symbol": "069500.KS",
+      "label": "KODEX 200",
+      "realFirstDate": "2007-01-29",
+      "proxySymbol": null,
+      "currency": "KRW"
+    },
+    {
+      "symbol": "474800.KS",
+      "label": "KIWOOM 미국원유에너지",
+      "realFirstDate": "2024-01-16",
+      "proxySymbol": "XLE",
+      "currency": "KRW"
+    },
+    {
+      "symbol": "379810.KS",
+      "label": "KODEX 미국나스닥100",
+      "realFirstDate": "2021-04-09",
+      "proxySymbol": "QQQ",
+      "currency": "KRW"
+    },
+    {
+      "symbol": "EIS",
+      "label": "이스라엘 프록시",
+      "realFirstDate": "2008-03-28",
+      "proxySymbol": null,
+      "currency": "USD"
+    },
+    {
+      "symbol": "283580.KS",
+      "label": "KODEX 차이나CSI300",
+      "realFirstDate": "2017-12-13",
+      "proxySymbol": "ASHR",
+      "currency": "KRW"
+    },
+    {
+      "symbol": "372330.KS",
+      "label": "KODEX 차이나항셍테크",
+      "realFirstDate": "2020-12-16",
+      "proxySymbol": "KWEB",
+      "currency": "KRW"
+    },
+    {
+      "symbol": "ECH",
+      "label": "칠레 프록시",
+      "realFirstDate": "2007-11-20",
+      "proxySymbol": null,
+      "currency": "USD"
+    },
+    {
+      "symbol": "EWZ",
+      "label": "브라질 프록시",
+      "realFirstDate": "2000-07-14",
+      "proxySymbol": null,
+      "currency": "USD"
+    },
+    {
+      "symbol": "EIDO",
+      "label": "인도네시아 프록시",
+      "realFirstDate": "2010-05-07",
+      "proxySymbol": null,
+      "currency": "USD"
+    },
+    {
+      "symbol": "385560.KS",
+      "label": "RISE KIS국고채30Enhanced",
+      "realFirstDate": "2021-05-26",
+      "proxySymbol": "TLT",
+      "currency": "KRW"
+    },
+    {
+      "symbol": "464470.KS",
+      "label": "PLUS 미국채30액티브",
+      "realFirstDate": "2023-08-22",
+      "proxySymbol": "TLT",
+      "currency": "KRW"
+    },
+    {
+      "symbol": "411060.KS",
+      "label": "ACE KRX금현물",
+      "realFirstDate": "2021-12-15",
+      "proxySymbol": "GLD",
+      "currency": "KRW"
+    },
+    {
+      "symbol": "SLV",
+      "label": "은 프록시(SLV)",
+      "realFirstDate": "2006-04-28",
+      "proxySymbol": null,
+      "currency": "USD"
+    },
+    {
+      "symbol": "160580.KS",
+      "label": "TIGER 구리실물",
+      "realFirstDate": "2012-12-17",
+      "proxySymbol": null,
+      "currency": "KRW"
+    }
+  ],
+  "spliceCoverageByHorizon": {
+    "1y": [
+      {
+        "symbol": "474800.KS",
+        "label": "KIWOOM 미국원유에너지",
+        "proxySymbol": "XLE",
+        "realFirstDate": "2024-01-16",
+        "realDays": 289,
+        "proxyDays": 0,
+        "realPct": 100
+      },
+      {
+        "symbol": "379810.KS",
+        "label": "KODEX 미국나스닥100",
+        "proxySymbol": "QQQ",
+        "realFirstDate": "2021-04-09",
+        "realDays": 289,
+        "proxyDays": 0,
+        "realPct": 100
+      },
+      {
+        "symbol": "283580.KS",
+        "label": "KODEX 차이나CSI300",
+        "proxySymbol": "ASHR",
+        "realFirstDate": "2017-12-13",
+        "realDays": 289,
+        "proxyDays": 0,
+        "realPct": 100
+      },
+      {
+        "symbol": "372330.KS",
+        "label": "KODEX 차이나항셍테크",
+        "proxySymbol": "KWEB",
+        "realFirstDate": "2020-12-16",
+        "realDays": 289,
+        "proxyDays": 0,
+        "realPct": 100
+      },
+      {
+        "symbol": "385560.KS",
+        "label": "RISE KIS국고채30Enhanced",
+        "proxySymbol": "TLT",
+        "realFirstDate": "2021-05-26",
+        "realDays": 289,
+        "proxyDays": 0,
+        "realPct": 100
+      },
+      {
+        "symbol": "464470.KS",
+        "label": "PLUS 미국채30액티브",
+        "proxySymbol": "TLT",
+        "realFirstDate": "2023-08-22",
+        "realDays": 289,
+        "proxyDays": 0,
+        "realPct": 100
+      },
+      {
+        "symbol": "411060.KS",
+        "label": "ACE KRX금현물",
+        "proxySymbol": "GLD",
+        "realFirstDate": "2021-12-15",
+        "realDays": 289,
+        "proxyDays": 0,
+        "realPct": 100
+      }
+    ],
+    "3y": [
+      {
+        "symbol": "474800.KS",
+        "label": "KIWOOM 미국원유에너지",
+        "proxySymbol": "XLE",
+        "realFirstDate": "2024-01-16",
+        "realDays": 744,
+        "proxyDays": 126,
+        "realPct": 85.51724137931035
+      },
+      {
+        "symbol": "379810.KS",
+        "label": "KODEX 미국나스닥100",
+        "proxySymbol": "QQQ",
+        "realFirstDate": "2021-04-09",
+        "realDays": 870,
+        "proxyDays": 0,
+        "realPct": 100
+      },
+      {
+        "symbol": "283580.KS",
+        "label": "KODEX 차이나CSI300",
+        "proxySymbol": "ASHR",
+        "realFirstDate": "2017-12-13",
+        "realDays": 870,
+        "proxyDays": 0,
+        "realPct": 100
+      },
+      {
+        "symbol": "372330.KS",
+        "label": "KODEX 차이나항셍테크",
+        "proxySymbol": "KWEB",
+        "realFirstDate": "2020-12-16",
+        "realDays": 870,
+        "proxyDays": 0,
+        "realPct": 100
+      },
+      {
+        "symbol": "385560.KS",
+        "label": "RISE KIS국고채30Enhanced",
+        "proxySymbol": "TLT",
+        "realFirstDate": "2021-05-26",
+        "realDays": 870,
+        "proxyDays": 0,
+        "realPct": 100
+      },
+      {
+        "symbol": "464470.KS",
+        "label": "PLUS 미국채30액티브",
+        "proxySymbol": "TLT",
+        "realFirstDate": "2023-08-22",
+        "realDays": 858,
+        "proxyDays": 12,
+        "realPct": 98.62068965517241
+      },
+      {
+        "symbol": "411060.KS",
+        "label": "ACE KRX금현물",
+        "proxySymbol": "GLD",
+        "realFirstDate": "2021-12-15",
+        "realDays": 870,
+        "proxyDays": 0,
+        "realPct": 100
+      }
+    ],
+    "5y": [
+      {
+        "symbol": "474800.KS",
+        "label": "KIWOOM 미국원유에너지",
+        "proxySymbol": "XLE",
+        "realFirstDate": "2024-01-16",
+        "realDays": 744,
+        "proxyDays": 710,
+        "realPct": 51.169188445667125
+      },
+      {
+        "symbol": "379810.KS",
+        "label": "KODEX 미국나스닥100",
+        "proxySymbol": "QQQ",
+        "realFirstDate": "2021-04-09",
+        "realDays": 1454,
+        "proxyDays": 0,
+        "realPct": 100
+      },
+      {
+        "symbol": "283580.KS",
+        "label": "KODEX 차이나CSI300",
+        "proxySymbol": "ASHR",
+        "realFirstDate": "2017-12-13",
+        "realDays": 1454,
+        "proxyDays": 0,
+        "realPct": 100
+      },
+      {
+        "symbol": "372330.KS",
+        "label": "KODEX 차이나항셍테크",
+        "proxySymbol": "KWEB",
+        "realFirstDate": "2020-12-16",
+        "realDays": 1454,
+        "proxyDays": 0,
+        "realPct": 100
+      },
+      {
+        "symbol": "385560.KS",
+        "label": "RISE KIS국고채30Enhanced",
+        "proxySymbol": "TLT",
+        "realFirstDate": "2021-05-26",
+        "realDays": 1454,
+        "proxyDays": 0,
+        "realPct": 100
+      },
+      {
+        "symbol": "464470.KS",
+        "label": "PLUS 미국채30액티브",
+        "proxySymbol": "TLT",
+        "realFirstDate": "2023-08-22",
+        "realDays": 858,
+        "proxyDays": 596,
+        "realPct": 59.009628610729024
+      },
+      {
+        "symbol": "411060.KS",
+        "label": "ACE KRX금현물",
+        "proxySymbol": "GLD",
+        "realFirstDate": "2021-12-15",
+        "realDays": 1350,
+        "proxyDays": 104,
+        "realPct": 92.84731774415405
+      }
+    ],
+    "10y": [
+      {
+        "symbol": "474800.KS",
+        "label": "KIWOOM 미국원유에너지",
+        "proxySymbol": "XLE",
+        "realFirstDate": "2024-01-16",
+        "realDays": 744,
+        "proxyDays": 2166,
+        "realPct": 25.56701030927835
+      },
+      {
+        "symbol": "379810.KS",
+        "label": "KODEX 미국나스닥100",
+        "proxySymbol": "QQQ",
+        "realFirstDate": "2021-04-09",
+        "realDays": 1557,
+        "proxyDays": 1353,
+        "realPct": 53.50515463917526
+      },
+      {
+        "symbol": "283580.KS",
+        "label": "KODEX 차이나CSI300",
+        "proxySymbol": "ASHR",
+        "realFirstDate": "2017-12-13",
+        "realDays": 2516,
+        "proxyDays": 394,
+        "realPct": 86.46048109965636
+      },
+      {
+        "symbol": "372330.KS",
+        "label": "KODEX 차이나항셍테크",
+        "proxySymbol": "KWEB",
+        "realFirstDate": "2020-12-16",
+        "realDays": 1641,
+        "proxyDays": 1269,
+        "realPct": 56.391752577319586
+      },
+      {
+        "symbol": "385560.KS",
+        "label": "RISE KIS국고채30Enhanced",
+        "proxySymbol": "TLT",
+        "realFirstDate": "2021-05-26",
+        "realDays": 1517,
+        "proxyDays": 1393,
+        "realPct": 52.13058419243987
+      },
+      {
+        "symbol": "464470.KS",
+        "label": "PLUS 미국채30액티브",
+        "proxySymbol": "TLT",
+        "realFirstDate": "2023-08-22",
+        "realDays": 858,
+        "proxyDays": 2052,
+        "realPct": 29.48453608247423
+      },
+      {
+        "symbol": "411060.KS",
+        "label": "ACE KRX금현물",
+        "proxySymbol": "GLD",
+        "realFirstDate": "2021-12-15",
+        "realDays": 1350,
+        "proxyDays": 1560,
+        "realPct": 46.391752577319586
+      }
+    ]
+  },
+  "results": [
+    {
+      "horizonYears": 1,
+      "stopLossPercent": 0.03,
+      "startDate": "2025-08-08",
+      "endDate": "2026-08-07",
+      "tradingDays": 289,
+      "targetWeightPerLeg": 0.06857142857142857,
+      "weightSumMin": 0.9599999999999997,
+      "weightSumMax": 0.96,
+      "rebalanceCount": 3,
+      "finalEquity": 136206335.43248948,
+      "totalReturnPct": 36.20633543248948,
+      "metrics": {
+        "cagrPct": 36.35094461604227,
+        "mddPct": -5.426483578665314,
+        "calmar": 6.69880302576776,
+        "profitFactor": 0,
+        "winRatePct": 0,
+        "tradeCount": 19,
+        "maxConsecutiveLosses": 19,
+        "worst3yRollingPct": 36.20633543248943,
+        "annualReturns": [
+          {
+            "year": "2025",
+            "returnPct": 23.04230130960976
+          },
+          {
+            "year": "2026",
+            "returnPct": 10.698787313604608
+          }
+        ]
+      },
+      "legStats": [
+        {
+          "symbol": "069500.KS",
+          "label": "KODEX 200",
+          "stopOutCount": 1,
+          "realizedLossKRW": -784337.460508284
+        },
+        {
+          "symbol": "474800.KS",
+          "label": "KIWOOM 미국원유에너지",
+          "stopOutCount": 0,
+          "realizedLossKRW": 0
+        },
+        {
+          "symbol": "379810.KS",
+          "label": "KODEX 미국나스닥100",
+          "stopOutCount": 2,
+          "realizedLossKRW": -579032.0963769896
+        },
+        {
+          "symbol": "EIS",
+          "label": "이스라엘 프록시",
+          "stopOutCount": 1,
+          "realizedLossKRW": -383704.2369326601
+        },
+        {
+          "symbol": "283580.KS",
+          "label": "KODEX 차이나CSI300",
+          "stopOutCount": 1,
+          "realizedLossKRW": -296770.33396138105
+        },
+        {
+          "symbol": "372330.KS",
+          "label": "KODEX 차이나항셍테크",
+          "stopOutCount": 1,
+          "realizedLossKRW": -283988.8620497189
+        },
+        {
+          "symbol": "ECH",
+          "label": "칠레 프록시",
+          "stopOutCount": 1,
+          "realizedLossKRW": -346882.862825348
+        },
+        {
+          "symbol": "EWZ",
+          "label": "브라질 프록시",
+          "stopOutCount": 1,
+          "realizedLossKRW": -340717.99784793827
+        },
+        {
+          "symbol": "EIDO",
+          "label": "인도네시아 프록시",
+          "stopOutCount": 2,
+          "realizedLossKRW": -1052273.0817055677
+        },
+        {
+          "symbol": "385560.KS",
+          "label": "RISE KIS국고채30Enhanced",
+          "stopOutCount": 3,
+          "realizedLossKRW": -879080.2329667121
+        },
+        {
+          "symbol": "464470.KS",
+          "label": "PLUS 미국채30액티브",
+          "stopOutCount": 1,
+          "realizedLossKRW": -470918.10249005386
+        },
+        {
+          "symbol": "411060.KS",
+          "label": "ACE KRX금현물",
+          "stopOutCount": 2,
+          "realizedLossKRW": -595781.859493372
+        },
+        {
+          "symbol": "SLV",
+          "label": "은 프록시(SLV)",
+          "stopOutCount": 2,
+          "realizedLossKRW": -724591.289698442
+        },
+        {
+          "symbol": "160580.KS",
+          "label": "TIGER 구리실물",
+          "stopOutCount": 1,
+          "realizedLossKRW": -387905.2069721184
+        }
+      ]
+    },
+    {
+      "horizonYears": 1,
+      "stopLossPercent": 0.05,
+      "startDate": "2025-08-08",
+      "endDate": "2026-08-07",
+      "tradingDays": 289,
+      "targetWeightPerLeg": 0.06857142857142856,
+      "weightSumMin": 0.9599999999999996,
+      "weightSumMax": 0.96,
+      "rebalanceCount": 3,
+      "finalEquity": 137386110.62127134,
+      "totalReturnPct": 37.38611062127135,
+      "metrics": {
+        "cagrPct": 37.53604566443738,
+        "mddPct": -6.21500465447459,
+        "calmar": 6.039584481632321,
+        "profitFactor": 0,
+        "winRatePct": 0,
+        "tradeCount": 16,
+        "maxConsecutiveLosses": 16,
+        "worst3yRollingPct": 37.38611062127135,
+        "annualReturns": [
+          {
+            "year": "2025",
+            "returnPct": 23.845368020620718
+          },
+          {
+            "year": "2026",
+            "returnPct": 10.933588245622584
+          }
+        ]
+      },
+      "legStats": [
+        {
+          "symbol": "069500.KS",
+          "label": "KODEX 200",
+          "stopOutCount": 1,
+          "realizedLossKRW": -799738.0453866449
+        },
+        {
+          "symbol": "474800.KS",
+          "label": "KIWOOM 미국원유에너지",
+          "stopOutCount": 0,
+          "realizedLossKRW": 0
+        },
+        {
+          "symbol": "379810.KS",
+          "label": "KODEX 미국나스닥100",
+          "stopOutCount": 1,
+          "realizedLossKRW": -668581.1539770587
+        },
+        {
+          "symbol": "EIS",
+          "label": "이스라엘 프록시",
+          "stopOutCount": 1,
+          "realizedLossKRW": -544784.4068066159
+        },
+        {
+          "symbol": "283580.KS",
+          "label": "KODEX 차이나CSI300",
+          "stopOutCount": 1,
+          "realizedLossKRW": -653396.4441768378
+        },
+        {
+          "symbol": "372330.KS",
+          "label": "KODEX 차이나항셍테크",
+          "stopOutCount": 1,
+          "realizedLossKRW": -494267.3055068017
+        },
+        {
+          "symbol": "ECH",
+          "label": "칠레 프록시",
+          "stopOutCount": 1,
+          "realizedLossKRW": -535800.8536696223
+        },
+        {
+          "symbol": "EWZ",
+          "label": "브라질 프록시",
+          "stopOutCount": 1,
+          "realizedLossKRW": -609070.4909308327
+        },
+        {
+          "symbol": "EIDO",
+          "label": "인도네시아 프록시",
+          "stopOutCount": 1,
+          "realizedLossKRW": -772328.4956333179
+        },
+        {
+          "symbol": "385560.KS",
+          "label": "RISE KIS국고채30Enhanced",
+          "stopOutCount": 2,
+          "realizedLossKRW": -888583.8867131553
+        },
+        {
+          "symbol": "464470.KS",
+          "label": "PLUS 미국채30액티브",
+          "stopOutCount": 1,
+          "realizedLossKRW": -577943.6342176269
+        },
+        {
+          "symbol": "411060.KS",
+          "label": "ACE KRX금현물",
+          "stopOutCount": 2,
+          "realizedLossKRW": -1007805.5829640065
+        },
+        {
+          "symbol": "SLV",
+          "label": "은 프록시(SLV)",
+          "stopOutCount": 2,
+          "realizedLossKRW": -1035352.6470592548
+        },
+        {
+          "symbol": "160580.KS",
+          "label": "TIGER 구리실물",
+          "stopOutCount": 1,
+          "realizedLossKRW": -528022.2874688078
+        }
+      ]
+    },
+    {
+      "horizonYears": 1,
+      "stopLossPercent": 0.07,
+      "startDate": "2025-08-08",
+      "endDate": "2026-08-07",
+      "tradingDays": 289,
+      "targetWeightPerLeg": 0.06857142857142859,
+      "weightSumMin": 0.9599999999999999,
+      "weightSumMax": 0.9600000000000006,
+      "rebalanceCount": 3,
+      "finalEquity": 135522245.34603864,
+      "totalReturnPct": 35.52224534603865,
+      "metrics": {
+        "cagrPct": 35.66378246784163,
+        "mddPct": -7.429830335695964,
+        "calmar": 4.800080332453641,
+        "profitFactor": 0,
+        "winRatePct": 0,
+        "tradeCount": 14,
+        "maxConsecutiveLosses": 14,
+        "worst3yRollingPct": 35.52224534603865,
+        "annualReturns": [
+          {
+            "year": "2025",
+            "returnPct": 23.74765874296503
+          },
+          {
+            "year": "2026",
+            "returnPct": 9.514997473633425
+          }
+        ]
+      },
+      "legStats": [
+        {
+          "symbol": "069500.KS",
+          "label": "KODEX 200",
+          "stopOutCount": 1,
+          "realizedLossKRW": -794113.8156943817
+        },
+        {
+          "symbol": "474800.KS",
+          "label": "KIWOOM 미국원유에너지",
+          "stopOutCount": 0,
+          "realizedLossKRW": 0
+        },
+        {
+          "symbol": "379810.KS",
+          "label": "KODEX 미국나스닥100",
+          "stopOutCount": 1,
+          "realizedLossKRW": -951299.6336586168
+        },
+        {
+          "symbol": "EIS",
+          "label": "이스라엘 프록시",
+          "stopOutCount": 1,
+          "realizedLossKRW": -756474.009871464
+        },
+        {
+          "symbol": "283580.KS",
+          "label": "KODEX 차이나CSI300",
+          "stopOutCount": 1,
+          "realizedLossKRW": -787070.4517780371
+        },
+        {
+          "symbol": "372330.KS",
+          "label": "KODEX 차이나항셍테크",
+          "stopOutCount": 1,
+          "realizedLossKRW": -649975.7772826167
+        },
+        {
+          "symbol": "ECH",
+          "label": "칠레 프록시",
+          "stopOutCount": 1,
+          "realizedLossKRW": -768060.6869321078
+        },
+        {
+          "symbol": "EWZ",
+          "label": "브라질 프록시",
+          "stopOutCount": 0,
+          "realizedLossKRW": 0
+        },
+        {
+          "symbol": "EIDO",
+          "label": "인도네시아 프록시",
+          "stopOutCount": 1,
+          "realizedLossKRW": -771728.9912421555
+        },
+        {
+          "symbol": "385560.KS",
+          "label": "RISE KIS국고채30Enhanced",
+          "stopOutCount": 2,
+          "realizedLossKRW": -1159752.2856076465
+        },
+        {
+          "symbol": "464470.KS",
+          "label": "PLUS 미국채30액티브",
+          "stopOutCount": 1,
+          "realizedLossKRW": -694376.1472968764
+        },
+        {
+          "symbol": "411060.KS",
+          "label": "ACE KRX금현물",
+          "stopOutCount": 1,
+          "realizedLossKRW": -641931.3250432415
+        },
+        {
+          "symbol": "SLV",
+          "label": "은 프록시(SLV)",
+          "stopOutCount": 2,
+          "realizedLossKRW": -1642768.9117211374
+        },
+        {
+          "symbol": "160580.KS",
+          "label": "TIGER 구리실물",
+          "stopOutCount": 1,
+          "realizedLossKRW": -740272.5292341067
+        }
+      ]
+    },
+    {
+      "horizonYears": 1,
+      "stopLossPercent": 0.1,
+      "startDate": "2025-08-08",
+      "endDate": "2026-08-07",
+      "tradingDays": 289,
+      "targetWeightPerLeg": 0.06857142857142856,
+      "weightSumMin": 0.9599999999999996,
+      "weightSumMax": 0.9600000000000002,
+      "rebalanceCount": 3,
+      "finalEquity": 133611094.13506863,
+      "totalReturnPct": 33.61109413506862,
+      "metrics": {
+        "cagrPct": 33.74411211252828,
+        "mddPct": -9.113842622818694,
+        "calmar": 3.7025120477768385,
+        "profitFactor": 0,
+        "winRatePct": 0,
+        "tradeCount": 11,
+        "maxConsecutiveLosses": 11,
+        "worst3yRollingPct": 33.61109413506862,
+        "annualReturns": [
+          {
+            "year": "2025",
+            "returnPct": 23.524324695000942
+          },
+          {
+            "year": "2026",
+            "returnPct": 8.165816299723438
+          }
+        ]
+      },
+      "legStats": [
+        {
+          "symbol": "069500.KS",
+          "label": "KODEX 200",
+          "stopOutCount": 1,
+          "realizedLossKRW": -1270715.9562909775
+        },
+        {
+          "symbol": "474800.KS",
+          "label": "KIWOOM 미국원유에너지",
+          "stopOutCount": 0,
+          "realizedLossKRW": 0
+        },
+        {
+          "symbol": "379810.KS",
+          "label": "KODEX 미국나스닥100",
+          "stopOutCount": 1,
+          "realizedLossKRW": -1089352.368394809
+        },
+        {
+          "symbol": "EIS",
+          "label": "이스라엘 프록시",
+          "stopOutCount": 1,
+          "realizedLossKRW": -1038296.1396975468
+        },
+        {
+          "symbol": "283580.KS",
+          "label": "KODEX 차이나CSI300",
+          "stopOutCount": 1,
+          "realizedLossKRW": -1181481.106970622
+        },
+        {
+          "symbol": "372330.KS",
+          "label": "KODEX 차이나항셍테크",
+          "stopOutCount": 1,
+          "realizedLossKRW": -1031275.3567095321
+        },
+        {
+          "symbol": "ECH",
+          "label": "칠레 프록시",
+          "stopOutCount": 0,
+          "realizedLossKRW": 0
+        },
+        {
+          "symbol": "EWZ",
+          "label": "브라질 프록시",
+          "stopOutCount": 0,
+          "realizedLossKRW": 0
+        },
+        {
+          "symbol": "EIDO",
+          "label": "인도네시아 프록시",
+          "stopOutCount": 1,
+          "realizedLossKRW": -893700.6022856261
+        },
+        {
+          "symbol": "385560.KS",
+          "label": "RISE KIS국고채30Enhanced",
+          "stopOutCount": 2,
+          "realizedLossKRW": -1577998.345718315
+        },
+        {
+          "symbol": "464470.KS",
+          "label": "PLUS 미국채30액티브",
+          "stopOutCount": 1,
+          "realizedLossKRW": -1071369.861451576
+        },
+        {
+          "symbol": "411060.KS",
+          "label": "ACE KRX금현물",
+          "stopOutCount": 0,
+          "realizedLossKRW": 0
+        },
+        {
+          "symbol": "SLV",
+          "label": "은 프록시(SLV)",
+          "stopOutCount": 2,
+          "realizedLossKRW": -2368055.6148232347
+        },
+        {
+          "symbol": "160580.KS",
+          "label": "TIGER 구리실물",
+          "stopOutCount": 0,
+          "realizedLossKRW": 0
+        }
+      ]
+    },
+    {
+      "horizonYears": 3,
+      "stopLossPercent": 0.03,
+      "startDate": "2023-08-08",
+      "endDate": "2026-08-07",
+      "tradingDays": 870,
+      "targetWeightPerLeg": 0.06857142857142857,
+      "weightSumMin": 0.9599999999999997,
+      "weightSumMax": 0.9600000000000002,
+      "rebalanceCount": 7,
+      "finalEquity": 137019332.47789437,
+      "totalReturnPct": 37.01933247789437,
+      "metrics": {
+        "cagrPct": 11.077265020083571,
+        "mddPct": -5.426483578665328,
+        "calmar": 2.0413339245390443,
+        "profitFactor": 0,
+        "winRatePct": 0,
+        "tradeCount": 63,
+        "maxConsecutiveLosses": 63,
+        "worst3yRollingPct": 32.58502221533861,
+        "annualReturns": [
+          {
+            "year": "2023",
+            "returnPct": -2.8984629057275613
+          },
+          {
+            "year": "2024",
+            "returnPct": 1.448427162136734
+          },
+          {
+            "year": "2025",
+            "returnPct": 26.154989429928
+          },
+          {
+            "year": "2026",
+            "returnPct": 10.256954663368
+          }
+        ]
+      },
+      "legStats": [
+        {
+          "symbol": "069500.KS",
+          "label": "KODEX 200",
+          "stopOutCount": 4,
+          "realizedLossKRW": -1411968.229881756
+        },
+        {
+          "symbol": "474800.KS",
+          "label": "KIWOOM 미국원유에너지",
+          "stopOutCount": 4,
+          "realizedLossKRW": -1016318.6481386935
+        },
+        {
+          "symbol": "379810.KS",
+          "label": "KODEX 미국나스닥100",
+          "stopOutCount": 5,
+          "realizedLossKRW": -1285811.174231894
+        },
+        {
+          "symbol": "EIS",
+          "label": "이스라엘 프록시",
+          "stopOutCount": 5,
+          "realizedLossKRW": -1336384.4132817206
+        },
+        {
+          "symbol": "283580.KS",
+          "label": "KODEX 차이나CSI300",
+          "stopOutCount": 5,
+          "realizedLossKRW": -1150758.1516313986
+        },
+        {
+          "symbol": "372330.KS",
+          "label": "KODEX 차이나항셍테크",
+          "stopOutCount": 5,
+          "realizedLossKRW": -1224950.271277867
+        },
+        {
+          "symbol": "ECH",
+          "label": "칠레 프록시",
+          "stopOutCount": 5,
+          "realizedLossKRW": -1280112.2126332591
+        },
+        {
+          "symbol": "EWZ",
+          "label": "브라질 프록시",
+          "stopOutCount": 5,
+          "realizedLossKRW": -1463746.1616017788
+        },
+        {
+          "symbol": "EIDO",
+          "label": "인도네시아 프록시",
+          "stopOutCount": 4,
+          "realizedLossKRW": -1424202.753071087
+        },
+        {
+          "symbol": "385560.KS",
+          "label": "RISE KIS국고채30Enhanced",
+          "stopOutCount": 5,
+          "realizedLossKRW": -1344142.2565418906
+        },
+        {
+          "symbol": "464470.KS",
+          "label": "PLUS 미국채30액티브",
+          "stopOutCount": 4,
+          "realizedLossKRW": -1142768.702510484
+        },
+        {
+          "symbol": "411060.KS",
+          "label": "ACE KRX금현물",
+          "stopOutCount": 2,
+          "realizedLossKRW": -599338.0001819527
+        },
+        {
+          "symbol": "SLV",
+          "label": "은 프록시(SLV)",
+          "stopOutCount": 5,
+          "realizedLossKRW": -1690939.4460682618
+        },
+        {
+          "symbol": "160580.KS",
+          "label": "TIGER 구리실물",
+          "stopOutCount": 5,
+          "realizedLossKRW": -1433924.4646859425
+        }
+      ]
+    },
+    {
+      "horizonYears": 3,
+      "stopLossPercent": 0.05,
+      "startDate": "2023-08-08",
+      "endDate": "2026-08-07",
+      "tradingDays": 870,
+      "targetWeightPerLeg": 0.06857142857142856,
+      "weightSumMin": 0.9599999999999995,
+      "weightSumMax": 0.9600000000000002,
+      "rebalanceCount": 7,
+      "finalEquity": 144162792.63704804,
+      "totalReturnPct": 44.16279263704803,
+      "metrics": {
+        "cagrPct": 12.97629549111885,
+        "mddPct": -8.301699802360279,
+        "calmar": 1.5630889817805171,
+        "profitFactor": 0,
+        "winRatePct": 0,
+        "tradeCount": 54,
+        "maxConsecutiveLosses": 54,
+        "worst3yRollingPct": 39.11224628730183,
+        "annualReturns": [
+          {
+            "year": "2023",
+            "returnPct": -4.37056668313488
+          },
+          {
+            "year": "2024",
+            "returnPct": 5.1350134739600595
+          },
+          {
+            "year": "2025",
+            "returnPct": 29.661664535720213
+          },
+          {
+            "year": "2026",
+            "returnPct": 10.58663343092765
+          }
+        ]
+      },
+      "legStats": [
+        {
+          "symbol": "069500.KS",
+          "label": "KODEX 200",
+          "stopOutCount": 4,
+          "realizedLossKRW": -2464520.2610227806
+        },
+        {
+          "symbol": "474800.KS",
+          "label": "KIWOOM 미국원유에너지",
+          "stopOutCount": 4,
+          "realizedLossKRW": -1959729.934662924
+        },
+        {
+          "symbol": "379810.KS",
+          "label": "KODEX 미국나스닥100",
+          "stopOutCount": 3,
+          "realizedLossKRW": -1581358.826087886
+        },
+        {
+          "symbol": "EIS",
+          "label": "이스라엘 프록시",
+          "stopOutCount": 3,
+          "realizedLossKRW": -1787492.676500753
+        },
+        {
+          "symbol": "283580.KS",
+          "label": "KODEX 차이나CSI300",
+          "stopOutCount": 5,
+          "realizedLossKRW": -2440187.5634989827
+        },
+        {
+          "symbol": "372330.KS",
+          "label": "KODEX 차이나항셍테크",
+          "stopOutCount": 4,
+          "realizedLossKRW": -1710930.131969172
+        },
+        {
+          "symbol": "ECH",
+          "label": "칠레 프록시",
+          "stopOutCount": 4,
+          "realizedLossKRW": -1709467.8323003245
+        },
+        {
+          "symbol": "EWZ",
+          "label": "브라질 프록시",
+          "stopOutCount": 5,
+          "realizedLossKRW": -2113127.408999837
+        },
+        {
+          "symbol": "EIDO",
+          "label": "인도네시아 프록시",
+          "stopOutCount": 4,
+          "realizedLossKRW": -1958766.8966547283
+        },
+        {
+          "symbol": "385560.KS",
+          "label": "RISE KIS국고채30Enhanced",
+          "stopOutCount": 4,
+          "realizedLossKRW": -2079395.2549309088
+        },
+        {
+          "symbol": "464470.KS",
+          "label": "PLUS 미국채30액티브",
+          "stopOutCount": 4,
+          "realizedLossKRW": -1760437.2260858992
+        },
+        {
+          "symbol": "411060.KS",
+          "label": "ACE KRX금현물",
+          "stopOutCount": 2,
+          "realizedLossKRW": -1057516.4157300524
+        },
+        {
+          "symbol": "SLV",
+          "label": "은 프록시(SLV)",
+          "stopOutCount": 4,
+          "realizedLossKRW": -1816521.5269812304
+        },
+        {
+          "symbol": "160580.KS",
+          "label": "TIGER 구리실물",
+          "stopOutCount": 4,
+          "realizedLossKRW": -1712233.7175468095
+        }
+      ]
+    },
+    {
+      "horizonYears": 3,
+      "stopLossPercent": 0.07,
+      "startDate": "2023-08-08",
+      "endDate": "2026-08-07",
+      "tradingDays": 870,
+      "targetWeightPerLeg": 0.06857142857142859,
+      "weightSumMin": 0.96,
+      "weightSumMax": 0.9600000000000006,
+      "rebalanceCount": 7,
+      "finalEquity": 149539186.84639338,
+      "totalReturnPct": 49.53918684639338,
+      "metrics": {
+        "cagrPct": 14.364588058569684,
+        "mddPct": -8.330401572123211,
+        "calmar": 1.7243572154599636,
+        "profitFactor": 0,
+        "winRatePct": 0,
+        "tradeCount": 42,
+        "maxConsecutiveLosses": 42,
+        "worst3yRollingPct": 45.572607621131446,
+        "annualReturns": [
+          {
+            "year": "2023",
+            "returnPct": -3.154981459056383
+          },
+          {
+            "year": "2024",
+            "returnPct": 5.934814129458443
+          },
+          {
+            "year": "2025",
+            "returnPct": 33.09222255266384
+          },
+          {
+            "year": "2026",
+            "returnPct": 9.51821118213163
+          }
+        ]
+      },
+      "legStats": [
+        {
+          "symbol": "069500.KS",
+          "label": "KODEX 200",
+          "stopOutCount": 4,
+          "realizedLossKRW": -2994121.379561265
+        },
+        {
+          "symbol": "474800.KS",
+          "label": "KIWOOM 미국원유에너지",
+          "stopOutCount": 2,
+          "realizedLossKRW": -1343015.5380814336
+        },
+        {
+          "symbol": "379810.KS",
+          "label": "KODEX 미국나스닥100",
+          "stopOutCount": 3,
+          "realizedLossKRW": -2500567.701864348
+        },
+        {
+          "symbol": "EIS",
+          "label": "이스라엘 프록시",
+          "stopOutCount": 3,
+          "realizedLossKRW": -2063003.7738845777
+        },
+        {
+          "symbol": "283580.KS",
+          "label": "KODEX 차이나CSI300",
+          "stopOutCount": 4,
+          "realizedLossKRW": -2514598.358867833
+        },
+        {
+          "symbol": "372330.KS",
+          "label": "KODEX 차이나항셍테크",
+          "stopOutCount": 4,
+          "realizedLossKRW": -2390785.3469480635
+        },
+        {
+          "symbol": "ECH",
+          "label": "칠레 프록시",
+          "stopOutCount": 3,
+          "realizedLossKRW": -1808020.5102459397
+        },
+        {
+          "symbol": "EWZ",
+          "label": "브라질 프록시",
+          "stopOutCount": 2,
+          "realizedLossKRW": -1238078.1623167503
+        },
+        {
+          "symbol": "EIDO",
+          "label": "인도네시아 프록시",
+          "stopOutCount": 4,
+          "realizedLossKRW": -2521329.4764539516
+        },
+        {
+          "symbol": "385560.KS",
+          "label": "RISE KIS국고채30Enhanced",
+          "stopOutCount": 4,
+          "realizedLossKRW": -2511347.1481062956
+        },
+        {
+          "symbol": "464470.KS",
+          "label": "PLUS 미국채30액티브",
+          "stopOutCount": 3,
+          "realizedLossKRW": -1907339.1901146031
+        },
+        {
+          "symbol": "411060.KS",
+          "label": "ACE KRX금현물",
+          "stopOutCount": 1,
+          "realizedLossKRW": -708325.6930482972
+        },
+        {
+          "symbol": "SLV",
+          "label": "은 프록시(SLV)",
+          "stopOutCount": 3,
+          "realizedLossKRW": -2407201.32092656
+        },
+        {
+          "symbol": "160580.KS",
+          "label": "TIGER 구리실물",
+          "stopOutCount": 2,
+          "realizedLossKRW": -1316545.968144064
+        }
+      ]
+    },
+    {
+      "horizonYears": 3,
+      "stopLossPercent": 0.1,
+      "startDate": "2023-08-08",
+      "endDate": "2026-08-07",
+      "tradingDays": 870,
+      "targetWeightPerLeg": 0.06857142857142856,
+      "weightSumMin": 0.9599999999999995,
+      "weightSumMax": 0.9600000000000001,
+      "rebalanceCount": 7,
+      "finalEquity": 158701760.42908823,
+      "totalReturnPct": 58.70176042908823,
+      "metrics": {
+        "cagrPct": 16.655810751367216,
+        "mddPct": -9.113842622818694,
+        "calmar": 1.8275288965013936,
+        "profitFactor": 0,
+        "winRatePct": 0,
+        "tradeCount": 30,
+        "maxConsecutiveLosses": 30,
+        "worst3yRollingPct": 55.921959566419545,
+        "annualReturns": [
+          {
+            "year": "2023",
+            "returnPct": -3.070962669999411
+          },
+          {
+            "year": "2024",
+            "returnPct": 12.710955171586203
+          },
+          {
+            "year": "2025",
+            "returnPct": 34.294817036882904
+          },
+          {
+            "year": "2026",
+            "returnPct": 8.168912310641607
+          }
+        ]
+      },
+      "legStats": [
+        {
+          "symbol": "069500.KS",
+          "label": "KODEX 200",
+          "stopOutCount": 2,
+          "realizedLossKRW": -2464893.2004383616
+        },
+        {
+          "symbol": "474800.KS",
+          "label": "KIWOOM 미국원유에너지",
+          "stopOutCount": 2,
+          "realizedLossKRW": -1592931.3049963342
+        },
+        {
+          "symbol": "379810.KS",
+          "label": "KODEX 미국나스닥100",
+          "stopOutCount": 3,
+          "realizedLossKRW": -2937504.5156297325
+        },
+        {
+          "symbol": "EIS",
+          "label": "이스라엘 프록시",
+          "stopOutCount": 2,
+          "realizedLossKRW": -1950774.4913264238
+        },
+        {
+          "symbol": "283580.KS",
+          "label": "KODEX 차이나CSI300",
+          "stopOutCount": 2,
+          "realizedLossKRW": -2138960.2105545183
+        },
+        {
+          "symbol": "372330.KS",
+          "label": "KODEX 차이나항셍테크",
+          "stopOutCount": 3,
+          "realizedLossKRW": -2815242.3543160483
+        },
+        {
+          "symbol": "ECH",
+          "label": "칠레 프록시",
+          "stopOutCount": 2,
+          "realizedLossKRW": -1375933.4097953038
+        },
+        {
+          "symbol": "EWZ",
+          "label": "브라질 프록시",
+          "stopOutCount": 2,
+          "realizedLossKRW": -1417954.5211662394
+        },
+        {
+          "symbol": "EIDO",
+          "label": "인도네시아 프록시",
+          "stopOutCount": 4,
+          "realizedLossKRW": -3293929.345140895
+        },
+        {
+          "symbol": "385560.KS",
+          "label": "RISE KIS국고채30Enhanced",
+          "stopOutCount": 3,
+          "realizedLossKRW": -2611284.9557006583
+        },
+        {
+          "symbol": "464470.KS",
+          "label": "PLUS 미국채30액티브",
+          "stopOutCount": 2,
+          "realizedLossKRW": -2063253.9749779385
+        },
+        {
+          "symbol": "411060.KS",
+          "label": "ACE KRX금현물",
+          "stopOutCount": 0,
+          "realizedLossKRW": 0
+        },
+        {
+          "symbol": "SLV",
+          "label": "은 프록시(SLV)",
+          "stopOutCount": 2,
+          "realizedLossKRW": -2812749.92394359
+        },
+        {
+          "symbol": "160580.KS",
+          "label": "TIGER 구리실물",
+          "stopOutCount": 1,
+          "realizedLossKRW": -787902.2103239623
+        }
+      ]
+    },
+    {
+      "horizonYears": 5,
+      "stopLossPercent": 0.03,
+      "startDate": "2021-08-08",
+      "endDate": "2026-08-07",
+      "tradingDays": 1454,
+      "targetWeightPerLeg": 0.06857142857142857,
+      "weightSumMin": 0.9599999999999996,
+      "weightSumMax": 0.9600000000000004,
+      "rebalanceCount": 11,
+      "finalEquity": 146190909.32046613,
+      "totalReturnPct": 46.19090932046612,
+      "metrics": {
+        "cagrPct": 7.896328146323572,
+        "mddPct": -9.59197121623135,
+        "calmar": 0.8232226690757325,
+        "profitFactor": 0,
+        "winRatePct": 0,
+        "tradeCount": 99,
+        "maxConsecutiveLosses": 99,
+        "worst3yRollingPct": -5.6079655131203605,
+        "annualReturns": [
+          {
+            "year": "2021",
+            "returnPct": 1.485564328896949
+          },
+          {
+            "year": "2022",
+            "returnPct": -0.8868483284077966
+          },
+          {
+            "year": "2023",
+            "returnPct": 2.998065375396153
+          },
+          {
+            "year": "2024",
+            "returnPct": 1.4484271621367117
+          },
+          {
+            "year": "2025",
+            "returnPct": 26.154989429928023
+          },
+          {
+            "year": "2026",
+            "returnPct": 10.256954663368045
+          }
+        ]
+      },
+      "legStats": [
+        {
+          "symbol": "069500.KS",
+          "label": "KODEX 200",
+          "stopOutCount": 7,
+          "realizedLossKRW": -2367241.5761497756
+        },
+        {
+          "symbol": "474800.KS",
+          "label": "KIWOOM 미국원유에너지",
+          "stopOutCount": 6,
+          "realizedLossKRW": -1563809.1909068169
+        },
+        {
+          "symbol": "379810.KS",
+          "label": "KODEX 미국나스닥100",
+          "stopOutCount": 6,
+          "realizedLossKRW": -1595008.7240445153
+        },
+        {
+          "symbol": "EIS",
+          "label": "이스라엘 프록시",
+          "stopOutCount": 8,
+          "realizedLossKRW": -2235793.32905106
+        },
+        {
+          "symbol": "283580.KS",
+          "label": "KODEX 차이나CSI300",
+          "stopOutCount": 8,
+          "realizedLossKRW": -1968179.2116176141
+        },
+        {
+          "symbol": "372330.KS",
+          "label": "KODEX 차이나항셍테크",
+          "stopOutCount": 9,
+          "realizedLossKRW": -2498930.8786789817
+        },
+        {
+          "symbol": "ECH",
+          "label": "칠레 프록시",
+          "stopOutCount": 7,
+          "realizedLossKRW": -2152508.2291919882
+        },
+        {
+          "symbol": "EWZ",
+          "label": "브라질 프록시",
+          "stopOutCount": 8,
+          "realizedLossKRW": -2680567.553813357
+        },
+        {
+          "symbol": "EIDO",
+          "label": "인도네시아 프록시",
+          "stopOutCount": 5,
+          "realizedLossKRW": -1832080.6881599072
+        },
+        {
+          "symbol": "385560.KS",
+          "label": "RISE KIS국고채30Enhanced",
+          "stopOutCount": 8,
+          "realizedLossKRW": -2095111.8488105894
+        },
+        {
+          "symbol": "464470.KS",
+          "label": "PLUS 미국채30액티브",
+          "stopOutCount": 7,
+          "realizedLossKRW": -1901414.8841366696
+        },
+        {
+          "symbol": "411060.KS",
+          "label": "ACE KRX금현물",
+          "stopOutCount": 3,
+          "realizedLossKRW": -885827.6023469691
+        },
+        {
+          "symbol": "SLV",
+          "label": "은 프록시(SLV)",
+          "stopOutCount": 9,
+          "realizedLossKRW": -2787961.884498825
+        },
+        {
+          "symbol": "160580.KS",
+          "label": "TIGER 구리실물",
+          "stopOutCount": 8,
+          "realizedLossKRW": -2276129.681954133
+        }
+      ]
+    },
+    {
+      "horizonYears": 5,
+      "stopLossPercent": 0.05,
+      "startDate": "2021-08-08",
+      "endDate": "2026-08-07",
+      "tradingDays": 1454,
+      "targetWeightPerLeg": 0.06857142857142856,
+      "weightSumMin": 0.9599999999999997,
+      "weightSumMax": 0.9600000000000002,
+      "rebalanceCount": 11,
+      "finalEquity": 153464865.73138425,
+      "totalReturnPct": 53.46486573138425,
+      "metrics": {
+        "cagrPct": 8.950009745654096,
+        "mddPct": -10.176316908927529,
+        "calmar": 0.8794940080730377,
+        "profitFactor": 0,
+        "winRatePct": 0,
+        "tradeCount": 82,
+        "maxConsecutiveLosses": 82,
+        "worst3yRollingPct": -4.54172765684322,
+        "annualReturns": [
+          {
+            "year": "2021",
+            "returnPct": 1.5797350518217623
+          },
+          {
+            "year": "2022",
+            "returnPct": -2.6334573640488523
+          },
+          {
+            "year": "2023",
+            "returnPct": 2.9272891318380845
+          },
+          {
+            "year": "2024",
+            "returnPct": 5.135013473960015
+          },
+          {
+            "year": "2025",
+            "returnPct": 29.66166453572019
+          },
+          {
+            "year": "2026",
+            "returnPct": 10.58663343092765
+          }
+        ]
+      },
+      "legStats": [
+        {
+          "symbol": "069500.KS",
+          "label": "KODEX 200",
+          "stopOutCount": 7,
+          "realizedLossKRW": -3886853.498126518
+        },
+        {
+          "symbol": "474800.KS",
+          "label": "KIWOOM 미국원유에너지",
+          "stopOutCount": 6,
+          "realizedLossKRW": -2792032.700581809
+        },
+        {
+          "symbol": "379810.KS",
+          "label": "KODEX 미국나스닥100",
+          "stopOutCount": 5,
+          "realizedLossKRW": -2588108.8857847294
+        },
+        {
+          "symbol": "EIS",
+          "label": "이스라엘 프록시",
+          "stopOutCount": 5,
+          "realizedLossKRW": -2384900.047982285
+        },
+        {
+          "symbol": "283580.KS",
+          "label": "KODEX 차이나CSI300",
+          "stopOutCount": 7,
+          "realizedLossKRW": -3313745.306544252
+        },
+        {
+          "symbol": "372330.KS",
+          "label": "KODEX 차이나항셍테크",
+          "stopOutCount": 8,
+          "realizedLossKRW": -3414430.8291339343
+        },
+        {
+          "symbol": "ECH",
+          "label": "칠레 프록시",
+          "stopOutCount": 6,
+          "realizedLossKRW": -2593925.4485818353
+        },
+        {
+          "symbol": "EWZ",
+          "label": "브라질 프록시",
+          "stopOutCount": 7,
+          "realizedLossKRW": -3016961.180720976
+        },
+        {
+          "symbol": "EIDO",
+          "label": "인도네시아 프록시",
+          "stopOutCount": 4,
+          "realizedLossKRW": -2085564.9499013883
+        },
+        {
+          "symbol": "385560.KS",
+          "label": "RISE KIS국고채30Enhanced",
+          "stopOutCount": 7,
+          "realizedLossKRW": -3320606.5052595977
+        },
+        {
+          "symbol": "464470.KS",
+          "label": "PLUS 미국채30액티브",
+          "stopOutCount": 6,
+          "realizedLossKRW": -2668786.7461419506
+        },
+        {
+          "symbol": "411060.KS",
+          "label": "ACE KRX금현물",
+          "stopOutCount": 2,
+          "realizedLossKRW": -1125752.434314597
+        },
+        {
+          "symbol": "SLV",
+          "label": "은 프록시(SLV)",
+          "stopOutCount": 7,
+          "realizedLossKRW": -2999287.2296256013
+        },
+        {
+          "symbol": "160580.KS",
+          "label": "TIGER 구리실물",
+          "stopOutCount": 5,
+          "realizedLossKRW": -2203487.7324963957
+        }
+      ]
+    },
+    {
+      "horizonYears": 5,
+      "stopLossPercent": 0.07,
+      "startDate": "2021-08-08",
+      "endDate": "2026-08-07",
+      "tradingDays": 1454,
+      "targetWeightPerLeg": 0.06857142857142859,
+      "weightSumMin": 0.9599999999999999,
+      "weightSumMax": 0.9600000000000006,
+      "rebalanceCount": 11,
+      "finalEquity": 153405312.50629085,
+      "totalReturnPct": 53.405312506290855,
+      "metrics": {
+        "cagrPct": 8.941546862151917,
+        "mddPct": -9.94560209811826,
+        "calmar": 0.899045304038826,
+        "profitFactor": 0,
+        "winRatePct": 0,
+        "tradeCount": 70,
+        "maxConsecutiveLosses": 70,
+        "worst3yRollingPct": -3.857996277877984,
+        "annualReturns": [
+          {
+            "year": "2021",
+            "returnPct": 0.39508281912676857
+          },
+          {
+            "year": "2022",
+            "returnPct": -2.1975308308491814
+          },
+          {
+            "year": "2023",
+            "returnPct": 1.2778355364850391
+          },
+          {
+            "year": "2024",
+            "returnPct": 5.833877431494883
+          },
+          {
+            "year": "2025",
+            "returnPct": 33.09222255266386
+          },
+          {
+            "year": "2026",
+            "returnPct": 9.518211182131608
+          }
+        ]
+      },
+      "legStats": [
+        {
+          "symbol": "069500.KS",
+          "label": "KODEX 200",
+          "stopOutCount": 7,
+          "realizedLossKRW": -4645043.467448929
+        },
+        {
+          "symbol": "474800.KS",
+          "label": "KIWOOM 미국원유에너지",
+          "stopOutCount": 5,
+          "realizedLossKRW": -2878082.080974894
+        },
+        {
+          "symbol": "379810.KS",
+          "label": "KODEX 미국나스닥100",
+          "stopOutCount": 5,
+          "realizedLossKRW": -3684085.4424178908
+        },
+        {
+          "symbol": "EIS",
+          "label": "이스라엘 프록시",
+          "stopOutCount": 5,
+          "realizedLossKRW": -3039439.507526863
+        },
+        {
+          "symbol": "283580.KS",
+          "label": "KODEX 차이나CSI300",
+          "stopOutCount": 6,
+          "realizedLossKRW": -3649145.857700577
+        },
+        {
+          "symbol": "372330.KS",
+          "label": "KODEX 차이나항셍테크",
+          "stopOutCount": 8,
+          "realizedLossKRW": -5070444.480144279
+        },
+        {
+          "symbol": "ECH",
+          "label": "칠레 프록시",
+          "stopOutCount": 4,
+          "realizedLossKRW": -2477805.260291757
+        },
+        {
+          "symbol": "EWZ",
+          "label": "브라질 프록시",
+          "stopOutCount": 5,
+          "realizedLossKRW": -2779913.519113219
+        },
+        {
+          "symbol": "EIDO",
+          "label": "인도네시아 프록시",
+          "stopOutCount": 4,
+          "realizedLossKRW": -2598499.247374081
+        },
+        {
+          "symbol": "385560.KS",
+          "label": "RISE KIS국고채30Enhanced",
+          "stopOutCount": 7,
+          "realizedLossKRW": -4129567.562784826
+        },
+        {
+          "symbol": "464470.KS",
+          "label": "PLUS 미국채30액티브",
+          "stopOutCount": 5,
+          "realizedLossKRW": -2888828.045976917
+        },
+        {
+          "symbol": "411060.KS",
+          "label": "ACE KRX금현물",
+          "stopOutCount": 1,
+          "realizedLossKRW": -726638.459054385
+        },
+        {
+          "symbol": "SLV",
+          "label": "은 프록시(SLV)",
+          "stopOutCount": 5,
+          "realizedLossKRW": -3650218.2597962366
+        },
+        {
+          "symbol": "160580.KS",
+          "label": "TIGER 구리실물",
+          "stopOutCount": 3,
+          "realizedLossKRW": -1909829.4639475693
+        }
+      ]
+    },
+    {
+      "horizonYears": 5,
+      "stopLossPercent": 0.1,
+      "startDate": "2021-08-08",
+      "endDate": "2026-08-07",
+      "tradingDays": 1454,
+      "targetWeightPerLeg": 0.06857142857142856,
+      "weightSumMin": 0.9599999999999995,
+      "weightSumMax": 0.9600000000000002,
+      "rebalanceCount": 11,
+      "finalEquity": 170690515.18816635,
+      "totalReturnPct": 70.69051518816636,
+      "metrics": {
+        "cagrPct": 11.294496062803482,
+        "mddPct": -9.113842622818686,
+        "calmar": 1.2392682790599225,
+        "profitFactor": 0,
+        "winRatePct": 0,
+        "tradeCount": 49,
+        "maxConsecutiveLosses": 49,
+        "worst3yRollingPct": 4.417041353391915,
+        "annualReturns": [
+          {
+            "year": "2021",
+            "returnPct": 1.2594174629063426
+          },
+          {
+            "year": "2022",
+            "returnPct": -1.8438673102697645
+          },
+          {
+            "year": "2023",
+            "returnPct": 4.891982663778172
+          },
+          {
+            "year": "2024",
+            "returnPct": 12.70742210358673
+          },
+          {
+            "year": "2025",
+            "returnPct": 34.29481703688293
+          },
+          {
+            "year": "2026",
+            "returnPct": 8.168912310641563
+          }
+        ]
+      },
+      "legStats": [
+        {
+          "symbol": "069500.KS",
+          "label": "KODEX 200",
+          "stopOutCount": 4,
+          "realizedLossKRW": -4151274.6280041155
+        },
+        {
+          "symbol": "474800.KS",
+          "label": "KIWOOM 미국원유에너지",
+          "stopOutCount": 3,
+          "realizedLossKRW": -2502759.848193169
+        },
+        {
+          "symbol": "379810.KS",
+          "label": "KODEX 미국나스닥100",
+          "stopOutCount": 4,
+          "realizedLossKRW": -3886220.967874863
+        },
+        {
+          "symbol": "EIS",
+          "label": "이스라엘 프록시",
+          "stopOutCount": 3,
+          "realizedLossKRW": -2770469.372704153
+        },
+        {
+          "symbol": "283580.KS",
+          "label": "KODEX 차이나CSI300",
+          "stopOutCount": 4,
+          "realizedLossKRW": -3632271.933156247
+        },
+        {
+          "symbol": "372330.KS",
+          "label": "KODEX 차이나항셍테크",
+          "stopOutCount": 6,
+          "realizedLossKRW": -5401464.352809089
+        },
+        {
+          "symbol": "ECH",
+          "label": "칠레 프록시",
+          "stopOutCount": 3,
+          "realizedLossKRW": -2449443.4139369065
+        },
+        {
+          "symbol": "EWZ",
+          "label": "브라질 프록시",
+          "stopOutCount": 3,
+          "realizedLossKRW": -2269978.3856500047
+        },
+        {
+          "symbol": "EIDO",
+          "label": "인도네시아 프록시",
+          "stopOutCount": 4,
+          "realizedLossKRW": -3545650.767056507
+        },
+        {
+          "symbol": "385560.KS",
+          "label": "RISE KIS국고채30Enhanced",
+          "stopOutCount": 6,
+          "realizedLossKRW": -4959601.8005086295
+        },
+        {
+          "symbol": "464470.KS",
+          "label": "PLUS 미국채30액티브",
+          "stopOutCount": 4,
+          "realizedLossKRW": -3617894.130507691
+        },
+        {
+          "symbol": "411060.KS",
+          "label": "ACE KRX금현물",
+          "stopOutCount": 0,
+          "realizedLossKRW": 0
+        },
+        {
+          "symbol": "SLV",
+          "label": "은 프록시(SLV)",
+          "stopOutCount": 3,
+          "realizedLossKRW": -3759549.463848626
+        },
+        {
+          "symbol": "160580.KS",
+          "label": "TIGER 구리실물",
+          "stopOutCount": 2,
+          "realizedLossKRW": -1542655.2329172175
+        }
+      ]
+    },
+    {
+      "horizonYears": 10,
+      "stopLossPercent": 0.03,
+      "startDate": "2016-08-08",
+      "endDate": "2026-08-07",
+      "tradingDays": 2910,
+      "targetWeightPerLeg": 0.06857142857142857,
+      "weightSumMin": 0.9599999999999997,
+      "weightSumMax": 0.9600000000000004,
+      "rebalanceCount": 21,
+      "finalEquity": 196580341.66595313,
+      "totalReturnPct": 96.58034166595313,
+      "metrics": {
+        "cagrPct": 6.995636970563046,
+        "mddPct": -10.843628713975319,
+        "calmar": 0.6451380027007967,
+        "profitFactor": 0,
+        "winRatePct": 0,
+        "tradeCount": 185,
+        "maxConsecutiveLosses": 185,
+        "worst3yRollingPct": -5.607965513120295,
+        "annualReturns": [
+          {
+            "year": "2016",
+            "returnPct": -1.464570237432783
+          },
+          {
+            "year": "2017",
+            "returnPct": 13.574476653877298
+          },
+          {
+            "year": "2018",
+            "returnPct": -5.604850806659433
+          },
+          {
+            "year": "2019",
+            "returnPct": 10.919661738932195
+          },
+          {
+            "year": "2020",
+            "returnPct": 9.016455105165445
+          },
+          {
+            "year": "2021",
+            "returnPct": 7.025544539931716
+          },
+          {
+            "year": "2022",
+            "returnPct": -1.0662660954172343
+          },
+          {
+            "year": "2023",
+            "returnPct": 2.9980653753962194
+          },
+          {
+            "year": "2024",
+            "returnPct": 1.448427162136734
+          },
+          {
+            "year": "2025",
+            "returnPct": 26.154989429928087
+          },
+          {
+            "year": "2026",
+            "returnPct": 10.256954663367956
+          }
+        ]
+      },
+      "legStats": [
+        {
+          "symbol": "069500.KS",
+          "label": "KODEX 200",
+          "stopOutCount": 12,
+          "realizedLossKRW": -4584079.9639814235
+        },
+        {
+          "symbol": "474800.KS",
+          "label": "KIWOOM 미국원유에너지",
+          "stopOutCount": 13,
+          "realizedLossKRW": -4405776.714980807
+        },
+        {
+          "symbol": "379810.KS",
+          "label": "KODEX 미국나스닥100",
+          "stopOutCount": 10,
+          "realizedLossKRW": -3300427.253134722
+        },
+        {
+          "symbol": "EIS",
+          "label": "이스라엘 프록시",
+          "stopOutCount": 14,
+          "realizedLossKRW": -4732431.322234785
+        },
+        {
+          "symbol": "283580.KS",
+          "label": "KODEX 차이나CSI300",
+          "stopOutCount": 14,
+          "realizedLossKRW": -4368226.750255031
+        },
+        {
+          "symbol": "372330.KS",
+          "label": "KODEX 차이나항셍테크",
+          "stopOutCount": 15,
+          "realizedLossKRW": -4886856.827367614
+        },
+        {
+          "symbol": "ECH",
+          "label": "칠레 프록시",
+          "stopOutCount": 14,
+          "realizedLossKRW": -4936995.843787114
+        },
+        {
+          "symbol": "EWZ",
+          "label": "브라질 프록시",
+          "stopOutCount": 16,
+          "realizedLossKRW": -5998443.028076225
+        },
+        {
+          "symbol": "EIDO",
+          "label": "인도네시아 프록시",
+          "stopOutCount": 15,
+          "realizedLossKRW": -5434321.947676455
+        },
+        {
+          "symbol": "385560.KS",
+          "label": "RISE KIS국고채30Enhanced",
+          "stopOutCount": 13,
+          "realizedLossKRW": -4153726.117321599
+        },
+        {
+          "symbol": "464470.KS",
+          "label": "PLUS 미국채30액티브",
+          "stopOutCount": 11,
+          "realizedLossKRW": -3602836.763301054
+        },
+        {
+          "symbol": "411060.KS",
+          "label": "ACE KRX금현물",
+          "stopOutCount": 8,
+          "realizedLossKRW": -2570417.7625902887
+        },
+        {
+          "symbol": "SLV",
+          "label": "은 프록시(SLV)",
+          "stopOutCount": 16,
+          "realizedLossKRW": -5856415.712809314
+        },
+        {
+          "symbol": "160580.KS",
+          "label": "TIGER 구리실물",
+          "stopOutCount": 14,
+          "realizedLossKRW": -4746060.859345525
+        }
+      ]
+    },
+    {
+      "horizonYears": 10,
+      "stopLossPercent": 0.05,
+      "startDate": "2016-08-08",
+      "endDate": "2026-08-07",
+      "tradingDays": 2910,
+      "targetWeightPerLeg": 0.06857142857142856,
+      "weightSumMin": 0.9599999999999995,
+      "weightSumMax": 0.9600000000000002,
+      "rebalanceCount": 21,
+      "finalEquity": 215241047.37625676,
+      "totalReturnPct": 115.24104737625676,
+      "metrics": {
+        "cagrPct": 7.970767313383154,
+        "mddPct": -12.894005512762034,
+        "calmar": 0.61817619866022,
+        "profitFactor": 0,
+        "winRatePct": 0,
+        "tradeCount": 149,
+        "maxConsecutiveLosses": 149,
+        "worst3yRollingPct": -4.541727656843242,
+        "annualReturns": [
+          {
+            "year": "2016",
+            "returnPct": 0.9810356442324863
+          },
+          {
+            "year": "2017",
+            "returnPct": 15.567729648699924
+          },
+          {
+            "year": "2018",
+            "returnPct": -7.441997231654474
+          },
+          {
+            "year": "2019",
+            "returnPct": 13.701155888037398
+          },
+          {
+            "year": "2020",
+            "returnPct": 7.8543683080557924
+          },
+          {
+            "year": "2021",
+            "returnPct": 7.5575813781665335
+          },
+          {
+            "year": "2022",
+            "returnPct": -2.635882041345594
+          },
+          {
+            "year": "2023",
+            "returnPct": 2.9272891318381067
+          },
+          {
+            "year": "2024",
+            "returnPct": 5.1350134739600595
+          },
+          {
+            "year": "2025",
+            "returnPct": 29.661664535720234
+          },
+          {
+            "year": "2026",
+            "returnPct": 10.586633430927627
+          }
+        ]
+      },
+      "legStats": [
+        {
+          "symbol": "069500.KS",
+          "label": "KODEX 200",
+          "stopOutCount": 11,
+          "realizedLossKRW": -7436240.589007928
+        },
+        {
+          "symbol": "474800.KS",
+          "label": "KIWOOM 미국원유에너지",
+          "stopOutCount": 12,
+          "realizedLossKRW": -6785089.200221395
+        },
+        {
+          "symbol": "379810.KS",
+          "label": "KODEX 미국나스닥100",
+          "stopOutCount": 7,
+          "realizedLossKRW": -4801468.706228961
+        },
+        {
+          "symbol": "EIS",
+          "label": "이스라엘 프록시",
+          "stopOutCount": 10,
+          "realizedLossKRW": -6011185.208791376
+        },
+        {
+          "symbol": "283580.KS",
+          "label": "KODEX 차이나CSI300",
+          "stopOutCount": 12,
+          "realizedLossKRW": -6938306.205084763
+        },
+        {
+          "symbol": "372330.KS",
+          "label": "KODEX 차이나항셍테크",
+          "stopOutCount": 11,
+          "realizedLossKRW": -6657247.068020813
+        },
+        {
+          "symbol": "ECH",
+          "label": "칠레 프록시",
+          "stopOutCount": 13,
+          "realizedLossKRW": -6694969.38364253
+        },
+        {
+          "symbol": "EWZ",
+          "label": "브라질 프록시",
+          "stopOutCount": 13,
+          "realizedLossKRW": -7175519.303735031
+        },
+        {
+          "symbol": "EIDO",
+          "label": "인도네시아 프록시",
+          "stopOutCount": 12,
+          "realizedLossKRW": -6987916.848840499
+        },
+        {
+          "symbol": "385560.KS",
+          "label": "RISE KIS국고채30Enhanced",
+          "stopOutCount": 11,
+          "realizedLossKRW": -6381888.5360056395
+        },
+        {
+          "symbol": "464470.KS",
+          "label": "PLUS 미국채30액티브",
+          "stopOutCount": 10,
+          "realizedLossKRW": -5435037.726363264
+        },
+        {
+          "symbol": "411060.KS",
+          "label": "ACE KRX금현물",
+          "stopOutCount": 5,
+          "realizedLossKRW": -2931628.3815178843
+        },
+        {
+          "symbol": "SLV",
+          "label": "은 프록시(SLV)",
+          "stopOutCount": 12,
+          "realizedLossKRW": -6698337.555396984
+        },
+        {
+          "symbol": "160580.KS",
+          "label": "TIGER 구리실물",
+          "stopOutCount": 10,
+          "realizedLossKRW": -5382623.324872898
+        }
+      ]
+    },
+    {
+      "horizonYears": 10,
+      "stopLossPercent": 0.07,
+      "startDate": "2016-08-08",
+      "endDate": "2026-08-07",
+      "tradingDays": 2910,
+      "targetWeightPerLeg": 0.06857142857142859,
+      "weightSumMin": 0.9599999999999999,
+      "weightSumMax": 0.9600000000000006,
+      "rebalanceCount": 21,
+      "finalEquity": 211209111.04552656,
+      "totalReturnPct": 111.20911104552658,
+      "metrics": {
+        "cagrPct": 7.766705296296683,
+        "mddPct": -12.609702263649911,
+        "calmar": 0.6159309025626899,
+        "profitFactor": 0,
+        "winRatePct": 0,
+        "tradeCount": 126,
+        "maxConsecutiveLosses": 126,
+        "worst3yRollingPct": -3.857996277877973,
+        "annualReturns": [
+          {
+            "year": "2016",
+            "returnPct": 0.7346492293200502
+          },
+          {
+            "year": "2017",
+            "returnPct": 14.980578508560939
+          },
+          {
+            "year": "2018",
+            "returnPct": -7.024494826146466
+          },
+          {
+            "year": "2019",
+            "returnPct": 13.835573959049462
+          },
+          {
+            "year": "2020",
+            "returnPct": 5.759522683549734
+          },
+          {
+            "year": "2021",
+            "returnPct": 6.616933177643469
+          },
+          {
+            "year": "2022",
+            "returnPct": -2.1999838868930754
+          },
+          {
+            "year": "2023",
+            "returnPct": 1.2778355364851057
+          },
+          {
+            "year": "2024",
+            "returnPct": 5.833877431494838
+          },
+          {
+            "year": "2025",
+            "returnPct": 33.09222255266382
+          },
+          {
+            "year": "2026",
+            "returnPct": 9.518211182131608
+          }
+        ]
+      },
+      "legStats": [
+        {
+          "symbol": "069500.KS",
+          "label": "KODEX 200",
+          "stopOutCount": 11,
+          "realizedLossKRW": -8904297.35064093
+        },
+        {
+          "symbol": "474800.KS",
+          "label": "KIWOOM 미국원유에너지",
+          "stopOutCount": 11,
+          "realizedLossKRW": -7841395.300339638
+        },
+        {
+          "symbol": "379810.KS",
+          "label": "KODEX 미국나스닥100",
+          "stopOutCount": 7,
+          "realizedLossKRW": -6369694.46924673
+        },
+        {
+          "symbol": "EIS",
+          "label": "이스라엘 프록시",
+          "stopOutCount": 8,
+          "realizedLossKRW": -6983105.8068166915
+        },
+        {
+          "symbol": "283580.KS",
+          "label": "KODEX 차이나CSI300",
+          "stopOutCount": 10,
+          "realizedLossKRW": -7540337.310264045
+        },
+        {
+          "symbol": "372330.KS",
+          "label": "KODEX 차이나항셍테크",
+          "stopOutCount": 11,
+          "realizedLossKRW": -8988613.903392099
+        },
+        {
+          "symbol": "ECH",
+          "label": "칠레 프록시",
+          "stopOutCount": 8,
+          "realizedLossKRW": -5912966.126302289
+        },
+        {
+          "symbol": "EWZ",
+          "label": "브라질 프록시",
+          "stopOutCount": 11,
+          "realizedLossKRW": -8031748.305715462
+        },
+        {
+          "symbol": "EIDO",
+          "label": "인도네시아 프록시",
+          "stopOutCount": 12,
+          "realizedLossKRW": -8589674.55330884
+        },
+        {
+          "symbol": "385560.KS",
+          "label": "RISE KIS국고채30Enhanced",
+          "stopOutCount": 10,
+          "realizedLossKRW": -7583440.796455716
+        },
+        {
+          "symbol": "464470.KS",
+          "label": "PLUS 미국채30액티브",
+          "stopOutCount": 8,
+          "realizedLossKRW": -5897054.908644668
+        },
+        {
+          "symbol": "411060.KS",
+          "label": "ACE KRX금현물",
+          "stopOutCount": 3,
+          "realizedLossKRW": -2181693.7876623725
+        },
+        {
+          "symbol": "SLV",
+          "label": "은 프록시(SLV)",
+          "stopOutCount": 9,
+          "realizedLossKRW": -7682311.2567174295
+        },
+        {
+          "symbol": "160580.KS",
+          "label": "TIGER 구리실물",
+          "stopOutCount": 7,
+          "realizedLossKRW": -4927413.624030183
+        }
+      ]
+    },
+    {
+      "horizonYears": 10,
+      "stopLossPercent": 0.1,
+      "startDate": "2016-08-08",
+      "endDate": "2026-08-07",
+      "tradingDays": 2910,
+      "targetWeightPerLeg": 0.06857142857142856,
+      "weightSumMin": 0.9599999999999996,
+      "weightSumMax": 0.9600000000000002,
+      "rebalanceCount": 21,
+      "finalEquity": 236887511.8082673,
+      "totalReturnPct": 136.8875118082673,
+      "metrics": {
+        "cagrPct": 9.010819511544144,
+        "mddPct": -12.377017427263812,
+        "calmar": 0.7280283448333292,
+        "profitFactor": 0,
+        "winRatePct": 0,
+        "tradeCount": 88,
+        "maxConsecutiveLosses": 88,
+        "worst3yRollingPct": -0.10267244951336352,
+        "annualReturns": [
+          {
+            "year": "2016",
+            "returnPct": 0.5954710159648213
+          },
+          {
+            "year": "2017",
+            "returnPct": 15.790368583136583
+          },
+          {
+            "year": "2018",
+            "returnPct": -6.312224693489443
+          },
+          {
+            "year": "2019",
+            "returnPct": 15.983185846699621
+          },
+          {
+            "year": "2020",
+            "returnPct": 5.761737045788995
+          },
+          {
+            "year": "2021",
+            "returnPct": 5.116735281686369
+          },
+          {
+            "year": "2022",
+            "returnPct": -1.9705927993621142
+          },
+          {
+            "year": "2023",
+            "returnPct": 4.891982663778172
+          },
+          {
+            "year": "2024",
+            "returnPct": 12.707422103586818
+          },
+          {
+            "year": "2025",
+            "returnPct": 34.294817036882954
+          },
+          {
+            "year": "2026",
+            "returnPct": 8.168912310641584
+          }
+        ]
+      },
+      "legStats": [
+        {
+          "symbol": "069500.KS",
+          "label": "KODEX 200",
+          "stopOutCount": 6,
+          "realizedLossKRW": -7524845.585115785
+        },
+        {
+          "symbol": "474800.KS",
+          "label": "KIWOOM 미국원유에너지",
+          "stopOutCount": 9,
+          "realizedLossKRW": -9083445.836244466
+        },
+        {
+          "symbol": "379810.KS",
+          "label": "KODEX 미국나스닥100",
+          "stopOutCount": 6,
+          "realizedLossKRW": -7699696.785307592
+        },
+        {
+          "symbol": "EIS",
+          "label": "이스라엘 프록시",
+          "stopOutCount": 5,
+          "realizedLossKRW": -6195211.308564871
+        },
+        {
+          "symbol": "283580.KS",
+          "label": "KODEX 차이나CSI300",
+          "stopOutCount": 6,
+          "realizedLossKRW": -6773602.931069452
+        },
+        {
+          "symbol": "372330.KS",
+          "label": "KODEX 차이나항셍테크",
+          "stopOutCount": 9,
+          "realizedLossKRW": -10333810.806683622
+        },
+        {
+          "symbol": "ECH",
+          "label": "칠레 프록시",
+          "stopOutCount": 7,
+          "realizedLossKRW": -6790960.786956391
+        },
+        {
+          "symbol": "EWZ",
+          "label": "브라질 프록시",
+          "stopOutCount": 7,
+          "realizedLossKRW": -6986507.80118721
+        },
+        {
+          "symbol": "EIDO",
+          "label": "인도네시아 프록시",
+          "stopOutCount": 6,
+          "realizedLossKRW": -6742298.943321743
+        },
+        {
+          "symbol": "385560.KS",
+          "label": "RISE KIS국고채30Enhanced",
+          "stopOutCount": 7,
+          "realizedLossKRW": -7557389.875993846
+        },
+        {
+          "symbol": "464470.KS",
+          "label": "PLUS 미국채30액티브",
+          "stopOutCount": 6,
+          "realizedLossKRW": -6676403.646800729
+        },
+        {
+          "symbol": "411060.KS",
+          "label": "ACE KRX금현물",
+          "stopOutCount": 2,
+          "realizedLossKRW": -1757441.3384925448
+        },
+        {
+          "symbol": "SLV",
+          "label": "은 프록시(SLV)",
+          "stopOutCount": 8,
+          "realizedLossKRW": -9918498.501296045
+        },
+        {
+          "symbol": "160580.KS",
+          "label": "TIGER 구리실물",
+          "stopOutCount": 4,
+          "realizedLossKRW": -4216695.53494335
+        }
+      ]
+    }
+  ],
+  "caveats": [
+    "385560.KS(한국 국고채30년)의 프록시는 TLT(미국채30년)로, 듀레이션·통화·금리사이클이 달라 불완전 대체다. 한국 30년물 장기 지수 대체품을 찾지 못해 그대로 사용했다.",
+    "프록시 합성 구간은 프록시의 USD 수익률을 그대로 사용하므로 원/달러 환율 변동 효과가 반영되지 않는다(레벨 불일치를 피하기 위한 의도적 선택).",
+    "372330.KS(항셍테크)의 프록시 KWEB은 중국 인터넷 ETF로 구성이 유사할 뿐 동일 지수가 아니다.",
+    "손절 체결은 종가 기준이며 슬리피지·거래비용·세금은 반영하지 않았다.",
+    "모든 레그의 손절폭이 동일하므로 비례 축소 후 목표비중은 손절폭과 무관하게 균등(96%/레그수)이 된다. 손절폭 차이는 오직 손절 발생 빈도로만 결과에 영향을 준다."
+  ]
+}

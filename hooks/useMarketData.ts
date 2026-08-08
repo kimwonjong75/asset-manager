@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react';
 import { Asset, Currency, ExchangeRates, PortfolioSnapshot, SellRecord, WatchlistItem } from '../types';
+import type { PortfolioSavePatch } from '../types/portfolioSave';
 import { isBaseType } from '../types/category';
 // [수정] fetchAssetData import 복구 (단일 갱신 시 필요)
 import { fetchBatchAssetPrices as fetchBatchAssetPricesNew, fetchAssetData as fetchAssetDataNew, fetchExchangeRate, fetchExchangeRateJPY, fetchCurrentExchangeRate } from '../services/priceService';
@@ -20,7 +21,10 @@ interface UseMarketDataProps {
   setExchangeRates: React.Dispatch<React.SetStateAction<ExchangeRates>>;
   portfolioHistory: PortfolioSnapshot[];
   sellHistory: SellRecord[];
-  triggerAutoSave: (assets: Asset[], history: PortfolioSnapshot[], sells: SellRecord[], watchlist: WatchlistItem[], rates: ExchangeRates) => void;
+  /** 저장만 (상태 변경 없음). 생략 도메인은 최신 스냅샷에서 채워진다. */
+  saveNow: (patch?: PortfolioSavePatch) => void;
+  /** 상태 변경 + 저장 단일 진입점 */
+  commitPortfolio: (patch: PortfolioSavePatch, opts?: { save?: boolean }) => void;
   setError: (msg: string | null) => void;
   setSuccessMessage: (msg: string | null) => void;
 }
@@ -103,7 +107,7 @@ export const useMarketData = ({
   setExchangeRates,
   portfolioHistory,
   sellHistory,
-  triggerAutoSave,
+  saveNow,
   setError,
   setSuccessMessage
 }: UseMarketDataProps) => {
@@ -112,8 +116,8 @@ export const useMarketData = ({
 
   const handleExchangeRatesChange = useCallback((newRates: ExchangeRates) => {
     setExchangeRates(newRates);
-    triggerAutoSave(assets, portfolioHistory, sellHistory, watchlist, newRates);
-  }, [assets, portfolioHistory, sellHistory, watchlist, triggerAutoSave, setExchangeRates]);
+    saveNow({ exchangeRates: newRates });
+  }, [saveNow, setExchangeRates]);
 
   // 공통 로직: 최고가 오류 자동 보정 함수
   const fixHighestPrice = (asset: Asset, newCurrentPrice: number, apiHighest: number = 0) => {
@@ -247,7 +251,7 @@ export const useMarketData = ({
             setWatchlist(updatedWatchlist);
         }
 
-        triggerAutoSave(updatedAssets, portfolioHistory, sellHistory, updatedWatchlist, newRates);
+        saveNow({ assets: updatedAssets, watchlist: updatedWatchlist, exchangeRates: newRates });
 
         if (failedTickers.length > 0) setError(`갱신 실패: ${failedTickers.join(', ')}`);
         else setSuccessMessage(watchlist.length > 0 ? '시세 업데이트 완료 (관심종목 포함)' : '시세 업데이트 완료');
@@ -259,7 +263,7 @@ export const useMarketData = ({
     } finally {
         setIsLoading(false);
     }
-  }, [assets, portfolioHistory, sellHistory, watchlist, exchangeRates, triggerAutoSave, setAssets, setExchangeRates, setError, setSuccessMessage]);
+  }, [assets, portfolioHistory, sellHistory, watchlist, exchangeRates, saveNow, setAssets, setExchangeRates, setError, setSuccessMessage]);
 
   // 2. 선택 자산 갱신 (완전 구현)
   const handleRefreshSelectedPrices = useCallback(async (ids: string[]) => {
@@ -314,11 +318,11 @@ export const useMarketData = ({
         });
 
         setAssets(updatedAssets);
-        triggerAutoSave(updatedAssets, portfolioHistory, sellHistory, watchlist, exchangeRates);
+        saveNow({ assets: updatedAssets });
         setSuccessMessage('선택 항목 업데이트 완료');
     } catch(e) { setError('선택 항목 업데이트 실패'); }
     finally { setIsLoading(false); setTimeout(() => setSuccessMessage(null), 5000); }
-  }, [assets, portfolioHistory, sellHistory, watchlist, exchangeRates, triggerAutoSave, setAssets, setError, setSuccessMessage]);
+  }, [assets, saveNow, setAssets, setError, setSuccessMessage]);
 
   // 3. 단일 자산 갱신 (완전 구현)
   const handleRefreshOnePrice = useCallback(async (assetId: string) => {
@@ -336,7 +340,7 @@ export const useMarketData = ({
              const newHighest = Math.max(target.highestPrice, upbitData.highest_52_week_price || 0, newCurrent);
              const updated = assets.map(a => a.id === assetId ? { ...a, previousClosePrice: upbitData.prev_closing_price, currentPrice: newCurrent, priceOriginal: newCurrent, currency: Currency.KRW, highestPrice: newHighest, changeRate: upbitData.signed_change_rate } : a);
              setAssets(updated);
-             triggerAutoSave(updated, portfolioHistory, sellHistory, watchlist, exchangeRates);
+             saveNow({ assets: updated });
              setSuccessMessage('업데이트 완료');
         } else throw new Error('업비트 조회 실패');
       } else {
@@ -368,12 +372,12 @@ export const useMarketData = ({
 
         const updated = assets.map(a => a.id === assetId ? { ...a, previousClosePrice: d.previousClosePrice, currentPrice: newCurrentPrice, currency: newCurrency, highestPrice: finalHighest, changeRate: d.changeRate } : a);
         setAssets(updated);
-        triggerAutoSave(updated, portfolioHistory, sellHistory, watchlist, exchangeRates);
+        saveNow({ assets: updated });
         setSuccessMessage('업데이트 완료');
       }
     } catch (e) { setError('갱신 실패'); }
     finally { setIsLoading(false); setTimeout(() => setSuccessMessage(null), 5000); }
-  }, [assets, portfolioHistory, sellHistory, watchlist, exchangeRates, triggerAutoSave, setAssets, setError, setSuccessMessage]);
+  }, [assets, saveNow, setAssets, setError, setSuccessMessage]);
 
   // 4. 관심종목 갱신
   const handleRefreshWatchlistPrices = useCallback(async () => {
@@ -470,11 +474,11 @@ export const useMarketData = ({
             return item;
         });
         setWatchlist(updated);
-        triggerAutoSave(assets, portfolioHistory, sellHistory, updated, exchangeRates);
+        saveNow({ watchlist: updated });
         setSuccessMessage('관심종목 업데이트 완료');
     } catch (e) { setError('관심종목 갱신 실패'); }
     finally { setIsLoading(false); setTimeout(() => setSuccessMessage(null), 5000); }
-  }, [watchlist, assets, portfolioHistory, sellHistory, exchangeRates, triggerAutoSave, setWatchlist, setError, setSuccessMessage]);
+  }, [watchlist, saveNow, setWatchlist, setError, setSuccessMessage]);
 
   return {
     isLoading,

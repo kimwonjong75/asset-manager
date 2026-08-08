@@ -1,6 +1,7 @@
 import { useCallback } from 'react';
 import { Asset, Currency, ExchangeRates, PortfolioSnapshot, SellRecord, WatchlistItem, AllocationTargets } from '../types';
 import { getCategoryName, DEFAULT_CATEGORIES } from '../types/category';
+import type { PortfolioSavePatch } from '../types/portfolioSave';
 
 interface UsePortfolioExportProps {
   assets: Asset[];
@@ -10,7 +11,8 @@ interface UsePortfolioExportProps {
   exchangeRates: ExchangeRates;
   allocationTargets: AllocationTargets;
   isSignedIn: boolean;
-  triggerAutoSave: (assets: Asset[], history: PortfolioSnapshot[], sells: SellRecord[], watchlist: WatchlistItem[], rates: ExchangeRates, targets?: AllocationTargets, sellAlertDropRate?: number) => void;
+  /** 저장만 (상태 변경 없음). 생략한 도메인은 최신 스냅샷에서 채워진다. */
+  saveNow: (patch?: PortfolioSavePatch) => void;
   setError: (msg: string | null) => void;
   setSuccessMessage: (msg: string | null) => void;
   setAssets: React.Dispatch<React.SetStateAction<Asset[]>>;
@@ -29,7 +31,7 @@ export const usePortfolioExport = ({
   exchangeRates,
   allocationTargets,
   isSignedIn,
-  triggerAutoSave,
+  saveNow,
   setError,
   setSuccessMessage,
   setAssets,
@@ -41,10 +43,11 @@ export const usePortfolioExport = ({
 }: UsePortfolioExportProps) => {
 
   const saveToDrive = useCallback(async () => {
-    triggerAutoSave(assets, portfolioHistory, sellHistory, watchlist, exchangeRates, allocationTargets);
+    // 수동 저장 — 바뀐 도메인이 없으므로 최신 스냅샷을 그대로 저장한다.
+    saveNow();
     setSuccessMessage('저장 요청되었습니다.');
     setTimeout(() => setSuccessMessage(null), 3000);
-  }, [assets, portfolioHistory, sellHistory, watchlist, exchangeRates, allocationTargets, triggerAutoSave, setSuccessMessage]);
+  }, [saveNow, setSuccessMessage]);
 
   const exportJson = useCallback(async (fileName: string = 'portfolio.json') => {
     if (!isSignedIn) {

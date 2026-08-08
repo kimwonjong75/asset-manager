@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react';
-import { Asset, AssetCategory, BulkUploadResult, Currency, ExchangeRates, NewAssetForm, PortfolioSnapshot, SellRecord, WatchlistItem, normalizeExchange } from '../types';
+import { Asset, AssetCategory, BulkUploadResult, Currency, ExchangeRates, NewAssetForm, SellRecord, WatchlistItem, normalizeExchange } from '../types';
+import type { PortfolioSaveSnapshot } from '../types/portfolioSave';
 import { isBaseType, DEFAULT_CATEGORIES, getCategoryIdByName } from '../types/category';
 import { fetchAssetData as fetchAssetDataNew, fetchExchangeRate, fetchExchangeRateJPY, fetchHistoricalExchangeRate, fetchCurrentExchangeRate } from '../services/priceService';
 import { createLogger } from '../utils/logger';
@@ -17,15 +18,11 @@ const MAX_REASONABLE_EXCHANGE_RATES: Partial<Record<Currency, number>> = {
 
 interface UseAssetActionsProps {
   assets: Asset[];
-  setAssets: React.Dispatch<React.SetStateAction<Asset[]>>;
-  watchlist: WatchlistItem[];
-  setWatchlist: React.Dispatch<React.SetStateAction<WatchlistItem[]>>;
-  portfolioHistory: PortfolioSnapshot[];
   sellHistory: SellRecord[];
-  setSellHistory: React.Dispatch<React.SetStateAction<SellRecord[]>>;
   exchangeRates: ExchangeRates;
   isSignedIn: boolean;
-  triggerAutoSave: (assets: Asset[], history: PortfolioSnapshot[], sells: SellRecord[], watchlist: WatchlistItem[], rates: ExchangeRates) => void;
+  /** 최신 스냅샷 읽기 — setState 업데이터 밖에서 next 상태를 계산하기 위한 창구 */
+  getSnapshot: () => PortfolioSaveSnapshot;
   commitPortfolioPatch: (patch: PortfolioPatch) => void;
   setError: (msg: string | null) => void;
   setSuccessMessage: (msg: string | null) => void;
@@ -33,15 +30,10 @@ interface UseAssetActionsProps {
 
 export const useAssetActions = ({
   assets,
-  setAssets,
-  watchlist,
-  setWatchlist,
-  portfolioHistory,
   sellHistory,
-  setSellHistory,
   exchangeRates,
   isSignedIn,
-  triggerAutoSave,
+  getSnapshot,
   commitPortfolioPatch,
   setError,
   setSuccessMessage
@@ -120,7 +112,8 @@ export const useAssetActions = ({
     } finally {
       setIsLoading(false);
     }
-  }, [isSignedIn, portfolioHistory, sellHistory, watchlist, exchangeRates, triggerAutoSave, setAssets, setError, setSuccessMessage]);
+    // assets·commitPortfolioPatch 누락 시 stale 클로저로 옛 자산 목록을 저장할 수 있어 명시.
+  }, [isSignedIn, assets, commitPortfolioPatch, setError, setSuccessMessage]);
 
   // 자산 삭제
   const handleDeleteAsset = useCallback((assetId: string) => {
@@ -129,13 +122,10 @@ export const useAssetActions = ({
       setTimeout(() => setError(null), 3000);
       return;
     }
-    setAssets(prevAssets => {
-      const updated = prevAssets.filter(asset => asset.id !== assetId);
-      triggerAutoSave(updated, portfolioHistory, sellHistory, watchlist, exchangeRates);
-      return updated;
-    });
+    // 업데이터 밖에서 최신 스냅샷으로 계산 → 단일 커밋(setState+저장). 업데이터는 순수하게 유지.
+    commitPortfolioPatch({ assets: getSnapshot().assets.filter(asset => asset.id !== assetId) });
     setEditingAsset(null);
-  }, [isSignedIn, portfolioHistory, sellHistory, watchlist, exchangeRates, triggerAutoSave, setAssets, setError]);
+  }, [isSignedIn, getSnapshot, commitPortfolioPatch, setError]);
 
   // 자산 수정
   const handleUpdateAsset = useCallback(async (updatedAsset: Asset) => {
@@ -205,11 +195,7 @@ export const useAssetActions = ({
           }
       }
       
-      setAssets(prevAssets => {
-        const updated = prevAssets.map(a => (a.id === finalAsset.id ? finalAsset : a));
-        triggerAutoSave(updated, portfolioHistory, sellHistory, watchlist, exchangeRates);
-        return updated;
-      });
+      commitPortfolioPatch({ assets: getSnapshot().assets.map(a => (a.id === finalAsset.id ? finalAsset : a)) });
       setSuccessMessage(`${finalAsset.name} 자산이 수정되었습니다.`);
       setTimeout(() => setSuccessMessage(null), 3000);
     } catch (e) {
@@ -220,7 +206,7 @@ export const useAssetActions = ({
       setIsLoading(false);
       setEditingAsset(null);
     }
-  }, [isSignedIn, assets, portfolioHistory, sellHistory, watchlist, exchangeRates, triggerAutoSave, setAssets, setError, setSuccessMessage]);
+  }, [isSignedIn, assets, getSnapshot, commitPortfolioPatch, setError, setSuccessMessage]);
 
   // 매도 확정
   const handleConfirmSell = useCallback(async (
@@ -294,7 +280,7 @@ export const useAssetActions = ({
       setIsLoading(false);
       setSellingAsset(null);
     }
-  }, [isSignedIn, assets, portfolioHistory, sellHistory, watchlist, exchangeRates, triggerAutoSave, setAssets, setSellHistory, setError, setSuccessMessage]);
+  }, [isSignedIn, assets, commitPortfolioPatch, sellHistory, exchangeRates, setError, setSuccessMessage]);
 
   // 매도 기록 편집 — sellDate / sellPriceSettlement / sellQuantity 변경. KRW 값 재계산.
   // 날짜가 바뀌면 환율 재조회, 가격/수량만 바뀌면 기존 sellExchangeRate 재사용.
@@ -368,33 +354,30 @@ export const useAssetActions = ({
       const quantityDelta = newSellQuantity - record.sellQuantity;
       const newSellHistory = sellHistory.map(r => (r.id === recordId ? updatedRecord : r));
 
-      setAssets(prevAssets => {
-        const updated = prevAssets.map(a => {
-          if (a.id !== record.assetId) return a;
-          const newInline = (a.sellTransactions || []).map(t => {
-            if (t.id !== recordId) return t;
-            return {
-              ...t,
-              sellDate: newSellDate,
-              sellPrice: sellPriceKRW,
-              sellPriceOriginal,
-              sellPriceSettlement: newSellPriceSettlement,
-              sellQuantity: newSellQuantity,
-              sellExchangeRate,
-              settlementCurrency,
-            };
-          });
-          // 부분매도였던 자산이 살아있는 경우에만 보유수량 조정
-          const adjustedQuantity = a.quantity - quantityDelta;
-          if (adjustedQuantity < 0) {
-            throw new Error('변경된 매도 수량이 현재 보유 수량보다 큽니다.');
-          }
-          return { ...a, quantity: adjustedQuantity, sellTransactions: newInline };
+      // 업데이터 밖에서 계산한다 — 예전에는 여기서 throw 까지 해서 업데이터가 순수하지 않았다.
+      const updatedAssets = getSnapshot().assets.map(a => {
+        if (a.id !== record.assetId) return a;
+        const newInline = (a.sellTransactions || []).map(t => {
+          if (t.id !== recordId) return t;
+          return {
+            ...t,
+            sellDate: newSellDate,
+            sellPrice: sellPriceKRW,
+            sellPriceOriginal,
+            sellPriceSettlement: newSellPriceSettlement,
+            sellQuantity: newSellQuantity,
+            sellExchangeRate,
+            settlementCurrency,
+          };
         });
-        setSellHistory(newSellHistory);
-        triggerAutoSave(updated, portfolioHistory, newSellHistory, watchlist, exchangeRates);
-        return updated;
+        // 부분매도였던 자산이 살아있는 경우에만 보유수량 조정
+        const adjustedQuantity = a.quantity - quantityDelta;
+        if (adjustedQuantity < 0) {
+          throw new Error('변경된 매도 수량이 현재 보유 수량보다 큽니다.');
+        }
+        return { ...a, quantity: adjustedQuantity, sellTransactions: newInline };
       });
+      commitPortfolioPatch({ assets: updatedAssets, sellHistory: newSellHistory });
 
       setSuccessMessage('매도 기록이 수정되었습니다.');
       setTimeout(() => setSuccessMessage(null), 3000);
@@ -406,7 +389,7 @@ export const useAssetActions = ({
     } finally {
       setIsLoading(false);
     }
-  }, [isSignedIn, sellHistory, portfolioHistory, watchlist, exchangeRates, triggerAutoSave, setAssets, setSellHistory, setError, setSuccessMessage]);
+  }, [isSignedIn, sellHistory, exchangeRates, getSnapshot, commitPortfolioPatch, setError, setSuccessMessage]);
 
   // 매도 기록 삭제 — sellHistory + asset.sellTransactions 양쪽에서 제거. 보유수량 복구는 하지 않음.
   const handleDeleteSellRecord = useCallback((recordId: string) => {
@@ -424,22 +407,18 @@ export const useAssetActions = ({
     }
 
     const newSellHistory = sellHistory.filter(r => r.id !== recordId);
-    setAssets(prevAssets => {
-      const updated = prevAssets.map(a => {
-        if (a.id !== record.assetId) return a;
-        return {
-          ...a,
-          sellTransactions: (a.sellTransactions || []).filter(t => t.id !== recordId),
-        };
-      });
-      setSellHistory(newSellHistory);
-      triggerAutoSave(updated, portfolioHistory, newSellHistory, watchlist, exchangeRates);
-      return updated;
+    const updatedAssets = getSnapshot().assets.map(a => {
+      if (a.id !== record.assetId) return a;
+      return {
+        ...a,
+        sellTransactions: (a.sellTransactions || []).filter(t => t.id !== recordId),
+      };
     });
+    commitPortfolioPatch({ assets: updatedAssets, sellHistory: newSellHistory });
 
     setSuccessMessage('매도 기록이 삭제되었습니다.');
     setTimeout(() => setSuccessMessage(null), 3000);
-  }, [isSignedIn, sellHistory, portfolioHistory, watchlist, exchangeRates, triggerAutoSave, setAssets, setSellHistory, setError, setSuccessMessage]);
+  }, [isSignedIn, sellHistory, getSnapshot, commitPortfolioPatch, setError, setSuccessMessage]);
 
   // 추가매수 확정
   const handleConfirmBuyMore = useCallback(async (
@@ -487,7 +466,7 @@ export const useAssetActions = ({
       setIsLoading(false);
       setBuyingAsset(null);
     }
-  }, [isSignedIn, assets, portfolioHistory, sellHistory, watchlist, exchangeRates, triggerAutoSave, setAssets, setError, setSuccessMessage]);
+  }, [isSignedIn, assets, commitPortfolioPatch, setError, setSuccessMessage]);
 
   // CSV 파일 업로드
   const handleCsvFileUpload = useCallback((file: File): Promise<BulkUploadResult> => {
@@ -619,11 +598,7 @@ export const useAssetActions = ({
                         await new Promise(resolve => setTimeout(resolve, 300));
                     }
                     
-                    setAssets(prev => {
-                        const updated = [...prev, ...newAssets];
-                        triggerAutoSave(updated, portfolioHistory, sellHistory, watchlist, exchangeRates);
-                        return updated;
-                    });
+                    commitPortfolioPatch({ assets: [...getSnapshot().assets, ...newAssets] });
                     successCount = newAssets.length;
                 }
                 
@@ -647,70 +622,52 @@ export const useAssetActions = ({
         
         reader.readAsText(file);
     });
-  }, [isSignedIn, portfolioHistory, sellHistory, watchlist, exchangeRates, triggerAutoSave, setAssets]);
+  }, [isSignedIn, getSnapshot, commitPortfolioPatch]);
 
   // 관심종목 추가
   const handleAddWatchItem = useCallback((payload: Omit<WatchlistItem, 'id' | 'currentPrice' | 'priceOriginal' | 'currency' | 'previousClosePrice' | 'highestPrice'>) => {
     const id = `${Date.now()}`;
     const item: WatchlistItem = { ...payload, id } as WatchlistItem;
-    setWatchlist(prev => {
-      const exists = prev.some(w => w.ticker.toUpperCase() === item.ticker.toUpperCase() && normalizeExchange(w.exchange) === normalizeExchange(item.exchange));
-      const next = exists ? prev : [...prev, item];
-      triggerAutoSave(assets, portfolioHistory, sellHistory, next, exchangeRates);
-      return next;
-    });
-  }, [assets, portfolioHistory, sellHistory, exchangeRates, triggerAutoSave, setWatchlist]);
+    const cur = getSnapshot().watchlist;
+    const exists = cur.some(w => w.ticker.toUpperCase() === item.ticker.toUpperCase() && normalizeExchange(w.exchange) === normalizeExchange(item.exchange));
+    commitPortfolioPatch({ watchlist: exists ? cur : [...cur, item] });
+  }, [getSnapshot, commitPortfolioPatch]);
 
   // 관심종목 수정
   const handleUpdateWatchItem = useCallback((item: WatchlistItem) => {
-    setWatchlist(prev => {
-      const next = prev.map(w => (w.id === item.id ? item : w));
-      triggerAutoSave(assets, portfolioHistory, sellHistory, next, exchangeRates);
-      return next;
-    });
-  }, [assets, portfolioHistory, sellHistory, exchangeRates, triggerAutoSave, setWatchlist]);
+    commitPortfolioPatch({ watchlist: getSnapshot().watchlist.map(w => (w.id === item.id ? item : w)) });
+  }, [getSnapshot, commitPortfolioPatch]);
 
   // 관심종목 삭제
   const handleDeleteWatchItem = useCallback((id: string) => {
-    setWatchlist(prev => {
-      const next = prev.filter(w => w.id !== id);
-      triggerAutoSave(assets, portfolioHistory, sellHistory, next, exchangeRates);
-      return next;
-    });
-  }, [assets, portfolioHistory, sellHistory, exchangeRates, triggerAutoSave, setWatchlist]);
+    commitPortfolioPatch({ watchlist: getSnapshot().watchlist.filter(w => w.id !== id) });
+  }, [getSnapshot, commitPortfolioPatch]);
 
   // 관심종목 일괄 삭제
   const handleBulkDeleteWatchItems = useCallback((ids: string[]) => {
-    setWatchlist(prev => {
-      const remove = new Set(ids);
-      const next = prev.filter(w => !remove.has(w.id));
-      triggerAutoSave(assets, portfolioHistory, sellHistory, next, exchangeRates);
-      return next;
-    });
-  }, [assets, portfolioHistory, sellHistory, exchangeRates, triggerAutoSave, setWatchlist]);
+    const remove = new Set(ids);
+    commitPortfolioPatch({ watchlist: getSnapshot().watchlist.filter(w => !remove.has(w.id)) });
+  }, [getSnapshot, commitPortfolioPatch]);
 
   // 포트폴리오에서 관심종목으로 추가
   const handleAddAssetsToWatchlist = useCallback((selectedAssets: Asset[]) => {
     if (selectedAssets.length === 0) return;
-    setWatchlist(prev => {
-      const next = [...prev];
-      selectedAssets.forEach(a => {
-        const exists = next.some(w => w.ticker.toUpperCase() === a.ticker.toUpperCase() && normalizeExchange(w.exchange) === normalizeExchange(a.exchange));
-        if (!exists) {
-          next.push({
-            id: `${Date.now()}-${a.id}`,
-            ticker: a.ticker,
-            exchange: a.exchange,
-            name: a.customName?.trim() || a.name,
-            category: a.category,
-            categoryId: a.categoryId,
-          });
-        }
-      });
-      triggerAutoSave(assets, portfolioHistory, sellHistory, next, exchangeRates);
-      return next;
+    const next = [...getSnapshot().watchlist];
+    selectedAssets.forEach(a => {
+      const exists = next.some(w => w.ticker.toUpperCase() === a.ticker.toUpperCase() && normalizeExchange(w.exchange) === normalizeExchange(a.exchange));
+      if (!exists) {
+        next.push({
+          id: `${Date.now()}-${a.id}`,
+          ticker: a.ticker,
+          exchange: a.exchange,
+          name: a.customName?.trim() || a.name,
+          category: a.category,
+          categoryId: a.categoryId,
+        });
+      }
     });
-  }, [assets, portfolioHistory, sellHistory, exchangeRates, triggerAutoSave, setWatchlist]);
+    commitPortfolioPatch({ watchlist: next });
+  }, [getSnapshot, commitPortfolioPatch]);
 
   return {
     isLoading,

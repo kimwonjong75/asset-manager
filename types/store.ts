@@ -16,6 +16,7 @@ import type { TurtlePosition, TurtleSettings } from './turtle';
 import type { OwnerFilter } from './owner';
 import type { AddAssetResult, SellResult, BuyMoreResult } from './assetActionResult';
 import type { CleanupDecision } from './cleanup';
+import type { PortfolioSavePatch } from './portfolioSave';
 
 export type PortfolioHistory = PortfolioSnapshot[];
 
@@ -37,17 +38,11 @@ export interface PortfolioData {
 }
 
 /**
- * 교차도메인 원자 커밋용 패치 (Phase 2b-4b-2d) — 지정한 도메인만 갱신하고 **단일 autosave**로 저장.
- * 터틀 실행이 assets+sellHistory+actionQueue+turtlePositions를 한 번에 커밋해 stale sibling 저장 경합을 제거.
+ * **`PortfolioSavePatch`의 별칭**(5-A). 예전에는 5개 도메인만 담는 별도 인터페이스였으나,
+ * 저장 경로가 하나로 합쳐지면서 12개 도메인 전부를 patch 로 넘길 수 있게 됐다.
+ * 새 코드는 `types/portfolioSave`의 이름을 쓰고, 이 별칭은 기존 호출부 호환용으로만 유지한다.
  */
-export interface PortfolioPatch {
-  assets?: Asset[];
-  sellHistory?: SellRecord[];
-  actionQueue?: ActionItem[];
-  turtlePositions?: TurtlePosition[];
-  /** 관심종목 (Phase 3c-2 — 대청소 turtle 분류가 assets+watchlist+actionQueue를 한 번에 원자 커밋) */
-  watchlist?: WatchlistItem[];
-}
+export type PortfolioPatch = PortfolioSavePatch;
 
 export interface PortfolioStatus {
   isLoading: boolean;

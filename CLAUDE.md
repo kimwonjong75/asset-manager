@@ -40,6 +40,12 @@
 - Component Props types are mandatory.
 - Props drilling 3+ levels deep → use `PortfolioContext`.
 
+## Saving portfolio data
+- **One entry point**: `commitPortfolio(patch)` (state + save) or `saveNow(patch?)` (save only). Never call the Drive layer directly.
+- Drive always writes a **complete snapshot** — a patch declares what changed, it does not make the save partial. Omitted domains are filled from `snapshotRef` (synchronously updated), not from the render closure. See RULES.md §6-S; the *why* is `saveQueue`'s last-write-wins.
+- Adding a domain: edit `types/portfolioSave.ts` (`PortfolioSaveSnapshot` + `PORTFOLIO_SAVE_DOMAINS`), the `snapshotRef` init/sync, and load parsing. **Call sites stay untouched.**
+- Merging uses `!== undefined`, never truthiness — `0` and `[]` are valid values.
+
 ## API rules
 - External API calls only in dedicated hooks (`hooks/`).
 - On failure: `try-catch` + fallback data required (partial success allowed).

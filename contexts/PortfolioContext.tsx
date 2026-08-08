@@ -2,7 +2,6 @@ import React, { createContext, useContext, useState, useMemo, useEffect, useCall
 import {
   Asset,
   Currency,
-  ExchangeRates,
   AllocationTargets,
   WatchlistItem,
   SellRecord,
@@ -105,12 +104,12 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     exchangeRates, setExchangeRates,
     allocationTargets, setAllocationTargets,
     sellAlertDropRate: persistedSellAlertDropRate,
-    setSellAlertDropRate: setPersistedSellAlertDropRate,
-    categoryStore, setCategoryStore,
-    knowledgeBase, setKnowledgeBase,
-    actionQueue, setActionQueue,
-    turtlePositions, setTurtlePositions,
-    turtleSettings, setTurtleSettings,
+    // 개별 setter 는 더 이상 필요 없다 — commitPortfolio 가 setState + 저장을 함께 처리한다.
+    categoryStore,
+    knowledgeBase,
+    actionQueue,
+    turtlePositions,
+    turtleSettings,
     isSignedIn, googleUser, needsReAuth,
     isInitializing: isAuthInitializing,
     isLoading: isAuthLoading,
@@ -120,7 +119,9 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     shouldAutoUpdate, setShouldAutoUpdate,
     handleSignIn,
     handleSignOut,
-    triggerAutoSave,
+    commitPortfolio,
+    saveNow,
+    getSnapshot,
     commitPortfolioPatch,
     restoreFromPayload,
   } = usePortfolioData();
@@ -139,7 +140,8 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     watchlist, setWatchlist,
     exchangeRates, setExchangeRates,
     portfolioHistory, sellHistory,
-    triggerAutoSave,
+    commitPortfolio,
+    saveNow,
     setError,
     setSuccessMessage,
   });
@@ -191,13 +193,12 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     handleBulkDeleteWatchItems,
     handleAddAssetsToWatchlist,
   } = useAssetActions({
-    assets, setAssets,
-    watchlist, setWatchlist,
-    portfolioHistory,
-    sellHistory, setSellHistory,
+    // setter 를 넘기지 않는다 — 상태 변경은 전부 commitPortfolioPatch 한 경로로만 일어난다.
+    assets,
+    sellHistory,
     exchangeRates,
     isSignedIn,
-    triggerAutoSave,
+    getSnapshot,
     commitPortfolioPatch,
     setError,
     setSuccessMessage,
@@ -308,7 +309,7 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     try { localStorage.setItem('asset-manager-column-config-v1', JSON.stringify(next)); } catch { /* ignore */ }
     // 컬럼 설정 변경은 Drive autoSave 의존성에 포함되지 않으므로 명시적으로 트리거.
     // (hookAutoSave는 localStorage에서 최신 tableLayout을 읽어 백업에 포함하며, 디바운스됨)
-    triggerAutoSave(assets, portfolioHistory, sellHistory, watchlist, exchangeRates);
+    saveNow();
   };
   const handleSetColumnConfig = (config: ColumnConfig[]) => {
     persistColumnConfig(mergeColumnConfig(config));
@@ -328,7 +329,7 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const persistFixedColumnWidths = (next: FixedColumnWidths) => {
     setFixedColumnWidthsState(next);
     try { localStorage.setItem('asset-manager-fixed-column-widths-v1', JSON.stringify(next)); } catch { /* ignore */ }
-    triggerAutoSave(assets, portfolioHistory, sellHistory, watchlist, exchangeRates);
+    saveNow();
   };
   const handleResetColumnConfig = () => {
     persistColumnConfig(DEFAULT_COLUMN_CONFIG);
@@ -422,9 +423,8 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   // 실행 큐 저장 액션 — 자동 검토 훅(자동 생성 opt-in)과 value.actions.updateActionQueue가 공유
   const updateActionQueueAction = useCallback((queue: ActionItem[]) => {
-    setActionQueue(queue);
-    triggerAutoSave(assets, portfolioHistory, sellHistory, watchlist, exchangeRates, undefined, undefined, undefined, undefined, queue, turtlePositions, turtleSettings);
-  }, [assets, portfolioHistory, sellHistory, watchlist, exchangeRates, turtlePositions, turtleSettings, setActionQueue, triggerAutoSave]);
+    commitPortfolio({ actionQueue: queue }); // setState + 저장을 한 경로로
+  }, [commitPortfolio]);
 
   // 터틀 자동 검토 (읽기 전용, Phase B) + opt-in 자동 생성 (Phase C) — 시세 준비 후 세션 1회.
   // refreshActionQueue와 동일한 fetch→조립 경로(loadTurtleMarketSnapshot)를 공유해 프리뷰≡생성 정합 보장.
@@ -462,8 +462,8 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   // 컬럼 설정(persistColumnConfig)과 동일 패턴: hookAutoSave가 localStorage에서
   // 최신 alertSettings를 읽어 페이로드에 싣는다(디바운스됨). 이로써 규칙 설정이 기기 간 유지된다.
   const handleAlertSettingsPersisted = useCallback(() => {
-    triggerAutoSave(assets, portfolioHistory, sellHistory, watchlist, exchangeRates);
-  }, [assets, portfolioHistory, sellHistory, watchlist, exchangeRates, triggerAutoSave]);
+    saveNow();
+  }, [saveNow]);
 
   // 자동 알림
   const {
@@ -553,7 +553,7 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     exchangeRates,
     allocationTargets,
     isSignedIn,
-    triggerAutoSave,
+    saveNow,
     setError,
     setSuccessMessage,
     setAssets,
@@ -673,8 +673,7 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         const newAssets = assets.map(a =>
           a.id === id ? { ...a, pinned: !a.pinned } : a
         );
-        setAssets(newAssets);
-        triggerAutoSave(newAssets, portfolioHistory, sellHistory, watchlist, exchangeRates);
+        commitPortfolio({ assets: newAssets });
       },
       deleteAsset: handleDeleteAsset,
       confirmSell: async (id: string, sellDate: string, sellPrice: number, sellQuantity: number, currency: Currency) => {
@@ -697,8 +696,7 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         const newWatchlist = watchlist.map(w =>
           w.id === id ? { ...w, pinned: !w.pinned } : w
         );
-        setWatchlist(newWatchlist);
-        triggerAutoSave(assets, portfolioHistory, sellHistory, newWatchlist, exchangeRates);
+        commitPortfolio({ watchlist: newWatchlist });
       },
       uploadCsv: handleCsvFileUpload,
       updateAlertSettings,
@@ -716,8 +714,7 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       setFilterAlerts,
       setSearchQuery,
       setSellAlertDropRate: (n: number) => {
-        setPersistedSellAlertDropRate(n);
-        triggerAutoSave(assets, portfolioHistory, sellHistory, watchlist, exchangeRates, undefined, n);
+        commitPortfolio({ sellAlertDropRate: n });
       },
       setLowValueThreshold: handleSetLowValueThreshold,
       setColumnConfig: handleSetColumnConfig,
@@ -728,8 +725,7 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       resetChartMAConfigs: handleResetChartMAConfigs,
       setSignalDisplay: handleSetSignalDisplay,
       updateAllocationTargets: (targets: AllocationTargets) => {
-        setAllocationTargets(targets);
-        triggerAutoSave(assets, portfolioHistory, sellHistory, watchlist, exchangeRates, targets);
+        commitPortfolio({ allocationTargets: targets });
       },
       openEditModal: (asset: Asset) => setEditingAsset(asset),
       closeEditModal: () => setEditingAsset(null),
@@ -768,8 +764,7 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           categories: [...categoryStore.categories, newCat],
           nextId: categoryStore.nextId + 1,
         };
-        setCategoryStore(updated);
-        triggerAutoSave(assets, portfolioHistory, sellHistory, watchlist, exchangeRates, undefined, undefined, updated);
+        commitPortfolio({ categoryStore: updated });
       },
       renameCategory: (id: number, newName: string) => {
         const updated: CategoryStore = {
@@ -778,8 +773,7 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
             c.id === id ? { ...c, name: newName } : c
           ),
         };
-        setCategoryStore(updated);
-        triggerAutoSave(assets, portfolioHistory, sellHistory, watchlist, exchangeRates, undefined, undefined, updated);
+        commitPortfolio({ categoryStore: updated });
       },
       deleteCategory: (id: number, reassignToId: number) => {
         // 자산/관심종목/매도내역 재할당
@@ -790,16 +784,17 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           ...categoryStore,
           categories: categoryStore.categories.filter(c => c.id !== id),
         };
-        setAssets(newAssets);
-        setWatchlist(newWatchlist);
-        setSellHistory(newSellHistory);
-        setCategoryStore(updated);
-        triggerAutoSave(newAssets, portfolioHistory, newSellHistory, newWatchlist, exchangeRates, undefined, undefined, updated);
+        // 4개 도메인 동시 변경 — 한 번의 커밋으로 묶어 형제 유실·중복 저장을 없앤다.
+        commitPortfolio({
+          assets: newAssets,
+          watchlist: newWatchlist,
+          sellHistory: newSellHistory,
+          categoryStore: updated,
+        });
       },
-      // 지식 베이스 (구루 지식 DB) — 상태 갱신 후 Drive 자동 저장 (9번째 인자로 knowledgeBase 주입)
+      // 지식 베이스 (구루 지식 DB) — 상태 갱신 + Drive 자동 저장
       updateKnowledgeBase: (kb: KnowledgeBase) => {
-        setKnowledgeBase(kb);
-        triggerAutoSave(assets, portfolioHistory, sellHistory, watchlist, exchangeRates, undefined, undefined, undefined, kb);
+        commitPortfolio({ knowledgeBase: kb });
       },
 
       // 90/10 실행 시스템 (Phase 2) — 상태 갱신 후 Drive 자동 저장 (10~12번째 인자).
@@ -815,12 +810,10 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         return removed.length;
       },
       updateTurtlePositions: (positions: TurtlePosition[]) => {
-        setTurtlePositions(positions);
-        triggerAutoSave(assets, portfolioHistory, sellHistory, watchlist, exchangeRates, undefined, undefined, undefined, undefined, actionQueue, positions, turtleSettings);
+        commitPortfolio({ turtlePositions: positions });
       },
       updateTurtleSettings: (settings: TurtleSettings) => {
-        setTurtleSettings(settings);
-        triggerAutoSave(assets, portfolioHistory, sellHistory, watchlist, exchangeRates, undefined, undefined, undefined, undefined, actionQueue, turtlePositions, settings);
+        commitPortfolio({ turtleSettings: settings });
       },
       commitPortfolioPatch,
       // 대청소 일괄 분류 저장 (Phase 3b/3c-2) — 순수 빌더로 assets+watchlist+actionQueue 계산 후 단일 원자 커밋.

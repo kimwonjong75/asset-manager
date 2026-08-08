@@ -7,6 +7,7 @@ import type { KnowledgeBase } from '../types/knowledge';
 import type { ActionItem } from '../types/actionQueue';
 import type { TurtlePosition, TurtleSettings } from '../types/turtle';
 import { applyRestoredAlertSettings, readStoredAlertSettings } from '../utils/alertSettingsStorage';
+import type { PortfolioSaveSnapshot } from '../types/portfolioSave';
 import { createLogger } from '../utils/logger';
 
 const log = createLogger('DriveSync');
@@ -209,7 +210,12 @@ export function useGoogleDriveSync(options: UseGoogleDriveSyncOptions = {}) {
     return { assets, portfolioHistory, sellHistory, watchlist, exchangeRates, allocationTargets, sellAlertDropRate, categoryStore, knowledgeBase, actionQueue, turtlePositions, turtleSettings };
   }, []);
 
-  const autoSave = useCallback(async (assetsToSave: Asset[], history: PortfolioSnapshot[], sells: SellRecord[], watchlist: WatchlistItem[], exchangeRates?: ExchangeRates, allocationTargets?: AllocationTargets, sellAlertDropRate?: number, categoryStore?: CategoryStore, knowledgeBase?: KnowledgeBase, actionQueue?: ActionItem[], turtlePositions?: TurtlePosition[], turtleSettings?: TurtleSettings) => {
+  /**
+   * 전 도메인 **완전한 스냅샷 1개**를 받아 Drive 에 쓴다(부분 저장 없음).
+   * 예전 12개 위치 인자에서 객체로 바뀌었다 — 순서 착오로 도메인이 뒤바뀌던 위험 제거.
+   * 스냅샷을 조립하는 책임은 호출부(`usePortfolioData.commitPortfolio`)에 있다.
+   */
+  const autoSave = useCallback(async (snapshot: PortfolioSaveSnapshot) => {
     if (!isSignedIn || needsReAuth) {
       if (!isSignedIn) optionsRef.current.onError?.('Google Drive 로그인 후 저장할 수 있습니다.');
       return;
@@ -235,23 +241,14 @@ export function useGoogleDriveSync(options: UseGoogleDriveSyncOptions = {}) {
     const tableLayout = { columns: columnConfig, fixedWidths };
 
     // 알림 규칙 설정 — 테이블 레이아웃과 동일하게 localStorage에서 읽어 페이로드에 포함.
-    // (호출부 12개 인자를 늘리지 않기 위한 기존 패턴. 값이 없으면 키를 싣지 않아
-    //  구 저장본의 alertSettings를 실수로 지우지 않는다 — 로드 측도 부재 시 무시)
+    // 값이 없으면 키를 싣지 않아 구 저장본의 alertSettings를 실수로 지우지 않는다(로드 측도 부재 시 무시).
+    // ⚠️ 이 3개(columnConfig·tableLayout·alertSettings)는 **스냅샷 인자 밖의 숨은 입력**이다.
+    //    상태 소유권이 각각 localStorage/useAutoAlert 에 있어 아직 스냅샷에 못 넣었다(5-B 과제).
+    //    payload 조립을 여기 한 곳으로 모아 두었으니, 옮길 때도 여기만 보면 된다.
     const alertSettings = readStoredAlertSettings();
 
     const exportData = {
-      assets: assetsToSave,
-      portfolioHistory: history,
-      sellHistory: sells,
-      watchlist,
-      exchangeRates,
-      allocationTargets,
-      sellAlertDropRate,
-      categoryStore,
-      knowledgeBase,
-      actionQueue,
-      turtlePositions,
-      turtleSettings,
+      ...snapshot,
       columnConfig,
       tableLayout,
       alertSettings,
