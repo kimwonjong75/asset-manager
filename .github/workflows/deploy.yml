@@ -16,8 +16,31 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # 검문소 — 여기서 실패하면 build/deploy 가 아예 시작되지 않는다(배포 중단).
+  # 승격 근거: ci.yml 의 동일 명령이 Ubuntu/Node 20 에서 2회 연속 성공(14f208e, 0127366).
+  # 내용: 타입검사 + ESLint(신규 위반만) + tests/ 전수 자동발견. 약 1분.
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Verify
+        run: npm run verify
+
   build:
     runs-on: ubuntu-latest
+    needs: verify # ← 검문소 통과 없이는 배포하지 않는다
     steps:
       - name: Checkout
         uses: actions/checkout@v4

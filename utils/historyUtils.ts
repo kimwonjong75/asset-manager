@@ -304,14 +304,17 @@ export const backfillWithRealPrices = async (
   log.info(`백필+교정: ${fetchStart} ~ ${fetchEnd} (누락 ${missingDates.length}일, 교정 ${existingDates.length}일)`);
 
   try {
+    // 빈 폴백에 타입을 명시한다. `Promise.resolve({})`로 두면 유니온이 `{}`로 무너져
+    // 아래 `stockPrices[ticker]` 조회가 타입상 불가능해지고, 그걸 캐스팅으로 덮게 된다.
+    const EMPTY_PRICES: Record<string, HistoricalPriceResult> = {};
     const [stockPrices, cryptoPrices, exchangeRateHistory] = await Promise.all([
-      stockTickers.length > 0 ? fetchStockHistoricalPrices(stockTickers, fetchStart, fetchEnd) : Promise.resolve({}),
-      cryptoSymbols.length > 0 ? fetchCryptoHistoricalPrices(cryptoSymbols, fetchStart, fetchEnd) : Promise.resolve({}),
+      stockTickers.length > 0 ? fetchStockHistoricalPrices(stockTickers, fetchStart, fetchEnd) : Promise.resolve(EMPTY_PRICES),
+      cryptoSymbols.length > 0 ? fetchCryptoHistoricalPrices(cryptoSymbols, fetchStart, fetchEnd) : Promise.resolve(EMPTY_PRICES),
       fetchExchangeRateHistory(fetchStart, fetchEnd),
     ]);
 
-    const hasStockData = Object.values(stockPrices as Record<string, HistoricalPriceResult>).some(r => r.data && Object.keys(r.data).length > 0);
-    const hasCryptoData = Object.values(cryptoPrices as Record<string, HistoricalPriceResult>).some(r => r.data && Object.keys(r.data).length > 0);
+    const hasStockData = Object.values(stockPrices).some(r => r.data && Object.keys(r.data).length > 0);
+    const hasCryptoData = Object.values(cryptoPrices).some(r => r.data && Object.keys(r.data).length > 0);
 
     if (!hasStockData && !hasCryptoData) {
       log.warn('API에서 데이터를 받지 못함, 기존 보간 방식 사용');

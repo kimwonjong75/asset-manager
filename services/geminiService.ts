@@ -6,6 +6,7 @@ import {
   fetchCryptoHistoricalPrices,
   convertTickerForAPI,
   isCryptoExchange,
+  type HistoricalPriceResult,
 } from './historicalPriceService';
 import { calculateSMA, calculateRSI, calculateCrossDays, calculatePriceCrossMaDays, calculatePriceBreakBelowMaDays, calculateRsiCrossDays, getRequiredHistoryDays } from '../utils/maCalculations';
 import type { EnrichedIndicatorData } from '../hooks/useEnrichedIndicators';
@@ -532,13 +533,15 @@ async function fetchTechnicalIndicators(
       }
     }
 
+    // 빈 폴백에 타입을 명시 — `{}`로 두면 유니온이 무너져 아래 `results[apiTicker]` 조회가 막힌다.
+    const EMPTY_PRICES: Record<string, HistoricalPriceResult> = {};
     const [stockResults, cryptoResults] = await Promise.all([
       stockTickers.length > 0
         ? fetchStockHistoricalPrices(stockTickers.map(t => t.apiTicker), startDate, endDate)
-        : Promise.resolve({}),
+        : Promise.resolve(EMPTY_PRICES),
       cryptoTickers.length > 0
         ? fetchCryptoHistoricalPrices(cryptoTickers.map(t => t.apiTicker), startDate, endDate)
-        : Promise.resolve({}),
+        : Promise.resolve(EMPTY_PRICES),
     ]);
 
     const allItems = [

@@ -71,11 +71,13 @@ export const fetchUpbitPricesBatch = async (symbols: string[]): Promise<Map<stri
       return resultMap;
     }
 
-    const data = await res.json();
+    // 응답 형태를 진입점에서 한 번만 선언한다 — forEach 콜백 인자에 타입을 다는 방식은
+    // `Object.entries` 가 주는 `[string, unknown]` 과 맞지 않아 strict 에서 막힌다.
+    const data = (await res.json()) as Record<string, UpbitTickerResponse>;
     log.debug('프록시 응답:', data);
 
     // 응답 데이터를 Map으로 변환
-    Object.entries(data).forEach(([market, tickerData]: [string, UpbitTickerResponse]) => {
+    Object.entries(data).forEach(([market, tickerData]) => {
           if (tickerData && typeof tickerData === 'object' && !tickerData.error) {
             const ticker: UpbitTicker = {
               market: tickerData.market || market,

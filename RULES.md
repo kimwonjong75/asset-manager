@@ -1118,6 +1118,24 @@ ESLint 10 flat config + typescript-eslint 8 + **eslint-plugin-react-hooks 7**(Re
 
 ⚠️ **TypeScript 7은 도입 금지(현재)**: typescript-eslint가 `typescript <6.1`만 지원하므로 올리는 순간 ESLint가 설치 불가가 된다. 7.1에서 프로그래매틱 API가 안정화된 뒤 재검토.
 
+### TypeScript `strict` (2026-08-08 활성화)
+
+`tsconfig.json`에 `"strict": true`. **`noUncheckedIndexedAccess`는 아직 끔** — 앱 영역만 273건이라 한 번에 고치면 변경 범위가 위험하다. 자산 계산 핵심 파일부터 국소 적용하는 별도 단계로 다룬다.
+
+켜는 과정에서 실제로 드러난 것들(전부 strict 이전에는 조용히 통과하던 자리):
+
+| 위치 | 드러난 문제 | 처리 |
+|---|---|---|
+| `types/index.ts` `ExchangeRates` | **`Currency`에는 CNY가 있는데 `ExchangeRates`에는 USD/JPY뿐** → `rates[currency]`가 undefined를 반환할 수 있었다 | KRW/CNY를 선택 필드로 선언해 타입이 런타임 현실과 일치하게 함. 부재 처리 관례 2갈래를 주석에 명시 |
+| `PortfolioTableRow` / `PortfolioMobileCard` | `'CNY' in rates` 로 키 존재만 확인 → 값이 undefined여도 통과 | **키 존재가 아니라 `typeof rate === 'number'`로 판정** (부재 시 평가액 역산 경로로 폴백) |
+| `utils/exchangeRateCache` | `currency as keyof ExchangeRates` 캐스팅으로 미지원 통화를 가림 | `isRatedCurrency` 타입 가드로 좁힘 — 컴파일러가 실제 검증 |
+| `utils/portfolioCalculations` | 레거시 자산의 `category`·`exchange`·`categoryId` 부재를 무검사 인덱싱 | 빈 문자열 정규화 + categoryId 부재 시 조회 스킵(런타임 결과 동일) |
+| `utils/historyUtils`, `services/geminiService` | `Promise.resolve({})` 폴백이 유니온을 `{}`로 무너뜨려 조회가 캐스팅으로 덮여 있었다 | 타입 붙인 `EMPTY_PRICES` 상수 — 캐스팅 2건 제거 |
+| `utils/migrateData` | 시그니처가 `T | null | undefined`를 받고 `T`를 반환한다고 **거짓말**(`return data as T`) | 파라미터를 non-null로. 유일 호출부가 항상 객체를 넘김. 방어 가드는 유지 |
+| `hooks/useOnClickOutside` | React 19의 `useRef<T>(null)`은 `RefObject<T | null>` | 시그니처를 null 허용으로(본문은 이미 null 처리 중) |
+
+**모든 수정은 런타임 동작 보존이 원칙**이었다(동작을 바꾼 것 없음). 검증: `npm test` 48/48 + `npm run build` + 제외 대상 `conditionalChannelBacktest` 178단언.
+
 CI: `.github/workflows/ci.yml`(Verify)이 push·PR마다 `npm run verify` 실행. **현재는 배포와 분리** — 연속 초록불 확인 후 `deploy.yml`에 `needs: verify`를 붙여 "테스트 실패 시 배포 중단"으로 승격한다.
 
 ### 개별 진단 스크립트 목록

@@ -2,17 +2,14 @@ name: Verify
 
 # 변경이 다른 곳을 깨뜨렸는지 자동으로 확인하는 검문소.
 #
-# ⚠️ 현재는 의도적으로 **배포와 분리**되어 있다.
-#    deploy.yml 은 그대로 두고 이 워크플로만 먼저 돌려서, CI 환경(Ubuntu·Node 20)에서도
-#    48개 테스트가 안정적으로 통과하는지 몇 번 관찰한다.
-#    연속으로 초록불이 확인되면 그때 deploy.yml 의 build job 에
-#        needs: verify
-#    를 추가해 "테스트 실패 시 배포 중단"으로 승격한다.
-#    (처음부터 배포에 물리면 CI 환경 차이 하나로 배포가 멈출 수 있어 순서를 나눴다.)
+# 역할 분담 (2026-08-08 승격 완료 — Ubuntu/Node 20 에서 2회 연속 성공 확인 후)
+#   · main 브랜치        → deploy.yml 의 verify job 이 담당하고, 실패 시 **배포가 중단**된다.
+#   · 그 외 브랜치·PR    → 이 워크플로가 담당한다(배포와 무관하므로 조기 피드백용).
+#   중복 실행을 피하려고 여기서는 main push 를 제외한다.
 
 on:
   push:
-    branches: ['**']
+    branches-ignore: [main]
   pull_request:
   workflow_dispatch:
 

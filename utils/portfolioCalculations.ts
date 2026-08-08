@@ -17,7 +17,12 @@ const DEFAULT_EXCHANGE_MAP: { [key: number]: string[] } = {
 export const mapToNewAssetStructure = (asset: LegacyAssetShape | Asset): Asset => {
   const newAsset = { ...asset };
 
-  if (!newAsset.exchange) newAsset.exchange = DEFAULT_EXCHANGE_MAP[newAsset.categoryId]?.[0] || '';
+  // categoryId 는 레거시 자산에서 없을 수 있다. 없으면 조회 자체를 건너뛴다
+  // (기존 동작과 동일: undefined 조회 → undefined → `|| ''`).
+  if (!newAsset.exchange) {
+    const defaults = newAsset.categoryId !== undefined ? DEFAULT_EXCHANGE_MAP[newAsset.categoryId] : undefined;
+    newAsset.exchange = defaults?.[0] || '';
+  }
   if (!newAsset.currency) {
     newAsset.currency = Currency.KRW;
     newAsset.priceOriginal = newAsset.currentPrice;
@@ -35,12 +40,15 @@ export const mapToNewAssetStructure = (asset: LegacyAssetShape | Asset): Asset =
   }
 
   // Legacy category string → categoryId migration
-  const oldCategory = newAsset.category;
+  // `category`(deprecated)·`exchange` 모두 레거시 자산에서 없을 수 있다. 빈 문자열로 정규화해
+  // 아래 `includes`/맵 조회를 안전하게 만든다 — 런타임 결과는 기존과 동일(둘 다 미매칭).
+  const oldCategory = newAsset.category ?? '';
+  const exchange = newAsset.exchange ?? '';
   if (!newAsset.categoryId) {
     if (['주식', 'ETF'].includes(oldCategory)) {
-      if (newAsset.exchange?.startsWith('KRX')) {
+      if (exchange.startsWith('KRX')) {
         newAsset.categoryId = 1; // KOREAN_STOCK
-      } else if (['NASDAQ', 'NYSE', 'AMEX'].includes(newAsset.exchange)) {
+      } else if (['NASDAQ', 'NYSE', 'AMEX'].includes(exchange)) {
         newAsset.categoryId = 2; // US_STOCK
       } else {
         newAsset.categoryId = 4; // OTHER_FOREIGN_STOCK

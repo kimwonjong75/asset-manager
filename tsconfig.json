@@ -1,5 +1,10 @@
 {
   "compilerOptions": {
+    // 자산 계산에서 "값이 아직 없음(undefined)"이 조용히 NaN/0으로 흐르는 것을 컴파일러가 막는다.
+    // 켜는 과정에서 실제로 드러난 것: Currency 에는 CNY 가 있는데 ExchangeRates 에는 없어
+    // `rates[currency]` 가 undefined 를 돌려줄 수 있었다(types/index.ts 주석 참조).
+    // noUncheckedIndexedAccess 는 아직 끔 — 앱 영역만 273건이라 별도 단계로 다룬다.
+    "strict": true,
     "target": "ES2022",
     "experimentalDecorators": true,
     "useDefineForClassFields": false,

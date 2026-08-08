@@ -71,7 +71,9 @@ const SignalReplayChart: React.FC<SignalReplayChartProps> = ({
   const seriesRef = useRef<ISeriesApi<'Candlestick'> | ISeriesApi<'Line'> | null>(null);
   const maSeriesRef = useRef<ISeriesApi<'Line'>[]>([]);
   const rsiSeriesRef = useRef<ISeriesApi<'Line'> | null>(null);
-  const markersRef = useRef<ReturnType<typeof createSeriesMarkers> | null>(null);
+  // 제네릭 인자를 명시한다. `typeof createSeriesMarkers` 만 쓰면 `unknown` 으로 굳어져
+  // `Time` 시리즈에 붙인 실제 반환값과 타입이 어긋난다.
+  const markersRef = useRef<ReturnType<typeof createSeriesMarkers<Time>> | null>(null);
   const onSelectRef = useRef(onSelectDate);
   onSelectRef.current = onSelectDate;
 

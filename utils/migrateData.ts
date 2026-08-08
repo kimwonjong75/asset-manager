@@ -14,8 +14,11 @@ const log = createLogger('Migration');
  * 1. 암호화폐: purchasePrice가 원화로 입력된 경우 currency를 KRW로 복구
  * 2. USD/JPY 자산: currentPrice가 원화로 저장된 경우 priceOriginal로 교체
  */
-export const runMigrationIfNeeded = <T extends { exchangeRates?: ExchangeRates; assets?: any[]; portfolioHistory?: PortfolioSnapshot[]; sellHistory?: SellRecord[]; watchlist?: WatchlistItem[] }>(data: T | null | undefined): T => {
-  if (!data || typeof data !== 'object') return data as T;
+// 파라미터에서 `| null | undefined` 를 뺐다: 유일한 호출부(`usePortfolioData.applyLoadedData`)가
+// 항상 `ParsedPortfolioPayload` 객체를 넘기며, 예전 시그니처는 `return data as T` 로 null 을
+// T 라고 거짓말해야만 성립했다. 방어용 런타임 가드는 그대로 남긴다(동작 동일).
+export const runMigrationIfNeeded = <T extends { exchangeRates?: ExchangeRates; assets?: any[]; portfolioHistory?: PortfolioSnapshot[]; sellHistory?: SellRecord[]; watchlist?: WatchlistItem[] }>(data: T): T => {
+  if (!data || typeof data !== 'object') return data;
 
   // 환율 초기화
   if (!data.exchangeRates) {
@@ -119,8 +122,9 @@ export const migrateCategorySystem = <T extends {
   watchlist?: any[];
   allocationTargets?: AllocationTargets;
   categoryStore?: CategoryStore;
-}>(data: T | null | undefined): T => {
-  if (!data || typeof data !== 'object') return data as T;
+}>(data: T): T => {
+  // runMigrationIfNeeded 와 동일한 이유로 non-null 파라미터. 런타임 가드는 유지.
+  if (!data || typeof data !== 'object') return data;
 
   // categoryStore가 이미 있고, 첫 자산에 categoryId가 있으면 스킵
   if (data.categoryStore?.categories?.length && data.assets?.[0]?.categoryId != null) {

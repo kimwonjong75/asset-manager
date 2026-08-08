@@ -34,6 +34,8 @@
 | `services/` | External API calls | State management |
 
 ## Type safety
+- **`tsconfig.json` has `strict: true`** (since 2026-08-08). `noUncheckedIndexedAccess` is deliberately still off — 273 app-side hits, planned as a separate scoped step. See RULES.md §13 TypeScript strict for what enabling it uncovered.
+- **`ExchangeRates` only carries USD/JPY.** `Currency` has CNY too, so `rates[asset.currency]` can be `undefined`. Decide explicitly which convention you want — `|| 0` (values the asset at ₩0, understates) or returning `null` (defers valuation, as `utils/turtlePositionView` does). Never index it through a cast.
 - **`any` is strictly forbidden** — define all types in the `types/` directory. Now enforced by ESLint (`no-explicit-any`), along with `no-console`, components→services import ban, and `react-hooks/exhaustive-deps`. Pre-existing violations sit in `eslint-suppressions.json`; **new ones fail `npm test`**. See RULES.md §13 ESLint. Never add a violation to the baseline to get past the gate — fix it.
 - Component Props types are mandatory.
 - Props drilling 3+ levels deep → use `PortfolioContext`.

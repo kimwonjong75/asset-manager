@@ -56,7 +56,8 @@ export function useBackup(deps: { isSignedIn: boolean }) {
       // dataJson이 없으면 현재 portfolio.json을 로드하여 백업
       let content = dataJson;
       if (!content) {
-        content = await googleDriveService.loadFile();
+        // loadFile 은 파일이 없으면 null 을 준다 — content 는 string | undefined 이므로 정규화.
+        content = (await googleDriveService.loadFile()) ?? undefined;
         if (!content) {
           log.info(' No portfolio data to backup');
           return;

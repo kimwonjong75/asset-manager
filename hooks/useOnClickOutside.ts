@@ -1,7 +1,9 @@
 import { useEffect } from 'react';
 
 export function useOnClickOutside<T extends HTMLElement>(
-  ref: React.RefObject<T>,
+  // React 19의 `useRef<T>(null)`은 `RefObject<T | null>`을 돌려준다.
+  // 본문이 이미 `if (!el) return`으로 null을 처리하므로 null 허용이 실제 동작과 일치한다.
+  ref: React.RefObject<T | null>,
   handler: () => void,
   active: boolean = true
 ) {

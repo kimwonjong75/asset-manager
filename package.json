@@ -21,6 +21,7 @@
     "backtest:lecture": "npx --yes tsx scripts/backtest/lectureSignals/run.ts",
     "gate0": "npx --yes tsx scripts/backtest/sectorRotation/gate0Audit.ts",
     "gate0:onboarding": "npx --yes tsx scripts/backtest/onboardingPolicy/phase0Audit.ts",
+    "gate0:coreStopLoss": "npx --yes tsx scripts/backtest/coreStopLoss/gate0Audit.ts",
     "hash:onboarding": "npx --yes tsx scripts/backtest/onboardingPolicy/printHash.ts",
     "fetch:onboarding": "npx --yes tsx scripts/backtest/onboardingPolicy/fetchRepr.ts",
     "backtest:onboarding": "npx --yes tsx scripts/backtest/onboardingPolicy/run.ts",

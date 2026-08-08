@@ -24,9 +24,26 @@ export const CURRENCY_SYMBOLS: Record<Currency, string> = {
     [Currency.CNY]: "¥",
 };
 
+/**
+ * 원화 환산 환율. **USD/JPY만 실제로 제공된다.**
+ *   · KRW — 항상 1이므로 저장하지 않는다.
+ *   · CNY — 환율 소스가 없어 제공되지 않는다(`Currency`에는 있으나 미지원).
+ *
+ * `Currency`는 KRW·USD·JPY·CNY 4종이므로 `rates[asset.currency]` 조회는 **없을 수 있다**.
+ * 그래서 KRW/CNY를 선택 필드로 선언해 타입이 런타임 현실과 일치하게 한다
+ * (strict 이전에는 조회 실패가 조용히 `undefined`로 흘러 NaN/0을 만들 수 있었다).
+ *
+ * ⚠️ 부재 처리 관례가 코드베이스에 두 갈래로 존재하니 새 코드는 의도를 명시할 것:
+ *   · `|| 0`      → 0원으로 평가(**과소평가**). `usePortfolioHistory`, `AllocationChart` 등
+ *   · `null` 반환 → 평가 보류(**과소평가 금지**). `utils/turtlePositionView`
+ */
 export interface ExchangeRates {
   USD: number;
   JPY: number;
+  /** 항상 1 — 보통 저장하지 않는다. */
+  KRW?: number;
+  /** 미지원(환율 소스 없음). 조회하면 undefined. */
+  CNY?: number;
 }
 
 export const COMMON_EXCHANGES: string[] = [

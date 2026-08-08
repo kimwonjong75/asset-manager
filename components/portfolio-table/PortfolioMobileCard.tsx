@@ -60,8 +60,11 @@ const PortfolioMobileCard: React.FC<PortfolioMobileCardProps> = ({
 
   let derivedExchangeRate = 1;
   if (isNonKRW) {
-    if (exchangeRates && asset.currency in exchangeRates) {
-      derivedExchangeRate = exchangeRates[asset.currency as keyof ExchangeRates];
+    // 키 존재(`in`)가 아니라 **실제 숫자인지**로 판정한다. ExchangeRates 는 KRW/CNY 가
+    // 선택 필드라 키가 있어도 값이 undefined 일 수 있고, 그때는 평가액에서 역산해야 한다.
+    const rate = exchangeRates?.[asset.currency as keyof ExchangeRates];
+    if (typeof rate === 'number') {
+      derivedExchangeRate = rate;
     } else if (currentValue > 0) {
       derivedExchangeRate = currentValueKRW / currentValue;
     }

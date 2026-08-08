@@ -5,17 +5,20 @@ const log = createLogger('exchangeRateCache');
 
 const STORAGE_KEY = 'asset-manager-last-known-rates-v1';
 
+/** 환율을 실제로 제공하는 통화 (KRW=항상 1, CNY=소스 없음 → 제외) */
+type RatedCurrency = 'USD' | 'JPY';
+
+const isRatedCurrency = (k: string): k is RatedCurrency => k === 'USD' || k === 'JPY';
+
 // 통화별 합리적 최소값 — 이보다 작으면 비정상으로 간주
-const MIN_VALID_RATE: Record<keyof ExchangeRates, number> = {
+const MIN_VALID_RATE: Record<RatedCurrency, number> = {
   USD: 100,
   JPY: 1,
 };
 
-interface CachedRates {
-  USD?: number;
-  JPY?: number;
+type CachedRates = Partial<Record<keyof ExchangeRates, number>> & {
   timestamp?: number;
-}
+};
 
 let memoryCache: CachedRates | null = null;
 
@@ -52,14 +55,15 @@ export const resolveRate = (
   exchangeRates: ExchangeRates,
 ): number => {
   if (currency === Currency.KRW) return 1;
-  const key = currency as keyof ExchangeRates;
-  const min = MIN_VALID_RATE[key];
-  if (min === undefined) return 0;
+  // 환율 미지원 통화(CNY 등)는 여기서 0 — 기존 `min === undefined` 분기와 동일한 결과이나,
+  // 캐스팅 대신 타입 가드로 좁혀 컴파일러가 실제로 검증할 수 있게 한다.
+  if (!isRatedCurrency(currency)) return 0;
+  const min = MIN_VALID_RATE[currency];
 
-  const current = exchangeRates[key];
+  const current = exchangeRates[currency];
   if (current && current >= min) return current;
 
-  const cached = loadLastKnownRates()[key];
+  const cached = loadLastKnownRates()[currency];
   if (cached && cached >= min) return cached;
 
   return 0;

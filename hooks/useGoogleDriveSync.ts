@@ -7,6 +7,9 @@ import type { KnowledgeBase } from '../types/knowledge';
 import type { ActionItem } from '../types/actionQueue';
 import type { TurtlePosition, TurtleSettings } from '../types/turtle';
 import { applyRestoredAlertSettings, readStoredAlertSettings } from '../utils/alertSettingsStorage';
+import { createLogger } from '../utils/logger';
+
+const log = createLogger('DriveSync');
 
 interface UseGoogleDriveSyncOptions {
   onError?: (msg: string) => void;
@@ -117,6 +120,10 @@ export function useGoogleDriveSync(options: UseGoogleDriveSyncOptions = {}) {
           }
         }
       } catch (e) {
+        // 초기화 실패를 **삼키지 않는다**. 여기서 조용히 넘어가면 사용자는 이유 없이
+        // 로그아웃 상태가 되고 로그조차 없어 원인 추적이 불가능해진다.
+        // (UI 흐름은 그대로 유지 — finally 가 isInitializing 을 풀어 앱은 계속 뜬다)
+        log.error('Drive 초기화 실패:', e);
       } finally {
         setIsInitializing(false);
       }

@@ -84,8 +84,10 @@ function check(name: string, actual: unknown, expected: unknown): void {
   if (a === e) pass++;
   else fails.push(`✗ ${name}: got ${a}, expected ${e}`);
 }
-function checkClose(name: string, actual: number, expected: number, eps = 1e-6): void {
-  if (Math.abs(actual - expected) <= eps) pass++;
+// actual 이 undefined 일 수 있는 경로(예: `trade.exitFill?.fillPrice`)도 받는다 —
+// 그 경우 예외를 던지지 말고 **명확한 실패 메시지**로 남긴다.
+function checkClose(name: string, actual: number | undefined, expected: number, eps = 1e-6): void {
+  if (actual !== undefined && Math.abs(actual - expected) <= eps) pass++;
   else fails.push(`✗ ${name}: got ${actual}, expected ${expected}`);
 }
 function checkTrue(name: string, cond: boolean): void {
@@ -287,7 +289,7 @@ function makeBarsLong(id: string, high: number[]): SecurityBars {
   checkClose('진입 ATR(3) = 19/3', tr.atrAtEntry, 19 / 3);
   checkClose('손절가 = 19 − 2×(19/3) = 19/3', tr.stopPrice, 19 / 3);
   check('청산 사유 FORCED_CLOSE', tr.exitReason, 'FORCED_CLOSE');
-  check('강제청산가 = 마지막 종가 25', tr.exitFill.fillPrice, 25);
+  check('강제청산가 = 마지막 종가 25', tr.exitFill?.fillPrice, 25);
   check('보유일 = 8−6 = 2', tr.holdingDays, 2);
   // 손절폭 dist = 19 − 19/3 = 38/3 ≈ 12.667, shares = floor(5000/(38/3)) = floor(394.7) = 394
   check('수량 394(정수 내림)', tr.entryFill.quantity, 394);
@@ -344,7 +346,7 @@ function makeBarsLong(id: string, high: number[]): SecurityBars {
   check('청산 사유 PROTECTIVE_STOP', out.trades[0].exitReason, 'PROTECTIVE_STOP');
   // 진입 ATR(3): TR[5]=max(30-25,15,10)=15 → atr[5]=(2+2+15... 실제 (2*2+15)/3
   // fill open[6]=29, atr[5]=6.3333, stop=29−12.6667=16.3333, h=7 open=14≤stop → 갭체결 14
-  checkClose('손절 갭 체결가 = open 14', out.trades[0].exitFill.fillPrice, 14);
+  checkClose('손절 갭 체결가 = open 14', out.trades[0].exitFill?.fillPrice, 14);
   check('손절 exitStopHitPrice = 14', out.trades[0].exitStopHitPrice, 14);
 }
 
@@ -370,8 +372,8 @@ function makeBarsLong(id: string, high: number[]): SecurityBars {
   const out = simulateSecurity(bars, cfg);
   check('채널청산 거래 1건', out.trades.length, 1);
   check('청산 사유 CHANNEL_EXIT', out.trades[0].exitReason, 'CHANNEL_EXIT');
-  check('청산 체결일 = 익일 d7(t=6)', out.trades[0].exitFill.fillDate, '2020-01-07');
-  check('청산 체결가 = open[6] = 24', out.trades[0].exitFill.fillPrice, 24);
+  check('청산 체결일 = 익일 d7(t=6)', out.trades[0].exitFill?.fillDate, '2020-01-07');
+  check('청산 체결가 = open[6] = 24', out.trades[0].exitFill?.fillPrice, 24);
 }
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -404,8 +406,8 @@ function makeBarsLong(id: string, high: number[]): SecurityBars {
   const out = simulateSecurity(bars, baseSimConfig, [known]);
   check('상장폐지(대가) 거래 1건', out.trades.length, 1);
   check('청산 사유 DELISTING', out.trades[0].exitReason, 'DELISTING');
-  check('상장폐지 체결가 = 대가 30', out.trades[0].exitFill.fillPrice, 30);
-  check('상장폐지 체결일 = d8', out.trades[0].exitFill.fillDate, '2020-01-08');
+  check('상장폐지 체결가 = 대가 30', out.trades[0].exitFill?.fillPrice, 30);
+  check('상장폐지 체결일 = d8', out.trades[0].exitFill?.fillDate, '2020-01-08');
 
   // 불명 대가 → 거래 제외 + ExclusionRecord(0/최종종가 임의대체 금지)
   const unknown: CorporateActionRecord = { ...known, delistingProceedsPerShare: null };

@@ -26,7 +26,8 @@ interface CustomTooltipProps {
 }
 
 const CustomTooltip: React.FC<CustomTooltipProps> = ({ active, payload, totalValue }) => {
-  if (active && payload && payload.length) {
+  // recharts 는 payload 항목의 `payload` 를 선택 필드로 준다 — 없으면 툴팁을 그리지 않는다.
+  if (active && payload && payload.length && payload[0].payload) {
     const { name, value } = payload[0].payload;
     const percent = totalValue > 0 ? (value / totalValue) * 100 : 0;
     return (
@@ -82,7 +83,7 @@ const AllocationChart: React.FC<AllocationChartProps> = ({ assets, exchangeRates
               cx="50%"
               cy="50%"
               labelLine={true}
-              label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+              label={({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}
               outerRadius={80}
               fill="#8884d8"
               dataKey="value"
