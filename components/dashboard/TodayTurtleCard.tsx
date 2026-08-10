@@ -4,8 +4,12 @@
 // 주문·저장 버튼 없음. 계산은 utils/todayTurtle, 데이터는 hooks/useTodayTurtle.
 // 데스크톱·모바일이 **같은 화면 모델**을 쓴다(별도 계산 없음).
 // 색상만으로 상태를 구분하지 않고 상태명을 글자로 표시한다.
+// 접힘/펼침(collapsible)은 GuruSignalCard·ProfitLossChart와 같은 규약을 쓴다.
+//   · 접혀 있어도 제목줄의 요약 숫자·로딩·부분실패 안내는 항상 보인다(신호 은폐 금지).
+//   · 계산·조회(useTodayTurtle)는 접힘과 무관하게 그대로 실행된다 — 요약 숫자를 유지하기 위해서.
 
 import React, { useMemo, useState } from 'react';
+import { ChevronDown } from 'lucide-react';
 import { useTodayTurtle } from '../../hooks/useTodayTurtle';
 import { TodayRow, WatchRow, PositionRow, LegacySatelliteRow } from '../../types/todayTurtle';
 import { isWaitingRow } from '../../utils/todayTurtle';
@@ -128,10 +132,34 @@ const Row: React.FC<{ row: TodayRow }> = ({ row }) => {
   );
 };
 
-const TodayTurtleCard: React.FC = () => {
+interface TodayTurtleCardProps {
+  /** 접힘/펼침 토글 사용 여부 */
+  collapsible?: boolean;
+  /** 최초 접힘 여부 (collapsible이고 저장값 없을 때) */
+  defaultCollapsed?: boolean;
+  /** 접힘/펼침 영속 localStorage 키 (collapsible일 때만) */
+  storageKey?: string;
+}
+
+const TodayTurtleCard: React.FC<TodayTurtleCardProps> = ({ collapsible = false, defaultCollapsed = false, storageKey }) => {
   const model = useTodayTurtle();
   const [showWaiting, setShowWaiting] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
+  const [open, setOpen] = useState<boolean>(() => {
+    if (!collapsible) return true;
+    try {
+      const stored = storageKey ? localStorage.getItem(storageKey) : null;
+      if (stored === 'true') return true;
+      if (stored === 'false') return false;
+    } catch { /* ignore */ }
+    return !defaultCollapsed;
+  });
+  const toggleOpen = () => setOpen(prev => {
+    const next = !prev;
+    if (storageKey) { try { localStorage.setItem(storageKey, String(next)); } catch { /* ignore */ } }
+    return next;
+  });
+  const bodyVisible = !collapsible || open;
 
   const { actionRows, waitingRows } = useMemo(() => ({
     actionRows: model.rows.filter(r => !isWaitingRow(r)),
@@ -144,7 +172,19 @@ const TodayTurtleCard: React.FC = () => {
     <div className="bg-gray-800 rounded-xl p-4 border border-gray-700">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <h3 className="text-base font-bold text-white">🐢 오늘의 터틀 확인</h3>
+          {collapsible ? (
+            <button
+              type="button"
+              onClick={toggleOpen}
+              aria-expanded={open}
+              className="flex items-center gap-1.5 text-left"
+            >
+              <ChevronDown className={`h-4 w-4 text-gray-400 shrink-0 transition-transform ${open ? '' : '-rotate-90'}`} />
+              <h3 className="text-base font-bold text-white">🐢 오늘의 터틀 확인</h3>
+            </button>
+          ) : (
+            <h3 className="text-base font-bold text-white">🐢 오늘의 터틀 확인</h3>
+          )}
           <button
             type="button"
             onClick={() => setShowHelp(v => !v)}
@@ -154,11 +194,22 @@ const TodayTurtleCard: React.FC = () => {
             도움말
           </button>
         </div>
-        {isTurtleOrderLocked() && (
-          <span className="text-[11px] px-2 py-0.5 rounded border border-amber-500/40 bg-amber-500/10 text-amber-300">
-            {TURTLE_LOCK_BADGE}
-          </span>
-        )}
+        <div className="flex items-center gap-2">
+          {!bodyVisible && actionRows.length > 0 && (
+            <button
+              type="button"
+              onClick={toggleOpen}
+              className="text-[11px] px-2 py-0.5 rounded border border-sky-500/40 bg-sky-500/10 text-sky-300 hover:bg-sky-500/20"
+            >
+              확인할 항목 {actionRows.length}건 — 펼치기
+            </button>
+          )}
+          {isTurtleOrderLocked() && (
+            <span className="text-[11px] px-2 py-0.5 rounded border border-amber-500/40 bg-amber-500/10 text-amber-300">
+              {TURTLE_LOCK_BADGE}
+            </span>
+          )}
+        </div>
       </div>
 
       {showHelp && (
@@ -179,17 +230,17 @@ const TodayTurtleCard: React.FC = () => {
         <p className="mt-2 text-[11px] text-amber-300/80">일부 종목의 시세를 불러오지 못했습니다. 해당 종목은 «확인 불가»로 표시됩니다.</p>
       )}
 
-      {!model.isLoading && actionRows.length === 0 && (
+      {bodyVisible && !model.isLoading && actionRows.length === 0 && (
         <p className="mt-3 text-xs text-gray-400">오늘 확정된 55일 돌파 신호는 없습니다.</p>
       )}
 
-      {actionRows.length > 0 && (
+      {bodyVisible && actionRows.length > 0 && (
         <div className="mt-3 space-y-2">
           {actionRows.map(r => <Row key={`${r.kind}-${r.ticker}`} row={r} />)}
         </div>
       )}
 
-      {waitingRows.length > 0 && (
+      {bodyVisible && waitingRows.length > 0 && (
         <div className="mt-3">
           <button
             type="button"

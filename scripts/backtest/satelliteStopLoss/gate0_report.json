@@ -1,0 +1,1939 @@
+{
+  "generatedAt": "2026-08-08T13:25:59.512Z",
+  "requestedStart": "1990-01-01",
+  "requestedEnd": "2026-08-08",
+  "source": "yahoo-v8",
+  "universeSize": 31,
+  "summary": {
+    "total": 31,
+    "ok": 31,
+    "fail": 0,
+    "failedEntries": [],
+    "relabeled": [],
+    "horizonSummary": [
+      {
+        "years": 10,
+        "horizonStart": "2016-08-08",
+        "fullyCoveredCount": 25,
+        "fullyCoveredSymbols": [
+          "DIS",
+          "T",
+          "AMZN",
+          "GOOGL",
+          "MSFT",
+          "XLE",
+          "000100.KS",
+          "103140.KS",
+          "035420.KS",
+          "017810.KS",
+          "007310.KS",
+          "009240.KS",
+          "068270.KS",
+          "003850.KS",
+          "006280.KS",
+          "011170.KS",
+          "035720.KS",
+          "145270.KS",
+          "049720.KQ",
+          "191420.KQ",
+          "046440.KQ",
+          "019550.KQ",
+          "060150.KQ",
+          "081000.KQ",
+          "094280.KQ"
+        ],
+        "partialSymbols": [
+          {
+            "name": "티와이홀딩스",
+            "symbol": "363280.KS",
+            "firstDate": "2020-09-23"
+          },
+          {
+            "name": "대한조선",
+            "symbol": "439260.KS",
+            "firstDate": "2025-08-01"
+          },
+          {
+            "name": "신한알파리츠",
+            "symbol": "293940.KS",
+            "firstDate": "2018-08-08"
+          },
+          {
+            "name": "TIGER 글로벌AI사이버보안",
+            "symbol": "418670.KS",
+            "firstDate": "2022-02-22"
+          },
+          {
+            "name": "한화 ARIRANG PLUS K방산 ETF",
+            "symbol": "449450.KS",
+            "firstDate": "2023-01-05"
+          },
+          {
+            "name": "SOL 조선기자재",
+            "symbol": "0141S0.KS",
+            "firstDate": "2025-12-16"
+          }
+        ]
+      },
+      {
+        "years": 5,
+        "horizonStart": "2021-08-08",
+        "fullyCoveredCount": 27,
+        "fullyCoveredSymbols": [
+          "DIS",
+          "T",
+          "AMZN",
+          "GOOGL",
+          "MSFT",
+          "XLE",
+          "000100.KS",
+          "103140.KS",
+          "035420.KS",
+          "017810.KS",
+          "007310.KS",
+          "009240.KS",
+          "068270.KS",
+          "003850.KS",
+          "006280.KS",
+          "011170.KS",
+          "363280.KS",
+          "035720.KS",
+          "293940.KS",
+          "145270.KS",
+          "049720.KQ",
+          "191420.KQ",
+          "046440.KQ",
+          "019550.KQ",
+          "060150.KQ",
+          "081000.KQ",
+          "094280.KQ"
+        ],
+        "partialSymbols": [
+          {
+            "name": "대한조선",
+            "symbol": "439260.KS",
+            "firstDate": "2025-08-01"
+          },
+          {
+            "name": "TIGER 글로벌AI사이버보안",
+            "symbol": "418670.KS",
+            "firstDate": "2022-02-22"
+          },
+          {
+            "name": "한화 ARIRANG PLUS K방산 ETF",
+            "symbol": "449450.KS",
+            "firstDate": "2023-01-05"
+          },
+          {
+            "name": "SOL 조선기자재",
+            "symbol": "0141S0.KS",
+            "firstDate": "2025-12-16"
+          }
+        ]
+      },
+      {
+        "years": 3,
+        "horizonStart": "2023-08-08",
+        "fullyCoveredCount": 29,
+        "fullyCoveredSymbols": [
+          "DIS",
+          "T",
+          "AMZN",
+          "GOOGL",
+          "MSFT",
+          "XLE",
+          "000100.KS",
+          "103140.KS",
+          "035420.KS",
+          "017810.KS",
+          "007310.KS",
+          "009240.KS",
+          "068270.KS",
+          "003850.KS",
+          "006280.KS",
+          "011170.KS",
+          "363280.KS",
+          "035720.KS",
+          "293940.KS",
+          "145270.KS",
+          "049720.KQ",
+          "191420.KQ",
+          "046440.KQ",
+          "019550.KQ",
+          "060150.KQ",
+          "081000.KQ",
+          "094280.KQ",
+          "418670.KS",
+          "449450.KS"
+        ],
+        "partialSymbols": [
+          {
+            "name": "대한조선",
+            "symbol": "439260.KS",
+            "firstDate": "2025-08-01"
+          },
+          {
+            "name": "SOL 조선기자재",
+            "symbol": "0141S0.KS",
+            "firstDate": "2025-12-16"
+          }
+        ]
+      },
+      {
+        "years": 1,
+        "horizonStart": "2025-08-08",
+        "fullyCoveredCount": 30,
+        "fullyCoveredSymbols": [
+          "DIS",
+          "T",
+          "AMZN",
+          "GOOGL",
+          "MSFT",
+          "XLE",
+          "000100.KS",
+          "103140.KS",
+          "035420.KS",
+          "017810.KS",
+          "007310.KS",
+          "009240.KS",
+          "068270.KS",
+          "003850.KS",
+          "006280.KS",
+          "011170.KS",
+          "363280.KS",
+          "035720.KS",
+          "439260.KS",
+          "293940.KS",
+          "145270.KS",
+          "049720.KQ",
+          "191420.KQ",
+          "046440.KQ",
+          "019550.KQ",
+          "060150.KQ",
+          "081000.KQ",
+          "094280.KQ",
+          "418670.KS",
+          "449450.KS"
+        ],
+        "partialSymbols": [
+          {
+            "name": "SOL 조선기자재",
+            "symbol": "0141S0.KS",
+            "firstDate": "2025-12-16"
+          }
+        ]
+      }
+    ]
+  },
+  "rows": [
+    {
+      "name": "월트 디즈니 회사",
+      "requestedSymbol": "DIS",
+      "resolvedSymbol": "DIS",
+      "triedSymbols": [
+        "DIS"
+      ],
+      "track": "us-equity",
+      "currency": "USD",
+      "confidence": "confirmed",
+      "failureReasons": [],
+      "ok": true,
+      "firstDate": "1990-01-02",
+      "lastDate": "2026-08-07",
+      "n": 9217,
+      "historyYears": 36.59411362080767,
+      "adjRatioFirst": 0.711547869965685,
+      "adjustmentStatus": "adjusted(배당반영)",
+      "maxGapDays": 7,
+      "recentAvgTurnover": 1059026929.113973,
+      "illiquid": false,
+      "maxDropAdjPct": -18.363024662589932,
+      "maxDropRawPct": -18.363013735696526,
+      "horizons": [
+        {
+          "years": 10,
+          "horizonStart": "2016-08-08",
+          "effectiveStart": "2016-08-08",
+          "coveragePct": 100,
+          "fullyCovered": true
+        },
+        {
+          "years": 5,
+          "horizonStart": "2021-08-08",
+          "effectiveStart": "2021-08-08",
+          "coveragePct": 100,
+          "fullyCovered": true
+        },
+        {
+          "years": 3,
+          "horizonStart": "2023-08-08",
+          "effectiveStart": "2023-08-08",
+          "coveragePct": 100,
+          "fullyCovered": true
+        },
+        {
+          "years": 1,
+          "horizonStart": "2025-08-08",
+          "effectiveStart": "2025-08-08",
+          "coveragePct": 100,
+          "fullyCovered": true
+        }
+      ],
+      "status": "OK"
+    },
+    {
+      "name": "AT&T 주식회사",
+      "requestedSymbol": "T",
+      "resolvedSymbol": "T",
+      "triedSymbols": [
+        "T"
+      ],
+      "track": "us-equity",
+      "currency": "USD",
+      "confidence": "confirmed",
+      "failureReasons": [],
+      "ok": true,
+      "firstDate": "1990-01-02",
+      "lastDate": "2026-08-07",
+      "n": 9217,
+      "historyYears": 36.59411362080767,
+      "adjRatioFirst": 0.10650455323777304,
+      "adjustmentStatus": "adjusted(배당반영)",
+      "maxGapDays": 7,
+      "recentAvgTurnover": 1461992383.5152278,
+      "illiquid": false,
+      "maxDropAdjPct": -12.661207440465953,
+      "maxDropRawPct": -12.661193591657396,
+      "horizons": [
+        {
+          "years": 10,
+          "horizonStart": "2016-08-08",
+          "effectiveStart": "2016-08-08",
+          "coveragePct": 100,
+          "fullyCovered": true
+        },
+        {
+          "years": 5,
+          "horizonStart": "2021-08-08",
+          "effectiveStart": "2021-08-08",
+          "coveragePct": 100,
+          "fullyCovered": true
+        },
+        {
+          "years": 3,
+          "horizonStart": "2023-08-08",
+          "effectiveStart": "2023-08-08",
+          "coveragePct": 100,
+          "fullyCovered": true
+        },
+        {
+          "years": 1,
+          "horizonStart": "2025-08-08",
+          "effectiveStart": "2025-08-08",
+          "coveragePct": 100,
+          "fullyCovered": true
+        }
+      ],
+      "status": "OK"
+    },
+    {
+      "name": "아마존닷컴",
+      "requestedSymbol": "AMZN",
+      "resolvedSymbol": "AMZN",
+      "triedSymbols": [
+        "AMZN"
+      ],
+      "track": "us-equity",
+      "currency": "USD",
+      "confidence": "confirmed",
+      "failureReasons": [],
+      "ok": true,
+      "firstDate": "1997-05-15",
+      "lastDate": "2026-08-07",
+      "n": 7353,
+      "historyYears": 29.229295003422312,
+      "adjRatioFirst": 1,
+      "adjustmentStatus": "flat(무배당/지수/최근상장)",
+      "maxGapDays": 7,
+      "recentAvgTurnover": 12693577958.252943,
+      "illiquid": false,
+      "maxDropAdjPct": -24.76606757865117,
+      "maxDropRawPct": -24.76606757865117,
+      "horizons": [
+        {
+          "years": 10,
+          "horizonStart": "2016-08-08",
+          "effectiveStart": "2016-08-08",
+          "coveragePct": 100,
+          "fullyCovered": true
+        },
+        {
+          "years": 5,
+          "horizonStart": "2021-08-08",
+          "effectiveStart": "2021-08-08",
+          "coveragePct": 100,
+          "fullyCovered": true
+        },
+        {
+          "years": 3,
+          "horizonStart": "2023-08-08",
+          "effectiveStart": "2023-08-08",
+          "coveragePct": 100,
+          "fullyCovered": true
+        },
+        {
+          "years": 1,
+          "horizonStart": "2025-08-08",
+          "effectiveStart": "2025-08-08",
+          "coveragePct": 100,
+          "fullyCovered": true
+        }
+      ],
+      "status": "OK"
+    },
+    {
+      "name": "알파벳",
+      "requestedSymbol": "GOOGL",
+      "resolvedSymbol": "GOOGL",
+      "triedSymbols": [
+        "GOOGL"
+      ],
+      "track": "us-equity",
+      "currency": "USD",
+      "confidence": "confirmed",
+      "failureReasons": [],
+      "ok": true,
+      "firstDate": "2004-08-19",
+      "lastDate": "2026-08-07",
+      "n": 5527,
+      "historyYears": 21.965776865160848,
+      "adjRatioFirst": 0.9912106436580601,
+      "adjustmentStatus": "flat(무배당/지수/최근상장)",
+      "maxGapDays": 5,
+      "recentAvgTurnover": 11989391174.321848,
+      "illiquid": false,
+      "maxDropAdjPct": -11.634160007043704,
+      "maxDropRawPct": -11.634149467694751,
+      "horizons": [
+        {
+          "years": 10,
+          "horizonStart": "2016-08-08",
+          "effectiveStart": "2016-08-08",
+          "coveragePct": 100,
+          "fullyCovered": true
+        },
+        {
+          "years": 5,
+          "horizonStart": "2021-08-08",
+          "effectiveStart": "2021-08-08",
+          "coveragePct": 100,
+          "fullyCovered": true
+        },
+        {
+          "years": 3,
+          "horizonStart": "2023-08-08",
+          "effectiveStart": "2023-08-08",
+          "coveragePct": 100,
+          "fullyCovered": true
+        },
+        {
+          "years": 1,
+          "horizonStart": "2025-08-08",
+          "effectiveStart": "2025-08-08",
+          "coveragePct": 100,
+          "fullyCovered": true
+        }
+      ],
+      "status": "OK"
+    },
+    {
+      "name": "Microsoft Corporation",
+      "requestedSymbol": "MSFT",
+      "resolvedSymbol": "MSFT",
+      "triedSymbols": [
+        "MSFT"
+      ],
+      "track": "us-equity",
+      "currency": "USD",
+      "confidence": "confirmed",
+      "failureReasons": [],
+      "ok": true,
+      "firstDate": "1990-01-02",
+      "lastDate": "2026-08-07",
+      "n": 9217,
+      "historyYears": 36.59411362080767,
+      "adjRatioFirst": 0.6081480025806284,
+      "adjustmentStatus": "adjusted(배당반영)",
+      "maxGapDays": 7,
+      "recentAvgTurnover": 16979712129.780375,
+      "illiquid": false,
+      "maxDropAdjPct": -15.597820762040365,
+      "maxDropRawPct": -15.597783056215361,
+      "horizons": [
+        {
+          "years": 10,
+          "horizonStart": "2016-08-08",
+          "effectiveStart": "2016-08-08",
+          "coveragePct": 100,
+          "fullyCovered": true
+        },
+        {
+          "years": 5,
+          "horizonStart": "2021-08-08",
+          "effectiveStart": "2021-08-08",
+          "coveragePct": 100,
+          "fullyCovered": true
+        },
+        {
+          "years": 3,
+          "horizonStart": "2023-08-08",
+          "effectiveStart": "2023-08-08",
+          "coveragePct": 100,
+          "fullyCovered": true
+        },
+        {
+          "years": 1,
+          "horizonStart": "2025-08-08",
+          "effectiveStart": "2025-08-08",
+          "coveragePct": 100,
+          "fullyCovered": true
+        }
+      ],
+      "status": "OK"
+    },
+    {
+      "name": "에너지 셀렉트 섹터 SPDR ETF",
+      "requestedSymbol": "XLE",
+      "resolvedSymbol": "XLE",
+      "triedSymbols": [
+        "XLE"
+      ],
+      "track": "us-etf",
+      "currency": "USD",
+      "confidence": "confirmed",
+      "failureReasons": [],
+      "ok": true,
+      "firstDate": "1998-12-22",
+      "lastDate": "2026-08-07",
+      "n": 6948,
+      "historyYears": 27.6249144421629,
+      "adjRatioFirst": 0.4896113171713565,
+      "adjustmentStatus": "adjusted(배당반영)",
+      "maxGapDays": 7,
+      "recentAvgTurnover": 1911829775.8369892,
+      "illiquid": false,
+      "maxDropAdjPct": -20.141173684315426,
+      "maxDropRawPct": -20.141179701861216,
+      "horizons": [
+        {
+          "years": 10,
+          "horizonStart": "2016-08-08",
+          "effectiveStart": "2016-08-08",
+          "coveragePct": 100,
+          "fullyCovered": true
+        },
+        {
+          "years": 5,
+          "horizonStart": "2021-08-08",
+          "effectiveStart": "2021-08-08",
+          "coveragePct": 100,
+          "fullyCovered": true
+        },
+        {
+          "years": 3,
+          "horizonStart": "2023-08-08",
+          "effectiveStart": "2023-08-08",
+          "coveragePct": 100,
+          "fullyCovered": true
+        },
+        {
+          "years": 1,
+          "horizonStart": "2025-08-08",
+          "effectiveStart": "2025-08-08",
+          "coveragePct": 100,
+          "fullyCovered": true
+        }
+      ],
+      "status": "OK"
+    },
+    {
+      "name": "유한양행보통주",
+      "requestedSymbol": "000100.KS",
+      "resolvedSymbol": "000100.KS",
+      "triedSymbols": [
+        "000100.KS"
+      ],
+      "track": "kr-equity",
+      "currency": "KRW",
+      "confidence": "confirmed",
+      "failureReasons": [],
+      "ok": true,
+      "firstDate": "2000-01-04",
+      "lastDate": "2026-08-07",
+      "n": 6649,
+      "historyYears": 26.590006844626966,
+      "adjRatioFirst": 0.8899900203631539,
+      "adjustmentStatus": "adjusted(배당반영)",
+      "maxGapDays": 11,
+      "recentAvgTurnover": 23659156268.333332,
+      "illiquid": false,
+      "maxDropAdjPct": -17.449665593955505,
+      "maxDropRawPct": -17.44966502071977,
+      "horizons": [
+        {
+          "years": 10,
+          "horizonStart": "2016-08-08",
+          "effectiveStart": "2016-08-08",
+          "coveragePct": 100,
+          "fullyCovered": true
+        },
+        {
+          "years": 5,
+          "horizonStart": "2021-08-08",
+          "effectiveStart": "2021-08-08",
+          "coveragePct": 100,
+          "fullyCovered": true
+        },
+        {
+          "years": 3,
+          "horizonStart": "2023-08-08",
+          "effectiveStart": "2023-08-08",
+          "coveragePct": 100,
+          "fullyCovered": true
+        },
+        {
+          "years": 1,
+          "horizonStart": "2025-08-08",
+          "effectiveStart": "2025-08-08",
+          "coveragePct": 100,
+          "fullyCovered": true
+        }
+      ],
+      "status": "OK"
+    },
+    {
+      "name": "풍산",
+      "requestedSymbol": "103140.KS",
+      "resolvedSymbol": "103140.KS",
+      "triedSymbols": [
+        "103140.KS"
+      ],
+      "track": "kr-equity",
+      "currency": "KRW",
+      "confidence": "confirmed",
+      "failureReasons": [],
+      "ok": true,
+      "firstDate": "2008-07-30",
+      "lastDate": "2026-08-07",
+      "n": 4446,
+      "historyYears": 18.02053388090349,
+      "adjRatioFirst": 0.6726325120192308,
+      "adjustmentStatus": "adjusted(배당반영)",
+      "maxGapDays": 11,
+      "recentAvgTurnover": 10726522186.666666,
+      "illiquid": false,
+      "maxDropAdjPct": -15.733825304055888,
+      "maxDropRawPct": -15.733830845771143,
+      "horizons": [
+        {
+          "years": 10,
+          "horizonStart": "2016-08-08",
+          "effectiveStart": "2016-08-08",
+          "coveragePct": 100,
+          "fullyCovered": true
+        },
+        {
+          "years": 5,
+          "horizonStart": "2021-08-08",
+          "effectiveStart": "2021-08-08",
+          "coveragePct": 100,
+          "fullyCovered": true
+        },
+        {
+          "years": 3,
+          "horizonStart": "2023-08-08",
+          "effectiveStart": "2023-08-08",
+          "coveragePct": 100,
+          "fullyCovered": true
+        },
+        {
+          "years": 1,
+          "horizonStart": "2025-08-08",
+          "effectiveStart": "2025-08-08",
+          "coveragePct": 100,
+          "fullyCovered": true
+        }
+      ],
+      "status": "OK"
+    },
+    {
+      "name": "NAVER",
+      "requestedSymbol": "035420.KS",
+      "resolvedSymbol": "035420.KS",
+      "triedSymbols": [
+        "035420.KS"
+      ],
+      "track": "kr-equity",
+      "currency": "KRW",
+      "confidence": "confirmed",
+      "failureReasons": [],
+      "ok": true,
+      "firstDate": "2002-10-29",
+      "lastDate": "2026-08-07",
+      "n": 5914,
+      "historyYears": 23.772758384668034,
+      "adjRatioFirst": 0.9546108016032091,
+      "adjustmentStatus": "adjusted(배당반영)",
+      "maxGapDays": 11,
+      "recentAvgTurnover": 491862904690,
+      "illiquid": false,
+      "maxDropAdjPct": -31.50998545926795,
+      "maxDropRawPct": -31.509996506935895,
+      "horizons": [
+        {
+          "years": 10,
+          "horizonStart": "2016-08-08",
+          "effectiveStart": "2016-08-08",
+          "coveragePct": 100,
+          "fullyCovered": true
+        },
+        {
+          "years": 5,
+          "horizonStart": "2021-08-08",
+          "effectiveStart": "2021-08-08",
+          "coveragePct": 100,
+          "fullyCovered": true
+        },
+        {
+          "years": 3,
+          "horizonStart": "2023-08-08",
+          "effectiveStart": "2023-08-08",
+          "coveragePct": 100,
+          "fullyCovered": true
+        },
+        {
+          "years": 1,
+          "horizonStart": "2025-08-08",
+          "effectiveStart": "2025-08-08",
+          "coveragePct": 100,
+          "fullyCovered": true
+        }
+      ],
+      "status": "OK"
+    },
+    {
+      "name": "풀무원",
+      "requestedSymbol": "017810.KS",
+      "resolvedSymbol": "017810.KS",
+      "triedSymbols": [
+        "017810.KS"
+      ],
+      "track": "kr-equity",
+      "currency": "KRW",
+      "confidence": "confirmed",
+      "failureReasons": [],
+      "ok": true,
+      "firstDate": "2000-01-04",
+      "lastDate": "2026-08-07",
+      "n": 6649,
+      "historyYears": 26.590006844626966,
+      "adjRatioFirst": 0.6862727821028558,
+      "adjustmentStatus": "adjusted(배당반영)",
+      "maxGapDays": 11,
+      "recentAvgTurnover": 453441360.6666667,
+      "illiquid": true,
+      "maxDropAdjPct": -62.26200646770047,
+      "maxDropRawPct": -62.26200563719559,
+      "horizons": [
+        {
+          "years": 10,
+          "horizonStart": "2016-08-08",
+          "effectiveStart": "2016-08-08",
+          "coveragePct": 100,
+          "fullyCovered": true
+        },
+        {
+          "years": 5,
+          "horizonStart": "2021-08-08",
+          "effectiveStart": "2021-08-08",
+          "coveragePct": 100,
+          "fullyCovered": true
+        },
+        {
+          "years": 3,
+          "horizonStart": "2023-08-08",
+          "effectiveStart": "2023-08-08",
+          "coveragePct": 100,
+          "fullyCovered": true
+        },
+        {
+          "years": 1,
+          "horizonStart": "2025-08-08",
+          "effectiveStart": "2025-08-08",
+          "coveragePct": 100,
+          "fullyCovered": true
+        }
+      ],
+      "status": "OK"
+    },
+    {
+      "name": "오뚜기",
+      "requestedSymbol": "007310.KS",
+      "resolvedSymbol": "007310.KS",
+      "triedSymbols": [
+        "007310.KS"
+      ],
+      "track": "kr-equity",
+      "currency": "KRW",
+      "confidence": "confirmed",
+      "failureReasons": [],
+      "ok": true,
+      "firstDate": "2000-01-04",
+      "lastDate": "2026-08-07",
+      "n": 6649,
+      "historyYears": 26.590006844626966,
+      "adjRatioFirst": 0.6266071141909246,
+      "adjustmentStatus": "adjusted(배당반영)",
+      "maxGapDays": 11,
+      "recentAvgTurnover": 1848803433.3333333,
+      "illiquid": false,
+      "maxDropAdjPct": -14.922468606379732,
+      "maxDropRawPct": -14.922480620155037,
+      "horizons": [
+        {
+          "years": 10,
+          "horizonStart": "2016-08-08",
+          "effectiveStart": "2016-08-08",
+          "coveragePct": 100,
+          "fullyCovered": true
+        },
+        {
+          "years": 5,
+          "horizonStart": "2021-08-08",
+          "effectiveStart": "2021-08-08",
+          "coveragePct": 100,
+          "fullyCovered": true
+        },
+        {
+          "years": 3,
+          "horizonStart": "2023-08-08",
+          "effectiveStart": "2023-08-08",
+          "coveragePct": 100,
+          "fullyCovered": true
+        },
+        {
+          "years": 1,
+          "horizonStart": "2025-08-08",
+          "effectiveStart": "2025-08-08",
+          "coveragePct": 100,
+          "fullyCovered": true
+        }
+      ],
+      "status": "OK"
+    },
+    {
+      "name": "한샘",
+      "requestedSymbol": "009240.KS",
+      "resolvedSymbol": "009240.KS",
+      "triedSymbols": [
+        "009240.KS"
+      ],
+      "track": "kr-equity",
+      "currency": "KRW",
+      "confidence": "confirmed",
+      "failureReasons": [],
+      "ok": true,
+      "firstDate": "2002-07-18",
+      "lastDate": "2026-08-07",
+      "n": 5987,
+      "historyYears": 24.05475701574264,
+      "adjRatioFirst": 0.4598399727299528,
+      "adjustmentStatus": "adjusted(배당반영)",
+      "maxGapDays": 11,
+      "recentAvgTurnover": 1967406297.9059246,
+      "illiquid": false,
+      "maxDropAdjPct": -21.17263272968698,
+      "maxDropRawPct": -21.172638436482085,
+      "horizons": [
+        {
+          "years": 10,
+          "horizonStart": "2016-08-08",
+          "effectiveStart": "2016-08-08",
+          "coveragePct": 100,
+          "fullyCovered": true
+        },
+        {
+          "years": 5,
+          "horizonStart": "2021-08-08",
+          "effectiveStart": "2021-08-08",
+          "coveragePct": 100,
+          "fullyCovered": true
+        },
+        {
+          "years": 3,
+          "horizonStart": "2023-08-08",
+          "effectiveStart": "2023-08-08",
+          "coveragePct": 100,
+          "fullyCovered": true
+        },
+        {
+          "years": 1,
+          "horizonStart": "2025-08-08",
+          "effectiveStart": "2025-08-08",
+          "coveragePct": 100,
+          "fullyCovered": true
+        }
+      ],
+      "status": "OK"
+    },
+    {
+      "name": "셀트리온",
+      "requestedSymbol": "068270.KS",
+      "resolvedSymbol": "068270.KS",
+      "triedSymbols": [
+        "068270.KS"
+      ],
+      "track": "kr-equity",
+      "currency": "KRW",
+      "confidence": "confirmed",
+      "failureReasons": [],
+      "ok": true,
+      "firstDate": "2005-07-19",
+      "lastDate": "2026-08-07",
+      "n": 5204,
+      "historyYears": 21.05133470225873,
+      "adjRatioFirst": 0.9508086738290221,
+      "adjustmentStatus": "adjusted(배당반영)",
+      "maxGapDays": 11,
+      "recentAvgTurnover": 124236118963.5297,
+      "illiquid": false,
+      "maxDropAdjPct": -14.992021434944899,
+      "maxDropRawPct": -14.992025628599615,
+      "horizons": [
+        {
+          "years": 10,
+          "horizonStart": "2016-08-08",
+          "effectiveStart": "2016-08-08",
+          "coveragePct": 100,
+          "fullyCovered": true
+        },
+        {
+          "years": 5,
+          "horizonStart": "2021-08-08",
+          "effectiveStart": "2021-08-08",
+          "coveragePct": 100,
+          "fullyCovered": true
+        },
+        {
+          "years": 3,
+          "horizonStart": "2023-08-08",
+          "effectiveStart": "2023-08-08",
+          "coveragePct": 100,
+          "fullyCovered": true
+        },
+        {
+          "years": 1,
+          "horizonStart": "2025-08-08",
+          "effectiveStart": "2025-08-08",
+          "coveragePct": 100,
+          "fullyCovered": true
+        }
+      ],
+      "status": "OK"
+    },
+    {
+      "name": "보령",
+      "requestedSymbol": "003850.KS",
+      "resolvedSymbol": "003850.KS",
+      "triedSymbols": [
+        "003850.KS"
+      ],
+      "track": "kr-equity",
+      "currency": "KRW",
+      "confidence": "confirmed",
+      "failureReasons": [],
+      "ok": true,
+      "firstDate": "2000-01-04",
+      "lastDate": "2026-08-07",
+      "n": 6649,
+      "historyYears": 26.590006844626966,
+      "adjRatioFirst": 0.8691581732475209,
+      "adjustmentStatus": "adjusted(배당반영)",
+      "maxGapDays": 11,
+      "recentAvgTurnover": 1149763279.6666667,
+      "illiquid": false,
+      "maxDropAdjPct": -15.000000578974898,
+      "maxDropRawPct": -14.999996785070676,
+      "horizons": [
+        {
+          "years": 10,
+          "horizonStart": "2016-08-08",
+          "effectiveStart": "2016-08-08",
+          "coveragePct": 100,
+          "fullyCovered": true
+        },
+        {
+          "years": 5,
+          "horizonStart": "2021-08-08",
+          "effectiveStart": "2021-08-08",
+          "coveragePct": 100,
+          "fullyCovered": true
+        },
+        {
+          "years": 3,
+          "horizonStart": "2023-08-08",
+          "effectiveStart": "2023-08-08",
+          "coveragePct": 100,
+          "fullyCovered": true
+        },
+        {
+          "years": 1,
+          "horizonStart": "2025-08-08",
+          "effectiveStart": "2025-08-08",
+          "coveragePct": 100,
+          "fullyCovered": true
+        }
+      ],
+      "status": "OK"
+    },
+    {
+      "name": "녹십자",
+      "requestedSymbol": "006280.KS",
+      "resolvedSymbol": "006280.KS",
+      "triedSymbols": [
+        "006280.KS"
+      ],
+      "track": "kr-equity",
+      "currency": "KRW",
+      "confidence": "confirmed",
+      "failureReasons": [],
+      "ok": true,
+      "firstDate": "2000-01-04",
+      "lastDate": "2026-08-07",
+      "n": 6649,
+      "historyYears": 26.590006844626966,
+      "adjRatioFirst": 0.8247886404394875,
+      "adjustmentStatus": "adjusted(배당반영)",
+      "maxGapDays": 11,
+      "recentAvgTurnover": 7272117226.666667,
+      "illiquid": false,
+      "maxDropAdjPct": -14.99999897155041,
+      "maxDropRawPct": -15.00000320776286,
+      "horizons": [
+        {
+          "years": 10,
+          "horizonStart": "2016-08-08",
+          "effectiveStart": "2016-08-08",
+          "coveragePct": 100,
+          "fullyCovered": true
+        },
+        {
+          "years": 5,
+          "horizonStart": "2021-08-08",
+          "effectiveStart": "2021-08-08",
+          "coveragePct": 100,
+          "fullyCovered": true
+        },
+        {
+          "years": 3,
+          "horizonStart": "2023-08-08",
+          "effectiveStart": "2023-08-08",
+          "coveragePct": 100,
+          "fullyCovered": true
+        },
+        {
+          "years": 1,
+          "horizonStart": "2025-08-08",
+          "effectiveStart": "2025-08-08",
+          "coveragePct": 100,
+          "fullyCovered": true
+        }
+      ],
+      "status": "OK"
+    },
+    {
+      "name": "롯데케미칼",
+      "requestedSymbol": "011170.KS",
+      "resolvedSymbol": "011170.KS",
+      "triedSymbols": [
+        "011170.KS"
+      ],
+      "track": "kr-equity",
+      "currency": "KRW",
+      "confidence": "confirmed",
+      "failureReasons": [],
+      "ok": true,
+      "firstDate": "2000-01-04",
+      "lastDate": "2026-08-07",
+      "n": 6649,
+      "historyYears": 26.590006844626966,
+      "adjRatioFirst": 0.6430591024063541,
+      "adjustmentStatus": "adjusted(배당반영)",
+      "maxGapDays": 11,
+      "recentAvgTurnover": 10503793906.666666,
+      "illiquid": false,
+      "maxDropAdjPct": -16.338028169014084,
+      "maxDropRawPct": -16.338028169014084,
+      "horizons": [
+        {
+          "years": 10,
+          "horizonStart": "2016-08-08",
+          "effectiveStart": "2016-08-08",
+          "coveragePct": 100,
+          "fullyCovered": true
+        },
+        {
+          "years": 5,
+          "horizonStart": "2021-08-08",
+          "effectiveStart": "2021-08-08",
+          "coveragePct": 100,
+          "fullyCovered": true
+        },
+        {
+          "years": 3,
+          "horizonStart": "2023-08-08",
+          "effectiveStart": "2023-08-08",
+          "coveragePct": 100,
+          "fullyCovered": true
+        },
+        {
+          "years": 1,
+          "horizonStart": "2025-08-08",
+          "effectiveStart": "2025-08-08",
+          "coveragePct": 100,
+          "fullyCovered": true
+        }
+      ],
+      "status": "OK"
+    },
+    {
+      "name": "티와이홀딩스",
+      "requestedSymbol": "363280.KS",
+      "resolvedSymbol": "363280.KS",
+      "triedSymbols": [
+        "363280.KS"
+      ],
+      "track": "kr-equity",
+      "currency": "KRW",
+      "confidence": "confirmed",
+      "failureReasons": [],
+      "ok": true,
+      "firstDate": "2020-09-23",
+      "lastDate": "2026-08-07",
+      "n": 1435,
+      "historyYears": 5.8699520876112254,
+      "adjRatioFirst": 0.9860464629242015,
+      "adjustmentStatus": "flat(무배당/지수/최근상장)",
+      "maxGapDays": 8,
+      "recentAvgTurnover": 108935449.91666667,
+      "illiquid": true,
+      "maxDropAdjPct": -17.37012987012987,
+      "maxDropRawPct": -17.37012987012987,
+      "horizons": [
+        {
+          "years": 10,
+          "horizonStart": "2016-08-08",
+          "effectiveStart": "2020-09-23",
+          "coveragePct": 58.734939759036145,
+          "fullyCovered": false
+        },
+        {
+          "years": 5,
+          "horizonStart": "2021-08-08",
+          "effectiveStart": "2021-08-08",
+          "coveragePct": 100,
+          "fullyCovered": true
+        },
+        {
+          "years": 3,
+          "horizonStart": "2023-08-08",
+          "effectiveStart": "2023-08-08",
+          "coveragePct": 100,
+          "fullyCovered": true
+        },
+        {
+          "years": 1,
+          "horizonStart": "2025-08-08",
+          "effectiveStart": "2025-08-08",
+          "coveragePct": 100,
+          "fullyCovered": true
+        }
+      ],
+      "status": "OK"
+    },
+    {
+      "name": "카카오",
+      "requestedSymbol": "035720.KS",
+      "resolvedSymbol": "035720.KS",
+      "triedSymbols": [
+        "035720.KS"
+      ],
+      "track": "kr-equity",
+      "currency": "KRW",
+      "confidence": "confirmed",
+      "failureReasons": [],
+      "ok": true,
+      "firstDate": "2000-02-11",
+      "lastDate": "2026-08-07",
+      "n": 6621,
+      "historyYears": 26.48596851471595,
+      "adjRatioFirst": 0.9384389308608059,
+      "adjustmentStatus": "adjusted(배당반영)",
+      "maxGapDays": 11,
+      "recentAvgTurnover": 89622850109.16667,
+      "illiquid": false,
+      "maxDropAdjPct": -16.486925088978214,
+      "maxDropRawPct": -16.486902927580893,
+      "horizons": [
+        {
+          "years": 10,
+          "horizonStart": "2016-08-08",
+          "effectiveStart": "2016-08-08",
+          "coveragePct": 100,
+          "fullyCovered": true
+        },
+        {
+          "years": 5,
+          "horizonStart": "2021-08-08",
+          "effectiveStart": "2021-08-08",
+          "coveragePct": 100,
+          "fullyCovered": true
+        },
+        {
+          "years": 3,
+          "horizonStart": "2023-08-08",
+          "effectiveStart": "2023-08-08",
+          "coveragePct": 100,
+          "fullyCovered": true
+        },
+        {
+          "years": 1,
+          "horizonStart": "2025-08-08",
+          "effectiveStart": "2025-08-08",
+          "coveragePct": 100,
+          "fullyCovered": true
+        }
+      ],
+      "status": "OK"
+    },
+    {
+      "name": "대한조선",
+      "requestedSymbol": "439260.KS",
+      "resolvedSymbol": "439260.KS",
+      "triedSymbols": [
+        "439260.KS"
+      ],
+      "track": "kr-equity",
+      "currency": "KRW",
+      "confidence": "probe",
+      "note": "최근 상장 추정 — 이력이 짧을 수 있음",
+      "failureReasons": [],
+      "ok": true,
+      "firstDate": "2025-08-01",
+      "lastDate": "2026-08-07",
+      "n": 247,
+      "historyYears": 1.0157426420260096,
+      "adjRatioFirst": 0.9963610152867965,
+      "adjustmentStatus": "flat(무배당/지수/최근상장)",
+      "maxGapDays": 8,
+      "recentAvgTurnover": 4998181475,
+      "illiquid": false,
+      "maxDropAdjPct": -13.528141714968084,
+      "maxDropRawPct": -13.528138528138529,
+      "horizons": [
+        {
+          "years": 10,
+          "horizonStart": "2016-08-08",
+          "effectiveStart": "2025-08-01",
+          "coveragePct": 10.186199342825848,
+          "fullyCovered": false
+        },
+        {
+          "years": 5,
+          "horizonStart": "2021-08-08",
+          "effectiveStart": "2025-08-01",
+          "coveragePct": 20.372398685651696,
+          "fullyCovered": false
+        },
+        {
+          "years": 3,
+          "horizonStart": "2023-08-08",
+          "effectiveStart": "2025-08-01",
+          "coveragePct": 33.941605839416056,
+          "fullyCovered": false
+        },
+        {
+          "years": 1,
+          "horizonStart": "2025-08-08",
+          "effectiveStart": "2025-08-08",
+          "coveragePct": 100,
+          "fullyCovered": true
+        }
+      ],
+      "status": "OK"
+    },
+    {
+      "name": "신한알파리츠",
+      "requestedSymbol": "293940.KS",
+      "resolvedSymbol": "293940.KS",
+      "triedSymbols": [
+        "293940.KS"
+      ],
+      "track": "kr-reit",
+      "currency": "KRW",
+      "confidence": "confirmed",
+      "failureReasons": [],
+      "ok": true,
+      "firstDate": "2018-08-08",
+      "lastDate": "2026-08-07",
+      "n": 1959,
+      "historyYears": 7.997262149212868,
+      "adjRatioFirst": 0.6186645151960299,
+      "adjustmentStatus": "adjusted(배당반영)",
+      "maxGapDays": 8,
+      "recentAvgTurnover": 1321631747.5130942,
+      "illiquid": false,
+      "maxDropAdjPct": -8.382349723022243,
+      "maxDropRawPct": -8.382348846036033,
+      "horizons": [
+        {
+          "years": 10,
+          "horizonStart": "2016-08-08",
+          "effectiveStart": "2018-08-08",
+          "coveragePct": 80.01095290251918,
+          "fullyCovered": false
+        },
+        {
+          "years": 5,
+          "horizonStart": "2021-08-08",
+          "effectiveStart": "2021-08-08",
+          "coveragePct": 100,
+          "fullyCovered": true
+        },
+        {
+          "years": 3,
+          "horizonStart": "2023-08-08",
+          "effectiveStart": "2023-08-08",
+          "coveragePct": 100,
+          "fullyCovered": true
+        },
+        {
+          "years": 1,
+          "horizonStart": "2025-08-08",
+          "effectiveStart": "2025-08-08",
+          "coveragePct": 100,
+          "fullyCovered": true
+        }
+      ],
+      "status": "OK"
+    },
+    {
+      "name": "케이탑리츠",
+      "requestedSymbol": "145270.KS",
+      "resolvedSymbol": "145270.KS",
+      "triedSymbols": [
+        "145270.KS"
+      ],
+      "track": "kr-reit",
+      "currency": "KRW",
+      "confidence": "confirmed",
+      "failureReasons": [],
+      "ok": true,
+      "firstDate": "2012-01-31",
+      "lastDate": "2026-08-07",
+      "n": 3564,
+      "historyYears": 14.516084873374401,
+      "adjRatioFirst": 0.5162811093849734,
+      "adjustmentStatus": "adjusted(배당반영)",
+      "maxGapDays": 11,
+      "recentAvgTurnover": 49361868.13333333,
+      "illiquid": true,
+      "maxDropAdjPct": -79.93299627316766,
+      "maxDropRawPct": -79.93299803179028,
+      "horizons": [
+        {
+          "years": 10,
+          "horizonStart": "2016-08-08",
+          "effectiveStart": "2016-08-08",
+          "coveragePct": 100,
+          "fullyCovered": true
+        },
+        {
+          "years": 5,
+          "horizonStart": "2021-08-08",
+          "effectiveStart": "2021-08-08",
+          "coveragePct": 100,
+          "fullyCovered": true
+        },
+        {
+          "years": 3,
+          "horizonStart": "2023-08-08",
+          "effectiveStart": "2023-08-08",
+          "coveragePct": 100,
+          "fullyCovered": true
+        },
+        {
+          "years": 1,
+          "horizonStart": "2025-08-08",
+          "effectiveStart": "2025-08-08",
+          "coveragePct": 100,
+          "fullyCovered": true
+        }
+      ],
+      "status": "OK"
+    },
+    {
+      "name": "고려신용정보",
+      "requestedSymbol": "049720.KQ",
+      "resolvedSymbol": "049720.KQ",
+      "triedSymbols": [
+        "049720.KQ"
+      ],
+      "track": "kr-equity",
+      "currency": "KRW",
+      "confidence": "probe",
+      "failureReasons": [],
+      "ok": true,
+      "firstDate": "2002-02-01",
+      "lastDate": "2026-08-07",
+      "n": 6106,
+      "historyYears": 24.511978097193705,
+      "adjRatioFirst": 0.3647693918712104,
+      "adjustmentStatus": "adjusted(배당반영)",
+      "maxGapDays": 11,
+      "recentAvgTurnover": 1416090155.9408529,
+      "illiquid": false,
+      "maxDropAdjPct": -14.732153395724382,
+      "maxDropRawPct": -14.732142857142858,
+      "horizons": [
+        {
+          "years": 10,
+          "horizonStart": "2016-08-08",
+          "effectiveStart": "2016-08-08",
+          "coveragePct": 100,
+          "fullyCovered": true
+        },
+        {
+          "years": 5,
+          "horizonStart": "2021-08-08",
+          "effectiveStart": "2021-08-08",
+          "coveragePct": 100,
+          "fullyCovered": true
+        },
+        {
+          "years": 3,
+          "horizonStart": "2023-08-08",
+          "effectiveStart": "2023-08-08",
+          "coveragePct": 100,
+          "fullyCovered": true
+        },
+        {
+          "years": 1,
+          "horizonStart": "2025-08-08",
+          "effectiveStart": "2025-08-08",
+          "coveragePct": 100,
+          "fullyCovered": true
+        }
+      ],
+      "status": "OK"
+    },
+    {
+      "name": "테고사이언스",
+      "requestedSymbol": "191420.KQ",
+      "resolvedSymbol": "191420.KQ",
+      "triedSymbols": [
+        "191420.KQ"
+      ],
+      "track": "kr-equity",
+      "currency": "KRW",
+      "confidence": "probe",
+      "failureReasons": [],
+      "ok": true,
+      "firstDate": "2014-11-06",
+      "lastDate": "2026-08-07",
+      "n": 2881,
+      "historyYears": 11.75085557837098,
+      "adjRatioFirst": 0.9981481481481481,
+      "adjustmentStatus": "flat(무배당/지수/최근상장)",
+      "maxGapDays": 11,
+      "recentAvgTurnover": 132929729,
+      "illiquid": true,
+      "maxDropAdjPct": -24.012158054711247,
+      "maxDropRawPct": -24.012158054711247,
+      "horizons": [
+        {
+          "years": 10,
+          "horizonStart": "2016-08-08",
+          "effectiveStart": "2016-08-08",
+          "coveragePct": 100,
+          "fullyCovered": true
+        },
+        {
+          "years": 5,
+          "horizonStart": "2021-08-08",
+          "effectiveStart": "2021-08-08",
+          "coveragePct": 100,
+          "fullyCovered": true
+        },
+        {
+          "years": 3,
+          "horizonStart": "2023-08-08",
+          "effectiveStart": "2023-08-08",
+          "coveragePct": 100,
+          "fullyCovered": true
+        },
+        {
+          "years": 1,
+          "horizonStart": "2025-08-08",
+          "effectiveStart": "2025-08-08",
+          "coveragePct": 100,
+          "fullyCovered": true
+        }
+      ],
+      "status": "OK"
+    },
+    {
+      "name": "KG모빌리언스(주)",
+      "requestedSymbol": "046440.KQ",
+      "resolvedSymbol": "046440.KQ",
+      "triedSymbols": [
+        "046440.KQ"
+      ],
+      "track": "kr-equity",
+      "currency": "KRW",
+      "confidence": "probe",
+      "failureReasons": [],
+      "ok": true,
+      "firstDate": "2006-06-01",
+      "lastDate": "2026-08-07",
+      "n": 4982,
+      "historyYears": 20.18343600273785,
+      "adjRatioFirst": 0.68446630859375,
+      "adjustmentStatus": "adjusted(배당반영)",
+      "maxGapDays": 11,
+      "recentAvgTurnover": 488507070.6666667,
+      "illiquid": true,
+      "maxDropAdjPct": -50.766585793704756,
+      "maxDropRawPct": -50.766591796875005,
+      "horizons": [
+        {
+          "years": 10,
+          "horizonStart": "2016-08-08",
+          "effectiveStart": "2016-08-08",
+          "coveragePct": 100,
+          "fullyCovered": true
+        },
+        {
+          "years": 5,
+          "horizonStart": "2021-08-08",
+          "effectiveStart": "2021-08-08",
+          "coveragePct": 100,
+          "fullyCovered": true
+        },
+        {
+          "years": 3,
+          "horizonStart": "2023-08-08",
+          "effectiveStart": "2023-08-08",
+          "coveragePct": 100,
+          "fullyCovered": true
+        },
+        {
+          "years": 1,
+          "horizonStart": "2025-08-08",
+          "effectiveStart": "2025-08-08",
+          "coveragePct": 100,
+          "fullyCovered": true
+        }
+      ],
+      "status": "OK"
+    },
+    {
+      "name": "SBI인베스트먼트",
+      "requestedSymbol": "019550.KQ",
+      "resolvedSymbol": "019550.KQ",
+      "triedSymbols": [
+        "019550.KQ"
+      ],
+      "track": "kr-equity",
+      "currency": "KRW",
+      "confidence": "probe",
+      "failureReasons": [],
+      "ok": true,
+      "firstDate": "2000-02-11",
+      "lastDate": "2026-08-07",
+      "n": 6621,
+      "historyYears": 26.48596851471595,
+      "adjRatioFirst": 1,
+      "adjustmentStatus": "flat(무배당/지수/최근상장)",
+      "maxGapDays": 11,
+      "recentAvgTurnover": 379538344.1166667,
+      "illiquid": true,
+      "maxDropAdjPct": -24.012158054711247,
+      "maxDropRawPct": -24.012158054711247,
+      "horizons": [
+        {
+          "years": 10,
+          "horizonStart": "2016-08-08",
+          "effectiveStart": "2016-08-08",
+          "coveragePct": 100,
+          "fullyCovered": true
+        },
+        {
+          "years": 5,
+          "horizonStart": "2021-08-08",
+          "effectiveStart": "2021-08-08",
+          "coveragePct": 100,
+          "fullyCovered": true
+        },
+        {
+          "years": 3,
+          "horizonStart": "2023-08-08",
+          "effectiveStart": "2023-08-08",
+          "coveragePct": 100,
+          "fullyCovered": true
+        },
+        {
+          "years": 1,
+          "horizonStart": "2025-08-08",
+          "effectiveStart": "2025-08-08",
+          "coveragePct": 100,
+          "fullyCovered": true
+        }
+      ],
+      "status": "OK"
+    },
+    {
+      "name": "인선이엔티",
+      "requestedSymbol": "060150.KQ",
+      "resolvedSymbol": "060150.KQ",
+      "triedSymbols": [
+        "060150.KQ"
+      ],
+      "track": "kr-equity",
+      "currency": "KRW",
+      "confidence": "probe",
+      "failureReasons": [],
+      "ok": true,
+      "firstDate": "2002-06-18",
+      "lastDate": "2026-08-07",
+      "n": 6009,
+      "historyYears": 24.136892539356605,
+      "adjRatioFirst": 0.8349055143171431,
+      "adjustmentStatus": "adjusted(배당반영)",
+      "maxGapDays": 11,
+      "recentAvgTurnover": 379323069.9166667,
+      "illiquid": true,
+      "maxDropAdjPct": -19.708029197080293,
+      "maxDropRawPct": -19.708029197080293,
+      "horizons": [
+        {
+          "years": 10,
+          "horizonStart": "2016-08-08",
+          "effectiveStart": "2016-08-08",
+          "coveragePct": 100,
+          "fullyCovered": true
+        },
+        {
+          "years": 5,
+          "horizonStart": "2021-08-08",
+          "effectiveStart": "2021-08-08",
+          "coveragePct": 100,
+          "fullyCovered": true
+        },
+        {
+          "years": 3,
+          "horizonStart": "2023-08-08",
+          "effectiveStart": "2023-08-08",
+          "coveragePct": 100,
+          "fullyCovered": true
+        },
+        {
+          "years": 1,
+          "horizonStart": "2025-08-08",
+          "effectiveStart": "2025-08-08",
+          "coveragePct": 100,
+          "fullyCovered": true
+        }
+      ],
+      "status": "OK"
+    },
+    {
+      "name": "일진다이아몬드",
+      "requestedSymbol": "081000.KQ",
+      "resolvedSymbol": "081000.KQ",
+      "triedSymbols": [
+        "081000.KQ"
+      ],
+      "track": "kr-equity",
+      "currency": "KRW",
+      "confidence": "probe",
+      "failureReasons": [],
+      "ok": true,
+      "firstDate": "2004-12-22",
+      "lastDate": "2026-08-07",
+      "n": 5353,
+      "historyYears": 21.623545516769337,
+      "adjRatioFirst": 0.7047367994922851,
+      "adjustmentStatus": "adjusted(배당반영)",
+      "maxGapDays": 11,
+      "recentAvgTurnover": 361329094.1666667,
+      "illiquid": true,
+      "maxDropAdjPct": -21.071425648572106,
+      "maxDropRawPct": -21.071428571428573,
+      "horizons": [
+        {
+          "years": 10,
+          "horizonStart": "2016-08-08",
+          "effectiveStart": "2016-08-08",
+          "coveragePct": 100,
+          "fullyCovered": true
+        },
+        {
+          "years": 5,
+          "horizonStart": "2021-08-08",
+          "effectiveStart": "2021-08-08",
+          "coveragePct": 100,
+          "fullyCovered": true
+        },
+        {
+          "years": 3,
+          "horizonStart": "2023-08-08",
+          "effectiveStart": "2023-08-08",
+          "coveragePct": 100,
+          "fullyCovered": true
+        },
+        {
+          "years": 1,
+          "horizonStart": "2025-08-08",
+          "effectiveStart": "2025-08-08",
+          "coveragePct": 100,
+          "fullyCovered": true
+        }
+      ],
+      "status": "OK"
+    },
+    {
+      "name": "효성ITX",
+      "requestedSymbol": "094280.KQ",
+      "resolvedSymbol": "094280.KQ",
+      "triedSymbols": [
+        "094280.KQ"
+      ],
+      "track": "kr-equity",
+      "currency": "KRW",
+      "confidence": "probe",
+      "failureReasons": [],
+      "ok": true,
+      "firstDate": "2007-10-25",
+      "lastDate": "2026-08-07",
+      "n": 4637,
+      "historyYears": 18.784394250513348,
+      "adjRatioFirst": 0.6188830672554347,
+      "adjustmentStatus": "adjusted(배당반영)",
+      "maxGapDays": 11,
+      "recentAvgTurnover": 222110546.66666666,
+      "illiquid": true,
+      "maxDropAdjPct": -15.000021241546118,
+      "maxDropRawPct": -15,
+      "horizons": [
+        {
+          "years": 10,
+          "horizonStart": "2016-08-08",
+          "effectiveStart": "2016-08-08",
+          "coveragePct": 100,
+          "fullyCovered": true
+        },
+        {
+          "years": 5,
+          "horizonStart": "2021-08-08",
+          "effectiveStart": "2021-08-08",
+          "coveragePct": 100,
+          "fullyCovered": true
+        },
+        {
+          "years": 3,
+          "horizonStart": "2023-08-08",
+          "effectiveStart": "2023-08-08",
+          "coveragePct": 100,
+          "fullyCovered": true
+        },
+        {
+          "years": 1,
+          "horizonStart": "2025-08-08",
+          "effectiveStart": "2025-08-08",
+          "coveragePct": 100,
+          "fullyCovered": true
+        }
+      ],
+      "status": "OK"
+    },
+    {
+      "name": "TIGER 글로벌AI사이버보안",
+      "requestedSymbol": "418670.KS",
+      "resolvedSymbol": "418670.KS",
+      "triedSymbols": [
+        "418670.KS"
+      ],
+      "track": "kr-etf",
+      "currency": "KRW",
+      "confidence": "probe",
+      "note": "2022년 상장 추정",
+      "failureReasons": [],
+      "ok": true,
+      "firstDate": "2022-02-22",
+      "lastDate": "2026-08-07",
+      "n": 1070,
+      "historyYears": 4.454483230663929,
+      "adjRatioFirst": 0.9976087114836872,
+      "adjustmentStatus": "flat(무배당/지수/최근상장)",
+      "maxGapDays": 8,
+      "recentAvgTurnover": 1464986151.1666667,
+      "illiquid": false,
+      "maxDropAdjPct": -8.568781717441626,
+      "maxDropRawPct": -8.56878184344604,
+      "horizons": [
+        {
+          "years": 10,
+          "horizonStart": "2016-08-08",
+          "effectiveStart": "2022-02-22",
+          "coveragePct": 44.57831325301205,
+          "fullyCovered": false
+        },
+        {
+          "years": 5,
+          "horizonStart": "2021-08-08",
+          "effectiveStart": "2022-02-22",
+          "coveragePct": 89.1566265060241,
+          "fullyCovered": false
+        },
+        {
+          "years": 3,
+          "horizonStart": "2023-08-08",
+          "effectiveStart": "2023-08-08",
+          "coveragePct": 100,
+          "fullyCovered": true
+        },
+        {
+          "years": 1,
+          "horizonStart": "2025-08-08",
+          "effectiveStart": "2025-08-08",
+          "coveragePct": 100,
+          "fullyCovered": true
+        }
+      ],
+      "status": "OK"
+    },
+    {
+      "name": "한화 ARIRANG PLUS K방산 ETF",
+      "requestedSymbol": "449450.KS",
+      "resolvedSymbol": "449450.KS",
+      "triedSymbols": [
+        "449450.KS"
+      ],
+      "track": "kr-etf",
+      "currency": "KRW",
+      "confidence": "probe",
+      "note": "2023년 상장 추정",
+      "failureReasons": [],
+      "ok": true,
+      "firstDate": "2023-01-05",
+      "lastDate": "2026-08-07",
+      "n": 856,
+      "historyYears": 3.586584531143053,
+      "adjRatioFirst": 0.9932870805426463,
+      "adjustmentStatus": "flat(무배당/지수/최근상장)",
+      "maxGapDays": 8,
+      "recentAvgTurnover": 42990621635.833336,
+      "illiquid": false,
+      "maxDropAdjPct": -17.32420538125748,
+      "maxDropRawPct": -17.32420659614188,
+      "horizons": [
+        {
+          "years": 10,
+          "horizonStart": "2016-08-08",
+          "effectiveStart": "2023-01-05",
+          "coveragePct": 35.89813800657174,
+          "fullyCovered": false
+        },
+        {
+          "years": 5,
+          "horizonStart": "2021-08-08",
+          "effectiveStart": "2023-01-05",
+          "coveragePct": 71.79627601314348,
+          "fullyCovered": false
+        },
+        {
+          "years": 3,
+          "horizonStart": "2023-08-08",
+          "effectiveStart": "2023-08-08",
+          "coveragePct": 100,
+          "fullyCovered": true
+        },
+        {
+          "years": 1,
+          "horizonStart": "2025-08-08",
+          "effectiveStart": "2025-08-08",
+          "coveragePct": 100,
+          "fullyCovered": true
+        }
+      ],
+      "status": "OK"
+    },
+    {
+      "name": "SOL 조선기자재",
+      "requestedSymbol": "0141S0.KS",
+      "resolvedSymbol": "0141S0.KS",
+      "triedSymbols": [
+        "0141S0.KS"
+      ],
+      "track": "kr-etf",
+      "currency": "KRW",
+      "confidence": "probe",
+      "note": "KRX 신규 6자리 영숫자 코드체계 — Yahoo 미수록 가능성 있음",
+      "failureReasons": [],
+      "ok": true,
+      "firstDate": "2025-12-16",
+      "lastDate": "2026-08-07",
+      "n": 157,
+      "historyYears": 0.6406570841889117,
+      "adjRatioFirst": 0.9992476447318251,
+      "adjustmentStatus": "flat(무배당/지수/최근상장)",
+      "maxGapDays": 6,
+      "recentAvgTurnover": 4768876390.166667,
+      "illiquid": false,
+      "maxDropAdjPct": -12.189618682763987,
+      "maxDropRawPct": -12.18961625282167,
+      "horizons": [
+        {
+          "years": 10,
+          "horizonStart": "2016-08-08",
+          "effectiveStart": "2025-12-16",
+          "coveragePct": 6.434830230010953,
+          "fullyCovered": false
+        },
+        {
+          "years": 5,
+          "horizonStart": "2021-08-08",
+          "effectiveStart": "2025-12-16",
+          "coveragePct": 12.869660460021906,
+          "fullyCovered": false
+        },
+        {
+          "years": 3,
+          "horizonStart": "2023-08-08",
+          "effectiveStart": "2025-12-16",
+          "coveragePct": 21.44160583941606,
+          "fullyCovered": false
+        },
+        {
+          "years": 1,
+          "horizonStart": "2025-08-08",
+          "effectiveStart": "2025-12-16",
+          "coveragePct": 64.38356164383562,
+          "fullyCovered": false
+        }
+      ],
+      "status": "OK"
+    }
+  ]
+}
