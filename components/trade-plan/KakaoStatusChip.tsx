@@ -1,10 +1,14 @@
 // components/trade-plan/KakaoStatusChip.tsx
 // 카카오톡 알림 상태 칩 — "마지막 동기화 HH:MM · 동기화 필요 N건". 렌더 전용, 계산은 hooks/useKakaoNotify.
 // "오늘" 화면(TodayView) 헤더에 마운트되는 카톡 알림 상태칩 — 계획서 §6.1 "오늘 화면 상태칩"(P5 작성, P3에서 마운트).
-// self-contained(usePortfolio를 내부 훅이 대신 읽음)라
 // import해서 <KakaoStatusChip /> 한 줄만 놓으면 된다.
+//
+// 미설정 상태에서도 표시한다(과거에는 null 반환 — 설정 화면까지 안내가 전혀 없어 카톡을 어떻게 받는지
+// 알 방법이 없었다). 클릭하면 설정 탭으로 이동 — usePortfolio.actions.setActiveTab, 쓰기 없는 탐색뿐이라
+// "보이지 않는 쓰기 금지" 규칙과 무관.
 
 import React from 'react';
+import { usePortfolio } from '../../contexts/PortfolioContext';
 import { useKakaoNotify } from '../../hooks/useKakaoNotify';
 
 function formatTime(iso: string | null): string {
@@ -19,10 +23,21 @@ export interface KakaoStatusChipProps {
 }
 
 const KakaoStatusChip: React.FC<KakaoStatusChipProps> = ({ className = '' }) => {
+  const { actions } = usePortfolio();
   const { settings, manifest, needsSync } = useKakaoNotify();
 
-  // 설정 전(웹앱 URL/시크릿 미입력)이면 표시하지 않음 — 아직 쓰지 않는 기능을 오늘 화면에 노출하지 않는다.
-  if (!settings.gasUrl || !settings.secret) return null;
+  if (!settings.gasUrl || !settings.secret) {
+    return (
+      <button
+        type="button"
+        onClick={() => actions.setActiveTab('settings')}
+        className={`inline-flex items-center gap-1.5 text-[11px] px-2 py-1 rounded-full bg-amber-500/10 border border-amber-700/40 text-amber-300 hover:bg-amber-500/20 transition-colors ${className}`}
+        title="설정 탭에서 카카오톡 알림을 켤 수 있습니다"
+      >
+        🔔 카톡 알림 미설정 · 설정에서 켜기
+      </button>
+    );
+  }
 
   return (
     <span

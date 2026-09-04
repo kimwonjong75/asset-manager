@@ -3,9 +3,10 @@
 // derived 상태(hooks/useTradePlanSignals 등)만 소비한다. 렌더는 여기 + components/today/*
 // (RULES.md §2 — components는 UI만, 계산 로직 없음).
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { usePortfolio } from '../../contexts/PortfolioContext';
 import KakaoStatusChip from '../trade-plan/KakaoStatusChip';
+import TradePlanIntro, { hasSeenTradePlanIntro } from '../trade-plan/TradePlanIntro';
 import {
   buildTodayHeadline,
   groupRowsByTier,
@@ -22,6 +23,9 @@ import WatchSection from '../today/WatchSection';
 
 const TodayView: React.FC = () => {
   const { data, status, derived, actions } = usePortfolio();
+  // 첫 화면(오늘 탭)에서부터 "매매 계획이란?"을 보여준다 — 과거엔 계획 편집기를 열어야만
+  // 나왔는데, 처음 쓰는 사용자는 편집기를 열 이유를 아직 모른다.
+  const [showIntro, setShowIntro] = useState<boolean>(() => !hasSeenTradePlanIntro());
 
   const headline = useMemo(
     () => buildTodayHeadline(derived.tradePlanRows, derived.tradePlanSummary),
@@ -59,6 +63,10 @@ const TodayView: React.FC = () => {
           </button>
         </div>
       </header>
+
+      {hasNoPlansAtAll && showIntro && (
+        <TradePlanIntro onDismiss={() => setShowIntro(false)} />
+      )}
 
       <UrgentSection rows={tiers.urgent} />
       <TodaySection rows={tiers.today} />

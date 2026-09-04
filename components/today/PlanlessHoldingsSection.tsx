@@ -38,6 +38,16 @@ const PlanlessHoldingsSection: React.FC<PlanlessHoldingsSectionProps> = ({ planl
             + 새 매수 계획
           </button>
         </div>
+        <p className="text-[11px] text-gray-500 mt-3">
+          계획을 만들면 손절선·익절선에 닿을 때 카카오톡으로도 알려드릴 수 있어요(1회 설정 필요).
+        </p>
+        <button
+          type="button"
+          onClick={() => actions.setActiveTab('settings')}
+          className="text-[11px] text-amber-300 hover:text-amber-200 underline underline-offset-2 mt-1"
+        >
+          설정에서 카카오톡 알림 켜기 →
+        </button>
       </section>
     );
   }
