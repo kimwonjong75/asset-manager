@@ -16,6 +16,9 @@ import { DEFAULT_TURTLE_SETTINGS } from '../types/turtle';
 import { parsePortfolioPayload, type ParsedPortfolioPayload } from '../utils/parsePortfolioPayload';
 import { applyRestoredAlertSettings } from '../utils/alertSettingsStorage';
 import { mergeSaveSnapshot, type PortfolioSaveSnapshot, type PortfolioSavePatch } from '../types/portfolioSave';
+import { shouldRefreshPrices, LAST_PRICE_REFRESH_AT_KEY } from '../utils/priceFreshness';
+import { classifyHoldingMarkets } from '../utils/holdingMarkets';
+import { localDateString } from '../utils/localDate';
 
 const log = createLogger('PortfolioData');
 
@@ -249,13 +252,21 @@ export const usePortfolioData = () => {
       if (loaded) {
         const applied = applyLoadedData(loaded, { source: 'drive' });
 
-        // 오늘 아직 업데이트 안 했고, 자산이 있으면 자동 업데이트 예약
-        // localStorage도 확인하여 새로고침/Drive 저장 지연 시 중복 실행 방지
-        const today = new Date().toISOString().slice(0, 10);
-        const savedLastUpdate = applied.lastUpdateDate;
-        const localLastUpdate = localStorage.getItem('lastAutoUpdateDate');
-        if (savedLastUpdate !== today && localLastUpdate !== today && applied.assets.length > 0) {
-          setShouldAutoUpdate(true);
+        // P4: 신선도 게이트 — "오늘 날짜가 바뀌었는가"가 아니라 "보유 시장이 개장 중인데
+        // 30분 넘게 안 받았는가 / 보유 시장이 마감됐는데 그 확정 종가를 아직 못 받았는가"로 판단.
+        // 자산이 있을 때만 예약(빈 포트폴리오는 갱신할 게 없음).
+        if (applied.assets.length > 0) {
+          const lastRefreshAt = localStorage.getItem(LAST_PRICE_REFRESH_AT_KEY);
+          const holdings = classifyHoldingMarkets(applied.assets, applied.watchlist);
+          const decision = shouldRefreshPrices({ lastRefreshAt, now: new Date().toISOString(), holdings });
+          if (decision.refresh) {
+            setShouldAutoUpdate(true);
+          } else {
+            // 저장된 시세가 아직 신선하면 갱신 없이도 "오늘 시세 준비됨"으로 본다 — 팝업 게이트·터틀 검토·
+            // 일일 백업이 이 플래그/날짜를 보므로, 여기서 세우지 않으면 갱신이 필요 없는 날엔 전부 침묵한다.
+            try { localStorage.setItem('lastAutoUpdateDate', localDateString()); } catch { /* ignore */ }
+            setHasAutoUpdated(true);
+          }
         }
 
         setSuccessMessage('Google Drive에서 포트폴리오를 불러왔습니다.');

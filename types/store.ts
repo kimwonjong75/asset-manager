@@ -1,4 +1,4 @@
-import { Asset, PortfolioSnapshot, SellRecord, WatchlistItem, ExchangeRates, Currency, BulkUploadResult, AllocationTargets } from './index';
+import { Asset, PortfolioSnapshot, SellRecord, WatchlistItem, ExchangeRates, Currency, BulkUploadResult, AllocationTargets, NewAssetForm } from './index';
 import type { AlertSettings, AlertResult, AlertDataGap } from './alertRules';
 import type { EnrichedIndicatorData } from '../hooks/useEnrichedIndicators';
 import type { RiskMatrixRow } from '../utils/riskMatrix';
@@ -17,6 +17,9 @@ import type { OwnerFilter } from './owner';
 import type { AddAssetResult, SellResult, BuyMoreResult } from './assetActionResult';
 import type { CleanupDecision } from './cleanup';
 import type { PortfolioSavePatch } from './portfolioSave';
+import type { TradePlan, PlanDecision, PlanFill, PyramidFillResult, SellOutcome } from './tradePlan';
+import type { TradePlanSignalRow } from '../hooks/useTradePlanSignals';
+import type { TradePlanSignalSummary } from '../utils/tradePlanMarket';
 
 export type PortfolioHistory = PortfolioSnapshot[];
 
@@ -57,7 +60,9 @@ export interface PortfolioStatus {
 }
 
 export interface UIState {
-  activeTab: 'dashboard' | 'portfolio' | 'analytics' | 'watchlist' | 'replay' | 'execution' | 'cleanup' | 'guide' | 'settings';
+  /** 'today'가 기본 탭(P3, 2026-09-04 사용자 승인) — 'execution'은 UI에서 더는 도달하지 않지만
+   *  (더보기 메뉴에 없음) 방어적 라우팅(App.tsx)을 위해 타입에는 남겨둔다. */
+  activeTab: 'today' | 'dashboard' | 'portfolio' | 'analytics' | 'watchlist' | 'replay' | 'execution' | 'cleanup' | 'guide' | 'settings';
   globalPeriod: GlobalPeriod;
   /** 계정 뷰 필터 (통합/원종/유선) — 대시보드·포트폴리오 **표시 계층 전용**. 원본 data.assets는 절대 거르지 않음(저장 유실 방지). 매도통계·히스토리는 통합 기준 유지(1차 한계) */
   accountView: OwnerFilter;
@@ -81,6 +86,10 @@ export interface UIState {
   chartMAConfigs: MALineConfig[];
   /** 신호 표시 설정 (Phase 5 — 신호 다이어트). 참고형 신호의 표시 위치·크기만 제어, 계산/발화 무관 */
   signalDisplay: SignalDisplaySettings;
+  /** P6 정보 다이어트 — 사용자가 [브리핑 다시 보기]를 명시적으로 눌렀는지(`actions.showBriefingPopup`이
+   *  true로, `actions.dismissAlertPopup`이 false로 되돌림). '오늘' 탭에서 팝업이 자동으로 뜨지
+   *  않게 막는 조건에만 쓰인다 — `derived.showAlertPopup`(useAutoAlert 게이트)은 이 값과 무관 */
+  briefingManual: boolean;
 }
 
 export interface ModalState {
@@ -99,6 +108,32 @@ export interface ModalState {
   cleanupExecAction: ActionItem | null;
   /** 리밸런싱 실행 모달 대상 (Phase 4c-2). null=닫힘. 전용 RebalanceExecuteModal만 사용 */
   rebalanceExecAction: ActionItem | null;
+  /** 매매 계획 일괄 만들기 마법사(TradePlanBulkWizard) 열림 여부 (P2a) */
+  tradePlanBulkOpen: boolean;
+  /**
+   * 매도 모달 프리필 (P2b) — 계획 카드의 [매도 기록]으로 열었을 때만 채워진다.
+   * `sellingAsset`과 **함께** 세팅/해제되므로 모달이 열려 있는 동안 단독으로 바뀌지 않는다
+   * (그래서 리셋 effect의 의존성에 직접 넣어도 배경 시세 갱신에 재발화하지 않는다).
+   */
+  sellPrefill: { quantity?: number; price?: number; outcome?: SellOutcome } | null;
+  /** "새 매수 계획" 독립 화면(TradePlanPlanner) 열림 여부 (P2c) */
+  plannerOpen: boolean;
+  /** 플래너 진입 프리필 — 관심종목 행 메뉴 등에서 특정 종목으로 바로 시작할 때 채운다. 없으면 빈 검색부터 */
+  plannerPrefill: { watchItemId?: string; ticker?: string; exchange?: string; name?: string } | null;
+  /**
+   * 신규 자산 추가 모달 프리필 (P2c) — 플래너의 [지금 매수 기록하며 저장]에서 넘어온 값.
+   * `plan`이 있으면 P2a "이 계획으로 저장" 기본 템플릿 대신 이 계획을(체결값으로 재구축해) 사용한다.
+   */
+  addAssetPrefill: {
+    ticker: string;
+    exchange: string;
+    name: string;
+    currency?: Currency;
+    categoryId?: number;
+    quantity?: number;
+    purchasePrice?: number;
+    plan?: TradePlan;
+  } | null;
 }
 
 export interface DerivedState {
@@ -136,6 +171,16 @@ export interface DerivedState {
   marketOverview: MarketOverviewSnapshot | null;
   marketOverviewStatus: MarketOverviewStatus;
   marketOverviewError: string | null;
+  /** 마지막 시세 갱신 완료 시각(ISO) — localStorage 'asset-manager-last-price-refresh-at' 미러(P4) */
+  priceDataAsOf: string | null;
+  /** priceDataAsOf 한국어 표시 라벨 — `utils/priceFreshness.describeFreshness` 결과 (예: '09-03 14:20 (장중)') */
+  priceFreshnessLabel: string;
+  /** 활성 매매 계획 평가 행 (P2a) — `hooks/useTradePlanSignals`. 긴급→오늘 실행→준비→대기 정렬 완료 */
+  tradePlanRows: TradePlanSignalRow[];
+  /** 매매 계획 등급별 건수 + 확인 필요(시세결측/오래됨/손절주문 미등록) — 오늘 화면 배지·요약용 */
+  tradePlanSummary: TradePlanSignalSummary;
+  /** 일괄 계획 마법사 대상(투더문 보유 中 계획 없음) — `utils/tradePlan.isEligibleForBulkPlan` */
+  planlessSatellites: Asset[];
 }
 
 export interface PortfolioActions {
@@ -157,7 +202,7 @@ export interface PortfolioActions {
   refreshWatchlistPrices: () => Promise<void>;
 
   // 자산
-  addAsset: (asset: Asset) => Promise<AddAssetResult>;
+  addAsset: (asset: NewAssetForm & { name?: string }) => Promise<AddAssetResult>;
   updateAsset: (asset: Asset) => Promise<void>;
   togglePinAsset: (id: string) => void;
   deleteAsset: (id: string) => void;
@@ -270,6 +315,50 @@ export interface PortfolioActions {
   restoreBackup: (fileId: string) => Promise<void>;
   deleteBackup: (fileId: string) => Promise<void>;
   updateBackupSettings: (settings: BackupSettings) => void;
+
+  // 매매 계획 (P2a) — 전부 commitPortfolio(단일 커밋) 경유. now/date는 액션 내부에서 생성(utils는 순수 유지).
+  /** 자산에 계획 저장(신규 생성/수정 공용) — status active로 덮어쓴다 */
+  saveTradePlan: (assetId: string, plan: TradePlan) => void;
+  /** 계획 해제 — cancelPlan(status closed reason manual)로 기록은 보존, 삭제 아님 */
+  clearTradePlan: (assetId: string) => void;
+  /** 관심종목 계획 저장/제거. plan=null이면 tradePlan 필드 자체를 제거(매수 전 계획 취소) */
+  saveWatchTradePlan: (watchItemId: string, plan: TradePlan | null) => void;
+  /** 사용자 결정(실행/건너뜀/내일) 기록 — recordDecision 경유 */
+  recordTradePlanDecision: (assetId: string, decision: PlanDecision) => void;
+  /** 추세선 적용 시작(재돌파 확인, [적용 시작] 버튼) */
+  armTradePlanExitLine: (assetId: string, date: string) => void;
+  /** 증권사 손절 예약주문 등록 여부 토글 */
+  setTradePlanBrokerStop: (assetId: string, registered: boolean) => void;
+  /** 일괄 계획 마법사(TradePlanBulkWizard) 열기/닫기 */
+  openTradePlanBulk: () => void;
+  closeTradePlanBulk: () => void;
+  /** 일괄 계획 마법사 저장 — 여러 자산의 계획을 단일 commitPortfolio로 저장 */
+  saveTradePlansBulk: (entries: { assetId: string; plan: TradePlan }[]) => void;
+
+  // 매매 계획 ↔ 매도/추가매수 기록 연동 (P2b)
+  /** [매도 기록] 버튼 경유 — sellingAsset + sellPrefill(quantity/price/outcome)을 함께 연다 */
+  openSellWithPlan: (assetId: string, outcome: SellOutcome) => void;
+  /** 매도 확정(confirmSell) 성공 + 자산 존속 시 커밋 — outcome에 따라 계획 상태 전이(half=applyHalfSell, stop/exit=closePlan, none=무변경) */
+  applyTradePlanSellOutcome: (assetId: string, outcome: SellOutcome, fill: PlanFill) => void;
+  /** 추가매수 확정(confirmBuyMore) 성공 후 불타기 체결로 기록 — 4중 사전검사 실패 시 ok:false(사유는 setError로 표면화), 매수 자체는 롤백하지 않음 */
+  applyTradePlanPyramidFill: (assetId: string, fill: PlanFill) => PyramidFillResult;
+
+  // "새 매수 계획" 독립 화면 (P2c)
+  /** 플래너 열기 — prefill 있으면 그 종목/관심종목 계획으로 바로 시작(종목 검색 건너뜀) */
+  openTradePlanPlanner: (prefill?: { watchItemId?: string; ticker?: string; exchange?: string; name?: string }) => void;
+  closeTradePlanPlanner: () => void;
+  /** 신규 자산 추가 모달을 프리필로 연다 — 플래너 [지금 매수 기록하며 저장] 경유 */
+  openAddAssetWithPrefill: (prefill: {
+    ticker: string; exchange: string; name: string; currency?: Currency;
+    categoryId?: number; quantity?: number; purchasePrice?: number; plan?: TradePlan;
+  }) => void;
+  /** 새로 추가된 자산과 짝이 맞는 관심종목의 활성 계획을 자산으로 이전(단일 커밋, `utils/tradePlanTransfer`) — 매칭 없으면 무변경 */
+  adoptWatchPlanForAsset: (assetId: string) => void;
+  /** 관심종목 추가 + 계획 저장을 한 커밋으로 — 플래너 [관심종목에 계획과 함께 저장] */
+  addWatchItemWithPlan: (
+    item: Omit<WatchlistItem, 'id' | 'currentPrice' | 'priceOriginal' | 'currency' | 'previousClosePrice' | 'highestPrice'>,
+    plan: TradePlan
+  ) => void;
 }
 
 export interface PortfolioContextValue {

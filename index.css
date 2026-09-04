@@ -8,6 +8,14 @@
     color-scheme: dark;
   }
 
+  /* P6: 기본 15px(기존 브라우저 기본 16px보다 살짝 조밀) — Tailwind 유틸리티가 전부 rem 단위라
+     여기서 전체 밀도가 결정된다. "글자 크게" 토글(hooks/useFontScale)이 이 값을 15↔17px로
+     바꾼다 — 고정 px를 하드코딩하는 곳은 그 훅이 적용된 뒤 값을 덮어쓰지 못하므로 금지
+     (RULES.md §8). 모바일 input의 16px 강제(아래)는 iOS 자동확대 방지용 고정값이라 무관하다. */
+  html {
+    font-size: 15px;
+  }
+
   body {
     @apply bg-gray-900 text-gray-200 min-h-screen;
     margin: 0;

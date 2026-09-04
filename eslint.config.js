@@ -48,6 +48,7 @@ export default tseslint.config(
       'public/**',
       'scripts/backtest/**/cache/**',
       'scripts/backtest/**/output/**',
+      'scripts/notify/gas/dist/**', // esbuild 산출물(gitignore) — 소스는 scripts/notify/gas/entry.ts
       'eslint-suppressions.json',
     ],
   },

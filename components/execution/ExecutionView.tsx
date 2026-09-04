@@ -9,6 +9,17 @@
 //     모달 저장 성공 시에만 done+lifecycle 커밋. 비터틀 kind는 기존 markDone(표시만) 유지.
 //   · TurtleExecuteModal에 executeTurtleAction을 **prop으로 전달** — useActionQueue 인스턴스 중복 방지.
 // UI 렌더만 담당(프로젝트 규칙) — 계산/상태는 useActionQueue 훅.
+//
+// P3(오늘 화면): **`embedded` prop** — `'execution'` 탭 자체가 UI에서 더는 도달 불가라 이 컴포넌트는
+// 이제 사실상 `components/today/PendingOrdersSection.tsx`를 통해서만 마운트된다. embedded=true면
+// 페이지 타이틀/설명·`TurtleSettingsPanel`(→ 설정의 `TurtleSettingsSection`으로 이전)·터틀 잠금 장문
+// 안내를 숨긴다. **"오늘 주문 생성" 버튼과 `WhyNoOrderPanel`은 의도적으로 유지한다**(계획서 문면은
+// 헤더 전체를 숨기라 했지만 기능 보존을 우선한 의도적 이탈 — RULES.md §3 참고):
+//   · 리밸런싱 주문은 이 버튼이 유일한 생성 경로다(대청소는 CleanupView가 별도 생성) — 완전히
+//     숨기면 오늘 화면에서 리밸런싱 주문을 만들 방법이 없어진다.
+//   · WhyNoOrderPanel은 그 생성 버튼과 짝인 진단(0건일 때만 노출)이라, 버튼을 살려두면서 진단만
+//     없애면 "왜 안 만들어지는지" 확인할 곳이 없어진다 — 옮겨 갈 다른 화면도 없다(설정은 상시
+//     노출이라 부적합).
 
 import React, { useMemo, useState } from 'react';
 import { usePortfolio } from '../../contexts/PortfolioContext';
@@ -48,7 +59,12 @@ const fmt = (n: number): string =>
 
 const todayISO = (): string => new Date().toISOString().slice(0, 10);
 
-const ExecutionView: React.FC = () => {
+export interface ExecutionViewProps {
+  /** true면 오늘 화면(PendingOrdersSection) 내장 모드 — 헤더/TurtleSettingsPanel/WhyNoOrderPanel 숨김 */
+  embedded?: boolean;
+}
+
+const ExecutionView: React.FC<ExecutionViewProps> = ({ embedded = false }) => {
   const { actions } = usePortfolio();
   const { actionQueue, refreshActionQueue, markDone, markSkipped, snoozeAction, executeTurtleAction, executeCleanupAction, executeRebalanceAction, isRefreshing, refreshError } = useActionQueue();
   const turtleLocked = isTurtleOrderLocked();
@@ -81,6 +97,88 @@ const ExecutionView: React.FC = () => {
   const confirmSkip = () => {
     if (skipId && skipText.trim()) { markSkipped(skipId, skipText); setSkipId(null); setSkipText(''); }
   };
+
+  // 카드 목록 — full/embedded 공용(중복 없이 아래 두 return이 공유).
+  const cardList = active.length === 0 ? (
+    <div className="text-center text-gray-500 bg-gray-800/50 border border-gray-700 rounded-lg py-8 px-4">
+      <p className="text-sm">대기 중인 주문이 없습니다.</p>
+      {!embedded && <p className="text-xs mt-1">「오늘 주문 생성」을 눌러 터틀 규칙을 평가하세요.</p>}
+    </div>
+  ) : (
+    <ul className="space-y-2.5">
+      {active.map(item => (
+        <ActionCard
+          key={item.id}
+          item={item}
+          today={today}
+          isSkipping={skipId === item.id}
+          skipText={skipText}
+          onSkipTextChange={setSkipText}
+          onStartSkip={() => startSkip(item.id)}
+          onConfirmSkip={confirmSkip}
+          onCancelSkip={() => setSkipId(null)}
+          onDone={() => {
+            if (isActionExecutionLocked(item.kind)) return; // fail-closed — 화면에서도 실행 진입 차단
+            if (isTurtleKind(item.kind)) actions.openTurtleExecution(item);
+            else if (isCleanupKind(item.kind)) actions.openCleanupExecution(item);
+            else if (isRebalanceKind(item.kind)) actions.openRebalanceExecution(item);
+            else markDone(item.id);
+          }}
+          isTurtle={needsExecuteModal(item.kind)}
+          executionLocked={isActionExecutionLocked(item.kind)}
+          onSnooze={() => snoozeAction(item.id, 1)}
+        />
+      ))}
+    </ul>
+  );
+
+  const executeModals = (
+    <>
+      <TurtleExecuteModal executeTurtleAction={executeTurtleAction} />
+      <CleanupExecuteModal executeCleanupAction={executeCleanupAction} />
+      <RebalanceExecuteModal executeRebalanceAction={executeRebalanceAction} />
+    </>
+  );
+
+  if (embedded) {
+    return (
+      <div>
+        {/* 헤더/설명/TurtleSettingsPanel/WhyNoOrderPanel 생략(설정의 TurtleSettingsSection이 대체) —
+            "오늘 주문 생성" 버튼만 상태 요약과 함께 유지(리밸런싱 생성의 유일한 경로, 위 주석 참고). */}
+        <div className="flex items-center justify-between gap-3 flex-wrap mb-3">
+          <div className="flex items-center gap-3 text-xs text-gray-400">
+            <span>대기 <span className="text-gray-100 font-semibold">{active.length}</span>건</span>
+            <span className="text-gray-600">·</span>
+            <span>처리됨 {resolvedCount}건</span>
+            {lastResult && <span className="text-gray-500">· {lastResult}</span>}
+          </div>
+          <button
+            onClick={handleRefresh}
+            disabled={isRefreshing || turtleLocked}
+            className="flex-shrink-0 flex items-center gap-1.5 text-xs font-medium text-white bg-primary hover:bg-primary-dark px-2.5 py-1.5 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            title={turtleLocked ? '터틀 주문 잠금 중 — 생성할 수 없습니다' : '지금 리밸런싱/터틀 규칙을 평가해 오늘 주문을 생성합니다'}
+          >
+            {isRefreshing && (
+              <svg className="animate-spin h-3.5 w-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+              </svg>
+            )}
+            <span>{isRefreshing ? '생성 중...' : '오늘 주문 생성'}</span>
+          </button>
+        </div>
+        {refreshError && (
+          <div className="mb-3 text-sm text-red-300 bg-red-500/10 border border-red-500/30 rounded-md px-3 py-2">{refreshError}</div>
+        )}
+        {/* "오늘 주문 생성"을 눌러도 결과가 0건이면 이유를 알아야 하므로(생성 버튼과 짝인 진단),
+            WhyNoOrderPanel만은 embedded에서도 유지한다 — TurtleSettingsPanel과 달리 이전할 다른
+            화면이 없다(설정 화면은 상시 노출이라 부적합). 노출은 여전히 noOrderDiag가 있을 때뿐. */}
+        {noOrderDiag && <WhyNoOrderPanel diagnostics={noOrderDiag} />}
+        {cardList}
+        {executeModals}
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-3xl mx-auto px-1 sm:px-0 pb-16">
@@ -142,44 +240,11 @@ const ExecutionView: React.FC = () => {
       {/* 0건일 때 "왜 주문이 없나요?" 진단 */}
       {noOrderDiag && <WhyNoOrderPanel diagnostics={noOrderDiag} />}
 
-      {/* 주문 카드 목록 */}
-      {active.length === 0 ? (
-        <div className="text-center text-gray-500 bg-gray-800/50 border border-gray-700 rounded-lg py-12 px-4">
-          <p className="text-sm">대기 중인 주문이 없습니다.</p>
-          <p className="text-xs mt-1">「오늘 주문 생성」을 눌러 터틀 규칙을 평가하세요.</p>
-        </div>
-      ) : (
-        <ul className="space-y-2.5">
-          {active.map(item => (
-            <ActionCard
-              key={item.id}
-              item={item}
-              today={today}
-              isSkipping={skipId === item.id}
-              skipText={skipText}
-              onSkipTextChange={setSkipText}
-              onStartSkip={() => startSkip(item.id)}
-              onConfirmSkip={confirmSkip}
-              onCancelSkip={() => setSkipId(null)}
-              onDone={() => {
-                if (isActionExecutionLocked(item.kind)) return; // fail-closed — 화면에서도 실행 진입 차단
-                if (isTurtleKind(item.kind)) actions.openTurtleExecution(item);
-                else if (isCleanupKind(item.kind)) actions.openCleanupExecution(item);
-                else if (isRebalanceKind(item.kind)) actions.openRebalanceExecution(item);
-                else markDone(item.id);
-              }}
-              isTurtle={needsExecuteModal(item.kind)}
-              executionLocked={isActionExecutionLocked(item.kind)}
-              onSnooze={() => snoozeAction(item.id, 1)}
-            />
-          ))}
-        </ul>
-      )}
+      {/* 주문 카드 목록 (embedded 분기와 공유 — 위 cardList) */}
+      {cardList}
 
       {/* 실행 모달 — 각 executeXxxAction을 prop으로 전달(훅 인스턴스 중복 방지) */}
-      <TurtleExecuteModal executeTurtleAction={executeTurtleAction} />
-      <CleanupExecuteModal executeCleanupAction={executeCleanupAction} />
-      <RebalanceExecuteModal executeRebalanceAction={executeRebalanceAction} />
+      {executeModals}
     </div>
   );
 };

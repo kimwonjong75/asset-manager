@@ -7,7 +7,9 @@ import { MoreHorizontal } from 'lucide-react';
 import AssetTrendChart from '../AssetTrendChart';
 import ChartViewerModal from '../common/ChartViewerModal';
 import StockReviewAccordion from '../stock-review/StockReviewAccordion';
+import TradePlanSection from '../trade-plan/TradePlanSection';
 import { watchlistToPseudoAsset } from '../../utils/alertChecker';
+import { usePortfolio } from '../../contexts/PortfolioContext';
 
 interface WatchlistMobileCardProps {
   item: WatchlistItem & { dropFromHigh: number | null; yesterdayChange: number };
@@ -40,6 +42,7 @@ const WatchlistMobileCard: React.FC<WatchlistMobileCardProps> = ({
   exchangeRates,
   isPortfolioHeld,
 }) => {
+  const { actions } = usePortfolio();
   const [menuOpen, setMenuOpen] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
@@ -137,6 +140,11 @@ const WatchlistMobileCard: React.FC<WatchlistMobileCardProps> = ({
             onClose={() => setMenuOpen(false)}
             items={[
               { label: '수정', onClick: () => onOpenEditModal(item) },
+              {
+                label: '📋 매매 계획',
+                onClick: () => actions.openTradePlanPlanner({ watchItemId: item.id, ticker: item.ticker, exchange: item.exchange, name: item.name }),
+                colorClass: 'text-gray-200',
+              },
               ...(onToggleTurtle ? [{ label: item.isTurtleCandidate ? '🐢 터틀 후보 해제' : '🐢 터틀 후보 지정', onClick: () => onToggleTurtle(item.id), colorClass: 'text-gray-200' }] : []),
               { label: '차트 보기', onClick: () => setExpanded(!expanded), colorClass: 'text-gray-200' },
               { label: '차트 확대', onClick: () => setFullscreen(true), colorClass: 'text-gray-200' },
@@ -163,6 +171,12 @@ const WatchlistMobileCard: React.FC<WatchlistMobileCardProps> = ({
             exchange={item.exchange}
             categoryId={item.categoryId}
             onExpand={() => setFullscreen(true)}
+          />
+          <TradePlanSection
+            source="watchlist"
+            watchItem={item}
+            displayName={item.name}
+            className="px-4"
           />
           <StockReviewAccordion
             asset={watchlistToPseudoAsset(item)}

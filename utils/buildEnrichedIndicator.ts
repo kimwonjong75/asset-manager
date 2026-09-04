@@ -22,7 +22,7 @@ import { detectRecentSwingLow } from './swingPointDetection';
 import { buildDistributionMeta } from './marketDistribution';
 import type { EnrichedIndicatorData } from '../hooks/useEnrichedIndicators';
 
-export const MA_PERIODS = [5, 10, 20, 60, 120, 150, 200] as const;
+export const MA_PERIODS = [5, 10, 20, 50, 60, 120, 150, 200] as const; // 50 = 매매계획 추세선(TradePlan exitLine) 재료
 export const RSI_PERIOD = 14;
 export const DISTRIBUTION_META_LENGTH = 30;
 export const VOLUME_AVG_PERIOD_DISTRIBUTION = 50;

@@ -5,6 +5,7 @@ import { EnrichedAsset, ColumnConfig, ColumnKey } from '../../types/ui';
 import AssetTrendChart from '../AssetTrendChart';
 import ChartViewerModal from '../common/ChartViewerModal';
 import StockReviewAccordion from '../stock-review/StockReviewAccordion';
+import TradePlanSection from '../trade-plan/TradePlanSection';
 import { MoreHorizontal } from 'lucide-react';
 import MemoTooltip from '../common/MemoTooltip';
 import Tooltip from '../common/Tooltip';
@@ -208,6 +209,12 @@ const PortfolioTableRow: React.FC<PortfolioTableRowProps> = ({
               categoryId={asset.categoryId}
               purchasePrice={asset.purchasePrice}
               onExpand={() => setFullscreen(true)}
+            />
+            <TradePlanSection
+              source="portfolio"
+              asset={asset}
+              displayName={asset.customName?.trim() || asset.name}
+              className="px-2 sm:px-0"
             />
             <StockReviewAccordion
               asset={asset}

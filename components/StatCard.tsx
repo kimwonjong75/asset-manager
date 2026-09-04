@@ -24,7 +24,7 @@ const StatCard: React.FC<StatCardProps> = ({ title, value, isProfit, tooltip, on
     ? 'text-success' 
     : 'text-danger';
 
-  const containerClasses = `bg-gray-800 ${size === 'small' ? 'p-3' : 'p-6'} rounded-lg shadow-lg ${onClick ? 'cursor-pointer hover:bg-gray-700 transition-colors' : ''}`;
+  const containerClasses = `bg-gray-800 ${size === 'small' ? 'p-3' : 'p-6'} rounded-card shadow-lg ${onClick ? 'cursor-pointer hover:bg-gray-700 transition-colors' : ''}`;
   const titleClasses = `font-medium uppercase tracking-wider ${size === 'small' ? 'text-xs' : 'text-sm'} ${isAlert ? 'text-yellow-400' : 'text-gray-400'}`;
   const valueClasses = `font-bold ${size === 'small' ? 'text-2xl mt-1' : 'text-3xl mt-2'} ${valueColor}`;
 

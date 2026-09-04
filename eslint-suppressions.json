@@ -1,16 +1,13 @@
 {
   "App.tsx": {
     "@typescript-eslint/no-unused-vars": {
-      "count": 5
+      "count": 3
     },
     "no-empty": {
       "count": 1
     }
   },
   "components/AddNewAssetModal.tsx": {
-    "@typescript-eslint/no-explicit-any": {
-      "count": 1
-    },
     "no-restricted-imports": {
       "count": 3
     },
@@ -86,9 +83,6 @@
       "count": 2
     },
     "react-hooks/preserve-manual-memoization": {
-      "count": 1
-    },
-    "react-hooks/set-state-in-effect": {
       "count": 1
     }
   },
@@ -181,11 +175,6 @@
   "components/layouts/DashboardView.tsx": {
     "@typescript-eslint/no-unused-vars": {
       "count": 1
-    }
-  },
-  "components/layouts/InvestmentGuideView.tsx": {
-    "react-hooks/static-components": {
-      "count": 7
     }
   },
   "components/portfolio-table/PortfolioMobileCard.tsx": {

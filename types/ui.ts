@@ -90,13 +90,10 @@ export const MIN_COLUMN_WIDTH = 80;
 export interface SignalDisplaySettings {
   /** 구루 신호 카드를 대시보드 상단에 큰 카드로 표시 (기본 false=하단 '참고 지표' 접힘 섹션으로 강등) */
   showGuruSignalsProminently: boolean;
-  /** 리스크 매트릭스를 알림 브리핑 팝업에서 항상 펼쳐 표시 (기본 false=접힘, 클릭 시 펼침) */
-  showRiskMatrixExpanded: boolean;
 }
 
 export const DEFAULT_SIGNAL_DISPLAY: SignalDisplaySettings = {
   showGuruSignalsProminently: false,
-  showRiskMatrixExpanded: false,
 };
 
 // 기존 더보기 ON 상태와 동일한 순서/표시 — 마이그레이션 기본값

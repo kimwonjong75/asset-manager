@@ -1,0 +1,988 @@
+// scripts/notify/gas/entry.ts
+// ---------------------------------------------------------------------------
+// 카카오톡 알림 v1 — Google Apps Script 발송기(P5, 계획서 §6 / RULES.md §15).
+//
+// 이 파일은 esbuild(scripts/notify/build-gas.mjs)가 `dist/bundle.js`(IIFE, 전역 `TradePlanNotify`)로
+// 묶고, `dist/Code.js`가 최상위 함수(doGet/doPost/hourlyCheck/closeCheck/morningDigest/
+// installTriggers/sendTestMessage)로 위임한다. GAS 런타임(V8, ES 모듈 아님)에서 그대로 돈다.
+//
+// 재사용(파리티 보증): utils/tradePlan.ts(evaluateTradePlan/formatKakaoText/formatKakaoDigest/
+// computeExitLineValue) + utils/marketHours.ts(isMarketOpen/lastSessionDate/closeConfirmTime/
+// isQuietHours/toKstParts) + constants/api.ts(CLOUD_RUN_BASE_URL/APP_PUBLIC_URL) — 전부 순수 TS라
+// 앱과 계산 로직이 100% 동일하다(별도 재작성 금지 — RULES.md §15 "Python 재작성=파리티 리스크"와
+// 같은 이유). services/*는 fetch()(브라우저 전용) 등을 쓰므로 import하지 않는다 — 동일한 요청/응답
+// 포맷(§14)을 UrlFetchApp으로 이 파일 안에서 재현한다.
+//
+// 저장: 매니페스트·MA 캐시는 이 스크립트가 만든 Drive 파일에만 저장한다(drive.file 스코프로 충분).
+// **portfolio.json은 절대 읽지도 쓰지도 않는다**(RULES.md §15).
+
+import { CLOUD_RUN_BASE_URL, APP_PUBLIC_URL } from '../../../constants/api';
+import {
+  evaluateTradePlan,
+  computeExitLineValue,
+  formatKakaoText,
+  formatKakaoDigest,
+} from '../../../utils/tradePlan';
+import {
+  isMarketOpen,
+  lastSessionDate,
+  closeConfirmTime,
+  isQuietHours,
+  toKstParts,
+  type MarketId,
+} from '../../../utils/marketHours';
+import { PLAN_TIER_LABELS } from '../../../types/tradePlan';
+import type {
+  ExitLinePeriod,
+  TradePlanEvaluation,
+  TradePlanMarket,
+} from '../../../types/tradePlan';
+import type { NotifyManifest, NotifyManifestItem } from '../../../utils/notifyManifest';
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 상수
+// ═══════════════════════════════════════════════════════════════════════════
+
+const KAKAO_AUTHORIZE_URL = 'https://kauth.kakao.com/oauth/authorize';
+const KAKAO_TOKEN_URL = 'https://kauth.kakao.com/oauth/token';
+const KAKAO_SEND_URL = 'https://kapi.kakao.com/v2/api/talk/memo/default/send';
+
+const MANIFEST_FILE_NAME = 'trade-plan-manifest.json';
+const MA_CACHE_FILE_NAME = 'trade-plan-ma-cache.json';
+
+const DAILY_SEND_CAP = 8;
+const SENT_LOG_RETENTION_DAYS = 7;
+const MAIL_FAILURE_COOLDOWN_HOURS = 24;
+const HISTORY_LOOKBACK_DAYS = 80;
+const QUOTE_CHUNK_SIZE = 20;
+
+const MARKET_IDS: MarketId[] = ['KR', 'US', 'CRYPTO'];
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ScriptProperties 헬퍼
+// ═══════════════════════════════════════════════════════════════════════════
+
+function getProp(key: string): string | null {
+  return PropertiesService.getScriptProperties().getProperty(key);
+}
+function setProp(key: string, value: string): void {
+  PropertiesService.getScriptProperties().setProperty(key, value);
+}
+function getJsonProp<T>(key: string, fallback: T): T {
+  const raw = getProp(key);
+  if (!raw) return fallback;
+  try {
+    return JSON.parse(raw) as T;
+  } catch {
+    return fallback;
+  }
+}
+function setJsonProp(key: string, value: unknown): void {
+  setProp(key, JSON.stringify(value));
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 시각 유틸(KST) — utils/marketHours.toKstParts 재사용, 문자열 포맷만 이 파일 책임
+// ═══════════════════════════════════════════════════════════════════════════
+
+function pad2(n: number): string {
+  return String(n).padStart(2, '0');
+}
+function kstDateStr(now: Date): string {
+  const p = toKstParts(now);
+  return `${p.y}-${pad2(p.m)}-${pad2(p.d)}`;
+}
+function hhmmKst(now: Date): string {
+  const p = toKstParts(now);
+  return `${pad2(p.hh)}:${pad2(p.mm)}`;
+}
+/** GAS Date 필드는 appsscript.json의 timeZone(Asia/Seoul) 기준이므로 로컬 필드가 곧 KST 날짜다. */
+function localDateStr(d: Date): string {
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+}
+function addDaysStr(dateStr: string, deltaDays: number): string {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const shifted = new Date(Date.UTC(y, m - 1, d) + deltaDays * 86_400_000);
+  return `${shifted.getUTCFullYear()}-${pad2(shifted.getUTCMonth() + 1)}-${pad2(shifted.getUTCDate())}`;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 시장 분류 — utils/holdingMarkets.marketIdForExchange와 동일 규칙을 자체 구현
+// (그 파일은 services/historicalPriceService를 값으로 import해 fetch() 등 브라우저 전용
+//  코드를 끌고 오므로 GAS 번들에 넣지 않는다 — 대신 규칙만 복제한다)
+// ═══════════════════════════════════════════════════════════════════════════
+
+function isCryptoExchangeLocal(exchange: string): boolean {
+  const normalized = (exchange || '').toLowerCase().trim();
+  return ['upbit', 'bithumb', '주요 거래소 (종합)'].some(ex => normalized.includes(ex));
+}
+
+function classifyMarket(exchange: string): MarketId {
+  if (isCryptoExchangeLocal(exchange)) return 'CRYPTO';
+  const e = (exchange || '').toUpperCase();
+  if (e.includes('KRX') || e.includes('KONEX') || e.includes('금시장')) return 'KR';
+  return 'US'; // NASDAQ/NYSE/AMEX 및 미분류는 US 규약 폴백(marketIdForExchange와 동일)
+}
+
+function toUpbitPair(symbol: string): string {
+  const s = (symbol || '').trim().toUpperCase();
+  if (!s) return '';
+  if (s.startsWith('KRW-') || s.startsWith('BTC-') || s.startsWith('USDT-')) return s;
+  return `KRW-${s.replace(/USDT$/, '')}`;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 백엔드 HTTP 클라이언트 (Cloud Run, 무인증) — services/priceService·historicalPriceService·
+// upbitService·marketOverviewService와 동일한 요청/응답 포맷을 UrlFetchApp으로 재현(RULES §14)
+// ═══════════════════════════════════════════════════════════════════════════
+
+function toNumber(v: unknown, fallback = 0): number {
+  const n = Number(v);
+  return isFinite(n) ? n : fallback;
+}
+
+function httpPostJson(url: string, body: unknown): unknown {
+  const res = UrlFetchApp.fetch(url, {
+    method: 'post',
+    contentType: 'application/json',
+    payload: JSON.stringify(body),
+    muteHttpExceptions: true,
+  });
+  const code = res.getResponseCode();
+  const text = res.getContentText();
+  if (code < 200 || code >= 300) {
+    throw new Error(`백엔드 오류 ${code}: ${text.slice(0, 200)}`);
+  }
+  // 백엔드가 NaN을 반환할 수 있어 텍스트 치환 후 파싱(services/priceService.ts와 동일 관례)
+  return JSON.parse(text.replace(/\bNaN\b/g, 'null'));
+}
+
+/** `/` 응답을 티커(대문자) 키 맵으로 평탄화(array / {results} / object-keyed 대응) — marketOverviewService.flattenByTicker와 동일 규칙. */
+function flattenByTicker(data: unknown): Map<string, Record<string, unknown>> {
+  const map = new Map<string, Record<string, unknown>>();
+  const push = (item: Record<string, unknown>, keyHint?: string) => {
+    const t = String(item.ticker ?? item.symbol ?? keyHint ?? '').toUpperCase();
+    if (t) map.set(t, item);
+  };
+  if (Array.isArray(data)) {
+    data.forEach(it => it && typeof it === 'object' && push(it as Record<string, unknown>));
+  } else if (data && typeof data === 'object') {
+    const obj = data as Record<string, unknown>;
+    if (Array.isArray(obj.results)) {
+      (obj.results as unknown[]).forEach(it => it && typeof it === 'object' && push(it as Record<string, unknown>));
+    } else {
+      Object.entries(obj).forEach(([key, val]) => {
+        if (val && typeof val === 'object') push(val as Record<string, unknown>, key);
+      });
+    }
+  }
+  return map;
+}
+
+interface QuoteResult { price: number; prevClose: number; date: string | null }
+
+/** 주식/ETF/금 등 현재가 배치 조회(`/`, quotes_only). 20개씩 청크(services/priceService.CHUNK_SIZE와 동일). */
+function fetchQuotes(items: { ticker: string; exchange: string }[]): Map<string, QuoteResult> {
+  const result = new Map<string, QuoteResult>();
+  for (let i = 0; i < items.length; i += QUOTE_CHUNK_SIZE) {
+    const chunk = items.slice(i, i + QUOTE_CHUNK_SIZE);
+    try {
+      const data = httpPostJson(CLOUD_RUN_BASE_URL, {
+        tickers: chunk.map(c => ({ ticker: c.ticker.toUpperCase(), exchange: c.exchange })),
+        quotes_only: true,
+      });
+      const map = flattenByTicker(data);
+      for (const c of chunk) {
+        const item = map.get(c.ticker.toUpperCase());
+        if (!item) continue;
+        result.set(c.ticker.toUpperCase(), {
+          price: toNumber(item.priceOriginal ?? item.price ?? item.close),
+          prevClose: toNumber(item.prev_close ?? item.previousClose ?? item.yesterdayPrice),
+          date: typeof item.date === 'string' ? item.date : null,
+        });
+      }
+    } catch (e) {
+      console.error('fetchQuotes 청크 실패:', e);
+    }
+  }
+  return result;
+}
+
+/** 암호화폐 현재가 배치 조회(`/upbit`). */
+function fetchUpbitQuotes(tickers: string[]): Map<string, QuoteResult> {
+  const result = new Map<string, QuoteResult>();
+  if (tickers.length === 0) return result;
+  try {
+    const data = httpPostJson(`${CLOUD_RUN_BASE_URL}/upbit`, { symbols: tickers }) as Record<string, Record<string, unknown>>;
+    for (const ticker of tickers) {
+      const pair = toUpbitPair(ticker);
+      const item = data[pair] ?? data[ticker.toUpperCase()];
+      if (!item || item.error) continue;
+      result.set(ticker.toUpperCase(), {
+        price: toNumber(item.trade_price),
+        prevClose: toNumber(item.prev_closing_price),
+        date: null, // 업비트 현재가 응답엔 날짜가 없음 — 24시간 시장이라 세션일로 대체 표시
+      });
+    }
+  } catch (e) {
+    console.error('fetchUpbitQuotes 실패:', e);
+  }
+  return result;
+}
+
+function mergeQuoteMap(target: Map<string, QuoteResult>, source: Map<string, QuoteResult>): void {
+  source.forEach((v, k) => target.set(k, v));
+}
+
+// ── 과거 종가(/history, /upbit/history) → MA 캐시 ──────────────────────────
+
+interface MaCacheEntry {
+  ma: Partial<Record<ExitLinePeriod, number | null>>;
+  asOf: string;
+  /** 확정 종가(마감 판정용) — 조회된 종가 시계열의 마지막 날짜 값. */
+  lastClose?: number;
+  lastCloseDate?: string;
+}
+type MaCache = Record<string, MaCacheEntry>;
+
+function entryToMaCache(data: Record<string, number> | undefined, asOf: string): MaCacheEntry | null {
+  if (!data) return null;
+  const dates = Object.keys(data).sort();
+  const closes = dates.map(d => data[d]).filter(c => typeof c === 'number' && isFinite(c) && c > 0);
+  if (closes.length === 0) return null;
+  const ma: Partial<Record<ExitLinePeriod, number | null>> = {};
+  for (const period of [10, 20, 50] as ExitLinePeriod[]) {
+    ma[period] = computeExitLineValue(closes, { kind: 'ma', period });
+  }
+  const lastDate = dates[dates.length - 1];
+  return { ma, asOf, lastClose: data[lastDate], lastCloseDate: lastDate };
+}
+
+/** manifest 항목들의 MA 캐시를 배치 갱신한다(closeCheck 전용 — 마감 확정 후 1회). */
+function updateMaCache(cache: MaCache, items: NotifyManifestItem[], market: MarketId, now: Date): void {
+  const endDate = localDateStr(now);
+  const startDate = addDaysStr(endDate, -HISTORY_LOOKBACK_DAYS);
+
+  if (market === 'CRYPTO') {
+    const symbols = items.map(it => it.ticker);
+    try {
+      const data = httpPostJson(`${CLOUD_RUN_BASE_URL}/upbit/history`, {
+        symbols, start_date: startDate, end_date: endDate,
+      }) as Record<string, { data?: Record<string, number> }>;
+      for (const it of items) {
+        const pair = toUpbitPair(it.ticker);
+        const entry = data[pair] ?? data[it.ticker.toUpperCase()];
+        const parsed = entryToMaCache(entry?.data, endDate);
+        if (parsed) cache[it.ticker.toUpperCase()] = parsed;
+      }
+    } catch (e) {
+      console.error('crypto history 조회 실패:', e);
+    }
+    return;
+  }
+
+  const tickers = items.map(it => it.ticker.toUpperCase());
+  for (let i = 0; i < tickers.length; i += QUOTE_CHUNK_SIZE) {
+    const chunk = tickers.slice(i, i + QUOTE_CHUNK_SIZE);
+    try {
+      const data = httpPostJson(`${CLOUD_RUN_BASE_URL}/history`, {
+        tickers: chunk, start_date: startDate, end_date: endDate,
+      }) as Record<string, { data?: Record<string, number> }>;
+      for (const ticker of chunk) {
+        const parsed = entryToMaCache(data[ticker]?.data, endDate);
+        if (parsed) cache[ticker] = parsed;
+      }
+    } catch (e) {
+      console.error('history 청크 실패:', e);
+    }
+  }
+}
+
+/** hourlyCheck에서 캐시가 비어 있을 때(첫 실행 등)만 쓰는 단건 폴백 — 브리프 §A hourlyCheck 명세. */
+function bootstrapMaEntry(ticker: string, market: MarketId, now: Date): MaCacheEntry | null {
+  const endDate = localDateStr(now);
+  const startDate = addDaysStr(endDate, -HISTORY_LOOKBACK_DAYS);
+  try {
+    if (market === 'CRYPTO') {
+      const data = httpPostJson(`${CLOUD_RUN_BASE_URL}/upbit/history`, {
+        symbols: [ticker], start_date: startDate, end_date: endDate,
+      }) as Record<string, { data?: Record<string, number> }>;
+      const pair = toUpbitPair(ticker);
+      const entry = data[pair] ?? data[ticker.toUpperCase()];
+      return entryToMaCache(entry?.data, endDate);
+    }
+    const data = httpPostJson(`${CLOUD_RUN_BASE_URL}/history`, {
+      tickers: [ticker.toUpperCase()], start_date: startDate, end_date: endDate,
+    }) as Record<string, { data?: Record<string, number> }>;
+    return entryToMaCache(data[ticker.toUpperCase()]?.data, endDate);
+  } catch (e) {
+    console.error('bootstrapMaEntry 실패:', ticker, e);
+    return null;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 매니페스트 / MA 캐시 저장 — 이 스크립트가 만든 Drive 파일에만 저장(portfolio.json 무접촉)
+// ═══════════════════════════════════════════════════════════════════════════
+
+function loadManifest(): NotifyManifest | null {
+  const fileId = getProp('MANIFEST_FILE_ID');
+  if (!fileId) return null;
+  try {
+    const text = DriveApp.getFileById(fileId).getBlob().getDataAsString('UTF-8');
+    return JSON.parse(text) as NotifyManifest;
+  } catch (e) {
+    console.error('매니페스트 로드 실패:', e);
+    return null;
+  }
+}
+
+function saveManifest(manifest: NotifyManifest): void {
+  const json = JSON.stringify(manifest);
+  const fileId = getProp('MANIFEST_FILE_ID');
+  if (fileId) {
+    try {
+      DriveApp.getFileById(fileId).setContent(json);
+      if (manifest.appUrl) setProp('APP_URL', manifest.appUrl);
+      return;
+    } catch (e) {
+      console.error('기존 매니페스트 파일 갱신 실패, 새로 생성합니다:', e);
+    }
+  }
+  const file = DriveApp.createFile(MANIFEST_FILE_NAME, json, 'application/json');
+  setProp('MANIFEST_FILE_ID', file.getId());
+  if (manifest.appUrl) setProp('APP_URL', manifest.appUrl);
+}
+
+function loadMaCache(): MaCache {
+  const fileId = getProp('MA_CACHE_FILE_ID');
+  if (!fileId) return {};
+  try {
+    const text = DriveApp.getFileById(fileId).getBlob().getDataAsString('UTF-8');
+    return JSON.parse(text) as MaCache;
+  } catch (e) {
+    console.error('MA 캐시 로드 실패:', e);
+    return {};
+  }
+}
+
+function saveMaCache(cache: MaCache): void {
+  const json = JSON.stringify(cache);
+  const fileId = getProp('MA_CACHE_FILE_ID');
+  if (fileId) {
+    try {
+      DriveApp.getFileById(fileId).setContent(json);
+      return;
+    } catch (e) {
+      console.error('기존 MA 캐시 파일 갱신 실패, 새로 생성합니다:', e);
+    }
+  }
+  const file = DriveApp.createFile(MA_CACHE_FILE_NAME, json, 'application/json');
+  setProp('MA_CACHE_FILE_ID', file.getId());
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 멱등 / 일 상한 / 정숙시간 보류
+// ═══════════════════════════════════════════════════════════════════════════
+
+function hasSent(key: string): boolean {
+  const log = getJsonProp<Record<string, string>>('SENT_LOG_JSON', {});
+  return Object.prototype.hasOwnProperty.call(log, key);
+}
+
+function markSent(key: string, now: Date): void {
+  const log = getJsonProp<Record<string, string>>('SENT_LOG_JSON', {});
+  log[key] = now.toISOString();
+  const cutoff = now.getTime() - SENT_LOG_RETENTION_DAYS * 86_400_000;
+  for (const k of Object.keys(log)) {
+    const t = new Date(log[k]).getTime();
+    if (!isFinite(t) || t < cutoff) delete log[k];
+  }
+  setJsonProp('SENT_LOG_JSON', log);
+}
+
+function getDailyCount(now: Date): number {
+  const d = getJsonProp<{ date: string; count: number }>('DAILY_COUNT_JSON', { date: '', count: 0 });
+  return d.date === kstDateStr(now) ? d.count : 0;
+}
+function setDailyCount(count: number, now: Date): void {
+  setJsonProp('DAILY_COUNT_JSON', { date: kstDateStr(now), count });
+}
+
+interface PendingEntry { summary: string; at: string }
+function loadPending(): PendingEntry[] {
+  return getJsonProp<PendingEntry[]>('PENDING_QUIET_JSON', []);
+}
+function queuePending(summary: string, now: Date): void {
+  const list = loadPending();
+  list.push({ summary, at: now.toISOString() });
+  setJsonProp('PENDING_QUIET_JSON', list);
+}
+function clearPending(): void {
+  setJsonProp('PENDING_QUIET_JSON', []);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 실행 상태 / 실패 메일
+// ═══════════════════════════════════════════════════════════════════════════
+
+interface LastRun { at: string; status: 'ok' | 'error'; message: string }
+function recordLastRun(status: 'ok' | 'error', message: string): void {
+  setJsonProp('LAST_RUN_JSON', { at: new Date().toISOString(), status, message } satisfies LastRun);
+}
+
+function maybeSendFailureMail(context: string, message: string): void {
+  const lastMailAt = getProp('LAST_FAILURE_MAIL_AT');
+  const nowMs = Date.now();
+  if (lastMailAt && nowMs - new Date(lastMailAt).getTime() < MAIL_FAILURE_COOLDOWN_HOURS * 3_600_000) return;
+  try {
+    const to = Session.getEffectiveUser().getEmail();
+    if (!to) return;
+    MailApp.sendEmail(to, `[매매계획 알림] ${context} 실패`, `${message}\n\n시각: ${new Date().toISOString()}`);
+    setProp('LAST_FAILURE_MAIL_AT', new Date().toISOString());
+  } catch (mailErr) {
+    console.error('실패 메일 발송도 실패:', mailErr);
+  }
+}
+
+function handleFailure(context: string, err: unknown): void {
+  const message = err instanceof Error ? err.message : String(err);
+  console.error(`[${context}] 실패:`, message);
+  recordLastRun('error', `${context}: ${message}`);
+  maybeSendFailureMail(context, message);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 카카오 OAuth / 발송
+// ═══════════════════════════════════════════════════════════════════════════
+
+function buildFormBody(params: Record<string, string>): string {
+  return Object.entries(params).map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`).join('&');
+}
+
+/** 저장 성공을 확인한 뒤에만 발송 단계로 진행한다(§6.1 락아웃 가드). */
+function refreshAccessToken(): string | null {
+  const restKey = getProp('KAKAO_REST_KEY');
+  const refreshToken = getProp('KAKAO_REFRESH_TOKEN');
+  if (!restKey || !refreshToken) {
+    console.error('KAKAO_REST_KEY 또는 KAKAO_REFRESH_TOKEN 미설정');
+    return null;
+  }
+  try {
+    const res = UrlFetchApp.fetch(KAKAO_TOKEN_URL, {
+      method: 'post',
+      contentType: 'application/x-www-form-urlencoded',
+      payload: buildFormBody({ grant_type: 'refresh_token', client_id: restKey, refresh_token: refreshToken }),
+      muteHttpExceptions: true,
+    });
+    if (res.getResponseCode() !== 200) {
+      console.error('토큰 갱신 실패:', res.getResponseCode(), res.getContentText());
+      return null;
+    }
+    const data = JSON.parse(res.getContentText()) as {
+      access_token?: string; expires_in?: number; refresh_token?: string;
+    };
+    if (!data.access_token) return null;
+
+    if (data.refresh_token) {
+      setProp('KAKAO_REFRESH_TOKEN', data.refresh_token);
+      const verify = getProp('KAKAO_REFRESH_TOKEN');
+      if (verify !== data.refresh_token) {
+        throw new Error('리프레시 토큰 저장 확인 실패 — 락아웃 방지를 위해 발송을 중단합니다.');
+      }
+    }
+    setProp('KAKAO_ACCESS_TOKEN', data.access_token);
+    setProp('KAKAO_ACCESS_EXPIRES_AT', String(Date.now() + (data.expires_in ?? 21_600) * 1000));
+    return data.access_token;
+  } catch (e) {
+    console.error('토큰 갱신 예외:', e);
+    return null;
+  }
+}
+
+function getAccessToken(): string | null {
+  const expiresAt = getProp('KAKAO_ACCESS_EXPIRES_AT');
+  const cached = getProp('KAKAO_ACCESS_TOKEN');
+  if (cached && expiresAt && Date.now() < Number(expiresAt) - 60_000) return cached;
+  return refreshAccessToken();
+}
+
+function sendKakaoMessage(text: string, linkUrl: string): boolean {
+  const token = getAccessToken();
+  if (!token) {
+    console.error('액세스 토큰 없음 — 발송 취소');
+    return false;
+  }
+  const templateObject = {
+    object_type: 'text',
+    text,
+    link: { web_url: linkUrl, mobile_web_url: linkUrl },
+    button_title: '앱에서 기록',
+  };
+  try {
+    const res = UrlFetchApp.fetch(KAKAO_SEND_URL, {
+      method: 'post',
+      headers: { Authorization: `Bearer ${token}` },
+      contentType: 'application/x-www-form-urlencoded',
+      payload: buildFormBody({ template_object: JSON.stringify(templateObject) }),
+      muteHttpExceptions: true,
+    });
+    if (res.getResponseCode() !== 200) {
+      console.error('카카오 발송 실패:', res.getResponseCode(), res.getContentText());
+      return false;
+    }
+    return true;
+  } catch (e) {
+    console.error('카카오 발송 예외:', e);
+    return false;
+  }
+}
+
+function buildDeepLink(assetId: string | null): string {
+  const base = getProp('APP_URL') || APP_PUBLIC_URL;
+  const url = base.endsWith('/') ? base : `${base}/`;
+  return assetId ? `${url}?tab=today&asset=${encodeURIComponent(assetId)}` : `${url}?tab=today`;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 신호 평가 → 발송 후보 → 디스패치(멱등 + 일 상한 + 정숙시간)
+// ═══════════════════════════════════════════════════════════════════════════
+
+interface NotifyCandidate {
+  ev: TradePlanEvaluation;
+  text: string;
+  summary: string;
+  linkUrl: string;
+  idempotencyKey: string;
+}
+
+function buildCandidate(item: NotifyManifestItem, ev: TradePlanEvaluation, market: TradePlanMarket, now: Date): NotifyCandidate | null {
+  if (market.price === null) return null;
+  const idempotencyKey = `${item.assetId}|${ev.signal}|${kstDateStr(now)}`;
+  if (hasSent(idempotencyKey)) return null;
+  const text = formatKakaoText({
+    name: item.name, evaluation: ev, plan: item.plan, price: market.price, priceAsOf: market.priceAsOf,
+    timeLabel: hhmmKst(now), isIntraday: market.isIntraday, quantity: item.quantity,
+  });
+  return {
+    ev, text, summary: `${item.name} ${PLAN_TIER_LABELS[ev.tier]}`,
+    linkUrl: buildDeepLink(item.assetId), idempotencyKey,
+  };
+}
+
+function clipText(s: string, max = 200): string {
+  return s.length <= max ? s : s.slice(0, max - 1) + '…';
+}
+
+function formatOverflowBundle(overflow: NotifyCandidate[]): string {
+  const top3 = overflow.slice(0, 3).map(c => c.summary).join(', ');
+  const rest = overflow.length - Math.min(3, overflow.length);
+  return clipText(`📋 [일 발송 상한 초과] ${top3}${rest > 0 ? ` 외 ${rest}건` : ''}\n앱에서 전체 확인하세요`);
+}
+
+/**
+ * 발송 후보를 실제로 내보낸다.
+ *  · 정숙시간(00:00–07:00 KST)이면 전부 보류 큐(PENDING_QUIET_JSON)에 쌓고 멱등키만 소비한다
+ *    (morningDigest가 07시에 묶어 보낸다).
+ *  · 아니면 일 상한(8건)까지는 개별 발송, 넘는 만큼은 "상위 3건 + N건" 요약 1건으로 묶는다.
+ */
+function dispatchNotifications(candidates: NotifyCandidate[], now: Date): number {
+  if (candidates.length === 0) return 0;
+
+  if (isQuietHours(now)) {
+    for (const c of candidates) {
+      queuePending(c.summary, now);
+      markSent(c.idempotencyKey, now);
+    }
+    return 0;
+  }
+
+  let count = getDailyCount(now);
+  const remaining = Math.max(0, DAILY_SEND_CAP - count);
+  const toSendNow = candidates.slice(0, remaining);
+  const overflow = candidates.slice(remaining);
+  let sent = 0;
+
+  for (const c of toSendNow) {
+    if (sendKakaoMessage(c.text, c.linkUrl)) {
+      markSent(c.idempotencyKey, now);
+      count++;
+      sent++;
+    }
+  }
+
+  if (overflow.length > 0) {
+    if (sendKakaoMessage(formatOverflowBundle(overflow), buildDeepLink(null))) {
+      for (const c of overflow) markSent(c.idempotencyKey, now);
+      count++;
+      sent++;
+    }
+  }
+
+  setDailyCount(count, now);
+  return sent;
+}
+
+/** hourlyCheck 발송 대상 신호 — 손절·익절·불타기(옵션)·손절근접만. 추세선은 여기서 발송하지 않는다. */
+function isHourlyNotifiable(ev: TradePlanEvaluation, pyramidAlerts: boolean): boolean {
+  if (ev.signal === 'stop-hit' || ev.signal === 'take-profit-hit' || ev.signal === 'near-stop') return true;
+  if (ev.signal === 'pyramid-hit') return pyramidAlerts;
+  return false;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 트리거: hourlyCheck — 개장 중 매시간, 손절선·익절선·불타기선만
+// ═══════════════════════════════════════════════════════════════════════════
+
+function hourlyCheck(): void {
+  const now = new Date();
+  try {
+    const manifest = loadManifest();
+    if (!manifest) { recordLastRun('ok', 'hourlyCheck: 매니페스트 없음(아직 동기화 안 됨)'); return; }
+
+    const openItems = manifest.items.filter(it => isMarketOpen(classifyMarket(it.exchange), now));
+    if (openItems.length === 0) { recordLastRun('ok', 'hourlyCheck: 개장 중인 시장 없음'); return; }
+
+    const stockItems = openItems.filter(it => classifyMarket(it.exchange) !== 'CRYPTO');
+    const cryptoItems = openItems.filter(it => classifyMarket(it.exchange) === 'CRYPTO');
+    const quoteMap = new Map<string, QuoteResult>();
+    if (stockItems.length > 0) {
+      mergeQuoteMap(quoteMap, fetchQuotes(stockItems.map(it => ({ ticker: it.ticker, exchange: it.exchange }))));
+    }
+    if (cryptoItems.length > 0) {
+      mergeQuoteMap(quoteMap, fetchUpbitQuotes(cryptoItems.map(it => it.ticker)));
+    }
+
+    const maCache = loadMaCache();
+    let cacheDirty = false;
+    const candidates: NotifyCandidate[] = [];
+
+    for (const item of openItems) {
+      const market = classifyMarket(item.exchange);
+      const quote = quoteMap.get(item.ticker.toUpperCase());
+      if (!quote || !(quote.price > 0)) continue; // 시세 없음 — 일일 요약(unavailable)에서 별도 집계
+
+      let maEntry = maCache[item.ticker.toUpperCase()];
+      if (!maEntry && item.plan.exitLine.kind === 'ma') {
+        const bootstrapped = bootstrapMaEntry(item.ticker, market, now);
+        if (bootstrapped) {
+          maCache[item.ticker.toUpperCase()] = bootstrapped;
+          maEntry = bootstrapped;
+          cacheDirty = true;
+        }
+      }
+
+      const sessionDate = lastSessionDate(market, now);
+      const tradeMarket: TradePlanMarket = {
+        price: quote.price,
+        priceAsOf: sessionDate,
+        isIntraday: true,
+        sessionDate,
+        ma: maEntry ? maEntry.ma : {},
+        maAsOf: maEntry ? maEntry.asOf : sessionDate,
+      };
+      const ev = evaluateTradePlan(item.plan, tradeMarket);
+      if (isHourlyNotifiable(ev, manifest.pyramidAlerts)) {
+        const c = buildCandidate(item, ev, tradeMarket, now);
+        if (c) candidates.push(c);
+      }
+    }
+
+    if (cacheDirty) saveMaCache(maCache);
+    const sent = dispatchNotifications(candidates, now);
+    recordLastRun('ok', `hourlyCheck 완료 · 대상 ${openItems.length} · 발송 ${sent}`);
+  } catch (err) {
+    handleFailure('hourlyCheck', err);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 트리거: closeCheck — 시장별 마감 확정 후 1회, 추세선 이탈/재돌파 + 일일 요약(KR 마감 시)
+// ═══════════════════════════════════════════════════════════════════════════
+
+interface DigestCounts { urgent: number; today: number; prepare: number; unavailable: number; brokerStopMissing: number }
+
+function buildFullSummary(manifest: NotifyManifest, maCache: MaCache, now: Date): DigestCounts {
+  const stockItems = manifest.items.filter(it => classifyMarket(it.exchange) !== 'CRYPTO');
+  const cryptoItems = manifest.items.filter(it => classifyMarket(it.exchange) === 'CRYPTO');
+  const quoteMap = new Map<string, QuoteResult>();
+  if (stockItems.length > 0) mergeQuoteMap(quoteMap, fetchQuotes(stockItems.map(it => ({ ticker: it.ticker, exchange: it.exchange }))));
+  if (cryptoItems.length > 0) mergeQuoteMap(quoteMap, fetchUpbitQuotes(cryptoItems.map(it => it.ticker)));
+
+  const counts: DigestCounts = { urgent: 0, today: 0, prepare: 0, unavailable: 0, brokerStopMissing: 0 };
+  for (const item of manifest.items) {
+    if (!item.plan.brokerStopOrderRegistered) counts.brokerStopMissing++;
+    const market = classifyMarket(item.exchange);
+    const quote = quoteMap.get(item.ticker.toUpperCase());
+    const sessionDate = lastSessionDate(market, now);
+    const maEntry = maCache[item.ticker.toUpperCase()];
+    const tradeMarket: TradePlanMarket = {
+      price: quote && quote.price > 0 ? quote.price : null,
+      priceAsOf: sessionDate,
+      isIntraday: isMarketOpen(market, now),
+      sessionDate,
+      ma: maEntry ? maEntry.ma : {},
+      maAsOf: maEntry ? maEntry.asOf : sessionDate,
+    };
+    const ev = evaluateTradePlan(item.plan, tradeMarket);
+    if (ev.tier === 'urgent') counts.urgent++;
+    else if (ev.tier === 'today') counts.today++;
+    else if (ev.tier === 'prepare') counts.prepare++;
+    if (ev.signal === 'unavailable') counts.unavailable++;
+  }
+  return counts;
+}
+
+function maybeSendDailyDigest(manifest: NotifyManifest, maCache: MaCache, now: Date): void {
+  const todayKst = kstDateStr(now);
+  if (getProp('LAST_DIGEST_DATE') === todayKst) return;
+  const counts = buildFullSummary(manifest, maCache, now);
+  const text = formatKakaoDigest({
+    timeLabel: hhmmKst(now),
+    urgent: counts.urgent, today: counts.today, prepare: counts.prepare,
+    unavailable: counts.unavailable, brokerStopMissing: counts.brokerStopMissing,
+    planless: manifest.planlessCount,
+  });
+  // 생존 신호(무신호도 발송) — 일 상한 디스패치를 거치지 않고 직접 보낸다(하루 1회로 자체 제한됨).
+  if (sendKakaoMessage(text, buildDeepLink(null))) {
+    setProp('LAST_DIGEST_DATE', todayKst);
+  }
+}
+
+function buildTradeMarketFromClose(sessionDate: string, entry: MaCacheEntry | undefined): TradePlanMarket | null {
+  if (!entry || typeof entry.lastClose !== 'number' || !entry.lastCloseDate) return null;
+  return {
+    price: entry.lastClose,
+    priceAsOf: entry.lastCloseDate, // /history 최신 종가일 — sessionDate와 다르면 evaluateTradePlan이 stale로 처리(휴장일 안전망)
+    isIntraday: false,
+    sessionDate,
+    ma: entry.ma,
+    maAsOf: entry.asOf,
+  };
+}
+
+function closeCheck(): void {
+  const now = new Date();
+  try {
+    const manifest = loadManifest();
+    if (!manifest) { recordLastRun('ok', 'closeCheck: 매니페스트 없음'); return; }
+
+    const maCache = loadMaCache();
+    const candidates: NotifyCandidate[] = [];
+    let ranAny = false;
+    let krRan = false;
+
+    for (const market of MARKET_IDS) {
+      const sessionDate = lastSessionDate(market, now);
+      const confirmAt = closeConfirmTime(market, sessionDate);
+      if (now.getTime() < new Date(confirmAt).getTime()) continue; // 아직 마감 확정 전
+
+      const doneKey = `CLOSE_DONE_${market}`;
+      if (getProp(doneKey) === sessionDate) continue; // 이미 이번 세션 처리함
+
+      const items = manifest.items.filter(it => classifyMarket(it.exchange) === market);
+      if (items.length > 0) {
+        updateMaCache(maCache, items, market, now);
+        for (const item of items) {
+          const tradeMarket = buildTradeMarketFromClose(sessionDate, maCache[item.ticker.toUpperCase()]);
+          if (!tradeMarket) continue;
+          const ev = evaluateTradePlan(item.plan, tradeMarket);
+          if (ev.signal === 'exit-line-hit' || ev.action === 'arm-exit') {
+            const c = buildCandidate(item, ev, tradeMarket, now);
+            if (c) candidates.push(c);
+          }
+        }
+      }
+      setProp(doneKey, sessionDate);
+      ranAny = true;
+      if (market === 'KR') krRan = true;
+    }
+
+    if (!ranAny) { recordLastRun('ok', 'closeCheck: 처리할 마감 없음'); return; }
+
+    saveMaCache(maCache);
+    const sent = dispatchNotifications(candidates, now);
+    if (krRan) maybeSendDailyDigest(manifest, maCache, now);
+
+    recordLastRun('ok', `closeCheck 완료 · 발송 ${sent}`);
+  } catch (err) {
+    handleFailure('closeCheck', err);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 트리거: morningDigest — 정숙시간 보류분을 묶어 07시대에 발송
+// ═══════════════════════════════════════════════════════════════════════════
+
+function formatPendingBundle(pending: PendingEntry[]): string {
+  const top3 = pending.slice(0, 3).map(p => p.summary).join(', ');
+  const rest = pending.length - Math.min(3, pending.length);
+  return clipText(`📋 [밤사이 보류분 ${pending.length}건] ${top3}${rest > 0 ? ` 외 ${rest}건` : ''}\n앱에서 전체 확인하세요`);
+}
+
+function morningDigest(): void {
+  try {
+    const pending = loadPending();
+    if (pending.length === 0) { recordLastRun('ok', 'morningDigest: 보류된 메시지 없음'); return; }
+    const text = formatPendingBundle(pending);
+    if (sendKakaoMessage(text, buildDeepLink(null))) {
+      clearPending();
+      recordLastRun('ok', `morningDigest: 보류 ${pending.length}건 → 요약 1건 발송`);
+    } else {
+      recordLastRun('error', 'morningDigest: 발송 실패(보류 유지, 다음 실행에서 재시도)');
+    }
+  } catch (err) {
+    handleFailure('morningDigest', err);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 트리거 설치 / 수동 테스트 발송
+// ═══════════════════════════════════════════════════════════════════════════
+
+function installTriggers(): void {
+  const managed = new Set(['hourlyCheck', 'closeCheck', 'morningDigest']);
+  for (const t of ScriptApp.getProjectTriggers()) {
+    if (managed.has(t.getHandlerFunction())) ScriptApp.deleteTrigger(t);
+  }
+  ScriptApp.newTrigger('hourlyCheck').timeBased().everyHours(1).create();
+  ScriptApp.newTrigger('closeCheck').timeBased().everyHours(1).create();
+  ScriptApp.newTrigger('morningDigest').timeBased().everyDays(1).atHour(7).create();
+  recordLastRun('ok', '트리거 설치 완료(hourlyCheck·closeCheck 매시간, morningDigest 매일 07시대)');
+}
+
+function sendTestMessage(): void {
+  const ok = sendKakaoMessage('[테스트] 매매계획 알림 스크립트 실행 확인 메시지입니다.', buildDeepLink(null));
+  recordLastRun(ok ? 'ok' : 'error', ok ? '수동 테스트 발송 성공' : '수동 테스트 발송 실패(카카오 연결·토큰 확인)');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 웹앱 진입점: doGet(카카오 OAuth + 상태 페이지) / doPost(sync·test·status)
+// ═══════════════════════════════════════════════════════════════════════════
+
+function escapeHtml(s: string): string {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function htmlPage(title: string, bodyHtml: string): GasHtmlOutput {
+  return HtmlService.createHtmlOutput(
+    `<html><body style="font-family:sans-serif;padding:24px;line-height:1.6"><h2>${escapeHtml(title)}</h2>${bodyHtml}</body></html>`,
+  ).setTitle(title);
+}
+
+function handleKakaoAuthCode(code: string): GasHtmlOutput {
+  const restKey = getProp('KAKAO_REST_KEY');
+  if (!restKey) return htmlPage('설정 필요', '<p>스크립트 속성에 KAKAO_REST_KEY를 먼저 저장하세요.</p>');
+  const redirectUri = ScriptApp.getService().getUrl();
+  try {
+    const res = UrlFetchApp.fetch(KAKAO_TOKEN_URL, {
+      method: 'post',
+      contentType: 'application/x-www-form-urlencoded',
+      payload: buildFormBody({ grant_type: 'authorization_code', client_id: restKey, redirect_uri: redirectUri, code }),
+      muteHttpExceptions: true,
+    });
+    if (res.getResponseCode() !== 200) {
+      return htmlPage('연결 실패', `<p>카카오 토큰 교환 실패 (${res.getResponseCode()}): ${escapeHtml(res.getContentText())}</p>`);
+    }
+    const data = JSON.parse(res.getContentText()) as { access_token?: string; refresh_token?: string; expires_in?: number };
+    if (!data.access_token || !data.refresh_token) {
+      return htmlPage('연결 실패', '<p>토큰 응답에 access_token/refresh_token이 없습니다.</p>');
+    }
+    setProp('KAKAO_REFRESH_TOKEN', data.refresh_token);
+    if (getProp('KAKAO_REFRESH_TOKEN') !== data.refresh_token) {
+      return htmlPage('연결 실패', '<p>리프레시 토큰 저장 확인에 실패했습니다. 다시 시도하세요.</p>');
+    }
+    setProp('KAKAO_ACCESS_TOKEN', data.access_token);
+    setProp('KAKAO_ACCESS_EXPIRES_AT', String(Date.now() + (data.expires_in ?? 21_600) * 1000));
+    return htmlPage('연결됨', '<p>카카오톡 연결이 완료되었습니다. 이 창은 닫으셔도 됩니다.</p>');
+  } catch (e) {
+    return htmlPage('연결 실패', `<p>예외: ${escapeHtml(e instanceof Error ? e.message : String(e))}</p>`);
+  }
+}
+
+function statusPage(): GasHtmlOutput {
+  const lastRun = getJsonProp<LastRun | null>('LAST_RUN_JSON', null);
+  const connected = !!getProp('KAKAO_REFRESH_TOKEN');
+  const body = `
+    <p>카카오 연결: ${connected ? '연결됨' : '미연결'}</p>
+    <p>마지막 실행: ${lastRun ? `${escapeHtml(lastRun.at)} — ${escapeHtml(lastRun.status)}: ${escapeHtml(lastRun.message)}` : '없음'}</p>
+    <p>카카오 연결이 필요하면 <code>?action=kakao-auth</code>를 여세요.</p>
+  `;
+  return htmlPage('매매계획 알림 상태', body);
+}
+
+function doGet(e: GasDoGetEvent): GasTextOutput | GasHtmlOutput {
+  const action = e && e.parameter ? e.parameter.action : undefined;
+  if (action === 'kakao-auth') {
+    const code = e.parameter.code;
+    if (code) return handleKakaoAuthCode(code);
+    const restKey = getProp('KAKAO_REST_KEY');
+    if (!restKey) return htmlPage('설정 필요', '<p>스크립트 속성에 KAKAO_REST_KEY를 먼저 저장하세요.</p>');
+    const redirectUri = ScriptApp.getService().getUrl();
+    const authUrl = `${KAKAO_AUTHORIZE_URL}?client_id=${encodeURIComponent(restKey)}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=talk_message`;
+    return HtmlService.createHtmlOutput(
+      `<html><body>카카오 로그인으로 이동합니다... <a href="${authUrl}">여기를 눌러 계속</a><script>location.href=${JSON.stringify(authUrl)};</script></body></html>`,
+    ).setTitle('카카오 연결');
+  }
+  return statusPage();
+}
+
+function jsonOutput(obj: unknown): GasTextOutput {
+  return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON);
+}
+
+/** 시간에 좌우되지 않는 비교이되, 이 스크립트 규모에서는 단순 XOR 누산으로 충분하다(짧은 길이 조기반환은 허용). */
+function constantTimeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
+}
+
+function buildStatusResponse(): unknown {
+  const lastRun = getJsonProp<LastRun | null>('LAST_RUN_JSON', null);
+  const manifest = loadManifest();
+  return {
+    ok: true,
+    lastRun,
+    dailyCount: getDailyCount(new Date()),
+    kakaoConnected: !!getProp('KAKAO_REFRESH_TOKEN'),
+    manifestItemCount: manifest ? manifest.items.length : 0,
+    manifestUpdatedAt: manifest ? manifest.updatedAt : null,
+  };
+}
+
+function doPost(e: GasDoPostEvent): GasTextOutput {
+  try {
+    const raw = e && e.postData ? e.postData.contents : '';
+    const body = raw
+      ? (JSON.parse(raw) as { action?: string; secret?: string; manifest?: NotifyManifest })
+      : {};
+    const secret = getProp('SHARED_SECRET');
+    if (!secret || !constantTimeEqual(body.secret ?? '', secret)) {
+      return jsonOutput({ ok: false, error: 'secret 불일치' });
+    }
+    if (body.action === 'sync') {
+      if (!body.manifest) return jsonOutput({ ok: false, error: 'manifest 없음' });
+      saveManifest(body.manifest);
+      return jsonOutput({ ok: true, receivedAt: new Date().toISOString(), itemCount: body.manifest.items.length });
+    }
+    if (body.action === 'test') {
+      const ok = sendKakaoMessage('[테스트] 매매계획 알림 연결 확인 메시지입니다.', buildDeepLink(null));
+      return jsonOutput({ ok });
+    }
+    if (body.action === 'status') {
+      return jsonOutput(buildStatusResponse());
+    }
+    return jsonOutput({ ok: false, error: `알 수 없는 action: ${String(body.action)}` });
+  } catch (err) {
+    console.error('doPost 실패:', err);
+    return jsonOutput({ ok: false, error: err instanceof Error ? err.message : String(err) });
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 내보내기 — build-gas.mjs가 이 export들을 전역 `TradePlanNotify` 객체로 묶는다
+// ═══════════════════════════════════════════════════════════════════════════
+
+export { doGet, doPost, hourlyCheck, closeCheck, morningDigest, installTriggers, sendTestMessage };

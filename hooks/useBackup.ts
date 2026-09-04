@@ -2,6 +2,7 @@ import { useState, useCallback, useRef } from 'react';
 import { googleDriveService } from '../services/googleDriveService';
 import { BackupInfo, BackupSettings, DEFAULT_BACKUP_SETTINGS } from '../types/backup';
 import { createLogger } from '../utils/logger';
+import { localDateString } from '../utils/localDate';
 
 const log = createLogger('Backup');
 
@@ -46,7 +47,7 @@ export function useBackup(deps: { isSignedIn: boolean }) {
     const settings = loadSettings();
     if (!settings.enabled) return;
 
-    const today = new Date().toISOString().slice(0, 10);
+    const today = localDateString();
     const lastDate = localStorage.getItem(LS_KEY_LAST_DATE);
     if (lastDate === today) return; // 이미 오늘 백업 완료
 

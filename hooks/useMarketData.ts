@@ -131,8 +131,8 @@ export const useMarketData = ({
   };
 
   // 1. 전체 시세 갱신
-  const handleRefreshAllPrices = useCallback(async (isAutoUpdate = false, isScheduled = false) => {
-    if (assets.length === 0) return;
+  const handleRefreshAllPrices = useCallback(async (isAutoUpdate = false, isScheduled = false): Promise<boolean> => {
+    if (assets.length === 0) return false;
     
     setIsLoading(true);
     setError(null);
@@ -256,10 +256,12 @@ export const useMarketData = ({
         if (failedTickers.length > 0) setError(`갱신 실패: ${failedTickers.join(', ')}`);
         else setSuccessMessage(watchlist.length > 0 ? '시세 업데이트 완료 (관심종목 포함)' : '시세 업데이트 완료');
         setTimeout(() => { setError(null); setSuccessMessage(null); }, 5000);
+        return true; // P4: 호출부(runPriceRefresh)가 성공했을 때만 기준시각을 기록한다
 
     } catch (error) {
         log.error('Refresh Error:', error);
         setError('시세 업데이트 중 오류 발생');
+        return false;
     } finally {
         setIsLoading(false);
     }

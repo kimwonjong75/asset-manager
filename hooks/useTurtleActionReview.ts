@@ -34,6 +34,7 @@ import { computeDeployedBudgetKRW } from '../utils/turtleMarketData';
 import { buildTurtleReviewSummary, TurtleReviewSummary } from '../utils/turtleReview';
 import { isTurtleOrderLocked } from '../types/turtleLock';
 import { createLogger } from '../utils/logger';
+import { localDateString } from '../utils/localDate';
 
 const log = createLogger('TurtleReview');
 
@@ -43,7 +44,7 @@ export const TURTLE_AUTOGEN_DATE_KEY = 'asset-manager-turtle-autogen-date';
 const LAST_AUTO_UPDATE_KEY = 'lastAutoUpdateDate';
 
 function todayISO(): string {
-  return new Date().toISOString().slice(0, 10);
+  return localDateString();
 }
 
 function nowHHMM(): string {

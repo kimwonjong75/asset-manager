@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
+import { useConfirm } from '../../hooks/useConfirm';
+import ConfirmDialog from './ConfirmDialog';
 
 interface MemoEditPopupProps {
   title: string;
@@ -12,6 +14,7 @@ const MemoEditPopup: React.FC<MemoEditPopupProps> = ({ title, memo: initialMemoV
   const [memo, setMemo] = useState(initialMemoValue);
   const initialMemo = useRef(initialMemoValue);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const { confirm, confirmRequest } = useConfirm();
 
   const isDirty = memo !== initialMemo.current;
 
@@ -21,13 +24,13 @@ const MemoEditPopup: React.FC<MemoEditPopupProps> = ({ title, memo: initialMemoV
 
   const handleClose = useCallback(() => {
     if (isDirty) {
-      if (window.confirm('수정 중인 내용이 있습니다. 저장하지 않고 닫으시겠습니까?')) {
-        onClose();
-      }
+      void confirm('수정 중인 내용이 있습니다. 저장하지 않고 닫으시겠습니까?').then(ok => {
+        if (ok) onClose();
+      });
     } else {
       onClose();
     }
-  }, [isDirty, onClose]);
+  }, [isDirty, onClose, confirm]);
 
   const handleSave = useCallback(() => {
     onSave(memo.trim());
@@ -51,6 +54,7 @@ const MemoEditPopup: React.FC<MemoEditPopupProps> = ({ title, memo: initialMemoV
       onClick={handleClose}
       onKeyDown={handleKeyDown}
     >
+      {confirmRequest && <ConfirmDialog {...confirmRequest} />}
       <div
         className="bg-gray-800 rounded-lg shadow-xl w-full max-w-md mx-4 border border-gray-600"
         onClick={(e) => e.stopPropagation()}

@@ -3,6 +3,8 @@ import { WatchlistItem, normalizeExchange } from '../types';
 import { getAllowedCategories, inferCategoryIdFromExchange } from '../types/category';
 import { searchSymbols } from '../services/symbolListService';
 import { usePortfolio } from '../contexts/PortfolioContext';
+import { useConfirm } from '../hooks/useConfirm';
+import ConfirmDialog from './common/ConfirmDialog';
 
 const WatchlistEditModal: React.FC = () => {
   const { modal, actions, data } = usePortfolio();
@@ -10,6 +12,7 @@ const WatchlistEditModal: React.FC = () => {
   const item = modal.editingWatchItem;
   const isOpen = !!item;
   const onClose = actions.closeEditWatchItem;
+  const { confirm, confirmRequest } = useConfirm();
 
   const [ticker, setTicker] = useState('');
   const [exchange, setExchange] = useState('');
@@ -49,8 +52,10 @@ const WatchlistEditModal: React.FC = () => {
   ), [ticker, name, category, notes]);
 
   const handleClose = () => {
-    if (isDirty && !window.confirm('변경사항이 저장되지 않습니다. 닫으시겠습니까?')) return;
-    onClose();
+    if (!isDirty) { onClose(); return; }
+    void confirm('변경사항이 저장되지 않습니다. 닫으시겠습니까?').then(ok => {
+      if (ok) onClose();
+    });
   };
 
   if (!isOpen || !item) return null;
@@ -73,10 +78,10 @@ const WatchlistEditModal: React.FC = () => {
     }
   };
 
-  const applySymbol = (r: { ticker: string; name: string; exchange: string }) => {
+  const applySymbol = async (r: { ticker: string; name: string; exchange: string }) => {
     const ex = normalizeExchange(r.exchange);
     const catId = inferCategoryIdFromExchange(ex, categories);
-    const ok = window.confirm(`티커를 '${ticker || '(비어있음)'}'에서 '${r.ticker}'로 변경하시겠습니까?`);
+    const ok = await confirm(`티커를 '${ticker || '(비어있음)'}'에서 '${r.ticker}'로 변경하시겠습니까?`);
     if (ok) {
       setTicker(r.ticker);
       setName(r.name);
@@ -115,6 +120,7 @@ const WatchlistEditModal: React.FC = () => {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center z-50 p-4" onClick={handleClose} role="dialog" aria-modal="true">
+      {confirmRequest && <ConfirmDialog {...confirmRequest} />}
       <div className="bg-gray-800 p-4 sm:p-6 rounded-lg shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <div className="flex justify-between items-center mb-4 sm:mb-6">
           <h2 className="text-xl sm:text-2xl font-bold text-white">관심종목 수정: {item.name}</h2>

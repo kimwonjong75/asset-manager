@@ -136,6 +136,7 @@ import type { Indicators } from './api';
 import type { BucketId } from './bucket';
 import type { OwnerId } from './owner';
 import type { CleanupTag } from './cleanup';
+import type { TradePlan } from './tradePlan';
 
 export interface WatchlistItem {
   id: string;
@@ -156,6 +157,8 @@ export interface WatchlistItem {
   indicators?: Indicators;
   /** 터틀 진입 후보 — true면 실행 큐 생성기가 55일 돌파 매수를 감시 (90/10 Phase 2). 미지정=false */
   isTurtleCandidate?: boolean;
+  /** 매매 계획(매수 전 계획, mode 'new-buy'). 매수 기록 시 자산으로 이전. 미지정=계획 없음 */
+  tradePlan?: TradePlan;
 }
 
 export interface SellTransaction {
@@ -211,6 +214,8 @@ export interface Asset {
   sellTransactions?: SellTransaction[];
   changeRate?: number;
   indicators?: Indicators;
+  /** 매매 계획(손절선·익절선·추세선·불타기선). **미지정=계획 없음** — 기본값 강제 주입 금지 */
+  tradePlan?: TradePlan;
 }
 
 export type NewAssetForm = Omit<Asset, 'id' | 'name' | 'currentPrice' | 'priceOriginal' | 'highestPrice' | 'purchaseExchangeRate' | 'previousClosePrice'>;

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { usePortfolio } from '../contexts/PortfolioContext';
+import { useFontScale } from '../hooks/useFontScale';
 
 const PRESET_VALUES = [
   { label: '50만', value: 500_000 },
@@ -11,6 +12,7 @@ const PRESET_VALUES = [
 
 const DisplaySettingsSection: React.FC = () => {
   const { ui, actions } = usePortfolio();
+  const { isLarge, setLarge } = useFontScale();
   const [draft, setDraft] = useState<string>(String(ui.lowValueThreshold));
 
   useEffect(() => {
@@ -152,7 +154,7 @@ const DisplaySettingsSection: React.FC = () => {
           <div className="min-w-0 mb-1">
             <span className="text-white font-medium text-sm">신호 표시</span>
             <p className="text-gray-400 text-xs mt-0.5">
-              참고형 신호(구루 신호·리스크 매트릭스)의 표시 위치와 크기를 조정합니다.
+              참고형 신호(구루 신호)의 표시 위치와 크기를 조정합니다.
               <br />
               ※ 실제 실행할 주문은 <span className="text-gray-300">실행 큐</span>가 기준이며, 아래 설정은 표시 방식만 바꿉니다(신호 계산·발화 무관).
             </p>
@@ -164,11 +166,19 @@ const DisplaySettingsSection: React.FC = () => {
             checked={ui.signalDisplay.showGuruSignalsProminently}
             onChange={(v) => actions.setSignalDisplay({ showGuruSignalsProminently: v })}
           />
+        </div>
+
+        {/* 글자 크게 (P6) — 루트 폰트 크기(rem 기준)를 바꾸므로 카드·표·여백까지 함께 커진다 */}
+        <div className="bg-gray-900 rounded-lg p-4">
+          <div className="min-w-0 mb-1">
+            <span className="text-white font-medium text-sm">화면 크기</span>
+            <p className="text-gray-400 text-xs mt-0.5">글자와 버튼 크기를 조정합니다. 이 기기에만 적용됩니다.</p>
+          </div>
           <SignalToggleRow
-            title="리스크 매트릭스를 알림 브리핑에서 항상 펼쳐 표시"
-            desc="끄면 알림 브리핑 팝업에서 접힌 상태로 표시되며, 클릭하면 펼쳐집니다 (기본값)."
-            checked={ui.signalDisplay.showRiskMatrixExpanded}
-            onChange={(v) => actions.setSignalDisplay({ showRiskMatrixExpanded: v })}
+            title="글자 크게"
+            desc={`기본 15px → 크게 17px. 표·카드의 여백도 함께 커집니다.`}
+            checked={isLarge}
+            onChange={setLarge}
           />
         </div>
       </div>

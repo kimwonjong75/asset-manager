@@ -6,6 +6,7 @@ import { fetchAssetData as fetchAssetDataNew, fetchExchangeRate, fetchExchangeRa
 import { createLogger } from '../utils/logger';
 import type { AddAssetResult, SellResult, BuyMoreResult } from '../types/assetActionResult';
 import type { PortfolioPatch } from '../types/store';
+import type { TradePlan } from '../types/tradePlan';
 import { buildSellMutation, buildBuyMoreMutation } from '../utils/assetMutations';
 
 const log = createLogger('AssetActions');
@@ -633,6 +634,18 @@ export const useAssetActions = ({
     commitPortfolioPatch({ watchlist: exists ? cur : [...cur, item] });
   }, [getSnapshot, commitPortfolioPatch]);
 
+  // 관심종목 추가 + 매매 계획을 한 커밋으로 (P2c — TradePlanPlanner "관심종목에 계획과 함께 저장")
+  const handleAddWatchItemWithPlan = useCallback((
+    payload: Omit<WatchlistItem, 'id' | 'currentPrice' | 'priceOriginal' | 'currency' | 'previousClosePrice' | 'highestPrice'>,
+    plan: TradePlan
+  ) => {
+    const id = `${Date.now()}`;
+    const item: WatchlistItem = { ...payload, id, tradePlan: plan } as WatchlistItem;
+    const cur = getSnapshot().watchlist;
+    const exists = cur.some(w => w.ticker.toUpperCase() === item.ticker.toUpperCase() && normalizeExchange(w.exchange) === normalizeExchange(item.exchange));
+    commitPortfolioPatch({ watchlist: exists ? cur : [...cur, item] });
+  }, [getSnapshot, commitPortfolioPatch]);
+
   // 관심종목 수정
   const handleUpdateWatchItem = useCallback((item: WatchlistItem) => {
     commitPortfolioPatch({ watchlist: getSnapshot().watchlist.map(w => (w.id === item.id ? item : w)) });
@@ -686,6 +699,7 @@ export const useAssetActions = ({
     handleConfirmBuyMore,
     handleCsvFileUpload,
     handleAddWatchItem,
+    handleAddWatchItemWithPlan,
     handleUpdateWatchItem,
     handleDeleteWatchItem,
     handleBulkDeleteWatchItems,

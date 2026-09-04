@@ -14,6 +14,10 @@ import {
   loadAlertSettings,
   saveAlertSettings,
 } from '../utils/alertSettingsStorage';
+import { localDateString } from '../utils/localDate';
+
+/** 앱 자동 시세 업데이트 일자 키 (usePortfolioData/PortfolioContext/useTurtleActionReview와 동일 키) */
+const LAST_AUTO_UPDATE_KEY = 'lastAutoUpdateDate';
 
 /** 자동 브리핑 "오늘 자동 확인 완료" 일자 키 (발화 0건이어도 기록 — 표시 여부와 무관). */
 export const POPUP_DATE_KEY = 'asset-manager-alert-popup-date';
@@ -32,7 +36,7 @@ const attachDistributionTiers = (
   if (!distRule) return results;
   const windowDays = distRule.filterConfig.distributionWindow ?? 13;
   const volRatio = distRule.filterConfig.distributionVolumeRatio ?? 1.5;
-  const today = new Date().toISOString().slice(0, 10);
+  const today = localDateString();
 
   return results.map(result => {
     if (result.rule.id !== 'distribution-high') return result;
@@ -102,6 +106,15 @@ export const useAutoAlert = ({
   const [alertResults, setAlertResults] = useState<AlertResult[]>([]);
   const [showAlertPopup, setShowAlertPopup] = useState(false);
   const hasTriggeredRef = useRef(false);
+
+  // P4: 오늘 재접속(새로고침) — hasAutoUpdated는 세션 mount 시 false로 리셋되므로 같은 날 다시
+  // 열면 시세를 실제로는 갱신 안 해도(신선도 게이트가 필요없다고 판단) false로 남는다.
+  // useTurtleActionReview.alreadyUpdatedToday와 동일 폴백을 팝업 게이트에도 적용해 비대칭을 없앤다
+  // (RULES.md §8/§9 — "팝업 게이트에는 그 폴백이 없다"로 기록됐던 비대칭 수정).
+  const alreadyUpdatedToday = (() => {
+    try { return localStorage.getItem(LAST_AUTO_UPDATE_KEY) === localDateString(); } catch { return false; }
+  })();
+  const popupGateHasAutoUpdated = hasAutoUpdated || alreadyUpdatedToday;
   // 자동 확인 일자 — localStorage POPUP_DATE_KEY의 반응형 미러. effect가 기록 시 함께 갱신 → 진단이 stale 안 됨.
   const [lastAutoCheckDate, setLastAutoCheckDate] = useState<string | null>(() => {
     try { return localStorage.getItem(POPUP_DATE_KEY); } catch { return null; }
@@ -175,10 +188,10 @@ export const useAutoAlert = ({
 
     // 자동 브리핑 팝업 (세션 1회). 부수효과는 여기서, 판정은 공유 순수 게이트로 — 기존 동작 보존.
     if (hasTriggeredRef.current) return;
-    const today = new Date().toISOString().slice(0, 10);
+    const today = localDateString();
     const gate = evaluateAutoPopupGate({
       enableAutoPopup: alertSettings.enableAutoPopup,
-      hasAutoUpdated,
+      hasAutoUpdated: popupGateHasAutoUpdated,
       isLoading: isMarketLoading || isEnrichedLoading,
       assetCount: enrichedAssets.length,
       lastCheckedDate: localStorage.getItem(POPUP_DATE_KEY),
@@ -193,7 +206,7 @@ export const useAutoAlert = ({
     if (gate.willAutoShow) setShowAlertPopup(true);        // will-show (발화 규칙 > 0 또는 실행 건 > 0)
     localStorage.setItem(POPUP_DATE_KEY, today);           // no-matches·will-show 모두 일자 기록 (기존 동작)
     setLastAutoCheckDate(today);
-  }, [isEnrichedLoading, enrichedAssets, runAlertCheck, hasAutoUpdated, isMarketLoading, alertSettings, executionGate]);
+  }, [isEnrichedLoading, enrichedAssets, runAlertCheck, popupGateHasAutoUpdated, isMarketLoading, alertSettings, executionGate]);
 
   // 종합 리스크 매트릭스 — 클라이맥스 플래그 + 디스트리뷰션 카운트 + MA 근접도 합성
   // alertSettings의 distributionWindow/Ratio 등 사용자 임계값이 있으면 적용, 없으면 DEFAULT 사용
@@ -250,16 +263,16 @@ export const useAutoAlert = ({
   const autoPopupDiagnosis = useMemo<PopupDeliveryDiagnosis>(() =>
     evaluateAutoPopupGate({
       enableAutoPopup: alertSettings.enableAutoPopup,
-      hasAutoUpdated,
+      hasAutoUpdated: popupGateHasAutoUpdated,
       isLoading: isMarketLoading || isEnrichedLoading,
       assetCount: enrichedAssets.length,
       lastCheckedDate: lastAutoCheckDate,
-      today: new Date().toISOString().slice(0, 10),
+      today: localDateString(),
       matchedRuleCount: alertResults.length,
       executionActionableCount: executionGate?.actionableCount,
       executionReviewPending: executionGate?.reviewPending,
     }),
-    [alertSettings.enableAutoPopup, hasAutoUpdated, isMarketLoading, isEnrichedLoading, enrichedAssets.length, lastAutoCheckDate, alertResults.length, executionGate],
+    [alertSettings.enableAutoPopup, popupGateHasAutoUpdated, isMarketLoading, isEnrichedLoading, enrichedAssets.length, lastAutoCheckDate, alertResults.length, executionGate],
   );
 
   return {

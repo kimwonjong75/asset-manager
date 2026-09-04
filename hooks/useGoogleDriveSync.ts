@@ -8,6 +8,7 @@ import type { ActionItem } from '../types/actionQueue';
 import type { TurtlePosition, TurtleSettings } from '../types/turtle';
 import { applyRestoredAlertSettings, readStoredAlertSettings } from '../utils/alertSettingsStorage';
 import type { PortfolioSaveSnapshot } from '../types/portfolioSave';
+import { localDateString } from '../utils/localDate';
 import { createLogger } from '../utils/logger';
 
 const log = createLogger('DriveSync');
@@ -252,7 +253,9 @@ export function useGoogleDriveSync(options: UseGoogleDriveSyncOptions = {}) {
       columnConfig,
       tableLayout,
       alertSettings,
-      lastUpdateDate: new Date().toISOString().slice(0, 10),
+      // P4: 로컬(KST) 달력일 — UTC 기준이면 KST 자정~09:00 사이 저장이 "어제"로 찍혀
+      // 아래 usePortfolioData의 하루 1회 게이팅 비교와 하루 어긋날 수 있다(RULES.md §8).
+      lastUpdateDate: localDateString(),
     };
     // P7: 미니파이(pretty-print 제거). 디바운스·코얼레싱·중복 스킵·pending 재저장은 큐가 처리.
     const portfolioJSON = JSON.stringify(exportData);

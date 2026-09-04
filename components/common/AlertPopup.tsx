@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import type { AlertResult, AlertMatchedAsset, AlertDataGap } from '../../types/alertRules';
-import type { RiskMatrixRow } from '../../utils/riskMatrix';
 import type { DistributionTier } from '../../utils/distributionTierState';
 import type { TurtleReviewSummary } from '../../utils/turtleReview';
 import Tooltip from './Tooltip';
@@ -8,8 +7,6 @@ import {
   BRIEFING_SECTION_TOOLTIPS,
   BRIEFING_COLUMN_TOOLTIPS,
   BRIEFING_RULE_TOOLTIPS,
-  RISK_TIER_TOOLTIPS,
-  CLIMAX_SIGNAL_TOOLTIP,
 } from '../../constants/briefingDescriptions';
 
 // P4.5 D1: distribution-high 단계별 뱃지 — 'new'는 컬러, 'ongoing'은 회색
@@ -27,40 +24,17 @@ const TIER_ONGOING_STYLES: Record<DistributionTier, { bg: string; label: string 
 
 interface AlertPopupProps {
   results: AlertResult[];
-  /** 종합 리스크 매트릭스 — 위험 우선 정렬된 배열. 빈 배열이면 배너 미표시 */
-  riskMatrix: RiskMatrixRow[];
   /** fail-safe(매도 data-gap) — 데이터 누락으로 평가 불가였던 매도 규칙·종목. 발화 아님(주의 노출용) */
   sellDataGaps: AlertDataGap[];
   /** 터틀 실행 요약 (자동 검토 Phase A/B) — 실행 큐 대기 + 오늘 생성 가능. 실행할 게 있을 때만 카드 표시 */
   executionSummary: TurtleReviewSummary;
-  /** 리스크 매트릭스 배너를 기본 펼침으로 표시할지 (Phase 5, 설정 토글). false면 접힘 — 클릭 시 펼침 */
-  showRiskMatrixExpanded: boolean;
+  /** 활성 매매 계획이 있는 자산 id 집합(P3, App.tsx 계산) — "계획 기준 우선" 배지 표시 전용 */
+  planPriorityAssetIds?: Set<string>;
   onClose: () => void;
   onAssetClick: (assetId: string, source?: 'portfolio' | 'watchlist') => void;
-  /** 실행 큐 탭으로 이동 (Phase 5 — 행동 신호의 단일 소스) */
+  /** "오늘" 화면으로 이동 (P3 — 실행 큐 탭 폐지, 행동 신호의 단일 소스는 오늘 화면 대기 주문 섹션) */
   onOpenExecution: () => void;
 }
-
-const RISK_TIER_STYLES = {
-  red: {
-    badge: 'bg-red-600 text-white',
-    label: '🔴 강한 위험 · 정리 검토',
-    bg: 'bg-red-950/60',
-    border: 'border-red-700/60',
-  },
-  amber: {
-    badge: 'bg-amber-600 text-white',
-    label: '🟡 비중 축소',
-    bg: 'bg-amber-950/40',
-    border: 'border-amber-700/50',
-  },
-  blue: {
-    badge: 'bg-blue-600 text-white',
-    label: '🔵 신규 진입 금지/관찰',
-    bg: 'bg-blue-950/40',
-    border: 'border-blue-700/50',
-  },
-} as const;
 
 const SEVERITY_STYLES: Record<string, { bg: string; border: string; badge: string }> = {
   critical: { bg: 'bg-red-950/50', border: 'border-red-800/60', badge: 'bg-red-600' },
@@ -80,10 +54,8 @@ const pctColor = (v: number | undefined): string => {
   return 'text-gray-400';
 };
 
-const AlertPopup: React.FC<AlertPopupProps> = ({ results, riskMatrix, sellDataGaps, executionSummary, showRiskMatrixExpanded, onClose, onAssetClick, onOpenExecution }) => {
+const AlertPopup: React.FC<AlertPopupProps> = ({ results, sellDataGaps, executionSummary, planPriorityAssetIds, onClose, onAssetClick, onOpenExecution }) => {
   const [isMinimized, setIsMinimized] = useState(false);
-  // 리스크 매트릭스 배너 펼침 상태 — 기본값은 설정(showRiskMatrixExpanded) 따름 (Phase 5, 표시 전용)
-  const [riskExpanded, setRiskExpanded] = useState(showRiskMatrixExpanded);
 
   const today = new Date().toLocaleDateString('ko-KR', {
     year: 'numeric', month: 'long', day: 'numeric', weekday: 'short'
@@ -91,9 +63,8 @@ const AlertPopup: React.FC<AlertPopupProps> = ({ results, riskMatrix, sellDataGa
 
   const sellResults = results.filter(r => r.rule.action === 'sell');
   const buyResults = results.filter(r => r.rule.action === 'buy');
-  const hasResults = results.length > 0 || riskMatrix.length > 0;
+  const hasResults = results.length > 0;
   const totalCount = results.reduce((sum, r) => sum + r.matchedAssets.length, 0);
-  const riskTieredCount = riskMatrix.filter(r => r.assessment.tier !== null).length;
   // fail-safe(매도 data-gap) — 발화가 아니라 '데이터 누락으로 평가 불가'. 발화 알림과 별개 주의 섹션으로 표시.
   const hasDataGaps = sellDataGaps.length > 0;
   const dataGapAssetCount = new Set(sellDataGaps.flatMap(g => g.affectedAssets.map(a => a.assetId))).size;
@@ -116,7 +87,7 @@ const AlertPopup: React.FC<AlertPopupProps> = ({ results, riskMatrix, sellDataGa
         <div className="mt-1.5 space-y-1 text-[11px] text-gray-300">
           {exec.activeCount > 0 && (
             <p>
-              실행 큐에 <span className="text-white font-semibold">{exec.activeCount}건</span> 대기 중
+              오늘 화면에 <span className="text-white font-semibold">{exec.activeCount}건</span> 대기 중
               {exec.escalatedCount > 0 && <span className="text-red-300 font-medium"> · {exec.escalatedCount}건 3일+ 미실행 ⚠</span>}
             </p>
           )}
@@ -145,7 +116,7 @@ const AlertPopup: React.FC<AlertPopupProps> = ({ results, riskMatrix, sellDataGa
             <p className="text-amber-300">위성 예산 미설정 — 신규 진입은 검토되지 않습니다.</p>
           )}
           {!exec.turtleLocked && exec.reviewFailed && (
-            <p className="text-amber-300">자동 검토 실패 — 실행 큐에서 수동으로 생성하세요.</p>
+            <p className="text-amber-300">자동 검토 실패 — 오늘 화면에서 수동으로 생성하세요.</p>
           )}
         </div>
       )}
@@ -157,17 +128,10 @@ const AlertPopup: React.FC<AlertPopupProps> = ({ results, riskMatrix, sellDataGa
         <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
         </svg>
-        실행 큐 열기
+        오늘 화면 열기
       </button>
     </div>
   ) : null;
-
-  // 리스크 매트릭스 — 티어별 그룹
-  const tieredRows = {
-    red: riskMatrix.filter(r => r.assessment.tier === 'red'),
-    amber: riskMatrix.filter(r => r.assessment.tier === 'amber'),
-    blue: riskMatrix.filter(r => r.assessment.tier === 'blue'),
-  };
 
   const renderAssetRow = (asset: AlertMatchedAsset) => {
     const isWatchlist = asset.source === 'watchlist';
@@ -195,6 +159,11 @@ const AlertPopup: React.FC<AlertPopupProps> = ({ results, riskMatrix, sellDataGa
             {tierStyle && (
               <span className={`text-[9px] px-1 py-0.5 rounded font-medium shrink-0 ${tierStyle.bg}`}>
                 {tierStyle.label}
+              </span>
+            )}
+            {planPriorityAssetIds?.has(asset.assetId) && (
+              <span className="text-[9px] px-1 py-0.5 rounded bg-primary/20 text-primary-light font-medium shrink-0" title="이 종목은 활성 매매 계획이 있습니다 — 계획 기준(오늘 화면)이 우선입니다">
+                계획 기준 우선
               </span>
             )}
             <span className="text-white font-medium truncate">{asset.assetName}</span>
@@ -323,8 +292,9 @@ const AlertPopup: React.FC<AlertPopupProps> = ({ results, riskMatrix, sellDataGa
     );
   };
 
+  // P6: 모바일은 하단 탭바(BottomTabBar) 위로 띄운다
   return (
-    <div className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-4 z-[60] w-auto sm:w-96 flex flex-col shadow-2xl rounded-xl border border-gray-700 overflow-hidden">
+    <div className="fixed bottom-20 left-4 right-4 mb-[env(safe-area-inset-bottom)] md:bottom-4 sm:left-auto sm:right-4 z-[60] w-auto sm:w-96 flex flex-col shadow-2xl rounded-xl border border-gray-700 overflow-hidden">
       {/* 헤더 — 클릭으로 최소화/복원 토글 */}
       <div
         className="bg-gray-900 px-4 py-3 flex items-center justify-between border-b border-gray-700 shrink-0 cursor-pointer select-none hover:bg-gray-800/60 transition-colors"
@@ -380,11 +350,11 @@ const AlertPopup: React.FC<AlertPopupProps> = ({ results, riskMatrix, sellDataGa
                 {/* 터틀 실행 카드 — 행동 축 최상단 (실행할 게 있을 때만) */}
                 {execCard}
 
-                {/* 참고 지표 안내 — 실행할 주문의 단일 소스는 실행 큐 (Phase 5). CTA는 실행 카드가 있으면 중복이라 숨김 */}
+                {/* 참고 지표 안내 — 실행할 주문의 단일 소스는 오늘 화면 대기 주문 섹션(P3). CTA는 실행 카드가 있으면 중복이라 숨김 */}
                 <div className="bg-gray-800/60 border border-gray-700/60 rounded-lg p-2.5">
                   <p className="text-[11px] text-gray-400 leading-snug">
                     <span className="text-gray-300 font-medium">이 브리핑은 참고 지표입니다.</span> 실제 실행할 주문(진입·손절·청산·리밸런싱·정리)은{' '}
-                    <span className="text-gray-300">실행 큐</span>가 단일 기준입니다.
+                    <span className="text-gray-300">오늘 화면</span>이 단일 기준입니다.
                   </p>
                   {!showExecCard && (
                     <button
@@ -395,85 +365,14 @@ const AlertPopup: React.FC<AlertPopupProps> = ({ results, riskMatrix, sellDataGa
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
                       </svg>
-                      실행 큐 열기
+                      오늘 화면 열기
                     </button>
                   )}
                 </div>
 
-                {/* 종합 리스크 매트릭스 — 클라이맥스 + 디스트리뷰션 합성 (예측 아닌 과열 경고). Phase 5: 기본 접힘 */}
-                {riskTieredCount > 0 && (
-                  <div>
-                    <h3 className="text-xs font-semibold text-amber-300 mb-2 flex items-center gap-1.5">
-                      <button
-                        type="button"
-                        onClick={() => setRiskExpanded(v => !v)}
-                        className="flex items-center gap-1 hover:text-amber-200 transition-colors"
-                        aria-expanded={riskExpanded}
-                        title={riskExpanded ? '접기' : '펼치기'}
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" className={`h-3 w-3 transition-transform ${riskExpanded ? '' : '-rotate-90'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                        </svg>
-                      </button>
-                      <Tooltip content={BRIEFING_SECTION_TOOLTIPS.riskWarning} wrap className="cursor-help">
-                        <span>⚠️ 과열 리스크 경고</span>
-                      </Tooltip>
-                      <span className="text-gray-500 font-normal">({riskTieredCount}종목)</span>
-                      {riskExpanded && (
-                        <Tooltip content={CLIMAX_SIGNAL_TOOLTIP} position="bottom" wrap className="cursor-help">
-                          <span className="text-[10px] text-gray-500 font-normal underline decoration-dotted underline-offset-2">
-                            클라이맥스란? ⓘ
-                          </span>
-                        </Tooltip>
-                      )}
-                    </h3>
-                    {riskExpanded && (
-                    <>
-                    <div className="space-y-2">
-                      {(['red', 'amber', 'blue'] as const).map(tier => {
-                        const rows = tieredRows[tier];
-                        if (rows.length === 0) return null;
-                        const styles = RISK_TIER_STYLES[tier];
-                        return (
-                          <div key={tier} className={`${styles.bg} border ${styles.border} rounded-lg p-2.5`}>
-                            <div className="flex items-center gap-2 mb-1.5">
-                              <Tooltip content={RISK_TIER_TOOLTIPS[tier]} wrap className="cursor-help">
-                                <span className={`text-[10px] px-1.5 py-0.5 rounded ${styles.badge} font-medium`}>
-                                  {styles.label}
-                                </span>
-                              </Tooltip>
-                              <span className="text-gray-400 text-[11px]">{rows.length}종목</span>
-                            </div>
-                            <div className="space-y-1">
-                              {rows.map(row => (
-                                <div
-                                  key={`${row.assetId}-${row.source}`}
-                                  className="flex items-center justify-between text-xs cursor-pointer hover:bg-white/5 rounded px-1 py-0.5 transition-colors"
-                                  onClick={() => onAssetClick(row.assetId, row.source)}
-                                  title={row.source === 'watchlist' ? '관심종목으로 이동' : '포트폴리오로 이동'}
-                                >
-                                  <div className="flex items-center gap-1 min-w-0 overflow-hidden">
-                                    {row.source === 'watchlist' && (
-                                      <span className="text-[9px] px-1 py-0.5 rounded bg-teal-600/30 text-teal-400 font-medium shrink-0">관심</span>
-                                    )}
-                                    <span className="text-white truncate">{row.assetName}</span>
-                                    <span className="text-gray-600 text-[10px] shrink-0">{row.ticker}</span>
-                                  </div>
-                                  <span className="text-gray-400 text-[10px] shrink-0 ml-2">
-                                    {row.assessment.reasons.join(' · ')}
-                                  </span>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                    <p className="text-gray-500 text-[10px] mt-1.5 italic">참고용 경고이며 투자자문이 아닙니다. 예측이 아닌 과열 리스크 경고입니다.</p>
-                    </>
-                    )}
-                  </div>
-                )}
+                {/* P6 정보 다이어트: 리스크 매트릭스 배너는 여기서 제거됐다 — 대시보드
+                    "참고 지표"(components/dashboard/ReferenceIndicatorsSection.tsx)와
+                    내용이 완전히 중복이었다. 계산·저장은 무변경, 표시 위치만 하나로 합쳤다. */}
 
                 {hasDataGaps && (
                   <div>

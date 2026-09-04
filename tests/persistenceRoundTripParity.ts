@@ -6,7 +6,8 @@
 //   allocationTargets.categoryInstruments·90/10 최상위 키가 직렬화에서 살아남는지 절대값으로 고정한다.
 // 수동 실행: npm run test:persist (tsx). 통과 시 exit 0.
 
-import { Asset, AllocationTargets, Currency, RebalanceInstrument } from '../types';
+import { Asset, AllocationTargets, Currency, RebalanceInstrument, WatchlistItem } from '../types';
+import type { TradePlan } from '../types/tradePlan';
 import { mapToNewAssetStructure } from '../utils/portfolioCalculations';
 
 let pass = 0;
@@ -101,6 +102,44 @@ function roundTrip<T>(v: T): T {
     check(`exportData 키 존재: ${key}`, key in loaded, true);
   }
   check('allocationTargets.categoryInstruments 키', 'categoryInstruments' in (loaded.allocationTargets as object), true);
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// 6. 매매 계획(tradePlan) 라운드트립 — Asset(mapToNewAssetStructure 경유)·WatchlistItem(배열 통과)
+//    중첩 객체·optional 필드·빈 배열(decisions)·null(takeProfitPrice)이 그대로 보존되어야 한다.
+// ════════════════════════════════════════════════════════════════════════════
+{
+  const plan: TradePlan = {
+    version: 1, mode: 'holding', createdAt: '2026-09-03T05:20:00.000Z', updatedAt: '2026-09-03T05:20:00.000Z',
+    anchor: 'today', anchorPrice: 10_000, anchorDate: '2026-09-03', currency: Currency.KRW,
+    totalEquityKRW: 100_000_000, riskPct: 1, stopPct: 7, stopPrice: 9_300, profitMultiple: null, takeProfitPrice: null,
+    exitLine: { kind: 'ma', period: 50 }, exitLineArmMode: 'after-reclaim',
+    pyramid: { enabled: true, stepUnit: 'r', step: 2, sizing: 'half', maxAdds: 2,
+      steps: [{ level: 1, triggerPrice: 11_400, plannedQuantity: 50, fill: { date: '2026-09-10', price: 11_450, quantity: 50 } }, { level: 2, triggerPrice: 12_800, plannedQuantity: 25 }] },
+    plannedQuantity: 100, brokerStopOrderRegistered: true,
+    decisions: [{ date: '2026-09-04', signal: 'near-stop', choice: 'tomorrow', reason: '다시 생각' }],
+    status: 'active',
+  };
+  const asset: Asset = {
+    id: 'a9', categoryId: 1, ticker: '103140', exchange: 'KRX (코스피/코스닥)', name: '풍산', quantity: 100,
+    purchasePrice: 9_000, purchaseDate: '2026-01-01', currency: Currency.KRW,
+    currentPrice: 10_000, priceOriginal: 10_000, highestPrice: 11_000, bucket: 'SATELLITE', tradePlan: plan,
+  };
+  const loaded = mapToNewAssetStructure(roundTrip(asset));
+  check('Asset.tradePlan 보존(전체 동일)', loaded.tradePlan, plan);
+  check('Asset.tradePlan 중첩 fill 보존', loaded.tradePlan?.pyramid.steps[0].fill, { date: '2026-09-10', price: 11_450, quantity: 50 });
+  check('Asset.tradePlan takeProfitPrice null 보존', loaded.tradePlan?.takeProfitPrice, null);
+  const noPlan = mapToNewAssetStructure(roundTrip({ ...asset, tradePlan: undefined }));
+  check('계획 없는 자산은 tradePlan 미주입(undefined)', noPlan.tradePlan, undefined);
+  check('계획 없는 자산 직렬화에 tradePlan 키 없음', 'tradePlan' in JSON.parse(JSON.stringify({ ...asset, tradePlan: undefined })), false);
+
+  const watch: WatchlistItem = {
+    id: 'w1', ticker: 'SLV', exchange: 'NYSE', name: 'iShares Silver', categoryId: 2, currency: Currency.USD,
+    tradePlan: { ...plan, mode: 'new-buy', currency: Currency.USD, anchorPrice: 59.07, stopPrice: 54.9351, plannedQuantity: 1764, pyramid: { ...plan.pyramid, enabled: false, steps: [] } },
+  };
+  const loadedWatch = roundTrip([watch])[0];
+  check('WatchlistItem.tradePlan 보존', loadedWatch.tradePlan, watch.tradePlan);
+  check('WatchlistItem.tradePlan mode new-buy', loadedWatch.tradePlan?.mode, 'new-buy');
 }
 
 // ── 결과 ──

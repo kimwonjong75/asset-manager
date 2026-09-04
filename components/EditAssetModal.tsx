@@ -6,6 +6,8 @@ import { BucketId, ALL_BUCKETS, BUCKET_LABELS, BUCKET_DESCRIPTIONS, getAssetBuck
 import { ALL_OWNERS, OWNER_LABELS, OWNER_DESCRIPTIONS, getAssetOwner } from '../types/owner';
 import { searchSymbols } from '../services/symbolListService';
 import { usePortfolio } from '../contexts/PortfolioContext';
+import { useConfirm } from '../hooks/useConfirm';
+import ConfirmDialog from './common/ConfirmDialog';
 
 const EditAssetModal: React.FC = () => {
   const { modal, actions, status, data } = usePortfolio();
@@ -16,6 +18,7 @@ const EditAssetModal: React.FC = () => {
   const onSave = actions.updateAsset;
   const onDelete = actions.deleteAsset;
   const isLoading = status.isLoading;
+  const { confirm, confirmRequest } = useConfirm();
   const [formData, setFormData] = useState<Asset | null>(null);
   // 투더문 자산은 자산 구분을 접어둠(배분에 미사용) — '변경'으로 펼쳐 수정 가능
   const [showCategoryDetail, setShowCategoryDetail] = useState(false);
@@ -66,13 +69,13 @@ const EditAssetModal: React.FC = () => {
   // 변경사항 있을 때 닫기 전 확인
   const handleClose = useCallback(() => {
     if (isDirty) {
-      if (window.confirm('수정 중인 내용이 있습니다. 저장하지 않고 닫으시겠습니까?')) {
-        onClose();
-      }
+      void confirm('수정 중인 내용이 있습니다. 저장하지 않고 닫으시겠습니까?').then(ok => {
+        if (ok) onClose();
+      });
     } else {
       onClose();
     }
-  }, [isDirty, onClose]);
+  }, [isDirty, onClose, confirm]);
 
   if (!isOpen || !formData) return null;
 
@@ -122,17 +125,17 @@ const EditAssetModal: React.FC = () => {
     }
   };
 
-  const applySymbol = (r: { ticker: string; name: string; exchange: string }) => {
+  const applySymbol = async (r: { ticker: string; name: string; exchange: string }) => {
     const ex = normalizeExchange(r.exchange);
     const catId = inferCategoryIdFromExchange(ex, categories);
-    setFormData(prev => {
-      if (!prev) return null;
-      const current = (prev.ticker || '').trim();
-      let nextTicker = current;
-      const ok = window.confirm(`티커를 '${current || '(비어있음)'}'에서 '${r.ticker}'로 변경하시겠습니까?`);
-      if (ok) nextTicker = r.ticker;
-      return { ...prev, ticker: nextTicker, name: r.name, exchange: ex, categoryId: catId };
-    });
+    // confirm은 비동기라 setState 업데이터(순수해야 함) 안에서 호출할 수 없다 — 클로저의
+    // formData.ticker를 먼저 읽어 확인창을 띄우고, 결과를 받은 뒤에만 setFormData한다(기존과
+    // 동일하게 티커가 비어 있어도 항상 확인창을 띄운다).
+    const current = (formData?.ticker || '').trim();
+    let nextTicker = current;
+    const ok = await confirm(`티커를 '${current || '(비어있음)'}'에서 '${r.ticker}'로 변경하시겠습니까?`);
+    if (ok) nextTicker = r.ticker;
+    setFormData(prev => (prev ? { ...prev, ticker: nextTicker, name: r.name, exchange: ex, categoryId: catId } : null));
     setSearchQuery('');
     setSearchResults([]);
   };
@@ -147,6 +150,7 @@ const EditAssetModal: React.FC = () => {
   const labelClasses = "block text-sm font-medium text-gray-300 mb-1";
 
   return (
+    <>
     <div className="fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center z-50 p-4" onClick={handleClose} role="dialog" aria-modal="true">
       <div className="bg-gray-800 p-4 sm:p-6 rounded-lg shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <h2 className="text-xl sm:text-2xl font-bold text-white mb-4 sm:mb-6">자산 수정: {(asset?.customName?.trim() || asset?.name)}</h2>
@@ -330,6 +334,8 @@ const EditAssetModal: React.FC = () => {
         </form>
       </div>
     </div>
+    {confirmRequest && <ConfirmDialog {...confirmRequest} />}
+    </>
   );
 };
 

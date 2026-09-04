@@ -3,6 +3,7 @@ import KnowledgeInboxPanel from '../knowledge/KnowledgeInboxPanel';
 
 const SECTIONS = [
   { id: 'inbox', label: '지식 인제스트' },
+  { id: 'tradePlan', label: '매매 계획' },
   { id: 'signal', label: '매매 시그널' },
   { id: 'ma', label: '이동평균선' },
   { id: 'rsi', label: 'RSI 지표' },
@@ -18,6 +19,11 @@ const Icons = {
   inbox: (
     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+    </svg>
+  ),
+  tradePlan: (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
     </svg>
   ),
   signal: (
@@ -54,12 +60,27 @@ const Icons = {
 
 const SECTION_COLORS: Record<SectionId, { border: string; bg: string; text: string; badge: string }> = {
   inbox:    { border: 'border-teal-500/40',    bg: 'bg-teal-500/10',    text: 'text-teal-400',    badge: 'bg-teal-500' },
+  tradePlan:{ border: 'border-sky-500/40',     bg: 'bg-sky-500/10',     text: 'text-sky-400',     badge: 'bg-sky-500' },
   signal:   { border: 'border-emerald-500/40', bg: 'bg-emerald-500/10', text: 'text-emerald-400', badge: 'bg-emerald-500' },
   ma:       { border: 'border-blue-500/40',    bg: 'bg-blue-500/10',    text: 'text-blue-400',    badge: 'bg-blue-500' },
   rsi:      { border: 'border-purple-500/40',  bg: 'bg-purple-500/10',  text: 'text-purple-400',  badge: 'bg-purple-500' },
   filter:   { border: 'border-amber-500/40',   bg: 'bg-amber-500/10',   text: 'text-amber-400',   badge: 'bg-amber-500' },
   strategy: { border: 'border-rose-500/40',    bg: 'bg-rose-500/10',    text: 'text-rose-400',    badge: 'bg-rose-500' },
   tips:     { border: 'border-cyan-500/40',    bg: 'bg-cyan-500/10',    text: 'text-cyan-400',    badge: 'bg-cyan-500' },
+};
+
+// 렌더 안에서 정의하면 매 렌더마다 새 컴포넌트로 취급돼 상태가 리셋된다(react-hooks/static-components) —
+// props(id/title)만으로 완결되는 순수 표시 컴포넌트라 모듈 스코프로 뺀다.
+const SectionHeader: React.FC<{ id: SectionId; title: string }> = ({ id, title }) => {
+  const c = SECTION_COLORS[id];
+  return (
+    <div className={`flex items-center gap-3 mb-5 pb-3 border-b ${c.border}`}>
+      <div className={`p-2 rounded-lg ${c.bg} ${c.text}`}>
+        {Icons[id]}
+      </div>
+      <h2 className="text-lg font-bold text-white">{title}</h2>
+    </div>
+  );
 };
 
 const InvestmentGuideView: React.FC = () => {
@@ -85,18 +106,6 @@ const InvestmentGuideView: React.FC = () => {
 
   const scrollTo = (id: SectionId) => {
     sectionRefs.current[id]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  };
-
-  const SectionHeader: React.FC<{ id: SectionId; title: string }> = ({ id, title }) => {
-    const c = SECTION_COLORS[id];
-    return (
-      <div className={`flex items-center gap-3 mb-5 pb-3 border-b ${c.border}`}>
-        <div className={`p-2 rounded-lg ${c.bg} ${c.text}`}>
-          {Icons[id]}
-        </div>
-        <h2 className="text-lg font-bold text-white">{title}</h2>
-      </div>
-    );
   };
 
   return (
@@ -155,6 +164,84 @@ const InvestmentGuideView: React.FC = () => {
         >
           <SectionHeader id="inbox" title="지식 인제스트 — 승인 큐" />
           <KnowledgeInboxPanel />
+        </section>
+
+        {/* ━━━━━━━━━━ 0.5 매매 계획 ━━━━━━━━━━ */}
+        <section
+          id="tradePlan"
+          ref={el => { sectionRefs.current['tradePlan'] = el; }}
+          className="bg-gray-800/60 border border-gray-700 rounded-xl p-5 sm:p-6"
+        >
+          <SectionHeader id="tradePlan" title="매매 계획 — 사기 전에 팔 때를 먼저 정한다" />
+
+          <p className="text-sm text-gray-300 mb-4">
+            강환국 강의 템플릿을 그대로 앱 기능으로 옮긴 것이 "매매 계획"입니다. 자세한 설계는{' '}
+            <code className="text-xs bg-gray-900/80 px-1.5 py-0.5 rounded text-sky-300">docs/매매계획_설계.md</code>에 있습니다.
+          </p>
+
+          {/* 강의 원칙 5개 */}
+          <h4 className="text-sm font-bold text-white mb-3">강의 원칙 5가지</h4>
+          <div className="space-y-2 mb-6">
+            {[
+              '사기 전에 매도 계획부터 세운다 — 손절선·익절선·추세선을 매수와 동시에 정한다',
+              '1R(종목당 최대 허용손실)을 먼저 정하고 그 안에서 수량을 역산한다',
+              '손절가를 매수 전에 미리 확정해 둔다 — 오른 뒤 급하게 정하지 않는다',
+              '물타기(내려갈 때 추가매수)는 하지 않는다 — 불타기는 오를 때만, 그것도 옵션(기본 꺼짐)',
+              '목표가에서 일부(절반) 먼저 팔아 이익을 확정하고, 나머지는 추세선을 이탈할 때 판다',
+            ].map((rule, i) => (
+              <div key={i} className="flex gap-3 items-start bg-sky-900/15 rounded-lg p-3 border border-sky-700/20">
+                <span className="text-sky-400 text-sm font-bold mt-0.5">{i + 1}</span>
+                <p className="text-xs text-gray-300">{rule}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* 용어 4개 + 숫자 예시 */}
+          <h4 className="text-sm font-bold text-white mb-3">용어 4가지 — 10,000원에 샀다면</h4>
+          <div className="grid sm:grid-cols-2 gap-3 mb-6">
+            <div className="bg-gray-900/80 rounded-lg p-4 border border-red-600/20">
+              <h5 className="text-xs font-bold text-red-400 mb-1">손절선 — 9,300원</h5>
+              <p className="text-xs text-gray-400">여기 오면 전량 매도. 손절폭 7%를 기본값으로 씁니다(10,000×0.93).</p>
+            </div>
+            <div className="bg-gray-900/80 rounded-lg p-4 border border-emerald-600/20">
+              <h5 className="text-xs font-bold text-emerald-400 mb-1">익절선 — 12,100원</h5>
+              <p className="text-xs text-gray-400">여기 오면 절반 매도. 손절폭의 3배(+21%)가 기본값입니다(10,000×1.21).</p>
+            </div>
+            <div className="bg-gray-900/80 rounded-lg p-4 border border-amber-600/20">
+              <h5 className="text-xs font-bold text-amber-400 mb-1">추세선 — 20일 평균가</h5>
+              <p className="text-xs text-gray-400">매일 조금씩 바뀝니다. 종가가 이 선 아래로 내려오면 나머지 전량을 매도합니다.</p>
+            </div>
+            <div className="bg-gray-900/80 rounded-lg p-4 border border-blue-600/20">
+              <h5 className="text-xs font-bold text-blue-400 mb-1">불타기선 — 11,000 / 12,100 / 13,310원</h5>
+              <p className="text-xs text-gray-400">+10%씩 오를 때마다 추가매수를 검토(옵션, 기본 꺼짐). 내려갈 때 사는 물타기는 이 앱에서 할 수 없습니다.</p>
+            </div>
+          </div>
+
+          {/* 자주 하는 실수 5개 */}
+          <h4 className="text-sm font-bold text-white mb-3">자주 하는 실수 5가지</h4>
+          <div className="space-y-2 mb-6">
+            {[
+              '손절 미루기 — "조금만 더 기다리면 오르겠지"가 손실을 키우는 가장 흔한 원인입니다',
+              '물타기 — 손실 중인 종목에 더 사는 것은 손실 확정을 미룰 뿐, 계획에 없는 행동입니다',
+              '익절 전량 매도 — 한 번에 다 팔면 계속 오를 때의 이익을 놓칩니다. 절반만 먼저 팝니다',
+              '추세선 이탈을 장중 가격만 보고 판단 — 확정 종가로만 판정합니다(장중 변동은 참고용)',
+              '계획 없이 매수 — 계획이 없으면 알림도, 기준도 없습니다. 사기 전에 먼저 계획을 만드세요',
+            ].map((mistake, i) => (
+              <div key={i} className="flex gap-3 items-start bg-red-900/15 rounded-lg p-3 border border-red-700/20">
+                <span className="text-red-400 text-sm">✗</span>
+                <p className="text-xs text-gray-300">{mistake}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="bg-gray-900/80 border border-gray-600/30 rounded-lg px-4 py-3">
+            <p className="text-xs text-gray-400">
+              <span className="text-sky-400 font-semibold">근거(백테스트 요약):</span> 이 규칙을 그대로 적용하면 최대 하락폭(MDD)은 크게 줄지만,
+              수익률(CAGR)은 그냥 매수 후 보유(B&amp;H)보다 낮았습니다. 추세선은 20일선보다 50일선이 대체로 우월했고(휩쏘가 적음),
+              불타기는 아직 검증되지 않았습니다(기본값 꺼짐). <span className="text-white font-medium">투자자문이 아닙니다</span> — 큰 손실을 막고
+              정해 둔 규칙대로 실행하도록 돕는 도구입니다.
+            </p>
+          </div>
         </section>
 
         {/* ━━━━━━━━━━ 1. 매매 시그널 ━━━━━━━━━━ */}

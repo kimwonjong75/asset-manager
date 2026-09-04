@@ -110,6 +110,16 @@ interface CacheEntry {
 
 let cache: CacheEntry | null = null;
 
+/**
+ * 모듈 캐시 강제 무효화(P4) — 수동/자동 시세 갱신 직후 호출해 다음 조회가 10분 TTL을 무시하고
+ * 새 가격으로 MA/RSI 등 enriched 지표를 재계산하게 한다. `useEnrichedIndicators`의
+ * `forceRefreshVersion` 인자와 함께 쓴다 — 이 함수만으로는 effect가 재실행되지 않으므로
+ * (React state 변화가 없으면 effect가 다시 안 돎) 호출부는 반드시 버전도 함께 올려야 한다.
+ */
+export function invalidateEnrichedCache(): void {
+  cache = null;
+}
+
 function buildTickerKey(items: TickerItem[]): string {
   return items.map(a => `${a.ticker}|${a.exchange}`).sort().join(',');
 }
@@ -136,7 +146,13 @@ function alignSeries(
 
 export function useEnrichedIndicators(
   assets: Asset[],
-  watchlistItems?: WatchlistItem[]
+  watchlistItems?: WatchlistItem[],
+  /**
+   * P4: 강제 재조회 트리거(값이 바뀔 때만 의미 있음, 값 자체는 임의). 티커 집합이 그대로여도
+   * 시세를 갱신했으면 MA/RSI가 새 종가를 반영해야 하므로, 호출부(PortfolioContext)가 가격
+   * 갱신 직후 `invalidateEnrichedCache()`와 함께 이 값을 올린다.
+   */
+  forceRefreshVersion: number = 0
 ): {
   enrichedMap: Map<string, EnrichedIndicatorData>;
   isLoading: boolean;
@@ -291,7 +307,7 @@ export function useEnrichedIndicators(
     return () => {
       abortRef.current = true;
     };
-  }, [allTickerItems, tickerKey]);
+  }, [allTickerItems, tickerKey, forceRefreshVersion]);
 
   return { enrichedMap, isLoading };
 }

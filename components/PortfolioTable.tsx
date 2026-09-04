@@ -25,6 +25,8 @@ import ActionMenu from './common/ActionMenu';
 import { applyBulkAssetPatch, buildTurtleCandidateRegistration, type BulkAssetPatch } from '../utils/bulkAssetOps';
 import { BUCKET_LABELS } from '../types/bucket';
 import { OWNER_LABELS } from '../types/owner';
+import { useConfirm } from '../hooks/useConfirm';
+import ConfirmDialog from './common/ConfirmDialog';
 
 const SortIcon = ({ sortKey, sortConfig }: { sortKey: SortKey, sortConfig: { key: SortKey; direction: SortDirection } | null }) => {
   if (!sortConfig || sortConfig.key !== sortKey) return <span className="opacity-30">↕</span>;
@@ -76,6 +78,7 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
   // Context에서 가져오기
   const { derived, ui, actions, data } = usePortfolio();
   const { enrichedMap, isEnrichedLoading } = derived;
+  const { confirm, confirmRequest } = useConfirm();
 
   // GC/DC 뱃지: 알림 규칙(`golden-cross`, `dead-cross`)의 MA 페어를 직접 참조
   // 사용자가 알림 설정에서 변경한 페어가 즉시 뱃지에 반영됨
@@ -249,18 +252,18 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
 
   // ── 일괄 변경 (계정/버킷/터틀 후보) — 순수 계산은 utils/bulkAssetOps, 저장은 단일 commitPortfolioPatch ──
   // 패치 대상은 화면 필터와 무관하게 원본 data.assets 기준 (선택 업데이트와 동일 규약: selectedIds 그대로 사용)
-  const handleBulkPatch = (patch: BulkAssetPatch, label: string) => {
+  const handleBulkPatch = async (patch: BulkAssetPatch, label: string) => {
     const { assets: nextAssets, changedCount } = applyBulkAssetPatch(data.assets, selectedIds, patch);
     if (changedCount === 0) {
       window.alert('선택한 자산이 이미 모두 해당 값입니다.');
       return;
     }
-    if (!window.confirm(`선택한 ${selectedIds.size}개 자산 중 ${changedCount}개를 '${label}'(으)로 변경합니다.`)) return;
+    if (!(await confirm(`선택한 ${selectedIds.size}개 자산 중 ${changedCount}개를 '${label}'(으)로 변경합니다.`))) return;
     actions.commitPortfolioPatch({ assets: nextAssets });
     setSelectedIds(new Set());
   };
 
-  const handleBulkTurtleRegister = () => {
+  const handleBulkTurtleRegister = async () => {
     const today = new Date().toISOString().slice(0, 10);
     const seqBase = Date.now().toString(36);
     const result = buildTurtleCandidateRegistration(
@@ -275,7 +278,7 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
       return;
     }
     const skipNote = result.skippedFamily.length > 0 ? `\n(유선 계정 ${result.skippedFamily.length}건은 제외됩니다: ${result.skippedFamily.join(', ')})` : '';
-    if (!window.confirm(`선택한 자산 ${result.registeredCount}개를 투더문(위성) 버킷으로 전환하고 관심종목 터틀 후보로 등록합니다.${skipNote}`)) return;
+    if (!(await confirm(`선택한 자산 ${result.registeredCount}개를 투더문(위성) 버킷으로 전환하고 관심종목 터틀 후보로 등록합니다.${skipNote}`))) return;
     actions.commitPortfolioPatch({ assets: result.assets, watchlist: result.watchlist });
     setSelectedIds(new Set());
   };
@@ -289,11 +292,12 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
 
   useEffect(() => {
     if (!isLoading && prevLoadingRef.current && failedIds && failedIds.size > 0) {
-      const ok = window.confirm('업데이트에 실패한 항목이 있습니다. 실패한 리스트만 보시겠습니까?');
-      if (ok) setShowFailedOnly(true);
+      void confirm('업데이트에 실패한 항목이 있습니다. 실패한 리스트만 보시겠습니까?').then(ok => {
+        if (ok) setShowFailedOnly(true);
+      });
     }
     prevLoadingRef.current = isLoading;
-  }, [isLoading, failedIds]);
+  }, [isLoading, failedIds, confirm]);
 
   const emptyMessage = smartFilter.activeFilters.size > 0
     ? '필터 조건에 맞는 자산이 없습니다.'
@@ -306,6 +310,7 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
 
   return (
     <div className="bg-gray-800 rounded-lg shadow-lg">
+      {confirmRequest && <ConfirmDialog {...confirmRequest} />}
       {/* 헤더 영역 */}
       <div className="bg-gray-800 px-3 sm:px-6 pt-2 sm:pt-6 pb-2 sm:pb-4 border-b border-gray-700">
         <div className="flex items-center justify-between gap-2">
@@ -376,6 +381,7 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
                     { label: `버킷 → ${BUCKET_LABELS.CORE}`, onClick: () => handleBulkPatch({ bucket: 'CORE' }, `버킷: ${BUCKET_LABELS.CORE}`) },
                     { label: `버킷 → ${BUCKET_LABELS.SATELLITE}`, onClick: () => handleBulkPatch({ bucket: 'SATELLITE' }, `버킷: ${BUCKET_LABELS.SATELLITE}`) },
                     { label: '🐢 터틀 후보 등록', onClick: handleBulkTurtleRegister, colorClass: 'text-purple-300' },
+                    { label: '📋 투더문 일괄 계획 만들기', onClick: actions.openTradePlanBulk, colorClass: 'text-primary-light' },
                   ]}
                   onClose={() => setBulkMenuOpen(false)}
                 />

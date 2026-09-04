@@ -1,14 +1,25 @@
 // components/SellAssetModal.tsx
 // 수정된 버전: 매도 통화를 자산 통화로 고정
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Asset, Currency, CURRENCY_SYMBOLS, SellTransaction } from '../types';
 import { isBaseType } from '../types/category';
 import { formatQuantity } from './portfolio-table/utils';
 import { usePortfolio } from '../contexts/PortfolioContext';
+import { defaultSellOutcome, sellPrefillFor } from '../utils/tradePlanLink';
+import type { SellOutcome } from '../types/tradePlan';
+import Segmented from './common/Segmented';
+
+/** 매도 효과 선택지 (P2b) — 라벨과 아래 설명이 1:1로 대응한다. */
+const SELL_OUTCOME_OPTIONS: { value: SellOutcome; label: string; hint: string }[] = [
+  { value: 'half', label: '익절 절반', hint: '익절 절반: 계획 수량의 절반만 팔고 익절선은 완료 처리됩니다' },
+  { value: 'stop', label: '손절 전량', hint: '손절 전량: 보유 수량 전부를 팔고 계획을 종료합니다' },
+  { value: 'exit', label: '추세이탈 전량', hint: '추세이탈 전량: 나머지 전량을 팔고 계획을 종료합니다' },
+  { value: 'none', label: '계획과 무관', hint: '계획과 무관: 매도 기록만 남기고 계획 상태는 바꾸지 않습니다' },
+];
 
 const SellAssetModal: React.FC = () => {
-  const { modal, actions, status } = usePortfolio();
+  const { modal, actions, status, derived } = usePortfolio();
   const asset = modal.sellingAsset;
   const isOpen = !!modal.sellingAsset;
   const onClose = actions.closeSellModal;
@@ -18,19 +29,51 @@ const SellAssetModal: React.FC = () => {
   const [sellDate, setSellDate] = useState<string>(new Date().toISOString().slice(0, 10));
   const [sellPrice, setSellPrice] = useState<string>('');
   const [sellQuantity, setSellQuantity] = useState<string>('');
+  const [sellOutcome, setSellOutcome] = useState<SellOutcome>('none');
+
+  // 최신 평가 행은 ref로 미러링한다(usePriceFreshnessRefresh와 동일 접근) —
+  // derived.tradePlanRows는 배경 시세 갱신마다 참조가 바뀌므로 아래 리셋 effect의 의존성에 넣으면
+  // 모달이 열린 채 재발화해 **사용자가 입력한 값을 지운다**. ref는 반응형 의존성이 아니라서
+  // effect가 실제로 실행되는 순간의 최신값만 읽게 된다.
+  // ⚠ 렌더 중 ref 대입은 금지(react-hooks/refs) — 반드시 effect에서, 그리고 아래 리셋 effect보다
+  //   **먼저** 선언해 같은 커밋에서 미러가 먼저 갱신되게 한다.
+  const tradePlanRowsRef = useRef(derived.tradePlanRows);
+  useEffect(() => { tradePlanRowsRef.current = derived.tradePlanRows; }, [derived.tradePlanRows]);
 
   useEffect(() => {
     if (asset && isOpen) {
       setSellDate(new Date().toISOString().slice(0, 10));
-      // 현재가를 자산 통화 기준으로 표시
-      setSellPrice(asset.currentPrice.toString());
-      setSellQuantity(asset.quantity.toString());
+      const activePlan = asset.tradePlan && asset.tradePlan.status === 'active' ? asset.tradePlan : null;
+      if (activePlan) {
+        // 계획 카드에서 열었으면 그쪽 프리필이 우선, 아니면 현재 신호로 기본 효과를 고른다.
+        const row = tradePlanRowsRef.current.find(r => r.asset.id === asset.id);
+        const outcome = modal.sellPrefill?.outcome ?? defaultSellOutcome(row?.evaluation ?? null);
+        const prefill = sellPrefillFor(activePlan, asset, outcome);
+        setSellOutcome(outcome);
+        setSellQuantity(String(modal.sellPrefill?.quantity ?? prefill.quantity));
+        setSellPrice(String(modal.sellPrefill?.price ?? prefill.priceOriginal));
+      } else {
+        setSellOutcome('none');
+        // 현재가를 자산 통화 기준으로 표시
+        setSellPrice(asset.currentPrice.toString());
+        setSellQuantity(asset.quantity.toString());
+      }
     }
-  }, [asset, isOpen]);
+  }, [asset, isOpen, modal.sellPrefill]);
 
   if (!isOpen || !asset) return null;
 
   const isCrypto = isBaseType(asset.categoryId, 'CRYPTOCURRENCY');
+  const activePlan = asset.tradePlan && asset.tradePlan.status === 'active' ? asset.tradePlan : null;
+
+  /** 효과를 바꾸면 수량·가격도 그 효과의 기본값으로 다시 채운다(사용자는 이후 자유 수정). */
+  const handleOutcomeChange = (outcome: SellOutcome) => {
+    setSellOutcome(outcome);
+    if (!activePlan) return;
+    const prefill = sellPrefillFor(activePlan, asset, outcome);
+    setSellQuantity(String(prefill.quantity));
+    setSellPrice(String(prefill.priceOriginal));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -54,13 +97,21 @@ const SellAssetModal: React.FC = () => {
     }
 
     // 자산의 원래 통화로 매도 처리
-    onSell(
+    const result = await onSell(
       asset.id,
       sellDate,
       price,           // 자산 통화 기준 매도가
       quantity,
       asset.currency   // 자산의 통화
     );
+
+    // 매매 계획 상태 전이(P2b) — 돈 기록이 성공하고 자산이 남아 있을 때만.
+    // 전량 매도로 자산이 사라졌으면(assetClosed) 계획을 얹을 대상이 없다.
+    if (result.ok && !result.assetClosed && activePlan && sellOutcome !== 'none') {
+      actions.applyTradePlanSellOutcome(asset.id, sellOutcome, {
+        date: sellDate, price, quantity, sellRecordId: result.sellRecordId,
+      });
+    }
   };
 
   const inputClasses = "w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition";
@@ -131,6 +182,23 @@ const SellAssetModal: React.FC = () => {
               </div>
             </div>
           </div>
+
+          {/* 매매 계획 연동 (P2b) — 활성 계획이 있을 때만. 선택에 따라 수량·가격이 다시 채워진다 */}
+          {activePlan && (
+            <div className="bg-gray-700/50 p-3 rounded-md">
+              <div className={labelClasses}>이 매도가 계획에 미치는 효과</div>
+              <Segmented<SellOutcome>
+                bordered={false}
+                className="grid grid-cols-2 sm:grid-cols-4 gap-1.5"
+                options={SELL_OUTCOME_OPTIONS.map(opt => ({ value: opt.value, label: opt.label }))}
+                value={sellOutcome}
+                onChange={handleOutcomeChange}
+              />
+              <p className="text-[11px] text-gray-500 mt-2">
+                {SELL_OUTCOME_OPTIONS.find(o => o.value === sellOutcome)?.hint}
+              </p>
+            </div>
+          )}
 
           {/* 통화 표시 (변경 불가) */}
           <div className="bg-gray-700/50 p-3 rounded-md">

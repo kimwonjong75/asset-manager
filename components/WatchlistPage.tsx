@@ -7,6 +7,7 @@ import { getAllowedCategories, getCategoryName, type CategoryDefinition } from '
 import AssetTrendChart from './AssetTrendChart';
 import ChartViewerModal from './common/ChartViewerModal';
 import StockReviewAccordion from './stock-review/StockReviewAccordion';
+import TradePlanSection from './trade-plan/TradePlanSection';
 import { useOnClickOutside } from '../hooks/useOnClickOutside';
 import WatchlistMobileCard from './watchlist/WatchlistMobileCard';
 import { usePortfolio } from '../contexts/PortfolioContext';
@@ -372,6 +373,15 @@ const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, portfolioAsset
                       {openMenuId === w.id && (
                         <div ref={menuRef} className="absolute right-0 mt-2 w-36 bg-gray-800 border border-gray-700 rounded-md shadow-lg z-30 text-sm">
                           <button onClick={() => { setOpenMenuId(null); onOpenEditModal(w); }} className="block w-full text-left px-3 py-2 hover:bg-gray-700 text-white">수정</button>
+                          <button
+                            onClick={() => {
+                              setOpenMenuId(null);
+                              actions.openTradePlanPlanner({ watchItemId: w.id, ticker: w.ticker, exchange: w.exchange, name: w.name });
+                            }}
+                            className="block w-full text-left px-3 py-2 text-gray-200 hover:bg-gray-700"
+                          >
+                            📋 매매 계획
+                          </button>
                           <button onClick={() => { setOpenMenuId(null); toggleTurtle(w.id); }} className="block w-full text-left px-3 py-2 text-gray-200 hover:bg-gray-700">{w.isTurtleCandidate ? '🐢 터틀 후보 해제' : '🐢 터틀 후보 지정'}</button>
                           <button onClick={() => { setOpenMenuId(null); handleToggleExpand(w.id); }} className="block w-full text-left px-3 py-2 text-gray-200 hover:bg-gray-700">차트 보기</button>
                           <button onClick={() => { setOpenMenuId(null); setFullscreenItemId(w.id); }} className="block w-full text-left px-3 py-2 text-gray-200 hover:bg-gray-700">차트 확대</button>
@@ -398,6 +408,12 @@ const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, portfolioAsset
                           exchange={w.exchange}
                           categoryId={w.categoryId}
                           onExpand={() => setFullscreenItemId(w.id)}
+                        />
+                        <TradePlanSection
+                          source="watchlist"
+                          watchItem={w}
+                          displayName={w.name}
+                          className="px-2 sm:px-0"
                         />
                         <StockReviewAccordion
                           asset={watchlistToPseudoAsset(w)}
