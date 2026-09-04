@@ -13,7 +13,9 @@
 // 같은 이유). services/*는 fetch()(브라우저 전용) 등을 쓰므로 import하지 않는다 — 동일한 요청/응답
 // 포맷(§14)을 UrlFetchApp으로 이 파일 안에서 재현한다.
 //
-// 저장: 매니페스트·MA 캐시는 이 스크립트가 만든 Drive 파일에만 저장한다(drive.file 스코프로 충분).
+// 저장: 매니페스트·MA 캐시는 이 스크립트가 만든 Drive 파일에만 저장한다(용도상 drive.file로
+// 충분하지만, `DriveApp.createFile()`이 drive.file 스코프에서 거부되는 GAS 레거시 제약 때문에
+// appsscript.json은 전체 drive 스코프를 쓴다 — 2026-09-04, RULES.md §15 참고).
 // **portfolio.json은 절대 읽지도 쓰지도 않는다**(RULES.md §15).
 
 import { CLOUD_RUN_BASE_URL, APP_PUBLIC_URL } from '../../../constants/api';
@@ -460,6 +462,17 @@ function buildFormBody(params: Record<string, string>): string {
   return Object.entries(params).map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`).join('&');
 }
 
+/**
+ * 토큰 요청 파라미터에 client_secret을 조건부로 추가한다. 카카오 앱의 REST API 키는 "클라이언트
+ * 시크릿" 기능이 최근 기본 활성화로 바뀌었다(2026-09 확인) — 활성화된 앱은 이 값 없이 토큰을
+ * 요청하면 KOE010(invalid_client)로 거부된다. `KAKAO_CLIENT_SECRET` 속성이 없으면(클라이언트
+ * 시크릿을 비활성화한 앱) 그대로 생략해 기존 동작을 유지한다.
+ */
+function withClientSecret(params: Record<string, string>): Record<string, string> {
+  const secret = getProp('KAKAO_CLIENT_SECRET');
+  return secret ? { ...params, client_secret: secret } : params;
+}
+
 /** 저장 성공을 확인한 뒤에만 발송 단계로 진행한다(§6.1 락아웃 가드). */
 function refreshAccessToken(): string | null {
   const restKey = getProp('KAKAO_REST_KEY');
@@ -472,7 +485,7 @@ function refreshAccessToken(): string | null {
     const res = UrlFetchApp.fetch(KAKAO_TOKEN_URL, {
       method: 'post',
       contentType: 'application/x-www-form-urlencoded',
-      payload: buildFormBody({ grant_type: 'refresh_token', client_id: restKey, refresh_token: refreshToken }),
+      payload: buildFormBody(withClientSecret({ grant_type: 'refresh_token', client_id: restKey, refresh_token: refreshToken })),
       muteHttpExceptions: true,
     });
     if (res.getResponseCode() !== 200) {
@@ -878,7 +891,7 @@ function handleKakaoAuthCode(code: string): GasHtmlOutput {
     const res = UrlFetchApp.fetch(KAKAO_TOKEN_URL, {
       method: 'post',
       contentType: 'application/x-www-form-urlencoded',
-      payload: buildFormBody({ grant_type: 'authorization_code', client_id: restKey, redirect_uri: redirectUri, code }),
+      payload: buildFormBody(withClientSecret({ grant_type: 'authorization_code', client_id: restKey, redirect_uri: redirectUri, code })),
       muteHttpExceptions: true,
     });
     if (res.getResponseCode() !== 200) {
@@ -912,16 +925,18 @@ function statusPage(): GasHtmlOutput {
 }
 
 function doGet(e: GasDoGetEvent): GasTextOutput | GasHtmlOutput {
-  const action = e && e.parameter ? e.parameter.action : undefined;
-  if (action === 'kakao-auth') {
-    const code = e.parameter.code;
-    if (code) return handleKakaoAuthCode(code);
+  const params = e && e.parameter ? e.parameter : {};
+  // 카카오가 인가 코드를 붙여 돌아오는 리다이렉트는 redirect_uri(= 이 스크립트의 순수 /exec 주소, 아래
+  // redirectUri와 동일)에 ?code=...만 붙인다 — ?action=kakao-auth는 우리가 처음 안내 링크에 붙인
+  // 것일 뿐 카카오가 되돌려주는 요청에는 없다. action 체크보다 먼저 code 유무로 분기해야 한다.
+  if (params.code) return handleKakaoAuthCode(params.code);
+  if (params.action === 'kakao-auth') {
     const restKey = getProp('KAKAO_REST_KEY');
     if (!restKey) return htmlPage('설정 필요', '<p>스크립트 속성에 KAKAO_REST_KEY를 먼저 저장하세요.</p>');
     const redirectUri = ScriptApp.getService().getUrl();
     const authUrl = `${KAKAO_AUTHORIZE_URL}?client_id=${encodeURIComponent(restKey)}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=talk_message`;
     return HtmlService.createHtmlOutput(
-      `<html><body>카카오 로그인으로 이동합니다... <a href="${authUrl}">여기를 눌러 계속</a><script>location.href=${JSON.stringify(authUrl)};</script></body></html>`,
+      `<html><body>카카오 로그인으로 이동합니다... <a href="${authUrl}" target="_top">여기를 눌러 계속</a><script>top.location.href=${JSON.stringify(authUrl)};</script></body></html>`,
     ).setTitle('카카오 연결');
   }
   return statusPage();
