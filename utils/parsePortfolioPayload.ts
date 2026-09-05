@@ -13,6 +13,7 @@ import type { CategoryStore } from '../types/category';
 import type { KnowledgeBase } from '../types/knowledge';
 import type { ActionItem } from '../types/actionQueue';
 import type { TurtlePosition, TurtleSettings } from '../types/turtle';
+import { normalizeValuationSettings, type ValuationSettings } from '../types/valuation';
 import type { ColumnConfig, FixedColumnWidths } from '../types/ui';
 import type { AlertSettings } from '../types/alertRules';
 
@@ -37,6 +38,8 @@ export interface ParsedPortfolioPayload {
   actionQueue?: ActionItem[];
   turtlePositions?: TurtlePosition[];
   turtleSettings?: TurtleSettings;
+  /** 수익률 기준 — 값이 있으면 `normalizeValuationSettings`를 거친 안전값(오염 백업이 설정을 오염시키지 못함) */
+  valuationSettings?: ValuationSettings;
   tableLayout?: ParsedTableLayout;
   columnConfig?: ColumnConfig[]; // 레거시 백업(구 버전 클라이언트 호환)
   /** 알림 규칙 설정 — 병합/localStorage 반영은 훅(alertSettingsStorage)이 담당, 여기선 원본만 통과 */
@@ -73,6 +76,9 @@ export function parsePortfolioPayload(json: string): ParsedPortfolioPayload {
   const actionQueue = Array.isArray(data.actionQueue) ? (data.actionQueue as ActionItem[]) : undefined;
   const turtlePositions = Array.isArray(data.turtlePositions) ? (data.turtlePositions as TurtlePosition[]) : undefined;
   const turtleSettings = isPlainObject(data.turtleSettings) ? (data.turtleSettings as unknown as TurtleSettings) : undefined;
+  // 수익률 기준 — 캐스팅이 아니라 normalize 를 거친다. 백업 파일의 쓰레기 값('usd'·문자열 등)이
+  // 그대로 상태로 들어가면 두 모드 어디에도 속하지 않는 계산 분기가 생긴다.
+  const valuationSettings = isPlainObject(data.valuationSettings) ? normalizeValuationSettings(data.valuationSettings) : undefined;
 
   // 테이블 레이아웃(신규) — columns 배열 / fixedWidths 객체만 보존
   let tableLayout: ParsedTableLayout | undefined;
@@ -102,6 +108,7 @@ export function parsePortfolioPayload(json: string): ParsedPortfolioPayload {
     actionQueue,
     turtlePositions,
     turtleSettings,
+    valuationSettings,
     tableLayout,
     columnConfig,
     alertSettings,

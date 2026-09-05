@@ -95,12 +95,15 @@ function roundTrip<T>(v: T): T {
     assets: [], portfolioHistory: [], sellHistory: [], watchlist: [], exchangeRates: { USD: 1400, JPY: 9 },
     allocationTargets: { weights: {}, categoryInstruments: {} }, sellAlertDropRate: 15,
     categoryStore: {}, knowledgeBase: {}, actionQueue: [], turtlePositions: [], turtleSettings: {},
+    valuationSettings: { plBasis: 'krw' },
     columnConfig: [], tableLayout: {}, lastUpdateDate: '2026-07-05',
   };
   const loaded = roundTrip(exportShape) as Record<string, unknown>;
-  for (const key of ['actionQueue', 'turtlePositions', 'turtleSettings', 'allocationTargets']) {
+  for (const key of ['actionQueue', 'turtlePositions', 'turtleSettings', 'valuationSettings', 'allocationTargets']) {
     check(`exportData 키 존재: ${key}`, key in loaded, true);
   }
+  // 수익률 기준은 값까지 확인 — 키만 있고 값이 기본값으로 돌아가면 두 PC의 판정이 갈린다.
+  check('valuationSettings.plBasis 보존', (loaded.valuationSettings as { plBasis?: string })?.plBasis, 'krw');
   check('allocationTargets.categoryInstruments 키', 'categoryInstruments' in (loaded.allocationTargets as object), true);
 }
 

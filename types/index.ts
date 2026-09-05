@@ -241,6 +241,14 @@ export interface AssetSnapshot {
   unitPrice?: number;        // 원화 환산 단가 (KRW)
   unitPriceOriginal?: number; // [추가] 외화 원본 단가 (USD, JPY 등)
   currency?: Currency;        // [추가] 통화 정보
+  /**
+   * 원통화 평균 매수단가 (**외화 자산만** 기록. KRW 자산은 purchaseValue로 충분하므로 미기록).
+   * `purchaseValue`는 항상 원화 기준(매수 당시 환율)이라 달러 모드 차트가 그대로 쓸 수 없다.
+   * 이 값이 있으면 `deriveSnapshotPurchaseValue`가 `purchaseUnitOriginal × currentValue / unitPriceOriginal`로
+   * 그날의 환율을 약분해 달러 기준 원금을 복원한다(`utils/portfolioMetrics.ts`).
+   * 필드가 없는 구 스냅샷은 저장값(원화 기준)으로 폴백 — 365일 캡으로 자연 소멸한다.
+   */
+  purchaseUnitOriginal?: number;
 }
 
 export interface PortfolioSnapshot {

@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { usePortfolio } from '../contexts/PortfolioContext';
 import { useFontScale } from '../hooks/useFontScale';
+import type { PLBasis } from '../types/valuation';
+import { PL_BASIS_ORDER, PL_BASIS_LABELS, PL_BASIS_SUBLABELS } from '../types/valuation';
 
 const PRESET_VALUES = [
   { label: '50만', value: 500_000 },
@@ -11,7 +13,7 @@ const PRESET_VALUES = [
 ];
 
 const DisplaySettingsSection: React.FC = () => {
-  const { ui, actions } = usePortfolio();
+  const { data, ui, actions } = usePortfolio();
   const { isLarge, setLarge } = useFontScale();
   const [draft, setDraft] = useState<string>(String(ui.lowValueThreshold));
 
@@ -54,6 +56,44 @@ const DisplaySettingsSection: React.FC = () => {
       </div>
 
       <div className="px-6 py-4 space-y-4">
+        {/* 수익률 기준 — 표·대시보드·알림 판정이 모두 이 설정을 따른다(저장 데이터는 그대로) */}
+        <div className="bg-gray-900 rounded-lg p-4">
+          <div className="min-w-0 mb-2">
+            <span className="text-white font-medium text-sm">수익률 기준</span>
+            <p className="text-gray-400 text-xs mt-0.5">
+              해외 종목의 수익률과 평가손익을 어떤 기준으로 계산할지 고릅니다.
+            </p>
+          </div>
+
+          <div className="inline-flex rounded-md border border-gray-600 overflow-hidden" role="group" aria-label="수익률 기준">
+            {PL_BASIS_ORDER.map((basis: PLBasis) => {
+              const on = data.valuationSettings.plBasis === basis;
+              return (
+                <button
+                  key={basis}
+                  type="button"
+                  onClick={() => actions.updateValuationSettings({ plBasis: basis })}
+                  aria-pressed={on}
+                  className={`px-3 py-1.5 text-xs text-center transition-colors ${
+                    on ? 'bg-primary text-white' : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+                  } ${basis !== PL_BASIS_ORDER[0] ? 'border-l border-gray-600' : ''}`}
+                >
+                  <div className="font-medium">{PL_BASIS_LABELS[basis]}</div>
+                  <div className="text-[10px] opacity-70">{PL_BASIS_SUBLABELS[basis]}</div>
+                </button>
+              );
+            })}
+          </div>
+
+          <p className="mt-3 text-xs text-gray-400 leading-relaxed">
+            달러 기준은 환율 변동을 빼고 종목 자체의 손익만 보여줍니다. 키움 등 증권사 화면에 뜨는 숫자와 같습니다.
+            <br />
+            원화 기준은 환율로 생긴 손익까지 더해서 실제 원화 자산이 얼마나 늘고 줄었는지 보여줍니다.
+            <br />
+            손절·익절 알림도 여기서 고른 기준을 따릅니다.
+          </p>
+        </div>
+
         <div className="bg-gray-900 rounded-lg p-4">
           <div className="flex items-start justify-between gap-4 flex-wrap">
             <div className="min-w-0">

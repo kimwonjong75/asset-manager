@@ -13,6 +13,7 @@ import type { ColumnConfig, ColumnKey, FixedColumnWidths, EnrichedAsset, SignalD
 import type { MALineConfig } from '../utils/maCalculations';
 import type { ActionItem } from './actionQueue';
 import type { TurtlePosition, TurtleSettings } from './turtle';
+import type { ValuationSettings } from './valuation';
 import type { OwnerFilter } from './owner';
 import type { AddAssetResult, SellResult, BuyMoreResult } from './assetActionResult';
 import type { CleanupDecision } from './cleanup';
@@ -38,11 +39,13 @@ export interface PortfolioData {
   actionQueue: ActionItem[];
   turtlePositions: TurtlePosition[];
   turtleSettings: TurtleSettings;
+  /** 수익률 기준(달러/원화) — 표·대시보드·알림이 모두 이 값을 따른다 */
+  valuationSettings: ValuationSettings;
 }
 
 /**
  * **`PortfolioSavePatch`의 별칭**(5-A). 예전에는 5개 도메인만 담는 별도 인터페이스였으나,
- * 저장 경로가 하나로 합쳐지면서 12개 도메인 전부를 patch 로 넘길 수 있게 됐다.
+ * 저장 경로가 하나로 합쳐지면서 13개 도메인 전부를 patch 로 넘길 수 있게 됐다.
  * 새 코드는 `types/portfolioSave`의 이름을 쓰고, 이 별칭은 기존 호출부 호환용으로만 유지한다.
  */
 export type PortfolioPatch = PortfolioSavePatch;
@@ -301,6 +304,8 @@ export interface PortfolioActions {
   compactActionQueue: () => number;
   updateTurtlePositions: (positions: TurtlePosition[]) => void;
   updateTurtleSettings: (settings: TurtleSettings) => void;
+  /** 수익률 기준 전환 (표시 설정) — 상태 갱신 + Drive 자동 저장. 표·대시보드·알림 판정이 함께 바뀐다 */
+  updateValuationSettings: (settings: ValuationSettings) => void;
   /** 교차도메인 원자 커밋 — 지정 도메인 set + 단일 autosave (터틀 실행의 저장 경합 방지) */
   commitPortfolioPatch: (patch: PortfolioPatch) => void;
   /** 대청소 일괄 분류 저장 (Phase 3b) — assetId별 결정을 자산에 적용 후 단일 커밋. 결정 없는 자산 불변 */

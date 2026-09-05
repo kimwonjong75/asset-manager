@@ -159,6 +159,24 @@ check('undefined 국내', isForeignSettlement(undefined), false);
   // 해외만: usdLoss(-2M) + usdWin(+0.5M) = -1.5M (krwLoss 제외)
   checkClose('예정 해외손익(해외만 합산)', plannedForeignGainKRW(cands, planned), -1_500_000);
   checkClose('선택 안 하면 0', plannedForeignGainKRW(cands, new Set()), 0);
+
+  // 세금용 원화 기준 맵(3번째 인자) — 있으면 후보의 profitLossKRW 대신 맵 값을 쓴다.
+  // 달러 기준 설정에서 후보 값은 환차손익이 빠진 숫자라 양도세 추정에 쓰면 안 되기 때문.
+  const taxMap = new Map<string, number>([
+    ['usdLoss', -3_000_000],   // 원화 기준으로는 손실이 더 큼(환차손 포함)
+    ['usdWin', 800_000],
+    ['krwLoss', -9_999_999],   // 해외가 아니므로 합산에서 제외되어야 함
+  ]);
+  checkClose('맵 주면 맵 값 사용(−3M + 0.8M)', plannedForeignGainKRW(cands, planned, taxMap), -2_200_000);
+  checkClose('맵 있어도 국내 후보는 제외', plannedForeignGainKRW(cands, new Set(['krwLoss']), taxMap), 0);
+
+  // 맵에 일부만 있으면 없는 건은 후보 값으로 폴백
+  const partialMap = new Map<string, number>([['usdLoss', -3_000_000]]);
+  checkClose('맵 부분 → 없는 건은 후보 값 폴백(−3M + 0.5M)', plannedForeignGainKRW(cands, planned, partialMap), -2_500_000);
+
+  // 빈 맵 / 인자 생략 → 현행 동작 그대로
+  checkClose('빈 맵 → 후보 값 폴백', plannedForeignGainKRW(cands, planned, new Map()), -1_500_000);
+  checkClose('인자 생략 → 후보 값(하위호환)', plannedForeignGainKRW(cands, planned), -1_500_000);
 }
 
 // ════════════════════════════════════════════════════════════════════════════

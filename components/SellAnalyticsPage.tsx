@@ -1,16 +1,12 @@
 import React, { useMemo, useState } from 'react';
-import { Asset, Currency, ExchangeRates, SellRecord } from '../types';
+import { Asset, ExchangeRates, SellRecord } from '../types';
 import { getAllowedCategories, type CategoryDefinition } from '../types/category';
 import StatCard from './StatCard';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar, Cell } from 'recharts';
 import { usePortfolio } from '../contexts/PortfolioContext';
 import { splitRealizedPL, buildSoldPLBreakdownRows } from '../utils/soldPLBreakdown';
-
-const MAX_REASONABLE_EXCHANGE_RATES: Partial<Record<Currency, number>> = {
-  [Currency.USD]: 3000,
-  [Currency.JPY]: 50,
-  [Currency.CNY]: 400,
-};
+import { computeSoldRecordPL } from '../utils/portfolioMetrics';
+import { mergeSellRecords } from '../utils/sellRecords';
 
 interface SellAnalyticsPageProps {
   assets: Asset[];
@@ -52,23 +48,12 @@ const getPresetRange = (preset: PeriodPreset): { start: string; end: string } =>
 };
 
 const SellAnalyticsPage: React.FC<SellAnalyticsPageProps> = ({ assets, sellHistory, categories, exchangeRates }) => {
-  const { actions } = usePortfolio();
+  const { actions, data } = usePortfolio();
+  // 실현손익 계산은 전부 `utils/portfolioMetrics.computeSoldRecordPL` 하나로 — 대시보드 수익통계 카드와
+  // 같은 함수·같은 수익률 기준을 쓴다(예전에는 이 파일이 자체 공식 사본을 갖고 있어 값이 어긋났다).
+  const plBasis = data.valuationSettings.plBasis;
+  const rates: ExchangeRates = exchangeRates ?? data.exchangeRates;
 
-  const getSellTotalKRW = (r: SellRecord): number => {
-    const currency = r.settlementCurrency;
-    if (currency && currency !== Currency.KRW && r.sellPriceOriginal && r.sellPriceOriginal > 0) {
-      const maxRate = MAX_REASONABLE_EXCHANGE_RATES[currency];
-      if (maxRate && r.sellExchangeRate && r.sellExchangeRate > maxRate) {
-        const currentRate = currency === Currency.USD ? (exchangeRates?.USD || 0)
-          : currency === Currency.JPY ? (exchangeRates?.JPY || 0) : 0;
-        if (currentRate > 0) {
-          console.warn(`[SellAnalytics] 비정상 환율 감지(${r.ticker}): ${r.sellExchangeRate} → 현재 환율(${currentRate}) 사용`);
-          return r.sellPriceOriginal * currentRate * r.sellQuantity;
-        }
-      }
-    }
-    return r.sellPrice * r.sellQuantity;
-  };
   const [grouping, setGrouping] = useState<Grouping>('monthly');
   const [search, setSearch] = useState<string>('');
   const [category, setCategory] = useState<number | 'ALL'>('ALL');
@@ -90,26 +75,10 @@ const SellAnalyticsPage: React.FC<SellAnalyticsPageProps> = ({ assets, sellHisto
   const [pendingSearch, setPendingSearch] = useState<string>('');
   const [pendingCategory, setPendingCategory] = useState<number | 'ALL'>('ALL');
 
-  const allSellRecords: SellRecord[] = useMemo(() => {
-    const sellHistoryIds = new Set(sellHistory.map(r => r.id));
-    const inlineRecords: SellRecord[] = [];
-    assets.forEach(a => {
-      if (a.sellTransactions && a.sellTransactions.length > 0) {
-        a.sellTransactions.forEach(t => {
-          if (!sellHistoryIds.has(t.id)) {
-            inlineRecords.push({
-              assetId: a.id,
-              ticker: a.ticker,
-              name: a.name,
-              categoryId: a.categoryId,
-              ...t,
-            });
-          }
-        });
-      }
-    });
-    return [...sellHistory, ...inlineRecords];
-  }, [assets, sellHistory]);
+  const allSellRecords: SellRecord[] = useMemo(
+    () => mergeSellRecords(sellHistory, assets),
+    [assets, sellHistory],
+  );
 
   const filteredRecords = useMemo(() => {
     return allSellRecords.filter(r => {
@@ -122,43 +91,23 @@ const SellAnalyticsPage: React.FC<SellAnalyticsPageProps> = ({ assets, sellHisto
     });
   }, [allSellRecords, periodStartDate, periodEndDate, search, category]);
 
-  const toKRWPurchaseUnit = (a: Asset, quantity: number): number => {
-    if (a.currency === Currency.KRW) return a.purchasePrice * quantity;
-    if (a.purchaseExchangeRate) return a.purchasePrice * a.purchaseExchangeRate * quantity;
-    if (a.priceOriginal > 0) {
-      const ex = a.currentPrice / a.priceOriginal;
-      return a.purchasePrice * ex * quantity;
-    }
-    return a.purchasePrice * quantity;
-  };
-
-  const toKRWPurchaseFromRecord = (r: SellRecord, quantity: number): number => {
-    if (r.originalPurchasePrice && r.originalPurchasePrice > 0) {
-      const currency = r.originalCurrency || Currency.KRW;
-      if (currency === Currency.KRW) {
-        return r.originalPurchasePrice * quantity;
-      }
-      const exchangeRate = r.originalPurchaseExchangeRate || 1;
-      return r.originalPurchasePrice * exchangeRate * quantity;
-    }
-    return 0;
-  };
-
   const recordWithCalc = useMemo(() => {
     const assetMap = new Map(assets.map(a => [a.id, a]));
     return filteredRecords.map(r => {
-      const a = assetMap.get(r.assetId);
-      // 스냅샷이 있으면 우선 사용, 없으면 현재 자산 정보 사용
-      const snapshotPurchase = toKRWPurchaseFromRecord(r, r.sellQuantity);
-      const purchaseKRW = snapshotPurchase > 0
-        ? snapshotPurchase
-        : (a ? toKRWPurchaseUnit(a, r.sellQuantity) : 0);
-      const sellTotalKRW = getSellTotalKRW(r);
-      const realized = sellTotalKRW - purchaseKRW;
-      const returnPct = purchaseKRW === 0 ? 0 : (realized / purchaseKRW) * 100;
-      return { ...r, purchaseKRW, realized, returnPct, sellTotalKRW };
+      const pl = computeSoldRecordPL(r, assetMap.get(r.assetId), rates, plBasis);
+      // 매수정보를 복원할 수 없는 건은 매수금액 = 매도금액으로 두어 실현손익이 **정확히 0**이 된다
+      // (대시보드 수익통계 카드와 동일 규약. 예전에는 여기서만 매수 0 → 매도금액 전액이 '수익'으로 집계됐다).
+      const returnPct = pl.purchaseValueKRW === 0 ? 0 : (pl.realizedKRW / pl.purchaseValueKRW) * 100;
+      return {
+        ...r,
+        purchaseKRW: pl.purchaseValueKRW,
+        realized: pl.realizedKRW,
+        returnPct,
+        sellTotalKRW: pl.sellAmountKRW,
+        hasCostBasis: pl.hasCostBasis,
+      };
     });
-  }, [filteredRecords, assets]);
+  }, [filteredRecords, assets, rates, plBasis]);
 
   const overview = useMemo(() => {
     const totalSoldAmount = recordWithCalc.reduce((s, r) => s + r.sellTotalKRW, 0);
@@ -436,12 +385,12 @@ const SellAnalyticsPage: React.FC<SellAnalyticsPageProps> = ({ assets, sellHisto
                         <td className="py-3 px-3 text-gray-400 hidden sm:table-cell">{r.ticker}</td>
                         <td className="py-3 px-3 text-right text-gray-300 hidden sm:table-cell">{r.sellQuantity.toLocaleString()}</td>
                         <td className="py-3 px-3 text-right text-gray-300 hidden sm:table-cell">{formatKRW(sellTotal)}</td>
-                        <td className="py-3 px-3 text-right text-gray-300 hidden sm:table-cell">{r.purchaseKRW > 0 ? formatKRW(r.purchaseKRW) : '-'}</td>
+                        <td className="py-3 px-3 text-right text-gray-300 hidden sm:table-cell">{r.hasCostBasis ? formatKRW(r.purchaseKRW) : '-'}</td>
                         <td className={`py-3 px-2 sm:px-3 text-right font-semibold text-xs sm:text-sm ${isProfit ? 'text-green-400' : 'text-red-400'}`}>
-                          {r.purchaseKRW > 0 ? formatKRW(r.realized) : '-'}
+                          {r.hasCostBasis ? formatKRW(r.realized) : '-'}
                         </td>
                         <td className={`py-3 px-2 sm:px-3 text-right font-semibold text-xs sm:text-sm ${isProfit ? 'text-green-400' : 'text-red-400'}`}>
-                          {r.purchaseKRW > 0 ? `${r.returnPct.toFixed(2)}%` : '-'}
+                          {r.hasCostBasis ? `${r.returnPct.toFixed(2)}%` : '-'}
                         </td>
                         <td className="py-3 px-2 sm:px-3 text-right">
                           <button

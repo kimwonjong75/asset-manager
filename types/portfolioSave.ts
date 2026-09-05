@@ -21,6 +21,7 @@ import type { CategoryStore } from './category';
 import type { KnowledgeBase } from './knowledge';
 import type { ActionItem } from './actionQueue';
 import type { TurtlePosition, TurtleSettings } from './turtle';
+import type { ValuationSettings } from './valuation';
 
 /**
  * Drive 에 저장되는 전 도메인 상태. **모든 필드 필수** — 부분 저장이 존재하지 않음을
@@ -43,6 +44,8 @@ export interface PortfolioSaveSnapshot {
   actionQueue: ActionItem[];
   turtlePositions: TurtlePosition[];
   turtleSettings: TurtleSettings;
+  /** 수익률 기준(달러/원화). 두 PC가 같은 수익률·같은 알림 판정을 내려야 하므로 localStorage 가 아닌 Drive 도메인이다. */
+  valuationSettings: ValuationSettings;
 }
 
 /** 호출부가 넘기는 "이번에 바뀐 도메인"만. 생략분은 최신 스냅샷에서 채워진다. */
@@ -52,7 +55,7 @@ export type PortfolioSavePatch = Partial<PortfolioSaveSnapshot>;
 export const PORTFOLIO_SAVE_DOMAINS = [
   'assets', 'portfolioHistory', 'sellHistory', 'watchlist', 'exchangeRates',
   'allocationTargets', 'sellAlertDropRate', 'categoryStore', 'knowledgeBase',
-  'actionQueue', 'turtlePositions', 'turtleSettings',
+  'actionQueue', 'turtlePositions', 'turtleSettings', 'valuationSettings',
 ] as const satisfies readonly (keyof PortfolioSaveSnapshot)[];
 
 /**

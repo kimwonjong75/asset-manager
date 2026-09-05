@@ -8,14 +8,10 @@ import type { AddAssetResult, SellResult, BuyMoreResult } from '../types/assetAc
 import type { PortfolioPatch } from '../types/store';
 import type { TradePlan } from '../types/tradePlan';
 import { buildSellMutation, buildBuyMoreMutation } from '../utils/assetMutations';
+// 환율 이상치 상한은 utils/portfolioMetrics 가 단일 정의처 (구 로컬 복사본 제거 — 값 동일)
+import { MAX_REASONABLE_EXCHANGE_RATES } from '../utils/portfolioMetrics';
 
 const log = createLogger('AssetActions');
-
-const MAX_REASONABLE_EXCHANGE_RATES: Partial<Record<Currency, number>> = {
-  [Currency.USD]: 3000,
-  [Currency.JPY]: 50,
-  [Currency.CNY]: 400,
-};
 
 interface UseAssetActionsProps {
   assets: Asset[];

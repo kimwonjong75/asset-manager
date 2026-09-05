@@ -87,11 +87,8 @@
     }
   },
   "components/SellAnalyticsPage.tsx": {
-    "no-console": {
-      "count": 1
-    },
     "react-hooks/exhaustive-deps": {
-      "count": 2
+      "count": 1
     }
   },
   "components/SellAssetModal.tsx": {
@@ -261,11 +258,6 @@
       "count": 1
     }
   },
-  "hooks/usePortfolioCalculator.ts": {
-    "no-useless-assignment": {
-      "count": 4
-    }
-  },
   "hooks/usePortfolioData.ts": {
     "@typescript-eslint/no-unused-vars": {
       "count": 2
@@ -294,11 +286,6 @@
   },
   "hooks/useTodayTurtle.ts": {
     "react-hooks/set-state-in-effect": {
-      "count": 1
-    }
-  },
-  "hooks/useTopBottomAssets.ts": {
-    "no-useless-assignment": {
       "count": 1
     }
   },

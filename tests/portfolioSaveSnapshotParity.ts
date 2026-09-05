@@ -23,6 +23,7 @@ import {
 import { Currency, type Asset, type WatchlistItem } from '../types';
 import { DEFAULT_CATEGORY_STORE } from '../types/category';
 import { DEFAULT_TURTLE_SETTINGS } from '../types/turtle';
+import { DEFAULT_VALUATION_SETTINGS } from '../types/valuation';
 import type { ActionItem } from '../types/actionQueue';
 
 let pass = 0;
@@ -65,6 +66,7 @@ const BASE: PortfolioSaveSnapshot = {
   actionQueue: Q1,
   turtlePositions: [],
   turtleSettings: { ...DEFAULT_TURTLE_SETTINGS },
+  valuationSettings: { ...DEFAULT_VALUATION_SETTINGS },
 };
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -99,7 +101,22 @@ check('명시적 undefined 는 base 유지',
 // 키 집합 동일성 — 도메인이 추가되면 이 테스트가 먼저 깨져 반영을 강제한다
 check('스냅샷 키 = PORTFOLIO_SAVE_DOMAINS',
   Object.keys(mergeSaveSnapshot(BASE, {})).sort(), [...PORTFOLIO_SAVE_DOMAINS].sort());
-check('도메인 12개', PORTFOLIO_SAVE_DOMAINS.length, 12);
+check('도메인 13개', PORTFOLIO_SAVE_DOMAINS.length, 13);
+
+// 수익률 기준(valuationSettings) 도메인 — 병합 규약이 다른 도메인과 동일해야 한다.
+// 이 도메인이 patch 에서 빠졌을 때 base 값이 살아남지 않으면, 설정을 바꾼 직후 다른 도메인을
+// 저장하는 순간 수익률 기준이 조용히 되돌아간다(표·알림 판정이 통째로 뒤집히는 회귀).
+check('valuationSettings 기본은 native', BASE.valuationSettings.plBasis, 'native');
+check('valuationSettings patch 반영',
+  mergeSaveSnapshot(BASE, { valuationSettings: { plBasis: 'krw' } }).valuationSettings, { plBasis: 'krw' });
+{
+  const krwBase = mergeSaveSnapshot(BASE, { valuationSettings: { plBasis: 'krw' } });
+  check('valuationSettings 생략 시 base 보존(다른 도메인 저장이 기준을 되돌리지 않음)',
+    mergeSaveSnapshot(krwBase, { assets: A2 }).valuationSettings, { plBasis: 'krw' });
+  check('valuationSettings 명시적 undefined 도 base 보존',
+    mergeSaveSnapshot(krwBase, { valuationSettings: undefined } as PortfolioSavePatch).valuationSettings,
+    { plBasis: 'krw' });
+}
 
 // ════════════════════════════════════════════════════════════════════════════
 // ② 같은 틱 연속 부분 저장 — 앞선 변경 유실 방지 (이번 단계의 핵심 회귀)
@@ -170,12 +187,14 @@ function makeQueue() {
     { sellAlertDropRate: 7 }, { categoryStore: DEFAULT_CATEGORY_STORE },
     { knowledgeBase: { rules: [] } as never }, { actionQueue: Q2 },
     { turtlePositions: [{ id: 't1' } as never] }, { turtleSettings: { ...DEFAULT_TURTLE_SETTINGS } },
+    { valuationSettings: { plBasis: 'krw' } },
   ];
   for (const p of patches) ref.current = mergeSaveSnapshot(ref.current, p);
-  check('(d) 12개 연속 변경 후 자산 보존', ref.current.assets.length, 2);
-  check('(d) 12개 연속 변경 후 환율 반영', ref.current.exchangeRates, { USD: 1400, JPY: 9 });
-  check('(d) 12개 연속 변경 후 큐 반영', ref.current.actionQueue.length, 1);
-  check('(d) 12개 연속 변경 후 기준율 반영', ref.current.sellAlertDropRate, 7);
+  check('(d) 13개 연속 변경 후 자산 보존', ref.current.assets.length, 2);
+  check('(d) 13개 연속 변경 후 환율 반영', ref.current.exchangeRates, { USD: 1400, JPY: 9 });
+  check('(d) 13개 연속 변경 후 큐 반영', ref.current.actionQueue.length, 1);
+  check('(d) 13개 연속 변경 후 기준율 반영', ref.current.sellAlertDropRate, 7);
+  check('(d) 13개 연속 변경 후 수익률 기준 반영', ref.current.valuationSettings, { plBasis: 'krw' });
 }
 
 // ── 결과 ─────────────────────────────────────────────────────────────────────

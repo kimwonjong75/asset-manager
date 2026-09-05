@@ -49,6 +49,7 @@ function checkTrue(name: string, cond: boolean): void {
     actionQueue: [{ id: 'q1', type: 'BUY' }],
     turtlePositions: [{ id: 't1', ticker: 'BTC' }],
     turtleSettings: { unitCount: 2, coreRatio: 90 },
+    valuationSettings: { plBasis: 'krw' },
     tableLayout: { columns: [{ key: 'name', visible: true }, { key: 'ticker', visible: false }], fixedWidths: { name: 120 } },
     lastUpdateDate: '2026-07-01',
   };
@@ -73,6 +74,7 @@ function checkTrue(name: string, cond: boolean): void {
   check('actionQueue 개수', p.actionQueue?.length, 1);
   check('turtlePositions 개수', p.turtlePositions?.length, 1);
   check('turtleSettings.unitCount 보존', (p.turtleSettings as { unitCount?: number })?.unitCount, 2);
+  check('valuationSettings.plBasis 보존', p.valuationSettings?.plBasis, 'krw');
   check('tableLayout.columns 개수', p.tableLayout?.columns?.length, 2);
   check('tableLayout.fixedWidths.name 보존', p.tableLayout?.fixedWidths?.name, 120);
   check('lastUpdateDate 보존', p.lastUpdateDate, '2026-07-01');
@@ -95,6 +97,8 @@ function checkTrue(name: string, cond: boolean): void {
   check('빈: actionQueue undefined', p.actionQueue, undefined);
   check('빈: turtlePositions undefined', p.turtlePositions, undefined);
   check('빈: turtleSettings undefined', p.turtleSettings, undefined);
+  // 키 부재는 undefined 로 남아야 한다 — 로드 파이프라인이 `{...DEFAULT, ...loaded}` 로 기본값을 채운다.
+  check('빈: valuationSettings undefined', p.valuationSettings, undefined);
   check('빈: tableLayout undefined', p.tableLayout, undefined);
   check('빈: columnConfig undefined', p.columnConfig, undefined);
   check('빈: lastUpdateDate undefined', p.lastUpdateDate, undefined);
@@ -144,6 +148,12 @@ function checkTrue(name: string, cond: boolean): void {
   // 비객체 최상위(예: 배열/문자열/숫자)는 빈 구조로 방어
   const pArr = parsePortfolioPayload('[1,2,3]');
   check('비객체 최상위: assets []', pArr.assets, []);
+
+  // 수익률 기준 오염 방어 — 캐스팅이면 'usd'가 그대로 상태로 들어가 두 모드 어디에도 없는 분기가 생긴다.
+  const badBasis = parsePortfolioPayload(JSON.stringify({ valuationSettings: { plBasis: 'usd' } }));
+  check("오염: plBasis 'usd' → native 로 정규화", badBasis.valuationSettings, { plBasis: 'native' });
+  const strBasis = parsePortfolioPayload(JSON.stringify({ valuationSettings: 'krw' }));
+  check('오염: 문자열 valuationSettings → undefined', strBasis.valuationSettings, undefined);
 }
 
 // ════════════════════════════════════════════════════════════════════════════

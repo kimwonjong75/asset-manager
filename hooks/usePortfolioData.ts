@@ -13,6 +13,7 @@ import { mergeKnowledgeBase } from '../utils/mergeKnowledgeBase';
 import type { ActionItem } from '../types/actionQueue';
 import type { TurtlePosition, TurtleSettings } from '../types/turtle';
 import { DEFAULT_TURTLE_SETTINGS } from '../types/turtle';
+import { DEFAULT_VALUATION_SETTINGS, type ValuationSettings } from '../types/valuation';
 import { parsePortfolioPayload, type ParsedPortfolioPayload } from '../utils/parsePortfolioPayload';
 import { applyRestoredAlertSettings } from '../utils/alertSettingsStorage';
 import { mergeSaveSnapshot, type PortfolioSaveSnapshot, type PortfolioSavePatch } from '../types/portfolioSave';
@@ -37,6 +38,7 @@ interface AppliedResult {
   actionQueue: ActionItem[];
   turtlePositions: TurtlePosition[];
   turtleSettings: TurtleSettings;
+  valuationSettings: ValuationSettings;
   lastUpdateDate: string | null;
 }
 
@@ -58,6 +60,8 @@ export const usePortfolioData = () => {
   const [actionQueue, setActionQueue] = useState<ActionItem[]>([]);
   const [turtlePositions, setTurtlePositions] = useState<TurtlePosition[]>([]);
   const [turtleSettings, setTurtleSettings] = useState<TurtleSettings>({ ...DEFAULT_TURTLE_SETTINGS });
+  // 수익률 기준(달러/원화) — Drive 동기화 도메인. 두 PC가 같은 수익률·같은 알림 판정을 내려야 한다.
+  const [valuationSettings, setValuationSettings] = useState<ValuationSettings>({ ...DEFAULT_VALUATION_SETTINGS });
   const [hasAutoUpdated, setHasAutoUpdated] = useState<boolean>(false);
   const [shouldAutoUpdate, setShouldAutoUpdate] = useState<boolean>(false);
   const [lastUpdateDate, setLastUpdateDate] = useState<string | null>(null);
@@ -80,7 +84,7 @@ export const usePortfolioData = () => {
   const snapshotRef = useRef<PortfolioSaveSnapshot>({
     assets, portfolioHistory, sellHistory, watchlist, exchangeRates,
     allocationTargets, sellAlertDropRate, categoryStore, knowledgeBase,
-    actionQueue, turtlePositions, turtleSettings,
+    actionQueue, turtlePositions, turtleSettings, valuationSettings,
   });
 
   // 상태가 바뀌면 ref 를 맞춘다 — commitPortfolio 를 거치지 않는 직접 setter 사용분 반영.
@@ -89,11 +93,11 @@ export const usePortfolioData = () => {
     snapshotRef.current = {
       assets, portfolioHistory, sellHistory, watchlist, exchangeRates,
       allocationTargets, sellAlertDropRate, categoryStore, knowledgeBase,
-      actionQueue, turtlePositions, turtleSettings,
+      actionQueue, turtlePositions, turtleSettings, valuationSettings,
     };
   }, [assets, portfolioHistory, sellHistory, watchlist, exchangeRates,
       allocationTargets, sellAlertDropRate, categoryStore, knowledgeBase,
-      actionQueue, turtlePositions, turtleSettings]);
+      actionQueue, turtlePositions, turtleSettings, valuationSettings]);
 
   // 로드된(파싱된) 전 도메인 데이터를 마이그레이션 후 상태에 반영하는 공용 파이프라인.
   // Drive 자동 로드와 백업 복원이 이 함수를 공유해 "일부 도메인만 반영되는" 유실(P2)을 없앤다.
@@ -118,9 +122,12 @@ export const usePortfolioData = () => {
     const resolvedTurtlePositions = Array.isArray(loaded.turtlePositions) ? loaded.turtlePositions : [];
     // 신규 설정 필드가 추가돼도 오래된 저장본에서 누락되지 않도록 기본값과 merge
     const resolvedTurtleSettings = { ...DEFAULT_TURTLE_SETTINGS, ...loaded.turtleSettings };
+    // 수익률 기준도 동일 규약 — 저장본에 없으면(구 페이로드) 기본값(달러 기준)
+    const resolvedValuationSettings = { ...DEFAULT_VALUATION_SETTINGS, ...loaded.valuationSettings };
     setActionQueue(resolvedActionQueue);
     setTurtlePositions(resolvedTurtlePositions);
     setTurtleSettings(resolvedTurtleSettings);
+    setValuationSettings(resolvedValuationSettings);
 
     const loadedCategoryStore: CategoryStore = data.categoryStore?.categories?.length
       ? data.categoryStore
@@ -169,6 +176,7 @@ export const usePortfolioData = () => {
                 actionQueue: resolvedActionQueue,
                 turtlePositions: resolvedTurtlePositions,
                 turtleSettings: resolvedTurtleSettings,
+                valuationSettings: resolvedValuationSettings,
               });
               log.info('백필 완료, 자동 저장됨');
             }
@@ -241,6 +249,7 @@ export const usePortfolioData = () => {
       actionQueue: resolvedActionQueue,
       turtlePositions: resolvedTurtlePositions,
       turtleSettings: resolvedTurtleSettings,
+      valuationSettings: resolvedValuationSettings,
       lastUpdateDate: savedLastUpdate,
     };
   }, [isSignedIn, hookAutoSave]);
@@ -320,7 +329,7 @@ export const usePortfolioData = () => {
 
     // 복원된 전 도메인을 명시적으로 1회 저장 (현재 상태 기본값 절대 사용 안 함).
     // 백필 블록이 뒤늦게 더 완전한 히스토리로 다시 저장할 수 있으나 동일 복원 데이터라 무해.
-    // AppliedResult 는 PortfolioSaveSnapshot 의 12개 도메인을 모두 포함하므로 그대로 넘긴다
+    // AppliedResult 는 PortfolioSaveSnapshot 의 13개 도메인을 모두 포함하므로 그대로 넘긴다
     // (lastUpdateDate 는 저장 측이 자체 생성). 스냅샷 ref 도 복원값으로 맞춰 이후 저장이
     // 복원 직전의 옛 상태를 되살리지 않게 한다.
     if (isSignedIn) {
@@ -376,6 +385,7 @@ export const usePortfolioData = () => {
     if (patch.actionQueue !== undefined) setActionQueue(patch.actionQueue);
     if (patch.turtlePositions !== undefined) setTurtlePositions(patch.turtlePositions);
     if (patch.turtleSettings !== undefined) setTurtleSettings(patch.turtleSettings);
+    if (patch.valuationSettings !== undefined) setValuationSettings(patch.valuationSettings);
 
     if (opts.save !== false && isSignedIn) hookAutoSave(next);
   }, [isSignedIn, hookAutoSave]);
@@ -416,6 +426,7 @@ export const usePortfolioData = () => {
     setActionQueue([]);
     setTurtlePositions([]);
     setTurtleSettings({ ...DEFAULT_TURTLE_SETTINGS });
+    setValuationSettings({ ...DEFAULT_VALUATION_SETTINGS });
     setHasAutoUpdated(false);
   }, [hookSignOut]);
 
@@ -453,6 +464,7 @@ export const usePortfolioData = () => {
     actionQueue, setActionQueue,
     turtlePositions, setTurtlePositions,
     turtleSettings, setTurtleSettings,
+    valuationSettings, setValuationSettings,
     isSignedIn, googleUser,
     isInitializing, needsReAuth,
     isLoading: isInitializing, // Alias for legacy support

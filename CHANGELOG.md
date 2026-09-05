@@ -1,5 +1,29 @@
 # 변경 이력 (CHANGELOG)
 
+## 2026-09-05: 수익률 기준 전환 — 증권사(달러) 방식 기본 + 원화(환율 포함) 방식 설정 유지
+
+- **배경**: XLE(매수 $59.08 → 현재 $63.78)가 앱에서는 **−1.45%**, 키움에서는 **+7.5%**로 표시됐다. 원인은 버그가 아니라 **환산 규약 차이** — 앱은 매수 원가를 매수 당시 환율(1,498.8)로, 평가액을 오늘 환율(1,368)로 환산해 환차손 −8.7%가 수익률에 섞였다. 국내 증권사는 매입가·평가액을 **모두 오늘 환율**로 환산해 사실상 달러 수익률을 보여준다. 사용자는 보유 달러로 매수하고 매도 후에도 달러를 보유하므로(환전은 별도 판단) 종목 손익은 달러 기준이 맞다.
+- **⚠ 2025-01-11 「수익률 계산 환율 기준 통일」의 후속 결정** (아래 항목 참조). 그때는 "대시보드와 차트가 서로 다르다"는 **내부 불일치**를 매수 당시 환율(`purchaseExchangeRate`)로 통일해 해결했다. 그 통일 자체는 유효하며 **원화 기준 모드로 그대로 보존**된다. 이번 변경은 그 위에 **"어느 기준으로 통일할 것인가"를 사용자 선택으로 올린 것**이고, 기본값을 증권사와 같은 달러 기준으로 바꾼 것이다. 즉 이전 결정을 되돌린 게 아니라 **한 단계 위에서 대체**한다.
+- **선택 UI**: 설정 → 표시 설정 → 「수익률 기준」 세그먼트 — 「달러 기준 (증권사 방식)」(기본) / 「원화 기준 (환율 포함)」.
+- **저장 데이터 무변경**: `purchaseExchangeRate`·매도환율은 어느 모드에서도 계속 수집·저장한다(원화 모드·세금·CSV에 필요). 마이그레이션 없음 — 계산 전환만으로 보유 종목 전부에 즉시 적용된다.
+- **동기화**: 설정은 Drive 저장 도메인 `valuationSettings`(13번째). 두 PC에서 같은 수익률·같은 알림 판정이 되도록 localStorage가 아닌 Drive에 둔다.
+  - **⚠ 두 PC의 빌드 버전이 다르면** 구 빌드의 자동 저장이 자기 스냅샷을 그대로 덮어쓰면서 `valuationSettings` 키를 떨어뜨릴 수 있다(설정이 기본값으로 되돌아간 것처럼 보임). 같은 배포 URL을 쓰면 무관하다.
+- **항상 원화 기준으로 남는 2곳**
+  - **해외주식 양도세 추정**(대청소 화면): 양도세는 매수일·매도일 각각의 환율로 원화 환산해 과세하므로 환차손익이 과세 대상이다. 달러 기준으로 바꾸면 부호까지 뒤집힌다(XLE: 원화 −64,679원 vs 달러 +321,496원). 화면에 그 이유를 한 줄 표기.
+  - **이력 스냅샷 저장**(`AssetSnapshot.purchaseValue`): 손상 복구 휴리스틱(`|currentValue/purchaseValue| >= 10`)과 기존 데이터의 의미를 지키기 위해 원화 기준 고정. 달러 기준 차트 값은 새 필드 `purchaseUnitOriginal`로 **표시 시점에 파생**한다(그날 환율이 정확히 약분됨). 필드가 없는 구 스냅샷은 원화 기준으로 남고 365일 캡으로 자연 소멸한다.
+- **중복 계산 통일 (P3)**: 같은 원가 공식이 7곳에 복제돼 있었다. 전부 `utils/portfolioMetrics.ts` 하나로 모았고, `MAX_REASONABLE_EXCHANGE_RATES`(환율 이상치 상한)도 **저장소 전체에 정의 1개만** 남았다.
+- **함께 고쳐진 기존 버그 3건**
+  1. **대청소 세금 추정이 부분 매도분을 빠뜨림** — `sellHistory`만 보고 자산에 인라인된 `sellTransactions`를 병합하지 않아 대시보드와 값이 어긋났다. 병합을 `utils/sellRecords.mergeSellRecords`로 단일화하며 교정.
+  2. **수익통계 탭의 "매수정보 없는 매도 건"** — 매수원가를 0으로 두어 매도금액 전액이 이익으로 집계됐다(대시보드 카드는 같은 건을 0으로 처리해 두 화면이 달랐다). 이제 두 곳 모두 실현손익 0.
+  3. **`useTopBottomAssets`의 환율 폴백 `|| 1`** — 환율이 없을 때 1달러를 1원으로 취급해 수익률이 크게 왜곡됐다. `resolveRate`(현재 → 캐시 → 0)로 교체.
+- **새로운 파일**
+  - `types/valuation.ts`: `PLBasis`('native'|'krw')·`ValuationSettings`·`normalizeValuationSettings`(방어적 파싱)·UI 라벨
+  - `utils/portfolioMetrics.ts`: 보유/매도 손익 계산의 단일 순수 모듈(구 `usePortfolioCalculator` 본체)
+  - `utils/sellRecords.ts`: 매도 이력 병합의 단일 지점
+  - `tests/portfolioMetricsParity.ts`(148단언) · `tests/sellRecordsParity.ts`(18단언)
+- **주요 수정 파일**: `hooks/usePortfolioCalculator.ts`(얇은 래퍼) · `usePortfolioHistory.ts` · `usePortfolioExport.ts` · `useTopBottomAssets.ts` · `utils/cleanupPlan.ts` · `components/DisplaySettingsSection.tsx` · `dashboard/ProfitLossChart.tsx` · `dashboard/CategorySummaryTable.tsx` · `dashboard/SoldAssetsStats.tsx` · `SellAnalyticsPage.tsx` · `cleanup/CleanupView.tsx` · `layouts/DashboardView.tsx` · 저장 도메인 배선(`types/portfolioSave.ts`·`utils/parsePortfolioPayload.ts`·`hooks/useGoogleDriveSync.ts`·`hooks/usePortfolioData.ts`·`contexts/PortfolioContext.tsx`)
+- **표시상 알아둘 점**: 달러 기준에서 수익통계 카드의 매도금액·매수금액은 **오늘 환율로 환산한 값**이지 매도 당시 실제 원화 수령액이 아니다(`매도금액 − 매수금액 = 손익` 항등식을 유지하기 위한 것). 카드에 한 줄로 표기했다. 손절·익절 알림 임계도 수익률 기준을 따라가므로 모드를 바꾸면 발화 종목이 달라질 수 있다(의도된 동작).
+
 ## 2026-02-05: AssetTrendChart에 사용자 커스텀 이동평균선(MA) 오버레이 추가
 - **기능 추가 — 차트 MA 오버레이**:
   - 자산 차트에 MA5/10/20/60/120/200 이동평균선 오버레이
@@ -209,6 +233,7 @@
 - **영향받는 파일**:
   - `hooks/usePortfolioCalculator.ts`
 - **결과**: 대시보드와 손익 차트의 수익률이 동일하게 표시됨
+- **※ 후속(2026-09-05)**: 이 "매수 당시 환율로 통일" 규약은 폐기되지 않고 **「원화 기준 (환율 포함)」 모드로 보존**된다. 다만 기본값은 국내 증권사와 같은 **달러 기준**으로 바뀌었다 — 여기서 해결한 것은 화면 간 불일치였고, 남아 있던 문제는 "통일된 그 기준이 증권사 표기와 다르다"는 것이었다. 최상단 항목 참조
 
 ## 2024-XX-XX: 암호화폐 시세 조회 개선
 - **문제**: Cloud Run 서버에서 암호화폐 시세 조회 실패 (빈 응답 반환)

@@ -6,6 +6,7 @@ import type { CategoryStore } from '../types/category';
 import type { KnowledgeBase } from '../types/knowledge';
 import type { ActionItem } from '../types/actionQueue';
 import type { TurtlePosition, TurtleSettings } from '../types/turtle';
+import { normalizeValuationSettings, type ValuationSettings } from '../types/valuation';
 import { applyRestoredAlertSettings, readStoredAlertSettings } from '../utils/alertSettingsStorage';
 import type { PortfolioSaveSnapshot } from '../types/portfolioSave';
 import { localDateString } from '../utils/localDate';
@@ -18,6 +19,13 @@ interface UseGoogleDriveSyncOptions {
   onSuccessMessage?: (msg: string) => void;
 }
 
+/**
+ * ⚠️ **`parsePortfolioPayload`와 별개인 두 번째 파서다.** 이쪽이 실제 Drive 로드 경로이고,
+ * `parsePortfolioPayload`는 백업/복원 경로다. 저장 도메인을 추가할 때 **여기 3곳**
+ * (이 타입 · `loadFromGoogleDrive` 파싱 · 반환 객체)을 함께 고쳐야 한다.
+ * 모든 필드가 optional 이라 **빠뜨려도 TypeScript 가 잡지 못하고**, 증상은 "로드할 때마다
+ * 설정이 조용히 기본값으로 리셋"으로만 나타난다.
+ */
 interface LoadedData {
   assets: Asset[];
   portfolioHistory: PortfolioSnapshot[];
@@ -31,6 +39,7 @@ interface LoadedData {
   actionQueue?: ActionItem[];
   turtlePositions?: TurtlePosition[];
   turtleSettings?: TurtleSettings;
+  valuationSettings?: ValuationSettings;
 }
 
 export function useGoogleDriveSync(options: UseGoogleDriveSyncOptions = {}) {
@@ -181,6 +190,11 @@ export function useGoogleDriveSync(options: UseGoogleDriveSyncOptions = {}) {
     const actionQueue = Array.isArray(data.actionQueue) ? data.actionQueue as ActionItem[] : undefined;
     const turtlePositions = Array.isArray(data.turtlePositions) ? data.turtlePositions as TurtlePosition[] : undefined;
     const turtleSettings = data.turtleSettings as TurtleSettings | undefined;
+    // 수익률 기준 — 캐스팅이 아니라 normalize. 키가 아예 없으면 undefined 로 남겨
+    // usePortfolioData 쪽 기본값 병합(`{...DEFAULT, ...loaded}`)이 그대로 동작하게 한다.
+    const valuationSettings = data.valuationSettings === undefined
+      ? undefined
+      : normalizeValuationSettings(data.valuationSettings);
 
     // 테이블 레이아웃 복원 — UI 환경설정이므로 localStorage 경유
     // PortfolioContext에서 'table-layout-restored' / 'column-config-restored' 이벤트로 state 동기화
@@ -208,7 +222,7 @@ export function useGoogleDriveSync(options: UseGoogleDriveSyncOptions = {}) {
     applyRestoredAlertSettings(data.alertSettings);
 
     optionsRef.current.onSuccessMessage?.('Google Drive에서 포트폴리오를 불러왔습니다.');
-    return { assets, portfolioHistory, sellHistory, watchlist, exchangeRates, allocationTargets, sellAlertDropRate, categoryStore, knowledgeBase, actionQueue, turtlePositions, turtleSettings };
+    return { assets, portfolioHistory, sellHistory, watchlist, exchangeRates, allocationTargets, sellAlertDropRate, categoryStore, knowledgeBase, actionQueue, turtlePositions, turtleSettings, valuationSettings };
   }, []);
 
   /**

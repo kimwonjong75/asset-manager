@@ -10,6 +10,7 @@ import { Asset, Currency, ExchangeRates, SellRecord, WatchlistItem, normalizeExc
 import { EnrichedAsset } from '../types/ui';
 import { getAssetBucket } from '../types/bucket';
 import { ActionItem, isActiveAction } from '../types/actionQueue';
+import { computeSoldRecordPL } from './portfolioMetrics';
 import {
   CleanupCandidate,
   CleanupCandidateFlags,
@@ -23,12 +24,6 @@ const DEFAULT_DEEP_LOSS_PCT = -50;
 const DEFAULT_DUST_PCT = 1;
 const DEFAULT_BASIC_DEDUCTION_KRW = 2_500_000; // 해외주식 양도세 기본공제(연 250만)
 const DEFAULT_FOREIGN_TAX_RATE = 0.22;         // 22%(지방세 포함 관행치, 참고용)
-
-const MAX_REASONABLE_EXCHANGE_RATES: Partial<Record<Currency, number>> = {
-  [Currency.USD]: 3000,
-  [Currency.JPY]: 50,
-  [Currency.CNY]: 400,
-};
 
 // ── 후보 선정 + 자동 제안 ──────────────────────────────────────────────
 
@@ -246,41 +241,14 @@ export function isForeignSettlement(currency: Currency | undefined): boolean {
   return currency != null && currency !== Currency.KRW;
 }
 
-/** SellRecord 1건의 KRW 매도금액 (비정상 환율 보정 포함 — usePortfolioCalculator와 동일 규칙). */
-function sellAmountKRW(record: SellRecord, rates: ExchangeRates): number {
-  const currency = record.settlementCurrency;
-  if (currency && currency !== Currency.KRW && record.sellPriceOriginal && record.sellPriceOriginal > 0) {
-    const maxRate = MAX_REASONABLE_EXCHANGE_RATES[currency];
-    if (maxRate && record.sellExchangeRate && record.sellExchangeRate > maxRate) {
-      const currentRate = currency === Currency.USD ? (rates.USD || 0)
-        : currency === Currency.JPY ? (rates.JPY || 0) : 0;
-      if (currentRate > 0) return record.sellPriceOriginal * currentRate * record.sellQuantity;
-    }
-  }
-  return record.sellPrice * record.sellQuantity;
-}
-
-/** SellRecord 1건의 KRW 매수원가 (원본 매수정보 우선, 없으면 보유자산, 둘 다 없으면 0수익 처리). */
-function purchaseValueForSoldKRW(record: SellRecord, assets: Asset[]): number {
-  if (record.originalPurchasePrice && record.originalPurchasePrice > 0) {
-    const purchasePrice = record.originalPurchasePrice;
-    const rate = record.originalPurchaseExchangeRate || 1;
-    const currency = record.originalCurrency || Currency.KRW;
-    return currency === Currency.KRW ? purchasePrice * record.sellQuantity : purchasePrice * rate * record.sellQuantity;
-  }
-  const asset = assets.find(a => a.id === record.assetId);
-  if (asset) {
-    if (asset.currency === Currency.KRW) return asset.purchasePrice * record.sellQuantity;
-    if (asset.purchaseExchangeRate) return asset.purchasePrice * asset.purchaseExchangeRate * record.sellQuantity;
-    if (asset.priceOriginal > 0) return asset.purchasePrice * (asset.currentPrice / asset.priceOriginal) * record.sellQuantity;
-    return asset.purchasePrice * record.sellQuantity;
-  }
-  return sellAmountKRW(record, { USD: 0, JPY: 0 }); // 정보 없음 → 수익 0 처리(매수=매도)
-}
-
 /**
  * 특정 연도 실현 해외손익 합 (KRW). year는 주입(순수). sellDate 앞 4자리로 연도 매칭.
  * 해외 판정은 settlementCurrency(없으면 originalCurrency) ≠ KRW.
+ *
+ * ⚠ **수익률 기준 설정과 무관하게 항상 원화 기준('krw')으로 계산한다.**
+ * 해외주식 양도세는 매수일·매도일 각각의 환율로 원화 환산해 과세하므로 환차손익이 과세 대상이다.
+ * 달러 기준으로 바꾸면 부호까지 뒤집힐 수 있어(예: XLE 원화 −64,679원 vs 달러 +321,496원)
+ * 세금 화면이 실제 신고와 어긋난다. 여기서 `'krw'`는 하드코딩이며 설정에서 읽지 않는다.
  */
 export function realizedForeignGainYTD(
   sellHistory: SellRecord[],
@@ -291,14 +259,28 @@ export function realizedForeignGainYTD(
   const yr = String(year);
   return sellHistory
     .filter(r => isForeignSettlement(r.settlementCurrency ?? r.originalCurrency) && (r.sellDate ?? '').slice(0, 4) === yr)
-    .reduce((sum, r) => sum + (sellAmountKRW(r, rates) - purchaseValueForSoldKRW(r, assets)), 0);
+    .reduce(
+      (sum, r) => sum + computeSoldRecordPL(r, assets.find(a => a.id === r.assetId), rates, 'krw').realizedKRW,
+      0,
+    );
 }
 
-/** 청산 예정 후보 중 해외 종목의 미실현손익 합 (KRW). plannedIds에 포함된 후보만. */
-export function plannedForeignGainKRW(candidates: CleanupCandidate[], plannedIds: Set<string>): number {
+/**
+ * 청산 예정 후보 중 해외 종목의 미실현손익 합 (KRW). plannedIds에 포함된 후보만.
+ *
+ * @param taxPLKRWById 세금용 원화 기준 평가손익 맵(assetId → KRW). 넘기면 이 값을 쓰고,
+ *   없으면 후보의 `profitLossKRW`(= 사용자의 수익률 기준을 따르는 값)로 폴백한다.
+ *   달러 기준 설정에서는 후보 값이 환차손익을 뺀 숫자라 세금 추정에 쓰면 안 되므로
+ *   `CleanupView`가 원화 기준으로 다시 계산한 맵을 넘긴다. 선택 인자로 둔 것은 기존 2인자 호출 보존용.
+ */
+export function plannedForeignGainKRW(
+  candidates: CleanupCandidate[],
+  plannedIds: Set<string>,
+  taxPLKRWById?: ReadonlyMap<string, number>,
+): number {
   return candidates
     .filter(c => c.flags.foreign && plannedIds.has(c.assetId))
-    .reduce((sum, c) => sum + c.profitLossKRW, 0);
+    .reduce((sum, c) => sum + (taxPLKRWById?.get(c.assetId) ?? c.profitLossKRW), 0);
 }
 
 /**

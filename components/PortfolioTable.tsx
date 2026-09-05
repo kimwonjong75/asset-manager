@@ -111,6 +111,7 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
     failedIds,
     enrichedMap,
     badgePairs,
+    plBasis: data.valuationSettings.plBasis,
   });
   const [presetOpen, setPresetOpen] = useState(false);
   const [activePreset, setActivePreset] = useState<string | null>(null);

@@ -5,6 +5,7 @@ import { matchesOwnerFilter } from '../../types/owner';
 import { getAssetBucket, BUCKET_LABELS } from '../../types/bucket';
 import { usePortfolioCalculator } from '../../hooks/usePortfolioCalculator';
 import { useGlobalPeriodDays } from '../../hooks/useGlobalPeriodDays';
+import { mergeSellRecords } from '../../utils/sellRecords';
 
 // Dashboard Components
 import DashboardControls from '../dashboard/DashboardControls';
@@ -32,7 +33,8 @@ const DashboardView: React.FC = () => {
   const exchangeRates = data.exchangeRates;
   const dashboardFilterCategory = ui.dashboardFilterCategory;
   const setDashboardFilterCategory = actions.setDashboardFilterCategory;
-  const { calculatePortfolioStats, calculateSoldAssetsStats } = usePortfolioCalculator();
+  const plBasis = data.valuationSettings.plBasis;
+  const { calculatePortfolioStats, calculateSoldAssetsStats } = usePortfolioCalculator(plBasis);
 
 
   // 계정 뷰 필터 (통합/원종/유선) — 표시 계층 전용. 매도통계(allSellRecords)와 리밸런싱은
@@ -69,27 +71,8 @@ const DashboardView: React.FC = () => {
     [viewAssets, exchangeRates, calculatePortfolioStats]
   );
 
-  // sellHistory + 인라인 sellTransactions 병합 (수익통계와 동일한 데이터 소스)
-  const allSellRecords = useMemo(() => {
-    const sellHistoryIds = new Set(sellHistory.map(r => r.id));
-    const inlineRecords: typeof sellHistory = [];
-    assets.forEach(a => {
-      if (a.sellTransactions && a.sellTransactions.length > 0) {
-        a.sellTransactions.forEach(t => {
-          if (!sellHistoryIds.has(t.id)) {
-            inlineRecords.push({
-              assetId: a.id,
-              ticker: a.ticker,
-              name: a.name,
-              categoryId: a.categoryId,
-              ...t,
-            });
-          }
-        });
-      }
-    });
-    return [...sellHistory, ...inlineRecords];
-  }, [sellHistory, assets]);
+  // sellHistory + 인라인 sellTransactions 병합 (수익통계·대청소와 동일한 단일 유틸)
+  const allSellRecords = useMemo(() => mergeSellRecords(sellHistory, assets), [sellHistory, assets]);
 
   // 기간 필터 적용
   const filteredSellHistory = useMemo(
@@ -145,7 +128,7 @@ const DashboardView: React.FC = () => {
       {/* 참고 지표(리스크 매트릭스 등) — 구루 신호 엔진 바로 아래. 구루 카드는 중복 제외. */}
       <ReferenceIndicatorsSection />
 
-      <SoldAssetsStats stats={soldAssetsStats} globalPeriod={ui.globalPeriod} onPeriodChange={actions.setGlobalPeriod} />
+      <SoldAssetsStats stats={soldAssetsStats} globalPeriod={ui.globalPeriod} onPeriodChange={actions.setGlobalPeriod} plBasis={plBasis} />
 
       {/* 손익 추이 분석 — 기본 접힘(Phase 5 UX). 계산/차트 로직 불변, 렌더 상태만. */}
       <ProfitLossChart
@@ -154,6 +137,7 @@ const DashboardView: React.FC = () => {
         title={profitLossChartTitle}
         globalPeriod={ui.globalPeriod}
         onPeriodChange={actions.setGlobalPeriod}
+        plBasis={plBasis}
         collapsible
         defaultCollapsed
         storageKey="asset-manager-profitloss-open"

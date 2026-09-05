@@ -1,8 +1,9 @@
 import React, { useMemo } from 'react';
-import { Asset, Currency, ExchangeRates } from '../../types';
+import { Asset, ExchangeRates } from '../../types';
 import { getCategoryName } from '../../types/category';
 import { getAssetBucket, BUCKET_LABELS } from '../../types/bucket';
 import { usePortfolio } from '../../contexts/PortfolioContext';
+import { computeAssetMetrics } from '../../utils/portfolioMetrics';
 
 interface CategorySummaryTableProps {
     assets: Asset[];
@@ -23,6 +24,8 @@ interface SummaryData {
 const CategorySummaryTable: React.FC<CategorySummaryTableProps> = ({ assets, totalPortfolioValue, exchangeRates }) => {
     const { data: portfolioData } = usePortfolio();
     const categories = portfolioData.categoryStore.categories;
+    // 수익률 기준은 표·대시보드 통계와 같은 설정을 따른다(계산은 단일 순수 모듈에 위임).
+    const plBasis = portfolioData.valuationSettings.plBasis;
 
     // 카테고리는 코어 버킷의 배분 축 — 투더문(위성)은 카테고리 행에 섞지 않고 하단 단일 행으로 분리
     // (배분 차트·2단 리밸런싱과 동일한 분해). 키: 숫자=코어 카테고리, 'SAT'=투더문 합산.
@@ -36,25 +39,12 @@ const CategorySummaryTable: React.FC<CategorySummaryTableProps> = ({ assets, tot
             }
             const data = categoryMap.get(key)!;
 
-            // [수정] 현재가 환율 적용
-            const rate = asset.currency === Currency.KRW ? 1 : (exchangeRates[asset.currency] || 0);
-            const currentValueKRW = asset.currentPrice * asset.quantity * rate;
-            
-            data.totalValue += currentValueKRW;
-
-            // [수정] 매수가 계산 로직 (기존 로직 유지하되 안전장치 추가)
-            let purchaseValueKRW;
-            if (asset.currency === Currency.KRW) {
-                purchaseValueKRW = asset.purchasePrice * asset.quantity;
-            } else if (asset.purchaseExchangeRate) {
-                purchaseValueKRW = asset.purchasePrice * asset.purchaseExchangeRate * asset.quantity;
-            } else if (asset.priceOriginal > 0) {
-                const impliedRate = asset.currentPrice / asset.priceOriginal;
-                purchaseValueKRW = asset.purchasePrice * impliedRate * asset.quantity;
-            } else {
-                purchaseValueKRW = asset.purchasePrice * asset.quantity * rate;
-            }
-            data.totalPurchaseValue += purchaseValueKRW;
+            // 평가액·매수원가 모두 단일 계산 모듈 사용 — 예전에는 여기에 4분기 공식 사본이 있었고
+            // (매수환율 없을 때 currentPrice/priceOriginal로 환율을 역산하는 분기 포함)
+            // 그 때문에 같은 종목이 표와 이 요약에서 다른 원가로 잡히는 경우가 있었다.
+            const { metrics } = computeAssetMetrics(asset, exchangeRates, 0, { plBasis });
+            data.totalValue += metrics.currentValueKRW;
+            data.totalPurchaseValue += metrics.purchaseValueKRW;
         });
 
         const result: SummaryData[] = [];
@@ -79,7 +69,7 @@ const CategorySummaryTable: React.FC<CategorySummaryTableProps> = ({ assets, tot
         if (satelliteRow) result.push(satelliteRow); // 투더문은 항상 맨 아래 고정 (카테고리와 다른 축임을 시각적으로 구분)
         return result;
 
-    }, [assets, totalPortfolioValue, exchangeRates, categories]);
+    }, [assets, totalPortfolioValue, exchangeRates, categories, plBasis]);
 
     const formatKRW = (num: number) => {
         return new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW', maximumFractionDigits: 0 }).format(num);

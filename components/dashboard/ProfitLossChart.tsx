@@ -2,6 +2,8 @@ import React, { useMemo, useState } from 'react';
 import { ChevronDown } from 'lucide-react';
 import { Asset, PortfolioSnapshot } from '../../types';
 import { GlobalPeriod } from '../../types/store';
+import type { PLBasis } from '../../types/valuation';
+import { deriveSnapshotPurchaseValue } from '../../utils/portfolioMetrics';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import PeriodSelector from '../common/PeriodSelector';
 
@@ -11,6 +13,8 @@ interface ProfitLossChartProps {
   title: string;
   globalPeriod: GlobalPeriod;
   onPeriodChange: (period: GlobalPeriod) => void;
+  /** 수익률 기준 — 투자 원금 선이 표·대시보드와 같은 규약을 쓰도록 한다(설정 전환 시 즉시 반영). */
+  plBasis: PLBasis;
   /** 접이식으로 렌더할지 (Phase 5 UX). 미지정 시 기존처럼 항상 펼침 — 계산/차트 로직 불변, 렌더 상태만 */
   collapsible?: boolean;
   /** 접힘/펼침 영속 localStorage 키 (collapsible일 때만) */
@@ -19,7 +23,7 @@ interface ProfitLossChartProps {
   defaultCollapsed?: boolean;
 }
 
-const ProfitLossChart: React.FC<ProfitLossChartProps> = ({ history, assetsToDisplay, title, globalPeriod, onPeriodChange, collapsible = false, storageKey, defaultCollapsed = false }) => {
+const ProfitLossChart: React.FC<ProfitLossChartProps> = ({ history, assetsToDisplay, title, globalPeriod, onPeriodChange, plBasis, collapsible = false, storageKey, defaultCollapsed = false }) => {
   const [open, setOpen] = useState<boolean>(() => {
     if (!collapsible) return true;
     try {
@@ -52,7 +56,10 @@ const ProfitLossChart: React.FC<ProfitLossChartProps> = ({ history, assetsToDisp
       let totalPurchase = 0;
       let totalCurrent = 0;
       relevantAssets.forEach(asset => {
-        totalPurchase += asset.purchaseValue;
+        // 스냅샷은 원화 기준으로 저장된다 — 달러 모드면 그날 환율을 약분해 파생(순수 함수).
+        // `purchaseUnitOriginal`이 없는 구 스냅샷은 저장값(원화 기준)으로 폴백하므로
+        // 설정을 바꿔도 과거 구간은 당분간 원화 기준으로 남는다(365일 캡으로 자연 소멸).
+        totalPurchase += deriveSnapshotPurchaseValue(asset, plBasis);
         totalCurrent += asset.currentValue;
       });
       const totalProfitLoss = totalCurrent - totalPurchase;
@@ -65,7 +72,7 @@ const ProfitLossChart: React.FC<ProfitLossChartProps> = ({ history, assetsToDisp
     });
 
     return data;
-  }, [history, assetsToDisplay]);
+  }, [history, assetsToDisplay, plBasis]);
 
   const formatCurrency = (value: number) => {
     return value.toLocaleString('ko-KR', { maximumFractionDigits: 0 });

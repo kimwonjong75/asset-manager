@@ -1,7 +1,9 @@
 import { useCallback } from 'react';
-import { Asset, Currency, ExchangeRates, PortfolioSnapshot, SellRecord, WatchlistItem, AllocationTargets } from '../types';
+import { Asset, ExchangeRates, PortfolioSnapshot, SellRecord, WatchlistItem, AllocationTargets } from '../types';
 import { getCategoryName, DEFAULT_CATEGORIES } from '../types/category';
 import type { PortfolioSavePatch } from '../types/portfolioSave';
+import type { PLBasis } from '../types/valuation';
+import { computeAssetMetrics } from '../utils/portfolioMetrics';
 
 interface UsePortfolioExportProps {
   assets: Asset[];
@@ -10,6 +12,8 @@ interface UsePortfolioExportProps {
   watchlist: WatchlistItem[];
   exchangeRates: ExchangeRates;
   allocationTargets: AllocationTargets;
+  /** 수익률 기준 — CSV의 매수금액·손익·수익률이 화면 표와 같은 규약을 쓰도록 한다. */
+  plBasis: PLBasis;
   isSignedIn: boolean;
   /** 저장만 (상태 변경 없음). 생략한 도메인은 최신 스냅샷에서 채워진다. */
   saveNow: (patch?: PortfolioSavePatch) => void;
@@ -30,6 +34,7 @@ export const usePortfolioExport = ({
   watchlist,
   exchangeRates,
   allocationTargets,
+  plBasis,
   isSignedIn,
   saveNow,
   setError,
@@ -163,15 +168,9 @@ export const usePortfolioExport = ({
         '현재단가(원화)', '현재평가금액(원화)', '총손익(원화)', '수익률(%)'
       ];
       const rows = assets.map(asset => {
-        const rate = asset.currency === Currency.KRW ? 1 : (exchangeRates[asset.currency] || 0);
-        const currentValueKRW = asset.currentPrice * asset.quantity * rate;
-        const purchaseValueKRW = asset.currency === Currency.KRW
-          ? asset.purchasePrice * asset.quantity
-          : (asset.purchaseExchangeRate
-              ? asset.purchasePrice * asset.purchaseExchangeRate * asset.quantity
-              : asset.purchasePrice * rate * asset.quantity);
-        const gainLossKRW = currentValueKRW - purchaseValueKRW;
-        const returnPct = purchaseValueKRW === 0 ? 0 : (gainLossKRW / purchaseValueKRW) * 100;
+        // 계산은 화면 표와 동일한 단일 모듈 (열 구성·순서는 그대로 — docs/backtest/PROMPT_1_데이터정리.md가 참조).
+        // '매수환율'은 원본 데이터라 수익률 기준과 무관하게 계속 내보낸다(원화 기준 재계산·세무 참고용).
+        const { metrics } = computeAssetMetrics(asset, exchangeRates, 0, { plBasis });
         return [
           (asset.customName?.trim() || asset.name),
           asset.ticker,
@@ -180,11 +179,11 @@ export const usePortfolioExport = ({
           asset.quantity,
           asset.purchasePrice,
           asset.purchaseExchangeRate ?? '',
-          Math.round(purchaseValueKRW),
-          Math.round(asset.currentPrice * rate),
-          Math.round(currentValueKRW),
-          Math.round(gainLossKRW),
-          returnPct.toFixed(2),
+          Math.round(metrics.purchaseValueKRW),
+          Math.round(metrics.currentPriceKRW),
+          Math.round(metrics.currentValueKRW),
+          Math.round(metrics.profitLossKRW),
+          metrics.returnPercentage.toFixed(2),
         ].join(',');
       });
       const content = [header.join(','), ...rows].join('\n');
@@ -203,7 +202,7 @@ export const usePortfolioExport = ({
       setError('CSV 내보내기 실패');
       setTimeout(() => setError(null), 3000);
     }
-  }, [assets, exchangeRates, isSignedIn, setError, setSuccessMessage]);
+  }, [assets, exchangeRates, plBasis, isSignedIn, setError, setSuccessMessage]);
 
   return {
     saveToDrive,

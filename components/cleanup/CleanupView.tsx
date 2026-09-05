@@ -20,6 +20,9 @@ import {
 } from '../../utils/cleanupPlan';
 import { formatKRW } from '../portfolio-table/utils';
 import { isStrategyManaged, type OwnerId } from '../../types/owner';
+import { mergeSellRecords } from '../../utils/sellRecords';
+import { computeAssetMetrics } from '../../utils/portfolioMetrics';
+import { Currency } from '../../types';
 
 const TAG_META: Record<CleanupTag, { label: string; active: string; idle: string }> = {
   core:      { label: '코어 편입', active: 'bg-emerald-600 text-white border-emerald-600', idle: 'text-emerald-300 border-emerald-500/40 hover:bg-emerald-500/10' },
@@ -101,14 +104,29 @@ const CleanupView: React.FC = () => {
     [decisions, assets, watchlist, actionQueue],
   );
 
+  // 매도 이력 — 전량 매도분(sellHistory) + 부분 매도로 자산이 남아 있는 인라인 건까지 병합.
+  // (예전에는 여기서만 병합을 빠뜨려 부분 매도 종목의 실현손익이 세금 추정에서 통째로 빠졌다.)
+  const mergedSellRecords = useMemo(() => mergeSellRecords(sellHistory, assets), [sellHistory, assets]);
+
+  // 세금용 평가손익 맵 — **항상 원화(환율 포함) 기준**. 후보의 profitLossKRW는 사용자의 수익률 기준을
+  // 따라가므로(달러 기준이면 환차손익이 빠짐) 양도세 추정에는 쓸 수 없다. 외화 자산만 담는다.
+  const taxPLKRWById = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const a of assets) {
+      if (a.currency === Currency.KRW) continue;
+      m.set(a.id, computeAssetMetrics(a, exchangeRates, 0, { plBasis: 'krw' }).metrics.profitLossKRW);
+    }
+    return m;
+  }, [assets, exchangeRates]);
+
   const taxYear = useMemo(() => new Date().getFullYear(), []);
   const taxEstimate = useMemo(() => {
-    const realized = realizedForeignGainYTD(sellHistory, assets, exchangeRates, taxYear);
+    const realized = realizedForeignGainYTD(mergedSellRecords, assets, exchangeRates, taxYear);
     const plannedIds = new Set(candidates.filter(c => effTag(c.assetId) === 'liquidate').map(c => c.assetId));
-    const planned = plannedForeignGainKRW(candidates, plannedIds);
+    const planned = plannedForeignGainKRW(candidates, plannedIds, taxPLKRWById);
     return estimateForeignCapGainsTax({ realizedForeignGainKRW: realized, plannedForeignGainKRW: planned, year: taxYear });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sellHistory, assets, exchangeRates, taxYear, candidates, decisions]);
+  }, [mergedSellRecords, assets, exchangeRates, taxYear, candidates, decisions, taxPLKRWById]);
 
   const handleSave = () => {
     if (pendingChanges.length === 0) return;
@@ -154,6 +172,10 @@ const CleanupView: React.FC = () => {
               <div className="flex justify-between text-emerald-300"><span>손실 통산 절감(추정)</span><span>−{formatKRW(taxEstimate.offsetSavingsKRW)}</span></div>
             )}
             <p className="text-[10px] text-gray-500 pt-1">
+              이 금액은 설정과 관계없이 항상 원화(환율 포함) 기준입니다. 해외주식 양도세가 매수일·매도일 환율로 원화 환산해 매겨지기 때문이며,
+              그래서 종목 표에 보이는 수익률과 다를 수 있습니다.
+            </p>
+            <p className="text-[10px] text-gray-500">
               해외 판정은 통화(≠KRW) 기준 추정입니다. 실제 세액은 취득가·환율·보유기간·인별 상황에 따라 다르며, 확정 판단은 세무 전문가와 상의하세요.
             </p>
           </div>

@@ -5,6 +5,7 @@ import { getAllowedCategories, type CategoryDefinition } from '../../types/categ
 import { PortfolioTableProps, SortKey, SortDirection, AssetMetrics, EnrichedAsset } from '../../types/ui';
 import { usePortfolioCalculator } from '../../hooks/usePortfolioCalculator';
 import type { EnrichedIndicatorData } from '../../hooks/useEnrichedIndicators';
+import type { PLBasis } from '../../types/valuation';
 
 /** GC/DC 뱃지 평가에 사용할 알림 룰 페어 (PortfolioTable이 alertSettings에서 추출) */
 export interface BadgePairs {
@@ -26,6 +27,8 @@ interface UsePortfolioDataProps {
   failedIds?: Set<string>;
   enrichedMap?: Map<string, EnrichedIndicatorData>;
   badgePairs?: BadgePairs;
+  /** 수익률 기준(설정 → 표시 설정 → 수익률 기준). PortfolioTable이 `data.valuationSettings.plBasis`를 넘긴다. */
+  plBasis: PLBasis;
 }
 
 export const usePortfolioData = ({
@@ -38,9 +41,10 @@ export const usePortfolioData = ({
   failedIds,
   enrichedMap,
   badgePairs,
+  plBasis,
 }: UsePortfolioDataProps) => {
   const [sortConfig, setSortConfig] = useState<{ key: SortKey; direction: SortDirection } | null>(null);
-  const { calculatePortfolioStats, calculateAssetMetrics } = usePortfolioCalculator();
+  const { calculatePortfolioStats, calculateAssetMetrics } = usePortfolioCalculator(plBasis);
 
   const totalValueKRW = useMemo(() => {
     const stats = calculatePortfolioStats(assets, exchangeRates);

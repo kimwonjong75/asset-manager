@@ -1,11 +1,18 @@
 import { useMemo } from 'react';
-import { Asset, Currency, ExchangeRates } from '../types';
+import { Asset, ExchangeRates } from '../types';
+import type { PLBasis } from '../types/valuation';
+import { computeAssetMetrics } from '../utils/portfolioMetrics';
 
 interface UseTopBottomAssetsProps {
     assets: Asset[];
-    exchangeRates?: ExchangeRates; // Optional, to use current rate if purchase rate is missing
+    exchangeRates: ExchangeRates;
+    plBasis: PLBasis;
 }
 
+/**
+ * `TopBottomAssets` 전용 축약 메트릭.
+ * `profitLoss`는 **원화 환산 손익**이다(화면이 ₩로 표시) — `AssetMetrics.profitLoss`(원통화)와 이름은 같지만 의미가 다르니 주의.
+ */
 export interface EnrichedAsset extends Asset {
     metrics: {
         returnPercentage: number;
@@ -13,93 +20,27 @@ export interface EnrichedAsset extends Asset {
     }
 }
 
-export const useTopBottomAssets = ({ assets, exchangeRates }: UseTopBottomAssetsProps) => {
+/**
+ * 수익률 상·하위 5개 추출.
+ *
+ * 계산은 `utils/portfolioMetrics.computeAssetMetrics` 하나만 쓴다 — 예전에는 이 훅이 자체 공식을
+ * 갖고 있었고 환율이 없을 때 `rates[currency] || 1`(1원 취급)로 폴백해 외화 자산 수익률이 크게 왜곡됐다.
+ * 지금은 `resolveRate`(현재 → 마지막 정상 캐시 → 0)를 타므로 표·대시보드와 같은 값이 나온다.
+ * ※ `TopBottomAssets` 컴포넌트는 현재 대시보드에 마운트돼 있지 않다(재사용 대비 보존).
+ */
+export const useTopBottomAssets = ({ assets, exchangeRates, plBasis }: UseTopBottomAssetsProps) => {
     const enrichedAssets = useMemo((): EnrichedAsset[] => {
         return assets.map(asset => {
-            // 1. Calculate Current Value in KRW
-            // currentPrice is already in KRW for all assets in this app (based on typical usage),
-            // OR is it?
-            // In `RebalancingTable`, we saw:
-            // const rate = asset.currency === Currency.KRW ? 1 : (exchangeRates[asset.currency] || 0);
-            // const val = asset.currentPrice * asset.quantity * rate;
-            // This implies `asset.currentPrice` is in *Original Currency* (e.g. USD).
-            // Let's check `types/index.ts` or `usePortfolioData` or `useMarketData`.
-            // In `TopBottomAssets.tsx` existing code:
-            // const currentValue = asset.currentPrice * asset.quantity;
-            // This contradicts RebalancingTable!
-            // Wait, RebalancingTable logic:
-            // const rate = asset.currency === Currency.KRW ? 1 : (exchangeRates[asset.currency] || 0);
-            // const val = asset.currentPrice * asset.quantity * rate;
-            
-            // If `asset.currentPrice` is in USD, `TopBottomAssets.tsx` existing logic:
-            // const currentValue = asset.currentPrice * asset.quantity;
-            // ...
-            // purchaseValueKRW logic...
-            // const profitLoss = currentValue - purchaseValueKRW;
-            
-            // If `currentValue` is USD and `purchaseValueKRW` is KRW, `profitLoss` is nonsense.
-            // THIS IS THE BUG!
-            // The existing `TopBottomAssets.tsx` assumes `currentPrice` is KRW or mixes them up?
-            // Actually, let's check `Asset` type definition comments.
-            // `currentPrice: number;`
-            // `priceOriginal: number;`
-            
-            // In `RebalancingTable`: `asset.currentPrice * asset.quantity * rate`. This implies `currentPrice` is foreign.
-            // BUT `RebalancingTable` uses `asset.currentPrice` for KRW assets (rate=1) and `asset.currentPrice` for foreign (rate=exchangeRate).
-            // This suggests `currentPrice` is in *local* currency (e.g. USD for US stocks).
-            
-            // In `TopBottomAssets.tsx`:
-            // `const currentValue = asset.currentPrice * asset.quantity;`
-            // If `asset` is US Stock, `currentValue` is in USD.
-            // `purchaseValueKRW` is calculated in KRW.
-            // `profitLoss = currentValue - purchaseValueKRW` -> USD - KRW -> WRONG.
-            
-            // So I must fix this: Convert `currentValue` to KRW first.
-            
-            const isKRW = asset.currency === Currency.KRW;
-            // We need exchange rates here.
-            // If exchangeRates is not passed, we might have an issue, but we can pass it.
-            
-            // Fallback for rate: try to infer from priceOriginal if available (currentPrice / priceOriginal is not rate, priceOriginal is foreign price).
-            // Actually `currentPrice` is the field name.
-            // If `currency` is USD, `currentPrice` is USD price.
-            // So we need to multiply by exchange rate.
-            
-            let currentRate = 1;
-            if (!isKRW && exchangeRates) {
-                currentRate = exchangeRates[asset.currency] || 1; // Default to 1 if missing? Bad.
-            }
-            
-            const currentValueKRW = asset.currentPrice * asset.quantity * currentRate;
-
-            // 2. Calculate Purchase Value in KRW
-            let purchaseValueKRW = 0;
-            if (isKRW) {
-                purchaseValueKRW = asset.purchasePrice * asset.quantity;
-            } else {
-                // Foreign Asset
-                if (asset.purchaseExchangeRate) {
-                    purchaseValueKRW = asset.purchasePrice * asset.quantity * asset.purchaseExchangeRate;
-                } else {
-                    // Fallback: Use current rate (assume no FX gain/loss recorded) or some other heuristic.
-                    // If we use currentRate, we ignore FX changes.
-                    // Better than 0.
-                    purchaseValueKRW = asset.purchasePrice * asset.quantity * currentRate;
-                }
-            }
-
-            const profitLoss = currentValueKRW - purchaseValueKRW;
-            const returnPercentage = purchaseValueKRW === 0 ? 0 : (profitLoss / purchaseValueKRW) * 100;
-            
+            const { metrics } = computeAssetMetrics(asset, exchangeRates, 0, { plBasis });
             return {
                 ...asset,
                 metrics: {
-                    returnPercentage,
-                    profitLoss,
-                }
+                    returnPercentage: metrics.returnPercentage,
+                    profitLoss: metrics.profitLossKRW, // 화면 표시가 원화이므로 KRW 손익을 싣는다
+                },
             };
         });
-    }, [assets, exchangeRates]);
+    }, [assets, exchangeRates, plBasis]);
 
     const sortedAssets = useMemo(() => {
         return [...enrichedAssets].sort((a, b) => a.metrics.returnPercentage - b.metrics.returnPercentage);

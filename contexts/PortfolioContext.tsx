@@ -24,6 +24,7 @@ import type { CategoryStore } from '../types/category';
 import type { KnowledgeBase } from '../types/knowledge';
 import type { ActionItem } from '../types/actionQueue';
 import type { TurtlePosition, TurtleSettings } from '../types/turtle';
+import type { ValuationSettings } from '../types/valuation';
 import { evaluateGuruSignals, buildGuruSignalTargets, buildGuruSignalChartTargets, type GuruSignalMatch, type GuruSignalTarget } from '../utils/guruSignalEngine';
 import { buildGuruSignalCaveats } from '../utils/guruDiagnostics';
 import {
@@ -120,6 +121,7 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     actionQueue,
     turtlePositions,
     turtleSettings,
+    valuationSettings,
     isSignedIn, googleUser, needsReAuth,
     isInitializing: isAuthInitializing,
     isLoading: isAuthLoading,
@@ -479,14 +481,17 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     assets,
     sellHistory,
     exchangeRates,
-    sellAlertDropRate
+    sellAlertDropRate,
+    plBasis: valuationSettings.plBasis,
   });
 
   // enriched 지표 (Context 레벨에서 한 번만 계산, 관심종목 포함)
   const { enrichedMap, isLoading: isEnrichedLoading } = useEnrichedIndicators(assets, watchlist, enrichedRefreshVersion);
 
   // EnrichedAsset 목록 생성 (알림 체크용)
-  const { calculateAssetMetrics, calculatePortfolioStats } = usePortfolioCalculator();
+  // 수익률 기준이 바뀌면 두 콜백의 identity 가 바뀌고(useCallback deps=[plBasis]),
+  // 아래 useMemo 가 그 둘에 의존하므로 enrichedAssets 가 즉시 재계산된다 → 알림 판정도 함께 전환.
+  const { calculateAssetMetrics, calculatePortfolioStats } = usePortfolioCalculator(valuationSettings.plBasis);
   const enrichedAssets = useMemo(() => {
     const stats = calculatePortfolioStats(assets, exchangeRates);
     return assets.map(a => calculateAssetMetrics(a, exchangeRates, stats.totalValue));
@@ -646,6 +651,7 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     watchlist,
     exchangeRates,
     allocationTargets,
+    plBasis: valuationSettings.plBasis,
     isSignedIn,
     saveNow,
     setError,
@@ -678,6 +684,7 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       actionQueue,
       turtlePositions,
       turtleSettings,
+      valuationSettings,
     },
     status: {
       isLoading,
@@ -919,6 +926,11 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       },
       updateTurtleSettings: (settings: TurtleSettings) => {
         commitPortfolio({ turtleSettings: settings });
+      },
+      // 수익률 기준 전환 — 저장 데이터는 그대로고 **표시·판정 규약만** 바뀐다.
+      // 커밋 즉시 enrichedAssets가 재계산되어 표·대시보드·알림이 같은 기준을 쓴다.
+      updateValuationSettings: (settings: ValuationSettings) => {
+        commitPortfolio({ valuationSettings: settings });
       },
       commitPortfolioPatch,
       // 대청소 일괄 분류 저장 (Phase 3b/3c-2) — 순수 빌더로 assets+watchlist+actionQueue 계산 후 단일 원자 커밋.

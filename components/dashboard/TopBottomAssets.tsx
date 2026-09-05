@@ -13,7 +13,7 @@ const TopBottomAssets: React.FC<TopBottomAssetsProps> = ({ assets, exchangeRates
     const { data } = usePortfolio();
     const exchangeRates = propExchangeRates || data.exchangeRates;
 
-    const { topAssets, bottomAssets } = useTopBottomAssets({ assets, exchangeRates });
+    const { topAssets, bottomAssets } = useTopBottomAssets({ assets, exchangeRates, plBasis: data.valuationSettings.plBasis });
 
     const formatKRW = (num: number) => {
         return new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW', maximumFractionDigits: 0 }).format(num);
