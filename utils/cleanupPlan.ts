@@ -272,6 +272,13 @@ export function realizedForeignGainYTD(
  *   없으면 후보의 `profitLossKRW`(= 사용자의 수익률 기준을 따르는 값)로 폴백한다.
  *   달러 기준 설정에서는 후보 값이 환차손익을 뺀 숫자라 세금 추정에 쓰면 안 되므로
  *   `CleanupView`가 원화 기준으로 다시 계산한 맵을 넘긴다. 선택 인자로 둔 것은 기존 2인자 호출 보존용.
+ *
+ * ⚠️ **호출부 전제**: 맵은 `flags.foreign`인 모든 후보의 id를 담아야 한다. 현재 `CleanupView`는
+ * 후보와 맵을 **같은 `data.assets`** 에서 만들고, 맵 제외 조건(`currency === KRW`)이
+ * `flags.foreign`(`currency !== KRW`, 아래 `buildCleanupCandidates` 참고)의 정확한 여집합이라
+ * 폴백이 발동하지 않는다. 후보 배열을 필터링하거나 `flags.foreign` 정의를 바꾸면 이 전제가 깨지고,
+ * 그 순간 **사용자의 수익률 기준(달러) 값이 세금 숫자에 조용히 섞인다.** 둘 중 하나를 손댈 때는
+ * 여기 폴백도 함께 재검토할 것.
  */
 export function plannedForeignGainKRW(
   candidates: CleanupCandidate[],

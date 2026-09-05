@@ -1,5 +1,45 @@
 # 변경 이력 (CHANGELOG)
 
+## 2026-09-05: (후속) 이력 스냅샷 단가 쌍 정합 + 표 재계산 누락 — `051ed13` 보정
+
+바로 앞 커밋 `051ed13`(수익률 기준 전환)의 적대적 재검토에서 확인된 결함 5건을 고쳤다.
+전부 **달러 기준(`plBasis:'native'`) 모드에서만** 나타나며, 저장 데이터·원화 기준 화면은 무변경이다.
+같은 검토에서 원화 기준 경로는 무작위 44,000 케이스 대조로 이전 커밋과 **차이 0건**임을 확인했다.
+
+1. **백필이 JPY/CNY 스냅샷의 단가 쌍을 어긋나게 했다** (`utils/historyUtils.ts`)
+   - 스냅샷에는 환율 필드가 없어서, 달러 기준 차트는 `currentValue / unitPriceOriginal = 수량 × 그날 환율`이라는
+     **내부 정합성**으로 환율을 약분한다. 이 등식은 `unitPrice = unitPriceOriginal × 환율`일 때만 성립한다.
+   - 그런데 USD·KRW가 아닌 외화 경로는 `unitPriceOriginal`만 그날 종가로 바꾸고 `unitPrice`(→ `currentValue`)는
+     장중 옛값으로 남겼다. 쌍이 깨지면서 손익 차트의 투자 원금이 부풀었다
+     (JPY 100주·평균단가 ¥2,000 예시: 올바른 **1,900,000원** → 잘못된 **2,159,090.91원**).
+   - 교정 규칙을 순수 함수 **`correctSnapshotPricePair`** 하나로 모았다. 그날 환율 시계열이 없는 통화는
+     **스냅샷 자신의 내재 환율(`unitPrice / unitPriceOriginal`)을 이어 쓴다**(장중→종가 사이 환율 불변 근사).
+     옛 쌍을 쓸 수 없으면 `unitPriceOriginal`도 **갱신하지 않는다** — 반쪽 교정보다 그대로 두는 편이 정합하다.
+2. **손상 복구 "케이스 A"가 달러 모드에서 되살아났다** (`utils/historyUtils.ts`)
+   - `unitPrice`도 기준 데이터도 없는 스냅샷은 `currentValue = purchaseValue`로 눌러 손익을 0으로 만든다(차트 폭발 방지).
+     그런데 `purchaseUnitOriginal`이 살아남아 달러 모드에서는 파생이 다시 돌면서 **없는 수익 +326,262원(+7.96%)** 이 생겼다.
+   - 이제 그 분기에서 `purchaseUnitOriginal`을 함께 비워 **두 모드 모두 손익 정확히 0**이 된다.
+     반면 수량을 재구성하는 다른 분기는 쌍이 그대로 성립하므로 필드를 **보존**한다(무변경).
+3. **표가 수익률 기준 변경을 놓칠 수 있었다** (`components/portfolio-table/usePortfolioData.ts`)
+   - 정렬·enrich `useMemo`의 의존성 배열에 `calculateAssetMetrics`가 빠져 있었다. 지금은 상위가 매 렌더 새 `Set`을 넘겨
+     우연히 가려져 있을 뿐, 그 한 줄을 메모이즈하는 순간 "설정을 바꿔도 표가 그대로"가 된다. 의존성 추가로 교정.
+     `eslint-suppressions.json`의 해당 `react-hooks/exhaustive-deps` 억제 1건도 `npm run lint:prune`으로 제거됐다.
+
+4. **업비트/빗썸 자산의 차트 원금이 표와 어긋날 수 있었다** (`hooks/usePortfolioHistory.ts`)
+   - `computeAssetMetrics`는 업비트/빗썸이면 시세가 이미 원화라 달러 분기를 타지 않는다. 그런데 `AssetSnapshot`에는
+     `exchange`가 없어 `deriveSnapshotPurchaseValue`가 그 예외를 재현할 수 없는데도, 기록 조건은 `currency !== KRW`뿐이라
+     `purchaseUnitOriginal`이 남았다(통화가 USD인 업비트 자산에서 표 원금 140,000 vs 차트 원금 100).
+   - 이제 **기록 단계에서 제외**해 차트가 저장값으로 폴백한다. 판정식은 새로 export한 `portfolioMetrics.isKRWExchange`
+     하나만 쓴다(사본이 갈라지면 화면과 이력이 서로 다른 자산을 "외화"로 보게 된다).
+5. **세금 폴백의 전제 조건을 문서화** (`utils/cleanupPlan.ts`)
+   - `plannedForeignGainKRW`의 `?? c.profitLossKRW` 폴백은 현재 발동하지 않는다(후보와 맵을 같은 `data.assets`에서 만들고
+     맵 제외 조건이 `flags.foreign`의 정확한 여집합이라서). 다만 그 안전성이 "두 술어가 우연히 같다"에 의존하므로,
+     둘 중 하나를 바꾸면 **달러 기준 값이 세금에 조용히 섞인다**는 경고를 JSDoc에 명시했다. 코드 동작은 무변경.
+
+- **새 파일**: `tests/historySnapshotParity.ts`(34단언, `npm run test:history`) — 위 불변식을 **명시 절대값**으로 고정하고,
+  "수정 전 값"도 함께 핀으로 박아 버그의 크기·방향을 문서로 남겼다.
+- **수정 파일**: `utils/historyUtils.ts` · `components/portfolio-table/usePortfolioData.ts` · `eslint-suppressions.json` · `package.json`(test:history) · `RULES.md`
+
 ## 2026-09-05: 수익률 기준 전환 — 증권사(달러) 방식 기본 + 원화(환율 포함) 방식 설정 유지
 
 - **배경**: XLE(매수 $59.08 → 현재 $63.78)가 앱에서는 **−1.45%**, 키움에서는 **+7.5%**로 표시됐다. 원인은 버그가 아니라 **환산 규약 차이** — 앱은 매수 원가를 매수 당시 환율(1,498.8)로, 평가액을 오늘 환율(1,368)로 환산해 환차손 −8.7%가 수익률에 섞였다. 국내 증권사는 매입가·평가액을 **모두 오늘 환율**로 환산해 사실상 달러 수익률을 보여준다. 사용자는 보유 달러로 매수하고 매도 후에도 달러를 보유하므로(환전은 별도 판단) 종목 손익은 달러 기준이 맞다.
@@ -12,10 +52,13 @@
   - **해외주식 양도세 추정**(대청소 화면): 양도세는 매수일·매도일 각각의 환율로 원화 환산해 과세하므로 환차손익이 과세 대상이다. 달러 기준으로 바꾸면 부호까지 뒤집힌다(XLE: 원화 −64,679원 vs 달러 +321,496원). 화면에 그 이유를 한 줄 표기.
   - **이력 스냅샷 저장**(`AssetSnapshot.purchaseValue`): 손상 복구 휴리스틱(`|currentValue/purchaseValue| >= 10`)과 기존 데이터의 의미를 지키기 위해 원화 기준 고정. 달러 기준 차트 값은 새 필드 `purchaseUnitOriginal`로 **표시 시점에 파생**한다(그날 환율이 정확히 약분됨). 필드가 없는 구 스냅샷은 원화 기준으로 남고 365일 캡으로 자연 소멸한다.
 - **중복 계산 통일 (P3)**: 같은 원가 공식이 7곳에 복제돼 있었다. 전부 `utils/portfolioMetrics.ts` 하나로 모았고, `MAX_REASONABLE_EXCHANGE_RATES`(환율 이상치 상한)도 **저장소 전체에 정의 1개만** 남았다.
-- **함께 고쳐진 기존 버그 3건**
+- **함께 고쳐진 기존 버그 5건**
   1. **대청소 세금 추정이 부분 매도분을 빠뜨림** — `sellHistory`만 보고 자산에 인라인된 `sellTransactions`를 병합하지 않아 대시보드와 값이 어긋났다. 병합을 `utils/sellRecords.mergeSellRecords`로 단일화하며 교정.
   2. **수익통계 탭의 "매수정보 없는 매도 건"** — 매수원가를 0으로 두어 매도금액 전액이 이익으로 집계됐다(대시보드 카드는 같은 건을 0으로 처리해 두 화면이 달랐다). 이제 두 곳 모두 실현손익 0.
   3. **`useTopBottomAssets`의 환율 폴백 `|| 1`** — 환율이 없을 때 1달러를 1원으로 취급해 수익률이 크게 왜곡됐다. `resolveRate`(현재 → 캐시 → 0)로 교체.
+  4. **자산군별 요약의 "역산 환율" 분기** — `CategorySummaryTable`은 `purchaseExchangeRate`가 없는 외화 자산의 원가를 `currentPrice / priceOriginal`로 역산했는데, 외화 자산은 이 둘이 **항상 같아**(`useMarketData`가 `currentPrice = priceOriginal`로 채운다) 비율이 1이었다. 즉 달러 숫자를 원화로 착각해 원가를 잡고 있었다(XLE 50주 예시: **2,954원** → 올바른 **4,041,279원**). 분기 제거로 표·대시보드와 같은 규약이 됐다.
+  5. **세금 추정의 "매수정보 없음 + 이상 매도환율"** — 매도금액은 이상치 보정을 거친 값인데 매수원가는 보정을 끈 값(`{USD:0, JPY:0}`)으로 계산해 둘이 어긋나며 가짜 이익이 잡혔다(예시 1건에서 세액 약 16만원 차이). 이제 두 값이 같아져 실현손익 정확히 0.
+- **의도된 부수 변경**: 이력 스냅샷·자산군별 요약·CSV의 평가액이 이제 **업비트/빗썸 예외를 함께 적용**받는다(옛 공식들엔 이 예외가 없어 원화 시세에 환율을 한 번 더 곱했다). 통화가 KRW가 아닌 업비트 자산에서만 차이가 나는데, 시세를 한 번이라도 갱신하면 `useMarketData`가 통화를 KRW로 고정하므로 실사용 노출은 사실상 없다.
 - **새로운 파일**
   - `types/valuation.ts`: `PLBasis`('native'|'krw')·`ValuationSettings`·`normalizeValuationSettings`(방어적 파싱)·UI 라벨
   - `utils/portfolioMetrics.ts`: 보유/매도 손익 계산의 단일 순수 모듈(구 `usePortfolioCalculator` 본체)

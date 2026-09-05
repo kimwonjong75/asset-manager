@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { Asset, Currency, ExchangeRates, PortfolioSnapshot } from '../types';
-import { computeAssetMetrics } from '../utils/portfolioMetrics';
+import { computeAssetMetrics, isKRWExchange } from '../utils/portfolioMetrics';
 
 interface UsePortfolioHistoryProps {
   assets: Asset[];
@@ -47,8 +47,14 @@ export const usePortfolioHistory = ({ assets, exchangeRates, setPortfolioHistory
           unitPrice: metrics.currentPriceKRW,   // currentValue / unitPrice = 수량 (복구 로직이 역산에 쓴다)
           unitPriceOriginal,
           currency: asset.currency,
-          // 달러 기준 파생용 — 외화 자산에만 기록(KRW 자산은 purchaseValue로 충분)
-          ...(asset.currency !== Currency.KRW ? { purchaseUnitOriginal: asset.purchasePrice } : {}),
+          // 달러 기준 파생용 — 외화 자산에만 기록(KRW 자산은 purchaseValue로 충분).
+          // 업비트/빗썸은 통화가 USD로 저장돼 있어도 시세가 원화라 computeAssetMetrics가 달러 분기를
+          // 타지 않는다. 그런데 AssetSnapshot에는 exchange가 없어 deriveSnapshotPurchaseValue가 그
+          // 예외를 재현할 수 없으므로, **기록 단계에서 빼서** 차트가 저장값으로 폴백하게 한다.
+          // (빼지 않으면 표는 원금 140,000인데 차트는 100으로 그리는 식으로 어긋난다.)
+          ...(asset.currency !== Currency.KRW && !isKRWExchange(asset.exchange)
+            ? { purchaseUnitOriginal: asset.purchasePrice }
+            : {}),
         };
       });
       const newSnapshot = { date: today, assets: newAssetSnapshots };

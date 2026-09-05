@@ -149,7 +149,7 @@ export const usePortfolioData = ({
     }
 
     return enriched;
-  }, [assets, sortConfig, totalValueKRW, exchangeRates, filterAlerts, sellAlertDropRate, showFailedOnly, failedIds, enrichedMap, badgePairs]);
+  }, [assets, sortConfig, totalValueKRW, exchangeRates, filterAlerts, sellAlertDropRate, showFailedOnly, failedIds, enrichedMap, badgePairs, calculateAssetMetrics]);
 
   const requestSort = (key: SortKey) => {
     let direction: SortDirection = 'ascending';

@@ -213,12 +213,20 @@ export const repairCorruptedSnapshots = (history: PortfolioSnapshot[]): Portfoli
         if (ratio >= 10) {
           hasCorruption = true;
           repairedCount++;
-          return { ...asset, currentValue: asset.purchaseValue };
+          // `purchaseUnitOriginal`도 함께 비운다 — 이 분기는 "손익을 0으로 눌러 차트 폭발을 막는" 교정인데,
+          // 필드가 남아 있으면 달러 기준(`plBasis:'native'`)에서 `deriveSnapshotPurchaseValue`가
+          // 눌러놓은 `purchaseValue`를 무시하고 `purchaseUnitOriginal × currentValue / unitPriceOriginal`로
+          // 원금을 다시 파생해 **없는 수익을 만들어낸다**(원화 모드만 0이 되는 비대칭).
+          // 비워두면 파생 가드가 저장값으로 폴백해 두 모드 모두 손익 0이 된다.
+          return { ...asset, currentValue: asset.purchaseValue, purchaseUnitOriginal: undefined };
         }
         return asset;
       }
 
-      // purchaseValue 비례로 수량 복원
+      // purchaseValue 비례로 수량 복원.
+      // 이쪽은 `purchaseUnitOriginal`을 그대로 둔다 — 새 `currentValue`가 이 스냅샷 자신의 `unitPrice`로
+      // 계산돼 `currentValue / unitPriceOriginal = 수량 × 환율` 등식이 그대로 성립하기 때문이다
+      // (복원된 수량이 추정값이라도 평가액·원금이 같은 수량으로 함께 움직여 비율이 보존된다).
       const quantity = asset.purchaseValue / ref.purchaseValuePerUnit;
       const correctedValue = quantity * asset.unitPrice;
 
@@ -235,6 +243,58 @@ export const repairCorruptedSnapshots = (history: PortfolioSnapshot[]): Portfoli
   }
 
   return repaired;
+};
+
+/**
+ * 스냅샷 단가 **쌍**(`unitPrice` 원화 환산 / `unitPriceOriginal` 원통화)을 그날 종가로 교정한다 (순수).
+ *
+ * ## 왜 쌍인가
+ * 스냅샷에는 환율 필드가 없다. 달러 기준 손익 차트
+ * (`utils/portfolioMetrics.deriveSnapshotPurchaseValue`)는 그 대신
+ *
+ *     currentValue / unitPriceOriginal === quantity × rate(그날)
+ *
+ * 라는 **내부 정합성**에 기대어 환율을 약분한다. 이 등식은
+ * `unitPrice === unitPriceOriginal × rate` 이고 `currentValue === quantity × unitPrice`
+ * 일 때만 성립한다. 따라서 한쪽만 새 종가로 바꾸면(예전 JPY/CNY 경로가 그랬다)
+ * 원화 기준 차트는 멀쩡한데 **달러 기준 차트만 조용히 틀린 원금**을 그린다.
+ * → 두 필드는 언제나 함께 움직이거나, 함께 그대로 남아야 한다.
+ *
+ * ## 통화별 규칙
+ * - KRW: 환율 1 — 종가를 두 필드에 그대로.
+ * - USD: 그날 환율(`dayExchangeRate`)로 환산. 환율이 없으면 `null`(반쪽 교정 금지).
+ * - 그 외 외화(JPY·CNY 등): 그날 환율 시계열이 없으므로 **스냅샷 자신의 내재 환율**
+ *   (`unitPrice / unitPriceOriginal`)을 그대로 이어 쓴다. 장중→종가 사이 환율이 그대로였다고
+ *   보는 근사지만, 쌍이 어긋나는 것에 비하면 오차가 훨씬 작고 `AssetTrendChart`가 읽는
+ *   `unitPriceOriginal` 종가 교정도 그대로 살아 있다.
+ * - 옛 쌍을 쓸 수 없으면(한쪽이라도 없거나 0 이하) `null` — `unitPriceOriginal`만 갱신하는
+ *   반쪽 교정보다 **둘 다 손대지 않는 편**이 스냅샷을 정합 상태로 남긴다.
+ *
+ * @returns 새 단가 쌍, 또는 `null`(= 이 자산은 교정하지 말 것)
+ */
+export const correctSnapshotPricePair = (
+  snapshotAsset: Pick<AssetSnapshot, 'unitPrice' | 'unitPriceOriginal'>,
+  closeOriginal: number,
+  currency: Currency | undefined,
+  dayExchangeRate: number
+): { unitPrice: number; unitPriceOriginal: number } | null => {
+  if (!(closeOriginal > 0)) return null;
+
+  if (currency === Currency.KRW) {
+    return { unitPrice: closeOriginal, unitPriceOriginal: closeOriginal };
+  }
+
+  if (currency === Currency.USD) {
+    if (!(dayExchangeRate > 0)) return null;
+    return { unitPrice: closeOriginal * dayExchangeRate, unitPriceOriginal: closeOriginal };
+  }
+
+  const oldKRW = snapshotAsset.unitPrice ?? 0;
+  const oldOriginal = snapshotAsset.unitPriceOriginal ?? 0;
+  if (!(oldKRW > 0) || !(oldOriginal > 0)) return null;
+
+  const impliedRate = oldKRW / oldOriginal;
+  return { unitPrice: closeOriginal * impliedRate, unitPriceOriginal: closeOriginal };
 };
 
 /**
@@ -346,13 +406,12 @@ export const backfillWithRealPrices = async (
           const ticker = convertTickerForAPI(assetInfo.ticker, assetInfo.exchange, assetInfo.category);
           const stockResult = stockPrices[ticker];
           if (stockResult?.data?.[date]) {
-            newUnitPriceOriginal = stockResult.data[date];
-            if (assetInfo.currency === Currency.USD) {
-              newUnitPrice = newUnitPriceOriginal * dayExchangeRate;
-            } else if (assetInfo.currency === Currency.KRW) {
-              newUnitPrice = newUnitPriceOriginal;
-            } else {
-              newUnitPrice = snapshotAsset.unitPrice || newUnitPriceOriginal;
+            // 두 단가는 **한 쌍**이다 — 한쪽만 새 종가로 바꾸면 달러 기준 차트가 조용히 틀린다.
+            // 교정 불가(null)면 둘 다 손대지 않는다. 규칙·근거는 correctSnapshotPricePair 주석 참고.
+            const pair = correctSnapshotPricePair(snapshotAsset, stockResult.data[date], assetInfo.currency, dayExchangeRate);
+            if (pair) {
+              newUnitPriceOriginal = pair.unitPriceOriginal;
+              newUnitPrice = pair.unitPrice;
             }
           }
         }

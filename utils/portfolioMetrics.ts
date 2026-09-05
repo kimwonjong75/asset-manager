@@ -83,7 +83,7 @@ interface DailyChange {
 const computeDailyChange = (
   asset: Asset,
   currentPriceKRW: number,
-  isKRWExchange: boolean,
+  priceIsKRW: boolean,
   exchangeRates: ExchangeRates,
 ): DailyChange => {
   if (asset.changeRate != null) {
@@ -96,7 +96,7 @@ const computeDailyChange = (
 
   // 폴백: changeRate 없는 레거시 데이터
   const yesterdayPrice = asset.previousClosePrice || 0;
-  const yesterdayPriceKRW = isKRWExchange
+  const yesterdayPriceKRW = priceIsKRW
     ? (asset.currency === Currency.USD ? yesterdayPrice * (exchangeRates.USD || 1) : yesterdayPrice)
     : getValueInKRW(yesterdayPrice, asset.currency, exchangeRates);
 
@@ -107,6 +107,16 @@ const computeDailyChange = (
   };
 };
 
+/**
+ * 업비트/빗썸 여부 — 통화 설정과 무관하게 API가 **KRW 시세**를 주는 거래소.
+ *
+ * 이 경우 `currentPrice`가 이미 원화라 환율을 곱하면 안 되고, 달러 모드 분기도 타지 않는다.
+ * **판정식을 다른 파일에서 다시 쓰지 말고 이 함수를 import 할 것** — 사본이 갈라지면
+ * 화면(metrics)과 이력 스냅샷이 서로 다른 자산을 "외화"로 보게 된다.
+ */
+export const isKRWExchange = (exchange: string | undefined): boolean =>
+  exchange === 'Upbit' || exchange === 'Bithumb';
+
 /** 자산 1건의 표시용 메트릭 전체. `totalPortfolioValue`가 0이면 `allocation`은 0. */
 export const computeAssetMetrics = (
   asset: Asset,
@@ -114,16 +124,15 @@ export const computeAssetMetrics = (
   totalPortfolioValue: number,
   options: ValuationOptions,
 ): EnrichedAsset => {
-  // 업비트/빗썸은 통화 설정과 무관하게 API가 KRW 시세를 준다
-  const isKRWExchange = asset.exchange === 'Upbit' || asset.exchange === 'Bithumb';
+  const priceIsKRW = isKRWExchange(asset.exchange);
 
-  const currentPriceKRW = isKRWExchange
+  const currentPriceKRW = priceIsKRW
     ? asset.currentPrice
     : getValueInKRW(asset.currentPrice, asset.currency, exchangeRates);
   const currentValueKRW = currentPriceKRW * asset.quantity;
 
   // 달러 모드 분기는 여기 한 줄에만 있다 — 나머지 경로는 두 모드가 동일 코드.
-  const useNative = options.plBasis === 'native' && asset.currency !== Currency.KRW && !isKRWExchange;
+  const useNative = options.plBasis === 'native' && asset.currency !== Currency.KRW && !priceIsKRW;
 
   const purchasePriceKRW = getPurchaseValueInKRW(asset, exchangeRates, useNative ? 'native' : 'krw');
   const purchaseValueKRW = purchasePriceKRW * asset.quantity;
@@ -142,7 +151,7 @@ export const computeAssetMetrics = (
     : (purchaseValueKRW === 0 ? 0 : (profitLossKRW / purchaseValueKRW) * 100);
 
   const { yesterdayChange, diffFromYesterday } =
-    computeDailyChange(asset, currentPriceKRW, isKRWExchange, exchangeRates);
+    computeDailyChange(asset, currentPriceKRW, priceIsKRW, exchangeRates);
 
   const allocation = totalPortfolioValue === 0 ? 0 : (currentValueKRW / totalPortfolioValue) * 100;
   const dropFromHigh = asset.highestPrice === 0
