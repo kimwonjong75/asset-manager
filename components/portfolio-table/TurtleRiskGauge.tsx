@@ -7,6 +7,7 @@
 //   "≥" + 경고를 노출한다(실제 리스크는 표시값보다 큼).
 // 오픈 포지션이 없으면 아무것도 렌더하지 않는다(비터틀 사용자 무영향).
 
+import { TriangleAlert } from 'lucide-react';
 import React from 'react';
 import { TurtleRiskGaugeModel } from '../../utils/turtlePositionView';
 import { formatKRW } from './utils';
@@ -23,7 +24,7 @@ const TurtleRiskGauge: React.FC<Props> = ({ gauge }) => {
   const fillRatio = riskPct != null && limitPct > 0 ? Math.min(1, riskPct / limitPct) : 0;
   const over = riskPct != null && riskPct >= limitPct;
   const near = riskPct != null && !over && riskPct >= limitPct * 0.75;
-  const barColor = over ? 'bg-red-500' : near ? 'bg-amber-500' : 'bg-emerald-500';
+  const barColor = over ? 'bg-orange-500' : near ? 'bg-amber-500' : 'bg-emerald-500';
 
   return (
     <div className="mx-3 sm:mx-6 mt-2 sm:mt-3 rounded-md border border-gray-700 bg-gray-800/60 px-3 py-2.5">
@@ -31,7 +32,7 @@ const TurtleRiskGauge: React.FC<Props> = ({ gauge }) => {
         <span className="text-xs font-semibold text-gray-200 inline-flex items-center gap-1">
           <span role="img" aria-label="터틀">🐢</span> 오픈 리스크 (동시 손절 시 손실, KRW)
         </span>
-        <span className="text-[11px] text-gray-500">{gauge.resolvedCount}/{gauge.openPositionCount} 포지션</span>
+        <span className="text-xs text-gray-500">{gauge.resolvedCount}/{gauge.openPositionCount} 포지션</span>
       </div>
 
       <div className="flex items-baseline gap-2">
@@ -39,8 +40,8 @@ const TurtleRiskGauge: React.FC<Props> = ({ gauge }) => {
           {hasUnresolved ? '≥ ' : ''}{formatKRW(gauge.openRiskKRW)}
         </span>
         {riskPct != null && (
-          <span className={`text-xs font-medium ${over ? 'text-red-400' : near ? 'text-amber-400' : 'text-gray-400'}`}>
-            {hasUnresolved ? '≥ ' : ''}{riskPct.toFixed(1)}% / 한도 {limitPct}%
+          <span className={`text-xs font-medium ${over ? 'text-orange-300 font-bold' : near ? 'text-amber-400' : 'text-gray-400'}`}>
+            {over && <TriangleAlert className="inline h-3.5 w-3.5 mr-0.5 -mt-0.5" aria-hidden="true" />}{hasUnresolved ? '≥ ' : ''}{riskPct.toFixed(1)}% / 한도 {limitPct}%{over ? ' 초과' : ''}
           </span>
         )}
       </div>
@@ -51,12 +52,12 @@ const TurtleRiskGauge: React.FC<Props> = ({ gauge }) => {
       </div>
 
       {hasUnresolved && (
-        <p className="text-[11px] text-amber-300 mt-1.5">
+        <p className="text-xs text-amber-300 mt-1.5">
           환율 미확보 {gauge.unresolved.length}종목({gauge.unresolved.map(u => u.ticker).join(', ')})은 합산에서 제외됨 — 실제 리스크는 표시값보다 큽니다. 시세 갱신 후 재계산됩니다.
         </p>
       )}
       {gauge.budgetKRW <= 0 && (
-        <p className="text-[11px] text-gray-500 mt-1.5">위성 예산이 설정되면 한도 대비 비율이 표시됩니다.</p>
+        <p className="text-xs text-gray-500 mt-1.5">위성 예산이 설정되면 한도 대비 비율이 표시됩니다.</p>
       )}
     </div>
   );

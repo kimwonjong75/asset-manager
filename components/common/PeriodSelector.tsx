@@ -31,8 +31,10 @@ const PeriodSelector: React.FC<PeriodSelectorProps> = ({ value, onChange, varian
         <button
           ref={anchorRef}
           onClick={() => setIsOpen(prev => !prev)}
-          className="flex items-center gap-1 px-2.5 py-2 text-xs font-medium rounded-md bg-gray-700 text-gray-300 hover:text-white hover:bg-gray-600 transition-colors whitespace-nowrap flex-shrink-0"
+          className="flex items-center gap-1 px-2.5 py-2 text-xs font-medium rounded-md bg-gray-700 text-gray-300 hover:text-white hover:bg-gray-600 transition-colors whitespace-nowrap flex-shrink-0 focus-ring"
           title="조회 기간 선택"
+          aria-haspopup="menu"
+          aria-expanded={isOpen}
         >
           {currentLabel}
           <svg className={`w-3.5 h-3.5 transition-transform ${isOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -19,7 +19,7 @@ const fmtPct = (v: number | null | undefined): string =>
 
 const DiffList: React.FC<{ label: string; dates: string[]; tone: string }> = ({ label, dates, tone }) =>
   dates.length === 0 ? null : (
-    <div className="text-[11px]">
+    <div className="text-xs">
       <span className={tone}>{label} {dates.length}일</span>
       <span className="text-gray-500 ml-1 font-mono break-all">{dates.join(', ')}</span>
     </div>
@@ -50,7 +50,7 @@ const ReplayCasesPanel: React.FC<ReplayCasesPanelProps> = ({
 
   return (
     <div className="bg-gray-800 rounded-lg p-3 space-y-3">
-      <h3 className="text-sm font-bold text-white">🗂️ 검증 사례 <span className="text-[11px] text-gray-500 font-normal">— 현재 화면을 저장하고 나중에 재실행·비교</span></h3>
+      <h3 className="text-sm font-bold text-white">🗂️ 검증 사례 <span className="text-xs text-gray-500 font-normal">— 현재 화면을 저장하고 나중에 재실행·비교</span></h3>
 
       {/* 저장 폼 */}
       <div className="space-y-2 bg-gray-900/50 rounded p-2.5">
@@ -59,14 +59,14 @@ const ReplayCasesPanel: React.FC<ReplayCasesPanelProps> = ({
             <button
               key={r}
               onClick={() => setRole(r)}
-              className={`text-[11px] px-2 py-1 rounded border transition-colors ${
+              className={`text-xs px-2 py-1 rounded border transition-colors ${
                 role === r ? ROLE_TONE[r] : 'bg-gray-900/60 text-gray-400 border-gray-700 hover:bg-gray-700'
               }`}
             >
               {ROLE_LABELS[r]}
             </button>
           ))}
-          <span className="text-[10px] text-gray-600">검증용은 규칙 튜닝 대상에서 빠집니다(과적합 방지)</span>
+          <span className="text-xs text-gray-500">검증용은 규칙 튜닝 대상에서 빠집니다(과적합 방지)</span>
         </div>
         <div className="flex items-center gap-2">
           <input
@@ -79,7 +79,7 @@ const ReplayCasesPanel: React.FC<ReplayCasesPanelProps> = ({
             onClick={handleSave}
             disabled={!canSave}
             className={`text-xs px-3 py-1.5 rounded whitespace-nowrap ${
-              canSave ? 'bg-primary/20 text-primary hover:bg-primary/30' : 'bg-gray-800 text-gray-600 cursor-not-allowed'
+              canSave ? 'bg-primary/20 text-primary hover:bg-primary/30' : 'bg-gray-800 text-gray-500 cursor-not-allowed'
             }`}
           >
             현재 화면 저장
@@ -93,20 +93,20 @@ const ReplayCasesPanel: React.FC<ReplayCasesPanelProps> = ({
           <div className="flex items-center justify-between gap-2">
             <span className="text-xs text-primary font-medium flex items-center gap-1.5">
               🔁 재실행 비교 중 — {comparingCase.name} ({comparingCase.ticker})
-              <span className={`text-[10px] px-1.5 py-0.5 rounded border ${ROLE_TONE[comparingCase.caseRole]}`}>{ROLE_LABELS[comparingCase.caseRole]}</span>
+              <span className={`text-xs px-1.5 py-0.5 rounded border ${ROLE_TONE[comparingCase.caseRole]}`}>{ROLE_LABELS[comparingCase.caseRole]}</span>
             </span>
-            <button onClick={onEndComparison} className="text-[11px] px-2 py-0.5 rounded bg-gray-800 text-gray-400 hover:bg-gray-700">비교 종료</button>
+            <button onClick={onEndComparison} className="text-xs px-2 py-0.5 rounded bg-gray-800 text-gray-400 hover:bg-gray-700">비교 종료</button>
           </div>
           {/* P3-④ 과적합 경고 — holdout 사례에서 신호가 바뀌면 규칙을 거기 맞추지 말 것 */}
           {comparingCase.caseRole === 'holdout' && caseDiff && (caseDiff.overall.added.length > 0 || caseDiff.overall.removed.length > 0) && (
-            <p className="text-[11px] text-amber-300 bg-amber-500/10 border border-amber-500/30 rounded px-2 py-1">
+            <p className="text-xs text-amber-300 bg-amber-500/10 border border-amber-500/30 rounded px-2 py-1">
               ⚠️ 검증용(holdout) 사례입니다. 신호가 바뀌었습니다 — 이 사례에 <span className="font-medium">규칙을 맞추지 마세요</span>(과적합). 조정은 연구용 사례로 하고, holdout에서는 유지/개선되는지만 확인하세요.
             </p>
           )}
           {!caseDiff ? (
-            <p className="text-[11px] text-gray-500">재계산 중… (또는 종목/기간이 사례와 달라 비교 불가)</p>
+            <p className="text-xs text-gray-500">재계산 중… (또는 종목/기간이 사례와 달라 비교 불가)</p>
           ) : caseDiff.overall.added.length === 0 && caseDiff.overall.removed.length === 0 ? (
-            <p className="text-[11px] text-emerald-400">신호일 변화 없음 — 저장 당시와 동일하게 재현됨.</p>
+            <p className="text-xs text-emerald-400">신호일 변화 없음 — 저장 당시와 동일하게 재현됨.</p>
           ) : (
             <div className="space-y-1">
               <DiffList label="➕ 추가된 신호일" dates={caseDiff.overall.added} tone="text-emerald-400" />
@@ -114,7 +114,7 @@ const ReplayCasesPanel: React.FC<ReplayCasesPanelProps> = ({
               {caseDiff.perRule.length > 0 && (
                 <div className="pt-1 mt-1 border-t border-gray-700/60 space-y-1">
                   {caseDiff.perRule.map(r => (
-                    <div key={r.ruleId} className="text-[11px]">
+                    <div key={r.ruleId} className="text-xs">
                       <span className="text-gray-400">{r.ruleId}</span>
                       {r.added.length > 0 && <span className="text-emerald-400 ml-1">+{r.added.length}</span>}
                       {r.removed.length > 0 && <span className="text-rose-400 ml-1">−{r.removed.length}</span>}
@@ -137,22 +137,22 @@ const ReplayCasesPanel: React.FC<ReplayCasesPanelProps> = ({
               <div className="flex items-center justify-between gap-2 flex-wrap">
                 <div className="flex items-center gap-1.5 min-w-0">
                   <span className="text-sm text-white truncate">{c.name}</span>
-                  <span className="text-[10px] text-gray-500">{c.ticker}</span>
-                  <span className={`text-[10px] px-1.5 py-0.5 rounded border ${ROLE_TONE[c.caseRole]}`}>{ROLE_LABELS[c.caseRole]}</span>
+                  <span className="text-xs text-gray-500">{c.ticker}</span>
+                  <span className={`text-xs px-1.5 py-0.5 rounded border ${ROLE_TONE[c.caseRole]}`}>{ROLE_LABELS[c.caseRole]}</span>
                 </div>
                 <div className="flex items-center gap-1">
-                  <button onClick={() => onLoad(c)} className="text-[11px] px-2 py-0.5 rounded bg-gray-800 text-primary hover:bg-gray-700">재실행</button>
-                  <button onClick={() => onDelete(c.id)} className="text-[11px] px-2 py-0.5 rounded bg-gray-800 text-gray-500 hover:bg-rose-500/20 hover:text-rose-300">삭제</button>
+                  <button onClick={() => onLoad(c)} className="text-xs px-2 py-0.5 rounded bg-gray-800 text-primary hover:bg-gray-700">재실행</button>
+                  <button onClick={() => onDelete(c.id)} className="text-xs px-2 py-0.5 rounded bg-gray-800 text-gray-500 hover:bg-rose-500/20 hover:text-rose-300">삭제</button>
                 </div>
               </div>
-              <div className="flex items-center gap-2 flex-wrap text-[10px] text-gray-500 mt-0.5">
+              <div className="flex items-center gap-2 flex-wrap text-xs text-gray-500 mt-0.5">
                 <span className="font-mono">~{c.anchorDate}</span>
                 <span>{WINDOW_LABELS[c.windowTradingDays] ?? `${c.windowTradingDays}일`}</span>
                 <span>신호 {c.resultMetrics?.signalCount ?? c.perRuleResults.reduce((n, r) => n + r.signalDates.length, 0)}일</span>
                 {c.resultMetrics?.avgRet20 != null && <span>평균 20일후 {fmtPct(c.resultMetrics.avgRet20)}</span>}
                 {c.verdicts.length > 0 && <span className="text-amber-500/80">판정 {c.verdicts.length}</span>}
               </div>
-              {c.memo && <p className="text-[11px] text-gray-400 mt-0.5 truncate">{c.memo}</p>}
+              {c.memo && <p className="text-xs text-gray-400 mt-0.5 truncate">{c.memo}</p>}
             </li>
           ))}
         </ul>

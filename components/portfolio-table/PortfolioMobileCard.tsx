@@ -90,7 +90,7 @@ const PortfolioMobileCard: React.FC<PortfolioMobileCardProps> = ({
             {onTogglePin && (
               <button
                 onClick={(e) => { e.stopPropagation(); onTogglePin(asset.id); }}
-                className={`text-lg leading-none transition-colors flex-shrink-0 ${asset.pinned ? 'text-yellow-400' : 'text-gray-600 hover:text-yellow-400/60'}`}
+                className={`text-lg leading-none transition-colors flex-shrink-0 ${asset.pinned ? 'text-yellow-400' : 'text-gray-500 hover:text-yellow-400/60'}`}
               >
                 {asset.pinned ? '★' : '☆'}
               </button>
@@ -99,17 +99,17 @@ const PortfolioMobileCard: React.FC<PortfolioMobileCardProps> = ({
               {asset.customName?.trim() || asset.name}
             </span>
             <span
-              className={`text-[11px] leading-none cursor-pointer transition-opacity flex-shrink-0 ${asset.memo ? 'opacity-60 hover:opacity-100' : 'opacity-20 hover:opacity-50'}`}
+              className={`text-xs leading-none cursor-pointer transition-opacity flex-shrink-0 ${asset.memo ? 'opacity-60 hover:opacity-100' : 'opacity-20 hover:opacity-50'}`}
               onClick={(e) => { e.stopPropagation(); onMemoEdit?.(asset); }}
             >📝</span>
           </div>
           <div className="flex items-center gap-1.5 mt-0.5">
-            <span className="text-[11px] text-gray-500">{asset.ticker} | {asset.exchange}</span>
+            <span className="text-xs text-gray-500">{asset.ticker} | {asset.exchange}</span>
             {asset.bucket === 'SATELLITE' && (
-              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 whitespace-nowrap" title="투더문(위성) 종목">투더문</span>
+              <span className="text-xs font-bold px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 whitespace-nowrap" title="투더문(위성) 종목">투더문</span>
             )}
             {asset.owner === 'YUSEON' && (
-              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 whitespace-nowrap" title="유선(가족) 계정 자산 — 리밸런싱·터틀 대상에서 제외">유선</span>
+              <span className="text-xs font-bold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 whitespace-nowrap" title="유선(가족) 계정 자산 — 리밸런싱·터틀 대상에서 제외">유선</span>
             )}
             <CrossDaysBadge crossDays={gcCrossDays} />
             <CrossDaysBadge crossDays={dcCrossDays} />
@@ -126,7 +126,7 @@ const PortfolioMobileCard: React.FC<PortfolioMobileCardProps> = ({
           </div>
 
           {/* Secondary info row */}
-          <div className="flex items-center gap-4 mt-1 text-[11px] text-gray-400">
+          <div className="flex items-center gap-4 mt-1 text-xs text-gray-400">
             <span>평가 {isNonKRW ? formatKRW(currentValueKRW) : formatOriginalCurrency(currentValue, asset.currency)}</span>
             <span className={getChangeColor(dropFromHigh)}>고가대비 {dropFromHigh.toFixed(1)}%</span>
             <span className={getChangeColor(yesterdayChange)}>전일 {yesterdayChange >= 0 ? '+' : ''}{yesterdayChange.toFixed(1)}%</span>
@@ -147,10 +147,10 @@ const PortfolioMobileCard: React.FC<PortfolioMobileCardProps> = ({
             anchorRef={menuAnchorRef}
             onClose={() => setMenuOpen(false)}
             items={[
-              ...(onRefreshOne ? [{ label: '가격 업데이트', onClick: () => onRefreshOne(asset.id), colorClass: 'text-blue-400' }] : []),
+              ...(onRefreshOne ? [{ label: '가격 업데이트', onClick: () => onRefreshOne(asset.id), colorClass: 'text-sky-400' }] : []),
               { label: '수정', onClick: () => onEdit(asset) },
-              ...(onBuy ? [{ label: '매수', onClick: () => onBuy(asset), colorClass: 'text-green-400' }] : []),
-              ...(onSell ? [{ label: '매도', onClick: () => onSell(asset), colorClass: 'text-red-400' }] : []),
+              ...(onBuy ? [{ label: '매수', onClick: () => onBuy(asset), colorClass: 'text-up' }] : []),
+              ...(onSell ? [{ label: '매도', onClick: () => onSell(asset), colorClass: 'text-down' }] : []),
               { label: '차트 보기', onClick: () => setExpanded(!expanded), colorClass: 'text-gray-200' },
               { label: '차트 확대', onClick: () => setFullscreen(true), colorClass: 'text-gray-200' },
             ]}

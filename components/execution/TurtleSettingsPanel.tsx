@@ -67,12 +67,12 @@ const TurtleSettingsPanel: React.FC = () => {
     <div className={`mb-3 rounded-lg border p-3.5 ${budget <= 0 ? 'border-amber-500/40 bg-amber-500/5' : 'border-gray-700 bg-gray-800/60'}`}>
       <div className="flex items-center justify-between gap-2 mb-2">
         <h2 className="text-sm font-semibold text-gray-100">터틀(위성) 예산</h2>
-        <span className="text-[11px] text-gray-500">총자산 {fmtKRW(totalValue)}</span>
+        <span className="text-xs text-gray-500">총자산 {fmtKRW(totalValue)}</span>
       </div>
 
       <div className="flex flex-wrap items-end gap-2">
         <div className="flex-1 min-w-[160px]">
-          <label htmlFor="turtle-budget" className="block text-[11px] text-gray-400 mb-1">위성 예산 (KRW)</label>
+          <label htmlFor="turtle-budget" className="block text-xs text-gray-400 mb-1">위성 예산 (KRW)</label>
           <input
             id="turtle-budget"
             type="number"
@@ -102,11 +102,11 @@ const TurtleSettingsPanel: React.FC = () => {
       </div>
 
       {budget <= 0 ? (
-        <p className="text-[11px] text-amber-300 mt-2">
+        <p className="text-xs text-amber-300 mt-2">
           예산이 0이면 신규 매수(진입) 주문이 생성되지 않습니다. 위성 계좌에 배정한 금액을 입력하세요.
         </p>
       ) : (
-        <p className="text-[11px] text-gray-500 mt-2">
+        <p className="text-xs text-gray-500 mt-2">
           1% 손실규칙의 기준 계좌입니다. 코어(90%)에는 손절이 없습니다.
         </p>
       )}
@@ -120,9 +120,9 @@ const TurtleSettingsPanel: React.FC = () => {
         <div className="min-w-0">
           <p className="text-xs font-medium text-gray-200">오늘 주문 자동 생성</p>
           {turtleLocked ? (
-            <p className="text-[11px] text-amber-300/80 mt-0.5 leading-snug">{TURTLE_LOCK_MESSAGE}</p>
+            <p className="text-xs text-amber-300/80 mt-0.5 leading-snug">{TURTLE_LOCK_MESSAGE}</p>
           ) : (
-            <p className="text-[11px] text-gray-500 mt-0.5 leading-snug">
+            <p className="text-xs text-gray-500 mt-0.5 leading-snug">
               켜면 앱 시작 후 시세 업데이트가 끝났을 때 하루 1회 「오늘 주문 생성」을 자동 실행합니다.
               실제 매수/매도가 아니라 <span className="text-gray-400">주문 목록 생성</span>까지만 자동입니다. 꺼져 있으면 버튼을 눌러야 생성됩니다.
             </p>
@@ -142,7 +142,7 @@ const TurtleSettingsPanel: React.FC = () => {
       </div>
 
       {/* 고정 사이징 파라미터 (기본값 유지 — 읽기 표시만) */}
-      <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2.5 pt-2.5 border-t border-gray-700/60 text-[11px] text-gray-500">
+      <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2.5 pt-2.5 border-t border-gray-700/60 text-xs text-gray-500">
         <span>유닛 리스크 <span className="text-gray-300">{settings.riskPerUnitPct}%</span></span>
         <span>최대 <span className="text-gray-300">{settings.maxUnitsPerPosition}유닛</span></span>
         <span>동시 전멸 한도 <span className="text-gray-300">{settings.maxTotalRiskPct}%</span></span>
@@ -154,10 +154,10 @@ const TurtleSettingsPanel: React.FC = () => {
           명시적 버튼 + 인라인 2단 확인(모달·토스트 없음). */}
       <div className="flex flex-wrap items-center gap-2 mt-2.5 pt-2.5 border-t border-gray-700/60">
         {compactable.count === 0 ? (
-          <span className="text-[11px] text-gray-500">정리할 완료 주문 없음</span>
+          <span className="text-xs text-gray-500">정리할 완료 주문 없음</span>
         ) : !armed ? (
           <>
-            <span className="text-[11px] text-gray-400">완료된 주문 <span className="text-gray-200">{compactable.count}건</span>(90일 경과)</span>
+            <span className="text-xs text-gray-400">완료된 주문 <span className="text-gray-200">{compactable.count}건</span>(90일 경과)</span>
             <button
               type="button"
               onClick={() => { setArmed(true); setCompactDone(null); }}
@@ -166,7 +166,7 @@ const TurtleSettingsPanel: React.FC = () => {
           </>
         ) : (
           <>
-            <span className="text-[11px] text-gray-400">{compactable.count}건 삭제 · 자동 백업에 원본 보존됨</span>
+            <span className="text-xs text-gray-400">{compactable.count}건 삭제 · 자동 백업에 원본 보존됨</span>
             <button
               type="button"
               onClick={runCompact}

@@ -125,7 +125,7 @@ const SegButton: React.FC<{ active: boolean; onClick: () => void; children: Reac
 );
 
 const FieldHint: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <p className="text-[11px] text-gray-500 mt-1 leading-relaxed">{children}</p>
+  <p className="text-xs text-gray-500 mt-1 leading-relaxed">{children}</p>
 );
 
 export interface TradePlanEditorHandle {
@@ -395,7 +395,7 @@ const TradePlanEditor = forwardRef<TradePlanEditorHandle, TradePlanEditorProps>(
         {form.pyramidEnabled && (
           <div className="mt-2 space-y-2 bg-gray-900/40 rounded-md p-2.5">
             <div>
-              <div className="text-[11px] text-gray-400 mb-1">간격 단위</div>
+              <div className="text-xs text-gray-400 mb-1">간격 단위</div>
               <Segmented<PyramidStepUnit>
                 options={[
                   { value: 'pct', label: '%(기준가 대비)' },
@@ -406,7 +406,7 @@ const TradePlanEditor = forwardRef<TradePlanEditorHandle, TradePlanEditorProps>(
               />
             </div>
             <div>
-              <label className="text-[11px] text-gray-400 mb-1 block">간격 값 ({form.pyramidStepUnit === 'pct' ? '%' : 'R'})</label>
+              <label className="text-xs text-gray-400 mb-1 block">간격 값 ({form.pyramidStepUnit === 'pct' ? '%' : 'R'})</label>
               <input
                 type="number" min="0" step="any" value={form.pyramidStep}
                 onChange={(e) => set('pyramidStep', e.target.value)}
@@ -414,7 +414,7 @@ const TradePlanEditor = forwardRef<TradePlanEditorHandle, TradePlanEditorProps>(
               />
             </div>
             <div>
-              <div className="text-[11px] text-gray-400 mb-1">투입 크기</div>
+              <div className="text-xs text-gray-400 mb-1">투입 크기</div>
               <Segmented<PyramidSizing>
                 options={[
                   { value: 'same', label: '같은 금액' },
@@ -425,7 +425,7 @@ const TradePlanEditor = forwardRef<TradePlanEditorHandle, TradePlanEditorProps>(
               />
             </div>
             <div>
-              <div className="text-[11px] text-gray-400 mb-1">최대 단계</div>
+              <div className="text-xs text-gray-400 mb-1">최대 단계</div>
               <Segmented<PyramidLevel>
                 options={[1, 2, 3].map(n => ({ value: n as PyramidLevel, label: `${n}차` }))}
                 value={form.pyramidMaxAdds}
@@ -456,7 +456,7 @@ const TradePlanEditor = forwardRef<TradePlanEditorHandle, TradePlanEditorProps>(
       </button>
 
       {!result.ok && (
-        <div className="text-sm text-red-300 bg-red-500/10 border border-red-500/30 rounded-md px-3 py-2">
+        <div className="text-sm text-danger bg-danger-soft border border-danger/30 rounded-md px-3 py-2">
           {TRADE_PLAN_BUILD_ERROR_LABELS[result.reason]}
         </div>
       )}
@@ -484,12 +484,12 @@ const TradePlanEditor = forwardRef<TradePlanEditorHandle, TradePlanEditorProps>(
           </div>
           <div>
             <div className="text-gray-500 mb-0.5">② 손절선</div>
-            <div className="text-red-300">{formatPlanPrice(result.plan.stopPrice, currency)} (−{result.plan.stopPct.toFixed(1)}%) → 전량 매도</div>
+            <div className="text-amber-300">{formatPlanPrice(result.plan.stopPrice, currency)} (−{result.plan.stopPct.toFixed(1)}%) → 전량 매도</div>
           </div>
           <div>
             <div className="text-gray-500 mb-0.5">③ 익절선 (1차, 절반 매도)</div>
             {result.plan.takeProfitPrice !== null ? (
-              <div className="text-emerald-300">{formatPlanPrice(result.plan.takeProfitPrice, currency)}</div>
+              <div className="text-up">{formatPlanPrice(result.plan.takeProfitPrice, currency)}</div>
             ) : (
               <div className="text-gray-500">없음</div>
             )}
@@ -500,7 +500,7 @@ const TradePlanEditor = forwardRef<TradePlanEditorHandle, TradePlanEditorProps>(
               <div className="text-amber-300 space-y-0.5">
                 <div>오늘 값 {formatPlanPrice(currentExitLineValue, currency)}</div>
                 {anchorPrice > 0 && anchorPrice < currentExitLineValue && (
-                  <div className="text-[11px] text-amber-400">
+                  <div className="text-xs text-amber-400">
                     ⚠ 지금 이미 이 선 아래입니다 — 종가가 선 위로 올라온(재돌파) 뒤부터 적용됩니다.
                   </div>
                 )}
@@ -509,10 +509,10 @@ const TradePlanEditor = forwardRef<TradePlanEditorHandle, TradePlanEditorProps>(
               <div className="text-gray-500">현재 값 확인 불가(데이터 부족) — 저장은 가능하며, 이후 시세로 판정합니다.</div>
             )}
           </div>
-          <p className="text-[11px] text-gray-500 pt-1 border-t border-gray-800">
+          <p className="text-xs text-gray-500 pt-1 border-t border-gray-800">
             근거: 백테스트에서 이 규칙은 큰 하락을 절반 이하로 줄였지만 수익률은 그냥 들고 있는 것보다 낮았습니다.
           </p>
-          <p className="text-[11px] text-gray-500">
+          <p className="text-xs text-gray-500">
             주식 수는 소수점 버림 · 세금·수수료·호가 단위 미포함 · 투자자문 아님
           </p>
         </div>

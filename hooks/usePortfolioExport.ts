@@ -51,7 +51,6 @@ export const usePortfolioExport = ({
     // 수동 저장 — 바뀐 도메인이 없으므로 최신 스냅샷을 그대로 저장한다.
     saveNow();
     setSuccessMessage('저장 요청되었습니다.');
-    setTimeout(() => setSuccessMessage(null), 3000);
   }, [saveNow, setSuccessMessage]);
 
   const exportJson = useCallback(async (fileName: string = 'portfolio.json') => {
@@ -81,7 +80,6 @@ export const usePortfolioExport = ({
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
       setSuccessMessage(`'${fileName}' 파일로 내보내기가 완료되었습니다.`);
-      setTimeout(() => setSuccessMessage(null), 3000);
     } catch (e) {
       setError('파일 내보내기에 실패했습니다.');
       setTimeout(() => setError(null), 3000);
@@ -140,7 +138,6 @@ export const usePortfolioExport = ({
           setAllocationTargets(loadedTargets);
           
           setSuccessMessage('파일에서 데이터를 불러왔습니다.');
-          setTimeout(() => setSuccessMessage(null), 3000);
         } catch (err) {
           setError('파일 파싱 실패');
           setTimeout(() => setError(null), 3000);
@@ -197,7 +194,6 @@ export const usePortfolioExport = ({
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
       setSuccessMessage('CSV 내보내기 완료');
-      setTimeout(() => setSuccessMessage(null), 3000);
     } catch (e) {
       setError('CSV 내보내기 실패');
       setTimeout(() => setError(null), 3000);

@@ -468,7 +468,7 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const isInitializing = isAuthInitializing;
 
   // 브라우저 탭 제목 동적 변경 (다른 탭에서도 상태 확인 가능)
-  const DEFAULT_TITLE = "KIM'S 퀸트자산관리";
+  const DEFAULT_TITLE = "KIM'S 퀀트자산관리";
   useEffect(() => {
     if (isInitializing) {
       document.title = `로그인 확인 중... — ${DEFAULT_TITLE}`;
@@ -964,7 +964,6 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
             // 전 도메인 공용 파이프라인으로 복원(P2 유실 버그 수정) + 복원 데이터 명시 저장
             restoreFromPayload(content);
             setSuccessMessage('백업에서 데이터가 복원되었습니다.');
-            setTimeout(() => setSuccessMessage(null), 3000);
           } catch {
             setError('백업 데이터 파싱에 실패했습니다.');
             setTimeout(() => setError(null), 3000);
@@ -981,7 +980,6 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         const nextAssets = getSnapshot().assets.map(a => (a.id === assetId ? { ...a, tradePlan: plan } : a));
         commitPortfolio({ assets: nextAssets });
         setSuccessMessage('매매 계획 저장됨');
-        setTimeout(() => setSuccessMessage(null), 3000);
       },
       clearTradePlan: (assetId: string) => {
         const today = localDateString();
@@ -991,7 +989,6 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         );
         commitPortfolio({ assets: nextAssets });
         setSuccessMessage('매매 계획 해제됨');
-        setTimeout(() => setSuccessMessage(null), 3000);
       },
       saveWatchTradePlan: (watchItemId: string, plan: TradePlan | null) => {
         const nextWatchlist = getSnapshot().watchlist.map(w => {
@@ -1006,7 +1003,6 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         });
         commitPortfolio({ watchlist: nextWatchlist });
         setSuccessMessage(plan === null ? '매매 계획 취소됨' : '매매 계획 저장됨');
-        setTimeout(() => setSuccessMessage(null), 3000);
       },
       recordTradePlanDecision: (assetId: string, decision: PlanDecision) => {
         const nowIso = new Date().toISOString();
@@ -1022,7 +1018,6 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         );
         commitPortfolio({ assets: nextAssets });
         setSuccessMessage('추세선 적용을 시작했습니다');
-        setTimeout(() => setSuccessMessage(null), 3000);
       },
       setTradePlanBrokerStop: (assetId: string, registered: boolean) => {
         const nowIso = new Date().toISOString();
@@ -1041,7 +1036,6 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         const nextAssets = getSnapshot().assets.map(a => (byId.has(a.id) ? { ...a, tradePlan: byId.get(a.id) } : a));
         commitPortfolio({ assets: nextAssets });
         setSuccessMessage(`매매 계획 ${entries.length}건을 저장했습니다`);
-        setTimeout(() => setSuccessMessage(null), 3000);
       },
 
       // 매매 계획 ↔ 돈 기록 연동 (P2b) — 돈(confirmSell/confirmBuyMore)은 그대로 두고,
@@ -1062,7 +1056,6 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         );
         commitPortfolio({ assets: nextAssets });
         setSuccessMessage('매매 계획 상태를 갱신했습니다');
-        setTimeout(() => setSuccessMessage(null), 3000);
       },
       applyTradePlanPyramidFill: (assetId: string, fill: PlanFill): PyramidFillResult => {
         const snap = getSnapshot();
@@ -1079,7 +1072,6 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         const nextAssets = snap.assets.map(a => (a.id === assetId ? { ...a, tradePlan: result.plan } : a));
         commitPortfolio({ assets: nextAssets });
         setSuccessMessage('불타기 체결을 계획에 기록했습니다');
-        setTimeout(() => setSuccessMessage(null), 3000);
         return result;
       },
 
@@ -1122,7 +1114,6 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         });
         commitPortfolio({ assets: nextAssets, watchlist: nextWatchlist });
         setSuccessMessage('관심종목 계획을 자산으로 이전했습니다');
-        setTimeout(() => setSuccessMessage(null), 3000);
       },
       addWatchItemWithPlan: handleAddWatchItemWithPlan,
     },

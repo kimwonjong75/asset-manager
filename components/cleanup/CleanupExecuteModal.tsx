@@ -75,12 +75,12 @@ const CleanupExecuteModal: React.FC<Props> = ({ executeCleanupAction }) => {
 
   return (
     <div
-      className="fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center z-50 p-4"
+      className="fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center z-modal p-4"
       onClick={onClose}
       role="dialog"
       aria-modal="true"
     >
-      <div className="bg-gray-800 p-4 sm:p-6 rounded-lg shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+      <div className="bg-gray-800 p-4 sm:p-6 rounded-lg shadow-xl w-full max-w-lg max-h-[90dvh] overflow-y-auto" onClick={e => e.stopPropagation()}>
         <div className="flex items-start justify-between gap-3 mb-4">
           <div className="min-w-0">
             <h2 className="text-lg sm:text-xl font-bold text-white truncate">대청소 청산 (전량 매도)</h2>
@@ -99,15 +99,15 @@ const CleanupExecuteModal: React.FC<Props> = ({ executeCleanupAction }) => {
               <Row label="보유수량" value={`${asset.quantity}`} />
               <Row label="현재가" value={ccy ? formatOriginalCurrency(asset.currentPrice, ccy) : '—'} />
               {metrics && <Row label="평가금액" value={formatKRW(metrics.currentValueKRW)} />}
-              {metrics && <Row label="평가손익" value={`${metrics.profitLossKRW >= 0 ? '+' : ''}${formatKRW(metrics.profitLossKRW)}`} tone={metrics.profitLossKRW < 0 ? 'text-red-300' : 'text-emerald-300'} />}
-              {metrics && <Row label="수익률" value={`${metrics.returnPercentage >= 0 ? '+' : ''}${metrics.returnPercentage.toFixed(1)}%`} tone={metrics.returnPercentage < 0 ? 'text-red-300' : 'text-emerald-300'} />}
+              {metrics && <Row label="평가손익" value={`${metrics.profitLossKRW >= 0 ? '+' : ''}${formatKRW(metrics.profitLossKRW)}`} tone={metrics.profitLossKRW < 0 ? 'text-down' : 'text-up'} />}
+              {metrics && <Row label="수익률" value={`${metrics.returnPercentage >= 0 ? '+' : ''}${metrics.returnPercentage.toFixed(1)}%`} tone={metrics.returnPercentage < 0 ? 'text-down' : 'text-up'} />}
             </div>
-            <p className="text-[11px] text-gray-500 mt-2.5">{action.reasonText}</p>
+            <p className="text-xs text-gray-500 mt-2.5">{action.reasonText}</p>
           </div>
         )}
 
         {blocked && (
-          <div className="mb-4 text-sm text-red-300 bg-red-500/10 border border-red-500/30 rounded-md px-3 py-2">
+          <div className="mb-4 text-sm text-danger bg-danger-soft border border-danger/30 rounded-md px-3 py-2">
             대상 자산을 찾을 수 없거나 보유수량이 0입니다. 이미 매도되었을 수 있습니다.
           </div>
         )}
@@ -138,17 +138,17 @@ const CleanupExecuteModal: React.FC<Props> = ({ executeCleanupAction }) => {
             </div>
           </div>
 
-          <p className="text-[11px] text-gray-500">
+          <p className="text-xs text-gray-500">
             청산 손익은 해외주식 양도세 통산에 영향을 줄 수 있습니다(참고 — 확정 세무 판단 아님).
           </p>
 
           {error && (
-            <div className="text-sm text-red-300 bg-red-500/10 border border-red-500/30 rounded-md px-3 py-2">{error}</div>
+            <div className="text-sm text-danger bg-danger-soft border border-danger/30 rounded-md px-3 py-2">{error}</div>
           )}
 
           <div className="flex items-center justify-end gap-2 pt-1">
             <button type="button" onClick={onClose} disabled={isSubmitting} className="text-sm text-gray-300 hover:text-white px-4 py-2 rounded-md transition-colors disabled:opacity-50">취소</button>
-            <button type="submit" disabled={!canSubmit} className="text-sm font-medium text-white bg-red-600 hover:bg-red-500 px-4 py-2 rounded-md transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+            <button type="submit" disabled={!canSubmit} className="text-sm font-medium text-white bg-primary-dark hover:bg-primary px-4 py-2 rounded-md transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
               {isSubmitting ? '실행 중...' : '매도 실행'}
             </button>
           </div>

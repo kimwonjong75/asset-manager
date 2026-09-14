@@ -62,8 +62,8 @@ const BulkUploadModal: React.FC = () => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center z-50 p-4" onClick={resetModal} role="dialog" aria-modal="true">
-      <div className="bg-gray-800 p-4 sm:p-6 rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center z-modal p-4" onClick={resetModal} role="dialog" aria-modal="true">
+      <div className="bg-gray-800 p-4 sm:p-6 rounded-lg shadow-xl w-full max-w-3xl max-h-[90dvh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         {view === 'instructions' && (
           <div>
             <h2 className="text-2xl font-bold text-white mb-4">CSV 일괄 등록</h2>
@@ -95,7 +95,7 @@ const BulkUploadModal: React.FC = () => {
             <div className="flex justify-between items-center mt-8">
               <button onClick={handleDownloadTemplate} className="text-primary hover:text-primary-light transition font-medium">양식 다운로드</button>
               <div className="flex gap-4">
-                 <button onClick={resetModal} className="bg-gray-600 hover:bg-gray-500 text-white font-medium py-2 px-4 rounded-md transition duration-300">취소</button>
+                 <button onClick={resetModal} className="bg-gray-600 hover:bg-zinc-500 text-white font-medium py-2 px-4 rounded-md transition duration-300">취소</button>
                  <button onClick={handleUploadClick} className="bg-primary hover:bg-primary-dark text-white font-bold py-2 px-4 rounded-md transition duration-300">파일 선택하여 업로드</button>
               </div>
             </div>

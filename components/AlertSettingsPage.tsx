@@ -34,7 +34,7 @@ const SensitivityControl: React.FC<{
     <div className="flex items-center justify-between gap-2 flex-wrap mb-2">
       <span className={`text-sm font-semibold ${accentClass}`}>{title}</span>
       {activeLevel === null && (
-        <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-700 text-gray-300">사용자 지정</span>
+        <span className="text-xs px-1.5 py-0.5 rounded bg-gray-700 text-gray-300">사용자 지정</span>
       )}
     </div>
     <div className="inline-flex rounded-md border border-gray-600 overflow-hidden" role="group" aria-label={title}>
@@ -51,7 +51,7 @@ const SensitivityControl: React.FC<{
             } ${lvl !== 'insensitive' ? 'border-l border-gray-600' : ''}`}
           >
             <div className="font-medium">{SENSITIVITY_LABELS[lvl]}</div>
-            <div className="text-[10px] opacity-70">{SENSITIVITY_SUBLABELS[lvl]}</div>
+            <div className="text-xs opacity-70">{SENSITIVITY_SUBLABELS[lvl]}</div>
           </button>
         );
       })}
@@ -88,9 +88,9 @@ const FieldLabel: React.FC<{ text: string; tip: string }> = ({ text, tip }) => (
 );
 
 const SEVERITY_COLORS: Record<string, string> = {
-  critical: 'bg-red-500',
+  critical: 'bg-orange-500',
   warning: 'bg-amber-500',
-  info: 'bg-blue-500',
+  info: 'bg-sky-500',
 };
 
 const SEVERITY_LABELS: Record<string, string> = {
@@ -174,7 +174,7 @@ const AlertSettingsPage: React.FC = () => {
                     <Info className="w-3.5 h-3.5 text-gray-400 cursor-help" />
                   </Tooltip>
                 )}
-                <span className={`text-[10px] px-1.5 py-0.5 rounded ${SEVERITY_COLORS[rule.severity]} text-white`}>
+                <span className={`text-xs px-1.5 py-0.5 rounded ${SEVERITY_COLORS[rule.severity]} text-white`}>
                   {SEVERITY_LABELS[rule.severity]}
                 </span>
               </div>
@@ -525,14 +525,14 @@ const AlertSettingsPage: React.FC = () => {
             <div className="grid gap-3 lg:grid-cols-2">
               <SensitivityControl
                 title="매도 경고 민감도"
-                accentClass="text-red-400"
+                accentClass="text-down"
                 activeLevel={sellLevel}
                 plan={sellLevel ? describeSensitivityPlan('sell', sellLevel) : null}
                 onSelect={(lvl) => applyPreset('sell', lvl)}
               />
               <SensitivityControl
                 title="매수 기회 민감도"
-                accentClass="text-blue-400"
+                accentClass="text-up"
                 activeLevel={buyLevel}
                 plan={buyLevel ? describeSensitivityPlan('buy', buyLevel) : null}
                 onSelect={(lvl) => applyPreset('buy', lvl)}
@@ -554,7 +554,7 @@ const AlertSettingsPage: React.FC = () => {
 
           {/* 매도 감지 규칙 */}
           <div>
-            <h3 className="text-sm font-semibold text-red-400 mb-3 flex items-center gap-2">
+            <h3 className="text-sm font-semibold text-down mb-3 flex items-center gap-2">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
               </svg>
@@ -567,7 +567,7 @@ const AlertSettingsPage: React.FC = () => {
 
           {/* 매수 기회 규칙 */}
           <div>
-            <h3 className="text-sm font-semibold text-blue-400 mb-3 flex items-center gap-2">
+            <h3 className="text-sm font-semibold text-up mb-3 flex items-center gap-2">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
               </svg>

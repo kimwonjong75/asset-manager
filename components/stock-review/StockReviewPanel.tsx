@@ -34,11 +34,11 @@ const STATUS_STYLE: Record<StockReviewConditionStatus, string> = {
 const DATA_STATUS_STYLE: Record<StockReviewDataStatus, string> = {
   '정상': 'bg-emerald-500/15 text-emerald-300',
   '부분': 'bg-amber-500/15 text-amber-300',
-  '없음': 'bg-red-500/15 text-red-300',
+  '없음': 'bg-orange-500/15 text-orange-300',
 };
 
 const StatusChip: React.FC<{ status: StockReviewConditionStatus }> = ({ status }) => (
-  <span className={`text-[11px] font-semibold px-2 py-0.5 rounded whitespace-nowrap ${STATUS_STYLE[status]}`}>
+  <span className={`text-xs font-semibold px-2 py-0.5 rounded whitespace-nowrap ${STATUS_STYLE[status]}`}>
     {status}
   </span>
 );
@@ -51,23 +51,23 @@ const ConditionRow: React.FC<{ c: StockReviewCondition }> = ({ c }) => (
         <StatusChip status={chipStatus(c.evaluation)} />
         {/* 축B 품질 캐비엇(앰버) — 평가는 유지하고 데이터 저하만 별도 표기 (충족을 숨기지 않음) */}
         {c.qualityNote && (
-          <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-300/90 border border-amber-500/30 whitespace-nowrap">
+          <span className="text-xs px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-300/90 border border-amber-500/30 whitespace-nowrap">
             {c.qualityNote}
           </span>
         )}
         {/* 축C 시장 상태(중립 회색) — 품질 아님, 정보만 */}
         {c.stateNote && (
-          <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-600/20 text-gray-400 border border-gray-600/40 whitespace-nowrap">
+          <span className="text-xs px-1.5 py-0.5 rounded bg-gray-600/20 text-gray-400 border border-gray-600/40 whitespace-nowrap">
             {c.stateNote}
           </span>
         )}
       </div>
     </div>
-    <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-gray-400">
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-gray-400">
       {(c.actualDisplay !== null || c.thresholdDisplay !== null) && (
         <span>
           실제 <span className="text-gray-200">{c.actualDisplay ?? '—'}</span>
-          <span className="mx-1 text-gray-600">/</span>
+          <span className="mx-1 text-gray-500">/</span>
           기준 <span className="text-gray-200">{c.thresholdDisplay ?? '—'}</span>
         </span>
       )}
@@ -96,14 +96,14 @@ const ReadyBody: React.FC<{ vm: StockReviewViewModel }> = ({ vm }) => (
     {/* 헤더: 제목 + 부제(성격 명시) + 검토일 + 데이터 상태 */}
     <div className="flex flex-wrap items-center justify-between gap-2 mb-1">
       <h4 className="text-sm font-semibold text-gray-200">종목 검토 · {vm.name}</h4>
-      <div className="flex items-center gap-2 text-[11px]">
+      <div className="flex items-center gap-2 text-xs">
         <span className="text-gray-500">검토일 {vm.asOfLabel}</span>
         <span className={`px-2 py-0.5 rounded font-semibold ${DATA_STATUS_STYLE[vm.dataStatus]}`}>
           데이터 {vm.dataStatus}
         </span>
       </div>
     </div>
-    <p className="text-[11px] text-gray-500 mb-2">
+    <p className="text-xs text-gray-500 mb-2">
       {STOCK_REVIEW_SUBTITLE}
       {vm.source === 'watchlist' && vm.holdingEvaluated && (
         <span className="ml-2 text-blue-300/80">
@@ -112,13 +112,13 @@ const ReadyBody: React.FC<{ vm: StockReviewViewModel }> = ({ vm }) => (
       )}
     </p>
     {vm.dataStatusNote && (
-      <p className="text-[11px] text-amber-300/80 mb-3">{vm.dataStatusNote}</p>
+      <p className="text-xs text-amber-300/80 mb-3">{vm.dataStatusNote}</p>
     )}
 
     {/* 상단 요약 (충족 조건 수) */}
     <div className="grid gap-1 mb-4 rounded-md bg-gray-900/50 px-3 py-2">
-      <SummaryLine label="매수 지지" s={vm.summary.buy} tone="text-emerald-300/90" />
-      <SummaryLine label="매도·리스크" s={vm.summary.sell} tone="text-red-300/90" />
+      <SummaryLine label="매수 지지" s={vm.summary.buy} tone="text-up" />
+      <SummaryLine label="매도·리스크" s={vm.summary.sell} tone="text-down" />
     </div>
 
     {/* 지표 요약 */}
@@ -127,7 +127,7 @@ const ReadyBody: React.FC<{ vm: StockReviewViewModel }> = ({ vm }) => (
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
         {vm.indicators.map(ind => (
           <div key={ind.key} className="rounded-md bg-gray-900/50 px-2.5 py-1.5 min-w-0">
-            <div className="text-[10px] text-gray-500 truncate" title={ind.label}>{ind.label}</div>
+            <div className="text-xs text-gray-500 truncate" title={ind.label}>{ind.label}</div>
             <div className="text-sm text-gray-100 font-medium truncate">{ind.display}</div>
           </div>
         ))}
@@ -136,7 +136,7 @@ const ReadyBody: React.FC<{ vm: StockReviewViewModel }> = ({ vm }) => (
 
     {/* 매수 지지 조건 */}
     <div className="mb-4">
-      <div className="text-xs font-semibold text-emerald-300/90 mb-1">매수 지지 조건 (관찰)</div>
+      <div className="text-xs font-semibold text-up mb-1">매수 지지 조건 (관찰)</div>
       <ul className="overflow-x-auto">
         {vm.buyConditions.map(c => <ConditionRow key={c.key} c={c} />)}
       </ul>
@@ -144,14 +144,14 @@ const ReadyBody: React.FC<{ vm: StockReviewViewModel }> = ({ vm }) => (
 
     {/* 매도/리스크 조건 */}
     <div className="mb-3">
-      <div className="text-xs font-semibold text-red-300/90 mb-1">매도·리스크 조건 (관찰)</div>
+      <div className="text-xs font-semibold text-down mb-1">매도·리스크 조건 (관찰)</div>
       <ul className="overflow-x-auto">
         {vm.sellConditions.map(c => <ConditionRow key={c.key} c={c} />)}
       </ul>
     </div>
 
     {/* 면책 문구 (필수) */}
-    <p className="text-[11px] text-gray-500 border-t border-gray-700 pt-2">{vm.disclaimer}</p>
+    <p className="text-xs text-gray-500 border-t border-gray-700 pt-2">{vm.disclaimer}</p>
   </div>
 );
 

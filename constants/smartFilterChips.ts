@@ -7,10 +7,10 @@ export const SMART_FILTER_CHIPS: SmartFilterChipDef[] = [
     label: '현재가↕MA20',
     labelFn: (s) => `현재가↕MA${s.maShortPeriod}`,
     group: 'ma',
-    colorClass: 'bg-emerald-600',
+    colorClass: 'bg-red-600',
     needsEnriched: true,
     pairKey: 'PRICE_BELOW_SHORT_MA',
-    pairColorClass: 'bg-red-600',
+    pairColorClass: 'bg-blue-600',
     description: '현재가가 단기 이동평균선 위(>) 또는 아래(<)인 종목 필터',
   },
   {
@@ -18,14 +18,14 @@ export const SMART_FILTER_CHIPS: SmartFilterChipDef[] = [
     label: '현재가↕MA60',
     labelFn: (s) => `현재가↕MA${s.maLongPeriod}`,
     group: 'ma',
-    colorClass: 'bg-emerald-600',
+    colorClass: 'bg-red-600',
     needsEnriched: true,
     pairKey: 'PRICE_BELOW_LONG_MA',
-    pairColorClass: 'bg-red-600',
+    pairColorClass: 'bg-blue-600',
     description: '현재가가 장기 이동평균선 위(>) 또는 아래(<)인 종목 필터',
   },
-  { key: 'MA_BULLISH_ALIGN', label: '정배열', group: 'ma', colorClass: 'bg-green-600', needsEnriched: true, description: '단기MA > 장기MA — 상승 추세 정렬' },
-  { key: 'MA_BEARISH_ALIGN', label: '역배열', group: 'ma', colorClass: 'bg-red-600', needsEnriched: true, description: '단기MA < 장기MA — 하락 추세 정렬' },
+  { key: 'MA_BULLISH_ALIGN', label: '정배열', group: 'ma', colorClass: 'bg-red-600', needsEnriched: true, description: '단기MA > 장기MA — 상승 추세 정렬' },
+  { key: 'MA_BEARISH_ALIGN', label: '역배열', group: 'ma', colorClass: 'bg-blue-600', needsEnriched: true, description: '단기MA < 장기MA — 하락 추세 정렬' },
   { key: 'MA_GOLDEN_CROSS', label: '골든크로스', group: 'ma', colorClass: 'bg-amber-600', needsEnriched: true, description: '단기MA > 장기MA 상태 (교차 경과일 표시)' },
   { key: 'MA_DEAD_CROSS', label: '데드크로스', group: 'ma', colorClass: 'bg-purple-600', needsEnriched: true, description: '단기MA < 장기MA 상태 (교차 경과일 표시)' },
 
@@ -44,17 +44,17 @@ export const SMART_FILTER_CHIPS: SmartFilterChipDef[] = [
   // 거래량
   { key: 'VOLUME_SURGE', label: '급증(2x)', group: 'volume', colorClass: 'bg-orange-500', description: '거래량이 20일 평균 대비 2배 이상 급증' },
   { key: 'VOLUME_HIGH', label: '증가(1.5x)', group: 'volume', colorClass: 'bg-yellow-500', description: '거래량이 20일 평균 대비 1.5배 이상 증가' },
-  { key: 'VOLUME_LOW', label: '감소(<0.5x)', group: 'volume', colorClass: 'bg-gray-500', description: '거래량이 20일 평균 대비 0.5배 미만으로 감소' },
+  { key: 'VOLUME_LOW', label: '감소(<0.5x)', group: 'volume', colorClass: 'bg-zinc-500', description: '거래량이 20일 평균 대비 0.5배 미만으로 감소' },
 
   // 포트폴리오 지표
-  { key: 'PROFIT_POSITIVE', label: '수익중', group: 'portfolio', colorClass: 'bg-green-500', description: '현재 수익률이 양수인 종목' },
-  { key: 'PROFIT_NEGATIVE', label: '손실중', group: 'portfolio', colorClass: 'bg-red-500', description: '현재 수익률이 음수인 종목' },
+  { key: 'PROFIT_POSITIVE', label: '수익중', group: 'portfolio', colorClass: 'bg-red-600', description: '현재 수익률이 양수인 종목' },
+  { key: 'PROFIT_NEGATIVE', label: '손실중', group: 'portfolio', colorClass: 'bg-blue-600', description: '현재 수익률이 음수인 종목' },
   { key: 'DROP_FROM_HIGH', label: '고점대비 하락', group: 'portfolio', colorClass: 'bg-orange-600', description: '52주 최고가 대비 설정한 비율 이상 하락한 종목' },
-  { key: 'DAILY_DROP', label: '당일 하락', group: 'portfolio', colorClass: 'bg-rose-600', description: '전일 대비 하락한 종목' },
-  { key: 'PROFIT_TARGET', label: '수익률 도달', labelFn: (s) => `수익≥${s.profitTargetThreshold ?? 20}%`, group: 'portfolio', colorClass: 'bg-emerald-600', description: '설정한 목표 수익률에 도달한 종목' },
+  { key: 'DAILY_DROP', label: '당일 하락', group: 'portfolio', colorClass: 'bg-blue-600', description: '전일 대비 하락한 종목' },
+  { key: 'PROFIT_TARGET', label: '수익률 도달', labelFn: (s) => `수익≥${s.profitTargetThreshold ?? 20}%`, group: 'portfolio', colorClass: 'bg-red-700', description: '설정한 목표 수익률에 도달한 종목' },
   { key: 'DAILY_SURGE', label: '당일 급등', labelFn: (s) => `급등≥${s.dailySurgeThreshold ?? 5}%`, group: 'portfolio', colorClass: 'bg-red-500', description: '당일 설정 비율 이상 급등한 종목' },
   { key: 'DAILY_CRASH', label: '당일 급락', labelFn: (s) => `급락≥${s.dailyCrashThreshold ?? 5}%`, group: 'portfolio', colorClass: 'bg-blue-700', description: '당일 설정 비율 이상 급락한 종목' },
-  { key: 'LOSS_THRESHOLD', label: '손실률 초과', labelFn: (s) => `손실≥${s.lossThreshold}%`, group: 'portfolio', colorClass: 'bg-red-700', description: '설정한 손실률을 초과한 종목' },
+  { key: 'LOSS_THRESHOLD', label: '손실률 초과', labelFn: (s) => `손실≥${s.lossThreshold}%`, group: 'portfolio', colorClass: 'bg-orange-700', description: '설정한 손실률을 초과한 종목' },
 ];
 
 export const SMART_FILTER_GROUP_LABELS: Record<string, string> = {

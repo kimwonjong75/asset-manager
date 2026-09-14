@@ -78,8 +78,8 @@ const CategorySummaryTable: React.FC<CategorySummaryTableProps> = ({ assets, tot
     };
 
     const getChangeColor = (value: number) => {
-        if (value > 0) return 'text-success';
-        if (value < 0) return 'text-danger';
+        if (value > 0) return 'text-up';
+        if (value < 0) return 'text-down';
         return 'text-gray-400';
     };
 

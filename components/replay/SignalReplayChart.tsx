@@ -41,10 +41,10 @@ const RSI_COLOR = '#e879f9';
 const RSI_PANE_HEIGHT = 90;
 
 const RSI_ZONE_TONE: Record<RsiZone, string> = {
-  oversold: 'text-sky-300',
+  oversold: 'text-down',
   neutral: 'text-gray-400',
   'near-overbought': 'text-amber-300',
-  overbought: 'text-rose-300',
+  overbought: 'text-up',
 };
 
 function hasFullOHLC(points: ReplayChartPoint[]): boolean {
@@ -137,8 +137,8 @@ const SignalReplayChart: React.FC<SignalReplayChartProps> = ({
     const rsi = chart.addSeries(LineSeries, {
       color: RSI_COLOR, lineWidth: 1, priceLineVisible: false, lastValueVisible: true, crosshairMarkerVisible: false,
     }, 1);
-    rsi.createPriceLine({ price: 70, color: 'rgba(244,63,94,0.35)', lineWidth: 1, lineStyle: LineStyle.Dashed, axisLabelVisible: true, title: '70' });
-    rsi.createPriceLine({ price: 30, color: 'rgba(34,197,94,0.35)', lineWidth: 1, lineStyle: LineStyle.Dashed, axisLabelVisible: true, title: '30' });
+    rsi.createPriceLine({ price: 70, color: 'rgba(248,113,113,0.35)', lineWidth: 1, lineStyle: LineStyle.Dashed, axisLabelVisible: true, title: '70' });
+    rsi.createPriceLine({ price: 30, color: 'rgba(96,165,250,0.35)', lineWidth: 1, lineStyle: LineStyle.Dashed, axisLabelVisible: true, title: '30' });
     const panes = chart.panes();
     if (panes.length > 1) panes[1].setHeight(RSI_PANE_HEIGHT);
 
@@ -213,7 +213,7 @@ const SignalReplayChart: React.FC<SignalReplayChartProps> = ({
     const sm: SeriesMarker<Time>[] = visibleMarkers.map(m => ({
       time: m.date as Time,
       position: m.kind === 'sell' ? 'aboveBar' : 'belowBar',
-      color: m.kind === 'sell' ? CANDLE_UP_COLOR : '#22c55e',
+      color: m.kind === 'sell' ? CANDLE_DOWN_COLOR : CANDLE_UP_COLOR,
       shape: m.kind === 'sell' ? 'arrowDown' : 'arrowUp',
       text: m.kind === 'sell' ? `매도 ${m.guruCount || ''}` : `매수 ${m.guruCount || ''}`.trim(),
     }));
@@ -233,7 +233,7 @@ const SignalReplayChart: React.FC<SignalReplayChartProps> = ({
         <div ref={containerRef} style={{ width: '100%', height }} className="rounded-lg overflow-hidden" />
         {tooltip && tooltipPos && (
           <div
-            className="absolute pointer-events-none z-10 bg-gray-800/95 border border-gray-600 rounded-lg px-2.5 py-1.5 text-[11px] leading-tight shadow-lg"
+            className="absolute pointer-events-none z-10 bg-gray-800/95 border border-gray-600 rounded-lg px-2.5 py-1.5 text-xs leading-tight shadow-lg"
             style={{
               left: Math.max(4, Math.min(tooltipPos.x + 14, (containerRef.current?.clientWidth ?? 320) - 200)),
               top: Math.min(Math.max(4, tooltipPos.y - 30), height - 175),
@@ -244,10 +244,10 @@ const SignalReplayChart: React.FC<SignalReplayChartProps> = ({
             <div className="flex items-center gap-2 mb-0.5 flex-wrap">
               <span className="text-gray-300 font-mono">{tooltip.date}</span>
               {tooltip.changePct != null && (
-                <span className={tooltip.changePct >= 0 ? 'text-emerald-400' : 'text-rose-400'}>{fmtPct(tooltip.changePct)}</span>
+                <span className={tooltip.changePct >= 0 ? 'text-up' : 'text-down'}>{fmtPct(tooltip.changePct)}</span>
               )}
               {tooltip.guru.map((g, i) => (
-                <span key={i} className={g.kind === 'sell' ? 'text-rose-300' : 'text-emerald-300'}>
+                <span key={i} className={g.kind === 'sell' ? 'text-down' : 'text-up'}>
                   📍 구루 {g.kind === 'sell' ? '매도' : '매수'} {g.count}
                 </span>
               ))}
@@ -267,13 +267,13 @@ const SignalReplayChart: React.FC<SignalReplayChartProps> = ({
                   <span style={{ color: MA_COLOR[m.period] }}>MA{m.period}</span>
                   <span className="font-mono text-gray-200">{fmtNum(m.value)}</span>
                   {m.distPct != null && (
-                    <span className={m.distPct >= 0 ? 'text-emerald-400/80' : 'text-rose-400/80'}>{fmtPct(m.distPct)}</span>
+                    <span className={m.distPct >= 0 ? 'text-up/80' : 'text-down/80'}>{fmtPct(m.distPct)}</span>
                   )}
                 </div>
               ))}
             </div>
             {tooltip.ma5vs20 && (
-              <div className={`mt-0.5 ${tooltip.ma5vs20 === 'above' ? 'text-emerald-400' : tooltip.ma5vs20 === 'below' ? 'text-rose-400' : 'text-gray-400'}`}>
+              <div className={`mt-0.5 ${tooltip.ma5vs20 === 'above' ? 'text-up' : tooltip.ma5vs20 === 'below' ? 'text-down' : 'text-gray-400'}`}>
                 {tooltip.ma5vs20 === 'above' ? 'MA5 > MA20' : tooltip.ma5vs20 === 'below' ? 'MA5 < MA20' : 'MA5 = MA20'}
               </div>
             )}
@@ -287,10 +287,10 @@ const SignalReplayChart: React.FC<SignalReplayChartProps> = ({
               <div className="mt-1 border-t border-gray-700/50 pt-1">
                 <div>
                   <span className="text-gray-400">가격알림</span>
-                  {tooltip.alerts.sell.length > 0 && <span className="text-rose-400"> · 매도 {tooltip.alerts.sell.length}</span>}
-                  {tooltip.alerts.buy.length > 0 && <span className="text-emerald-400"> · 매수 {tooltip.alerts.buy.length}</span>}
+                  {tooltip.alerts.sell.length > 0 && <span className="text-down"> · 매도 {tooltip.alerts.sell.length}</span>}
+                  {tooltip.alerts.buy.length > 0 && <span className="text-up"> · 매수 {tooltip.alerts.buy.length}</span>}
                 </div>
-                <div className="text-gray-500 text-[10px]">
+                <div className="text-gray-500 text-xs">
                   {[...tooltip.alerts.sell, ...tooltip.alerts.buy].slice(0, MAX_ALERT_NAMES).join(', ')}
                   {[...tooltip.alerts.sell, ...tooltip.alerts.buy].length > MAX_ALERT_NAMES && ' …'}
                 </div>
@@ -299,12 +299,12 @@ const SignalReplayChart: React.FC<SignalReplayChartProps> = ({
             {tooltip.verdicts.length > 0 && (
               <div className="mt-1 text-amber-300">📝 내 판정: {tooltip.verdicts.map(k => VERDICT_KIND_LABELS[k]).join(', ')}</div>
             )}
-            <div className="mt-1 text-[10px] text-gray-600">클릭하면 상세 진단</div>
+            <div className="mt-1 text-xs text-gray-500">클릭하면 상세 진단</div>
           </div>
         )}
       </div>
       {/* 색상 범례 — 차트 라인과 1:1. 골든/데드크로스는 MA5×MA20 교차. */}
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5 px-1 text-[10px]">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5 px-1 text-xs">
         {MA_LINES.map(c => (
           <span key={c.period} className="flex items-center gap-1 text-gray-400">
             <span className="inline-block w-3 h-[2px] rounded" style={{ backgroundColor: c.color }} />

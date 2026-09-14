@@ -60,18 +60,18 @@ const AlertRuleRow: React.FC<{ diag: AlertRuleDiagnostic }> = ({ diag }) => {
     <li className="bg-gray-900/50 rounded px-2.5 py-2">
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <span className="text-sm text-white truncate">
-          <span className={`text-[10px] mr-1 ${diag.action === 'sell' ? 'text-rose-400' : 'text-emerald-400'}`}>
+          <span className={`text-xs mr-1 ${diag.action === 'sell' ? 'text-down' : 'text-up'}`}>
             {diag.action === 'sell' ? '매도' : '매수'}
           </span>
           {diag.ruleName}
         </span>
-        <span className={`text-[11px] font-medium ${toneClass(status.tone)}`}>{status.label}</span>
+        <span className={`text-xs font-medium ${toneClass(status.tone)}`}>{status.label}</span>
       </div>
-      {status.detail && <p className="text-[11px] text-gray-500 mt-0.5">{status.detail}</p>}
+      {status.detail && <p className="text-xs text-gray-500 mt-0.5">{status.detail}</p>}
       {diag.filters.length > 0 && (
         <div className="mt-1.5 space-y-1">
           {diag.filters.map((f, i) => (
-            <div key={i} className="flex items-center gap-1.5 flex-wrap text-[11px]">
+            <div key={i} className="flex items-center gap-1.5 flex-wrap text-xs">
               <span className={f.result === true ? 'text-emerald-400' : f.result === false ? 'text-rose-400' : 'text-gray-500'}>
                 {f.result === true ? '✓' : f.result === false ? '✗' : '—'}
               </span>
@@ -92,15 +92,15 @@ const GuruRuleRow: React.FC<{ diag: RuleDiagnostic; distances: (number | null)[]
     <li className="bg-gray-900/50 rounded px-2.5 py-2">
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <span className="text-sm text-white truncate">{diag.ruleTitle}</span>
-        <span className={`text-[11px] font-medium ${toneClass(status.tone)}`}>{status.label}</span>
+        <span className={`text-xs font-medium ${toneClass(status.tone)}`}>{status.label}</span>
       </div>
-      {status.detail && <p className="text-[11px] text-gray-500 mt-0.5">{status.detail}</p>}
+      {status.detail && <p className="text-xs text-gray-500 mt-0.5">{status.detail}</p>}
       {diag.leaves.length > 0 && (
         <div className="mt-1.5 space-y-1">
           {diag.leaves.map((lf, i) => {
             const d = distances[i];
             return (
-              <div key={i} className="flex items-center gap-1.5 flex-wrap text-[11px]">
+              <div key={i} className="flex items-center gap-1.5 flex-wrap text-xs">
                 <span className={lf.passed === true ? 'text-emerald-400' : lf.passed === false ? 'text-rose-400' : 'text-gray-500'}>
                   {lf.passed === true ? '✓' : lf.passed === false ? '✗' : '—'}
                 </span>
@@ -127,17 +127,17 @@ const OutcomeRow: React.FC<{ day: ReplayDay }> = ({ day }) => {
     <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-xs">
       {([['5일 후', o.ret5], ['20일 후', o.ret20], ['60일 후', o.ret60]] as const).map(([label, v]) => (
         <div key={label} className="bg-gray-900/50 rounded px-2 py-1.5">
-          <div className="text-gray-500 text-[10px]">{label} 수익률</div>
-          <div className={`font-mono ${v != null && v >= 0 ? 'text-emerald-400' : v != null ? 'text-rose-400' : 'text-gray-500'}`}>{formatPct(v)}</div>
+          <div className="text-gray-500 text-xs">{label} 수익률</div>
+          <div className={`font-mono ${v != null && v >= 0 ? 'text-up' : v != null ? 'text-down' : 'text-gray-500'}`}>{formatPct(v)}</div>
         </div>
       ))}
       <div className="bg-gray-900/50 rounded px-2 py-1.5">
-        <div className="text-gray-500 text-[10px]">신호 후 최대 상승</div>
-        <div className="font-mono text-emerald-400">{formatPct(o.maxRise)}</div>
+        <div className="text-gray-500 text-xs">신호 후 최대 상승</div>
+        <div className="font-mono text-up">{formatPct(o.maxRise)}</div>
       </div>
       <div className="bg-gray-900/50 rounded px-2 py-1.5">
-        <div className="text-gray-500 text-[10px]">신호 후 최대 하락</div>
-        <div className="font-mono text-rose-400">{formatPct(o.maxDrop)}</div>
+        <div className="text-gray-500 text-xs">신호 후 최대 하락</div>
+        <div className="font-mono text-down">{formatPct(o.maxDrop)}</div>
       </div>
     </div>
   );
@@ -262,14 +262,16 @@ const SignalReplayView: React.FC = () => {
             <ul className="absolute z-10 mt-1 w-full max-h-60 overflow-y-auto bg-gray-900 border border-gray-700 rounded shadow-lg">
               {ctrl.isSearching && <li className="px-3 py-2 text-xs text-gray-500">검색 중…</li>}
               {ctrl.searchResults.map(r => (
-                <li
-                  key={`${r.ticker}-${r.exchange}`}
-                  onClick={() => ctrl.selectSymbol({ ticker: r.ticker, name: r.name, exchange: r.exchange, categoryId: 0 })}
-                  className="px-3 py-2 text-sm text-gray-200 hover:bg-gray-800 cursor-pointer flex items-center gap-2"
-                >
-                  <span className="text-white">{r.name}</span>
-                  <span className="text-xs text-gray-500">{r.ticker}</span>
-                  <span className="text-[10px] text-gray-600">{r.exchange}</span>
+                <li key={`${r.ticker}-${r.exchange}`}>
+                  <button
+                    type="button"
+                    onClick={() => ctrl.selectSymbol({ ticker: r.ticker, name: r.name, exchange: r.exchange, categoryId: 0 })}
+                    className="w-full text-left px-3 py-2 text-sm text-gray-200 hover:bg-gray-800 cursor-pointer flex items-center gap-2 focus:outline-none focus-visible:bg-gray-800"
+                  >
+                    <span className="text-white">{r.name}</span>
+                    <span className="text-xs text-gray-500">{r.ticker}</span>
+                    <span className="text-xs text-gray-500">{r.exchange}</span>
+                  </button>
                 </li>
               ))}
             </ul>
@@ -281,7 +283,7 @@ const SignalReplayView: React.FC = () => {
               <button
                 key={s.ticker}
                 onClick={() => ctrl.selectSymbol(s)}
-                className={`text-[11px] px-2 py-1 rounded border transition-colors ${
+                className={`text-xs px-2 py-1 rounded border transition-colors ${
                   ctrl.selected?.ticker === s.ticker
                     ? 'bg-primary/15 text-primary border-primary/40'
                     : 'bg-gray-900/60 text-gray-300 border-gray-700 hover:bg-gray-700'
@@ -301,7 +303,7 @@ const SignalReplayView: React.FC = () => {
       ) : ctrl.isFetching ? (
         <div className="bg-gray-900/50 rounded-lg px-4 py-10 text-center text-sm text-gray-400">시세 불러오는 중…</div>
       ) : ctrl.fetchFailed ? (
-        <div className="bg-gray-900/50 rounded-lg px-4 py-10 text-center text-sm text-rose-400">시세를 불러오지 못했습니다. 다른 종목을 시도해 주세요.</div>
+        <div className="bg-gray-900/50 rounded-lg px-4 py-10 text-center text-sm text-danger">시세를 불러오지 못했습니다. 다른 종목을 시도해 주세요.</div>
       ) : (
         <>
           {/* 컨트롤 바 */}
@@ -330,7 +332,7 @@ const SignalReplayView: React.FC = () => {
             </div>
           </div>
 
-          <p className="text-[11px] text-gray-500">
+          <p className="text-xs text-gray-500">
             📍 차트 마커와 이전/다음 신호 이동은 <span className="text-gray-400">구루 신호 기준</span>입니다. 골든/데드크로스·RSI 등 가격기반 알림은 아래 <span className="text-gray-400">‘가격기반 알림 진단’</span> 박스에서 확인하세요. 차트에는 MA5/20/60/120/150·RSI(14)가 겹쳐 표시됩니다.
           </p>
 
@@ -359,20 +361,20 @@ const SignalReplayView: React.FC = () => {
                 <div className="text-sm text-white font-mono">
                   {ctrl.selectedDate}
                   {day && (
-                    <span className={`ml-2 ${day.changePct != null && day.changePct >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                    <span className={`ml-2 ${day.changePct != null && day.changePct >= 0 ? 'text-up' : 'text-down'}`}>
                       {formatPct(day.changePct)}
                     </span>
                   )}
                   {hasAnyVerdict && (
-                    <span className="ml-2 text-[11px] px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-300 font-sans">📝 {currentVerdict ? VERDICT_KIND_LABELS[currentVerdict.kind] : '판정 있음'}</span>
+                    <span className="ml-2 text-xs px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-300 font-sans">📝 {currentVerdict ? VERDICT_KIND_LABELS[currentVerdict.kind] : '판정 있음'}</span>
                   )}
                 </div>
                 <div className="flex items-center gap-1">
-                  <button onClick={ctrl.goPrevSignal} className="text-[11px] px-2 py-1 rounded bg-gray-900 text-gray-300 hover:bg-gray-700">◀ 이전 신호</button>
-                  <button onClick={ctrl.goPrevDay} className="text-[11px] px-2 py-1 rounded bg-gray-900 text-gray-300 hover:bg-gray-700">−1일</button>
-                  <button onClick={ctrl.goNextDay} className="text-[11px] px-2 py-1 rounded bg-gray-900 text-gray-300 hover:bg-gray-700">+1일</button>
-                  <button onClick={ctrl.goNextSignal} className="text-[11px] px-2 py-1 rounded bg-gray-900 text-gray-300 hover:bg-gray-700">다음 신호 ▶</button>
-                  <button onClick={ctrl.goLatest} className="text-[11px] px-2 py-1 rounded bg-gray-900 text-gray-300 hover:bg-gray-700">최신</button>
+                  <button onClick={ctrl.goPrevSignal} className="text-xs px-2 py-1 rounded bg-gray-900 text-gray-300 hover:bg-gray-700">◀ 이전 신호</button>
+                  <button onClick={ctrl.goPrevDay} className="text-xs px-2 py-1 rounded bg-gray-900 text-gray-300 hover:bg-gray-700">−1일</button>
+                  <button onClick={ctrl.goNextDay} className="text-xs px-2 py-1 rounded bg-gray-900 text-gray-300 hover:bg-gray-700">+1일</button>
+                  <button onClick={ctrl.goNextSignal} className="text-xs px-2 py-1 rounded bg-gray-900 text-gray-300 hover:bg-gray-700">다음 신호 ▶</button>
+                  <button onClick={ctrl.goLatest} className="text-xs px-2 py-1 rounded bg-gray-900 text-gray-300 hover:bg-gray-700">최신</button>
                 </div>
               </div>
               <input
@@ -383,7 +385,7 @@ const SignalReplayView: React.FC = () => {
                 onChange={e => ctrl.selectIndex(Number(e.target.value))}
                 className="w-full accent-primary"
               />
-              <div className="text-[11px] text-gray-500">구루 신호 발생일 {ctrl.timeline.signalDates.length}개 · 거래일 {ctrl.timeline.days.length}개</div>
+              <div className="text-xs text-gray-500">구루 신호 발생일 {ctrl.timeline.signalDates.length}개 · 거래일 {ctrl.timeline.days.length}개</div>
             </div>
           )}
 
@@ -407,12 +409,12 @@ const SignalReplayView: React.FC = () => {
               {/* 성과 + 가격기반 알림(참고용) */}
               <div className="space-y-4">
                 <div className="bg-gray-800 rounded-lg p-3">
-                  <h3 className="text-sm font-bold text-white mb-2">📈 신호 후 결과 {ctrl.mode === 'replay' && <span className="text-[11px] text-gray-500 font-normal">(복기 모드에서 차트로도 확인)</span>}</h3>
+                  <h3 className="text-sm font-bold text-white mb-2">📈 신호 후 결과 {ctrl.mode === 'replay' && <span className="text-xs text-gray-500 font-normal">(복기 모드에서 차트로도 확인)</span>}</h3>
                   <OutcomeRow day={day} />
                 </div>
                 <div className="bg-gray-800 rounded-lg p-3">
-                  <h3 className="text-sm font-bold text-gray-200 mb-1">🔔 가격기반 알림 진단 <span className="text-[11px] text-gray-500 font-normal">— 실제 자동 팝업으로 가는 신호</span></h3>
-                  <p className="text-[11px] text-gray-600 mb-2">그날 가격기반 알림이 떴는지/왜 안 떴는지(실제값 vs 기준값). <span className="text-gray-500">미래에 앱이 알림을 보내는 경로는 이쪽입니다 — 검증 무게를 여기에 두세요.</span></p>
+                  <h3 className="text-sm font-bold text-gray-200 mb-1">🔔 가격기반 알림 진단 <span className="text-xs text-gray-500 font-normal">— 실제 자동 팝업으로 가는 신호</span></h3>
+                  <p className="text-xs text-gray-500 mb-2">그날 가격기반 알림이 떴는지/왜 안 떴는지(실제값 vs 기준값). <span className="text-gray-500">미래에 앱이 알림을 보내는 경로는 이쪽입니다 — 검증 무게를 여기에 두세요.</span></p>
                   {alertView.verifiable.length === 0 ? (
                     <p className="text-xs text-gray-500">평가할 가격기반 알림이 없습니다.</p>
                   ) : (
@@ -422,12 +424,12 @@ const SignalReplayView: React.FC = () => {
                   )}
                   {alertView.unverifiable.length > 0 && (
                     <div className="mt-2 pt-2 border-t border-gray-700/60">
-                      <div className="text-[11px] text-amber-400/90 mb-1">⚠ 리플레이 검증 불가 <span className="text-gray-600 font-normal">— 발화/미충족 판정을 믿지 마세요(‘놓친 매도’로 태깅 금지)</span></div>
+                      <div className="text-xs text-amber-400/90 mb-1">⚠ 리플레이 검증 불가 <span className="text-gray-500 font-normal">— 발화/미충족 판정을 믿지 마세요(‘놓친 매도’로 태깅 금지)</span></div>
                       <ul className="space-y-1">
                         {alertView.unverifiable.map(({ diag, scope }) => (
-                          <li key={diag.ruleId} className="flex items-center justify-between gap-2 text-[11px]">
+                          <li key={diag.ruleId} className="flex items-center justify-between gap-2 text-xs">
                             <span className="text-gray-400 truncate">{diag.action === 'sell' ? '매도' : '매수'} · {diag.ruleName}</span>
-                            <span className="text-gray-600 whitespace-nowrap">{SCOPE_REASON[scope as Exclude<ReplayAlertScope, 'verifiable'>]}</span>
+                            <span className="text-gray-500 whitespace-nowrap">{SCOPE_REASON[scope as Exclude<ReplayAlertScope, 'verifiable'>]}</span>
                           </li>
                         ))}
                       </ul>
@@ -493,29 +495,29 @@ const SignalReplayView: React.FC = () => {
 
       {/* 검증 기록 백업(⑤) — JSON 내보내기/가져오기(localStorage 유실 대비) */}
       <div className="bg-gray-800 rounded-lg p-3 flex flex-wrap items-center gap-2">
-        <span className="text-[11px] text-gray-400">💾 검증 기록 백업 <span className="text-gray-600">— 판정·사례 JSON(브라우저 저장소 유실 대비)</span></span>
+        <span className="text-xs text-gray-400">💾 검증 기록 백업 <span className="text-gray-500">— 판정·사례 JSON(브라우저 저장소 유실 대비)</span></span>
         <div className="flex-1" />
-        {importMsg && <span className="text-[11px] text-emerald-400">{importMsg}</span>}
-        {compactMsg && <span className="text-[11px] text-emerald-400">{compactMsg}</span>}
-        <button onClick={ctrl.exportReplayRecords} className="text-[11px] px-2.5 py-1 rounded bg-gray-900 text-gray-300 hover:bg-gray-700">내보내기</button>
-        <label className="text-[11px] px-2.5 py-1 rounded bg-gray-900 text-gray-300 hover:bg-gray-700 cursor-pointer">
+        {importMsg && <span className="text-xs text-emerald-400">{importMsg}</span>}
+        {compactMsg && <span className="text-xs text-emerald-400">{compactMsg}</span>}
+        <button onClick={ctrl.exportReplayRecords} className="text-xs px-2.5 py-1 rounded bg-gray-900 text-gray-300 hover:bg-gray-700">내보내기</button>
+        <label className="text-xs px-2.5 py-1 rounded bg-gray-900 text-gray-300 hover:bg-gray-700 cursor-pointer">
           가져오기
           <input type="file" accept="application/json,.json" className="hidden" onChange={handleImport} />
         </label>
         {compactTotal > 0 && (
           compactArmed ? (
-            <span className="flex items-center gap-1.5 text-[11px] text-gray-400">
+            <span className="flex items-center gap-1.5 text-xs text-gray-400">
               <span>판정 {compactable.verdicts}건·사례 {compactable.cases}건(1년 경과) 삭제 · 먼저 내보내기 권장</span>
-              <button onClick={handleClearOld} className="text-[11px] px-2.5 py-1 rounded bg-red-900/70 text-red-200 hover:bg-red-800">삭제</button>
-              <button onClick={() => setCompactArmed(false)} className="text-[11px] px-2.5 py-1 rounded bg-gray-900 text-gray-300 hover:bg-gray-700">취소</button>
+              <button onClick={handleClearOld} className="text-xs px-2.5 py-1 rounded bg-danger-soft text-danger hover:bg-danger/25">삭제</button>
+              <button onClick={() => setCompactArmed(false)} className="text-xs px-2.5 py-1 rounded bg-gray-900 text-gray-300 hover:bg-gray-700">취소</button>
             </span>
           ) : (
-            <button onClick={() => { setCompactMsg(null); setCompactArmed(true); }} className="text-[11px] px-2.5 py-1 rounded bg-gray-900 text-gray-300 hover:bg-gray-700">오래된 기록 정리 ({compactTotal}건)</button>
+            <button onClick={() => { setCompactMsg(null); setCompactArmed(true); }} className="text-xs px-2.5 py-1 rounded bg-gray-900 text-gray-300 hover:bg-gray-700">오래된 기록 정리 ({compactTotal}건)</button>
           )
         )}
       </div>
 
-      <p className="text-[11px] text-gray-600 pt-2 border-t border-gray-700/60">
+      <p className="text-xs text-gray-500 pt-2 border-t border-gray-700/60">
         지식 규칙 기반 참고 신호이며 투자자문이 아닙니다. 미검증·미구현 지표 규칙은 자동 발화되지 않습니다.
       </p>
     </div>

@@ -17,6 +17,7 @@ import type { RuleAction } from '../../types/knowledge';
 import AssetTrendChart from '../AssetTrendChart';
 import ChartViewerModal from '../common/ChartViewerModal';
 import GuruDiagnosticsPanel from './GuruDiagnosticsPanel';
+import { clickableProps } from '../common/a11yKeys';
 
 interface ActionStyle {
   label: string;
@@ -24,9 +25,9 @@ interface ActionStyle {
 }
 
 const ACTION_STYLES: Record<RuleAction, ActionStyle> = {
-  'sell-warning': { label: '매도 경고', badge: 'bg-red-500/15 text-red-300 border-red-500/30' },
-  'buy-setup': { label: '진입 검토', badge: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30' },
-  'buy-watch': { label: '관찰 후보', badge: 'bg-blue-500/15 text-blue-300 border-blue-500/30' },
+  'sell-warning': { label: '매도 경고', badge: 'bg-down-soft text-down border-down/40' },
+  'buy-setup': { label: '진입 검토', badge: 'bg-up-soft text-up border-up/40' },
+  'buy-watch': { label: '관찰 후보', badge: 'bg-transparent text-up border-up/30 border-dashed' },
   'risk-sizing': { label: '리스크', badge: 'bg-amber-500/15 text-amber-300 border-amber-500/30' },
   'regime-filter': { label: '시장 국면', badge: 'bg-purple-500/15 text-purple-300 border-purple-500/30' },
   'review': { label: '복기', badge: 'bg-gray-500/15 text-gray-300 border-gray-500/30' },
@@ -42,7 +43,7 @@ const RULE_SHORT_LABELS: Record<string, string> = {
 
 // 신호 설명 블록 — 근거(claim) + 종목별 충족 조건(실제값) + 무효. 렌더 전용.
 const ExplainBlock: React.FC<{ title: string; exp: SignalExplanation }> = ({ title, exp }) => (
-  <div className="bg-gray-900/70 rounded-md p-2.5 text-[11px]">
+  <div className="bg-gray-900/70 rounded-md p-2.5 text-xs">
     <p className="text-gray-200 font-medium mb-1.5">{title}</p>
     {exp.basis.length > 0 && (
       <p className="mb-1.5 text-gray-400">
@@ -154,12 +155,12 @@ const GuruSignalCard: React.FC<GuruSignalCardProps> = ({ collapsible = false, de
             <button
               onClick={() => setShowDiagnostics(v => !v)}
               aria-expanded={showDiagnostics}
-              className="text-[11px] text-cyan-400/80 hover:text-cyan-300 whitespace-nowrap"
+              className="text-xs text-cyan-400/80 hover:text-cyan-300 whitespace-nowrap"
             >
               {showDiagnostics ? '진단 닫기 ▴' : '왜 신호가 안 뜨나요? ▾'}
             </button>
           ) : (
-            <span className="text-[11px] text-gray-500 whitespace-nowrap">
+            <span className="text-xs text-gray-500 whitespace-nowrap">
               {signals.length > 0 ? `신호 ${distinctAssets}종목` : '신호 없음'}
             </span>
           )}
@@ -207,8 +208,10 @@ const GuruSignalCard: React.FC<GuruSignalCardProps> = ({ collapsible = false, de
                         return (
                           <li
                             key={asset.assetId}
-                            onClick={() => setSelectedAssetId(asset.assetId)}
-                            className={`rounded px-2.5 py-1.5 cursor-pointer transition-colors ${
+                            {...clickableProps(() => setSelectedAssetId(asset.assetId))}
+                            aria-pressed={isSelected}
+                            aria-label={`${asset.name} 차트 보기`}
+                            className={`rounded px-2.5 py-1.5 cursor-pointer transition-colors focus-ring ${
                               isSelected
                                 ? 'bg-gray-900/80 ring-1 ring-primary/60'
                                 : 'bg-gray-900/50 hover:bg-gray-900/80'
@@ -218,24 +221,24 @@ const GuruSignalCard: React.FC<GuruSignalCardProps> = ({ collapsible = false, de
                               <span className="text-sm text-white truncate max-w-[55%]">{asset.name}</span>
                               <span className="text-xs text-gray-500">{asset.ticker}</span>
                               {asset.source === 'watchlist' && (
-                                <span className="text-[11px] text-blue-400">관심</span>
+                                <span className="text-xs text-sky-400">관심</span>
                               )}
                             </div>
                             <div className="flex items-center gap-1 flex-wrap mt-1">
                               {asset.rules.map((r) => (
                                 <span
                                   key={r.ruleId}
-                                  className="text-[11px] text-gray-300 bg-gray-700/70 rounded px-1.5 py-0.5"
+                                  className="text-xs text-gray-300 bg-gray-700/70 rounded px-1.5 py-0.5"
                                 >
                                   {RULE_SHORT_LABELS[r.ruleId] ?? r.ruleTitle}
                                 </span>
                               ))}
                             </div>
                             {asset.rules.some(r => caveats.get(`${r.ruleId}__${asset.assetId}`)?.kind === 'firing-partial') && (
-                              <div className="text-[11px] text-amber-300 mt-1">⚠ 일부 데이터 기준 발화 · 수동 확인 필요</div>
+                              <div className="text-xs text-amber-300 mt-1">⚠ 일부 데이터 기준 발화 · 수동 확인 필요</div>
                             )}
                             {invalidations.length > 0 && (
-                              <div className="text-[11px] text-gray-500 mt-1">
+                              <div className="text-xs text-gray-500 mt-1">
                                 ⓘ 무효화: {invalidations.join(' / ')}
                               </div>
                             )}
@@ -244,7 +247,7 @@ const GuruSignalCard: React.FC<GuruSignalCardProps> = ({ collapsible = false, de
                                 e.stopPropagation();
                                 setExplainAssetId(prev => (prev === asset.assetId ? null : asset.assetId));
                               }}
-                              className="text-[11px] text-cyan-400/80 hover:text-cyan-300 mt-1"
+                              className="text-xs text-cyan-400/80 hover:text-cyan-300 mt-1"
                             >
                               {explainAssetId === asset.assetId ? '설명 접기 ▴' : '왜 떴나 ▾'}
                             </button>
@@ -302,7 +305,7 @@ const GuruSignalCard: React.FC<GuruSignalCardProps> = ({ collapsible = false, de
       ))}
 
       {bodyVisible && (
-        <p className="text-xs text-gray-600 mt-3 pt-2 border-t border-gray-700/60">
+        <p className="text-xs text-gray-500 mt-3 pt-2 border-t border-gray-700/60">
           지식 규칙 기반 참고 신호이며 투자자문이 아닙니다. 미검증·미구현 지표 규칙은 자동 발화되지 않습니다.
         </p>
       )}

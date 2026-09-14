@@ -113,12 +113,12 @@ const ColumnSettingsDropdown: React.FC<ColumnSettingsDropdownProps> = ({ classNa
       </button>
       {open && (
         <div className="absolute right-0 top-full mt-1 w-64 bg-gray-800 border border-gray-600 rounded-lg shadow-xl z-30 py-2">
-          <div className="px-3 py-1.5 text-[10px] text-gray-400 font-semibold uppercase tracking-wider border-b border-gray-700 mb-1">
+          <div className="px-3 py-1.5 text-xs text-gray-400 font-semibold uppercase tracking-wider border-b border-gray-700 mb-1">
             컬럼 설정
           </div>
-          <div className="px-2 py-1 text-[11px] text-gray-500 flex items-center gap-2">
+          <div className="px-2 py-1 text-xs text-gray-500 flex items-center gap-2">
             <span>🔒</span><span className="text-gray-400">종목명</span>
-            <span className="ml-auto text-gray-600">고정</span>
+            <span className="ml-auto text-gray-500">고정</span>
           </div>
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
             <SortableContext items={ui.columnConfig.map(c => c.key)} strategy={verticalListSortingStrategy}>
@@ -127,9 +127,9 @@ const ColumnSettingsDropdown: React.FC<ColumnSettingsDropdownProps> = ({ classNa
               ))}
             </SortableContext>
           </DndContext>
-          <div className="px-2 py-1 text-[11px] text-gray-500 flex items-center gap-2 mt-1">
+          <div className="px-2 py-1 text-xs text-gray-500 flex items-center gap-2 mt-1">
             <span>🔒</span><span className="text-gray-400">관리</span>
-            <span className="ml-auto text-gray-600">고정</span>
+            <span className="ml-auto text-gray-500">고정</span>
           </div>
           <div className="border-t border-gray-700 mt-2 pt-2 px-2">
             <button

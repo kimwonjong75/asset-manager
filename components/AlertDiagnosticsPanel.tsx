@@ -45,7 +45,7 @@ const RuleRow: React.FC<{ row: AlertDiagnosticRow }> = ({ row }) => {
   return (
     <li className="bg-gray-900/50 rounded px-2.5 py-2">
       <div className="flex items-center gap-2 flex-wrap">
-        <span className={`text-[11px] px-1.5 py-0.5 rounded shrink-0 ${
+        <span className={`text-xs px-1.5 py-0.5 rounded shrink-0 ${
           d.action === 'sell' ? 'bg-red-500/15 text-red-300' : 'bg-blue-500/15 text-blue-300'
         }`}>
           {d.action === 'sell' ? '매도' : '매수'}
@@ -58,12 +58,12 @@ const RuleRow: React.FC<{ row: AlertDiagnosticRow }> = ({ row }) => {
       </div>
       <button
         onClick={() => setOpen(o => !o)}
-        className="text-[11px] text-cyan-400/80 hover:text-cyan-300 mt-1"
+        className="text-xs text-cyan-400/80 hover:text-cyan-300 mt-1"
       >
         {open ? '조건 접기 ▴' : '조건별 보기 ▾'}
       </button>
       {open && (
-        <div className="mt-1.5 space-y-1 text-[11px] border-t border-gray-700/50 pt-1.5">
+        <div className="mt-1.5 space-y-1 text-xs border-t border-gray-700/50 pt-1.5">
           {d.filters.map((f, i) => <FilterRow key={i} f={f} />)}
         </div>
       )}
@@ -93,7 +93,7 @@ const AlertDiagnosticsPanel: React.FC = () => {
           자동 브리핑: {popupDelivery.willAutoShow ? '표시 예정' : '미표시'}
         </span>
         <span className="text-gray-500">{POPUP_REASON_TEXT[popupDelivery.reason]}</span>
-        <span className="text-gray-600">· 발화 규칙 {popupDelivery.matchedRuleCount}개</span>
+        <span className="text-gray-500">· 발화 규칙 {popupDelivery.matchedRuleCount}개</span>
       </div>
 
       {/* 종목 선택 */}
@@ -126,7 +126,7 @@ const AlertDiagnosticsPanel: React.FC = () => {
         </ul>
       )}
 
-      <p className="text-[11px] text-gray-600">
+      <p className="text-xs text-gray-500">
         '미충족'은 현재 계산 기준 조건 불일치, '일부 데이터 누락'은 OHLC 등 일부 지표 미수신으로 완전히 따지지 못한 상태,
         '데이터 부족'은 지표 미수신, '규칙 꺼짐'은 설정에서 비활성. 자동 브리핑 표시 여부는 규칙 충족과 별개입니다.
       </p>

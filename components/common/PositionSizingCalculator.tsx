@@ -164,13 +164,13 @@ const PositionSizingCalculator: React.FC<PositionSizingCalculatorProps> = ({
 
       {/* 빠른 설정 */}
       <div className="flex flex-wrap items-center gap-1.5">
-        <span className="text-[11px] text-gray-500">허용손실</span>
+        <span className="text-xs text-gray-500">허용손실</span>
         {RISK_PRESETS.map((p) => (
           <button
             key={p}
             type="button"
             onClick={() => setRiskPercent(String(p))}
-            className={`px-2 py-0.5 text-[11px] rounded transition-colors ${
+            className={`px-2 py-0.5 text-xs rounded transition-colors ${
               risk === p ? 'bg-primary text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
             }`}
           >
@@ -179,13 +179,13 @@ const PositionSizingCalculator: React.FC<PositionSizingCalculatorProps> = ({
         ))}
         {entry > 0 && (
           <>
-            <span className="ml-2 text-[11px] text-gray-500">손절폭</span>
+            <span className="ml-2 text-xs text-gray-500">손절폭</span>
             {STOP_PRESETS.map((p) => (
               <button
                 key={p}
                 type="button"
                 onClick={() => applyStopPreset(p)}
-                className="px-2 py-0.5 text-[11px] rounded bg-gray-700 text-gray-300 hover:bg-gray-600 transition-colors"
+                className="px-2 py-0.5 text-xs rounded bg-gray-700 text-gray-300 hover:bg-gray-600 transition-colors"
               >
                 −{p}%
               </button>
@@ -229,21 +229,21 @@ const PositionSizingCalculator: React.FC<PositionSizingCalculatorProps> = ({
           </div>
           <div className="grid grid-cols-3 gap-2 text-center pt-1">
             <div>
-              <div className="text-[11px] text-gray-500">손절폭</div>
+              <div className="text-xs text-gray-500">손절폭</div>
               <div className="text-xs font-medium text-gray-200">{result.stopLossPercent.toFixed(1)}%</div>
             </div>
             <div>
-              <div className="text-[11px] text-gray-500">예상 손실</div>
+              <div className="text-xs text-gray-500">예상 손실</div>
               <div className="text-xs font-medium text-gray-200">{formatMoney(result.actualRiskAmount, currency)}</div>
             </div>
             <div>
-              <div className="text-[11px] text-gray-500">자산 비중</div>
+              <div className="text-xs text-gray-500">자산 비중</div>
               <div className="text-xs font-medium text-gray-200">{result.investmentRatio.toFixed(1)}%</div>
             </div>
           </div>
 
           {result.capped && (
-            <div className="text-[11px] text-amber-400 bg-amber-950/30 rounded px-2 py-1.5">
+            <div className="text-xs text-amber-400 bg-amber-950/30 rounded px-2 py-1.5">
               손절폭이 좁아 리스크 한도 기준 투자금액이 총자산을 초과합니다 → 총자산 100%로 제한했습니다.
               손절폭을 넓히거나 허용손실을 낮추세요.
             </div>
@@ -263,14 +263,14 @@ const PositionSizingCalculator: React.FC<PositionSizingCalculatorProps> = ({
       )}
 
       {/* 지식 근거 */}
-      <details className="text-[11px] text-gray-500">
+      <details className="text-xs text-gray-500">
         <summary className="cursor-pointer hover:text-gray-400 select-none">📚 근거: {BASIS.title}</summary>
         <div className="mt-1.5 pl-2 border-l-2 border-gray-700 space-y-1">
           {BASIS.riskPolicy && <p className="text-gray-400">{BASIS.riskPolicy}</p>}
           {BASIS.claims.map((c, i) => (
             <p key={i} className="text-gray-500">· {c}</p>
           ))}
-          <p className="text-gray-600 pt-0.5">참고용 계산이며 투자자문이 아닙니다.</p>
+          <p className="text-gray-500 pt-0.5">참고용 계산이며 투자자문이 아닙니다.</p>
         </div>
       </details>
     </div>

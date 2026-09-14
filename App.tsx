@@ -31,11 +31,10 @@ import InvestmentGuideView from './components/layouts/InvestmentGuideView';
 import SignalReplayView from './components/layouts/SignalReplayView';
 import CleanupView from './components/cleanup/CleanupView';
 
-type ActiveTab = 'today' | 'dashboard' | 'portfolio' | 'analytics' | 'watchlist' | 'replay' | 'execution' | 'cleanup' | 'guide' | 'settings';
-/** 더보기 메뉴 진입 화면들 — 탭바 4버튼(홈/보유자산/관심종목/더보기)에 없는 목적지. '더보기' 버튼
- *  자체의 활성 강조 판정에 쓰인다(계획서 §4.3 D7 — 리플레이/실행큐 탭 숨김, 코드 보존).
- *  2026-09-14: 대시보드가 '홈' 탭으로 승격돼 이 목록에서 빠졌다. */
-const MORE_MENU_TABS: ActiveTab[] = ['analytics', 'cleanup', 'guide', 'replay', 'settings'];
+// Stage B: 탭별 앱바 구성(화면 제목·계정뷰 세그먼트·기간 선택·더보기 강조)은 constants/tabMeta의
+// TAB_META 한 곳에서 선언한다 — 여기서 `ui.activeTab !== …` 연쇄 조건을 다시 만들지 말 것.
+import { getTabMeta, type AppTab } from './constants/tabMeta';
+import { Bell } from 'lucide-react';
 
 // P4: 모바일 상단바는 공간이 좁아 `derived.priceFreshnessLabel`(예: '09-03 14:20 (장중)'/'09-02 마감 후')을
 // 전부 못 보여준다 — 시:분만 남기고, 없으면(마감 후·기준시각 없음) 원문을 짧게 자른다. 순수 표시 포맷팅.
@@ -157,27 +156,36 @@ const AppContent: React.FC = () => {
   
 
 
-  const TabButton: React.FC<{tabId: ActiveTab; children: React.ReactNode; onClick: () => void}> = ({ tabId, children, onClick }) => {
+  const TabButton: React.FC<{tabId: AppTab; children: React.ReactNode; onClick: () => void}> = ({ tabId, children, onClick }) => {
     const isActive = ui.activeTab === tabId;
     const activeClasses = "border-primary text-primary";
     const inactiveClasses = "border-transparent text-gray-400 hover:text-white hover:border-gray-500";
     return (
         <button
+          type="button"
           onClick={onClick}
-          className={`py-3 sm:py-4 px-2 sm:px-1 text-center border-b-2 font-medium text-xs sm:text-sm whitespace-nowrap focus:outline-none transition-colors duration-300 ${isActive ? activeClasses : inactiveClasses}`}
+          aria-current={isActive ? 'page' : undefined}
+          className={`py-3 sm:py-4 px-2 sm:px-1 text-center border-b-2 font-medium text-xs sm:text-sm whitespace-nowrap focus-ring transition-colors duration-300 ${isActive ? activeClasses : inactiveClasses}`}
         >
           {children}
         </button>
     );
   };
 
+  // Stage B: 현재 탭의 앱바 선언값 + 브리핑 벨 배지(신호 발화 종목 수 + 실행 가능 건수)
+  const tabMeta = getTabMeta(ui.activeTab);
+  const briefingSignalCount = derived.alertResults.reduce((s, r) => s + r.matchedAssets.length, 0);
+  const briefingExec = derived.actionQueueSummary;
+  const briefingCount = briefingSignalCount + briefingExec.actionableCount;
+  const briefingBadge = briefingCount > 99 ? '99+' : String(briefingCount);
+
   return (
-    <div className="h-screen bg-gray-900 font-sans flex flex-col overflow-hidden">
+    <div className="h-screen h-dvh bg-gray-900 font-sans flex flex-col overflow-hidden">
       <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 flex flex-col flex-1 overflow-hidden">
-        {/* Update Notification & Messages */}
-        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 w-[90%] max-w-xl space-y-3 pointer-events-none">
+        {/* Update Notification & Messages — z-banner: 모달 작업 중 난 오류도 모달 위에 보이게 */}
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-banner w-[90%] max-w-xl space-y-3 pointer-events-none">
           {updateAvailable && (
-            <div className="bg-blue-600 text-white px-4 py-3 rounded-lg shadow-lg flex justify-between items-center pointer-events-auto" role="alert">
+            <div className="bg-sky-700 text-white px-4 py-3 rounded-lg shadow-lg flex justify-between items-center pointer-events-auto" role="alert">
               <span className="block sm:inline">새 버전이 배포되었습니다.</span>
               <div className="flex items-center gap-2">
                 <button
@@ -199,7 +207,7 @@ const AppContent: React.FC = () => {
             </div>
           )}
           {status.error && (
-            <div className="bg-danger/90 text-white px-4 py-3 rounded-lg shadow-lg flex justify-between items-center pointer-events-auto">
+            <div className="bg-danger-strong text-white px-4 py-3 rounded-lg shadow-lg flex justify-between items-center pointer-events-auto">
               <span className="block sm:inline">{status.error}</span>
               <button className="ml-4 text-white/80 hover:text-white transition" onClick={() => actions.clearError()}>✕</button>
             </div>
@@ -209,7 +217,7 @@ const AppContent: React.FC = () => {
         {status.isInitializing ? (
           <main className="flex-1 flex items-center justify-center">
             <div className="text-center">
-              <svg className="animate-spin h-8 w-8 text-blue-500 mx-auto mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <svg className="animate-spin h-8 w-8 text-info mx-auto mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
               </svg>
@@ -231,11 +239,17 @@ const AppContent: React.FC = () => {
               </div>
             )}
             <div className="flex-shrink-0 border-b border-gray-700">
-              <div className="flex items-center justify-between gap-2">
+              <div className="flex flex-wrap items-center justify-between gap-x-2">
                 <div className="flex items-center min-w-0">
                   <h1 className="hidden lg:block text-sm font-bold text-white tracking-tight whitespace-nowrap mr-4 flex-shrink-0" title="KIM'S 퀀트자산관리 — 퀀트 투자를 위한 포트폴리오 대시보드">
                     KIM'S 퀀트
                   </h1>
+                  {/* Stage B: 모바일(<md) 상단바 좌측 화면 제목 — TAB_META.mobileTitle (홈은 브랜드명) */}
+                  {tabMeta.mobileTitle ? (
+                    <h1 className="md:hidden text-base font-bold text-white truncate py-3">{tabMeta.title}</h1>
+                  ) : (
+                    <p className="md:hidden text-sm font-bold text-white tracking-tight whitespace-nowrap py-3">KIM'S 퀀트</p>
+                  )}
                   {/* P6: 모바일(<md)에서는 BottomTabBar가 이 자리를 대신한다 — 탭 개수·목적지는 동일, 위치만 하단으로 이동 */}
                   <nav className="-mb-px hidden md:flex space-x-3 sm:space-x-6 overflow-x-auto scrollbar-hide" aria-label="Tabs">
                     <TabButton tabId="dashboard" onClick={() => actions.setActiveTab('dashboard')}>홈</TabButton>
@@ -243,9 +257,12 @@ const AppContent: React.FC = () => {
                     <TabButton tabId="watchlist" onClick={() => actions.setActiveTab('watchlist')}>관심종목</TabButton>
                     <button
                       ref={moreMenuRef}
+                      type="button"
                       onClick={() => setShowMoreMenu(prev => !prev)}
-                      className={`py-3 sm:py-4 px-2 sm:px-1 text-center border-b-2 font-medium text-xs sm:text-sm whitespace-nowrap focus:outline-none transition-colors duration-300 ${
-                        MORE_MENU_TABS.includes(ui.activeTab)
+                      aria-haspopup="menu"
+                      aria-expanded={showMoreMenu}
+                      className={`py-3 sm:py-4 px-2 sm:px-1 text-center border-b-2 font-medium text-xs sm:text-sm whitespace-nowrap focus-ring transition-colors duration-300 ${
+                        tabMeta.inMoreMenu
                           ? 'border-primary text-primary'
                           : 'border-transparent text-gray-400 hover:text-white hover:border-gray-500'
                       }`}
@@ -261,74 +278,23 @@ const AppContent: React.FC = () => {
                     )}
                   </nav>
                 </div>
-                <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
-                  {/* P6: 모바일 상단바는 업데이트(아이콘)·+추가·아바타만 남긴다 — 나머지는 더보기/홈 화면에서 이미 볼 수 있음 */}
-                  <div className="hidden md:block">
-                    <UpdateStatusIndicator isLoading={status.isLoading} successMessage={status.successMessage} />
-                  </div>
-                  <div className="hidden md:block">
-                  {(() => {
-                    // 브리핑 배지 — 신호(알림 발화) + 실행(큐 대기 + 오늘 생성 가능, 터틀 자동 검토)
-                    const signalCount = derived.alertResults.reduce((s, r) => s + r.matchedAssets.length, 0);
-                    const aqs = derived.actionQueueSummary;
-                    const execCount = aqs.actionableCount;
-                    if (signalCount === 0 && execCount === 0) return null;
-                    const cap = (n: number) => (n > 99 ? '99+' : String(n));
-                    return (
-                      <button
-                        onClick={actions.showBriefingPopup}
-                        className="flex items-center gap-1 sm:gap-1.5 text-xs text-amber-400 hover:text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 px-2 sm:px-2.5 py-2 rounded-md transition-colors border border-amber-500/30 whitespace-nowrap flex-shrink-0"
-                        title={`투자 브리핑 다시 보기 — 신호 ${signalCount}건 · 실행 ${execCount}건${aqs.escalatedCount > 0 ? ` (${aqs.escalatedCount}건 3일+ 미실행)` : ''}`}
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                        </svg>
-                        {execCount > 0 ? (
-                          <span>
-                            {signalCount > 0 && <>{cap(signalCount)}<span className="hidden sm:inline">건</span><span className="text-amber-500/60"> · </span></>}
-                            <span className={aqs.escalatedCount > 0 ? 'text-red-300 font-semibold' : 'font-semibold'}>실행 {cap(execCount)}{aqs.escalatedCount > 0 ? '⚠' : ''}</span>
-                          </span>
-                        ) : (
-                          <span>{cap(signalCount)}<span className="hidden sm:inline">건</span></span>
-                        )}
-                      </button>
-                    );
-                  })()}
-                  </div>
-                  {/* P4: 시세 기준 시각 — 데스크탑은 텍스트 노출, 모바일은 title 툴팁(공간 제약). 모바일 헤더 축소(P6) 대상에서 제외 — 짧은 라벨은 계속 보인다 */}
-                  <span
-                    className="text-[11px] text-gray-500 whitespace-nowrap flex-shrink-0"
-                    title={derived.priceFreshnessLabel}
-                  >
-                    <span className="hidden md:inline">{derived.priceFreshnessLabel}</span>
-                    <span className="md:hidden">{shortFreshnessLabel(derived.priceFreshnessLabel)}</span>
-                  </span>
-                  <button
-                    onClick={() => actions.refreshAllPrices(false)}
-                    disabled={status.isLoading}
-                    className="flex items-center gap-1.5 text-xs text-gray-300 hover:text-white bg-gray-700 hover:bg-gray-600 px-2 sm:px-2.5 py-2 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap flex-shrink-0"
-                    title={`시세 업데이트 — ${derived.priceFreshnessLabel}`}
-                  >
-                    {status.isLoading ? (
-                      <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                    ) : (
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h5M20 20v-5h-5M4 4l1.5 1.5A9 9 0 0120.5 10M20 20l-1.5-1.5A9 9 0 003.5 14" />
-                      </svg>
-                    )}
-                    <span className="hidden sm:inline">{status.isLoading ? '중...' : '업데이트'}</span>
-                  </button>
-                  {/* 계정 뷰 세그먼트 (통합/원종/유선) — 표시 필터 전용, 보유자산 탭에서만(홈은 본문 상단에 자체 세그먼트를 렌더). 모바일 상단바 축소(P6) 대상 */}
-                  {ui.activeTab === 'portfolio' && (
+                {/* Stage B: 상태 표시 단일 마운트 — 모바일은 헤더 아래 한 줄(order-last w-full), md 이상은 우측 컨트롤 왼쪽 인라인.
+                    표시할 메시지가 없으면 컴포넌트가 null → 빈 래퍼는 empty:hidden 으로 공간을 차지하지 않는다 */}
+                <div className="order-last w-full pb-1.5 md:order-none md:w-auto md:pb-0 md:ml-auto empty:hidden" aria-live="polite">
+                  <UpdateStatusIndicator isLoading={status.isLoading} successMessage={status.successMessage} />
+                </div>
+                <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0 py-1.5 md:py-0">
+                  {/* Stage B 앱바 = 탭별 선택 컨트롤(데스크탑) + 공통 4컨트롤 [갱신+기준시각] [+ 자산 추가] [🔔 브리핑] [아바타] */}
+                  {/* 계정 뷰 세그먼트 (통합/원종/유선) — 표시 필터 전용, TAB_META.showAccountView(보유자산만). 데스크탑 전용 */}
+                  {tabMeta.showAccountView && (
                     <div className="hidden md:flex items-center bg-gray-700 rounded-md p-0.5 flex-shrink-0" role="group" aria-label="계정 뷰">
                       {OWNER_FILTER_OPTIONS.map(f => (
                         <button
                           key={f}
+                          type="button"
                           onClick={() => actions.setAccountView(f)}
-                          className={`text-xs px-2 sm:px-2.5 py-1.5 rounded transition-colors whitespace-nowrap ${
+                          aria-pressed={ui.accountView === f}
+                          className={`text-xs px-2 sm:px-2.5 py-1.5 rounded transition-colors whitespace-nowrap focus-ring ${
                             ui.accountView === f
                               ? 'bg-primary text-white font-semibold'
                               : 'text-gray-300 hover:text-white'
@@ -340,26 +306,74 @@ const AppContent: React.FC = () => {
                       ))}
                     </div>
                   )}
-                  {/* 홈(dashboard)은 기간 선택을 '손익 추이' 카드 안에 두므로 제외 */}
-                  {ui.activeTab !== 'dashboard' && ui.activeTab !== 'today' && ui.activeTab !== 'guide' && ui.activeTab !== 'settings' && ui.activeTab !== 'analytics' && ui.activeTab !== 'replay' && ui.activeTab !== 'execution' && ui.activeTab !== 'cleanup' && (
+                  {/* 기간 선택 — TAB_META.showPeriod(보유자산·관심종목). 데스크탑 전용 */}
+                  {tabMeta.showPeriod && (
                     <div className="hidden md:block">
                       <PeriodSelector value={ui.globalPeriod} onChange={actions.setGlobalPeriod} variant="dropdown" />
                     </div>
                   )}
+                  {/* ① 갱신 — 시세 기준시각을 버튼 안에 표시(모바일은 시:분만) */}
                   <button
+                    type="button"
+                    onClick={() => actions.refreshAllPrices(false)}
+                    disabled={status.isLoading}
+                    className="flex items-center gap-1.5 text-xs text-gray-300 hover:text-white bg-gray-700 hover:bg-gray-600 px-2 sm:px-2.5 py-2 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap flex-shrink-0 focus-ring"
+                    title={`시세 업데이트 — 기준 ${derived.priceFreshnessLabel}`}
+                    aria-label={`시세 업데이트, 기준 ${derived.priceFreshnessLabel}`}
+                  >
+                    {status.isLoading ? (
+                      <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                    ) : (
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h5M20 20v-5h-5M4 4l1.5 1.5A9 9 0 0120.5 10M20 20l-1.5-1.5A9 9 0 003.5 14" />
+                      </svg>
+                    )}
+                    <span className="hidden lg:inline">{status.isLoading ? '업데이트 중' : '업데이트'}</span>
+                    <span className="hidden md:inline text-gray-400">{derived.priceFreshnessLabel}</span>
+                    <span className="md:hidden text-gray-400">{shortFreshnessLabel(derived.priceFreshnessLabel)}</span>
+                  </button>
+                  {/* ② + 자산 추가 */}
+                  <button
+                    type="button"
                     onClick={actions.openAddAsset}
-                    className="bg-primary hover:bg-primary-dark text-white font-semibold text-xs py-2 px-2.5 sm:px-3 rounded-md transition-colors whitespace-nowrap flex-shrink-0"
+                    className="bg-primary hover:bg-primary-dark text-white font-semibold text-xs py-2 px-2.5 sm:px-3 rounded-md transition-colors whitespace-nowrap flex-shrink-0 focus-ring"
                     title="새로운 자산을 포트폴리오에 추가합니다."
                   >
                     <span className="sm:hidden">+ 추가</span>
                     <span className="hidden sm:inline">+ 자산 추가</span>
                   </button>
-                  <div className="flex items-center gap-1.5 border-l border-gray-700 pl-2 ml-1 flex-shrink-0">
+                  {/* ③ 브리핑 벨 — 모든 폭에서 표시. 배지 = 신호 발화 종목 + 실행 가능 건수(0이면 배지 숨김) */}
+                  <button
+                    type="button"
+                    onClick={actions.showBriefingPopup}
+                    className="relative p-2 rounded-md text-gray-300 hover:text-white hover:bg-gray-700 transition-colors flex-shrink-0 focus-ring"
+                    aria-label={briefingCount > 0 ? `브리핑 열기, ${briefingCount}건` : '브리핑 열기'}
+                    title={`알림 브리핑 — 신호 ${briefingSignalCount}건 · 실행 ${briefingExec.actionableCount}건${briefingExec.escalatedCount > 0 ? ` (${briefingExec.escalatedCount}건 3일+ 미실행)` : ''}`}
+                  >
+                    <Bell className="h-5 w-5" aria-hidden="true" />
+                    {briefingCount > 0 && (
+                      <span
+                        className="absolute -top-0.5 -right-0.5 min-w-[1.125rem] h-[1.125rem] px-1 rounded-full bg-amber-500 text-gray-900 text-xs leading-[1.125rem] font-bold text-center tabular-nums"
+                        aria-hidden="true"
+                      >
+                        {briefingBadge}
+                      </span>
+                    )}
+                  </button>
+                  {/* ④ 계정 아바타 — ⚙ 설정 버튼은 Stage B에서 제거(더보기 메뉴 '설정'으로 진입) */}
+                  <div className="flex items-center border-l border-gray-700 pl-2 ml-1 flex-shrink-0">
                     <button
                       ref={accountMenuRef}
+                      type="button"
                       onClick={() => setShowAccountMenu(prev => !prev)}
-                      className="w-8 h-8 rounded-full bg-primary/20 text-primary text-sm font-bold flex items-center justify-center hover:bg-primary/30 transition-colors"
+                      aria-haspopup="menu"
+                      aria-expanded={showAccountMenu}
+                      className="w-8 h-8 rounded-full bg-primary/20 text-primary text-sm font-bold flex items-center justify-center hover:bg-primary/30 transition-colors focus-ring"
                       title={status.userEmail ? `계정 및 데이터 관리: ${status.userEmail}` : '계정 및 데이터 관리'}
+                      aria-label={status.userEmail ? `계정 메뉴: ${status.userEmail}` : '계정 메뉴'}
                     >
                       {(status.userEmail?.[0] ?? 'U').toUpperCase()}
                     </button>
@@ -373,26 +387,11 @@ const AppContent: React.FC = () => {
                           { label: '가져오기 (JSON)', onClick: actions.importJsonPrompt },
                           { label: '내보내기 (JSON)', onClick: () => actions.exportJson() },
                           { label: 'CSV로 내보내기', onClick: actions.exportCsv },
-                          { label: '로그아웃', onClick: actions.signOut, colorClass: 'text-red-400' },
+                          { label: '로그아웃', onClick: actions.signOut, colorClass: 'text-danger' },
                         ]}
                         onClose={() => setShowAccountMenu(false)}
                       />
                     )}
-                    {/* P6: 모바일에선 더보기 메뉴의 "설정" 항목과 중복되므로 숨긴다 */}
-                    <button
-                      onClick={() => actions.setActiveTab('settings')}
-                      className={`hidden md:flex items-center p-2 sm:p-1.5 rounded-md transition-colors ${
-                        ui.activeTab === 'settings'
-                          ? 'text-primary bg-primary/10'
-                          : 'text-gray-400 hover:text-white hover:bg-gray-700'
-                      }`}
-                      title="설정"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                      </svg>
-                    </button>
                   </div>
                 </div>
               </div>
@@ -418,14 +417,16 @@ const AppContent: React.FC = () => {
             <BottomTabBar
               activeTab={ui.activeTab}
               onTabChange={actions.setActiveTab}
-              moreActive={MORE_MENU_TABS.includes(ui.activeTab)}
+              moreActive={tabMeta.inMoreMenu}
               moreMenuItems={moreMenuItems}
             />
 
             {showScrollTop && (
               <button
                 onClick={() => mainRef.current?.scrollTo({ top: 0 })}
-                className={`fixed right-4 sm:right-8 mb-[env(safe-area-inset-bottom)] bg-gray-700 hover:bg-gray-600 text-white rounded-full p-3 shadow-lg transition-all z-[70] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 focus:ring-primary ${
+                type="button"
+                aria-label="맨 위로 이동"
+                className={`hide-when-modal fixed right-4 sm:right-8 mb-[env(safe-area-inset-bottom)] bg-gray-700 hover:bg-gray-600 text-white rounded-full p-3 shadow-lg transition-all z-fab focus-ring ${
                   derived.showAlertPopup ? 'bottom-36 md:bottom-24' : 'bottom-20 md:bottom-8'
                 }`}
                 title="맨 위로 이동"

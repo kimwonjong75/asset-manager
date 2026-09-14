@@ -253,14 +253,15 @@ export const useMarketData = ({
 
         saveNow({ assets: updatedAssets, watchlist: updatedWatchlist, exchangeRates: newRates });
 
-        if (failedTickers.length > 0) setError(`갱신 실패: ${failedTickers.join(', ')}`);
+        if (failedTickers.length > 0) { setError(`갱신 실패: ${failedTickers.join(', ')}`); setSuccessMessage(null); }
         else setSuccessMessage(watchlist.length > 0 ? '시세 업데이트 완료 (관심종목 포함)' : '시세 업데이트 완료');
-        setTimeout(() => { setError(null); setSuccessMessage(null); }, 5000);
+        setTimeout(() => setError(null), 5000); // 성공 메시지 소거는 usePortfolioData 래퍼가 담당
         return true; // P4: 호출부(runPriceRefresh)가 성공했을 때만 기준시각을 기록한다
 
     } catch (error) {
         log.error('Refresh Error:', error);
         setError('시세 업데이트 중 오류 발생');
+        setSuccessMessage(null);
         return false;
     } finally {
         setIsLoading(false);
@@ -322,8 +323,8 @@ export const useMarketData = ({
         setAssets(updatedAssets);
         saveNow({ assets: updatedAssets });
         setSuccessMessage('선택 항목 업데이트 완료');
-    } catch(e) { setError('선택 항목 업데이트 실패'); }
-    finally { setIsLoading(false); setTimeout(() => setSuccessMessage(null), 5000); }
+    } catch(e) { setError('선택 항목 업데이트 실패'); setSuccessMessage(null); }
+    finally { setIsLoading(false); }
   }, [assets, saveNow, setAssets, setError, setSuccessMessage]);
 
   // 3. 단일 자산 갱신 (완전 구현)
@@ -377,8 +378,8 @@ export const useMarketData = ({
         saveNow({ assets: updated });
         setSuccessMessage('업데이트 완료');
       }
-    } catch (e) { setError('갱신 실패'); }
-    finally { setIsLoading(false); setTimeout(() => setSuccessMessage(null), 5000); }
+    } catch (e) { setError('갱신 실패'); setSuccessMessage(null); }
+    finally { setIsLoading(false); }
   }, [assets, saveNow, setAssets, setError, setSuccessMessage]);
 
   // 4. 관심종목 갱신
@@ -478,8 +479,8 @@ export const useMarketData = ({
         setWatchlist(updated);
         saveNow({ watchlist: updated });
         setSuccessMessage('관심종목 업데이트 완료');
-    } catch (e) { setError('관심종목 갱신 실패'); }
-    finally { setIsLoading(false); setTimeout(() => setSuccessMessage(null), 5000); }
+    } catch (e) { setError('관심종목 갱신 실패'); setSuccessMessage(null); }
+    finally { setIsLoading(false); }
   }, [watchlist, saveNow, setWatchlist, setError, setSuccessMessage]);
 
   return {

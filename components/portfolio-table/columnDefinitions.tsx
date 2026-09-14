@@ -10,10 +10,10 @@ import CrossDaysBadge from '../common/CrossDaysBadge';
 const RSIIndicator = ({ rsi, status }: { rsi?: number, status?: string }) => {
   if (typeof rsi !== 'number') return null;
   let colorClass = 'text-gray-400';
-  if (status === 'OVERBOUGHT' || rsi >= 70) colorClass = 'text-red-400';
-  else if (status === 'OVERSOLD' || rsi <= 30) colorClass = 'text-blue-400';
+  if (status === 'OVERBOUGHT' || rsi >= 70) colorClass = 'text-up';
+  else if (status === 'OVERSOLD' || rsi <= 30) colorClass = 'text-down';
   return (
-    <div className="text-[10px] mt-0.5">
+    <div className="text-xs mt-0.5">
       <span className="text-gray-500">RSI:</span> <span className={colorClass}>{rsi.toFixed(1)}</span>
     </div>
   );
@@ -27,7 +27,7 @@ const VolumeIndicator = ({ ratio }: { ratio?: number }) => {
   else if (ratio >= 1.5) { colorClass = 'text-yellow-400'; label = '!'; }
   else if (ratio < 0.5) { colorClass = 'text-gray-500'; label = '~'; }
   return (
-    <div className="text-[10px] mt-0.5">
+    <div className="text-xs mt-0.5">
       <span className="text-gray-500">VOL:</span>{' '}
       <span className={colorClass}>{ratio.toFixed(1)}x{label && ` ${label}`}</span>
     </div>

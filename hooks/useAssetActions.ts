@@ -99,7 +99,6 @@ export const useAssetActions = ({
       const nextAssets = [...assets, finalNewAsset];
       commitPortfolioPatch({ assets: nextAssets });
       setSuccessMessage(`${finalNewAsset.name} 자산이 추가되었습니다.`);
-      setTimeout(() => setSuccessMessage(null), 3000);
       return { ok: true, assetId: finalNewAsset.id, asset: finalNewAsset, nextAssets };
     } catch (e) {
       log.error(e);
@@ -194,7 +193,6 @@ export const useAssetActions = ({
       
       commitPortfolioPatch({ assets: getSnapshot().assets.map(a => (a.id === finalAsset.id ? finalAsset : a)) });
       setSuccessMessage(`${finalAsset.name} 자산이 수정되었습니다.`);
-      setTimeout(() => setSuccessMessage(null), 3000);
     } catch (e) {
       log.error(e);
       setError('자산 수정 중 오류가 발생했습니다.');
@@ -258,7 +256,6 @@ export const useAssetActions = ({
       commitPortfolioPatch({ assets: mut.nextAssets, sellHistory: mut.nextSellHistory });
 
       setSuccessMessage(`${asset.name} ${sellQuantity}주 매도가 기록되었습니다.`);
-      setTimeout(() => setSuccessMessage(null), 3000);
       return {
         ok: true,
         sellRecordId: mut.sellRecord.id,
@@ -377,7 +374,6 @@ export const useAssetActions = ({
       commitPortfolioPatch({ assets: updatedAssets, sellHistory: newSellHistory });
 
       setSuccessMessage('매도 기록이 수정되었습니다.');
-      setTimeout(() => setSuccessMessage(null), 3000);
     } catch (e) {
       log.error(e);
       const msg = e instanceof Error ? e.message : '매도 기록 수정 중 오류가 발생했습니다.';
@@ -414,7 +410,6 @@ export const useAssetActions = ({
     commitPortfolioPatch({ assets: updatedAssets, sellHistory: newSellHistory });
 
     setSuccessMessage('매도 기록이 삭제되었습니다.');
-    setTimeout(() => setSuccessMessage(null), 3000);
   }, [isSignedIn, sellHistory, getSnapshot, commitPortfolioPatch, setError, setSuccessMessage]);
 
   // 추가매수 확정
@@ -452,7 +447,6 @@ export const useAssetActions = ({
       commitPortfolioPatch({ assets: mut.nextAssets });
 
       setSuccessMessage(`${asset.customName?.trim() || asset.name} ${buyQuantity}주 추가매수가 기록되었습니다.`);
-      setTimeout(() => setSuccessMessage(null), 3000);
       return { ok: true, assetId, updatedAsset: mut.updatedAsset, nextAssets: mut.nextAssets };
     } catch (e) {
       log.error(e);

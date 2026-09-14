@@ -27,7 +27,7 @@ const CrossDaysBadge: React.FC<CrossDaysBadgeProps> = ({ crossDays }) => {
   return (
     <Tooltip content={tooltipText} position="top">
       <span
-        className={`inline-block ml-1 text-[10px] px-1.5 py-0.5 rounded font-bold ${bgClass} whitespace-nowrap origin-center`}
+        className={`inline-block ml-1 text-xs px-1.5 py-0.5 rounded font-bold ${bgClass} whitespace-nowrap origin-center`}
         style={{ transform: 'scaleY(0.8)' }}
       >
         {label} {daysText}

@@ -114,20 +114,20 @@ const KnowledgeInboxPanel: React.FC = () => {
             return (
               <div key={entry.queueId} className="bg-gray-900/60 border border-gray-700 rounded-lg p-4">
                 <div className="flex items-start gap-2 mb-2">
-                  <span className={`text-[10px] px-1.5 py-0.5 rounded shrink-0 ${entry.kind === 'rule' ? 'bg-purple-500/15 text-purple-300' : 'bg-blue-500/15 text-blue-300'}`}>
+                  <span className={`text-xs px-1.5 py-0.5 rounded shrink-0 ${entry.kind === 'rule' ? 'bg-purple-500/15 text-purple-300' : 'bg-blue-500/15 text-blue-300'}`}>
                     {entry.kind === 'rule' ? '규칙' : '주장'}
                   </span>
                   <p className="text-sm text-white flex-1">{title}</p>
-                  <span className={`text-[10px] px-1.5 py-0.5 rounded shrink-0 ${CONFIDENCE_STYLE[entry.confidence] ?? CONFIDENCE_STYLE.low}`}>
+                  <span className={`text-xs px-1.5 py-0.5 rounded shrink-0 ${CONFIDENCE_STYLE[entry.confidence] ?? CONFIDENCE_STYLE.low}`}>
                     {entry.confidence}
                   </span>
                 </div>
 
                 <div className="flex flex-wrap gap-1 mb-2">
                   {tags.map(t => (
-                    <span key={t} className="text-[10px] text-gray-300 bg-gray-700/70 rounded px-1.5 py-0.5">{t}</span>
+                    <span key={t} className="text-xs text-gray-300 bg-gray-700/70 rounded px-1.5 py-0.5">{t}</span>
                   ))}
-                  <span className="text-[10px] text-gray-400 bg-gray-800 rounded px-1.5 py-0.5">
+                  <span className="text-xs text-gray-400 bg-gray-800 rounded px-1.5 py-0.5">
                     {entry.dedup === 'new' ? '신규' : entry.dedup}
                   </span>
                 </div>
@@ -140,7 +140,7 @@ const KnowledgeInboxPanel: React.FC = () => {
 
                 {/* 규칙 promote 차단 사유 */}
                 {entry.kind === 'rule' && promote && !promote.ok && (
-                  <div className="text-[11px] text-rose-300 bg-rose-500/10 rounded px-2 py-1.5 mb-3">
+                  <div className="text-xs text-rose-300 bg-rose-500/10 rounded px-2 py-1.5 mb-3">
                     ⛔ 신호 활성화 불가: {promote.blockers.join(' / ')}
                   </div>
                 )}
@@ -186,7 +186,7 @@ const KnowledgeInboxPanel: React.FC = () => {
         </div>
       )}
 
-      <p className="text-[11px] text-gray-600 mt-4 pt-3 border-t border-gray-700/60">
+      <p className="text-xs text-gray-500 mt-4 pt-3 border-t border-gray-700/60">
         승인은 이 기기의 Google Drive 저장본(portfolio.json)에 반영됩니다. 보류는 목록에서만 제거하며 로컬 큐 파일은 그대로입니다.
       </p>
     </div>

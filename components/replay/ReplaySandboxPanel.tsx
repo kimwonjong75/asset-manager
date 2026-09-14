@@ -53,8 +53,8 @@ const LeafRow: React.FC<{
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <div className="flex items-center gap-1.5 min-w-0">
           <span className="text-xs text-gray-200 truncate">{label}</span>
-          <span className="text-[10px] text-gray-500">{OP_LABEL[leaf.operator]}</span>
-          {leaf.overridden && <span className="text-[10px] text-amber-400" title="기준값에서 변경됨">●</span>}
+          <span className="text-xs text-gray-500">{OP_LABEL[leaf.operator]}</span>
+          {leaf.overridden && <span className="text-xs text-amber-400" title="기준값에서 변경됨">●</span>}
         </div>
         <div className="flex items-center gap-1">
           {/* 값 편집 — kind별 분기. value 형태는 절대 바꾸지 않음. */}
@@ -72,7 +72,7 @@ const LeafRow: React.FC<{
                 onChange={e => { const n = parseFloat(e.target.value); if (!Number.isNaN(n)) props.onSetBetween(rule.id, leaf.leafId, 'min', n); }}
                 className={betweenInputCls}
               />
-              <span className="text-[10px] text-gray-500">~</span>
+              <span className="text-xs text-gray-500">~</span>
               <input
                 type="number" step="any" value={num(leaf.value, 1)} disabled={!leaf.enabled}
                 onChange={e => { const n = parseFloat(e.target.value); if (!Number.isNaN(n)) props.onSetBetween(rule.id, leaf.leafId, 'max', n); }}
@@ -81,7 +81,7 @@ const LeafRow: React.FC<{
             </div>
           )}
           {leaf.kind === 'fixed' && (
-            <span className="text-[11px] text-gray-400 font-mono px-1" title="값 편집은 P4(문자열/범위형은 on/off만)">
+            <span className="text-xs text-gray-400 font-mono px-1" title="값 편집은 P4(문자열/범위형은 on/off만)">
               {Array.isArray(leaf.value) ? leaf.value.join(', ') : String(leaf.value)}
             </span>
           )}
@@ -90,7 +90,7 @@ const LeafRow: React.FC<{
             onClick={() => props.onSetEnabled(rule.id, leaf.leafId, !leaf.enabled)}
             disabled={offBlocked}
             title={offBlocked ? '최소 1개 조건은 유지해야 합니다' : (leaf.enabled ? '이 조건 끄기' : '이 조건 켜기')}
-            className={`text-[10px] px-1.5 py-1 rounded border ${
+            className={`text-xs px-1.5 py-1 rounded border ${
               leaf.enabled
                 ? `border-emerald-600/50 text-emerald-300 ${offBlocked ? 'opacity-40 cursor-not-allowed' : 'hover:bg-gray-700'}`
                 : 'border-gray-700 text-gray-500 hover:bg-gray-700'
@@ -102,7 +102,7 @@ const LeafRow: React.FC<{
             <button
               onClick={() => props.onResetLeaf(rule.id, leaf.leafId)}
               title="이 조건 기준값으로 복원"
-              className="text-[10px] px-1 py-1 rounded text-gray-500 hover:text-gray-300 hover:bg-gray-700"
+              className="text-xs px-1 py-1 rounded text-gray-500 hover:text-gray-300 hover:bg-gray-700"
             >
               ↺
             </button>
@@ -110,7 +110,7 @@ const LeafRow: React.FC<{
         </div>
       </div>
       {inverted && (
-        <p className="text-[10px] text-rose-400 mt-0.5">⚠️ 최솟값이 최댓값보다 큽니다 — 이 조건은 항상 미충족(신호가 사라질 수 있음).</p>
+        <p className="text-xs text-rose-400 mt-0.5">⚠️ 최솟값이 최댓값보다 큽니다 — 이 조건은 항상 미충족(신호가 사라질 수 있음).</p>
       )}
     </div>
   );
@@ -124,19 +124,19 @@ const ReplaySandboxPanel: React.FC<ReplaySandboxPanelProps> = (props) => {
   return (
     <div className="bg-gray-800 rounded-lg p-3 space-y-3">
       <div className="flex items-center justify-between gap-2 flex-wrap">
-        <h3 className="text-sm font-bold text-white">🧪 규칙 샌드박스 <span className="text-[11px] text-gray-500 font-normal">— 임계값·on/off 조정(이 화면만, 라이브 미반영)</span></h3>
+        <h3 className="text-sm font-bold text-white">🧪 규칙 샌드박스 <span className="text-xs text-gray-500 font-normal">— 임계값·on/off 조정(이 화면만, 라이브 미반영)</span></h3>
         {hasAny && (
-          <button onClick={onResetAll} className="text-[11px] px-2 py-1 rounded bg-gray-900 text-gray-400 hover:bg-gray-700">전체 초기화</button>
+          <button onClick={onResetAll} className="text-xs px-2 py-1 rounded bg-gray-900 text-gray-400 hover:bg-gray-700">전체 초기화</button>
         )}
       </div>
-      <p className="text-[11px] text-gray-600">
+      <p className="text-xs text-gray-500">
         값을 바꾸면 차트 마커와 신호가 즉시 다시 계산됩니다. <span className="text-gray-500">실제 구루 신호·알림·저장된 규칙은 바뀌지 않습니다.</span>
         문자열/범주형 조건은 켜기/끄기만, 방향(부등호) 변경은 추후 지원합니다.
       </p>
 
       {/* 기준 대비 변화 */}
       {hasAny && (
-        <div className={`rounded p-2 text-[11px] border ${changed ? 'border-amber-500/30 bg-amber-500/5' : 'border-gray-700 bg-gray-900/40'}`}>
+        <div className={`rounded p-2 text-xs border ${changed ? 'border-amber-500/30 bg-amber-500/5' : 'border-gray-700 bg-gray-900/40'}`}>
           {!diff ? (
             <span className="text-gray-500">기준 대비 계산 중…</span>
           ) : !changed ? (
@@ -164,7 +164,7 @@ const ReplaySandboxPanel: React.FC<ReplaySandboxPanelProps> = (props) => {
                 <div className="flex items-center justify-between gap-2 mb-1">
                   <span className="text-xs font-medium text-white truncate">{rule.title}</span>
                   {ruleOverridden && (
-                    <button onClick={() => onResetRule(rule.id)} className="text-[10px] px-1.5 py-0.5 rounded bg-gray-800 text-gray-400 hover:bg-gray-700">규칙 초기화</button>
+                    <button onClick={() => onResetRule(rule.id)} className="text-xs px-1.5 py-0.5 rounded bg-gray-800 text-gray-400 hover:bg-gray-700">규칙 초기화</button>
                   )}
                 </div>
                 <div className="space-y-1">

@@ -6,7 +6,7 @@
 //   0~2: safe      (배너에 표시하지 않음)
 //   3:   attention (노랑 — 주의)
 //   4:   warning   (주황 — 약세 신호)
-//   5+:  exit      (빨강 — 시장 탈출 검토)
+//   5+:  exit      (진한 주황 + 경고 아이콘 + 굵은 문구 — 시장 탈출 검토. 빨강은 '오름' 전용)
 
 import { useEffect, useState } from 'react';
 import {

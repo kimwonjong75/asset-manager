@@ -27,7 +27,7 @@ function describe(row: TodayRow): { label: string; tone: string; reason: string 
     const r = row as PositionRow;
     switch (r.status) {
       case 'sell-check-stop':
-        return { label: '오늘 매도 확인 — 손절선 아래', tone: 'text-red-300 border-red-500/40 bg-red-500/10',
+        return { label: '오늘 매도 확인 — 손절선 아래', tone: 'text-orange-200 border-orange-400/70 bg-orange-500/15',
           reason: `살 때 정해둔 손절가 ${fmt(r.stopPrice)} 아래로 종가가 내려왔습니다.` };
       case 'sell-check-exit':
         return { label: '오늘 매도 확인 — 20일 청산선 도달', tone: 'text-orange-300 border-orange-500/40 bg-orange-500/10',
@@ -37,7 +37,7 @@ function describe(row: TodayRow): { label: string; tone: string; reason: string 
           reason: `손절선 ${fmt(r.stopPrice)}은 넘지 않았지만, 20일 계산에 필요한 자료가 부족합니다.` };
       case 'stop-record-error':
         return { label: '손절선 기록 오류 — 확인 필요', tone: 'text-amber-300 border-amber-500/40 bg-amber-500/10',
-          reason: '저장된 손절가가 올바르지 않습니다. 임의로 고쳐 쓰지 않고 그대로 알려 드립니다. 실행 탭에서 포지션 기록을 확인하세요.' };
+          reason: '저장된 손절가가 올바르지 않습니다. 임의로 고쳐 쓰지 않고 그대로 알려 드립니다. 보유자산 표의 터틀 포지션 정보에서 확인하세요.' };
       case 'link-error':
         return { label: '포지션 연결 확인 필요', tone: 'text-amber-300 border-amber-500/40 bg-amber-500/10',
           reason: '터틀 포지션이 어느 보유 자산과 연결되는지 확정할 수 없습니다(연결 정보 없음 또는 같은 티커 후보가 여러 개). 임의로 고르지 않았습니다.' };
@@ -64,7 +64,7 @@ function describe(row: TodayRow): { label: string; tone: string; reason: string 
   const r = row as WatchRow;
   switch (r.status) {
     case 'breakout-confirmed':
-      return { label: '55일 돌파 확인', tone: 'text-emerald-300 border-emerald-500/40 bg-emerald-500/10',
+      return { label: '55일 돌파 확인', tone: 'text-up border-up/40 bg-up-soft',
         reason: `종가가 직전 55일 최고가 ${fmt(r.breakoutLine)} 이상입니다. 관찰용 매수 검토 후보입니다.` };
     case 'waiting':
       return { label: r.intradayAboveLine ? '장중 돌파 중 — 종가 확인 전' : '기다림',
@@ -101,11 +101,11 @@ const Row: React.FC<{ row: TodayRow }> = ({ row }) => {
     <div className="rounded-lg border border-gray-700 bg-gray-800/40 p-3">
       <div className="flex flex-wrap items-center gap-2">
         <span className="font-semibold text-white text-sm">{row.name}</span>
-        <span className="text-[11px] text-gray-500">{row.ticker}</span>
-        <span className={`text-[11px] px-2 py-0.5 rounded border ${d.tone}`}>{d.label}</span>
+        <span className="text-xs text-gray-500">{row.ticker}</span>
+        <span className={`text-xs px-2 py-0.5 rounded border ${d.tone}`}>{d.label}</span>
       </div>
       <p className="mt-1.5 text-xs text-gray-300 leading-relaxed">{d.reason}</p>
-      <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-[11px]">
+      <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
         <div className="flex justify-between"><dt className="text-gray-500">완료종가</dt><dd className="text-gray-200 tabular-nums">{fmt(row.completedClose)}</dd></div>
         <div className="flex justify-between"><dt className="text-gray-500">{line.name}</dt><dd className="text-gray-200 tabular-nums">{fmt(line.v)}</dd></div>
         {row.kind === 'position' && (
@@ -120,7 +120,7 @@ const Row: React.FC<{ row: TodayRow }> = ({ row }) => {
           <div className="flex justify-between"><dt className="text-gray-500">손절가</dt><dd className="text-gray-500">기록 없음 — 계산하지 않음</dd></div>
         )}
       </dl>
-      <p className="mt-1.5 text-[10px] text-gray-500">
+      <p className="mt-1.5 text-xs text-gray-500">
         {row.quality.asOfDate ? `${row.quality.asOfDate} 종가 기준` : '판정 기준일 없음'}
         {!isLink && ` · ${TZ_LABEL[row.quality.marketTz]}`}
         {row.quality.conservativeDrop ? ' · 최신 봉은 보수적으로 제외' : ''}
@@ -162,7 +162,7 @@ const TodayTurtleCard: React.FC<TodayTurtleCardProps> = ({ model }) => {
         </div>
         <div className="flex items-center gap-2">
           {isTurtleOrderLocked() && (
-            <span className="text-[11px] px-2 py-0.5 rounded border border-amber-500/40 bg-amber-500/10 text-amber-300">
+            <span className="text-xs px-2 py-0.5 rounded border border-amber-500/40 bg-amber-500/10 text-amber-300">
               {TURTLE_LOCK_BADGE}
             </span>
           )}
@@ -170,7 +170,7 @@ const TodayTurtleCard: React.FC<TodayTurtleCardProps> = ({ model }) => {
       </div>
 
       {showHelp && (
-        <p className="mt-2 text-[11px] text-gray-400 leading-relaxed bg-gray-900/40 rounded p-2">
+        <p className="mt-2 text-xs text-gray-400 leading-relaxed bg-gray-900/40 rounded p-2">
           {HELP_TEXT}
           <br />
           {TURTLE_LOCK_MESSAGE}
@@ -184,7 +184,7 @@ const TodayTurtleCard: React.FC<TodayTurtleCardProps> = ({ model }) => {
 
       {model.isLoading && <p className="mt-3 text-xs text-gray-500">시세를 불러오는 중입니다…</p>}
       {model.partialFailure && !model.isLoading && (
-        <p className="mt-2 text-[11px] text-amber-300/80">일부 종목의 시세를 불러오지 못했습니다. 해당 종목은 «확인 불가»로 표시됩니다.</p>
+        <p className="mt-2 text-xs text-amber-300/80">일부 종목의 시세를 불러오지 못했습니다. 해당 종목은 «확인 불가»로 표시됩니다.</p>
       )}
 
       {!model.isLoading && actionRows.length === 0 && (

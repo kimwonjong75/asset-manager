@@ -343,8 +343,8 @@ const AddNewAssetModal: React.FC = () => {
 
   return (
     <>
-     <div className="fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center z-50 p-4" onClick={onClose} role="dialog" aria-modal="true">
-      <div className="bg-gray-800 p-4 sm:p-6 rounded-lg shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+     <div className="fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center z-modal p-4" onClick={onClose} role="dialog" aria-modal="true">
+      <div className="bg-gray-800 p-4 sm:p-6 rounded-lg shadow-xl w-full max-w-lg max-h-[90dvh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <div className="flex justify-between items-center mb-4 sm:mb-6">
             <h2 className="text-xl sm:text-2xl font-bold text-white">신규 자산 추가</h2>
             <button onClick={onClose} className="text-gray-400 hover:text-white transition">
@@ -523,7 +523,7 @@ const AddNewAssetModal: React.FC = () => {
             <div className="bg-gray-700/40 p-3 rounded-md">
                 <div className={`${labelClasses} flex items-center gap-1.5`}>
                     <span>🛡️ 리스크 기반 권장 수량</span>
-                    <span className="text-[11px] text-gray-500 font-normal">(위 매수가 기준)</span>
+                    <span className="text-xs text-gray-500 font-normal">(위 매수가 기준)</span>
                 </div>
                 <PositionSizingCalculator
                     totalEquityKRW={derived.totalValue}
@@ -555,7 +555,7 @@ const AddNewAssetModal: React.FC = () => {
                 </label>
                 {saveTradePlanOnAdd && (
                   <>
-                    <p className="text-[11px] text-gray-400">
+                    <p className="text-xs text-gray-400">
                       기본값: 손절 {DEFAULT_TRADE_PLAN_TEMPLATE.stopPct}% · 익절 {DEFAULT_TRADE_PLAN_TEMPLATE.profitMultiple}배
                       {DEFAULT_TRADE_PLAN_TEMPLATE.exitLine.kind === 'ma' && ` · ${DEFAULT_TRADE_PLAN_TEMPLATE.exitLine.period}일선`} · 불타기 안 함
                     </p>

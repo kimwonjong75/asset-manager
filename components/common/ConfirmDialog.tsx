@@ -6,6 +6,8 @@
 
 import React from 'react';
 import { createPortal } from 'react-dom';
+import { CircleAlert } from 'lucide-react';
+import Button from './Button';
 
 export interface ConfirmDialogProps {
   message: string;
@@ -13,6 +15,8 @@ export interface ConfirmDialogProps {
   cancelLabel?: string;
   onConfirm: () => void;
   onCancel: () => void;
+  /** Stage B: 'danger'면 확인 버튼을 파괴적 동작 스타일(핑크 채움 + 아이콘)로. 기본 'default'(primary) */
+  tone?: 'default' | 'danger';
 }
 
 const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
@@ -21,10 +25,11 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   cancelLabel = '취소',
   onConfirm,
   onCancel,
+  tone = 'default',
 }) => {
   return createPortal(
     <div
-      className="fixed inset-0 bg-black/60 flex justify-center items-center z-[80] p-4"
+      className="fixed inset-0 bg-black/60 flex justify-center items-center z-dialog p-4"
       onClick={onCancel}
       role="alertdialog"
       aria-modal="true"
@@ -35,20 +40,18 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
       >
         <p className="text-sm text-gray-100 whitespace-pre-wrap leading-relaxed">{message}</p>
         <div className="mt-4 flex justify-end gap-2">
-          <button
-            type="button"
-            onClick={onCancel}
-            className="text-sm text-gray-300 hover:text-white px-3 py-1.5 rounded-md bg-gray-700 hover:bg-gray-600 transition-colors"
-          >
+          <Button variant="secondary" onClick={onCancel}>
             {cancelLabel}
-          </button>
-          <button
-            type="button"
-            onClick={onConfirm}
-            className="text-sm font-medium text-white bg-primary hover:bg-primary-dark px-3 py-1.5 rounded-md transition-colors"
-          >
-            {confirmLabel}
-          </button>
+          </Button>
+          {tone === 'danger' ? (
+            <Button variant="danger" icon={<CircleAlert />} onClick={onConfirm}>
+              {confirmLabel}
+            </Button>
+          ) : (
+            <Button variant="primary" onClick={onConfirm}>
+              {confirmLabel}
+            </Button>
+          )}
         </div>
       </div>
     </div>,

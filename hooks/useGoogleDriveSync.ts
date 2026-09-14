@@ -62,6 +62,8 @@ export function useGoogleDriveSync(options: UseGoogleDriveSyncOptions = {}) {
     try {
       await googleDriveService.saveFile(payload);
     } catch (error) {
+      // '저장 중...' 진행 메시지 소거 (실패 시 'saved' 상태가 오지 않으므로 여기서 지운다)
+      optionsRef.current.onSuccessMessage?.(null as unknown as string);
       if (error instanceof DriveConflictError) {
         // 최초 감지 시에만 메시지 노출 + 이후 자동 저장 차단 (재로딩 전까지).
         if (!conflictBlockedRef.current) {
@@ -83,7 +85,6 @@ export function useGoogleDriveSync(options: UseGoogleDriveSyncOptions = {}) {
       optionsRef.current.onSuccessMessage?.('저장 중...');
     } else if (state === 'saved') {
       optionsRef.current.onSuccessMessage?.('Google Drive에 자동 저장되었습니다.');
-      setTimeout(() => optionsRef.current.onSuccessMessage?.(null as unknown as string), 3000);
     }
   }, []);
 

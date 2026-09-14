@@ -367,7 +367,7 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
                 ref={bulkMenuRef}
                 onClick={() => setBulkMenuOpen(prev => !prev)}
                 disabled={isLoading}
-                className="bg-gray-600 hover:bg-gray-500 disabled:opacity-50 text-white px-3 py-1 rounded text-xs font-medium transition whitespace-nowrap"
+                className="bg-gray-600 hover:bg-zinc-500 disabled:opacity-50 text-white px-3 py-1 rounded text-xs font-medium transition whitespace-nowrap"
                 title="선택한 자산의 계정/버킷을 한 번에 변경하거나 터틀 후보로 등록합니다"
               >
                 일괄 변경 ▾
@@ -441,7 +441,7 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
             {presetOpen && (
               <div className="absolute right-0 top-full mt-1 w-56 bg-gray-800 border border-gray-600 rounded-lg shadow-xl z-30 py-1">
                 {/* 매도 감지 */}
-                <div className="px-3 py-1.5 text-[10px] text-red-400 font-semibold uppercase tracking-wider">매도 감지</div>
+                <div className="px-3 py-1.5 text-xs text-down font-semibold uppercase tracking-wider">매도 감지</div>
                 {ui.alertSettings.rules.filter(r => r.action === 'sell' && r.enabled).map(rule => (
                   <button
                     key={rule.id}
@@ -451,13 +451,13 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
                     }`}
                   >
                     <span className={`w-2 h-2 rounded-full flex-shrink-0 ${
-                      rule.severity === 'critical' ? 'bg-red-500' : 'bg-amber-500'
+                      rule.severity === 'critical' ? 'bg-orange-500' : 'bg-amber-400'
                     }`} />
                     {rule.name}
                   </button>
                 ))}
                 {/* 매수 기회 */}
-                <div className="px-3 py-1.5 text-[10px] text-blue-400 font-semibold uppercase tracking-wider mt-1 border-t border-gray-700">매수 기회</div>
+                <div className="px-3 py-1.5 text-xs text-up font-semibold uppercase tracking-wider mt-1 border-t border-gray-700">매수 기회</div>
                 {ui.alertSettings.rules.filter(r => r.action === 'buy' && r.enabled).map(rule => (
                   <button
                     key={rule.id}
@@ -466,7 +466,7 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
                       activePreset === rule.id ? 'text-primary' : 'text-gray-300'
                     }`}
                   >
-                    <span className="w-2 h-2 rounded-full bg-blue-500 flex-shrink-0" />
+                    <span className="w-2 h-2 rounded-full bg-up flex-shrink-0" />
                     {rule.name}
                   </button>
                 ))}

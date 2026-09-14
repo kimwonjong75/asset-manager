@@ -7,12 +7,17 @@ import React from 'react';
 import { ChevronDown } from 'lucide-react';
 import Badge, { type BadgeTone } from './Badge';
 
+// Stage B 색 규약 — 긴급/위험은 warning(주황). 빨강(up)·파랑(down)은 가격 방향 전용이라 헤더에는 쓰지 않는다.
 const TITLE_COLOR: Record<BadgeTone, string> = {
-  positive: 'text-emerald-300',
-  negative: 'text-red-300',
+  up: 'text-up',
+  down: 'text-down',
+  ok: 'text-emerald-300',
   warning: 'text-amber-300',
-  info: 'text-blue-300',
+  danger: 'text-danger',
+  info: 'text-sky-300',
   neutral: 'text-gray-200',
+  positive: 'text-emerald-300',
+  negative: 'text-amber-300',
 };
 
 export interface SectionHeaderProps {
@@ -21,8 +26,10 @@ export interface SectionHeaderProps {
   count?: number;
   /** 건수 뱃지 뒤에 붙는 단위(기본 '건') */
   countUnit?: string;
-  /** 제목 색 + 뱃지 톤 (등급 색상: urgent=negative, today=positive, prepare=warning) */
+  /** 제목 색 + 뱃지 톤 (등급 색상: urgent=warning+icon, today=ok, prepare=warning) */
   tone?: BadgeTone;
+  /** 제목 앞 아이콘(lucide). 같은 톤의 섹션을 구분할 때 — 예: 긴급=OctagonAlert */
+  icon?: React.ReactNode;
   /** 접기 가능이면 화살표 표시 + 클릭 가능 헤더로 렌더 */
   collapsible?: boolean;
   open?: boolean;
@@ -37,6 +44,7 @@ const SectionHeader: React.FC<SectionHeaderProps> = ({
   count,
   countUnit = '건',
   tone = 'neutral',
+  icon,
   collapsible = false,
   open = true,
   onToggle,
@@ -48,6 +56,7 @@ const SectionHeader: React.FC<SectionHeaderProps> = ({
       {collapsible && (
         <ChevronDown className={`h-3.5 w-3.5 text-gray-500 shrink-0 transition-transform ${open ? '' : '-rotate-90'}`} />
       )}
+      {icon && <span className="inline-flex shrink-0">{icon}</span>}
       <span>{title}</span>
       {count !== undefined && (
         <Badge tone={tone}>

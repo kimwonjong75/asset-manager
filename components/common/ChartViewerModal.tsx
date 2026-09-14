@@ -26,8 +26,11 @@ const ChartViewerModal: React.FC<ChartViewerModalProps> = ({ onClose, ...chartPr
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[9999] bg-black/80 flex items-center justify-center p-2 sm:p-4"
+      className="fixed inset-0 z-modal bg-black/80 flex items-center justify-center p-2 sm:p-4"
       onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-label="차트 크게 보기"
     >
       <div
         className="relative w-full h-full sm:w-[95vw] sm:h-[90vh] flex flex-col"

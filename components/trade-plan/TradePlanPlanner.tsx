@@ -65,9 +65,9 @@ const TradePlanPlanner: React.FC = () => {
   const showSearchPanel = !planner.selected && planner.query.trim().length >= 2;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center z-50 p-2 sm:p-4" onClick={handleClose} role="dialog" aria-modal="true">
+    <div className="fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center z-modal p-2 sm:p-4" onClick={handleClose} role="dialog" aria-modal="true">
       <div
-        className="bg-gray-800 p-4 sm:p-6 rounded-lg shadow-xl w-full max-w-xl max-h-[95vh] overflow-y-auto"
+        className="bg-gray-800 p-4 sm:p-6 rounded-lg shadow-xl w-full max-w-xl max-h-[95dvh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-start justify-between gap-3 mb-4">
@@ -170,7 +170,7 @@ const TradePlanPlanner: React.FC = () => {
         )}
 
         {saveError && (
-          <div className="mt-3 text-sm text-red-300 bg-red-500/10 border border-red-500/30 rounded-md px-3 py-2">{saveError}</div>
+          <div className="mt-3 text-sm text-danger bg-danger-soft border border-danger/30 rounded-md px-3 py-2">{saveError}</div>
         )}
 
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-2 pt-5">
@@ -181,7 +181,7 @@ const TradePlanPlanner: React.FC = () => {
             type="button"
             onClick={handleSaveToWatchlist}
             disabled={!planner.target}
-            className="text-sm font-medium text-white bg-gray-600 hover:bg-gray-500 px-4 py-2 rounded-md transition-colors disabled:opacity-40 disabled:cursor-not-allowed order-2"
+            className="text-sm font-medium text-white bg-gray-600 hover:bg-zinc-500 px-4 py-2 rounded-md transition-colors disabled:opacity-40 disabled:cursor-not-allowed order-2"
           >
             관심종목에 계획과 함께 저장
           </button>

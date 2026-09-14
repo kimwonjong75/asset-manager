@@ -174,7 +174,7 @@ const CategorySettingsSection: React.FC = () => {
                 {BASE_TYPE_LABELS[cat.baseType]}
               </span>
               {cat.isDefault && (
-                <span className="text-xs text-gray-600 flex-shrink-0">기본</span>
+                <span className="text-xs text-gray-500 flex-shrink-0">기본</span>
               )}
             </div>
 

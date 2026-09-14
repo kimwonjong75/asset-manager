@@ -34,7 +34,7 @@ const RuleDiagnosticRow: React.FC<{ row: DiagnosticRow }> = ({ row }) => {
   return (
     <li className="bg-gray-900/50 rounded px-2.5 py-2">
       <div className="flex items-center gap-2 flex-wrap">
-        <span className="text-[11px] text-gray-300 bg-gray-700/60 rounded px-1.5 py-0.5 shrink-0">
+        <span className="text-xs text-gray-300 bg-gray-700/60 rounded px-1.5 py-0.5 shrink-0">
           {RULE_ACTION_LABELS[d.action]}
         </span>
         <span className="text-sm text-gray-200 truncate min-w-0">{d.ruleTitle}</span>
@@ -47,12 +47,12 @@ const RuleDiagnosticRow: React.FC<{ row: DiagnosticRow }> = ({ row }) => {
         <>
           <button
             onClick={() => setOpen(o => !o)}
-            className="text-[11px] text-cyan-400/80 hover:text-cyan-300 mt-1"
+            className="text-xs text-cyan-400/80 hover:text-cyan-300 mt-1"
           >
             {open ? '조건 접기 ▴' : '조건별 보기 ▾'}
           </button>
           {open && (
-            <div className="mt-1.5 space-y-1 text-[11px] border-t border-gray-700/50 pt-1.5">
+            <div className="mt-1.5 space-y-1 text-xs border-t border-gray-700/50 pt-1.5">
               {d.leaves.map((lf, i) => <LeafRow key={i} leaf={lf} />)}
             </div>
           )}
@@ -104,13 +104,13 @@ const GuruDiagnosticsPanel: React.FC = () => {
       </div>
 
       {summary && (
-        <div className="text-[11px] text-gray-500 mb-2 flex flex-wrap gap-x-3 gap-y-0.5">
+        <div className="text-xs text-gray-500 mb-2 flex flex-wrap gap-x-3 gap-y-0.5">
           <span>활성 {summary.eligibility.eligible} · 비활성 {summary.eligibility.inactive}</span>
-          <span className="text-gray-600">|</span>
+          <span className="text-gray-500">|</span>
           <span>충족 {summary.evaluation.matched} · 미충족 {summary.evaluation.unmatched} · 판정불가 {summary.evaluation.unknown}</span>
           {(summary.readiness.partial > 0 || summary.readiness.missing > 0 || summary.readiness.unsupported > 0) && (
             <>
-              <span className="text-gray-600">|</span>
+              <span className="text-gray-500">|</span>
               <span className="text-amber-400/70">
                 데이터: 일부 {summary.readiness.partial} · 없음 {summary.readiness.missing} · 미지원 {summary.readiness.unsupported}
               </span>
@@ -129,7 +129,7 @@ const GuruDiagnosticsPanel: React.FC = () => {
         </ul>
       )}
 
-      <p className="text-[11px] text-gray-600 mt-2">
+      <p className="text-xs text-gray-500 mt-2">
         '미충족'은 현재 계산 기준 조건 불일치, '일부 데이터 누락'은 OHLC 등 일부 지표 미수신으로 완전히 따지지 못한 상태,
         '데이터 부족'은 해당 종목 지표 미수신, '미지원'은 앱이 아직 계산하지 못하는 지표입니다.
       </p>

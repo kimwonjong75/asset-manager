@@ -115,8 +115,8 @@ const RebalanceExecuteModal: React.FC<Props> = ({ executeRebalanceAction }) => {
   const isSell = resolution.mode === 'sell';
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center z-50 p-4" onClick={onClose} role="dialog" aria-modal="true">
-      <div className="bg-gray-800 p-4 sm:p-6 rounded-lg shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+    <div className="fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center z-modal p-4" onClick={onClose} role="dialog" aria-modal="true">
+      <div className="bg-gray-800 p-4 sm:p-6 rounded-lg shadow-xl w-full max-w-lg max-h-[90dvh] overflow-y-auto" onClick={e => e.stopPropagation()}>
         <div className="flex items-start justify-between gap-3 mb-4">
           <div className="min-w-0">
             <h2 className="text-lg sm:text-xl font-bold text-white truncate">{resolution.title}</h2>
@@ -143,7 +143,7 @@ const RebalanceExecuteModal: React.FC<Props> = ({ executeRebalanceAction }) => {
         </div>
 
         {resolution.blocked && (
-          <div className="mb-4 text-sm text-red-300 bg-red-500/10 border border-red-500/30 rounded-md px-3 py-2">{resolution.blockReason}</div>
+          <div className="mb-4 text-sm text-danger bg-danger-soft border border-danger/30 rounded-md px-3 py-2">{resolution.blockReason}</div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-3.5">
@@ -164,13 +164,13 @@ const RebalanceExecuteModal: React.FC<Props> = ({ executeRebalanceAction }) => {
                 className="w-full text-sm bg-gray-900 border border-gray-600 rounded-md px-2.5 py-2 text-gray-100 focus:outline-none focus:border-primary disabled:opacity-50" />
             </div>
           </div>
-          {overSell && <p className="text-[11px] text-red-300">매도 수량이 보유수량({resolution.maxQty})을 초과했습니다.</p>}
+          {overSell && <p className="text-xs text-danger">매도 수량이 보유수량({resolution.maxQty})을 초과했습니다.</p>}
 
-          {error && <div className="text-sm text-red-300 bg-red-500/10 border border-red-500/30 rounded-md px-3 py-2">{error}</div>}
+          {error && <div className="text-sm text-danger bg-danger-soft border border-danger/30 rounded-md px-3 py-2">{error}</div>}
 
           <div className="flex items-center justify-end gap-2 pt-1">
             <button type="button" onClick={onClose} disabled={isSubmitting} className="text-sm text-gray-300 hover:text-white px-4 py-2 rounded-md transition-colors disabled:opacity-50">취소</button>
-            <button type="submit" disabled={!canSubmit} className={`text-sm font-medium text-white px-4 py-2 rounded-md transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${isSell ? 'bg-red-600 hover:bg-red-500' : 'bg-blue-600 hover:bg-blue-700'}`}>
+            <button type="submit" disabled={!canSubmit} className={`text-sm font-medium text-white px-4 py-2 rounded-md transition-colors disabled:opacity-40 disabled:cursor-not-allowed bg-primary-dark hover:bg-primary`}>
               {isSubmitting ? '실행 중...' : isSell ? '매도 실행' : '매수 실행'}
             </button>
           </div>

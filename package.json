@@ -79,6 +79,7 @@
     "test:kb": "npx --yes tsx tests/knowledgeBaseIntegrity.ts",
     "test:overview": "npx --yes tsx tests/marketOverviewParity.ts",
     "test:soldpl": "npx --yes tsx tests/soldPLBreakdownParity.ts",
+    "test:directiontone": "npx --yes tsx tests/directionToneParity.ts",
     "test:metrics": "npx --yes tsx tests/portfolioMetricsParity.ts",
     "test:sellrecords": "npx --yes tsx tests/sellRecordsParity.ts",
     "test:history": "npx --yes tsx tests/historySnapshotParity.ts",

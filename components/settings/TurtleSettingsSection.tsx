@@ -22,7 +22,7 @@ const TurtleSettingsSection: React.FC = () => {
           {locked && <Badge tone="warning" size="md">{TURTLE_LOCK_BADGE}</Badge>}
         </div>
         <p className="text-gray-400 text-sm mt-1 leading-relaxed">
-          터틀 자동주문은 현재 관찰 전용 잠금 — 실행 큐 화면은 더보기에 없으며 대기 주문은 «오늘» 화면에서 처리합니다.
+          터틀 자동주문은 현재 관찰 전용 잠금 — 대기 주문은 홈 '오늘의 브리핑'에서 처리합니다.
           {locked && ` ${TURTLE_LOCK_MESSAGE}`}
         </p>
       </div>

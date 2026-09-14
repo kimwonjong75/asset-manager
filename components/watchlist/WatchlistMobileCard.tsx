@@ -1,3 +1,4 @@
+import { directionTextClass } from '../../utils/directionTone';
 import React, { useRef, useState } from 'react';
 import { Currency, CURRENCY_SYMBOLS, ExchangeRates, WatchlistItem } from '../../types';
 import { getCategoryName, type CategoryDefinition } from '../../types/category';
@@ -27,7 +28,7 @@ interface WatchlistMobileCardProps {
 
 const formatKRW = (num: number) => new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW', maximumFractionDigits: 0 }).format(num);
 const formatOriginalCurrency = (num: number, currency: Currency) => `${CURRENCY_SYMBOLS[currency]}${new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 }).format(num)}`;
-const getChangeColor = (value: number) => (value > 0 ? 'text-success' : value < 0 ? 'text-danger' : 'text-gray-400');
+const getChangeColor = directionTextClass;
 
 const WatchlistMobileCard: React.FC<WatchlistMobileCardProps> = ({
   item,
@@ -73,16 +74,16 @@ const WatchlistMobileCard: React.FC<WatchlistMobileCardProps> = ({
             {onTogglePin && (
               <button
                 onClick={(e) => { e.stopPropagation(); onTogglePin(item.id); }}
-                className={`text-lg leading-none transition-colors flex-shrink-0 ${item.pinned ? 'text-yellow-400' : 'text-gray-600 hover:text-yellow-400/60'}`}
+                className={`text-lg leading-none transition-colors flex-shrink-0 ${item.pinned ? 'text-yellow-400' : 'text-gray-500 hover:text-yellow-400/60'}`}
               >
                 {item.pinned ? '★' : '☆'}
               </button>
             )}
             {isPortfolioHeld && (
-              <span className="text-[10px] px-1 py-0.5 rounded bg-blue-500/20 text-blue-400 flex-shrink-0">보유</span>
+              <span className="text-xs px-1 py-0.5 rounded bg-sky-500/20 text-sky-300 flex-shrink-0">보유</span>
             )}
             {item.isTurtleCandidate && (
-              <span className="text-[10px] px-1 py-0.5 rounded bg-emerald-500/20 text-emerald-300 flex-shrink-0" role="img" aria-label="터틀 후보" title="터틀 후보">🐢</span>
+              <span className="text-xs px-1 py-0.5 rounded bg-emerald-500/20 text-emerald-300 flex-shrink-0" role="img" aria-label="터틀 후보" title="터틀 후보">🐢</span>
             )}
             <MemoTooltip memo={item.notes}>
               <span className="font-bold text-primary-light text-sm truncate max-w-[160px]">
@@ -96,7 +97,7 @@ const WatchlistMobileCard: React.FC<WatchlistMobileCardProps> = ({
               onClick={(e) => { e.stopPropagation(); onMemoEdit?.(item); }}
             >📝</span>
           </div>
-          <div className="text-[11px] text-gray-500 mt-0.5">
+          <div className="text-xs text-gray-500 mt-0.5">
             {item.ticker} | {item.exchange} | {getCategoryName(item.categoryId, categories)}
           </div>
 
@@ -113,7 +114,7 @@ const WatchlistMobileCard: React.FC<WatchlistMobileCardProps> = ({
           </div>
 
           {/* 보조 정보 행 */}
-          <div className="flex items-center gap-4 mt-1 text-[11px] text-gray-400">
+          <div className="flex items-center gap-4 mt-1 text-xs text-gray-400">
             <span className={getChangeColor(item.yesterdayChange)}>
               전일 {item.yesterdayChange >= 0 ? '+' : ''}{item.yesterdayChange.toFixed(2)}%
             </span>
@@ -150,7 +151,7 @@ const WatchlistMobileCard: React.FC<WatchlistMobileCardProps> = ({
               { label: '차트 확대', onClick: () => setFullscreen(true), colorClass: 'text-gray-200' },
               { label: '삭제', onClick: () => {
                 if (window.confirm(`'${item.name}' 종목을 삭제하시겠습니까?`)) onDelete(item.id);
-              }, colorClass: 'text-red-400' },
+              }, colorClass: 'text-danger' },
             ]}
           />
         )}

@@ -144,13 +144,13 @@ const SellAssetModal: React.FC = () => {
 
   return (
     <div 
-      className="fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center z-50 p-4"
+      className="fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center z-modal p-4"
       onClick={onClose}
       role="dialog"
       aria-modal="true"
     >
       <div
-        className="bg-gray-800 p-4 sm:p-6 rounded-lg shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto"
+        className="bg-gray-800 p-4 sm:p-6 rounded-lg shadow-xl w-full max-w-lg max-h-[90dvh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         <h2 className="text-xl sm:text-2xl font-bold text-white mb-4 sm:mb-6">
@@ -194,7 +194,7 @@ const SellAssetModal: React.FC = () => {
                 value={sellOutcome}
                 onChange={handleOutcomeChange}
               />
-              <p className="text-[11px] text-gray-500 mt-2">
+              <p className="text-xs text-gray-500 mt-2">
                 {SELL_OUTCOME_OPTIONS.find(o => o.value === sellOutcome)?.hint}
               </p>
             </div>
@@ -298,14 +298,14 @@ const SellAssetModal: React.FC = () => {
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 bg-gray-600 hover:bg-gray-500 text-white font-medium py-2.5 px-4 rounded-md transition duration-300"
+              className="flex-1 bg-gray-600 hover:bg-zinc-500 text-white font-medium py-2.5 px-4 rounded-md transition duration-300"
             >
               취소
             </button>
             <button
               type="submit"
               disabled={isLoading}
-              className="flex-1 bg-danger hover:bg-red-600 text-white font-bold py-2.5 px-4 rounded-md disabled:bg-gray-600 disabled:cursor-not-allowed transition duration-300 flex items-center justify-center"
+              className="flex-1 bg-primary-dark hover:bg-primary text-white font-bold py-2.5 px-4 rounded-md disabled:bg-gray-600 disabled:cursor-not-allowed transition duration-300 flex items-center justify-center"
             >
               {isLoading ? (
                 <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">

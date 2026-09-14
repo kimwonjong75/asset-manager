@@ -66,12 +66,12 @@ const TradePlanIntro: React.FC<TradePlanIntroProps> = ({ onDismiss, className = 
           <div key={i} className="bg-gray-800/80 rounded-md p-2.5 space-y-1">
             <div className="text-lg leading-none">{c.icon}</div>
             <div className="text-xs font-semibold text-primary-light">{c.title}</div>
-            <p className="text-[11px] text-gray-400 leading-relaxed">{c.body}</p>
+            <p className="text-xs text-gray-400 leading-relaxed">{c.body}</p>
           </div>
         ))}
       </div>
       <div className="flex items-center justify-between pt-0.5">
-        <label className="flex items-center gap-1.5 text-[11px] text-gray-400 cursor-pointer select-none">
+        <label className="flex items-center gap-1.5 text-xs text-gray-400 cursor-pointer select-none">
           <input
             type="checkbox"
             checked={dontShowAgain}

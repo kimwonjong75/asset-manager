@@ -161,13 +161,13 @@ const BuyMoreAssetModal: React.FC = () => {
 
   return (
     <div
-      className="fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center z-50 p-4"
+      className="fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center z-modal p-4"
       onClick={onClose}
       role="dialog"
       aria-modal="true"
     >
       <div
-        className="bg-gray-800 p-4 sm:p-6 rounded-lg shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto"
+        className="bg-gray-800 p-4 sm:p-6 rounded-lg shadow-xl w-full max-w-lg max-h-[90dvh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         <h2 className="text-xl sm:text-2xl font-bold text-white mb-4 sm:mb-6">
@@ -269,7 +269,7 @@ const BuyMoreAssetModal: React.FC = () => {
           <div className="bg-gray-700/40 p-3 rounded-md">
             <div className={`${labelClasses} flex items-center gap-1.5`}>
               <span>🛡️ 리스크 기반 권장 수량</span>
-              <span className="text-[11px] text-gray-500 font-normal">(위 매수가 기준)</span>
+              <span className="text-xs text-gray-500 font-normal">(위 매수가 기준)</span>
             </div>
             <PositionSizingCalculator
               totalEquityKRW={derived.totalValue}
@@ -296,16 +296,16 @@ const BuyMoreAssetModal: React.FC = () => {
                   이 추가매수는 불타기 {pyramidStep.level}차로 기록 (계획 {pyramidStep.plannedQuantity}주 · 트리거 {formatPlanPrice(pyramidStep.triggerPrice, asset.currency)})
                 </label>
                 {precheck && !precheck.ok && (
-                  <p className="text-[11px] text-amber-400">⚠ {precheck.label}</p>
+                  <p className="text-xs text-amber-400">⚠ {precheck.label}</p>
                 )}
                 {precheck && precheck.ok && (
-                  <p className="text-[11px] text-emerald-400">
+                  <p className="text-xs text-emerald-400">
                     기록 시 손절선이 {formatPlanPrice(precheck.nextPlan.stopPrice, asset.currency)}로 올라갑니다
                   </p>
                 )}
               </div>
             ) : (
-              <p className="text-[11px] text-gray-500 bg-gray-700/30 rounded-md px-3 py-2">
+              <p className="text-xs text-gray-500 bg-gray-700/30 rounded-md px-3 py-2">
                 {activePlan && !activePlan.pyramid.enabled
                   ? '이 계획은 불타기를 쓰지 않습니다 — 추가매수는 계획에 반영되지 않고 기록만 됩니다.'
                   : '불타기 단계를 모두 사용했습니다 — 추가매수는 계획에 반영되지 않고 기록만 됩니다.'}
@@ -324,7 +324,7 @@ const BuyMoreAssetModal: React.FC = () => {
               </label>
               {saveTradePlanOnBuy && (
                 <>
-                  <p className="text-[11px] text-gray-400">
+                  <p className="text-xs text-gray-400">
                     기본값: 손절 {DEFAULT_TRADE_PLAN_TEMPLATE.stopPct}% · 익절 {DEFAULT_TRADE_PLAN_TEMPLATE.profitMultiple}배
                     {DEFAULT_TRADE_PLAN_TEMPLATE.exitLine.kind === 'ma' && ` · ${DEFAULT_TRADE_PLAN_TEMPLATE.exitLine.period}일선`} · 불타기 안 함
                   </p>
@@ -372,7 +372,7 @@ const BuyMoreAssetModal: React.FC = () => {
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 bg-gray-600 hover:bg-gray-500 text-white font-medium py-2.5 px-4 rounded-md transition duration-300"
+              className="flex-1 bg-gray-600 hover:bg-zinc-500 text-white font-medium py-2.5 px-4 rounded-md transition duration-300"
             >
               취소
             </button>

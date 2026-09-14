@@ -39,4 +39,5 @@ export const formatProfitLoss = (num: number, currency: Currency) => {
   return `${sign}${formatOriginalCurrency(num, currency)}`;
 };
 
-export const getChangeColor = (value: number) => (value > 0 ? 'text-success' : value < 0 ? 'text-danger' : 'text-gray-400');
+// Stage B — 방향 색 단일 결정점(utils/directionTone)으로 위임. 빨강=오름 / 파랑=내림 / 회색=0·결측
+export { directionTextClass as getChangeColor } from '../../utils/directionTone';

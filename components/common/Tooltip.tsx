@@ -101,7 +101,7 @@ const Tooltip: React.FC<TooltipProps> = ({
       {coords &&
         createPortal(
           <div
-            className="fixed z-[9999] pointer-events-none"
+            className="fixed z-tooltip pointer-events-none"
             style={{ top: coords.top, left: coords.left, transform: coords.transform }}
           >
             <div

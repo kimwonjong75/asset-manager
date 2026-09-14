@@ -45,13 +45,13 @@ const isRebalanceKind = (kind: ActionKind): boolean => kind === 'REBALANCE_BUY' 
 const needsExecuteModal = (kind: ActionKind): boolean => isTurtleKind(kind) || isCleanupKind(kind) || isRebalanceKind(kind);
 
 const KIND_META: Record<ActionKind, { label: string; dot: string; badge: string }> = {
-  TURTLE_ENTRY:   { label: '신규 매수', dot: 'bg-emerald-400', badge: 'text-emerald-300 border-emerald-500/40 bg-emerald-500/10' },
-  TURTLE_PYRAMID: { label: '불타기 추가', dot: 'bg-sky-400', badge: 'text-sky-300 border-sky-500/40 bg-sky-500/10' },
-  TURTLE_STOP:    { label: '손절 매도', dot: 'bg-red-400', badge: 'text-red-300 border-red-500/40 bg-red-500/10' },
-  TURTLE_EXIT:    { label: '청산 매도', dot: 'bg-orange-400', badge: 'text-orange-300 border-orange-500/40 bg-orange-500/10' },
-  REBALANCE_SELL: { label: '리밸런싱 매도', dot: 'bg-amber-400', badge: 'text-amber-300 border-amber-500/40 bg-amber-500/10' },
-  REBALANCE_BUY:  { label: '리밸런싱 매수', dot: 'bg-teal-400', badge: 'text-teal-300 border-teal-500/40 bg-teal-500/10' },
-  CLEANUP_SELL:   { label: '대청소 정리', dot: 'bg-gray-400', badge: 'text-gray-300 border-gray-500/40 bg-gray-500/10' },
+  TURTLE_ENTRY:   { label: '신규 매수', dot: 'bg-up', badge: 'text-up border-up/40 bg-up-soft' },
+  TURTLE_PYRAMID: { label: '불타기 추가', dot: 'bg-up', badge: 'text-up border-up/40 bg-up-soft' },
+  TURTLE_STOP:    { label: '손절 매도', dot: 'bg-down', badge: 'text-down border-down/40 bg-down-soft' },
+  TURTLE_EXIT:    { label: '청산 매도', dot: 'bg-down', badge: 'text-down border-down/40 bg-down-soft' },
+  REBALANCE_SELL: { label: '리밸런싱 매도', dot: 'bg-down', badge: 'text-down border-down/40 bg-down-soft' },
+  REBALANCE_BUY:  { label: '리밸런싱 매수', dot: 'bg-up', badge: 'text-up border-up/40 bg-up-soft' },
+  CLEANUP_SELL:   { label: '대청소 정리', dot: 'bg-down', badge: 'text-down border-down/40 bg-down-soft' },
 };
 
 const fmt = (n: number): string =>
@@ -148,7 +148,7 @@ const ExecutionView: React.FC<ExecutionViewProps> = ({ embedded = false }) => {
         <div className="flex items-center justify-between gap-3 flex-wrap mb-3">
           <div className="flex items-center gap-3 text-xs text-gray-400">
             <span>대기 <span className="text-gray-100 font-semibold">{active.length}</span>건</span>
-            <span className="text-gray-600">·</span>
+            <span className="text-gray-500">·</span>
             <span>처리됨 {resolvedCount}건</span>
             {lastResult && <span className="text-gray-500">· {lastResult}</span>}
           </div>
@@ -168,7 +168,7 @@ const ExecutionView: React.FC<ExecutionViewProps> = ({ embedded = false }) => {
           </button>
         </div>
         {refreshError && (
-          <div className="mb-3 text-sm text-red-300 bg-red-500/10 border border-red-500/30 rounded-md px-3 py-2">{refreshError}</div>
+          <div className="mb-3 text-sm text-danger bg-danger-soft border border-danger/30 rounded-md px-3 py-2">{refreshError}</div>
         )}
         {/* "오늘 주문 생성"을 눌러도 결과가 0건이면 이유를 알아야 하므로(생성 버튼과 짝인 진단),
             WhyNoOrderPanel만은 embedded에서도 유지한다 — TurtleSettingsPanel과 달리 이전할 다른
@@ -214,8 +214,8 @@ const ExecutionView: React.FC<ExecutionViewProps> = ({ embedded = false }) => {
       {turtleLocked && (
         <div className="mb-4 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3">
           <p className="text-xs font-semibold text-amber-300">터틀 주문 잠금 중</p>
-          <p className="text-[11px] text-amber-200/80 mt-1 leading-relaxed">{TURTLE_LOCK_MESSAGE}</p>
-          <p className="text-[11px] text-amber-200/60 mt-1">
+          <p className="text-xs text-amber-200/80 mt-1 leading-relaxed">{TURTLE_LOCK_MESSAGE}</p>
+          <p className="text-xs text-amber-200/60 mt-1">
             기존 터틀 주문 기록은 그대로 보존됩니다. 손절·청산 확인은 대시보드의 «오늘의 터틀 확인» 카드에서 계속 볼 수 있습니다.
             리밸런싱·대청소 주문은 영향받지 않습니다.
           </p>
@@ -228,13 +228,13 @@ const ExecutionView: React.FC<ExecutionViewProps> = ({ embedded = false }) => {
       {/* 상태 요약 */}
       <div className="flex items-center gap-3 text-xs text-gray-400 mb-3">
         <span>대기 <span className="text-gray-100 font-semibold">{active.length}</span>건</span>
-        <span className="text-gray-600">·</span>
+        <span className="text-gray-500">·</span>
         <span>처리됨 {resolvedCount}건</span>
         {lastResult && <span className="text-gray-500">· {lastResult}</span>}
       </div>
 
       {refreshError && (
-        <div className="mb-3 text-sm text-red-300 bg-red-500/10 border border-red-500/30 rounded-md px-3 py-2">{refreshError}</div>
+        <div className="mb-3 text-sm text-danger bg-danger-soft border border-danger/30 rounded-md px-3 py-2">{refreshError}</div>
       )}
 
       {/* 0건일 때 "왜 주문이 없나요?" 진단 */}
@@ -271,23 +271,23 @@ const ActionCard: React.FC<ActionCardProps> = ({
   const meta = KIND_META[item.kind];
   const level = actionEscalationLevel(item, today);
   const days = actionDaysIgnored(item, today);
-  const ring = level === 2 ? 'border-red-500/60 ring-1 ring-red-500/40' : level === 1 ? 'border-amber-500/50' : 'border-gray-700';
+  const ring = level === 2 ? 'border-orange-500/70 ring-1 ring-orange-500/40' : level === 1 ? 'border-amber-500/50' : 'border-gray-700';
 
   return (
     <li className={`bg-gray-800 border ${ring} rounded-lg p-3.5`}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full border ${meta.badge}`}>
+            <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full border ${meta.badge}`}>
               <span className={`w-1.5 h-1.5 rounded-full ${meta.dot}`} />{meta.label}
             </span>
             <span className="text-white font-semibold truncate">{item.name}</span>
             <span className="text-xs text-gray-500">{item.ticker}</span>
             {item.status === 'snoozed' && (
-              <span className="text-[11px] text-gray-400 bg-gray-700/60 px-1.5 py-0.5 rounded">내일 다시</span>
+              <span className="text-xs text-gray-400 bg-gray-700/60 px-1.5 py-0.5 rounded">내일 다시</span>
             )}
             {executionLocked && (
-              <span className="text-[11px] text-amber-300 border border-amber-500/40 bg-amber-500/10 px-1.5 py-0.5 rounded">현재 실행 잠금</span>
+              <span className="text-xs text-amber-300 border border-amber-500/40 bg-amber-500/10 px-1.5 py-0.5 rounded">현재 실행 잠금</span>
             )}
           </div>
           <p className="text-sm text-gray-300 mt-1.5">{item.reasonText}</p>
@@ -318,7 +318,7 @@ const ActionCard: React.FC<ActionCardProps> = ({
             <button
               onClick={onConfirmSkip}
               disabled={!skipText.trim()}
-              className="text-xs font-medium text-white bg-gray-600 hover:bg-gray-500 px-3 py-1.5 rounded-md transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              className="text-xs font-medium text-white bg-gray-600 hover:bg-zinc-500 px-3 py-1.5 rounded-md transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             >건너뜀 저장</button>
           </div>
         </div>

@@ -117,7 +117,7 @@ const PortfolioTableRow: React.FC<PortfolioTableRowProps> = ({
                {onTogglePin && (
                  <button
                    onClick={(e) => { e.stopPropagation(); onTogglePin(asset.id); }}
-                   className={`text-lg leading-none transition-colors flex-shrink-0 ${asset.pinned ? 'text-yellow-400' : 'text-gray-600 hover:text-yellow-400/60'}`}
+                   className={`text-lg leading-none transition-colors flex-shrink-0 ${asset.pinned ? 'text-yellow-400' : 'text-gray-500 hover:text-yellow-400/60'}`}
                    title={asset.pinned ? '중요 해제' : '중요 표시'}
                  >
                    {asset.pinned ? '★' : '☆'}
@@ -142,10 +142,10 @@ const PortfolioTableRow: React.FC<PortfolioTableRowProps> = ({
             <div className="flex items-center gap-1.5">
               <span className="text-xs text-gray-500 break-all">{asset.ticker} | {asset.exchange}</span>
               {asset.bucket === 'SATELLITE' && (
-                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 whitespace-nowrap" title="투더문(위성) 종목">투더문</span>
+                <span className="text-xs font-bold px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 whitespace-nowrap" title="투더문(위성) 종목">투더문</span>
               )}
               {asset.owner === 'YUSEON' && (
-                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 whitespace-nowrap" title="유선(가족) 계정 자산 — 리밸런싱·터틀 대상에서 제외">유선</span>
+                <span className="text-xs font-bold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 whitespace-nowrap" title="유선(가족) 계정 자산 — 리밸런싱·터틀 대상에서 제외">유선</span>
               )}
             </div>
           </div>
@@ -175,10 +175,10 @@ const PortfolioTableRow: React.FC<PortfolioTableRowProps> = ({
               anchorRef={menuAnchorRef}
               onClose={() => setMenuOpen(false)}
               items={[
-                ...(onRefreshOne ? [{ label: '가격 업데이트', onClick: () => onRefreshOne(asset.id), colorClass: 'text-blue-400' }] : []),
+                ...(onRefreshOne ? [{ label: '가격 업데이트', onClick: () => onRefreshOne(asset.id), colorClass: 'text-sky-400' }] : []),
                 { label: '수정', onClick: () => onEdit(asset) },
-                ...(onBuy ? [{ label: '매수', onClick: () => onBuy(asset), colorClass: 'text-green-400' }] : []),
-                ...(onSell ? [{ label: '매도', onClick: () => onSell(asset), colorClass: 'text-red-400' }] : []),
+                ...(onBuy ? [{ label: '매수', onClick: () => onBuy(asset), colorClass: 'text-up' }] : []),
+                ...(onSell ? [{ label: '매도', onClick: () => onSell(asset), colorClass: 'text-down' }] : []),
                 { label: '차트 보기', onClick: () => handleToggleExpand(asset.id), colorClass: 'text-gray-200' },
                 { label: '차트 확대', onClick: () => setFullscreen(true), colorClass: 'text-gray-200' },
               ]}

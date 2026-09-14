@@ -1,3 +1,4 @@
+import { getDirection } from '../utils/directionTone';
 import React, { useMemo, useState } from 'react';
 import { Asset, ExchangeRates, SellRecord } from '../types';
 import { getAllowedCategories, type CategoryDefinition } from '../types/category';
@@ -284,11 +285,11 @@ const SellAnalyticsPage: React.FC<SellAnalyticsPageProps> = ({ assets, sellHisto
         <StatCard
           title="매도 수익"
           value={formatKRW(overview.totalProfit)}
-          isProfit={overview.totalProfit >= 0}
+          direction={getDirection(overview.totalProfit)}
           tooltip="매도금액 - 매수원가 (하단은 이익 건 합계 / 손실 건 합계, 둘을 더하면 매도 수익)"
           breakdown={buildSoldPLBreakdownRows(overview, formatKRW)}
         />
-        <StatCard title="매도 수익률" value={`${overview.totalReturn.toFixed(2)}%`} isProfit={overview.totalReturn >= 0} tooltip="수익/매수원가" />
+        <StatCard title="매도 수익률" value={`${overview.totalReturn.toFixed(2)}%`} direction={getDirection(overview.totalReturn)} tooltip="수익/매수원가" />
         <StatCard title="매도 횟수" value={String(overview.soldCount)} tooltip="거래 수" />
       </div>
 
@@ -324,7 +325,7 @@ const SellAnalyticsPage: React.FC<SellAnalyticsPageProps> = ({ assets, sellHisto
                 <Tooltip formatter={(v: number) => [`${(v as number).toFixed(2)}%`, '평균 수익률']} contentStyle={{ backgroundColor: '#2D3748', border: '1px solid #4A5568', borderRadius: '0.5rem' }} />
                 <Bar dataKey="avgReturn" name="평균 수익률">
                   {rankingData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.avgReturn >= 0 ? '#4ADE80' : '#F87171'} />
+                    <Cell key={`cell-${index}`} fill={entry.avgReturn >= 0 ? '#F87171' : '#60A5FA'} />
                   ))}
                 </Bar>
               </BarChart>
@@ -386,10 +387,10 @@ const SellAnalyticsPage: React.FC<SellAnalyticsPageProps> = ({ assets, sellHisto
                         <td className="py-3 px-3 text-right text-gray-300 hidden sm:table-cell">{r.sellQuantity.toLocaleString()}</td>
                         <td className="py-3 px-3 text-right text-gray-300 hidden sm:table-cell">{formatKRW(sellTotal)}</td>
                         <td className="py-3 px-3 text-right text-gray-300 hidden sm:table-cell">{r.hasCostBasis ? formatKRW(r.purchaseKRW) : '-'}</td>
-                        <td className={`py-3 px-2 sm:px-3 text-right font-semibold text-xs sm:text-sm ${isProfit ? 'text-green-400' : 'text-red-400'}`}>
+                        <td className={`py-3 px-2 sm:px-3 text-right font-semibold text-xs sm:text-sm ${isProfit ? 'text-up' : 'text-down'}`}>
                           {r.hasCostBasis ? formatKRW(r.realized) : '-'}
                         </td>
-                        <td className={`py-3 px-2 sm:px-3 text-right font-semibold text-xs sm:text-sm ${isProfit ? 'text-green-400' : 'text-red-400'}`}>
+                        <td className={`py-3 px-2 sm:px-3 text-right font-semibold text-xs sm:text-sm ${isProfit ? 'text-up' : 'text-down'}`}>
                           {r.hasCostBasis ? `${r.returnPct.toFixed(2)}%` : '-'}
                         </td>
                         <td className="py-3 px-2 sm:px-3 text-right">

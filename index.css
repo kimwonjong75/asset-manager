@@ -17,15 +17,32 @@
   }
 
   body {
-    @apply bg-gray-900 text-gray-200 min-h-screen;
+    /* Stage B: min-h-dvh 가 지원되지 않는 브라우저는 선언을 버리고 min-h-screen 으로 폴백 */
+    @apply bg-gray-900 text-gray-200 min-h-screen min-h-dvh;
     margin: 0;
     overscroll-behavior: contain;
     -webkit-tap-highlight-color: transparent;
   }
 
+  /* Stage B: 모바일 주소창 높이 변화 대응(dvh) — 미지원 브라우저는 100vh 폴백 */
   #root {
     height: 100vh;
+    height: 100dvh;
   }
+}
+
+@layer components {
+  /* Stage B 공용 포커스 표시 — 키보드 포커스(:focus-visible)에서만 링을 그린다(마우스 클릭엔 안 보임).
+     `focus:outline-none`만 쓰고 대체 표시가 없던 요소는 이 클래스로 교체한다(RULES.md §8). */
+  .focus-ring {
+    @apply focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-light focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900;
+  }
+}
+
+/* Stage B: 모달(aria-modal)이 하나라도 열려 있으면 하단 탭바·맨 위로 버튼을 숨긴다.
+   JS 상태 없이 DOM만 본다 — 새 모달은 반드시 role="dialog"(또는 alertdialog) + aria-modal="true"를 달 것. */
+body:has([aria-modal="true"]) .hide-when-modal {
+  display: none;
 }
 
 @keyframes slide-up {

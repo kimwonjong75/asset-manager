@@ -50,8 +50,11 @@ const MemoEditPopup: React.FC<MemoEditPopupProps> = ({ title, memo: initialMemoV
 
   return createPortal(
     <div
-      className="fixed inset-0 bg-black/50 flex justify-center items-center z-50"
+      className="fixed inset-0 bg-black/50 flex justify-center items-center z-modal"
       onClick={handleClose}
+      role="dialog"
+      aria-modal="true"
+      aria-label="메모 편집"
       onKeyDown={handleKeyDown}
     >
       {confirmRequest && <ConfirmDialog {...confirmRequest} />}
@@ -82,12 +85,12 @@ const MemoEditPopup: React.FC<MemoEditPopupProps> = ({ title, memo: initialMemoV
             placeholder="종목에 대한 메모를 입력하세요..."
             onKeyDown={handleKeyDown}
           />
-          <p className="text-[11px] text-gray-500 mt-1">Ctrl+Enter로 저장, Esc로 닫기</p>
+          <p className="text-xs text-gray-500 mt-1">Ctrl+Enter로 저장, Esc로 닫기</p>
         </div>
         <div className="px-4 pb-4 flex justify-end gap-2">
           <button
             onClick={handleClose}
-            className="bg-gray-600 hover:bg-gray-500 text-white text-sm font-medium py-1.5 px-3 rounded-md transition"
+            className="bg-gray-600 hover:bg-zinc-500 text-white text-sm font-medium py-1.5 px-3 rounded-md transition"
           >
             취소
           </button>

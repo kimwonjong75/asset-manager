@@ -39,11 +39,11 @@ const BottomTabBar: React.FC<BottomTabBarProps> = ({ activeTab, onTabChange, mor
 
   // 터치 타깃 44px 이상(계획서 §4.4) — min-h-11(44px) + 세로 패딩으로 여유 확보.
   const itemBase =
-    'flex flex-col items-center justify-center gap-0.5 flex-1 min-w-0 min-h-11 py-1.5 text-[11px] font-medium transition-colors';
+    'flex flex-col items-center justify-center gap-0.5 flex-1 min-w-0 min-h-11 py-1.5 text-xs font-medium transition-colors';
 
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-[65] bg-surface-elevated border-t border-border-subtle flex md:hidden"
+      className="hide-when-modal fixed bottom-0 left-0 right-0 z-nav bg-surface-elevated border-t border-border-subtle flex md:hidden"
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
       aria-label="주요 화면 이동"
     >
@@ -66,6 +66,7 @@ const BottomTabBar: React.FC<BottomTabBarProps> = ({ activeTab, onTabChange, mor
         ref={moreRef}
         type="button"
         onClick={() => setShowMore(v => !v)}
+        aria-haspopup="menu"
         aria-expanded={showMore}
         className={`${itemBase} ${moreActive ? 'text-primary' : 'text-gray-400'}`}
       >

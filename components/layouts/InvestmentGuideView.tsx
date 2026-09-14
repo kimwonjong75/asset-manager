@@ -113,7 +113,7 @@ const InvestmentGuideView: React.FC = () => {
       {/* ─── TOC 사이드바 ─── */}
       <nav className="hidden lg:block w-48 shrink-0 sticky top-8 self-start">
         <div className="bg-gray-800/80 border border-gray-700 rounded-xl p-3 space-y-1">
-          <p className="text-[11px] text-gray-500 font-semibold uppercase tracking-wider mb-2 px-2">목차</p>
+          <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider mb-2 px-2">목차</p>
           {SECTIONS.map(s => {
             const isActive = activeSection === s.id;
             const c = SECTION_COLORS[s.id];
@@ -297,27 +297,27 @@ const InvestmentGuideView: React.FC = () => {
               <tbody className="text-gray-300">
                 <tr className="border-b border-gray-700/50">
                   <td className="py-2 px-3 font-mono">+1.5 이상</td>
-                  <td className="py-2 px-3"><span className="px-2 py-0.5 rounded bg-green-600 text-white text-[11px] font-bold">강한 매수</span></td>
+                  <td className="py-2 px-3"><span className="px-2 py-0.5 rounded bg-green-600 text-white text-xs font-bold">강한 매수</span></td>
                   <td className="py-2 px-3">상승 추세 + 정배열 + 과매도 등 여러 지표 동시 매수 신호</td>
                 </tr>
                 <tr className="border-b border-gray-700/50">
                   <td className="py-2 px-3 font-mono">+0.5 이상</td>
-                  <td className="py-2 px-3"><span className="px-2 py-0.5 rounded bg-emerald-500 text-white text-[11px] font-bold">매수</span></td>
+                  <td className="py-2 px-3"><span className="px-2 py-0.5 rounded bg-emerald-500 text-white text-xs font-bold">매수</span></td>
                   <td className="py-2 px-3">기술적으로 상승 가능성이 높은 상태</td>
                 </tr>
                 <tr className="border-b border-gray-700/50">
                   <td className="py-2 px-3 font-mono">-0.5 ~ +0.5</td>
-                  <td className="py-2 px-3"><span className="px-2 py-0.5 rounded bg-gray-600 text-white text-[11px] font-bold">중립</span></td>
+                  <td className="py-2 px-3"><span className="px-2 py-0.5 rounded bg-gray-600 text-white text-xs font-bold">중립</span></td>
                   <td className="py-2 px-3">뚜렷한 방향성 없음 — 관망</td>
                 </tr>
                 <tr className="border-b border-gray-700/50">
                   <td className="py-2 px-3 font-mono">-0.5 이하</td>
-                  <td className="py-2 px-3"><span className="px-2 py-0.5 rounded bg-red-500 text-white text-[11px] font-bold">매도</span></td>
+                  <td className="py-2 px-3"><span className="px-2 py-0.5 rounded bg-red-500 text-white text-xs font-bold">매도</span></td>
                   <td className="py-2 px-3">기술적으로 하락 가능성이 높은 상태</td>
                 </tr>
                 <tr>
                   <td className="py-2 px-3 font-mono">-1.5 이하</td>
-                  <td className="py-2 px-3"><span className="px-2 py-0.5 rounded bg-red-700 text-white text-[11px] font-bold">강한 매도</span></td>
+                  <td className="py-2 px-3"><span className="px-2 py-0.5 rounded bg-red-700 text-white text-xs font-bold">강한 매도</span></td>
                   <td className="py-2 px-3">하락 추세 + 역배열 + 과매수 등 여러 지표 동시 매도 신호</td>
                 </tr>
               </tbody>
@@ -431,7 +431,7 @@ const InvestmentGuideView: React.FC = () => {
 
           {/* RSI 게이지 시각화 */}
           <div className="mb-5 bg-gray-900/80 rounded-lg p-4 border border-gray-600/30">
-            <div className="flex items-center gap-1 text-[10px] text-gray-500 mb-1">
+            <div className="flex items-center gap-1 text-xs text-gray-500 mb-1">
               <span>0</span>
               <span className="flex-1" />
               <span>30</span>
@@ -442,13 +442,13 @@ const InvestmentGuideView: React.FC = () => {
             </div>
             <div className="flex h-6 rounded-lg overflow-hidden">
               <div className="bg-blue-600/70 flex-[30] flex items-center justify-center">
-                <span className="text-[10px] text-white font-bold">과매도</span>
+                <span className="text-xs text-white font-bold">과매도</span>
               </div>
               <div className="bg-gray-600/70 flex-[40] flex items-center justify-center">
-                <span className="text-[10px] text-white font-bold">정상 구간</span>
+                <span className="text-xs text-white font-bold">정상 구간</span>
               </div>
               <div className="bg-yellow-600/70 flex-[30] flex items-center justify-center">
-                <span className="text-[10px] text-white font-bold">과매수</span>
+                <span className="text-xs text-white font-bold">과매수</span>
               </div>
             </div>
           </div>
@@ -544,10 +544,10 @@ const InvestmentGuideView: React.FC = () => {
                 매매신호 그룹
               </h4>
               <div className="space-y-2 text-xs text-gray-300">
-                <div><span className="px-1.5 py-0.5 rounded bg-green-600 text-white text-[10px] font-bold">강한 매수</span> — 서버 분석 점수 +1.5 이상</div>
-                <div><span className="px-1.5 py-0.5 rounded bg-emerald-500 text-white text-[10px] font-bold">매수</span> — 서버 분석 점수 +0.5 이상</div>
-                <div><span className="px-1.5 py-0.5 rounded bg-red-500 text-white text-[10px] font-bold">매도</span> — 서버 분석 점수 -0.5 이하</div>
-                <div><span className="px-1.5 py-0.5 rounded bg-red-700 text-white text-[10px] font-bold">강한 매도</span> — 서버 분석 점수 -1.5 이하</div>
+                <div><span className="px-1.5 py-0.5 rounded bg-green-600 text-white text-xs font-bold">강한 매수</span> — 서버 분석 점수 +1.5 이상</div>
+                <div><span className="px-1.5 py-0.5 rounded bg-emerald-500 text-white text-xs font-bold">매수</span> — 서버 분석 점수 +0.5 이상</div>
+                <div><span className="px-1.5 py-0.5 rounded bg-red-500 text-white text-xs font-bold">매도</span> — 서버 분석 점수 -0.5 이하</div>
+                <div><span className="px-1.5 py-0.5 rounded bg-red-700 text-white text-xs font-bold">강한 매도</span> — 서버 분석 점수 -1.5 이하</div>
               </div>
             </div>
 
@@ -586,25 +586,25 @@ const InvestmentGuideView: React.FC = () => {
             <div className="space-y-3">
               <div className="bg-green-900/15 border border-green-700/20 rounded-lg p-4">
                 <div className="flex flex-wrap gap-1.5 mb-2">
-                  <span className="px-2 py-0.5 rounded-full bg-blue-600 text-white text-[11px] font-medium">골든크로스</span>
+                  <span className="px-2 py-0.5 rounded-full bg-blue-600 text-white text-xs font-medium">골든크로스</span>
                   <span className="text-gray-500 text-xs">+</span>
-                  <span className="px-2 py-0.5 rounded-full bg-purple-600 text-white text-[11px] font-medium">RSI 반등↑</span>
+                  <span className="px-2 py-0.5 rounded-full bg-purple-600 text-white text-xs font-medium">RSI 반등↑</span>
                 </div>
                 <p className="text-xs text-gray-300">하락→상승 추세 전환 + 과매도 탈출 = <span className="text-green-400 font-semibold">가장 강력한 매수 신호</span></p>
               </div>
               <div className="bg-green-900/15 border border-green-700/20 rounded-lg p-4">
                 <div className="flex flex-wrap gap-1.5 mb-2">
-                  <span className="px-2 py-0.5 rounded-full bg-blue-600 text-white text-[11px] font-medium">정배열</span>
+                  <span className="px-2 py-0.5 rounded-full bg-blue-600 text-white text-xs font-medium">정배열</span>
                   <span className="text-gray-500 text-xs">+</span>
-                  <span className="px-2 py-0.5 rounded-full bg-purple-600 text-white text-[11px] font-medium">과매도</span>
+                  <span className="px-2 py-0.5 rounded-full bg-purple-600 text-white text-xs font-medium">과매도</span>
                 </div>
                 <p className="text-xs text-gray-300">상승 추세 유지 중 일시적 조정 = <span className="text-green-400 font-semibold">눌림목 매수 기회</span></p>
               </div>
               <div className="bg-amber-900/15 border border-amber-700/20 rounded-lg p-4">
                 <div className="flex flex-wrap gap-1.5 mb-2">
-                  <span className="px-2 py-0.5 rounded-full bg-emerald-600 text-white text-[11px] font-medium">강한 매수</span>
+                  <span className="px-2 py-0.5 rounded-full bg-emerald-600 text-white text-xs font-medium">강한 매수</span>
                   <span className="text-gray-500 text-xs">+</span>
-                  <span className="px-2 py-0.5 rounded-full bg-amber-600 text-white text-[11px] font-medium">손실중</span>
+                  <span className="px-2 py-0.5 rounded-full bg-amber-600 text-white text-xs font-medium">손실중</span>
                 </div>
                 <p className="text-xs text-gray-300">기술적으로 매수 신호여도 매입가보다 낮은 상태에서의 추가매수는 '물타기'예요. <span className="text-amber-400 font-semibold">손실 종목 물타기는 피하고, 먼저 손절·무효화 기준을 확인하세요.</span></p>
               </div>
@@ -620,25 +620,25 @@ const InvestmentGuideView: React.FC = () => {
             <div className="space-y-3">
               <div className="bg-red-900/15 border border-red-700/20 rounded-lg p-4">
                 <div className="flex flex-wrap gap-1.5 mb-2">
-                  <span className="px-2 py-0.5 rounded-full bg-blue-600 text-white text-[11px] font-medium">데드크로스</span>
+                  <span className="px-2 py-0.5 rounded-full bg-blue-600 text-white text-xs font-medium">데드크로스</span>
                   <span className="text-gray-500 text-xs">+</span>
-                  <span className="px-2 py-0.5 rounded-full bg-purple-600 text-white text-[11px] font-medium">RSI 과열진입↓</span>
+                  <span className="px-2 py-0.5 rounded-full bg-purple-600 text-white text-xs font-medium">RSI 과열진입↓</span>
                 </div>
                 <p className="text-xs text-gray-300">상승→하락 추세 전환 + 과매수 진입 = <span className="text-red-400 font-semibold">가장 강력한 매도 신호</span></p>
               </div>
               <div className="bg-red-900/15 border border-red-700/20 rounded-lg p-4">
                 <div className="flex flex-wrap gap-1.5 mb-2">
-                  <span className="px-2 py-0.5 rounded-full bg-purple-600 text-white text-[11px] font-medium">과매수</span>
+                  <span className="px-2 py-0.5 rounded-full bg-purple-600 text-white text-xs font-medium">과매수</span>
                   <span className="text-gray-500 text-xs">+</span>
-                  <span className="px-2 py-0.5 rounded-full bg-amber-600 text-white text-[11px] font-medium">수익중</span>
+                  <span className="px-2 py-0.5 rounded-full bg-amber-600 text-white text-xs font-medium">수익중</span>
                 </div>
                 <p className="text-xs text-gray-300">과열 상태 + 이미 수익 중 = <span className="text-red-400 font-semibold">수익 실현 타이밍</span></p>
               </div>
               <div className="bg-red-900/15 border border-red-700/20 rounded-lg p-4">
                 <div className="flex flex-wrap gap-1.5 mb-2">
-                  <span className="px-2 py-0.5 rounded-full bg-blue-600 text-white text-[11px] font-medium">역배열</span>
+                  <span className="px-2 py-0.5 rounded-full bg-blue-600 text-white text-xs font-medium">역배열</span>
                   <span className="text-gray-500 text-xs">+</span>
-                  <span className="px-2 py-0.5 rounded-full bg-amber-600 text-white text-[11px] font-medium">고점대비 하락</span>
+                  <span className="px-2 py-0.5 rounded-full bg-amber-600 text-white text-xs font-medium">고점대비 하락</span>
                 </div>
                 <p className="text-xs text-gray-300">하락 추세 + 고점 대비 큰 폭 하락 = <span className="text-red-400 font-semibold">손절 검토</span></p>
               </div>
@@ -653,9 +653,9 @@ const InvestmentGuideView: React.FC = () => {
             </h4>
             <div className="bg-gray-700/30 border border-gray-600/30 rounded-lg p-4">
               <div className="flex flex-wrap gap-1.5 mb-2">
-                <span className="px-2 py-0.5 rounded-full bg-blue-600 text-white text-[11px] font-medium">역배열</span>
+                <span className="px-2 py-0.5 rounded-full bg-blue-600 text-white text-xs font-medium">역배열</span>
                 <span className="text-gray-500 text-xs">+</span>
-                <span className="px-2 py-0.5 rounded-full bg-purple-600 text-white text-[11px] font-medium">과매도</span>
+                <span className="px-2 py-0.5 rounded-full bg-purple-600 text-white text-xs font-medium">과매도</span>
               </div>
               <p className="text-xs text-gray-300">하락 추세 + 계속 하락 중 = <span className="text-gray-300 font-semibold">"떨어지는 칼날을 잡지 마라"</span> — 추세 전환(골든크로스/RSI반등) 확인 후 매수</p>
             </div>

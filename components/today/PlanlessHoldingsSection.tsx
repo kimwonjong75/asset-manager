@@ -4,7 +4,9 @@
 // 렌더 전용(RULES.md §2) — 대상 산출은 utils/tradePlan.isEligibleForBulkPlan(훅에서 이미 계산됨).
 
 import React from 'react';
+import { Plus } from 'lucide-react';
 import { usePortfolio } from '../../contexts/PortfolioContext';
+import Button from '../common/Button';
 import type { Asset } from '../../types';
 
 export interface PlanlessHoldingsSectionProps {
@@ -23,28 +25,20 @@ const PlanlessHoldingsSection: React.FC<PlanlessHoldingsSectionProps> = ({ planl
       <section className="rounded-lg border border-gray-700 bg-gray-800/40 p-4 text-center">
         <p className="text-sm text-gray-300">계획이 없으면 알림도 없어요</p>
         <div className="mt-2.5 flex items-center justify-center gap-2 flex-wrap">
-          <button
-            type="button"
-            onClick={actions.openTradePlanBulk}
-            className="text-xs font-medium text-white bg-primary hover:bg-primary-dark px-3 py-1.5 rounded-md transition-colors"
-          >
+          <Button variant="primary" onClick={actions.openTradePlanBulk}>
             일괄 계획 만들기
-          </button>
-          <button
-            type="button"
-            onClick={() => actions.openTradePlanPlanner()}
-            className="text-xs text-gray-200 bg-gray-700 hover:bg-gray-600 px-3 py-1.5 rounded-md transition-colors"
-          >
-            + 새 매수 계획
-          </button>
+          </Button>
+          <Button variant="secondary" icon={<Plus />} onClick={() => actions.openTradePlanPlanner()}>
+            새 매수 계획
+          </Button>
         </div>
-        <p className="text-[11px] text-gray-500 mt-3">
+        <p className="text-xs text-gray-500 mt-3">
           계획을 만들면 손절선·익절선에 닿을 때 카카오톡으로도 알려드릴 수 있어요(1회 설정 필요).
         </p>
         <button
           type="button"
           onClick={() => actions.setActiveTab('settings')}
-          className="text-[11px] text-amber-300 hover:text-amber-200 underline underline-offset-2 mt-1"
+          className="text-xs text-amber-300 hover:text-amber-200 underline underline-offset-2 mt-1"
         >
           설정에서 카카오톡 알림 켜기 →
         </button>
@@ -63,13 +57,9 @@ const PlanlessHoldingsSection: React.FC<PlanlessHoldingsSectionProps> = ({ planl
         <h2 className="text-sm font-semibold text-gray-200">
           ■ 계획 없는 투더문 보유 <span className="text-gray-400 font-normal">{planless.length}</span>
         </h2>
-        <button
-          type="button"
-          onClick={actions.openTradePlanBulk}
-          className="text-[11px] text-white bg-primary/80 hover:bg-primary px-2.5 py-1 rounded"
-        >
+        <Button variant="primary" onClick={actions.openTradePlanBulk}>
           일괄 계획 만들기
-        </button>
+        </Button>
       </div>
       <p className="text-xs text-gray-400 mt-1">
         {names.join(', ')}{remaining > 0 && ` 외 ${remaining}`}

@@ -3,6 +3,7 @@
 // 계산은 utils/todayViewModel.groupRowsByTier가 이미 끝냈다 — 여기는 렌더만.
 
 import React from 'react';
+import { OctagonAlert } from 'lucide-react';
 import type { TradePlanSignalRow } from '../../hooks/useTradePlanSignals';
 import TierRowList from './TierRowList';
 import SectionHeader from '../common/SectionHeader';
@@ -16,7 +17,13 @@ const UrgentSection: React.FC<UrgentSectionProps> = ({ rows }) => {
   return (
     <section>
       <div className="mb-2">
-        <SectionHeader title="■ 긴급" count={rows.length} tone="negative" />
+        {/* Stage B 색 규약: 긴급 = 주황 + 아이콘 + 문구 (빨강은 '오름' 전용) */}
+        <SectionHeader
+          title="긴급"
+          count={rows.length}
+          tone="warning"
+          icon={<OctagonAlert className="h-4 w-4 text-orange-400" aria-hidden="true" />}
+        />
       </div>
       <TierRowList rows={rows} />
     </section>

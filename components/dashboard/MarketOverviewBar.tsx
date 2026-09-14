@@ -139,7 +139,7 @@ const MarketOverviewBar: React.FC = () => {
   }, [snapshot, exchangeRates.USD]);
 
   const isInitialLoading = status === 'loading' && !snapshot;
-  const premiumColor = premium === null ? 'text-gray-500' : premium >= 0 ? 'text-red-400' : 'text-blue-400';
+  const premiumColor = premium === null ? 'text-gray-500' : premium >= 0 ? 'text-up' : 'text-down';
 
   // 기준일/확인 배지
   const badge = useMemo(() => {
@@ -151,7 +151,7 @@ const MarketOverviewBar: React.FC = () => {
     if (status === 'stale-fallback' || status === 'error') {
       return { text: `${src ? `${src} 종가 · ` : ''}갱신 실패`, tone: 'text-yellow-400' };
     }
-    return { text: `${src ? `${src} 종가 · ` : ''}${time} 확인`, tone: 'text-gray-600' };
+    return { text: `${src ? `${src} 종가 · ` : ''}${time} 확인`, tone: 'text-gray-500' };
   }, [snapshot, status, isInitialLoading]);
 
   const showValue = (fmt: string) => (isInitialLoading ? '…' : fmt);
@@ -169,7 +169,7 @@ const MarketOverviewBar: React.FC = () => {
 
         {error && !snapshot ? (
           <div className="flex items-center px-4 py-3 flex-1">
-            <p className="text-sm text-red-400">{error}</p>
+            <p className="text-sm text-danger">{error}</p>
           </div>
         ) : (
           <>

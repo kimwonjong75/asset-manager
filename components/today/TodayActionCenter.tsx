@@ -15,6 +15,7 @@ import { OWNER_FILTER_LABELS } from '../../types/owner';
 import KakaoStatusChip from '../trade-plan/KakaoStatusChip';
 import TradePlanIntro, { hasSeenTradePlanIntro } from '../trade-plan/TradePlanIntro';
 import ScopeChip from '../common/ScopeChip';
+import Button from '../common/Button';
 import {
   buildTodayHeadline,
   groupRowsByTier,
@@ -110,14 +111,9 @@ const TodayActionCenter: React.FC = () => {
           <p className="text-base sm:text-lg font-semibold text-white leading-snug min-w-0 flex-1 basis-60">{headline.text}</p>
           <div className="flex items-center gap-2 flex-wrap">
             <KakaoStatusChip />
-            <button
-              type="button"
-              onClick={() => actions.openTradePlanPlanner()}
-              className="inline-flex items-center gap-1 min-h-9 text-xs sm:text-sm font-medium text-gray-100 border border-border-subtle bg-surface-muted hover:bg-gray-700 px-3 rounded-md transition-colors"
-            >
-              <Plus className="h-4 w-4" aria-hidden="true" />
+            <Button variant="secondary" icon={<Plus />} onClick={() => actions.openTradePlanPlanner()}>
               새 매수 계획
-            </button>
+            </Button>
           </div>
         </div>
       </header>

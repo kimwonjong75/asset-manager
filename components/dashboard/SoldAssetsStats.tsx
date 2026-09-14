@@ -5,6 +5,7 @@
 // 매도 기록(SellRecord)에는 계정 정보가 없어 항상 전체 계정 기준 → warning 범위 칩.
 // 상세(총 매도금액·매수금액 등)는 수익 통계 탭으로 링크.
 
+import { directionTextClass } from '../../utils/directionTone';
 import React from 'react';
 import { ChevronRight } from 'lucide-react';
 import ScopeChip from '../common/ScopeChip';
@@ -45,7 +46,7 @@ const formatCurrencyKRW = (value: number) =>
 
 const SoldAssetsStats: React.FC<SoldAssetsStatsProps> = ({ stats, globalPeriod, plBasis, onOpenDetails }) => {
     const hasSales = stats.soldCount > 0;
-    const profitColor = stats.totalSoldProfit >= 0 ? 'text-success' : 'text-danger';
+    const profitColor = directionTextClass(stats.totalSoldProfit);
     const breakdown = hasSales ? buildSoldPLBreakdownRows(stats, formatCurrencyKRW) : [];
 
     return (
@@ -61,7 +62,7 @@ const SoldAssetsStats: React.FC<SoldAssetsStatsProps> = ({ stats, globalPeriod, 
                     <p className="text-xs text-gray-500">매도 수익</p>
                     <p className={`text-2xl font-bold tabular-nums ${profitColor}`}>{formatCurrencyKRW(stats.totalSoldProfit)}</p>
                     <p className="mt-0.5 text-sm text-gray-400">
-                        수익률 <span className={`tabular-nums ${stats.soldReturn >= 0 ? 'text-success' : 'text-danger'}`}>{stats.soldReturn.toFixed(2)}%</span>
+                        수익률 <span className={`tabular-nums ${directionTextClass(stats.soldReturn)}`}>{stats.soldReturn.toFixed(2)}%</span>
                         {' · '}매도 {stats.soldCount}건
                     </p>
                     {/* 이익/손실 2줄 분해 — StatCard breakdown과 같은 규약(0원 건 제외, 합=매도 수익) */}
@@ -70,7 +71,7 @@ const SoldAssetsStats: React.FC<SoldAssetsStatsProps> = ({ stats, globalPeriod, 
                             {breakdown.map(row => (
                                 <div key={row.label} className="flex justify-between gap-2">
                                     <span className="text-gray-500 min-w-0 truncate" title={row.label}>{row.label}</span>
-                                    <span className={`shrink-0 tabular-nums ${row.tone === 'profit' ? 'text-success' : 'text-danger'}`}>{row.value}</span>
+                                    <span className={`shrink-0 tabular-nums ${row.tone === 'profit' ? 'text-up' : 'text-down'}`}>{row.value}</span>
                                 </div>
                             ))}
                         </div>

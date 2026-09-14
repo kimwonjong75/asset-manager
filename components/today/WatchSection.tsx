@@ -13,6 +13,7 @@ import { ChevronDown } from 'lucide-react';
 import { usePortfolio } from '../../contexts/PortfolioContext';
 import TodayTurtleCard from '../dashboard/TodayTurtleCard';
 import ScopeChip from '../common/ScopeChip';
+import Button from '../common/Button';
 import type { TodayTurtleModel } from '../../types/todayTurtle';
 import type { ObserveCounts } from '../../utils/todayViewModel';
 import { countPlanPriorityObserved } from '../../utils/todayViewModel';
@@ -59,13 +60,9 @@ const WatchSection: React.FC<WatchSectionProps> = ({ model, counts, breakoutLabe
         )}
         {/* P6: 접혀 있어도 "알림 발화 N건 → 브리핑 보기"는 계속 보인다(신호 은폐 금지 규약) */}
         {counts.alertCount > 0 && (
-          <button
-            type="button"
-            onClick={actions.showBriefingPopup}
-            className="text-xs text-amber-300 hover:text-amber-200 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 px-2.5 min-h-9 rounded-md transition-colors"
-          >
+          <Button variant="warning" onClick={actions.showBriefingPopup}>
             알림 발화 {counts.alertCount}건 → 브리핑 보기
-          </button>
+          </Button>
         )}
       </div>
       {open && <TodayTurtleCard model={model} />}

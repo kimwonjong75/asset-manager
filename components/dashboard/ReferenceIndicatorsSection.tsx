@@ -50,7 +50,7 @@ const ReferenceIndicatorsSection: React.FC = () => {
             <h3 className="text-base font-bold text-white">📊 참고 지표</h3>
             {open && (
               <p className="text-xs text-gray-500 mt-0.5">
-                리스크 매트릭스는 참고용입니다. 실행할 주문은 <span className="text-gray-400">실행 큐</span>를 기준으로 하세요.
+                리스크 매트릭스는 참고용입니다. 실행할 주문은 홈 <span className="text-gray-400">오늘의 브리핑</span>을 기준으로 하세요.
               </p>
             )}
           </div>

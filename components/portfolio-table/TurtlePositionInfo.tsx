@@ -25,13 +25,13 @@ const Field: React.FC<{ label: string; children: React.ReactNode; tone?: string 
 const TurtlePositionInfo: React.FC<Props> = ({ view }) => {
   const ccy = view.currency;
   return (
-    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-gray-400">
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-400">
       <span className="inline-flex items-center gap-1 font-semibold text-purple-300" title="터틀(위성) 포지션 — 읽기 전용">
         <span role="img" aria-label="터틀">🐢</span>포지션
       </span>
       <Field label="유닛">{view.unitsCount}/{view.maxUnits}</Field>
       <Field label="진입">{formatOriginalCurrency(view.entryPrice, ccy)}</Field>
-      <Field label="손절" tone="text-red-300">{formatOriginalCurrency(view.stopPrice, ccy)}</Field>
+      <Field label="손절" tone="text-amber-300">{formatOriginalCurrency(view.stopPrice, ccy)}</Field>
       <Field label="N">{formatOriginalCurrency(view.nAtLastFill, ccy)}</Field>
       <Field label="불타기" tone="text-sky-300">
         {view.pyramidTriggerPrice != null ? formatOriginalCurrency(view.pyramidTriggerPrice, ccy) : '상한 도달'}

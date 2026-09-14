@@ -91,6 +91,29 @@ export default tseslint.config(
             'hooks/ 에 데이터 훅을 만들어 그 훅을 사용하세요.',
         }],
       }],
+
+      // RULES.md §8 레이아웃 — 가독성 회귀 차단 (Stage B, 2026-09-15)
+      //  · text-[Npx]: 절대 px 폰트는 useFontScale(루트 rem 15/17px)에 반응하지 않는다
+      //  · text-gray-600: #3A3A3A 글자는 다크 배경에서 ~1.5:1 → 사실상 안 보인다
+      // className 문자열·템플릿 리터럴·cn() 인자 모두 Literal/TemplateElement 로 잡힌다.
+      'no-restricted-syntax': ['error',
+        {
+          selector: 'Literal[value=/\\btext-\\[\\d+px\\]/]',
+          message: '절대 px 폰트(text-[Npx]) 금지 — text-xs/sm/base 등 rem 크기를 쓰세요 (RULES.md §8 레이아웃 및 반응형 제약사항).',
+        },
+        {
+          selector: 'TemplateElement[value.raw=/\\btext-\\[\\d+px\\]/]',
+          message: '절대 px 폰트(text-[Npx]) 금지 — text-xs/sm/base 등 rem 크기를 쓰세요 (RULES.md §8 레이아웃 및 반응형 제약사항).',
+        },
+        {
+          selector: 'Literal[value=/\\btext-gray-600\\b/]',
+          message: 'text-gray-600 글자 금지(대비 ~1.5:1) — 흐린 글자는 text-gray-500 을 쓰세요. gray-600 은 테두리·배경 전용 (RULES.md §8).',
+        },
+        {
+          selector: 'TemplateElement[value.raw=/\\btext-gray-600\\b/]',
+          message: 'text-gray-600 글자 금지(대비 ~1.5:1) — 흐린 글자는 text-gray-500 을 쓰세요. gray-600 은 테두리·배경 전용 (RULES.md §8).',
+        },
+      ],
     },
   },
   {

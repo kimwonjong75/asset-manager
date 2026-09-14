@@ -24,8 +24,8 @@ const formatKRW = (num: number) =>
   new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW', maximumFractionDigits: 0 }).format(num);
 const formatNumber = (num: number) => new Intl.NumberFormat('ko-KR').format(num);
 const getDiffColor = (val: number) => {
-  if (val > 0) return 'text-red-400 font-bold'; // 매수
-  if (val < 0) return 'text-blue-400 font-bold'; // 매도
+  if (val > 0) return 'text-up font-bold'; // 매수
+  if (val < 0) return 'text-down font-bold'; // 매도
   return 'text-gray-400';
 };
 
@@ -95,7 +95,7 @@ const TierTable: React.FC<TierTableProps> = ({
             <td className="px-4 py-3 text-white">합계</td>
             <td className="px-4 py-3 text-right">{formatKRW(totalCurrentValue)}</td>
             <td className="px-4 py-3 text-right">100.00%</td>
-            <td className={`px-4 py-3 text-right ${Math.abs(totalTargetWeight - 100) > 0.1 ? 'text-yellow-400' : 'text-green-400'}`}>
+            <td className={`px-4 py-3 text-right ${Math.abs(totalTargetWeight - 100) > 0.1 ? 'text-yellow-400' : 'text-ok'}`}>
               {totalTargetWeight.toFixed(2)}%
             </td>
             <td className="px-4 py-3 text-right">{formatKRW(totalTargetValue)}</td>
@@ -172,7 +172,7 @@ const InstrumentRow: React.FC<InstrumentRowProps> = ({ categoryKey, categoryLabe
             <span className="text-sm text-gray-500">미지정</span>
           )}
           <button onClick={open} className="text-xs text-blue-300 hover:text-blue-200 px-2 py-1">{instrument ? '변경' : '지정'}</button>
-          {instrument && <button onClick={() => onChange(categoryKey, null)} className="text-xs text-gray-400 hover:text-red-300 px-1.5 py-1">삭제</button>}
+          {instrument && <button onClick={() => onChange(categoryKey, null)} className="text-xs text-gray-400 hover:text-danger px-1.5 py-1">삭제</button>}
         </div>
       )}
     </li>
@@ -209,13 +209,13 @@ export const GenResult: React.FC<{ result: GenResultData }> = ({ result }) => {
     <div className="mt-3 rounded-md border border-gray-700 bg-gray-800/60 p-3 text-xs">
       <p className="text-gray-200 font-medium">
         {result.generated > 0
-          ? `리밸런싱 주문 ${result.generated}건 생성 — 실행 큐에서 확인하세요.`
+          ? `리밸런싱 주문 ${result.generated}건 생성 — 홈 '오늘의 브리핑'의 대기 주문에서 확인하세요.`
           : '생성된 리밸런싱 주문이 없습니다.'}
       </p>
       {zeroReason && <p className="text-gray-400 mt-1">{zeroReason}</p>}
       {result.generated > 0 && (
-        <p className="text-[11px] text-gray-500 mt-1">
-          실행 큐의 「실행하기」로 실제 체결일·체결가·수량을 입력하면 매수/매도가 기록됩니다.
+        <p className="text-xs text-gray-500 mt-1">
+          대기 주문의 「실행하기」로 실제 체결일·체결가·수량을 입력하면 매수/매도가 기록됩니다.
         </p>
       )}
       {skips.length > 0 && (
@@ -311,7 +311,7 @@ const RebalancingTable: React.FC<RebalancingTableProps> = ({ assets, exchangeRat
             >
               저장하기
             </button>
-            {isSaved && <span className="text-green-400 text-sm animate-pulse">저장됨!</span>}
+            {isSaved && <span className="text-ok text-sm animate-pulse">저장됨!</span>}
           </div>
         </div>
       </div>
@@ -356,7 +356,7 @@ const RebalancingTable: React.FC<RebalancingTableProps> = ({ assets, exchangeRat
       {bandDeviations.length > 0 && (
         <section className="rounded-md border border-amber-500/40 bg-amber-500/5 p-4">
           <h3 className="text-sm font-bold text-amber-200 mb-1">밴드 이탈 안내 — 코어 카테고리 (±{rebalanceBandPct}%p)</h3>
-          <p className="text-[11px] text-gray-400 mb-3">
+          <p className="text-xs text-gray-400 mb-3">
             아래 코어 카테고리가 목표 비중에서 ±{rebalanceBandPct}%p 이상 벗어났습니다. <span className="text-gray-300">참고 안내</span>이며, 실제 주문·수량·종목은 다음 단계에서 다룹니다.
           </p>
           <ul className="space-y-1.5">
@@ -367,7 +367,7 @@ const RebalancingTable: React.FC<RebalancingTableProps> = ({ assets, exchangeRat
                   현재 {d.currentWeight.toFixed(1)}% → 목표 {d.targetWeight.toFixed(1)}%
                   <span className="text-gray-500"> (편차 {d.deviationPct > 0 ? '+' : ''}{d.deviationPct.toFixed(1)}%p)</span>
                 </span>
-                <span className={d.direction === 'BUY' ? 'text-red-300' : 'text-blue-300'}>
+                <span className={d.direction === 'BUY' ? 'text-up' : 'text-down'}>
                   {d.direction === 'BUY' ? '목표 대비 부족' : '목표 대비 초과'} {formatKRW(Math.abs(d.difference))}
                 </span>
               </li>
@@ -413,7 +413,7 @@ const RebalancingTable: React.FC<RebalancingTableProps> = ({ assets, exchangeRat
           </div>
 
           {/* 생성 대상 범위 안내 (4b-3c — 항상 표시) */}
-          <p className="mt-2 text-[11px] text-gray-500">
+          <p className="mt-2 text-xs text-gray-500">
             리밸런싱 주문은 <span className="text-gray-400">② 코어 카테고리의 ±5%p 밴드 이탈만</span> 대상입니다.
             <span className="text-gray-400"> ① 전략 배분(코어/투더문) 이탈은 현재 주문 생성 대상이 아닙니다.</span>
             {' '}코어 카테고리가 모두 밴드 안이면 주문이 없는 것이 정상입니다.

@@ -20,6 +20,7 @@ import { mergeSaveSnapshot, type PortfolioSaveSnapshot, type PortfolioSavePatch 
 import { shouldRefreshPrices, LAST_PRICE_REFRESH_AT_KEY } from '../utils/priceFreshness';
 import { classifyHoldingMarkets } from '../utils/holdingMarkets';
 import { localDateString } from '../utils/localDate';
+import { SUCCESS_MESSAGE_TTL_MS, PROGRESS_MESSAGE_MAX_MS } from '../constants/ui';
 
 const log = createLogger('PortfolioData');
 
@@ -44,8 +45,30 @@ interface AppliedResult {
 
 export const usePortfolioData = () => {
   const [error, setError] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  
+  const [successMessage, setSuccessMessageState] = useState<string | null>(null);
+  // Stage B: 성공 메시지 소거 타이머 단일 관리 — 새 메시지가 오면 이전 타이머를 취소(먼저 걸린 타이머가
+  // 나중 메시지를 일찍 지우던 경합 제거). 완료 메시지는 SUCCESS_MESSAGE_TTL_MS 후 소거, '중...' 진행 메시지는
+  // 긴 안전망 타이머(PROGRESS_MESSAGE_MAX_MS)만 걸고 유지(실패 경로가 소거를 빠뜨려도 영구 잔류 방지),
+  // null은 즉시 소거. 표시 전용 — 저장/큐 로직과 무관.
+  const successTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const setSuccessMessage = useCallback((msg: string | null) => {
+    if (successTimerRef.current) {
+      clearTimeout(successTimerRef.current);
+      successTimerRef.current = null;
+    }
+    setSuccessMessageState(msg);
+    if (msg) {
+      const ttl = msg.includes('중...') ? PROGRESS_MESSAGE_MAX_MS : SUCCESS_MESSAGE_TTL_MS;
+      successTimerRef.current = setTimeout(() => {
+        successTimerRef.current = null;
+        setSuccessMessageState(null);
+      }, ttl);
+    }
+  }, []);
+  useEffect(() => () => {
+    if (successTimerRef.current) clearTimeout(successTimerRef.current);
+  }, []);
+
   // 데이터 상태
   const [assets, setAssets] = useState<Asset[]>([]);
   const [portfolioHistory, setPortfolioHistory] = useState<PortfolioSnapshot[]>([]);
@@ -279,7 +302,6 @@ export const usePortfolioData = () => {
         }
 
         setSuccessMessage('Google Drive에서 포트폴리오를 불러왔습니다.');
-        setTimeout(() => setSuccessMessage(null), 3000);
       } else {
         setAssets([]);
         setPortfolioHistory([]);
@@ -287,15 +309,15 @@ export const usePortfolioData = () => {
         setWatchlist([]);
         setAllocationTargets({ weights: {} });
         setSuccessMessage('Google Drive에 저장된 포트폴리오가 없습니다. 자산을 추가해주세요.');
-        setTimeout(() => setSuccessMessage(null), 3000);
       }
     } catch (error: unknown) {
       log.error('Failed to load from Google Drive:', error);
       const message = error instanceof Error ? error.message : '';
       setError(`Google Drive에서 데이터를 불러오지 못했습니다.${message ? ` (${message})` : ''}`);
+      setSuccessMessage(null); // '불러오는 중...' 진행 메시지 소거
       setTimeout(() => setError(null), 3000);
     }
-  }, [hookLoadFromGoogleDrive, applyLoadedData]);
+  }, [hookLoadFromGoogleDrive, applyLoadedData, setSuccessMessage]);
 
   // 백업 복원 — 전 도메인을 공용 파이프라인으로 반영하고, 복원된 전 도메인을 명시적으로 1회 저장.
   // (기존 updateAllData 경로는 6개 도메인만 반영 → categoryStore/knowledgeBase/actionQueue/

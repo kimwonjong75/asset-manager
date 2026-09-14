@@ -15,7 +15,7 @@ const TodaySection: React.FC<TodaySectionProps> = ({ rows }) => {
   return (
     <section>
       <div className="mb-2">
-        <SectionHeader title="■ 오늘 실행" count={rows.length} tone="positive" />
+        <SectionHeader title="■ 오늘 실행" count={rows.length} tone="ok" />
       </div>
       <TierRowList rows={rows} />
     </section>

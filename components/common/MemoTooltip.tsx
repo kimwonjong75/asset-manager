@@ -58,7 +58,7 @@ const MemoTooltip: React.FC<MemoTooltipProps> = ({ memo, children }) => {
       {visible && createPortal(
         <div
           ref={tooltipRef}
-          className="fixed z-[9999] pointer-events-none"
+          className="fixed z-tooltip pointer-events-none"
           style={{ left, top }}
         >
           <div

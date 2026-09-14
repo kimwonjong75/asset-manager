@@ -1,3 +1,4 @@
+import { directionTextClass } from '../utils/directionTone';
 import React, { useMemo, useState, useEffect, Fragment, useRef } from 'react';
 import { Filter, MoreHorizontal, RefreshCw } from 'lucide-react';
 import MemoTooltip from './common/MemoTooltip';
@@ -123,7 +124,7 @@ const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, portfolioAsset
 
   const formatKRW = (num: number) => new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW', maximumFractionDigits: 0 }).format(num);
   const formatOriginalCurrency = (num: number, currency: Currency) => `${CURRENCY_SYMBOLS[currency]}${new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 }).format(num)}`;
-  const getChangeColor = (value: number) => (value > 0 ? 'text-success' : value < 0 ? 'text-danger' : 'text-gray-400');
+  const getChangeColor = directionTextClass;
   const allSelected = filtered.length > 0 && filtered.every(w => selectedIds.has(w.id));
 
   const handleToggleExpand = (itemId: string) => {
@@ -189,7 +190,7 @@ const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, portfolioAsset
             if (ids.length === 0) return;
             if (onBulkDelete) onBulkDelete(ids); else ids.forEach(id => onDelete(id));
             setSelectedIds(new Set());
-          }} disabled={selectedIds.size === 0} className="border border-gray-600 text-red-400 hover:bg-gray-700 font-medium py-2 px-2 sm:px-4 rounded-md transition duration-300 disabled:text-gray-500 disabled:border-gray-700 disabled:cursor-not-allowed text-xs sm:text-sm whitespace-nowrap">
+          }} disabled={selectedIds.size === 0} className="border border-gray-600 text-danger hover:bg-gray-700 font-medium py-2 px-2 sm:px-4 rounded-md transition duration-300 disabled:text-gray-500 disabled:border-gray-700 disabled:cursor-not-allowed text-xs sm:text-sm whitespace-nowrap">
             <span className="sm:hidden">삭제</span>
             <span className="hidden sm:inline">선택 삭제</span>
           </button>
@@ -314,7 +315,7 @@ const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, portfolioAsset
                           <button
                             onClick={(e) => { e.stopPropagation(); onTogglePin(w.id); }}
                             className={`text-lg leading-none transition-colors flex-shrink-0 mt-0.5 ${
-                              w.pinned ? 'text-yellow-400' : 'text-gray-600 hover:text-yellow-400/60'
+                              w.pinned ? 'text-yellow-400' : 'text-gray-500 hover:text-yellow-400/60'
                             }`}
                             title={w.pinned ? '중요 해제' : '중요 표시'}
                           >
@@ -326,10 +327,10 @@ const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, portfolioAsset
                             <MemoTooltip memo={w.notes}>
                               <span className="flex items-center gap-1">
                                 {portfolioTickers.has(w.ticker.toUpperCase()) && (
-                                  <span className="text-[10px] px-1 py-0.5 rounded bg-blue-500/20 text-blue-400 flex-shrink-0" title="보유중">보유</span>
+                                  <span className="text-xs px-1 py-0.5 rounded bg-sky-500/20 text-sky-300 flex-shrink-0" title="보유중">보유</span>
                                 )}
                                 {w.isTurtleCandidate && (
-                                  <span className="text-[10px] px-1 py-0.5 rounded bg-emerald-500/20 text-emerald-300 flex-shrink-0" role="img" aria-label="터틀 후보" title="터틀 후보">🐢</span>
+                                  <span className="text-xs px-1 py-0.5 rounded bg-emerald-500/20 text-emerald-300 flex-shrink-0" role="img" aria-label="터틀 후보" title="터틀 후보">🐢</span>
                                 )}
                                 <a
                                   href={`https://www.google.com/search?q=${encodeURIComponent(w.ticker + ' 주가')}`}
@@ -388,7 +389,7 @@ const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, portfolioAsset
                           <button onClick={() => {
                             setOpenMenuId(null);
                             if (window.confirm(`'${w.name}' 종목을 삭제하시겠습니까?`)) onDelete(w.id);
-                          }} className="block w-full text-left px-3 py-2 text-red-400 hover:bg-gray-700">삭제</button>
+                          }} className="block w-full text-left px-3 py-2 text-danger hover:bg-gray-700">삭제</button>
                         </div>
                       )}
                     </td>

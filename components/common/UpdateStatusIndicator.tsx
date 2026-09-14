@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { CircleAlert } from 'lucide-react';
 import { STORAGE_WARNING_EVENT } from '../../utils/safeStorage';
 
 interface UpdateStatusIndicatorProps {
@@ -33,10 +34,8 @@ const UpdateStatusIndicator: React.FC<UpdateStatusIndicatorProps> = ({ isLoading
   // 용량 초과 경보 우선 표시(에러 스타일) — 진행/성공 표시보다 사용자 조치가 필요.
   if (storageWarning) {
     return (
-      <div className="flex items-center gap-1.5 text-xs text-red-400" role="alert">
-        <svg className="h-3.5 w-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
-        </svg>
+      <div className="flex items-center gap-1.5 text-sm text-danger" role="alert">
+        <CircleAlert className="h-4 w-4 flex-shrink-0" aria-hidden="true" />
         <span>{STORAGE_WARNING_MESSAGE}</span>
       </div>
     );
@@ -44,8 +43,8 @@ const UpdateStatusIndicator: React.FC<UpdateStatusIndicatorProps> = ({ isLoading
 
   if (isLoading) {
     return (
-      <div className="flex items-center gap-1.5 text-xs text-blue-400">
-        <svg className="animate-spin h-3.5 w-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+      <div className="flex items-center gap-1.5 text-sm text-info">
+        <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
         </svg>
@@ -56,8 +55,8 @@ const UpdateStatusIndicator: React.FC<UpdateStatusIndicatorProps> = ({ isLoading
 
   if (successMessage && !successMessage.includes('중...')) {
     return (
-      <div className="flex items-center gap-1.5 text-xs text-emerald-400">
-        <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+      <div className="flex items-center gap-1.5 text-sm text-ok">
+        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
         </svg>
         <span>{successMessage}</span>

@@ -10,6 +10,7 @@ import React, { useState } from 'react';
 import { Currency } from '../../types';
 import Tooltip from '../common/Tooltip';
 import Badge, { type BadgeTone } from '../common/Badge';
+import Button from '../common/Button';
 import {
   consecutiveTomorrowCount,
   formatPlanPrice,
@@ -51,7 +52,8 @@ const LINE_HELP: Record<PlanLineKey, string> = {
 };
 
 const STATE_BADGE: Record<PlanLineState, { label: string; tone: BadgeTone }> = {
-  hit: { label: '도달', tone: 'negative' },
+  // Stage B 색 규약: 선 도달 = 확인이 필요한 상태 → 주황(warning)+'도달' 문구. 빨강은 '오름' 전용.
+  hit: { label: '도달', tone: 'warning' },
   near: { label: '근접', tone: 'warning' },
   waiting: { label: '대기', tone: 'neutral' },
   done: { label: '완료', tone: 'info' },
@@ -138,7 +140,7 @@ const TradePlanCard: React.FC<TradePlanCardProps> = ({
           <span className="font-semibold text-white text-sm">{assetName}</span>
           <span className="text-xs text-gray-300">{evaluation.sentence}</span>
         </div>
-        <p className="text-[11px] text-gray-500 mt-0.5">
+        <p className="text-xs text-gray-500 mt-0.5">
           현재 {currentPrice != null ? formatPlanPrice(currentPrice, currency) : '시세 없음'}
           {primaryLine && primaryLine.price !== null && (
             <> vs {primaryLine.label} {formatPlanPrice(primaryLine.price, currency)}</>
@@ -147,11 +149,11 @@ const TradePlanCard: React.FC<TradePlanCardProps> = ({
         </p>
       </div>
       <div className="flex items-center gap-2 flex-shrink-0">
-        <button type="button" onClick={onEdit} className="text-[11px] text-primary-light hover:underline">수정</button>
+        <button type="button" onClick={onEdit} className="text-xs text-primary-light hover:underline">수정</button>
         <button
           type="button"
           onClick={() => setDetailOpen(v => !v)}
-          className="text-[11px] text-gray-400 hover:text-gray-200"
+          className="text-xs text-gray-400 hover:text-gray-200"
           aria-expanded={detailOpen}
         >
           {detailOpen ? '접기' : '자세히'}
@@ -167,7 +169,7 @@ const TradePlanCard: React.FC<TradePlanCardProps> = ({
       </div>
       <div className="flex gap-2 flex-shrink-0">
         <button type="button" onClick={onEdit} className="text-xs text-primary-light hover:underline">수정</button>
-        <button type="button" onClick={onClear} className="text-xs text-gray-400 hover:text-red-300 hover:underline">해제</button>
+        <button type="button" onClick={onClear} className="text-xs text-gray-400 hover:text-danger hover:underline">해제</button>
       </div>
     </div>
   );
@@ -192,13 +194,14 @@ const TradePlanCard: React.FC<TradePlanCardProps> = ({
                 line.key === 'pyramid' && !plan.pyramid.enabled ? <span className="text-gray-500">안 함</span> : null
               )}
               {line.distancePct !== null && (
-                <span className={line.distancePct >= 0 ? 'text-emerald-400' : 'text-red-400'}>
+                // 여유% = 선까지 남은 거리(위험 지표) — 방향 색이 아니라 주황(warning)으로 고정
+                <span className="text-amber-300">
                   여유 {line.distancePct >= 0 ? '+' : ''}{line.distancePct.toFixed(1)}%
                 </span>
               )}
               <Badge tone={badge.tone}>{badge.label}</Badge>
             </div>
-            <p className="text-[11px] text-gray-500 mt-0.5">
+            <p className="text-xs text-gray-500 mt-0.5">
               → {LINE_ACTION_COPY[line.key]}
               {line.note && ` · ${line.note}`}
               {line.key === 'pyramid' && plan.pyramid.enabled && py && ` (${py.level}차 · 계획 ${py.plannedQuantity}${py.plannedQuantity > 0 ? '주' : ''})`}
@@ -207,38 +210,30 @@ const TradePlanCard: React.FC<TradePlanCardProps> = ({
             {line.key === 'stop' && (
               <div className="mt-1 space-y-1">
                 {lossEstimate.worstLossKRW !== null && lossEstimate.worstLossPct !== null ? (
-                  <p className="text-[11px] text-gray-500">
+                  <p className="text-xs text-gray-500">
                     예상 손실 {fmtKRW(lossEstimate.worstLossKRW)} (총자산 {Math.abs(lossEstimate.worstLossPct).toFixed(2)}%)
                     {lossEstimate.adverseLossKRW !== null && ` · 갭 하락 시 ${fmtKRW(lossEstimate.adverseLossKRW)}`}
                   </p>
                 ) : (
-                  <p className="text-[11px] text-gray-600">환율 없음 — 손실 금액을 계산할 수 없습니다</p>
+                  <p className="text-xs text-gray-500">환율 없음 — 손실 금액을 계산할 수 없습니다</p>
                 )}
                 {!plan.brokerStopOrderRegistered ? (
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-[11px] text-amber-400">⚠ 증권사 손절 예약주문 미등록</span>
-                    <button
-                      type="button"
-                      onClick={() => onToggleBrokerStop(true)}
-                      className="text-[11px] bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 px-2 py-0.5 rounded"
-                    >
+                    <span className="text-xs text-amber-400">⚠ 증권사 손절 예약주문 미등록</span>
+                    <Button variant="warning" onClick={() => onToggleBrokerStop(true)}>
                       등록했어요
-                    </button>
+                    </Button>
                   </div>
                 ) : (
-                  <span className="text-[11px] text-emerald-400">✓ 증권사 손절 예약주문 등록됨</span>
+                  <span className="text-xs text-ok">✓ 증권사 손절 예약주문 등록됨</span>
                 )}
               </div>
             )}
 
             {line.key === 'exitLine' && evaluation.action === 'arm-exit' && (
-              <button
-                type="button"
-                onClick={onArmExit}
-                className="mt-1 text-[11px] bg-primary/80 hover:bg-primary text-white px-2 py-0.5 rounded"
-              >
+              <Button variant="secondary" onClick={onArmExit} className="mt-1">
                 적용 시작
-              </button>
+              </Button>
             )}
           </div>
         );
@@ -248,50 +243,35 @@ const TradePlanCard: React.FC<TradePlanCardProps> = ({
 
   const actionBlock = (showSellButton || showBuyButton || showDecisionButtons) && (
     <div className="border-t border-gray-800 pt-2 space-y-1.5">
-      {helpText && <p className="text-[11px] text-amber-400">{helpText}</p>}
+      {helpText && <p className="text-xs text-amber-400">{helpText}</p>}
       {showDecisionButtons && currentSignalStreak >= 3 && (
-        <p className="text-[11px] text-amber-400">
+        <p className="text-xs text-amber-400">
           ⚠ {currentSignalStreak}번째 미루고 있습니다 — 계획을 바꿀지, 지킬지 지금 정하세요
         </p>
       )}
-      <div className="flex items-center gap-1.5 flex-wrap">
+      {/* 카드당 primary 1개 — 매도 기록/추가매수 기록은 action 이 서로 배타(sell-* vs buy-add)라 동시에 뜨지 않는다 */}
+      <div className="flex items-center gap-2 flex-wrap">
         {showSellButton && (
-          <button
-            type="button"
-            onClick={onSellRecord}
-            className="text-[11px] bg-primary/80 hover:bg-primary text-white px-2 py-0.5 rounded"
-          >
+          <Button variant="primary" onClick={onSellRecord}>
             매도 기록
-          </button>
+          </Button>
         )}
         {showBuyButton && (
-          <button
-            type="button"
-            onClick={onBuyMoreRecord}
-            className="text-[11px] bg-primary/80 hover:bg-primary text-white px-2 py-0.5 rounded"
-          >
+          <Button variant="primary" onClick={onBuyMoreRecord}>
             추가매수 기록
-          </button>
+          </Button>
         )}
         {showDecisionButtons && !skipping && (
           <>
             {onSkip && (
-              <button
-                type="button"
-                onClick={() => setSkipping(true)}
-                className="text-[11px] bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 px-2 py-0.5 rounded"
-              >
+              <Button variant="secondary" onClick={() => setSkipping(true)}>
                 건너뜀
-              </button>
+              </Button>
             )}
             {onTomorrow && (
-              <button
-                type="button"
-                onClick={onTomorrow}
-                className="text-[11px] bg-gray-700 hover:bg-gray-600 text-gray-300 px-2 py-0.5 rounded"
-              >
+              <Button variant="ghost" onClick={onTomorrow}>
                 내일
-              </button>
+              </Button>
             )}
           </>
         )}
@@ -301,14 +281,9 @@ const TradePlanCard: React.FC<TradePlanCardProps> = ({
         <div className="space-y-1.5">
           <div className="flex flex-wrap gap-1.5">
             {DECISION_REASON_PRESETS.map(preset => (
-              <button
-                key={preset}
-                type="button"
-                onClick={() => setSkipReason(preset)}
-                className="text-[11px] bg-gray-700 hover:bg-gray-600 text-gray-300 px-2 py-0.5 rounded"
-              >
+              <Button key={preset} variant="ghost" onClick={() => setSkipReason(preset)}>
                 {preset}
-              </button>
+              </Button>
             ))}
           </div>
           <input
@@ -316,24 +291,19 @@ const TradePlanCard: React.FC<TradePlanCardProps> = ({
             value={skipReason}
             onChange={(e) => setSkipReason(e.target.value)}
             placeholder="사유를 입력하세요"
-            className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1 text-[11px] text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-primary"
+            className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1 text-xs text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-primary"
           />
-          <div className="flex gap-1.5">
-            <button
-              type="button"
-              onClick={() => { setSkipping(false); setSkipReason(''); }}
-              className="text-[11px] bg-gray-700 hover:bg-gray-600 text-gray-300 px-2 py-0.5 rounded"
-            >
+          <div className="flex gap-2">
+            <Button variant="ghost" onClick={() => { setSkipping(false); setSkipReason(''); }}>
               취소
-            </button>
-            <button
-              type="button"
+            </Button>
+            <Button
+              variant="primary"
               disabled={skipReason.trim() === ''}
               onClick={() => { onSkip(skipReason.trim()); setSkipping(false); setSkipReason(''); }}
-              className="text-[11px] bg-primary/80 hover:bg-primary text-white px-2 py-0.5 rounded disabled:bg-gray-700 disabled:text-gray-500 disabled:cursor-not-allowed"
             >
               확인
-            </button>
+            </Button>
           </div>
         </div>
       )}
@@ -341,7 +311,7 @@ const TradePlanCard: React.FC<TradePlanCardProps> = ({
   );
 
   const lastDecisionBlock = lastDecision && (
-    <p className="text-[11px] text-gray-500 border-t border-gray-800 pt-2">
+    <p className="text-xs text-gray-500 border-t border-gray-800 pt-2">
       최근 결정: {lastDecision.date.slice(5)} {DECISION_CHOICE_LABEL[lastDecision.choice] ?? lastDecision.choice}
       {tomorrowStreak >= 3 && (
         <span className="ml-1.5 text-amber-400">⚠ {tomorrowStreak}번째 미루고 있습니다 — 계획을 바꿀지, 지킬지 지금 정하세요</span>
@@ -350,14 +320,14 @@ const TradePlanCard: React.FC<TradePlanCardProps> = ({
   );
 
   const timestampBlock = (
-    <p className={`text-[11px] ${evaluation.stale ? 'text-amber-400' : 'text-gray-600'} border-t border-gray-800 pt-2`}>
+    <p className={`text-xs ${evaluation.stale ? 'text-amber-400' : 'text-gray-500'} border-t border-gray-800 pt-2`}>
       데이터 {priceAsOf.slice(5)} {isIntraday ? '장중' : '확정'}
       {evaluation.stale && ' — 시세가 오래됐습니다. 새로고침 후 확인하세요.'}
     </p>
   );
 
   const disclaimerBlock = (
-    <p className="text-[11px] text-gray-600 leading-relaxed">
+    <p className="text-xs text-gray-500 leading-relaxed">
       ⓘ 근거: 백테스트에서 이 규칙은 큰 하락을 절반 이하로 줄였지만 수익률은 그냥 들고 있는 것보다 낮았습니다. 투자자문이 아닙니다.
     </p>
   );

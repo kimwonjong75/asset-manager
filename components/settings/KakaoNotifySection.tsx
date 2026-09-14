@@ -41,7 +41,7 @@ const KakaoNotifySection: React.FC = () => {
       <div className="px-6 py-4 space-y-4">
         {/* 고지 */}
         <div className="bg-amber-500/10 border border-amber-700/40 rounded-lg p-3">
-          <p className="text-[12px] text-amber-300 leading-relaxed">
+          <p className="text-xs text-amber-300 leading-relaxed">
             ⚠ 카톡은 알려줄 뿐 대신 팔아주지 않습니다 — 손절은 증권사 예약주문이 먼저입니다.
           </p>
         </div>

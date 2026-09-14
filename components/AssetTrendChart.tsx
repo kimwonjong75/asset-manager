@@ -670,12 +670,12 @@ const AssetTrendChart: React.FC<AssetTrendChartProps> = ({
       {/* MA 토글 칩 + 범례 */}
       {hasMAToggle && (
         <div className="flex items-center gap-1.5 px-3 pb-1 flex-wrap">
-          <span className="text-[10px] text-gray-500 mr-0.5">MA</span>
+          <span className="text-xs text-gray-500 mr-0.5">MA</span>
           {maConfigs.map(config => (
             <button
               key={config.id}
               onClick={() => handleToggleMA(config.id)}
-              className={`text-[10px] px-1.5 py-0.5 rounded-full border transition-colors ${
+              className={`text-xs px-1.5 py-0.5 rounded-full border transition-colors ${
                 config.enabled
                   ? 'text-white border-transparent'
                   : 'text-gray-400 border-gray-600 bg-transparent hover:border-gray-500'
@@ -688,7 +688,7 @@ const AssetTrendChart: React.FC<AssetTrendChartProps> = ({
           {/* 라인/캔들 토글 */}
           <button
             onClick={handleToggleChartType}
-            className={`text-[10px] px-1.5 py-0.5 rounded-full border transition-colors ml-1 ${
+            className={`text-xs px-1.5 py-0.5 rounded-full border transition-colors ml-1 ${
               chartType === 'candle'
                 ? 'text-white bg-gray-600 border-gray-500'
                 : 'text-gray-400 border-gray-600 bg-transparent hover:border-gray-500'
@@ -701,7 +701,7 @@ const AssetTrendChart: React.FC<AssetTrendChartProps> = ({
           {hasVolumeData && (
             <button
               onClick={handleToggleVolume}
-              className={`text-[10px] px-1.5 py-0.5 rounded-full border transition-colors ${
+              className={`text-xs px-1.5 py-0.5 rounded-full border transition-colors ${
                 showVolume
                   ? 'text-white bg-gray-600 border-gray-500'
                   : 'text-gray-400 border-gray-600 bg-transparent hover:border-gray-500'
@@ -711,22 +711,22 @@ const AssetTrendChart: React.FC<AssetTrendChartProps> = ({
             </button>
           )}
           {chartType === 'candle' && !canShowCandle && !maLoading && (
-            <span className="text-[10px] text-amber-400 ml-1">캔들 데이터 없음(라인 표시)</span>
+            <span className="text-xs text-amber-400 ml-1">캔들 데이터 없음(라인 표시)</span>
           )}
-          {maLoading && <span className="text-[10px] text-gray-500 ml-1">불러오는 중...</span>}
-          {maError && !maLoading && <span className="text-[10px] text-red-400 ml-1">{maError}</span>}
+          {maLoading && <span className="text-xs text-gray-500 ml-1">불러오는 중...</span>}
+          {maError && !maLoading && <span className="text-xs text-red-400 ml-1">{maError}</span>}
           {/* 범례 */}
           <div className="flex items-center gap-2 ml-auto">
-            <span className="flex items-center gap-1 text-[10px] text-gray-300">
+            <span className="flex items-center gap-1 text-xs text-gray-300">
               <span className="inline-block w-3 h-0.5 rounded" style={{ backgroundColor: '#818CF8' }} />현재가
             </span>
             {enabledConfigs.map(config => (
-              <span key={config.id} className="flex items-center gap-1 text-[10px] text-gray-300">
+              <span key={config.id} className="flex items-center gap-1 text-xs text-gray-300">
                 <span className="inline-block w-3 h-0.5 rounded" style={{ backgroundColor: config.color }} />MA{config.period}
               </span>
             ))}
             {displayPurchasePrice != null && (
-              <span className="flex items-center gap-1 text-[10px] text-gray-300">
+              <span className="flex items-center gap-1 text-xs text-gray-300">
                 <span className="inline-block w-3 h-0.5 rounded border-t border-dashed" style={{ borderColor: '#FFD700' }} />매수평균
               </span>
             )}

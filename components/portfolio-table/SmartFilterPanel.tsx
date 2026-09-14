@@ -129,7 +129,7 @@ const SmartFilterPanel: React.FC<SmartFilterPanelProps> = ({
                 value={chip.key === 'PRICE_ABOVE_SHORT_MA' ? filter.maShortPeriod : filter.maLongPeriod}
                 onChange={chip.key === 'PRICE_ABOVE_SHORT_MA' ? handleShortPeriodChange : handleLongPeriodChange}
                 onClick={(e) => e.stopPropagation()}
-                className={`bg-transparent text-xs font-bold focus:outline-none cursor-pointer
+                className={`bg-transparent text-xs font-bold focus-ring rounded cursor-pointer
                   ${isAnyActive ? 'text-white' : 'text-gray-300'}`}
               >
                 {(chip.key === 'PRICE_ABOVE_SHORT_MA' ? MA_SHORT_OPTIONS : MA_LONG_OPTIONS).map(p => (
@@ -194,7 +194,7 @@ const SmartFilterPanel: React.FC<SmartFilterPanelProps> = ({
           <div key={group} className="bg-gray-900 border border-gray-600/50 rounded-lg shadow-md px-2.5 py-2">
             {/* 그룹 헤더 */}
             <div className="flex items-center gap-1.5 mb-1.5">
-              <span className="text-[11px] text-gray-400 font-medium">
+              <span className="text-xs text-gray-400 font-medium">
                 {SMART_FILTER_GROUP_LABELS[group]}
               </span>
             </div>
@@ -206,7 +206,7 @@ const SmartFilterPanel: React.FC<SmartFilterPanelProps> = ({
             {group === 'signal' && (
               <div className="mt-1.5 pt-1.5 border-t border-gray-600/30">
                 <div className="flex items-center gap-1.5 mb-1.5">
-                  <span className="text-[11px] text-gray-400 font-medium">
+                  <span className="text-xs text-gray-400 font-medium">
                     {SMART_FILTER_GROUP_LABELS['volume']}
                   </span>
                 </div>
@@ -233,14 +233,14 @@ const SmartFilterPanel: React.FC<SmartFilterPanelProps> = ({
                     </svg>
                     알림만
                   </button>
-                  <div className="flex items-center gap-1 text-[10px] text-gray-400">
+                  <div className="flex items-center gap-1 text-xs text-gray-400">
                     <span>최고가</span>
                     <input
                       type="number"
                       value={sellAlertDropRate}
                       onChange={handleSellAlertRateChange}
                       min="0"
-                      className="w-10 bg-gray-800 border border-gray-600 rounded px-1 py-0.5 text-white text-[10px] text-center font-bold focus:outline-none focus:ring-1 focus:ring-primary"
+                      className="w-10 bg-gray-800 border border-gray-600 rounded px-1 py-0.5 text-white text-xs text-center font-bold focus:outline-none focus:ring-1 focus:ring-primary"
                     />
                     <span>% 이하</span>
                   </div>
@@ -276,7 +276,7 @@ const SmartFilterPanel: React.FC<SmartFilterPanelProps> = ({
         <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
-        <span className="text-[10px]">가이드</span>
+        <span className="text-xs">가이드</span>
       </button>
     </div>
   );
@@ -295,12 +295,12 @@ const SmartFilterPanel: React.FC<SmartFilterPanelProps> = ({
             </svg>
             <span className="text-xs text-gray-400 font-medium">필터</span>
             {activeFilterCount > 0 && (
-              <span className="bg-primary text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[20px] text-center">
+              <span className="bg-primary text-white text-xs font-bold px-1.5 py-0.5 rounded-full min-w-[20px] text-center">
                 {activeFilterCount}
               </span>
             )}
             {hasActiveFilters && (
-              <span className="text-[11px] text-gray-500">
+              <span className="text-xs text-gray-500">
                 {matchCount}/{totalCount}
               </span>
             )}
@@ -309,7 +309,7 @@ const SmartFilterPanel: React.FC<SmartFilterPanelProps> = ({
             {hasActiveFilters && (
               <button
                 onClick={(e) => { e.stopPropagation(); onClearAll(); }}
-                className="text-[11px] text-gray-500 hover:text-white transition px-1"
+                className="text-xs text-gray-500 hover:text-white transition px-1"
               >
                 초기화
               </button>

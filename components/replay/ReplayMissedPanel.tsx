@@ -29,9 +29,9 @@ const ReplayMissedPanel: React.FC<ReplayMissedPanelProps> = ({ missed, currentTi
   return (
     <div className="bg-gray-800 rounded-lg p-3">
       <h3 className="text-sm font-bold text-white mb-1">
-        🕳️ 놓친 매수/매도 모아보기 <span className="text-[11px] text-gray-500 font-normal">— 앱이 침묵한 자리</span>
+        🕳️ 놓친 매수/매도 모아보기 <span className="text-xs text-gray-500 font-normal">— 앱이 침묵한 자리</span>
       </h3>
-      <p className="text-[11px] text-gray-600 mb-2">
+      <p className="text-xs text-gray-500 mb-2">
         “명백한 기회인데 신호가 없던 날” 기록입니다. 쌓일수록 앱이 놓치는 패턴이 드러납니다(개선 1순위 단서).
       </p>
       {missed.length === 0 ? (
@@ -42,22 +42,25 @@ const ReplayMissedPanel: React.FC<ReplayMissedPanelProps> = ({ missed, currentTi
             const canJump = currentTicker === ticker || resolvable(ticker);
             return (
               <div key={ticker}>
-                <div className="text-[11px] text-gray-400 font-mono mb-0.5">
-                  {ticker} <span className="text-gray-600">· {vs.length}건</span>
+                <div className="text-xs text-gray-400 font-mono mb-0.5">
+                  {ticker} <span className="text-gray-500">· {vs.length}건</span>
                   {!canJump && <span className="text-gray-700 ml-1">(목록에 없어 점프 불가)</span>}
                 </div>
                 <ul className="space-y-1">
                   {vs.map(v => (
-                    <li
-                      key={`${v.date}-${v.ruleId ?? ''}`}
-                      onClick={() => canJump && onJump(v)}
-                      className={`flex items-center gap-2 text-[11px] rounded px-2 py-1 ${
-                        canJump ? 'cursor-pointer hover:bg-gray-700/40 bg-gray-900/40' : 'bg-gray-900/20 cursor-default'
-                      }`}
-                    >
-                      <span className="font-mono text-gray-300 whitespace-nowrap">{v.date}</span>
-                      <span className="text-sky-300 whitespace-nowrap">{VERDICT_KIND_LABELS[v.kind]}</span>
-                      {v.memo && <span className="text-gray-500 truncate flex-1">{v.memo}</span>}
+                    <li key={`${v.date}-${v.ruleId ?? ''}`}>
+                      <button
+                        type="button"
+                        disabled={!canJump}
+                        onClick={() => onJump(v)}
+                        className={`w-full text-left flex items-center gap-2 text-xs rounded px-2 py-1 focus-ring ${
+                          canJump ? 'cursor-pointer hover:bg-gray-700/40 bg-gray-900/40' : 'bg-gray-900/20 cursor-default'
+                        }`}
+                      >
+                        <span className="font-mono text-gray-300 whitespace-nowrap">{v.date}</span>
+                        <span className="text-sky-300 whitespace-nowrap">{VERDICT_KIND_LABELS[v.kind]}</span>
+                        {v.memo && <span className="text-gray-500 truncate flex-1">{v.memo}</span>}
+                      </button>
                     </li>
                   ))}
                 </ul>

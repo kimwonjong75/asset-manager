@@ -79,7 +79,7 @@ const DisplaySettingsSection: React.FC = () => {
                   } ${basis !== PL_BASIS_ORDER[0] ? 'border-l border-gray-600' : ''}`}
                 >
                   <div className="font-medium">{PL_BASIS_LABELS[basis]}</div>
-                  <div className="text-[10px] opacity-70">{PL_BASIS_SUBLABELS[basis]}</div>
+                  <div className="text-xs opacity-70">{PL_BASIS_SUBLABELS[basis]}</div>
                 </button>
               );
             })}
@@ -196,7 +196,7 @@ const DisplaySettingsSection: React.FC = () => {
             <p className="text-gray-400 text-xs mt-0.5">
               참고형 신호(구루 신호)의 표시 위치와 크기를 조정합니다.
               <br />
-              ※ 실제 실행할 주문은 <span className="text-gray-300">실행 큐</span>가 기준이며, 아래 설정은 표시 방식만 바꿉니다(신호 계산·발화 무관).
+              ※ 실제 실행할 주문은 홈 <span className="text-gray-300">오늘의 브리핑</span>의 대기 주문이 기준이며, 아래 설정은 표시 방식만 바꿉니다(신호 계산·발화 무관).
             </p>
           </div>
 

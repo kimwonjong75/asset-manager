@@ -169,8 +169,8 @@ const PortfolioAssistant: React.FC = () => {
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center z-50 p-4" onClick={onClose}>
-            <div className="bg-gray-800 rounded-lg shadow-xl w-full max-w-2xl h-[80vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center z-modal p-4" onClick={onClose} role="dialog" aria-modal="true" aria-label="AI 어시스턴트">
+            <div className="bg-gray-800 rounded-lg shadow-xl w-full max-w-2xl h-[80vh] h-[80dvh] flex flex-col" onClick={(e) => e.stopPropagation()}>
                 <header className="flex justify-between items-center p-4 border-b border-gray-700">
                     <div className="flex items-center gap-3">
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-primary" viewBox="0 0 24 24" fill="currentColor">
@@ -248,10 +248,10 @@ const PortfolioAssistant: React.FC = () => {
                             onChange={(e) => setInput(e.target.value)}
                             onKeyDown={(e) => e.key === 'Enter' && handleSend()}
                             placeholder="포트폴리오에 대해 질문하세요..."
-                            className="w-full bg-transparent p-3 text-white placeholder-gray-400 focus:outline-none"
+                            className="w-full bg-transparent p-3 text-white placeholder-gray-400 focus-ring"
                             disabled={isLoading}
                         />
-                        <button onClick={handleSend} disabled={isLoading || !input.trim()} className="p-3 text-gray-400 hover:text-white disabled:text-gray-600 disabled:cursor-not-allowed transition">
+                        <button onClick={handleSend} disabled={isLoading || !input.trim()} className="p-3 text-gray-400 hover:text-white disabled:text-gray-500 disabled:cursor-not-allowed transition">
                            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" transform="rotate(90 12 12)" />
                             </svg>

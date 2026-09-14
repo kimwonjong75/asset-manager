@@ -4,6 +4,7 @@
 // (자산구분 필터는 스냅샷에 영향 없음 — 2026-09-14 결정). 조치 필요 건수는
 // utils/todayViewModel.actionNeededCount(전체 계정 계획 행) 결과라 셀 라벨에 "(전체 계정)"을 붙인다.
 
+import { directionTextClass } from '../../utils/directionTone';
 import React from 'react';
 import ScopeChip from '../common/ScopeChip';
 
@@ -21,8 +22,8 @@ export interface HomeSnapshotCardProps {
 const formatKRW = (value: number) =>
   value.toLocaleString('ko-KR', { style: 'currency', currency: 'KRW', maximumFractionDigits: 0 });
 
-// 손익 색은 기존 StatCard 규약(text-success/text-danger)을 유지 — 앱 전역 색 전환은 Stage B.
-const plColor = (v: number) => (v >= 0 ? 'text-success' : 'text-danger');
+// 손익 색 — Stage B 색 규약(빨강=이익 / 파랑=손실 / 회색=0), 결정은 utils/directionTone 한 곳.
+const plColor = (v: number) => directionTextClass(v);
 
 const HomeSnapshotCard: React.FC<HomeSnapshotCardProps> = ({
   totalValue,
