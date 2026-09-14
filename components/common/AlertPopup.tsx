@@ -32,7 +32,7 @@ interface AlertPopupProps {
   planPriorityAssetIds?: Set<string>;
   onClose: () => void;
   onAssetClick: (assetId: string, source?: 'portfolio' | 'watchlist') => void;
-  /** "오늘" 화면으로 이동 (P3 — 실행 큐 탭 폐지, 행동 신호의 단일 소스는 오늘 화면 대기 주문 섹션) */
+  /** 홈 탭으로 이동 + 맨 위 스크롤 (Stage A — '오늘' 탭 폐지, 행동 신호의 단일 소스는 홈 '오늘의 브리핑'의 대기 주문 섹션) */
   onOpenExecution: () => void;
 }
 
@@ -87,7 +87,7 @@ const AlertPopup: React.FC<AlertPopupProps> = ({ results, sellDataGaps, executio
         <div className="mt-1.5 space-y-1 text-[11px] text-gray-300">
           {exec.activeCount > 0 && (
             <p>
-              오늘 화면에 <span className="text-white font-semibold">{exec.activeCount}건</span> 대기 중
+              홈 브리핑에 <span className="text-white font-semibold">{exec.activeCount}건</span> 대기 중
               {exec.escalatedCount > 0 && <span className="text-red-300 font-medium"> · {exec.escalatedCount}건 3일+ 미실행 ⚠</span>}
             </p>
           )}
@@ -116,7 +116,7 @@ const AlertPopup: React.FC<AlertPopupProps> = ({ results, sellDataGaps, executio
             <p className="text-amber-300">위성 예산 미설정 — 신규 진입은 검토되지 않습니다.</p>
           )}
           {!exec.turtleLocked && exec.reviewFailed && (
-            <p className="text-amber-300">자동 검토 실패 — 오늘 화면에서 수동으로 생성하세요.</p>
+            <p className="text-amber-300">자동 검토 실패 — 홈 브리핑에서 수동으로 생성하세요.</p>
           )}
         </div>
       )}
@@ -128,7 +128,7 @@ const AlertPopup: React.FC<AlertPopupProps> = ({ results, sellDataGaps, executio
         <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
         </svg>
-        오늘 화면 열기
+        홈에서 보기
       </button>
     </div>
   ) : null;
@@ -162,7 +162,7 @@ const AlertPopup: React.FC<AlertPopupProps> = ({ results, sellDataGaps, executio
               </span>
             )}
             {planPriorityAssetIds?.has(asset.assetId) && (
-              <span className="text-[9px] px-1 py-0.5 rounded bg-primary/20 text-primary-light font-medium shrink-0" title="이 종목은 활성 매매 계획이 있습니다 — 계획 기준(오늘 화면)이 우선입니다">
+              <span className="text-[9px] px-1 py-0.5 rounded bg-primary/20 text-primary-light font-medium shrink-0" title="이 종목은 활성 매매 계획이 있습니다 — 계획 기준(홈 '오늘의 브리핑')이 우선입니다">
                 계획 기준 우선
               </span>
             )}
@@ -350,11 +350,11 @@ const AlertPopup: React.FC<AlertPopupProps> = ({ results, sellDataGaps, executio
                 {/* 터틀 실행 카드 — 행동 축 최상단 (실행할 게 있을 때만) */}
                 {execCard}
 
-                {/* 참고 지표 안내 — 실행할 주문의 단일 소스는 오늘 화면 대기 주문 섹션(P3). CTA는 실행 카드가 있으면 중복이라 숨김 */}
+                {/* 참고 지표 안내 — 실행할 주문의 단일 소스는 홈 '오늘의 브리핑' 대기 주문 섹션(Stage A). CTA는 실행 카드가 있으면 중복이라 숨김 */}
                 <div className="bg-gray-800/60 border border-gray-700/60 rounded-lg p-2.5">
                   <p className="text-[11px] text-gray-400 leading-snug">
                     <span className="text-gray-300 font-medium">이 브리핑은 참고 지표입니다.</span> 실제 실행할 주문(진입·손절·청산·리밸런싱·정리)은{' '}
-                    <span className="text-gray-300">오늘 화면</span>이 단일 기준입니다.
+                    <span className="text-gray-300">홈의 오늘의 브리핑</span>이 단일 기준입니다.
                   </p>
                   {!showExecCard && (
                     <button
@@ -365,7 +365,7 @@ const AlertPopup: React.FC<AlertPopupProps> = ({ results, sellDataGaps, executio
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
                       </svg>
-                      오늘 화면 열기
+                      홈에서 보기
                     </button>
                   )}
                 </div>

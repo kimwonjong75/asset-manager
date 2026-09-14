@@ -9,6 +9,8 @@ interface CategorySummaryTableProps {
     assets: Asset[];
     totalPortfolioValue: number;
     exchangeRates: ExchangeRates;
+    /** 제목 옆 보조 슬롯(홈: 범위 칩) */
+    headerExtra?: React.ReactNode;
 }
 
 interface SummaryData {
@@ -21,7 +23,7 @@ interface SummaryData {
     isSatellite?: boolean;
 }
 
-const CategorySummaryTable: React.FC<CategorySummaryTableProps> = ({ assets, totalPortfolioValue, exchangeRates }) => {
+const CategorySummaryTable: React.FC<CategorySummaryTableProps> = ({ assets, totalPortfolioValue, exchangeRates, headerExtra }) => {
     const { data: portfolioData } = usePortfolio();
     const categories = portfolioData.categoryStore.categories;
     // 수익률 기준은 표·대시보드 통계와 같은 설정을 따른다(계산은 단일 순수 모듈에 위임).
@@ -84,8 +86,11 @@ const CategorySummaryTable: React.FC<CategorySummaryTableProps> = ({ assets, tot
     if (summaryData.length === 0) return null;
 
     return (
-        <div className="bg-gray-800 p-6 rounded-lg shadow-lg" title="자산 종류별 요약 정보입니다.">
-            <h2 className="text-xl font-bold text-white mb-4">자산군별 요약</h2>
+        <div className="bg-gray-800 p-4 sm:p-6 rounded-lg shadow-lg" title="자산 종류별 요약 정보입니다.">
+            <div className="flex flex-wrap items-center gap-2 mb-4">
+                <h2 className="text-xl font-bold text-white">자산군별 요약</h2>
+                {headerExtra}
+            </div>
             <div className="w-full overflow-x-auto">
                 <table className="w-full text-sm text-left text-gray-400">
                     <thead className="text-xs text-gray-300 uppercase bg-gray-700">

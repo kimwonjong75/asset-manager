@@ -46,11 +46,10 @@ const RiskCalculatorCard: React.FC = () => {
             <h3 className="text-base font-bold text-white flex items-center gap-1.5">
               🛡️ 리스크 계산기
             </h3>
-            {open && (
-              <p className="text-xs text-gray-500 mt-0.5">
-                손절폭과 허용손실에서 적정 매수 수량을 역산합니다
-              </p>
-            )}
+            {/* 접혀 있어도 한 줄 설명은 항상 표시(홈 Stage A — 접힌 헤더에도 요약) */}
+            <p className="text-xs text-gray-500 mt-0.5">
+              손절폭과 허용손실에서 적정 매수 수량을 역산합니다
+            </p>
           </div>
         </button>
         {open && (

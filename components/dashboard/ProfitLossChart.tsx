@@ -21,9 +21,11 @@ interface ProfitLossChartProps {
   storageKey?: string;
   /** 최초 접힘 여부 (collapsible이고 저장값 없을 때) */
   defaultCollapsed?: boolean;
+  /** 헤더 보조 슬롯 — 홈에서 자산 구분 필터 + 범위 칩을 둔다. 접혀 있어도 보인다 */
+  headerActions?: React.ReactNode;
 }
 
-const ProfitLossChart: React.FC<ProfitLossChartProps> = ({ history, assetsToDisplay, title, globalPeriod, onPeriodChange, plBasis, collapsible = false, storageKey, defaultCollapsed = false }) => {
+const ProfitLossChart: React.FC<ProfitLossChartProps> = ({ history, assetsToDisplay, title, globalPeriod, onPeriodChange, plBasis, collapsible = false, storageKey, defaultCollapsed = false, headerActions }) => {
   const [open, setOpen] = useState<boolean>(() => {
     if (!collapsible) return true;
     try {
@@ -103,8 +105,11 @@ const ProfitLossChart: React.FC<ProfitLossChartProps> = ({ history, assetsToDisp
   };
   
   return (
-    <div className={`bg-gray-800 p-6 rounded-lg shadow-lg mb-6 ${bodyVisible ? 'h-96' : ''}`} title="포트폴리오의 평가 손익 추이를 보여줍니다.">
-      <div className={`flex items-center justify-between ${bodyVisible ? 'mb-4' : ''}`}>
+    // 레이아웃: 헤더(제목·보조 슬롯·기간 선택 — 좁으면 줄바꿈) + 고정 높이 차트 영역.
+    // 과거 고정 h-96 + 차트 90% 구조는 헤더가 줄바꿈되면 차트가 카드 밖으로 넘쳤다.
+    // 기간 선택은 홈의 유일한 기간 컨트롤이라 접혀 있어도 보인다.
+    <div className="bg-gray-800 p-4 sm:p-6 rounded-lg shadow-lg flex flex-col" title="포트폴리오의 평가 손익 추이를 보여줍니다.">
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
         {collapsible ? (
           <button
             type="button"
@@ -118,10 +123,14 @@ const ProfitLossChart: React.FC<ProfitLossChartProps> = ({ history, assetsToDisp
         ) : (
           <h2 className="text-xl font-bold text-white">{title}</h2>
         )}
-        {bodyVisible && <PeriodSelector value={globalPeriod} onChange={onPeriodChange} />}
+        {headerActions && <div className="flex flex-wrap items-center gap-2">{headerActions}</div>}
+        <div className="max-w-full overflow-x-auto">
+          <PeriodSelector value={globalPeriod} onChange={onPeriodChange} />
+        </div>
       </div>
       {bodyVisible && (chartData.length > 1 ? (
-        <ResponsiveContainer width="100%" height="90%">
+        <div className="h-80 mt-4">
+        <ResponsiveContainer width="100%" height="100%">
           <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#4A5568" />
             <XAxis dataKey="date" stroke="#A0AEC0" fontSize={12} />
@@ -135,8 +144,9 @@ const ProfitLossChart: React.FC<ProfitLossChartProps> = ({ history, assetsToDisp
             <Line yAxisId="right" type="monotone" dataKey="수익률" name="수익률(%)" stroke="#F6E05E" strokeWidth={2} dot={false} />
           </LineChart>
         </ResponsiveContainer>
+        </div>
       ) : (
-        <div className="flex items-center justify-center h-full">
+        <div className="flex items-center justify-center h-40 mt-4">
           <p className="text-gray-500">손익 추이를 표시하려면 데이터가 2일 이상 필요합니다.</p>
         </div>
       ))}

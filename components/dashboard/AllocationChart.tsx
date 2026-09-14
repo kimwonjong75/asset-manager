@@ -8,6 +8,8 @@ import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 interface AllocationChartProps {
   assets: Asset[];
   exchangeRates: ExchangeRates;
+  /** 제목 옆 보조 슬롯(홈: 범위 칩) */
+  headerExtra?: React.ReactNode;
 }
 
 const COLORS = ['#6366F1', '#10B981', '#F59E0B', '#EF4444', '#3B82F6', '#8B5CF6', '#EC4899', '#F97316', '#84CC16'];
@@ -45,7 +47,7 @@ const CustomTooltip: React.FC<CustomTooltipProps> = ({ active, payload, totalVal
   return null;
 };
 
-const AllocationChart: React.FC<AllocationChartProps> = ({ assets, exchangeRates }) => {
+const AllocationChart: React.FC<AllocationChartProps> = ({ assets, exchangeRates, headerExtra }) => {
   const { data } = usePortfolio();
   const categories = data.categoryStore.categories;
 
@@ -73,9 +75,13 @@ const AllocationChart: React.FC<AllocationChartProps> = ({ assets, exchangeRates
   const totalValue = useMemo(() => chartData.reduce((sum, entry) => sum + entry.value, 0), [chartData]);
 
   return (
-    <div className="bg-gray-800 p-6 rounded-lg shadow-lg h-96" title="자산 종류별 비중을 원형 차트로 보여줍니다.">
-      <h2 className="text-xl font-bold text-white mb-4">자산 종류별 배분</h2>
+    <div className="bg-gray-800 p-4 sm:p-6 rounded-lg shadow-lg flex flex-col" title="자산 종류별 비중을 원형 차트로 보여줍니다.">
+      <div className="flex flex-wrap items-center gap-2 mb-2">
+        <h2 className="text-xl font-bold text-white">자산 종류별 배분</h2>
+        {headerExtra}
+      </div>
       {assets.length > 0 ? (
+        <div className="h-72">
         <ResponsiveContainer width="100%" height="100%">
           <PieChart margin={{ top: 20, right: 30, bottom: 20, left: 30 }}>
             <Pie
@@ -96,8 +102,9 @@ const AllocationChart: React.FC<AllocationChartProps> = ({ assets, exchangeRates
             <Tooltip content={<CustomTooltip totalValue={totalValue} />} />
           </PieChart>
         </ResponsiveContainer>
+        </div>
       ) : (
-        <div className="flex items-center justify-center h-full">
+        <div className="flex items-center justify-center h-40">
             <p className="text-gray-500">표시할 데이터가 없습니다.</p>
         </div>
       )}

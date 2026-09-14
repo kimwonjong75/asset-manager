@@ -32,6 +32,7 @@ const ReferenceIndicatorsSection: React.FC = () => {
   // 구루 신호는 바로 위 상단 카드가 담당하므로 여기 배지는 리스크 매트릭스(과열)만 집계(중복/혼동 방지).
   const riskTieredCount = derived.riskMatrix.filter(r => r.assessment.tier !== null).length;
   const hasSummary = riskTieredCount > 0;
+  // 0건도 "과열 0"으로 표시 — 접힌 헤더가 항상 건수를 보여야 한다(홈 Stage A 규약).
 
   return (
     <div className="bg-gray-800 rounded-lg shadow-lg p-4 sm:p-5">
@@ -56,14 +57,13 @@ const ReferenceIndicatorsSection: React.FC = () => {
         </button>
         <div className="flex items-center gap-1.5 shrink-0">
           {/* muted 카운트 배지 — 강등 유지(눈에 안 띄게)하되 완전히 숨기진 않음 (과열=리스크 매트릭스) */}
-          {hasSummary && (
-            <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-900/30 text-amber-400/80 font-medium">
-              과열 {riskTieredCount}
-            </span>
-          )}
-          {!open && !hasSummary && (
-            <span className="text-xs text-gray-500">클릭하여 펼치기</span>
-          )}
+          <span
+            className={`text-xs px-1.5 py-0.5 rounded font-medium ${
+              hasSummary ? 'bg-amber-900/30 text-amber-400/80' : 'bg-gray-700/60 text-gray-400'
+            }`}
+          >
+            과열 {riskTieredCount}
+          </span>
         </div>
       </div>
 

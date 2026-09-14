@@ -7,11 +7,18 @@ import type { RebalanceRow } from '../../utils/bucketRebalancing';
 import type { RebalanceGenDiag, RebalanceGenReason } from '../../utils/rebalanceActions';
 import { buildInstrumentFromPick } from '../../utils/rebalanceActions';
 import { getExchangesForCategory } from '../../types/category';
+import Card from '../common/Card';
+import ScopeChip from '../common/ScopeChip';
 
 interface RebalancingTableProps {
   assets: Asset[];
   exchangeRates: ExchangeRates;
+  /** 대기(pending/snoozed) 리밸런싱 주문 수 — 접힌 헤더 요약용(호출부가 utils/todayViewModel.pendingOrderCounts로 산출) */
+  pendingRebalanceCount?: number;
 }
+
+/** 홈 리밸런싱 카드 펼침 상태 localStorage 키 (기본 접힘) */
+const REBALANCE_OPEN_KEY = 'asset-manager-home-rebalance-open';
 
 const formatKRW = (num: number) =>
   new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW', maximumFractionDigits: 0 }).format(num);
@@ -227,7 +234,7 @@ export const GenResult: React.FC<{ result: GenResultData }> = ({ result }) => {
   );
 };
 
-const RebalancingTable: React.FC<RebalancingTableProps> = ({ assets, exchangeRates }) => {
+const RebalancingTable: React.FC<RebalancingTableProps> = ({ assets, exchangeRates, pendingRebalanceCount = 0 }) => {
   const { data, actions } = usePortfolio();
 
   const {
@@ -262,10 +269,28 @@ const RebalancingTable: React.FC<RebalancingTableProps> = ({ assets, exchangeRat
     setGenResult(await refreshRebalanceActions());
   };
 
+  // 접힌 헤더 요약 — 이미 계산된 배열 길이/주입값만 표시(추가 계산 없음). 신호 은폐 금지 규약.
+  const summary = (
+    <span className="mt-1 flex flex-wrap items-center gap-1.5">
+      <ScopeChip label="원종 전략 기준" title="리밸런싱은 계정 선택과 무관하게 전략 대상(원종) 자산만 계산합니다" />
+      <span className={`text-xs ${bandDeviations.length > 0 ? 'text-amber-300' : 'text-gray-400'}`}>
+        밴드 이탈 {bandDeviations.length}
+      </span>
+      <span className="text-xs text-gray-400">· 대기 주문 {pendingRebalanceCount}</span>
+    </span>
+  );
+
   return (
-    <div className="bg-gray-800 p-6 rounded-lg shadow-lg space-y-8">
+    <Card
+      title="리밸런싱"
+      description={summary}
+      collapsible
+      defaultCollapsed
+      storageKey={REBALANCE_OPEN_KEY}
+      bodyClassName="space-y-8"
+    >
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <h2 className="text-xl font-bold text-white">포트폴리오 리밸런싱 (2단 배분표)</h2>
+        <h3 className="text-sm font-semibold text-gray-300">포트폴리오 리밸런싱 (2단 배분표)</h3>
         <div className="flex flex-col sm:flex-row items-end sm:items-center gap-4">
           <div className="flex items-center gap-2">
             <label htmlFor="targetTotal" className="text-sm font-medium text-gray-300 whitespace-nowrap">
@@ -435,7 +460,7 @@ const RebalancingTable: React.FC<RebalancingTableProps> = ({ assets, exchangeRat
         <br />
         * 매수/매도 필요액이 (+)인 경우 매수, (-)인 경우 매도가 필요함을 의미합니다.
       </div>
-    </div>
+    </Card>
   );
 };
 

@@ -45,6 +45,7 @@ import { compactResolvedActions, ACTION_QUEUE_RETENTION_DAYS } from '../utils/ac
 import { localDateString } from '../utils/localDate';
 import { describeFreshness, LAST_PRICE_REFRESH_AT_KEY } from '../utils/priceFreshness';
 import { usePriceFreshnessRefresh } from '../hooks/usePriceFreshnessRefresh';
+import { resolveTabAlias } from '../utils/deepLink';
 import { useTradePlanSignals } from '../hooks/useTradePlanSignals';
 import { cancelPlan, recordDecision, armExitLine, applyPyramidFill } from '../utils/tradePlan';
 import { applySellOutcome, sellPrefillFor } from '../utils/tradePlanLink';
@@ -271,8 +272,10 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     setGlobalPeriod(p);
     try { localStorage.setItem('asset-manager-global-period', p); } catch { /* ignore */ }
   };
-  // P3: 기본 탭 'today'(2026-09-04 사용자 승인) — "오늘 할 일"이 첫 화면에 없다는 불편을 해소.
-  const [activeTab, setActiveTab] = useState<UIState['activeTab']>('today');
+  // 기본 탭 = 'dashboard'(라벨 '홈'). 2026-09-14 사용자가 P3 결정(기본 탭 'today', 2026-09-04)을 번복 —
+  // 독립 '오늘' 탭은 폐지되고 그 내용은 홈 상단 '오늘의 브리핑'으로 흡수됐다.
+  // 'today'/'execution'은 handleTabChange에서 resolveTabAlias로 'dashboard'로 바뀌어 상태에 남지 않는다.
+  const [activeTab, setActiveTab] = useState<UIState['activeTab']>('dashboard');
   // 계정 뷰 필터 (통합/원종/유선) — 표시 계층 전용, localStorage 영속.
   // 원본 data.assets는 절대 거르지 않는다 (autosave가 걸러진 배열을 저장하면 데이터 유실).
   const [accountView, setAccountViewState] = useState<OwnerFilter>(() => {
@@ -361,7 +364,8 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     });
   };
 
-  // P6 정보 다이어트 — '오늘' 탭에서 브리핑 팝업이 자동으로 뜨지 않게 하는 표시 전용 플래그.
+  // P6 정보 다이어트 — 홈(dashboard) 탭에서 브리핑 팝업이 자동으로 뜨지 않게 하는 표시 전용 플래그
+  // (홈 상단 '오늘의 브리핑'이 같은 내용을 이미 보여줌. 2026-09-14 '오늘' 탭 폐지 전에는 '오늘' 탭 기준).
   // useAutoAlert의 게이트(showAlertPopup/dismissAlertPopup/showBriefingPopup)는 그대로 두고
   // (골든 테스트가 고정하는 자동팝업 판정 로직 무변경), 여기서 얇게 감싸 App.tsx의 렌더 조건에만 쓴다.
   const [briefingManual, setBriefingManual] = useState(false);
@@ -497,7 +501,7 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     return assets.map(a => calculateAssetMetrics(a, exchangeRates, stats.totalValue));
   }, [assets, exchangeRates, calculatePortfolioStats, calculateAssetMetrics]);
 
-  // 매매 계획(TradePlan) 신호 평가 — 활성 계획을 현재 시세/지표로 평가해 오늘 화면·아코디언 카드가
+  // 매매 계획(TradePlan) 신호 평가 — 활성 계획을 현재 시세/지표로 평가해 홈 '오늘의 브리핑'·아코디언 카드가
   // 공유하는 단일 소스(P2a). enrichedMap/priceDataAsOf는 이미 위에서 계산됨.
   const { rows: tradePlanRows, summary: tradePlanSummary, planlessSatellites } = useTradePlanSignals({
     assets, enrichedMap, priceDataAsOf,
@@ -664,7 +668,9 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     setAllocationTargets,
   });
 
-  const handleTabChange = (tab: UIState['activeTab']) => {
+  const handleTabChange = (requested: UIState['activeTab']) => {
+    // 폐지 탭('today'/'execution') → 'dashboard'. 발송된 카톡 ?tab=today 링크 호환 — utils/deepLink 참고.
+    const tab = resolveTabAlias(requested);
     if (tab !== 'portfolio') {
       setFilterAlerts(false);
     }

@@ -5,7 +5,8 @@
 // useAutoAlert의 riskMatrix, data.actionQueue)이고, 여기서는 그룹핑·문구 조립만 한다.
 // 계산 재구현 금지(신호/등급 판정은 utils/tradePlan.evaluateTradePlan이 유일한 소스).
 //
-// components/layouts/TodayView.tsx + components/today/* 가 소비한다 — 렌더는 컴포넌트,
+// components/today/TodayActionCenter.tsx(홈 '오늘의 브리핑') + components/today/* +
+// components/dashboard/HomeSnapshotCard.tsx 가 소비한다 — 렌더는 컴포넌트,
 // 계산은 여기(RULES.md §2).
 
 import type { TradePlanSignalRow } from '../hooks/useTradePlanSignals';
@@ -43,13 +44,17 @@ const HEADLINE_MAX_NAMES = 3;
 const EMPTY_HEADLINE_TEXT = '오늘은 할 일이 없습니다. 기다리는 것도 계획입니다.';
 
 /**
- * 오늘 화면 최상단 한 줄 요약. 긴급+오늘 실행 등급 행만 대상 —
+ * 홈 '오늘의 브리핑' 최상단 한 줄 요약. 긴급+오늘 실행 등급 행만 대상 —
  * '풍산 전량 매도 · NAVER 절반 매도' 식으로 최대 3개, 넘으면 '외 N'.
- * 두 등급 합계가 0이면 빈 상태 문구.
+ * 두 등급 합계가 0일 때: 활성 계획 행이 있으면 "계획 있는 종목 N개 — 닿은 종목 없음" 문구,
+ * 계획 자체가 없으면 빈 상태 문구.
  */
 export function buildTodayHeadline(rows: TradePlanSignalRow[], summary: TradePlanSignalSummary): TodayHeadline {
   const count = summary.urgent + summary.today;
   if (count === 0) {
+    if (rows.length > 0) {
+      return { count: 0, text: `계획 있는 종목 ${rows.length}개 — 오늘은 손절·익절선에 닿은 종목이 없어요` };
+    }
     return { count: 0, text: EMPTY_HEADLINE_TEXT };
   }
   const actionable = rows.filter(r => r.evaluation.tier === 'urgent' || r.evaluation.tier === 'today');
@@ -109,13 +114,37 @@ export function needsCheckRows(rows: TradePlanSignalRow[]): NeedsCheckRows {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// 3-b. 홈 스냅샷 "조치 필요 N건" — 자산 단위 합집합
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * 조치가 필요한 **자산 수**(중복 없음). 정의:
+ *   A = tier가 'urgent' 또는 'today'인 행의 asset.id 집합
+ *   B = 확인 필요(signal==='unavailable' ∪ stale ∪ 손절주문 미등록) 행의 asset.id 집합
+ *   결과 = |A ∪ B|
+ * 한 자산이 긴급이면서 시세 오래됨이어도 1건, 결측+미등록이 겹쳐도 1건.
+ * 입력은 계정 필터를 거치지 않은 전체 계획 행(홈 스냅샷에는 "(전체 계정)"으로 표시).
+ */
+export function actionNeededCount(rows: TradePlanSignalRow[]): number {
+  const ids = new Set<string>();
+  for (const row of rows) {
+    const tier = row.evaluation.tier;
+    const actionable = tier === 'urgent' || tier === 'today';
+    const needsCheck =
+      row.evaluation.signal === 'unavailable' || row.evaluation.stale || !row.plan.brokerStopOrderRegistered;
+    if (actionable || needsCheck) ids.add(row.asset.id);
+  }
+  return ids.size;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // 4. 관찰 섹션 건수(구루/알림/과열 — 강등된 참고 신호)
 // ═══════════════════════════════════════════════════════════════════════════
 
 export interface ObserveCountsInput {
   alertResults: AlertResult[];
   riskMatrix: RiskMatrixRow[];
-  /** 55일 돌파 확인 건수 — 호출부가 주입(중복 fetch 방지, TodayView 참고 주석) */
+  /** 55일 돌파 확인 건수 — 호출부가 주입(useTodayTurtle은 TodayActionCenter에서 한 번만 호출) */
   turtleWatchBreakouts: number;
 }
 

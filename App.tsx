@@ -23,7 +23,6 @@ import { OWNER_FILTER_OPTIONS, OWNER_FILTER_LABELS } from './types/owner';
 import { parseDeepLink } from './utils/deepLink';
 
 // Layouts
-import TodayView from './components/layouts/TodayView';
 import DashboardView from './components/layouts/DashboardView';
 import PortfolioView from './components/layouts/PortfolioView';
 import AnalyticsView from './components/layouts/AnalyticsView';
@@ -33,9 +32,10 @@ import SignalReplayView from './components/layouts/SignalReplayView';
 import CleanupView from './components/cleanup/CleanupView';
 
 type ActiveTab = 'today' | 'dashboard' | 'portfolio' | 'analytics' | 'watchlist' | 'replay' | 'execution' | 'cleanup' | 'guide' | 'settings';
-/** 더보기 메뉴 진입 화면들 — 탭바 4버튼(오늘/보유자산/관심종목/더보기)에 없는 목적지. '더보기' 버튼
- *  자체의 활성 강조 판정에 쓰인다(계획서 §4.3 D7 — 리플레이/실행큐 탭 숨김, 코드 보존). */
-const MORE_MENU_TABS: ActiveTab[] = ['dashboard', 'analytics', 'cleanup', 'guide', 'replay', 'settings'];
+/** 더보기 메뉴 진입 화면들 — 탭바 4버튼(홈/보유자산/관심종목/더보기)에 없는 목적지. '더보기' 버튼
+ *  자체의 활성 강조 판정에 쓰인다(계획서 §4.3 D7 — 리플레이/실행큐 탭 숨김, 코드 보존).
+ *  2026-09-14: 대시보드가 '홈' 탭으로 승격돼 이 목록에서 빠졌다. */
+const MORE_MENU_TABS: ActiveTab[] = ['analytics', 'cleanup', 'guide', 'replay', 'settings'];
 
 // P4: 모바일 상단바는 공간이 좁아 `derived.priceFreshnessLabel`(예: '09-03 14:20 (장중)'/'09-02 마감 후')을
 // 전부 못 보여준다 — 시:분만 남기고, 없으면(마감 후·기준시각 없음) 원문을 짧게 자른다. 순수 표시 포맷팅.
@@ -60,7 +60,6 @@ const AppContent: React.FC = () => {
   // P6: '더보기' 메뉴 항목 — 데스크탑 드롭다운과 모바일 하단 탭바(BottomTabBar)가 **같은 배열**을
   // 공유한다(둘 다 ActionMenu를 쓰므로 하나만 정의하면 됨). 어시스턴트 FAB을 없애면서 여기로 이동.
   const moreMenuItems: ActionMenuItem[] = useMemo(() => [
-    { label: '대시보드', onClick: () => actions.setActiveTab('dashboard') },
     { label: '수익 통계', onClick: () => actions.setActiveTab('analytics') },
     { label: '매매 계획 세우기', onClick: () => actions.openTradePlanPlanner() },
     { label: '대청소', onClick: () => actions.setActiveTab('cleanup') },
@@ -109,7 +108,7 @@ const AppContent: React.FC = () => {
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [showAccountMenu, setShowAccountMenu] = useState(false);
   const accountMenuRef = useRef<HTMLButtonElement>(null);
-  // P3: '더보기' 탭바 버튼 — 숨긴 탭(대시보드/수익통계/대청소/가이드/연구실/설정) 진입점.
+  // P3: '더보기' 탭바 버튼 — 숨긴 탭(수익통계/대청소/가이드/연구실/설정) 진입점.
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const moreMenuRef = useRef<HTMLButtonElement>(null);
 
@@ -239,7 +238,7 @@ const AppContent: React.FC = () => {
                   </h1>
                   {/* P6: 모바일(<md)에서는 BottomTabBar가 이 자리를 대신한다 — 탭 개수·목적지는 동일, 위치만 하단으로 이동 */}
                   <nav className="-mb-px hidden md:flex space-x-3 sm:space-x-6 overflow-x-auto scrollbar-hide" aria-label="Tabs">
-                    <TabButton tabId="today" onClick={() => actions.setActiveTab('today')}>오늘</TabButton>
+                    <TabButton tabId="dashboard" onClick={() => actions.setActiveTab('dashboard')}>홈</TabButton>
                     <TabButton tabId="portfolio" onClick={() => actions.setActiveTab('portfolio')}>보유자산</TabButton>
                     <TabButton tabId="watchlist" onClick={() => actions.setActiveTab('watchlist')}>관심종목</TabButton>
                     <button
@@ -263,7 +262,7 @@ const AppContent: React.FC = () => {
                   </nav>
                 </div>
                 <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
-                  {/* P6: 모바일 상단바는 업데이트(아이콘)·+추가·아바타만 남긴다 — 나머지는 더보기/오늘 화면에서 이미 볼 수 있음 */}
+                  {/* P6: 모바일 상단바는 업데이트(아이콘)·+추가·아바타만 남긴다 — 나머지는 더보기/홈 화면에서 이미 볼 수 있음 */}
                   <div className="hidden md:block">
                     <UpdateStatusIndicator isLoading={status.isLoading} successMessage={status.successMessage} />
                   </div>
@@ -322,8 +321,8 @@ const AppContent: React.FC = () => {
                     )}
                     <span className="hidden sm:inline">{status.isLoading ? '중...' : '업데이트'}</span>
                   </button>
-                  {/* 계정 뷰 세그먼트 (통합/원종/유선) — 표시 필터 전용, 대시보드·포트폴리오 탭에서만. 모바일 상단바 축소(P6) 대상 */}
-                  {(ui.activeTab === 'dashboard' || ui.activeTab === 'portfolio') && (
+                  {/* 계정 뷰 세그먼트 (통합/원종/유선) — 표시 필터 전용, 보유자산 탭에서만(홈은 본문 상단에 자체 세그먼트를 렌더). 모바일 상단바 축소(P6) 대상 */}
+                  {ui.activeTab === 'portfolio' && (
                     <div className="hidden md:flex items-center bg-gray-700 rounded-md p-0.5 flex-shrink-0" role="group" aria-label="계정 뷰">
                       {OWNER_FILTER_OPTIONS.map(f => (
                         <button
@@ -341,7 +340,8 @@ const AppContent: React.FC = () => {
                       ))}
                     </div>
                   )}
-                  {ui.activeTab !== 'today' && ui.activeTab !== 'guide' && ui.activeTab !== 'settings' && ui.activeTab !== 'analytics' && ui.activeTab !== 'replay' && ui.activeTab !== 'execution' && ui.activeTab !== 'cleanup' && (
+                  {/* 홈(dashboard)은 기간 선택을 '손익 추이' 카드 안에 두므로 제외 */}
+                  {ui.activeTab !== 'dashboard' && ui.activeTab !== 'today' && ui.activeTab !== 'guide' && ui.activeTab !== 'settings' && ui.activeTab !== 'analytics' && ui.activeTab !== 'replay' && ui.activeTab !== 'execution' && ui.activeTab !== 'cleanup' && (
                     <div className="hidden md:block">
                       <PeriodSelector value={ui.globalPeriod} onChange={actions.setGlobalPeriod} variant="dropdown" />
                     </div>
@@ -401,10 +401,9 @@ const AppContent: React.FC = () => {
             <main ref={mainCallbackRef} className="flex-1 overflow-y-auto min-h-0">
               {/* P6: 모바일은 하단 탭바(BottomTabBar, fixed)에 가려지지 않도록 바닥 여백 확보 */}
               <div className="pt-2 sm:pt-4 pb-20 md:pb-4">
-                {/* 'execution'은 더보기 메뉴에 없어 UI에서 더는 도달하지 않지만, 남아 있을 수 있는
-                    저장된 activeTab('today' 전환 전 세션)·딥링크 등에 대비해 방어적으로 오늘 화면으로 보낸다. */}
-                {(ui.activeTab === 'today' || ui.activeTab === 'execution') && <TodayView />}
-                {ui.activeTab === 'dashboard' && <DashboardView />}
+                {/* 홈 = DashboardView('오늘의 브리핑' 포함). 'today'/'execution'은 setActiveTab의
+                    resolveTabAlias가 'dashboard'로 바꿔 상태에 남지 않지만, 방어적으로 같은 화면을 그린다. */}
+                {(ui.activeTab === 'dashboard' || ui.activeTab === 'today' || ui.activeTab === 'execution') && <DashboardView />}
                 {ui.activeTab === 'portfolio' && <PortfolioView />}
                 {ui.activeTab === 'analytics' && <AnalyticsView />}
                 {ui.activeTab === 'watchlist' && <WatchlistView />}
@@ -449,10 +448,10 @@ const AppContent: React.FC = () => {
             {/* P6: 어시스턴트 FAB 제거 — 더보기 메뉴 "AI 어시스턴트" 항목으로 이동(모달 마운트는 유지) */}
             <PortfolioAssistant />
 
-            {/* 투자 브리핑 팝업 — P6 정보 다이어트: '오늘' 탭에서는 자동으로 뜨지 않는다(오늘 화면 자체가
-                이미 같은 내용을 보여줌). 사용자가 명시적으로 [브리핑 다시 보기]를 눌렀을 때만
-                (`ui.briefingManual`) 오늘 탭에서도 뜬다 — 게이트 판정(derived.showAlertPopup)은 무변경 */}
-            {derived.showAlertPopup && (ui.activeTab !== 'today' || ui.briefingManual) && (
+            {/* 투자 브리핑 팝업 — P6 정보 다이어트: 홈(dashboard) 탭에서는 자동으로 뜨지 않는다(홈 상단
+                '오늘의 브리핑'이 이미 같은 내용을 보여줌). 사용자가 명시적으로 [브리핑 다시 보기]를 눌렀을 때만
+                (`ui.briefingManual`) 홈에서도 뜬다 — 게이트 판정(derived.showAlertPopup)은 무변경 */}
+            {derived.showAlertPopup && (ui.activeTab !== 'dashboard' || ui.briefingManual) && (
               <AlertPopup
                 results={derived.alertResults}
                 sellDataGaps={derived.sellDataGaps}
@@ -469,7 +468,9 @@ const AppContent: React.FC = () => {
                   }
                 }}
                 onOpenExecution={() => {
-                  actions.setActiveTab('today');
+                  // 실행 카드는 홈 상단 '오늘의 브리핑'에 있다 — 홈으로 이동 후 맨 위로 스크롤.
+                  actions.setActiveTab('dashboard');
+                  mainRef.current?.scrollTo({ top: 0 });
                   actions.dismissAlertPopup();
                 }}
               />

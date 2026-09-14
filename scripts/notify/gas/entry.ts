@@ -554,7 +554,8 @@ function sendKakaoMessage(text: string, linkUrl: string): boolean {
 function buildDeepLink(assetId: string | null): string {
   const base = getProp('APP_URL') || APP_PUBLIC_URL;
   const url = base.endsWith('/') ? base : `${base}/`;
-  return assetId ? `${url}?tab=today&asset=${encodeURIComponent(assetId)}` : `${url}?tab=today`;
+  // 2026-09-14 '오늘' 탭 폐지 → 홈(dashboard). 이미 발송된 `?tab=today` 링크는 앱의 resolveTabAlias가 계속 처리.
+  return assetId ? `${url}?tab=dashboard&asset=${encodeURIComponent(assetId)}` : `${url}?tab=dashboard`;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

@@ -1,6 +1,7 @@
 // components/trade-plan/KakaoStatusChip.tsx
 // 카카오톡 알림 상태 칩 — "마지막 동기화 HH:MM · 동기화 필요 N건". 렌더 전용, 계산은 hooks/useKakaoNotify.
-// "오늘" 화면(TodayView) 헤더에 마운트되는 카톡 알림 상태칩 — 계획서 §6.1 "오늘 화면 상태칩"(P5 작성, P3에서 마운트).
+// 홈 '오늘의 브리핑'(components/today/TodayActionCenter) 헤더에 마운트되는 카톡 알림 상태칩 — 계획서 §6.1
+// "오늘 화면 상태칩"(P5 작성, P3에서 TodayView에 마운트 → 2026-09-14 홈 통합으로 이동).
 // import해서 <KakaoStatusChip /> 한 줄만 놓으면 된다.
 //
 // 미설정 상태에서도 표시한다(과거에는 null 반환 — 설정 화면까지 안내가 전혀 없어 카톡을 어떻게 받는지

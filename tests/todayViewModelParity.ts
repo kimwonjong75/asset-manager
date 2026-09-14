@@ -1,6 +1,7 @@
 // tests/todayViewModelParity.ts
 // utils/todayViewModel.ts 골든 테스트 — 명시적 절대값만 고정한다.
-//   · buildTodayHeadline: 0건 빈 상태 문구·1건·다건 조인·3개 초과 "외 N"
+//   · buildTodayHeadline: 0건 빈 상태 문구·계획 있음+0건 문구·1건·다건 조인·3개 초과 "외 N"
+//   · actionNeededCount: 자산 id 합집합(긴급·오늘 ∪ 결측·오래됨·미등록)
 //   · groupRowsByTier: 4등급 분배(순서 보존)
 //   · needsCheckRows: unavailable/stale/brokerStopMissing 독립 필터
 //   · observeCounts / pendingOrderCounts / countPlanPriorityObserved: 합산·중복제거
@@ -22,6 +23,7 @@ import {
   observeCounts,
   pendingOrderCounts,
   countPlanPriorityObserved,
+  actionNeededCount,
 } from '../utils/todayViewModel';
 
 let pass = 0;
@@ -111,6 +113,14 @@ function makeRow(
   const mixedSummary = summarizeTradePlanSignals(mixedRows);
   check('준비/대기 행은 헤드라인에서 제외', buildTodayHeadline(mixedRows, mixedSummary), { count: 2, text: '오늘 할 일 2건 — 풍산 전량 매도 · NAVER 절반 매도' });
 
+  // 계획은 있으나 긴급+오늘 0건 → "계획 있는 종목 N개" 문구(계획 0건 빈 상태 문구와 구분)
+  const quietRows = [prepareRow, waitingRow];
+  check(
+    '계획 있음 + 긴급/오늘 0건 → 계획 종목 수 문구',
+    buildTodayHeadline(quietRows, summarizeTradePlanSignals(quietRows)),
+    { count: 0, text: '계획 있는 종목 2개 — 오늘은 손절·익절선에 닿은 종목이 없어요' }
+  );
+
   // 4개 초과 → 상위 3개 + "외 N"
   const r3 = makeRow('a5', '카카오', {}, { price: 9_000 });
   const r4 = makeRow('a6', '현대차', { profitMultiple: 3 }, { price: 12_200 });
@@ -158,6 +168,31 @@ function makeRow(
   check('stale 목록', nc.stale.map(r => r.asset.id), ['c2']);
   check('brokerStopMissing 목록(등록 안 된 것만)', nc.brokerStopMissing.map(r => r.asset.id), ['c3']);
   checkTrue('정상 row는 세 목록 어디에도 없음', !nc.unavailable.includes(cleanRow) && !nc.stale.includes(cleanRow) && !nc.brokerStopMissing.includes(cleanRow));
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// 3-b. actionNeededCount — 자산 id 합집합(긴급·오늘 ∪ 확인 필요)
+// ════════════════════════════════════════════════════════════════════════════
+{
+  // 긴급 가격(9,000) + 오래된 시세 → 긴급/stale 중복 플래그
+  const urgentStale = makeRow('d1', '긴급오래됨', {}, { price: 9_000, priceAsOf: '2026-09-01', sessionDate: '2026-09-03' });
+  const todayRow = makeRow('d2', '익절', { profitMultiple: 3 }, { price: 12_200 });
+  // 시세 결측 + 손절주문 미등록 → 확인 필요 플래그 2개가 한 자산에 겹침
+  const missingBoth = makeRow('d3', '결측미등록', { brokerStopOrderRegistered: false }, { price: null });
+  const clean = makeRow('d4', '정상', {}, { price: 10_500 });
+
+  checkTrue('d1 fixture: stale 플래그', urgentStale.evaluation.stale === true);
+  checkTrue('d2 fixture: today 등급', todayRow.evaluation.tier === 'today');
+  checkTrue('d3 fixture: unavailable + 미등록', missingBoth.evaluation.signal === 'unavailable' && !missingBoth.plan.brokerStopOrderRegistered);
+  checkTrue('d4 fixture: 아무 플래그 없음', clean.evaluation.tier === 'none' && !clean.evaluation.stale && clean.plan.brokerStopOrderRegistered);
+
+  check('예시 4행(긴급+stale · 오늘 · 결측+미등록 · 정상) → 3', actionNeededCount([urgentStale, todayRow, missingBoth, clean]), 3);
+  check('빈 입력 → 0', actionNeededCount([]), 0);
+  check('플래그 겹친 한 행 → 1', actionNeededCount([missingBoth]), 1);
+  // 같은 자산 id가 두 행에 나타나도(방어) 자산 단위 1건
+  const dupSameAsset = makeRow('d3', '결측미등록', {}, { priceAsOf: '2026-09-01', sessionDate: '2026-09-03' });
+  check('같은 자산 id 두 행 → 1', actionNeededCount([missingBoth, dupSameAsset]), 1);
+  check('정상 행만 → 0', actionNeededCount([clean]), 0);
 }
 
 // ════════════════════════════════════════════════════════════════════════════

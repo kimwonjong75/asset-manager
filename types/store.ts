@@ -63,8 +63,10 @@ export interface PortfolioStatus {
 }
 
 export interface UIState {
-  /** 'today'가 기본 탭(P3, 2026-09-04 사용자 승인) — 'execution'은 UI에서 더는 도달하지 않지만
-   *  (더보기 메뉴에 없음) 방어적 라우팅(App.tsx)을 위해 타입에는 남겨둔다. */
+  /** 'dashboard'가 기본 탭(라벨 '홈', 2026-09-14 사용자가 P3의 'today' 기본 탭 결정을 번복).
+   *  'today'·'execution'은 폐지된 탭이지만 **별칭 입력값**으로 union에 남긴다 — 발송된 카톡의
+   *  `?tab=today` 링크·옛 세션이 이 값을 넘길 수 있고, `actions.setActiveTab`이 `resolveTabAlias`
+   *  (utils/deepLink)로 'dashboard'로 바꿔 상태에는 저장되지 않는다. 제거 금지. */
   activeTab: 'today' | 'dashboard' | 'portfolio' | 'analytics' | 'watchlist' | 'replay' | 'execution' | 'cleanup' | 'guide' | 'settings';
   globalPeriod: GlobalPeriod;
   /** 계정 뷰 필터 (통합/원종/유선) — 대시보드·포트폴리오 **표시 계층 전용**. 원본 data.assets는 절대 거르지 않음(저장 유실 방지). 매도통계·히스토리는 통합 기준 유지(1차 한계) */
@@ -90,7 +92,7 @@ export interface UIState {
   /** 신호 표시 설정 (Phase 5 — 신호 다이어트). 참고형 신호의 표시 위치·크기만 제어, 계산/발화 무관 */
   signalDisplay: SignalDisplaySettings;
   /** P6 정보 다이어트 — 사용자가 [브리핑 다시 보기]를 명시적으로 눌렀는지(`actions.showBriefingPopup`이
-   *  true로, `actions.dismissAlertPopup`이 false로 되돌림). '오늘' 탭에서 팝업이 자동으로 뜨지
+   *  true로, `actions.dismissAlertPopup`이 false로 되돌림). 홈('dashboard') 탭에서 팝업이 자동으로 뜨지
    *  않게 막는 조건에만 쓰인다 — `derived.showAlertPopup`(useAutoAlert 게이트)은 이 값과 무관 */
   briefingManual: boolean;
 }
@@ -180,7 +182,7 @@ export interface DerivedState {
   priceFreshnessLabel: string;
   /** 활성 매매 계획 평가 행 (P2a) — `hooks/useTradePlanSignals`. 긴급→오늘 실행→준비→대기 정렬 완료 */
   tradePlanRows: TradePlanSignalRow[];
-  /** 매매 계획 등급별 건수 + 확인 필요(시세결측/오래됨/손절주문 미등록) — 오늘 화면 배지·요약용 */
+  /** 매매 계획 등급별 건수 + 확인 필요(시세결측/오래됨/손절주문 미등록) — 홈 '오늘의 브리핑' 배지·요약용 */
   tradePlanSummary: TradePlanSignalSummary;
   /** 일괄 계획 마법사 대상(투더문 보유 中 계획 없음) — `utils/tradePlan.isEligibleForBulkPlan` */
   planlessSatellites: Asset[];

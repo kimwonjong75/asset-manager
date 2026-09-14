@@ -169,11 +169,6 @@
       "count": 2
     }
   },
-  "components/layouts/DashboardView.tsx": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 1
-    }
-  },
   "components/portfolio-table/PortfolioMobileCard.tsx": {
     "@typescript-eslint/no-unused-vars": {
       "count": 2

@@ -1,9 +1,28 @@
+// components/dashboard/SoldAssetsStats.tsx
+// 홈 '실현 손익' 요약 카드(Stage A, 2026-09-14 — 5칸 StatCard 그리드에서 compact 요약으로 전환).
+// 렌더 전용: 수치는 DashboardView가 `calculateSoldAssetsStats(filteredSellHistory, assets, exchangeRates)`로
+// 계산해 넘긴다. 자체 기간 선택기는 없다(홈의 기간 컨트롤은 '손익 추이' 카드 하나) — 현재 기간 라벨만 표시.
+// 매도 기록(SellRecord)에는 계정 정보가 없어 항상 전체 계정 기준 → warning 범위 칩.
+// 상세(총 매도금액·매수금액 등)는 수익 통계 탭으로 링크.
+
 import React from 'react';
-import StatCard from '../StatCard';
-import PeriodSelector from '../common/PeriodSelector';
-import { GlobalPeriod } from '../../types/store';
+import { ChevronRight } from 'lucide-react';
+import ScopeChip from '../common/ScopeChip';
+import type { GlobalPeriod } from '../../types/store';
 import type { PLBasis } from '../../types/valuation';
 import { buildSoldPLBreakdownRows, type RealizedPLBreakdown } from '../../utils/soldPLBreakdown';
+
+/** 기간 라벨 — components/common/PeriodSelector의 옵션 라벨과 동일 문구 */
+export const GLOBAL_PERIOD_SHORT_LABELS: Record<GlobalPeriod, string> = {
+    THIS_MONTH: '금월',
+    LAST_MONTH: '전월',
+    '1M': '1개월',
+    '3M': '3개월',
+    '6M': '6개월',
+    '1Y': '1년',
+    '2Y': '2년',
+    ALL: '전체',
+};
 
 interface SoldAssetsStatsProps {
     stats: RealizedPLBreakdown & {
@@ -13,56 +32,68 @@ interface SoldAssetsStatsProps {
         totalSoldProfit: number;
         soldReturn: number;
     };
+    /** 현재 글로벌 기간 */
     globalPeriod: GlobalPeriod;
-    onPeriodChange: (period: GlobalPeriod) => void;
-    /** 수익률 기준 — 달러 기준일 때 금액 타일의 의미를 한 줄로 알린다(숫자는 그대로). */
+    /** 수익률 기준 — 달러 기준일 때 금액의 의미를 한 줄로 알린다(숫자는 그대로). */
     plBasis?: PLBasis;
+    /** "수익 통계에서 자세히" — 수익 통계 탭으로 이동 */
+    onOpenDetails: () => void;
 }
 
-const SoldAssetsStats: React.FC<SoldAssetsStatsProps> = ({ stats, globalPeriod, onPeriodChange, plBasis }) => {
-    if (stats.soldCount === 0) return null;
+const formatCurrencyKRW = (value: number) =>
+    value.toLocaleString('ko-KR', { style: 'currency', currency: 'KRW', maximumFractionDigits: 0 });
 
-    const formatCurrencyKRW = (value: number) => {
-        return value.toLocaleString('ko-KR', {
-            style: 'currency',
-            currency: 'KRW',
-            maximumFractionDigits: 0
-        });
-    };
-
-    // 달러 기준에서는 매도·매수 금액을 둘 다 **오늘 환율**로 환산한다(수익률이 환율에 흔들리지 않도록).
-    // 그래서 이 두 금액은 "매도 당시 실제로 받은 원화"가 아니다 — 숫자는 그대로 두고 의미만 알린다.
-    const isNative = plBasis === 'native';
-    const amountNote = isNative
-        ? ' (달러 기준: 오늘 환율로 환산한 금액이며 매도 당시 실제 원화 수령액과 다를 수 있습니다)'
-        : '';
+const SoldAssetsStats: React.FC<SoldAssetsStatsProps> = ({ stats, globalPeriod, plBasis, onOpenDetails }) => {
+    const hasSales = stats.soldCount > 0;
+    const profitColor = stats.totalSoldProfit >= 0 ? 'text-success' : 'text-danger';
+    const breakdown = hasSales ? buildSoldPLBreakdownRows(stats, formatCurrencyKRW) : [];
 
     return (
-        <div className="bg-gray-800 p-6 rounded-lg shadow-lg mb-6">
-            <div className="flex items-center justify-between mb-4">
-                <h3 className="text-xl font-bold text-white">수익통계</h3>
-                <PeriodSelector value={globalPeriod} onChange={onPeriodChange} />
+        <section className="bg-gray-800 p-4 sm:p-5 rounded-lg shadow-lg" aria-label="실현 손익">
+            <div className="flex flex-wrap items-center gap-2">
+                <h2 className="text-base font-bold text-white">실현 손익</h2>
+                <span className="text-xs text-gray-400">기간: {GLOBAL_PERIOD_SHORT_LABELS[globalPeriod]}</span>
+                <ScopeChip label="전체 계정 기준" tone="warning" title="매도 기록에는 계정 정보가 없습니다" />
             </div>
-            {isNative && (
-                <p className="text-[11px] text-gray-500 -mt-2 mb-3">
-                    매도금액·매수금액은 오늘 환율로 환산한 금액입니다. 매도 당시 실제 원화 수령액과는 다를 수 있습니다.
-                </p>
+
+            {hasSales ? (
+                <div className="mt-3">
+                    <p className="text-xs text-gray-500">매도 수익</p>
+                    <p className={`text-2xl font-bold tabular-nums ${profitColor}`}>{formatCurrencyKRW(stats.totalSoldProfit)}</p>
+                    <p className="mt-0.5 text-sm text-gray-400">
+                        수익률 <span className={`tabular-nums ${stats.soldReturn >= 0 ? 'text-success' : 'text-danger'}`}>{stats.soldReturn.toFixed(2)}%</span>
+                        {' · '}매도 {stats.soldCount}건
+                    </p>
+                    {/* 이익/손실 2줄 분해 — StatCard breakdown과 같은 규약(0원 건 제외, 합=매도 수익) */}
+                    {breakdown.length > 0 && (
+                        <div className="mt-2 text-xs leading-snug whitespace-nowrap max-w-xs">
+                            {breakdown.map(row => (
+                                <div key={row.label} className="flex justify-between gap-2">
+                                    <span className="text-gray-500 min-w-0 truncate" title={row.label}>{row.label}</span>
+                                    <span className={`shrink-0 tabular-nums ${row.tone === 'profit' ? 'text-success' : 'text-danger'}`}>{row.value}</span>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                    {plBasis === 'native' && (
+                        <p className="mt-2 text-xs text-gray-500">
+                            달러 기준: 매도·매수 금액을 오늘 환율로 환산해 계산합니다. 매도 당시 실제 원화 수령액과 다를 수 있습니다.
+                        </p>
+                    )}
+                </div>
+            ) : (
+                <p className="mt-3 text-sm text-gray-400">이 기간 매도 기록 없음</p>
             )}
-            <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
-                <StatCard title="총 매도금액" value={formatCurrencyKRW(stats.totalSoldAmount)} tooltip={`매도된 종목의 총 매도금액입니다.${amountNote}`} size="small" />
-                <StatCard title="총 매수금액" value={formatCurrencyKRW(stats.totalSoldPurchaseValue)} tooltip={`매도된 종목의 총 매수원가입니다.${amountNote}`} size="small" />
-                <StatCard
-                    title="매도 수익"
-                    value={formatCurrencyKRW(stats.totalSoldProfit)}
-                    isProfit={stats.totalSoldProfit >= 0}
-                    tooltip="매도금액에서 매수금액을 뺀 수익입니다. 하단은 이익 건 합계 / 손실 건 합계이며, 둘을 더하면 매도 수익이 됩니다."
-                    size="small"
-                    breakdown={buildSoldPLBreakdownRows(stats, formatCurrencyKRW)}
-                />
-                <StatCard title="매도 수익률" value={`${stats.soldReturn.toFixed(2)}%`} isProfit={stats.soldReturn >= 0} tooltip="수익을 매수원가로 나눈 백분율입니다." size="small" />
-                <StatCard title="매도 횟수" value={stats.soldCount.toString()} tooltip="총 매도 거래 횟수입니다." size="small" />
-            </div>
-        </div>
+
+            <button
+                type="button"
+                onClick={onOpenDetails}
+                className="mt-3 inline-flex items-center gap-1 min-h-9 text-sm text-primary-light hover:text-white transition-colors"
+            >
+                수익 통계에서 자세히
+                <ChevronRight className="h-4 w-4" aria-hidden="true" />
+            </button>
+        </section>
     );
 };
 
