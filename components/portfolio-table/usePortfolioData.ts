@@ -180,11 +180,15 @@ export const usePortfolioData = ({
     setSortConfig(null);
   };
 
+  /** 정렬 해제 — 정렬 기준 컬럼을 숨겼을 때(ColumnSettingsDropdown → PortfolioTable) */
+  const clearSort = () => setSortConfig(null);
+
   return {
     enrichedAndSortedAssets,
     sortConfig,
     requestSort,
     toggleReturnSort,
+    clearSort,
     categoryOptions,
     totalValueKRW
   };

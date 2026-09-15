@@ -90,6 +90,34 @@ export interface StockReviewViewModel {
   disclaimer: string;
 }
 
+/** 관심종목 '매수 점검' 칸의 조건별 표시 상태 — PassMark state 와 1:1 (충족=pass / 미충족=fail / 판정불가·해당없음=unknown). */
+export type BuyReadinessMarkState = 'pass' | 'fail' | 'unknown';
+
+export interface BuyReadinessCondition {
+  key: SmartFilterKey;
+  label: string;
+  state: BuyReadinessMarkState;
+}
+
+/**
+ * 관심종목 '매수 점검' 요약 — 종목 검토 매수 조건 3개(BUY_SPECS)의 충족 현황. **매수 추천 아님.**
+ *   met=충족 수 / total=조건 수(3 고정) / unknown=판정 불가 수 / conditions=조건별 상태(BUY_SPECS 순서).
+ * 산출: utils/stockReview.computeBuyReadiness (종목 검토 패널과 같은 evalSpec 경로).
+ */
+export interface BuyReadiness {
+  met: number;
+  total: 3;
+  unknown: number;
+  conditions: BuyReadinessCondition[];
+}
+
+/** 관심종목 표 컬럼·모바일 카드 라벨 */
+export const BUY_READINESS_LABEL = '매수 점검';
+
+/** '매수 점검' 설명 툴팁 — 추천으로 읽히지 않게 조건 목록과 RSI 캐비엇을 함께 적는다. */
+export const BUY_READINESS_TOOLTIP =
+  '매수 추천이 아니라 종목 검토의 매수 조건 3개(현재가>MA60, 정배열, RSI≤30) 충족 현황입니다. RSI 과매도는 단독 매수 근거가 아닙니다.';
+
 /** 패널 하단 고정 면책 문구 (필수 표기). */
 export const STOCK_REVIEW_DISCLAIMER =
   '본 정보는 관찰과 판단 보조용이며 투자 추천이나 자동 주문 신호가 아닙니다.';

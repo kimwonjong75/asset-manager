@@ -1,18 +1,30 @@
 import { directionTextClass } from '../utils/directionTone';
 import React, { useMemo, useState, useEffect, Fragment, useRef } from 'react';
-import { ArrowDown, ArrowUp, ArrowUpDown, ClipboardList, Filter, MoreHorizontal, RefreshCw, Star, StickyNote } from 'lucide-react';
-import ActionMenu from './common/ActionMenu';
+import {
+  ArrowDown, ArrowUp, ArrowUpDown, ChartColumn, ChevronDown, Info, Plus, RefreshCw, Search,
+  SlidersHorizontal, Star, StickyNote, Trash2,
+} from 'lucide-react';
+import ActionMenu, { type ActionMenuEntry } from './common/ActionMenu';
+import Badge from './common/Badge';
+import Button from './common/Button';
 import ConfirmDialog from './common/ConfirmDialog';
+import RowActionMenuButton from './common/RowActionMenuButton';
+import SortableTh from './common/SortableTh';
+import Tooltip from './common/Tooltip';
 import { useConfirm } from '../hooks/useConfirm';
+import { useWatchlistBuyReadiness } from '../hooks/useWatchlistBuyReadiness';
 import MemoTooltip from './common/MemoTooltip';
 import MemoEditPopup from './common/MemoEditPopup';
 import { Asset, Currency, CURRENCY_SYMBOLS, WatchlistItem, ExchangeRates } from '../types';
 import { getAllowedCategories, getCategoryName, type CategoryDefinition } from '../types/category';
+import { BUY_READINESS_LABEL, BUY_READINESS_TOOLTIP } from '../types/stockReview';
 import AssetTrendChart from './AssetTrendChart';
 import ChartViewerModal from './common/ChartViewerModal';
 import StockReviewAccordion from './stock-review/StockReviewAccordion';
 import TradePlanSection from './trade-plan/TradePlanSection';
 import WatchlistMobileCard from './watchlist/WatchlistMobileCard';
+import BuyReadinessMarks from './watchlist/BuyReadinessMarks';
+import { buildWatchlistRowMenuItems } from './watchlist/watchlistRowMenu';
 import { usePortfolio } from '../contexts/PortfolioContext';
 import { watchlistToPseudoAsset } from '../utils/alertChecker';
 import {
@@ -21,6 +33,7 @@ import {
   type WatchlistSortConfig,
   type WatchlistSortKey,
 } from '../utils/watchlistSort';
+import { getWatchlistEmptyState, type WatchlistEmptyState } from '../utils/watchlistEmptyState';
 
 interface WatchlistPageProps {
   watchlist: WatchlistItem[];
@@ -36,38 +49,53 @@ interface WatchlistPageProps {
   onTogglePin?: (id: string) => void;
 }
 
-// 정렬 아이콘 (PortfolioTable과 동일 관례: 비활성 ArrowUpDown, 오름 ArrowUp, 내림 ArrowDown)
+// 모바일 정렬 바 아이콘 (SortableTh 와 같은 관례: 비활성 ArrowUpDown, 오름 ArrowUp, 내림 ArrowDown)
 const SortIcon: React.FC<{ sortKey: WatchlistSortKey; sortConfig: WatchlistSortConfig | null }> = ({ sortKey, sortConfig }) => {
   if (!sortConfig || sortConfig.key !== sortKey) return <ArrowUpDown className="h-3.5 w-3.5 opacity-30" aria-hidden="true" />;
   return sortConfig.direction === 'descending'
-    ? <ArrowDown className="h-3.5 w-3.5" aria-label="내림차순" />
-    : <ArrowUp className="h-3.5 w-3.5" aria-label="오름차순" />;
+    ? <ArrowDown className="h-3.5 w-3.5" aria-hidden="true" />
+    : <ArrowUp className="h-3.5 w-3.5" aria-hidden="true" />;
 };
 
-// 차트 아이콘
-const ChartBarIcon: React.FC = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-  </svg>
+// 빈 목록 안내 — 원인·문구·행동은 순수 utils/watchlistEmptyState 가 결정(데스크탑 표·모바일 목록 공용)
+const EmptyStateBlock: React.FC<{ state: WatchlistEmptyState; onClearFilters: () => void; onAddItem: () => void }> = ({ state, onClearFilters, onAddItem }) => (
+  <div className="flex flex-col items-center gap-3 py-8 text-center">
+    <p className="text-sm text-gray-400">{state.message}</p>
+    {state.actions.length > 0 && (
+      <div className="flex flex-wrap items-center justify-center gap-2">
+        {state.actions.includes('clearFilters') && (
+          <Button variant="secondary" onClick={onClearFilters}>필터 해제</Button>
+        )}
+        {state.actions.includes('addItem') && (
+          <Button variant="secondary" icon={<Plus />} onClick={onAddItem}>종목 추가</Button>
+        )}
+      </div>
+    )}
+  </div>
 );
+
+const SORT_TITLE = '정렬 (한 번 더 누르면 역순)';
 
 const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, portfolioAssets, onDelete, onOpenAddModal, onOpenEditModal, isLoading, onBulkDelete, exchangeRates, onRefresh, categories, onTogglePin }) => {
   const { actions, ui } = usePortfolio();
   const [filterCategory, setFilterCategory] = useState<number | 'ALL'>('ALL');
   const [search, setSearch] = useState('');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [openFilterOptions, setOpenFilterOptions] = useState<boolean>(false);
   const [expandedItemId, setExpandedItemId] = useState<string | null>(null);
   const [fullscreenItemId, setFullscreenItemId] = useState<string | null>(null);
-  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [showPinnedOnly, setShowPinnedOnly] = useState(false);
   const [memoEditItem, setMemoEditItem] = useState<WatchlistItem | null>(null);
+  // 정렬 상태는 로컬(영속 없음) — 데스크탑 헤더·모바일 정렬 바 공유
   const [sortConfig, setSortConfig] = useState<WatchlistSortConfig | null>(null);
-  // 행 액션 메뉴 앵커 — 열린 행의 버튼에만 ref 를 붙인다(ActionMenu 가 위치·바깥 클릭·Esc 처리)
-  const menuAnchorRef = useRef<HTMLButtonElement | null>(null);
+  const [viewMenuOpen, setViewMenuOpen] = useState(false);
+  // 행 메뉴 '종목 검토' 요청 — nonce 가 바뀔 때마다 그 행 아코디언을 key 로 리마운트해 initialOpen 으로 연다
+  const [reviewTarget, setReviewTarget] = useState<{ id: string; nonce: number } | null>(null);
+  const viewMenuAnchorRef = useRef<HTMLButtonElement>(null);
   const { confirm, confirmRequest } = useConfirm();
+  const readinessMap = useWatchlistBuyReadiness(watchlist);
 
   const requestSort = (key: WatchlistSortKey) => setSortConfig(prev => nextWatchlistSort(prev, key));
+  const onSortHeader = (key: string) => requestSort(key as WatchlistSortKey);
 
   // 브리핑에서 관심종목 클릭 시 차트 자동 확장 + 해당 행으로 스크롤
   useEffect(() => {
@@ -98,7 +126,7 @@ const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, portfolioAsset
     return new Set(portfolioAssets.map(a => a.ticker.toUpperCase()));
   }, [portfolioAssets]);
 
-  // 필터 → 파생값 부착 → 헤더 정렬(순수 util). 데스크탑 테이블과 모바일 카드가 같은 목록을 공유한다.
+  // 필터 → 파생값 부착(매수 점검 포함) → 헤더 정렬(순수 util). 데스크탑 테이블과 모바일 카드가 같은 목록을 공유한다.
   const filtered = useMemo(() => {
     const rows = watchlist
       .filter(w => !showPinnedOnly || w.pinned)
@@ -112,9 +140,10 @@ const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, portfolioAsset
         ...w,
         dropFromHigh: (w.highestPrice && w.highestPrice > 0 && w.currentPrice) ? ((w.currentPrice - w.highestPrice) / w.highestPrice) * 100 : null,
         yesterdayChange: w.yesterdayChange ?? (w.previousClosePrice && w.currentPrice ? ((w.currentPrice - w.previousClosePrice) / w.previousClosePrice) * 100 : 0),
+        buyReadiness: readinessMap.get(w.id) ?? null,
       }));
     return sortWatchlistRows(rows, sortConfig);
-  }, [watchlist, filterCategory, search, showPinnedOnly, sortConfig]);
+  }, [watchlist, filterCategory, search, showPinnedOnly, sortConfig, readinessMap]);
 
   useEffect(() => {
     setSelectedIds(prev => {
@@ -126,13 +155,51 @@ const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, portfolioAsset
     });
   }, [filtered]);
 
+  const emptyState = getWatchlistEmptyState({
+    totalCount: watchlist.length,
+    visibleCount: filtered.length,
+    search,
+    categoryName: filterCategory === 'ALL' ? null : getCategoryName(filterCategory, categories),
+    pinnedOnly: showPinnedOnly,
+  });
+  const activeFilterCount = (showPinnedOnly ? 1 : 0) + (filterCategory !== 'ALL' ? 1 : 0);
+
   const formatKRW = (num: number) => new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW', maximumFractionDigits: 0 }).format(num);
   const formatOriginalCurrency = (num: number, currency: Currency) => `${CURRENCY_SYMBOLS[currency]}${new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 }).format(num)}`;
   const getChangeColor = directionTextClass;
   const allSelected = filtered.length > 0 && filtered.every(w => selectedIds.has(w.id));
 
+  const toggleSelectAll = () => {
+    const next = new Set<string>(selectedIds);
+    if (allSelected) filtered.forEach(w => next.delete(w.id)); else filtered.forEach(w => next.add(w.id));
+    setSelectedIds(next);
+  };
+
+  const clearFilters = () => {
+    setSearch('');
+    setFilterCategory('ALL');
+    setShowPinnedOnly(false);
+  };
+
+  const handleBulkDelete = () => {
+    const ids = Array.from(selectedIds);
+    if (ids.length === 0) return;
+    void confirm(`선택한 관심종목 ${ids.length}개를 삭제하시겠습니까?`, { title: '관심종목 삭제', confirmLabel: '삭제', tone: 'danger' })
+      .then(ok => {
+        if (!ok) return;
+        if (onBulkDelete) onBulkDelete(ids); else ids.forEach(id => onDelete(id));
+        setSelectedIds(new Set());
+      });
+  };
+
   const handleToggleExpand = (itemId: string) => {
+    setReviewTarget(null);
     setExpandedItemId(prev => (prev === itemId ? null : itemId));
+  };
+
+  const openReview = (itemId: string) => {
+    setExpandedItemId(itemId);
+    setReviewTarget(prev => ({ id: itemId, nonce: (prev?.nonce ?? 0) + 1 }));
   };
 
   // 터틀 후보 토글 — 시세/카테고리와 독립된 boolean 플래그만 변경 (원본 항목 기준)
@@ -141,10 +208,23 @@ const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, portfolioAsset
     if (orig) actions.updateWatchItem({ ...orig, isTurtleCandidate: !orig.isTurtleCandidate });
   };
 
-  // 정렬 가능한 헤더 셀 (PortfolioTable의 thClasses와 동일 톤)
-  const sortableThClasses = 'px-4 py-3 cursor-pointer hover:bg-gray-600 transition-colors whitespace-nowrap';
-  const ariaSortFor = (key: WatchlistSortKey): 'ascending' | 'descending' | 'none' =>
-    sortConfig?.key === key ? sortConfig.direction : 'none';
+  // [보기 ▾] — 중요 종목만(연속 토글) + 카테고리 단일 선택
+  const viewMenuItems: ActionMenuEntry[] = [];
+  if (onTogglePin) {
+    viewMenuItems.push({ label: '중요 종목만', checked: showPinnedOnly, keepOpen: true, onClick: () => setShowPinnedOnly(v => !v) });
+  }
+  viewMenuItems.push(
+    { type: 'section', label: '카테고리' },
+    { label: '전체', checked: filterCategory === 'ALL', onClick: () => setFilterCategory('ALL') },
+    ...categoryOptions.map((cat): ActionMenuEntry => ({
+      label: cat.name,
+      checked: filterCategory === cat.id,
+      onClick: () => setFilterCategory(cat.id),
+    })),
+  );
+
+  const sortDirection = sortConfig ? (sortConfig.direction === 'ascending' ? 'asc' : 'desc') : null;
+  const thSortClass = 'px-4 py-3 whitespace-nowrap hover:bg-gray-600 transition-colors';
 
   const getExchangeRate = (currency?: Currency): number => {
     if (!currency || currency === Currency.KRW) return 1;
@@ -153,173 +233,151 @@ const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, portfolioAsset
     return 1;
   };
 
+  const COLUMN_COUNT = 7;
+
   return (
     <div className="space-y-6">
       {confirmRequest && <ConfirmDialog {...confirmRequest} />}
-      {/* 툴바 */}
+      {/* 툴바 — 검색 · [보기 ▾] · 업데이트(아이콘) · 종목 추가(primary) */}
       <div className="bg-gray-800 p-3 sm:p-4 rounded-lg border border-border-subtle flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
-        <div className="flex items-center gap-2 sm:gap-4">
-          <div className="relative flex-1 sm:flex-none">
-            <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="이름/티커/메모 검색" className="bg-gray-700 border border-gray-600 rounded-md py-2 pl-10 pr-10 text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary w-full sm:w-64" />
-            <svg className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-          </div>
-          {onTogglePin && (
-            <button
-              onClick={() => setShowPinnedOnly(!showPinnedOnly)}
-              className={`inline-flex items-center justify-center min-h-9 min-w-9 rounded-md transition-colors flex-shrink-0 ${
-                showPinnedOnly
-                  ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/50'
-                  : 'text-gray-500 hover:text-yellow-400/60 border border-transparent'
-              }`}
-              title={showPinnedOnly ? '전체 보기' : '중요 종목만 보기'}
-              aria-label={showPinnedOnly ? '전체 보기' : '중요 종목만 보기'}
-              aria-pressed={showPinnedOnly}
-            >
-              <Star className="h-5 w-5" fill={showPinnedOnly ? 'currentColor' : 'none'} aria-hidden="true" />
-            </button>
-          )}
+        <div className="relative flex-1 sm:flex-none">
+          <input
+            type="text"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="이름/티커/메모 검색"
+            aria-label="관심종목 검색"
+            className="bg-gray-700 border border-gray-600 rounded-md py-2 pl-10 pr-3 text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary w-full sm:w-64"
+          />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" aria-hidden="true" />
         </div>
-        <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto scrollbar-hide">
-          <button onClick={() => {
-            if (filtered.length === 0) return;
-            const ids = filtered.map(w => w.id);
-            const next = new Set<string>(selectedIds);
-            const selectAll = !(filtered.every(w => selectedIds.has(w.id)));
-            if (selectAll) ids.forEach(id => next.add(id)); else ids.forEach(id => next.delete(id));
-            setSelectedIds(next);
-          }} className="border border-gray-600 text-gray-300 hover:bg-gray-700 hover:text-white font-medium py-2 px-2 sm:px-3 rounded-md transition duration-300 text-xs sm:text-sm whitespace-nowrap">
-            {allSelected ? '전체 해제' : '전체 선택'}
-          </button>
-          <button onClick={() => {
-            const ids = Array.from(selectedIds);
-            if (ids.length === 0) return;
-            if (onBulkDelete) onBulkDelete(ids); else ids.forEach(id => onDelete(id));
-            setSelectedIds(new Set());
-          }} disabled={selectedIds.size === 0} className="border border-gray-600 text-danger hover:bg-gray-700 font-medium py-2 px-2 sm:px-4 rounded-md transition duration-300 disabled:text-gray-500 disabled:border-gray-700 disabled:cursor-not-allowed text-xs sm:text-sm whitespace-nowrap">
-            <span className="sm:hidden">삭제</span>
-            <span className="hidden sm:inline">선택 삭제</span>
-          </button>
-          <button
-            onClick={onRefresh}
-            disabled={isLoading || !onRefresh}
-            className="border border-gray-600 text-gray-300 hover:bg-gray-700 hover:text-white font-medium py-2 px-2 sm:px-3 rounded-md transition duration-300 disabled:text-gray-500 disabled:border-gray-700 disabled:cursor-not-allowed flex items-center gap-1"
-            title="시세 업데이트"
+        <div className="flex items-center justify-end gap-2">
+          <Button
+            ref={viewMenuAnchorRef}
+            variant="secondary"
+            icon={<SlidersHorizontal />}
+            iconRight={<ChevronDown />}
+            aria-haspopup="menu"
+            aria-expanded={viewMenuOpen}
+            onClick={() => setViewMenuOpen(o => !o)}
           >
-            <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-            <span className="hidden sm:inline">업데이트</span>
-          </button>
-          <button onClick={onOpenAddModal} className="bg-primary hover:bg-primary-dark text-white font-medium py-2 px-2 sm:px-4 rounded-md transition duration-300 flex items-center whitespace-nowrap">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 sm:mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            <span className="hidden sm:inline">종목추가</span>
-          </button>
-          <div className="relative">
-            <button
-              onClick={() => setOpenFilterOptions(prev => !prev)}
-              className="border border-gray-600 text-gray-300 hover:bg-gray-700 hover:text-white font-medium py-2 px-2 sm:px-3 rounded-md transition duration-300 flex items-center gap-2"
-              title="필터"
-            >
-              <Filter className="h-4 w-4" />
-              <span className="hidden sm:inline">필터</span>
-            </button>
-            {openFilterOptions && (
-              <div className="absolute right-0 mt-2 w-72 bg-gray-800 border border-gray-700 rounded-md shadow-lg z-20 p-3">
-                <div className="space-y-3">
-                  <div>
-                    <div className="text-xs text-gray-400 mb-1">카테고리</div>
-                    <div className="relative">
-                      <select value={filterCategory} onChange={e => { const v = e.target.value; setFilterCategory(v === 'ALL' ? 'ALL' : Number(v)); }} className="bg-gray-700 border border-gray-600 rounded-md py-2 pl-3 pr-8 text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary appearance-none w-full">
-                        <option value="ALL">전체</option>
-                        {categoryOptions.map(cat => (
-                          <option key={cat.id} value={cat.id}>{cat.name}</option>
-                        ))}
-                      </select>
-                      <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-400">
-                        <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
+            보기
+            {activeFilterCount > 0 && (
+              <>
+                <span aria-hidden="true"><Badge tone="info">{activeFilterCount}</Badge></span>
+                <span className="sr-only">(필터 {activeFilterCount}개 적용 중)</span>
+              </>
             )}
-          </div>
+          </Button>
+          {viewMenuOpen && (
+            <ActionMenu
+              anchorRef={viewMenuAnchorRef}
+              items={viewMenuItems}
+              onClose={() => setViewMenuOpen(false)}
+              header="보기"
+              width="md"
+            />
+          )}
+          <Button
+            variant="secondary"
+            icon={<RefreshCw />}
+            loading={isLoading}
+            disabled={!onRefresh}
+            onClick={() => { void onRefresh?.(); }}
+            aria-label="시세 업데이트"
+            title="시세 업데이트"
+          />
+          <Button variant="primary" icon={<Plus />} onClick={onOpenAddModal}>종목 추가</Button>
         </div>
       </div>
 
-      {/* 데스크톱 테이블 */}
+      {/* 선택 바 — 행을 고르면 나타난다 */}
+      {selectedIds.size > 0 && (
+        <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border-subtle bg-surface-muted px-3 py-2">
+          <span className="text-sm text-gray-200" aria-live="polite">{selectedIds.size}개 선택</span>
+          <Button variant="danger" icon={<Trash2 />} onClick={handleBulkDelete}>선택 삭제</Button>
+          <Button variant="ghost" onClick={() => setSelectedIds(new Set())}>선택 해제</Button>
+        </div>
+      )}
+
+      {/* 데스크톱 테이블 — sticky thead 보존: 이 사이에 overflow 래퍼 금지 */}
       <div className="hidden md:block w-full">
         <table className="w-full text-sm text-left text-gray-400 table-auto">
           <thead className="text-xs text-gray-300 uppercase bg-gray-700 select-none sticky top-0 z-10">
             <tr>
-              <th className="px-4 py-3 text-center">
-                <input type="checkbox" checked={allSelected} onChange={() => {
-                  const ids = filtered.map(w => w.id);
-                  const next = new Set<string>(selectedIds);
-                  const selectAll = !(filtered.every(w => selectedIds.has(w.id)));
-                  if (selectAll) ids.forEach(id => next.add(id)); else ids.forEach(id => next.delete(id));
-                  setSelectedIds(next);
-                }} />
+              <th scope="col" className="px-4 py-3 text-center">
+                <input
+                  type="checkbox"
+                  checked={allSelected}
+                  onChange={toggleSelectAll}
+                  disabled={filtered.length === 0}
+                  aria-label="표시된 관심종목 전체 선택"
+                />
               </th>
-              <th
-                scope="col"
-                className={sortableThClasses}
-                onClick={() => requestSort('name')}
-                title="종목명 정렬 (한 번 더 누르면 역순)"
-                aria-sort={ariaSortFor('name')}
-              >
-                <div className="flex items-center gap-2">종목명 <SortIcon sortKey="name" sortConfig={sortConfig} /></div>
-              </th>
-              <th
-                scope="col"
-                className={`${sortableThClasses} text-right`}
-                onClick={() => requestSort('currentPrice')}
-                title="현재가 정렬 (한 번 더 누르면 역순)"
-                aria-sort={ariaSortFor('currentPrice')}
-              >
-                <div className="flex items-center justify-end gap-2">현재가 <SortIcon sortKey="currentPrice" sortConfig={sortConfig} /></div>
-              </th>
-              <th
-                scope="col"
-                className={`${sortableThClasses} text-right`}
-                onClick={() => requestSort('yesterdayChange')}
-                title="어제대비 정렬 (한 번 더 누르면 역순)"
-                aria-sort={ariaSortFor('yesterdayChange')}
-              >
-                <div className="flex items-center justify-end gap-2">어제대비 <SortIcon sortKey="yesterdayChange" sortConfig={sortConfig} /></div>
-              </th>
-              <th
-                scope="col"
-                className={`${sortableThClasses} text-right`}
-                onClick={() => requestSort('dropFromHigh')}
-                title="최고가대비 정렬 (한 번 더 누르면 역순)"
-                aria-sort={ariaSortFor('dropFromHigh')}
-              >
-                <div className="flex items-center justify-end gap-2">최고가대비 <SortIcon sortKey="dropFromHigh" sortConfig={sortConfig} /></div>
-              </th>
-              <th className="px-4 py-3 text-center">액션</th>
+              <SortableTh
+                label="종목명" sortKey="name" activeKey={sortConfig?.key ?? null} direction={sortDirection}
+                onSort={onSortHeader} className={thSortClass} title={`종목명 ${SORT_TITLE}`}
+              />
+              <SortableTh
+                label="현재가" sortKey="currentPrice" activeKey={sortConfig?.key ?? null} direction={sortDirection}
+                onSort={onSortHeader} className={thSortClass} align="right" title={`현재가 ${SORT_TITLE}`}
+              />
+              <SortableTh
+                label="어제대비" sortKey="yesterdayChange" activeKey={sortConfig?.key ?? null} direction={sortDirection}
+                onSort={onSortHeader} className={thSortClass} align="right" title={`어제대비 ${SORT_TITLE}`}
+              />
+              <SortableTh
+                label="최고가대비" sortKey="dropFromHigh" activeKey={sortConfig?.key ?? null} direction={sortDirection}
+                onSort={onSortHeader} className={thSortClass} align="right" title={`최고가대비 ${SORT_TITLE}`}
+              />
+              <SortableTh
+                label={BUY_READINESS_LABEL} sortKey="buyReadiness" activeKey={sortConfig?.key ?? null} direction={sortDirection}
+                onSort={onSortHeader} className={thSortClass} align="right"
+                tooltip={BUY_READINESS_TOOLTIP} tooltipPosition="bottom"
+                title="매수 점검 정렬 (처음엔 충족 많은 순, 한 번 더 누르면 역순)"
+              />
+              <th scope="col" className="px-4 py-3 text-center">관리</th>
             </tr>
           </thead>
           <tbody>
             {filtered.length > 0 ? filtered.map(w => {
               const isNonKRW = w.currency !== undefined && w.currency !== Currency.KRW;
               const derivedExchangeRate = getExchangeRate(w.currency);
+              const isExpanded = expandedItemId === w.id;
+              const reviewRequested = reviewTarget?.id === w.id;
+              const menuItems = buildWatchlistRowMenuItems({
+                isTurtleCandidate: !!w.isTurtleCandidate,
+                onTradePlan: () => actions.openTradePlanPlanner({ watchItemId: w.id, ticker: w.ticker, exchange: w.exchange, name: w.name }),
+                onReview: () => openReview(w.id),
+                onEdit: () => onOpenEditModal(w),
+                onToggleTurtle: () => toggleTurtle(w.id),
+                onChartView: () => handleToggleExpand(w.id),
+                onChartExpand: () => setFullscreenItemId(w.id),
+                onDelete: () => {
+                  void confirm(`'${w.name}' 종목을 삭제하시겠습니까?`, { title: '관심종목 삭제', confirmLabel: '삭제', tone: 'danger' })
+                    .then(ok => { if (ok) onDelete(w.id); });
+                },
+              });
               return (
                 <Fragment key={w.id}>
                   <tr data-watch-id={w.id} className="border-b border-gray-700 transition-colors duration-200 hover:bg-gray-700/50">
                     <td className="px-4 py-3 text-center">
-                      <input type="checkbox" checked={selectedIds.has(w.id)} onChange={(e) => {
-                        const next = new Set<string>(selectedIds);
-                        if (e.target.checked) next.add(w.id); else next.delete(w.id);
-                        setSelectedIds(next);
-                      }} />
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.has(w.id)}
+                        aria-label={`${w.name} 선택`}
+                        onChange={(e) => {
+                          const next = new Set<string>(selectedIds);
+                          if (e.target.checked) next.add(w.id); else next.delete(w.id);
+                          setSelectedIds(next);
+                        }}
+                      />
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-start gap-1">
                         {onTogglePin && (
                           <button
+                            type="button"
                             onClick={(e) => { e.stopPropagation(); onTogglePin(w.id); }}
                             className={`transition-colors flex-shrink-0 mt-0.5 ${
                               w.pinned ? 'text-yellow-400' : 'text-gray-500 hover:text-yellow-400/60'
@@ -336,7 +394,7 @@ const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, portfolioAsset
                             <MemoTooltip memo={w.notes}>
                               <span className="flex items-center gap-1">
                                 {portfolioTickers.has(w.ticker.toUpperCase()) && (
-                                  <span className="text-xs px-1 py-0.5 rounded bg-sky-500/20 text-sky-300 flex-shrink-0" title="보유중">보유</span>
+                                  <Badge tone="info" className="flex-shrink-0" title="보유중">보유</Badge>
                                 )}
                                 {w.isTurtleCandidate && (
                                   <span className="text-xs px-1 py-0.5 rounded bg-ok-soft text-ok flex-shrink-0" role="img" aria-label="터틀 후보" title="터틀 후보">🐢</span>
@@ -375,54 +433,29 @@ const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, portfolioAsset
                     </td>
                     <td className={`px-4 py-3 text-right ${getChangeColor(w.yesterdayChange || 0)}`}>{w.yesterdayChange !== undefined ? `${(w.yesterdayChange || 0).toFixed(2)}%` : '-'}</td>
                     <td className={`px-4 py-3 text-right ${w.dropFromHigh != null ? getChangeColor(w.dropFromHigh) : 'text-gray-400'}`}>{w.dropFromHigh != null ? `${w.dropFromHigh.toFixed(2)}%` : '-'}</td>
-                    <td className="px-4 py-3 text-center relative">
+                    <td className="px-4 py-3 text-right whitespace-nowrap">
+                      <BuyReadinessMarks readiness={w.buyReadiness} />
+                    </td>
+                    <td className="px-4 py-3 text-center">
                       <div className="flex items-center justify-center gap-1">
-                        <button onClick={() => handleToggleExpand(w.id)} className="p-2 text-gray-300 hover:text-white" title="차트">
-                          <ChartBarIcon />
-                        </button>
                         <button
-                          ref={openMenuId === w.id ? menuAnchorRef : undefined}
-                          onClick={() => setOpenMenuId(openMenuId === w.id ? null : w.id)}
-                          className="p-2 text-gray-300 hover:text-white"
-                          aria-label={`${w.name} 메뉴`}
-                          aria-haspopup="menu"
-                          aria-expanded={openMenuId === w.id}
+                          type="button"
+                          onClick={() => handleToggleExpand(w.id)}
+                          className="focus-ring inline-flex min-h-9 min-w-9 items-center justify-center rounded-md text-gray-300 hover:bg-gray-700 hover:text-white"
+                          title={isExpanded ? '차트 접기' : '차트 펼치기'}
+                          aria-label={`${w.name} 차트 ${isExpanded ? '접기' : '펼치기'}`}
+                          aria-expanded={isExpanded}
                         >
-                          <MoreHorizontal className="h-5 w-5" />
+                          <ChartColumn className="h-4 w-4" aria-hidden="true" />
                         </button>
+                        {/* 관리 메뉴 — WatchlistMobileCard 와 같은 buildWatchlistRowMenuItems */}
+                        <RowActionMenuButton items={menuItems} label={`${w.name} 관리 메뉴`} header={w.name} />
                       </div>
-                      {/* 드롭다운은 ActionMenu(ui-constraints) — WatchlistMobileCard 메뉴와 같은 항목·순서 */}
-                      {openMenuId === w.id && (
-                        <ActionMenu
-                          anchorRef={menuAnchorRef}
-                          onClose={() => setOpenMenuId(null)}
-                          items={[
-                            { label: '수정', onClick: () => onOpenEditModal(w) },
-                            {
-                              label: '매매 계획',
-                              icon: <ClipboardList />,
-                              onClick: () => actions.openTradePlanPlanner({ watchItemId: w.id, ticker: w.ticker, exchange: w.exchange, name: w.name }),
-                              colorClass: 'text-gray-200',
-                            },
-                            { label: w.isTurtleCandidate ? '🐢 터틀 후보 해제' : '🐢 터틀 후보 지정', onClick: () => toggleTurtle(w.id), colorClass: 'text-gray-200' },
-                            { label: '차트 보기', onClick: () => handleToggleExpand(w.id), colorClass: 'text-gray-200' },
-                            { label: '차트 확대', onClick: () => setFullscreenItemId(w.id), colorClass: 'text-gray-200' },
-                            {
-                              label: '삭제',
-                              onClick: () => {
-                                void confirm(`'${w.name}' 종목을 삭제하시겠습니까?`, { title: '관심종목 삭제', confirmLabel: '삭제', tone: 'danger' })
-                                  .then(ok => { if (ok) onDelete(w.id); });
-                              },
-                              colorClass: 'text-danger',
-                            },
-                          ]}
-                        />
-                      )}
                     </td>
                   </tr>
-                  {expandedItemId === w.id && (
+                  {isExpanded && (
                     <tr className="bg-gray-900/50">
-                      <td colSpan={6} className="p-0 sm:p-2">
+                      <td colSpan={COLUMN_COUNT} className="p-0 sm:p-2">
                         <AssetTrendChart
                           history={[]}
                           assetId={w.id}
@@ -443,10 +476,12 @@ const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, portfolioAsset
                           className="px-2 sm:px-0"
                         />
                         <StockReviewAccordion
+                          key={reviewRequested ? `review-${reviewTarget?.nonce ?? 0}` : 'review'}
                           asset={watchlistToPseudoAsset(w)}
                           source="watchlist"
                           displayName={w.name}
                           className="px-2 sm:px-0"
+                          initialOpen={reviewRequested}
                         />
                       </td>
                     </tr>
@@ -468,27 +503,40 @@ const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, portfolioAsset
                   )}
                 </Fragment>
               );
-            }) : (
+            }) : emptyState && (
               <tr>
-                <td colSpan={6} className="text-center py-8 text-gray-500">관심 종목을 추가해주세요.</td>
+                <td colSpan={COLUMN_COUNT}>
+                  <EmptyStateBlock state={emptyState} onClearFilters={clearFilters} onAddItem={onOpenAddModal} />
+                </td>
               </tr>
             )}
           </tbody>
         </table>
       </div>
 
-      {/* 모바일 정렬 바 — 데스크탑 헤더 클릭 정렬과 동일 상태(sortConfig)를 공유 */}
+      {/* 모바일 정렬 바 — 전체 선택 + 데스크탑 헤더와 동일 정렬 상태(sortConfig) 공유 + 매수 점검 설명 */}
       <div className="flex md:hidden items-center gap-1.5 overflow-x-auto scrollbar-hide">
+        <input
+          type="checkbox"
+          checked={allSelected}
+          onChange={toggleSelectAll}
+          disabled={filtered.length === 0}
+          aria-label="표시된 관심종목 전체 선택"
+          className="flex-shrink-0 mr-1"
+        />
         <span className="text-xs text-gray-500 flex-shrink-0">정렬</span>
         {([
           { key: 'name', label: '종목명' },
           { key: 'currentPrice', label: '현재가' },
           { key: 'yesterdayChange', label: '어제대비' },
           { key: 'dropFromHigh', label: '최고가대비' },
+          { key: 'buyReadiness', label: BUY_READINESS_LABEL },
         ] as { key: WatchlistSortKey; label: string }[]).map(({ key, label }) => (
           <button
             key={key}
+            type="button"
             onClick={() => requestSort(key)}
+            aria-pressed={sortConfig?.key === key}
             className={`text-xs px-2 py-1 rounded-md border transition-colors whitespace-nowrap flex items-center gap-1 ${
               sortConfig?.key === key
                 ? 'bg-primary/20 border-primary/50 text-primary-light'
@@ -498,6 +546,15 @@ const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, portfolioAsset
             {label} <SortIcon sortKey={key} sortConfig={sortConfig} />
           </button>
         ))}
+        <Tooltip content={BUY_READINESS_TOOLTIP} position="bottom" wrap maxWidth={280} className="flex-shrink-0">
+          <button
+            type="button"
+            className="focus-ring inline-flex min-h-8 min-w-8 items-center justify-center rounded-md text-gray-400 hover:text-white"
+            aria-label="매수 점검이란?"
+          >
+            <Info className="h-4 w-4" aria-hidden="true" />
+          </button>
+        </Tooltip>
       </div>
 
       {/* 모바일 카드 뷰 */}
@@ -522,8 +579,8 @@ const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, portfolioAsset
             isPortfolioHeld={portfolioTickers.has(w.ticker.toUpperCase())}
           />
           </div>
-        )) : (
-          <div className="text-center py-8 text-gray-500">관심 종목을 추가해주세요.</div>
+        )) : emptyState && (
+          <EmptyStateBlock state={emptyState} onClearFilters={clearFilters} onAddItem={onOpenAddModal} />
         )}
       </div>
 

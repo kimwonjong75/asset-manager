@@ -1,5 +1,4 @@
 import React, { useMemo } from 'react';
-import { Asset } from '../../types';
 import PortfolioTable from '../PortfolioTable';
 import { usePortfolio } from '../../contexts/PortfolioContext';
 import { matchesOwnerFilter } from '../../types/owner';
@@ -41,7 +40,6 @@ const PortfolioView: React.FC = () => {
         <PortfolioTable
           assets={filteredAssets}
           history={portfolioHistory}
-          onRefreshAll={() => actions.refreshAllPrices(false)}
           onRefreshSelected={actions.refreshSelectedPrices}
           onRefreshOne={actions.refreshOnePrice}
           onEdit={actions.openEditModal}
@@ -56,8 +54,7 @@ const PortfolioView: React.FC = () => {
           onFilterAlertsChange={actions.setFilterAlerts}
           searchQuery={searchQuery}
           onSearchChange={actions.setSearchQuery}
-          onAddSelectedToWatchlist={(assets: Asset[]) => actions.addSelectedToWatchlist(assets)}
-          failedIds={new Set(status.failedAssetIds)}
+          failedIds={status.failedAssetIds}
           exchangeRates={exchangeRates}
         />
     </div>

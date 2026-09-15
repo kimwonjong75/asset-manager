@@ -1,12 +1,14 @@
-import React, { useRef, useState } from 'react';
+import React, { useState } from 'react';
 import { Asset, Currency, PortfolioSnapshot, ExchangeRates } from '../../types';
 import { EnrichedAsset } from '../../types/ui';
 import StockReviewAccordion from '../stock-review/StockReviewAccordion';
 import TradePlanSection from '../trade-plan/TradePlanSection';
 import { formatOriginalCurrency, formatKRW, formatProfitLoss, getChangeColor } from './utils';
-import ActionMenu from '../common/ActionMenu';
+import RowActionMenuButton from '../common/RowActionMenuButton';
+import { clickableProps } from '../common/a11yKeys';
+import { buildAssetRowMenuItems } from './rowMenuItems';
 import CrossDaysBadge from '../common/CrossDaysBadge';
-import { MoreHorizontal, Star, StickyNote } from 'lucide-react';
+import { Star, StickyNote } from 'lucide-react';
 import AssetTrendChart from '../AssetTrendChart';
 import ChartViewerModal from '../common/ChartViewerModal';
 import TurtlePositionInfo from './TurtlePositionInfo';
@@ -51,10 +53,29 @@ const PortfolioMobileCard: React.FC<PortfolioMobileCardProps> = ({
   selected,
   onSelect,
 }) => {
-  const [menuOpen, setMenuOpen] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
-  const menuAnchorRef = useRef<HTMLButtonElement>(null);
+  // 행 메뉴 '매매 계획'/'종목 검토' 진입 — PortfolioTableRow 와 동일 규약(nonce key 리마운트 + 초기 열림 + 스크롤)
+  const [entry, setEntry] = useState<'plan' | 'review' | null>(null);
+  const [planNonce, setPlanNonce] = useState(0);
+  const [reviewNonce, setReviewNonce] = useState(0);
+  const displayName = asset.customName?.trim() || asset.name;
+
+  const handleToggleExpand = () => {
+    const next = !expanded;
+    setExpanded(next);
+    if (!next) setEntry(null);
+  };
+  const openTradePlan = () => {
+    setExpanded(true);
+    setEntry('plan');
+    setPlanNonce(n => n + 1);
+  };
+  const openStockReview = () => {
+    setExpanded(true);
+    setEntry('review');
+    setReviewNonce(n => n + 1);
+  };
 
   const { returnPercentage, currentValue, currentValueKRW, profitLoss, dropFromHigh, yesterdayChange } = asset.metrics;
   const isNonKRW = asset.currency !== Currency.KRW;
@@ -78,6 +99,7 @@ const PortfolioMobileCard: React.FC<PortfolioMobileCardProps> = ({
         {onSelect && (
           <input
             type="checkbox"
+            aria-label={`${displayName} 선택`}
             checked={!!selected}
             onChange={(e) => onSelect(asset.id, e.target.checked)}
             onClick={(e) => e.stopPropagation()}
@@ -85,7 +107,12 @@ const PortfolioMobileCard: React.FC<PortfolioMobileCardProps> = ({
           />
         )}
         {/* Left: name + info */}
-        <div className="flex-1 min-w-0" onClick={() => setExpanded(!expanded)}>
+        <div
+          className="flex-1 min-w-0 cursor-pointer rounded-md focus-ring"
+          {...clickableProps(handleToggleExpand)}
+          aria-expanded={expanded}
+          aria-label={`${displayName} 차트 ${expanded ? '접기' : '펼치기'}`}
+        >
           <div className="flex items-center gap-2 flex-wrap">
             {onTogglePin && (
               <button
@@ -139,29 +166,23 @@ const PortfolioMobileCard: React.FC<PortfolioMobileCardProps> = ({
           </div>
         </div>
 
-        {/* Right: menu button */}
-        <button
-          ref={menuAnchorRef}
-          onClick={() => setMenuOpen(!menuOpen)}
-          className="p-2 text-gray-400 hover:text-white flex-shrink-0 mt-1"
-        >
-          <MoreHorizontal className="h-5 w-5" />
-        </button>
-
-        {menuOpen && (
-          <ActionMenu
-            anchorRef={menuAnchorRef}
-            onClose={() => setMenuOpen(false)}
-            items={[
-              ...(onRefreshOne ? [{ label: '가격 업데이트', onClick: () => onRefreshOne(asset.id), colorClass: 'text-sky-400' }] : []),
-              { label: '수정', onClick: () => onEdit(asset) },
-              ...(onBuy ? [{ label: '매수', onClick: () => onBuy(asset), colorClass: 'text-up' }] : []),
-              ...(onSell ? [{ label: '매도', onClick: () => onSell(asset), colorClass: 'text-down' }] : []),
-              { label: '차트 보기', onClick: () => setExpanded(!expanded), colorClass: 'text-gray-200' },
-              { label: '차트 확대', onClick: () => setFullscreen(true), colorClass: 'text-gray-200' },
-            ]}
-          />
-        )}
+        {/* Right: menu button — PortfolioTableRow 와 같은 항목·순서(rowMenuItems) */}
+        <RowActionMenuButton
+          className="flex-shrink-0 mt-0.5"
+          label={`${displayName} 관리 메뉴`}
+          header={displayName}
+          items={buildAssetRowMenuItems({
+            onTradePlan: openTradePlan,
+            onStockReview: openStockReview,
+            onBuy: onBuy ? () => onBuy(asset) : undefined,
+            onSell: onSell ? () => onSell(asset) : undefined,
+            onRefresh: onRefreshOne ? () => { void onRefreshOne(asset.id); } : undefined,
+            onEdit: () => onEdit(asset),
+            onToggleChart: handleToggleExpand,
+            chartExpanded: expanded,
+            onFullscreen: () => setFullscreen(true),
+          })}
+        />
       </div>
 
       {/* 터틀 오픈 포지션 스트립 (읽기 전용) — 전폭, flex-wrap으로 모바일 넘침 방지 */}
@@ -191,16 +212,20 @@ const PortfolioMobileCard: React.FC<PortfolioMobileCardProps> = ({
             onExpand={() => setFullscreen(true)}
           />
           <TradePlanSection
+            key={`plan-${planNonce}`}
             source="portfolio"
             asset={asset}
-            displayName={asset.customName?.trim() || asset.name}
+            displayName={displayName}
             className="px-4"
+            initialEditing={entry === 'plan'}
           />
           <StockReviewAccordion
+            key={`review-${reviewNonce}`}
             asset={asset}
             source="portfolio"
-            displayName={asset.customName?.trim() || asset.name}
+            displayName={displayName}
             className="px-4"
+            initialOpen={entry === 'review'}
           />
         </div>
       )}

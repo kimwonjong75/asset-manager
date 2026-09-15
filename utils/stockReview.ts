@@ -21,6 +21,8 @@ import type {
   StockReviewSideSummary,
   StockReviewSummary,
   StockReviewViewModel,
+  BuyReadiness,
+  BuyReadinessMarkState,
 } from '../types/stockReview';
 import { STOCK_REVIEW_DISCLAIMER } from '../types/stockReview';
 import { evaluateSingleFilter } from './smartFilterLogic';
@@ -376,6 +378,36 @@ export function buildStockReviewViewModel(params: {
     buyConditions,
     sellConditions,
     disclaimer: STOCK_REVIEW_DISCLAIMER,
+  };
+}
+
+const READINESS_STATE: Record<StockReviewEvaluation, BuyReadinessMarkState> = {
+  '충족': 'pass',
+  '미충족': 'fail',
+  '판정불가': 'unknown',
+  '해당 없음': 'unknown',
+};
+
+/**
+ * 관심종목 '매수 점검' 요약 (순수) — 종목 검토 패널 매수 조건 3개의 충족 현황. **매수 추천이 아니다.**
+ * buildStockReviewViewModel 의 매수 측과 **같은 경로**(stripIndicators → BUY_SPECS.map(evalSpec))를 그대로 쓴다 —
+ * 매수 조건은 보유 의존이 없으므로 holdingAsset 은 결과에 영향이 없다(undefined 전달).
+ * @returns enriched 가 없으면 null(지표 미도착·미지원 — 표에서 '-', 정렬 시 방향 무관 맨 뒤).
+ */
+export function computeBuyReadiness(
+  asset: EnrichedAsset,
+  enriched: EnrichedIndicatorData | null | undefined,
+): BuyReadiness | null {
+  if (!enriched) return null;
+  const priceValid = isValidPrice(asset.priceOriginal);
+  const displayEval = stripIndicators(asset);
+  const conds = BUY_SPECS.map(s => evalSpec(s, displayEval, undefined, enriched, priceValid));
+  const conditions = conds.map(c => ({ key: c.key, label: c.label, state: READINESS_STATE[c.evaluation] }));
+  return {
+    met: conditions.filter(c => c.state === 'pass').length,
+    total: 3,
+    unknown: conditions.filter(c => c.state === 'unknown').length,
+    conditions,
   };
 }
 

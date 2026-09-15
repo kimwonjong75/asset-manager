@@ -1,15 +1,14 @@
 import React, { Fragment, useState, useRef, useEffect, useMemo, useCallback } from 'react';
-import { useOnClickOutside } from '../hooks/useOnClickOutside';
 import type { Asset } from '../types';
-import { PortfolioTableProps, SortKey, SortDirection, ColumnKey } from '../types/ui';
-import { COLUMN_DEFINITIONS } from './portfolio-table/columnDefinitions';
+import { PortfolioTableProps, ColumnKey } from '../types/ui';
+import { COLUMN_DEFINITIONS, toSortableDirection } from './portfolio-table/columnDefinitions';
 import ColumnSettingsDropdown from './portfolio-table/ColumnSettingsDropdown';
 import { usePortfolioData } from './portfolio-table/usePortfolioData';
 import PortfolioTableRow from './portfolio-table/PortfolioTableRow';
 import PortfolioMobileCard from './portfolio-table/PortfolioMobileCard';
 import ColumnResizeHandle from './portfolio-table/ColumnResizeHandle';
 import MemoEditPopup from './common/MemoEditPopup';
-import Tooltip from './common/Tooltip';
+import SortableTh from './common/SortableTh';
 import { COLUMN_DESCRIPTIONS } from '../constants/columnDescriptions';
 import type { SmartFilterState, SmartFilterKey } from '../types/smartFilter';
 import { EMPTY_SMART_FILTER } from '../types/smartFilter';
@@ -21,21 +20,40 @@ import { hasResolvableRates } from '../utils/exchangeRateCache';
 import { Currency } from '../types';
 import { buildTurtlePositionViews, computeTurtleRiskGauge } from '../utils/turtlePositionView';
 import TurtleRiskGauge from './portfolio-table/TurtleRiskGauge';
-import ActionMenu from './common/ActionMenu';
+import ActionMenu, { type ActionMenuEntry, type ActionMenuItem } from './common/ActionMenu';
 import { applyBulkAssetPatch, buildTurtleCandidateRegistration, type BulkAssetPatch } from '../utils/bulkAssetOps';
 import { BUCKET_LABELS } from '../types/bucket';
-import { OWNER_LABELS } from '../types/owner';
+import { OWNER_LABELS, OWNER_FILTER_LABELS } from '../types/owner';
 import { useConfirm } from '../hooks/useConfirm';
 import ConfirmDialog from './common/ConfirmDialog';
 import Button from './common/Button';
-import { ArrowDown, ArrowUp, ArrowUpDown, ChevronDown, ClipboardList, RefreshCw, Star } from 'lucide-react';
+import { isSortKeyOfColumn } from '../utils/columnConfig';
+import {
+  TABLE_PRESETS,
+  detectActiveTablePreset,
+  matchesPlanlessSatellite,
+  toggleTablePreset,
+  type TableFilterSnapshot,
+  type TablePresetId,
+} from '../utils/smartFilterPresets';
+import { describePortfolioEmptyState, type PortfolioEmptyActionKind } from '../utils/portfolioEmptyState';
+import {
+  Bell,
+  ChevronDown,
+  CircleAlert,
+  ClipboardList,
+  Columns3,
+  RefreshCw,
+  RotateCcw,
+  Search,
+  Settings,
+  SlidersHorizontal,
+  TriangleAlert,
+  X,
+} from 'lucide-react';
 
-const SortIcon = ({ sortKey, sortConfig }: { sortKey: SortKey, sortConfig: { key: SortKey; direction: SortDirection } | null }) => {
-  if (!sortConfig || sortConfig.key !== sortKey) return <ArrowUpDown className="h-3.5 w-3.5 opacity-30" aria-hidden="true" />;
-  return sortConfig.direction === 'descending'
-    ? <ArrowDown className="h-3.5 w-3.5" aria-label="내림차순" />
-    : <ArrowUp className="h-3.5 w-3.5" aria-label="오름차순" />;
-};
+const sameKeySet = (a: Set<SmartFilterKey>, b: readonly SmartFilterKey[]): boolean =>
+  a.size === b.length && b.every(k => a.has(k));
 
 const PortfolioTable: React.FC<PortfolioTableProps> = ({
   assets,
@@ -63,21 +81,27 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
   });
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [showFailedOnly, setShowFailedOnly] = useState<boolean>(false);
-  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
-  const menuRef = useRef<HTMLDivElement | null>(null);
   const prevLoadingRef = useRef<boolean>(false);
   const [smartFilter, setSmartFilter] = useState<SmartFilterState>({ ...EMPTY_SMART_FILTER, activeFilters: new Set() });
+  // 빠른 보기 '계획 없는 투더문' 축 (세션 필터) — 판정은 utils/tradePlan.isEligibleForBulkPlan
+  const [planlessOnly, setPlanlessOnly] = useState(false);
   const [showPinnedOnly, setShowPinnedOnly] = useState(false);
   const [memoEditAsset, setMemoEditAsset] = useState<Asset | null>(null);
   const [bulkMenuOpen, setBulkMenuOpen] = useState(false);
   const bulkMenuRef = useRef<HTMLButtonElement>(null);
+  const [viewMenuOpen, setViewMenuOpen] = useState(false);
+  const viewMenuRef = useRef<HTMLButtonElement>(null);
+  const [columnSettingsOpen, setColumnSettingsOpen] = useState(false);
+
+  // 실패 목록이 비면 '실패만 보기' 해제 — 렌더 중 상태 조정(수렴 조건부, effect 안 setState 금지 규칙 준수)
+  const failedCount = failedIds?.size ?? 0;
+  if (showFailedOnly && failedCount === 0) setShowFailedOnly(false);
+  const failedOnlyActive = showFailedOnly && failedCount > 0;
 
   const handleSetHideLowValue = (v: boolean) => {
     setHideLowValue(v);
     try { localStorage.setItem('asset-manager-hide-low-value', v ? '1' : '0'); } catch { /* ignore */ }
   };
-
-  useOnClickOutside(menuRef, () => setOpenMenuId(null), !!openMenuId);
 
   // Context에서 가져오기
   const { derived, ui, actions, data } = usePortfolio();
@@ -104,6 +128,7 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
     sortConfig,
     requestSort,
     toggleReturnSort,
+    clearSort,
     categoryOptions
   } = usePortfolioData({
     assets,
@@ -111,36 +136,44 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
     categories: data.categoryStore.categories,
     filterAlerts,
     sellAlertDropRate,
-    showFailedOnly,
+    showFailedOnly: failedOnlyActive,
     failedIds,
     enrichedMap,
     badgePairs,
     plBasis: data.valuationSettings.plBasis,
   });
-  const [presetOpen, setPresetOpen] = useState(false);
-  const [activePreset, setActivePreset] = useState<string | null>(null);
-  const presetRef = useRef<HTMLDivElement | null>(null);
-  useOnClickOutside(presetRef, () => setPresetOpen(false), presetOpen);
 
-  // 프리셋 적용
-  const handleApplyPreset = (rule: AlertRule) => {
-    const newFilters = new Set<SmartFilterKey>(rule.filters);
-    setSmartFilter({
-      ...EMPTY_SMART_FILTER,
-      activeFilters: newFilters,
-      maShortPeriod: rule.filterConfig.maShortPeriod ?? 20,
-      maLongPeriod: rule.filterConfig.maLongPeriod ?? 60,
-      dropFromHighThreshold: rule.filterConfig.dropFromHighThreshold ?? 20,
-      lossThreshold: rule.filterConfig.lossThreshold ?? 5,
-    });
-    setActivePreset(rule.id);
-    setPresetOpen(false);
+  // ── 필터 스냅샷(스마트 필터 + 경보 종목만 + 계획 없는 투더문) — 빠른 보기 프리셋은 이 3축을 **대체** ──
+  const filterSnapshot: TableFilterSnapshot = { smartFilter, filterAlerts, planlessSatellite: planlessOnly };
+  const activeTablePreset = detectActiveTablePreset(filterSnapshot);
+  const applyFilterSnapshot = (next: TableFilterSnapshot) => {
+    setSmartFilter(next.smartFilter);
+    setPlanlessOnly(next.planlessSatellite);
+    if (next.filterAlerts !== filterAlerts) onFilterAlertsChange(next.filterAlerts);
   };
+  const handleTablePresetClick = (id: TablePresetId) => applyFilterSnapshot(toggleTablePreset(filterSnapshot, id));
+  const appliedFilterCount = smartFilter.activeFilters.size + (filterAlerts ? 1 : 0) + (planlessOnly ? 1 : 0);
 
-  const handleClearPreset = () => {
-    handleClearAllFilters();
-    setActivePreset(null);
-    setPresetOpen(false);
+  // 알림 규칙 → 스마트 필터(보기 메뉴 '알림 규칙' 섹션). 빠른 보기와 같은 대체 규약.
+  const isRulePresetActive = (rule: AlertRule) =>
+    !filterAlerts && !planlessOnly && rule.filters.length > 0 && sameKeySet(smartFilter.activeFilters, rule.filters);
+  const handleApplyRulePreset = (rule: AlertRule) => {
+    if (isRulePresetActive(rule)) {
+      handleClearAllFilters();
+      return;
+    }
+    applyFilterSnapshot({
+      smartFilter: {
+        ...EMPTY_SMART_FILTER,
+        activeFilters: new Set<SmartFilterKey>(rule.filters),
+        maShortPeriod: rule.filterConfig.maShortPeriod ?? 20,
+        maLongPeriod: rule.filterConfig.maLongPeriod ?? 60,
+        dropFromHighThreshold: rule.filterConfig.dropFromHighThreshold ?? 20,
+        lossThreshold: rule.filterConfig.lossThreshold ?? 5,
+      },
+      filterAlerts: false,
+      planlessSatellite: false,
+    });
   };
 
   // 외화 자산이 있는데 환율(현재 + 캐시)이 모두 미확보면 소액 숨김을 자동 우회
@@ -152,6 +185,8 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
     if (foreignCurrencies.length === 0) return true;
     return hasResolvableRates(foreignCurrencies, exchangeRates);
   }, [assets, exchangeRates]);
+  const lowValueActive = hideLowValue && ui.lowValueThreshold > 0 && lowValueFilterReady;
+  const lowValueWaiting = hideLowValue && !lowValueFilterReady;
 
   // 터틀 오픈 포지션 표시 모델(assetId 키) + KRW 리스크 게이지 (Phase 2b-5, 읽기 전용)
   // 매칭은 assetId만 신뢰(ticker fallback 없음), 리스크는 per-position fxRate로 KRW 환산 + fail-safe
@@ -207,13 +242,16 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
     [visibleColumns],
   );
 
-  // 스마트 필터 + 핀 필터 + 소액 숨김 적용
+  // 스마트 필터 + 핀 필터 + 계획 없는 투더문 + 소액 숨김 적용
   const filteredAssets = useMemo(() => {
     let result = enrichedAndSortedAssets;
     if (showPinnedOnly) {
       result = result.filter(a => a.pinned);
     }
-    if (hideLowValue && ui.lowValueThreshold > 0 && lowValueFilterReady) {
+    if (planlessOnly) {
+      result = result.filter(a => matchesPlanlessSatellite(a));
+    }
+    if (lowValueActive) {
       // 핀 고정 자산은 소액이어도 항상 표시 (사용자가 명시적으로 중요 표시한 자산 보호)
       result = result.filter(a => a.pinned || a.metrics.currentValueKRW >= ui.lowValueThreshold);
     }
@@ -221,7 +259,7 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
       result = result.filter(a => matchesSmartFilter(a, smartFilter, enrichedMap));
     }
     return result;
-  }, [enrichedAndSortedAssets, smartFilter, enrichedMap, showPinnedOnly, hideLowValue, ui.lowValueThreshold, lowValueFilterReady]);
+  }, [enrichedAndSortedAssets, smartFilter, enrichedMap, showPinnedOnly, planlessOnly, lowValueActive, ui.lowValueThreshold]);
 
   const handleToggleFilter = (key: SmartFilterKey, deactivateKey?: SmartFilterKey) => {
     setSmartFilter(prev => {
@@ -233,8 +271,20 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
     });
   };
 
-  const handleClearAllFilters = () => {
+  /** 필터 초기화 — 스마트 필터 + 경보 종목만 + 계획 없는 투더문 */
+  function handleClearAllFilters() {
     setSmartFilter({ ...EMPTY_SMART_FILTER, activeFilters: new Set() });
+    setPlanlessOnly(false);
+    if (filterAlerts) onFilterAlertsChange(false);
+  }
+
+  /** 빈 상태 '필터 해제' — 세션 필터만(저장 설정인 소액 숨김·계정 뷰는 건드리지 않음) */
+  const handleClearSessionFilters = () => {
+    handleClearAllFilters();
+    setShowPinnedOnly(false);
+    setShowFailedOnly(false);
+    onSearchChange?.('');
+    if (filterCategory !== 'ALL') onFilterChange('ALL');
   };
 
   const handleDropThresholdChange = (value: number) => {
@@ -251,6 +301,20 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
 
   const handleLossThresholdChange = (value: number) => {
     setSmartFilter(prev => ({ ...prev, lossThreshold: value }));
+  };
+
+  const handleSelect = (id: string, checked: boolean) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (checked) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  };
+
+  // 정렬 기준 컬럼을 숨기면 정렬 해제(보이지 않는 기준으로 정렬된 채 남지 않도록)
+  const handleColumnHidden = (key: ColumnKey) => {
+    if (isSortKeyOfColumn(sortConfig?.key, key)) clearSort();
   };
 
   const allSelected = filteredAssets.length > 0 && filteredAssets.every(a => selectedIds.has(a.id));
@@ -288,12 +352,8 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
     setSelectedIds(new Set());
   };
 
-  const getReturnHeaderLabel = () => {
-    if (!sortConfig) return '수익률';
-    if (sortConfig.key === 'returnPercentage') return `수익률 ${sortConfig.direction === 'descending' ? '↓' : '↑'}`;
-    if (sortConfig.key === 'profitLossKRW') return `평가손익 ${sortConfig.direction === 'descending' ? '↓' : '↑'}`;
-    return '수익률';
-  };
+  // 수익률 헤더 라벨 — 방향 화살표는 SortableTh 아이콘이 담당
+  const getReturnHeaderLabel = () => (sortConfig?.key === 'profitLossKRW' ? '평가손익' : '수익률');
 
   useEffect(() => {
     if (!isLoading && prevLoadingRef.current && failedIds && failedIds.size > 0) {
@@ -304,242 +364,243 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
     prevLoadingRef.current = isLoading;
   }, [isLoading, failedIds, confirm]);
 
-  const emptyMessage = smartFilter.activeFilters.size > 0
-    ? '필터 조건에 맞는 자산이 없습니다.'
-    : filterAlerts
-      ? '알림 기준을 초과한 자산이 없습니다.'
-      : '자산이 없습니다.';
+  // ── 빈 상태 — 원인·버튼은 utils/portfolioEmptyState ──
+  const emptyState = describePortfolioEmptyState({
+    visibleCount: filteredAssets.length,
+    totalAssetCount: data.assets.length,
+    failedOnly: failedOnlyActive,
+    searchActive: searchQuery.trim().length > 0,
+    categoryActive: filterCategory !== 'ALL',
+    smartFilterCount: smartFilter.activeFilters.size,
+    planlessSatellite: planlessOnly,
+    pinnedOnly: showPinnedOnly,
+    alertsOnly: filterAlerts,
+    lowValueActive,
+    lowValueThreshold: ui.lowValueThreshold,
+    accountViewActive: ui.accountView !== 'ALL',
+    accountLabel: OWNER_FILTER_LABELS[ui.accountView],
+  });
+  const handleEmptyAction = (kind: PortfolioEmptyActionKind) => {
+    switch (kind) {
+      case 'clearSessionFilters': handleClearSessionFilters(); break;
+      case 'disableLowValue': handleSetHideLowValue(false); break;
+      case 'accountAll': actions.setAccountView('ALL'); break;
+      case 'showAllFailed': setShowFailedOnly(false); break;
+    }
+  };
+  const emptyContent = emptyState && (
+    <div className="flex flex-col items-center gap-3 px-4 py-8 text-center" role="status">
+      <p className="text-sm text-gray-400">{emptyState.message}</p>
+      {emptyState.actions.length > 0 && (
+        <div className="flex flex-wrap justify-center gap-2">
+          {emptyState.actions.map((a, i) => (
+            <Button key={a.kind} variant={i === 0 ? 'secondary' : 'ghost'} onClick={() => handleEmptyAction(a.kind)}>
+              {a.label}
+            </Button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 
-  const thClasses = "relative px-4 py-3 cursor-pointer hover:bg-gray-600 transition-colors sticky top-0 bg-gray-700 z-10 whitespace-nowrap";
-  const thContentClasses = "flex items-center gap-2";
+  // ── 보기 메뉴 ──
+  const ruleItems = (action: 'sell' | 'buy'): ActionMenuItem[] =>
+    ui.alertSettings.rules.filter(r => r.action === action && r.enabled).map(rule => ({
+      label: rule.name,
+      checked: isRulePresetActive(rule),
+      icon: (
+        <span
+          className={`block h-2 w-2 rounded-full ${action === 'buy' ? 'bg-up' : rule.severity === 'critical' ? 'bg-warning' : 'bg-warning/50'}`}
+        />
+      ),
+      onClick: () => handleApplyRulePreset(rule),
+    }));
+  // 컬럼 설정은 데스크탑 표 전용(모바일 카드는 컬럼 개념 없음)
+  const isDesktop = typeof window !== 'undefined' && !!window.matchMedia?.('(min-width: 768px)').matches;
+  const viewActiveCount = (showPinnedOnly ? 1 : 0) + (hideLowValue ? 1 : 0) + (filterAlerts ? 1 : 0);
+  const viewMenuItems: ActionMenuEntry[] = [
+    { type: 'section', label: '표시' },
+    { label: '중요 종목만', checked: showPinnedOnly, keepOpen: true, onClick: () => setShowPinnedOnly(v => !v) },
+    {
+      label: lowValueWaiting
+        ? '소액 숨김 (환율 대기 — 일시 정지)'
+        : `소액 숨김 (${ui.lowValueThreshold.toLocaleString('ko-KR')}원 미만)`,
+      checked: hideLowValue,
+      keepOpen: true,
+      colorClass: lowValueWaiting ? 'text-warning' : undefined,
+      onClick: () => handleSetHideLowValue(!hideLowValue),
+    },
+    { label: '경보 종목만', checked: filterAlerts, keepOpen: true, onClick: () => onFilterAlertsChange(!filterAlerts) },
+    ...(isDesktop ? [{ label: '컬럼 설정…', icon: <Columns3 />, onClick: () => setColumnSettingsOpen(true) }] : []),
+    { type: 'section', label: '알림 규칙 · 매도' },
+    ...ruleItems('sell'),
+    { type: 'section', label: '알림 규칙 · 매수' },
+    ...ruleItems('buy'),
+    { type: 'separator' },
+    { label: '알림 설정', icon: <Settings />, onClick: () => actions.setActiveTab('settings') },
+    { label: '브리핑 다시 보기', icon: <Bell />, onClick: () => actions.showBriefingPopup() },
+    ...(appliedFilterCount > 0 ? [{ label: '필터 초기화', icon: <RotateCcw />, onClick: handleClearAllFilters }] : []),
+  ];
+
+  const thClasses = "relative px-4 py-3 sticky top-0 bg-gray-700 z-10 whitespace-nowrap";
 
   return (
     <div className="bg-gray-800 rounded-lg border border-border-subtle">
       {confirmRequest && <ConfirmDialog {...confirmRequest} />}
-      {/* 헤더 영역 */}
-      <div className="bg-gray-800 px-3 sm:px-6 pt-2 sm:pt-6 pb-2 sm:pb-4 border-b border-gray-700">
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2 sm:gap-4 min-w-0 flex-1">
-            <h2 className="text-base sm:text-xl font-bold text-white whitespace-nowrap hidden sm:block">포트폴리오 현황</h2>
+      {/* 툴바 — 선택 중이면 선택 작업 바, 아니면 검색 · 카테고리 · 보기 */}
+      <div className="bg-gray-800 px-3 sm:px-6 pt-3 sm:pt-5 pb-2 sm:pb-3 border-b border-gray-700">
+        {selectedIds.size > 0 ? (
+          <div className="flex flex-wrap items-center gap-2" role="toolbar" aria-label="선택한 자산 작업">
+            <span className="text-sm font-semibold text-white whitespace-nowrap">{selectedIds.size}개 선택</span>
+            <Button
+              ref={bulkMenuRef}
+              variant="primary"
+              iconRight={<ChevronDown />}
+              onClick={() => setBulkMenuOpen(prev => !prev)}
+              disabled={isLoading}
+              className="whitespace-nowrap"
+              title="선택한 자산의 계정/버킷을 한 번에 변경하거나 터틀 후보로 등록합니다"
+              aria-haspopup="menu"
+              aria-expanded={bulkMenuOpen}
+            >
+              일괄 변경
+            </Button>
+            {bulkMenuOpen && (
+              <ActionMenu
+                anchorRef={bulkMenuRef}
+                header={`${selectedIds.size}개 자산 일괄 변경`}
+                items={[
+                  { label: `계정 → ${OWNER_LABELS.WONJONG}`, onClick: () => handleBulkPatch({ owner: 'WONJONG' }, `계정: ${OWNER_LABELS.WONJONG}`) },
+                  { label: `계정 → ${OWNER_LABELS.YUSEON}`, onClick: () => handleBulkPatch({ owner: 'YUSEON' }, `계정: ${OWNER_LABELS.YUSEON}`) },
+                  { label: `버킷 → ${BUCKET_LABELS.CORE}`, onClick: () => handleBulkPatch({ bucket: 'CORE' }, `버킷: ${BUCKET_LABELS.CORE}`) },
+                  { label: `버킷 → ${BUCKET_LABELS.SATELLITE}`, onClick: () => handleBulkPatch({ bucket: 'SATELLITE' }, `버킷: ${BUCKET_LABELS.SATELLITE}`) },
+                  { label: '🐢 터틀 후보 등록', onClick: handleBulkTurtleRegister, colorClass: 'text-purple-300' },
+                  { label: '투더문 일괄 계획 만들기', icon: <ClipboardList className="h-4 w-4" />, onClick: actions.openTradePlanBulk, colorClass: 'text-primary-light' },
+                ]}
+                onClose={() => setBulkMenuOpen(false)}
+              />
+            )}
+            {onRefreshSelected && (
+              <Button
+                variant="secondary"
+                icon={<RefreshCw />}
+                onClick={() => onRefreshSelected(Array.from(selectedIds))}
+                loading={isLoading}
+                className="whitespace-nowrap"
+              >
+                {isLoading ? '업데이트 중...' : '선택 업데이트'}
+              </Button>
+            )}
+            <Button variant="ghost" icon={<X />} onClick={() => setSelectedIds(new Set())} className="whitespace-nowrap">
+              선택 해제
+            </Button>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2">
+            <h2 className="hidden lg:block text-xl font-bold text-white whitespace-nowrap mr-2">포트폴리오 현황</h2>
             {onSearchChange && (
-              <div className="relative flex-1 sm:flex-none">
+              <div className="relative min-w-0 flex-1 sm:flex-none">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" aria-hidden="true" />
                 <input
-                  type="text"
+                  type="search"
                   value={searchQuery}
                   onChange={(e) => onSearchChange(e.target.value)}
-                  placeholder="포트폴리오 검색..."
-                  className="bg-gray-700 border border-gray-600 rounded-md py-2 pl-10 pr-10 text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary w-full sm:w-64"
+                  placeholder="종목 검색"
+                  aria-label="포트폴리오 검색"
+                  className="w-full sm:w-64 min-h-9 bg-gray-700 border border-gray-600 rounded-md py-1.5 pl-9 pr-9 text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary"
                 />
-                <svg className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
                 {searchQuery && (
-                  <button onClick={() => onSearchChange('')} className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white">
-                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                  <button
+                    type="button"
+                    onClick={() => onSearchChange('')}
+                    aria-label="검색어 지우기"
+                    className="focus-ring absolute right-1 top-1/2 inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded text-gray-400 hover:text-white"
+                  >
+                    <X className="h-4 w-4" aria-hidden="true" />
                   </button>
                 )}
               </div>
             )}
-            <button
-              onClick={() => setShowPinnedOnly(!showPinnedOnly)}
-              className={`inline-flex items-center justify-center min-h-9 min-w-9 rounded-md transition-colors flex-shrink-0 ${
-                showPinnedOnly
-                  ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/50'
-                  : 'text-gray-500 hover:text-yellow-400/60 border border-transparent'
-              }`}
-              title={showPinnedOnly ? '전체 보기' : '중요 종목만 보기'}
-              aria-label={showPinnedOnly ? '전체 보기' : '중요 종목만 보기'}
-              aria-pressed={showPinnedOnly}
-            >
-              <Star className="h-5 w-5" fill={showPinnedOnly ? 'currentColor' : 'none'} aria-hidden="true" />
-            </button>
-          </div>
-        <div className="flex items-center gap-2">
-          {selectedIds.size > 0 && (
-            <div className="flex items-center gap-2">
-              <span className="bg-primary/20 text-primary px-2 py-1 rounded text-xs font-bold hidden sm:inline-block">
-                {selectedIds.size}개 선택됨
-              </span>
-              {onRefreshSelected && (
-                <Button
-                  variant="secondary"
-                  icon={<RefreshCw />}
-                  onClick={() => onRefreshSelected(Array.from(selectedIds))}
-                  loading={isLoading}
-                  className="whitespace-nowrap"
-                >
-                  {isLoading ? '업데이트 중...' : '선택 업데이트'}
-                </Button>
-              )}
-              <Button
-                ref={bulkMenuRef}
-                variant="secondary"
-                iconRight={<ChevronDown />}
-                onClick={() => setBulkMenuOpen(prev => !prev)}
-                disabled={isLoading}
-                className="whitespace-nowrap"
-                title="선택한 자산의 계정/버킷을 한 번에 변경하거나 터틀 후보로 등록합니다"
-                aria-haspopup="menu"
-                aria-expanded={bulkMenuOpen}
+            <div className="relative shrink-0">
+              <select
+                value={filterCategory}
+                aria-label="카테고리"
+                onChange={(e) => { const v = e.target.value; onFilterChange(v === 'ALL' || v === 'SATELLITE' ? v : Number(v)); }}
+                className="appearance-none min-h-9 max-w-[7.5rem] sm:max-w-none bg-gray-700 border border-gray-600 text-white text-sm rounded-md py-1.5 pl-3 pr-8 focus:outline-none focus:ring-2 focus:ring-primary"
               >
-                일괄 변경
+                <option value="ALL">전체 자산</option>
+                {categoryOptions.map(cat => (
+                  <option key={cat.id} value={cat.id}>{cat.name}</option>
+                ))}
+                <option value="SATELLITE">{BUCKET_LABELS.SATELLITE} (위성)</option>
+              </select>
+              <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" aria-hidden="true" />
+            </div>
+            <div className="relative ml-auto shrink-0">
+              <Button
+                ref={viewMenuRef}
+                variant="secondary"
+                icon={<SlidersHorizontal />}
+                iconRight={<ChevronDown />}
+                onClick={() => setViewMenuOpen(prev => !prev)}
+                aria-haspopup="menu"
+                aria-expanded={viewMenuOpen}
+                className="whitespace-nowrap"
+              >
+                보기{viewActiveCount > 0 ? ` · ${viewActiveCount}` : ''}
               </Button>
-              {bulkMenuOpen && (
-                <ActionMenu
-                  anchorRef={bulkMenuRef}
-                  header={`${selectedIds.size}개 자산 일괄 변경`}
-                  items={[
-                    { label: `계정 → ${OWNER_LABELS.WONJONG}`, onClick: () => handleBulkPatch({ owner: 'WONJONG' }, `계정: ${OWNER_LABELS.WONJONG}`) },
-                    { label: `계정 → ${OWNER_LABELS.YUSEON}`, onClick: () => handleBulkPatch({ owner: 'YUSEON' }, `계정: ${OWNER_LABELS.YUSEON}`) },
-                    { label: `버킷 → ${BUCKET_LABELS.CORE}`, onClick: () => handleBulkPatch({ bucket: 'CORE' }, `버킷: ${BUCKET_LABELS.CORE}`) },
-                    { label: `버킷 → ${BUCKET_LABELS.SATELLITE}`, onClick: () => handleBulkPatch({ bucket: 'SATELLITE' }, `버킷: ${BUCKET_LABELS.SATELLITE}`) },
-                    { label: '🐢 터틀 후보 등록', onClick: handleBulkTurtleRegister, colorClass: 'text-purple-300' },
-                    { label: '투더문 일괄 계획 만들기', icon: <ClipboardList className="h-4 w-4" />, onClick: actions.openTradePlanBulk, colorClass: 'text-primary-light' },
-                  ]}
-                  onClose={() => setBulkMenuOpen(false)}
-                />
-              )}
+              {/* '컬럼 설정…' 패널 — 기존 드롭다운을 제어 모드로 재사용(Popover 이관은 D2) */}
+              <ColumnSettingsDropdown
+                hideTrigger
+                className="absolute right-0 top-full"
+                open={columnSettingsOpen}
+                onOpenChange={setColumnSettingsOpen}
+                onColumnHidden={handleColumnHidden}
+              />
             </div>
-          )}
-
-          {/* 표시 토글 — 소액 숨김 + 더보기 (프리셋 왼쪽) */}
-          <label
-            className="flex items-center cursor-pointer gap-1.5 sm:gap-2"
-            title={
-              hideLowValue && !lowValueFilterReady
-                ? '환율 미확보 — 외화 자산 KRW 환산이 불가하여 소액 숨김이 일시 정지됩니다. 시세 갱신 후 자동으로 재적용됩니다.'
-                : `평가총액 ${ui.lowValueThreshold.toLocaleString('ko-KR')}원 미만 자산 숨김 (핀 고정 자산은 항상 표시 / 환경설정에서 임계값 변경)`
-            }
-          >
-            <input
-              type="checkbox"
-              className="sr-only"
-              checked={hideLowValue}
-              onChange={(e) => handleSetHideLowValue(e.target.checked)}
-            />
-            <div className="relative">
-              <div className={`block w-9 h-5 rounded-full transition-colors ${hideLowValue ? (lowValueFilterReady ? 'bg-primary' : 'bg-amber-600') : 'bg-gray-600'}`} />
-              <div className={`absolute left-0.5 top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${hideLowValue ? 'translate-x-4' : ''}`} />
-            </div>
-            <span className={`text-xs whitespace-nowrap hidden sm:inline ${hideLowValue && !lowValueFilterReady ? 'text-amber-400' : 'text-gray-300'}`}>
-              소액 숨김{hideLowValue && !lowValueFilterReady ? ' (환율 대기)' : ''}
-            </span>
-          </label>
-
-          <ColumnSettingsDropdown />
-
-          {/* 프리셋 드롭다운 */}
-          <div className="relative" ref={presetRef}>
-            <button
-              onClick={() => setPresetOpen(!presetOpen)}
-              className={`py-2 px-3 rounded-md text-sm font-medium transition flex items-center gap-1 ${
-                activePreset
-                  ? 'bg-primary text-white'
-                  : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-              }`}
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-              </svg>
-              <span className="hidden sm:inline">
-                {activePreset
-                  ? ui.alertSettings.rules.find(r => r.id === activePreset)?.name ?? '프리셋'
-                  : '프리셋'}
-              </span>
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
-            {presetOpen && (
-              <div className="absolute right-0 top-full mt-1 w-56 bg-gray-800 border border-gray-600 rounded-lg shadow-xl z-30 py-1">
-                {/* 매도 감지 */}
-                <div className="px-3 py-1.5 text-xs text-down font-semibold uppercase tracking-wider">매도 감지</div>
-                {ui.alertSettings.rules.filter(r => r.action === 'sell' && r.enabled).map(rule => (
-                  <button
-                    key={rule.id}
-                    onClick={() => handleApplyPreset(rule)}
-                    className={`w-full text-left px-3 py-1.5 text-sm hover:bg-gray-700 transition flex items-center gap-2 ${
-                      activePreset === rule.id ? 'text-primary' : 'text-gray-300'
-                    }`}
-                  >
-                    <span className={`w-2 h-2 rounded-full flex-shrink-0 ${
-                      rule.severity === 'critical' ? 'bg-orange-500' : 'bg-amber-400'
-                    }`} />
-                    {rule.name}
-                  </button>
-                ))}
-                {/* 매수 기회 */}
-                <div className="px-3 py-1.5 text-xs text-up font-semibold uppercase tracking-wider mt-1 border-t border-gray-700">매수 기회</div>
-                {ui.alertSettings.rules.filter(r => r.action === 'buy' && r.enabled).map(rule => (
-                  <button
-                    key={rule.id}
-                    onClick={() => handleApplyPreset(rule)}
-                    className={`w-full text-left px-3 py-1.5 text-sm hover:bg-gray-700 transition flex items-center gap-2 ${
-                      activePreset === rule.id ? 'text-primary' : 'text-gray-300'
-                    }`}
-                  >
-                    <span className="w-2 h-2 rounded-full bg-up flex-shrink-0" />
-                    {rule.name}
-                  </button>
-                ))}
-                {/* 구분선 + 추가 메뉴 */}
-                <div className="border-t border-gray-700 mt-1 pt-1">
-                  <button
-                    onClick={() => { actions.setActiveTab('settings'); setPresetOpen(false); }}
-                    className="w-full text-left px-3 py-1.5 text-sm text-gray-400 hover:bg-gray-700 hover:text-white transition flex items-center gap-2"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                    알림 설정
-                  </button>
-                  <button
-                    onClick={() => { actions.showBriefingPopup(); setPresetOpen(false); }}
-                    className="w-full text-left px-3 py-1.5 text-sm text-gray-400 hover:bg-gray-700 hover:text-white transition flex items-center gap-2"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                    </svg>
-                    브리핑 다시 보기
-                  </button>
-                  {activePreset && (
-                    <button
-                      onClick={handleClearPreset}
-                      className="w-full text-left px-3 py-1.5 text-sm text-gray-400 hover:bg-gray-700 hover:text-white transition flex items-center gap-2"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                      필터 초기화
-                    </button>
-                  )}
-                </div>
-              </div>
+            {viewMenuOpen && (
+              <ActionMenu
+                anchorRef={viewMenuRef}
+                header="표 보기 설정"
+                width="md"
+                items={viewMenuItems}
+                onClose={() => setViewMenuOpen(false)}
+              />
             )}
           </div>
+        )}
 
-          <div className="relative hidden sm:block">
-            <select
-              value={filterCategory}
-              onChange={(e) => { const v = e.target.value; onFilterChange(v === 'ALL' || v === 'SATELLITE' ? v : Number(v)); }}
-              className="appearance-none bg-gray-700 border border-gray-600 text-white text-sm rounded-md py-2 pl-3 pr-8 focus:outline-none focus:ring-2 focus:ring-primary"
-            >
-              <option value="ALL">전체 자산</option>
-              {categoryOptions.map(cat => (
-                <option key={cat.id} value={cat.id}>{cat.name}</option>
-              ))}
-              <option value="SATELLITE">{BUCKET_LABELS.SATELLITE} (위성)</option>
-            </select>
-            <svg className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-            </svg>
-          </div>
-        </div>
+        {/* 빠른 보기 프리셋 — 패널 접힘과 무관하게 항상 노출. 활성 칩 재클릭 = 해제 */}
+        <div className="mt-2 flex flex-wrap items-center gap-1.5" role="group" aria-label="빠른 보기">
+          {TABLE_PRESETS.map(p => {
+            const active = activeTablePreset === p.id;
+            return (
+              <button
+                key={p.id}
+                type="button"
+                aria-pressed={active}
+                title={p.description}
+                onClick={() => handleTablePresetClick(p.id)}
+                className={`focus-ring inline-flex min-h-8 items-center rounded-full border px-3 text-xs font-medium transition-colors ${
+                  active
+                    ? 'border-primary bg-primary-dark text-white'
+                    : 'border-border-subtle bg-surface-muted text-gray-300 hover:bg-gray-600 hover:text-white'
+                }`}
+              >
+                {p.label}
+              </button>
+            );
+          })}
+          {lowValueWaiting && (
+            <span className="inline-flex items-center gap-1 text-xs text-warning" title="외화 자산 환율을 아직 못 받아 원화 환산이 불가합니다. 시세 갱신 후 자동으로 다시 적용됩니다.">
+              <TriangleAlert className="h-3.5 w-3.5" aria-hidden="true" />
+              환율 대기 — 소액 숨김 일시 정지
+            </span>
+          )}
         </div>
       </div>
 
-      {/* 스마트 필터 패널 */}
+      {/* 스마트 필터 패널 (기본 접힘) */}
       <SmartFilterPanel
         filter={smartFilter}
         onToggleFilter={handleToggleFilter}
@@ -555,10 +616,20 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
         filterAlerts={filterAlerts}
         onFilterAlertsChange={onFilterAlertsChange}
         isEnrichedLoading={isEnrichedLoading}
+        appliedCount={appliedFilterCount}
       />
 
       {/* 터틀 오픈 리스크 게이지 (KRW) — 오픈 포지션 있을 때만. 테이블 위 sibling(overflow wrapper 아님) */}
       <TurtleRiskGauge gauge={turtleGauge} />
+
+      {/* 실패만 보기 상태 바 — 목록이 비면 플래그 자동 해제 */}
+      {failedOnlyActive && (
+        <div role="status" className="flex flex-wrap items-center gap-2 border-b border-gray-700 bg-warning-soft px-3 py-1.5 text-sm text-warning sm:px-6">
+          <CircleAlert className="h-4 w-4 shrink-0" aria-hidden="true" />
+          <span>업데이트 실패 {failedCount}개만 보는 중</span>
+          <Button variant="ghost" onClick={() => setShowFailedOnly(false)}>전체 보기</Button>
+        </div>
+      )}
 
       {/* 데스크탑: 테이블 — overflow 없음, thead가 main 스크롤 기준 sticky */}
       {/* table-layout: fixed — 사용자가 지정한 컬럼 너비를 엄격히 적용해 콘텐츠 크기와 무관하게 가로 스크롤 방지 */}
@@ -576,21 +647,32 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
           <thead className="bg-gray-700 text-gray-300 uppercase text-xs">
             <tr>
               <th scope="col" className="px-4 py-3 text-center sticky top-0 bg-gray-700 z-20">
-                <input type="checkbox" checked={allSelected} onChange={(e) => {
-                  if (e.target.checked) setSelectedIds(new Set(filteredAssets.map(a => a.id)));
-                  else setSelectedIds(new Set());
-                }} />
+                <input
+                  type="checkbox"
+                  aria-label="보이는 자산 전체 선택"
+                  checked={allSelected}
+                  onChange={(e) => {
+                    if (e.target.checked) setSelectedIds(new Set(filteredAssets.map(a => a.id)));
+                    else setSelectedIds(new Set());
+                  }}
+                />
               </th>
-              <th scope="col" className={`${thClasses} z-20`} style={getThStyle('name')} onClick={() => requestSort('name')}>
-                <Tooltip content={COLUMN_DESCRIPTIONS.name} position="bottom" wrap>
-                  <div className={thContentClasses}><span>종목명</span> <SortIcon sortKey='name' sortConfig={sortConfig}/></div>
-                </Tooltip>
+              <SortableTh
+                label={<span>종목명</span>}
+                sortKey="name"
+                activeKey={sortConfig?.key ?? null}
+                direction={toSortableDirection(sortConfig)}
+                onSort={() => requestSort('name')}
+                className={`${thClasses} z-20`}
+                tooltip={COLUMN_DESCRIPTIONS.name}
+                style={getThStyle('name')}
+              >
                 <ColumnResizeHandle
                   columnKey="name"
                   onResize={(w) => actions.setFixedColumnWidth('name', w)}
                   onDragPreview={(w) => setDragOverride(w !== null ? { key: 'name', width: w } : null)}
                 />
-              </th>
+              </SortableTh>
               {visibleColumns.filter(c => c.visible).map(c => {
                 const def = COLUMN_DEFINITIONS[c.key];
                 if (!def) return null;
@@ -602,8 +684,6 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
                       toggleReturnSort,
                       badgePairs,
                       thClasses,
-                      thContentClasses,
-                      SortIcon: ({ sortKey }) => <SortIcon sortKey={sortKey} sortConfig={sortConfig} />,
                       getReturnHeaderLabel,
                       ResizeHandle: MiddleColumnResizeHandle,
                       getThStyle,
@@ -629,11 +709,7 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
                 asset={asset}
                 history={history}
                 selectedIds={selectedIds}
-                onSelect={(id, checked) => {
-                  const next = new Set(selectedIds);
-                  checked ? next.add(id) : next.delete(id);
-                  setSelectedIds(next);
-                }}
+                onSelect={handleSelect}
                 visibleColumns={visibleColumns}
                 onEdit={onEdit}
                 onSell={onSell}
@@ -649,9 +725,7 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
               />
               );
             }) : (
-              <tr><td colSpan={totalColSpan} className="text-center py-8 text-gray-500">
-                  {emptyMessage}
-              </td></tr>
+              <tr><td colSpan={totalColSpan}>{emptyContent}</td></tr>
             )}
           </tbody>
         </table>
@@ -673,11 +747,7 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
             asset={asset}
             history={history}
             selected={selectedIds.has(asset.id)}
-            onSelect={(id, checked) => {
-              const next = new Set(selectedIds);
-              checked ? next.add(id) : next.delete(id);
-              setSelectedIds(next);
-            }}
+            onSelect={handleSelect}
             onEdit={onEdit}
             onSell={onSell}
             onBuy={onBuy}
@@ -690,9 +760,7 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
             turtle={turtleViews.get(asset.id)}
           />
           );
-        }) : (
-          <div className="text-center py-8 text-gray-500">{emptyMessage}</div>
-        )}
+        }) : emptyContent}
       </div>
 
       {/* 메모 편집 팝업 */}

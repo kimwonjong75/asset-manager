@@ -4,7 +4,7 @@
 // 자체 상태(펼침/편집)만 갖고, 컨텍스트 값(enrichedMap/priceDataAsOf/환율/액션)은 이 컴포넌트가 직접
 // usePortfolio()로 읽는다(관심종목 배선처는 .map() 내부라 이 컴포넌트 자체가 훅 캡슐화 경계).
 
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { Info } from 'lucide-react';
 import { Currency } from '../../types';
 import type { WatchlistItem } from '../../types';
@@ -17,14 +17,25 @@ import type { TradePlan } from '../../types/tradePlan';
 import TradePlanCard, { TRADE_PLAN_BASIS_NOTE } from './TradePlanCard';
 import TradePlanEditor from './TradePlanEditor';
 
+/**
+ * initialEditing — 마운트 시점의 초기 편집 상태(행 메뉴 '매매 계획' 진입용). 이후 변경은 무시된다 —
+ * 다시 열게 하려면 호출처가 key를 바꿔 리마운트한다. true면 마운트 직후 화면 안으로 스크롤.
+ */
 type TradePlanSectionProps =
-  | { source: 'portfolio'; asset: EnrichedAsset; displayName: string; className?: string }
-  | { source: 'watchlist'; watchItem: WatchlistItem; displayName: string; className?: string };
+  | { source: 'portfolio'; asset: EnrichedAsset; displayName: string; className?: string; initialEditing?: boolean }
+  | { source: 'watchlist'; watchItem: WatchlistItem; displayName: string; className?: string; initialEditing?: boolean };
 
 const TradePlanSection: React.FC<TradePlanSectionProps> = (props) => {
-  const { source, className } = props;
+  const { source, className, initialEditing = false } = props;
   const { derived, data, actions } = usePortfolio();
-  const [editing, setEditing] = useState(false);
+  const [editing, setEditing] = useState(initialEditing);
+  // ref 콜백 — 마운트 1회 스크롤(effect 내 setState 없음). 조기 반환 분기마다 루트 div에 동일 부착.
+  const scrollRef = useCallback((node: HTMLDivElement | null) => {
+    if (node && typeof node.scrollIntoView === 'function') {
+      node.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  }, []);
+  const rootRef = initialEditing ? scrollRef : undefined;
 
   const ticker = source === 'portfolio' ? props.asset.ticker : props.watchItem.ticker;
   const exchange = source === 'portfolio' ? props.asset.exchange : props.watchItem.exchange;
@@ -71,7 +82,7 @@ const TradePlanSection: React.FC<TradePlanSectionProps> = (props) => {
 
   if (!isActive) {
     return (
-      <div className={className}>
+      <div className={className} ref={rootRef}>
         {!editing ? (
           <div className="mt-1.5 flex items-center gap-2 text-xs">
             <span className="text-gray-500">매매 계획 없음</span>
@@ -90,7 +101,7 @@ const TradePlanSection: React.FC<TradePlanSectionProps> = (props) => {
 
   if (editing) {
     return (
-      <div className={className}>
+      <div className={className} ref={rootRef}>
         <div className="mt-2">
           <TradePlanEditor target={target} existingPlan={plan} onSave={handleSave} onCancel={() => setEditing(false)} />
         </div>
@@ -125,7 +136,7 @@ const TradePlanSection: React.FC<TradePlanSectionProps> = (props) => {
   };
 
   return (
-    <div className={className}>
+    <div className={className} ref={rootRef}>
       <div className="mt-2">
         <TradePlanCard
           currency={currency}

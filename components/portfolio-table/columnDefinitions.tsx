@@ -4,6 +4,7 @@ import { isBaseType } from '../../types/category';
 import { ColumnKey, COLUMN_LABELS, EnrichedAsset, SortKey, SortDirection } from '../../types/ui';
 import { formatQuantity, formatOriginalCurrency, formatKRW, formatProfitLoss, getChangeColor } from './utils';
 import Tooltip from '../common/Tooltip';
+import SortableTh from '../common/SortableTh';
 import { COLUMN_DESCRIPTIONS } from '../../constants/columnDescriptions';
 import CrossDaysBadge from '../common/CrossDaysBadge';
 
@@ -39,14 +40,15 @@ export type HeaderAlign = 'left' | 'right' | 'center';
 export interface HeaderRenderContext {
   sortConfig: { key: SortKey; direction: SortDirection } | null;
   requestSort: (key: SortKey) => void;
+  /** 수익률 헤더 4상태 정렬(수익률↓ → 수익률↑ → 평가손익↓ → 평가손익↑ → 해제) */
   toggleReturnSort: () => void;
   badgePairs: {
     gcEnabled: boolean; gcShort: number; gcLong: number;
     dcEnabled: boolean; dcShort: number; dcLong: number;
   };
+  /** <th> 공통 클래스(sticky top-0·배경·z 포함) — SortableTh className 으로 전달 */
   thClasses: string;
-  thContentClasses: string;
-  SortIcon: React.FC<{ sortKey: SortKey }>;
+  /** 수익률 헤더 라벨('수익률' | '평가손익') — 방향은 SortableTh 아이콘이 표시 */
   getReturnHeaderLabel: () => string;
   /** <th> 우측 가장자리에 렌더링하는 리사이즈 핸들. 컬럼별로 columnKey를 넘겨 사용 */
   ResizeHandle: React.FC<{ columnKey: ColumnKey }>;
@@ -75,17 +77,44 @@ const alignToTd = (align: HeaderAlign) =>
 const alignToHeaderContent = (align: HeaderAlign) =>
   align === 'right' ? 'justify-end' : align === 'center' ? 'justify-center' : '';
 
+/** 표 정렬 상태(ascending/descending) → SortableTh 방향(asc/desc) */
+export const toSortableDirection = (
+  sortConfig: { key: SortKey; direction: SortDirection } | null,
+): 'asc' | 'desc' | null => (sortConfig ? (sortConfig.direction === 'ascending' ? 'asc' : 'desc') : null);
+
+/** 단일 정렬키 헤더 — th 에 onClick 없음(버튼이 정렬), 리사이즈 핸들은 th 직계 자식 */
+const sortableHeader = (
+  ctx: HeaderRenderContext,
+  key: ColumnKey,
+  label: string,
+  align: HeaderAlign,
+  tooltip: React.ReactNode,
+) => {
+  const { ResizeHandle } = ctx;
+  return (
+    <SortableTh
+      label={<span>{label}</span>}
+      sortKey={key}
+      activeKey={ctx.sortConfig?.key ?? null}
+      direction={toSortableDirection(ctx.sortConfig)}
+      onSort={() => ctx.requestSort(key)}
+      className={ctx.thClasses}
+      align={align}
+      tooltip={tooltip}
+      style={ctx.getThStyle(key)}
+    >
+      <ResizeHandle columnKey={key} />
+    </SortableTh>
+  );
+};
+
 export const COLUMN_DEFINITIONS: Record<ColumnKey, ColumnDefinition> = {
   maCrossDays: {
     key: 'maCrossDays',
     align: 'center',
-    renderHeader: ({ thClasses, thContentClasses, requestSort, SortIcon, badgePairs, ResizeHandle, getThStyle }) => (
-      <th scope="col" className={`${thClasses} text-center`} style={getThStyle('maCrossDays')} onClick={() => requestSort('maCrossDays')}>
-        <Tooltip content={`알림 규칙 기준: GC=MA${badgePairs.gcShort}/${badgePairs.gcLong}, DC=MA${badgePairs.dcShort}/${badgePairs.dcLong} (환경설정에서 변경)`} position="bottom" wrap>
-          <div className={`${thContentClasses} justify-center`}><span>GC/DC</span> <SortIcon sortKey="maCrossDays" /></div>
-        </Tooltip>
-        <ResizeHandle columnKey="maCrossDays" />
-      </th>
+    renderHeader: (ctx) => sortableHeader(
+      ctx, 'maCrossDays', 'GC/DC', 'center',
+      `알림 규칙 기준: GC=MA${ctx.badgePairs.gcShort}/${ctx.badgePairs.gcLong}, DC=MA${ctx.badgePairs.dcShort}/${ctx.badgePairs.dcLong} (환경설정에서 변경)`,
     ),
     renderCell: ({ gcCrossDays, dcCrossDays, getTdStyle }) => (
       <td className="px-4 py-4 text-center overflow-hidden" style={getTdStyle?.('maCrossDays')}>
@@ -99,14 +128,7 @@ export const COLUMN_DEFINITIONS: Record<ColumnKey, ColumnDefinition> = {
   quantity: {
     key: 'quantity',
     align: 'right',
-    renderHeader: ({ thClasses, thContentClasses, requestSort, SortIcon, ResizeHandle, getThStyle }) => (
-      <th scope="col" className={`${thClasses} text-right`} style={getThStyle('quantity')} onClick={() => requestSort('quantity')}>
-        <Tooltip content={COLUMN_DESCRIPTIONS.quantity} position="bottom" wrap>
-          <div className={`${thContentClasses} justify-end`}><span>보유수량</span> <SortIcon sortKey="quantity" /></div>
-        </Tooltip>
-        <ResizeHandle columnKey="quantity" />
-      </th>
-    ),
+    renderHeader: (ctx) => sortableHeader(ctx, 'quantity', '보유수량', 'right', COLUMN_DESCRIPTIONS.quantity),
     renderCell: ({ asset, getTdStyle }) => (
       <td className="px-4 py-4 text-right overflow-hidden" style={getTdStyle?.('quantity')}>
         <Tooltip content={COLUMN_DESCRIPTIONS.quantity} position="top" wrap>
@@ -118,14 +140,7 @@ export const COLUMN_DEFINITIONS: Record<ColumnKey, ColumnDefinition> = {
   purchasePrice: {
     key: 'purchasePrice',
     align: 'right',
-    renderHeader: ({ thClasses, thContentClasses, requestSort, SortIcon, ResizeHandle, getThStyle }) => (
-      <th scope="col" className={`${thClasses} text-right`} style={getThStyle('purchasePrice')} onClick={() => requestSort('purchasePrice')}>
-        <Tooltip content={COLUMN_DESCRIPTIONS.purchasePrice} position="bottom" wrap>
-          <div className={`${thContentClasses} justify-end`}><span>매수평균가</span> <SortIcon sortKey="purchasePrice" /></div>
-        </Tooltip>
-        <ResizeHandle columnKey="purchasePrice" />
-      </th>
-    ),
+    renderHeader: (ctx) => sortableHeader(ctx, 'purchasePrice', '매수평균가', 'right', COLUMN_DESCRIPTIONS.purchasePrice),
     renderCell: ({ asset, getTdStyle }) => {
       const isNonKRW = asset.currency !== Currency.KRW;
       return (
@@ -143,14 +158,7 @@ export const COLUMN_DEFINITIONS: Record<ColumnKey, ColumnDefinition> = {
   currentPrice: {
     key: 'currentPrice',
     align: 'right',
-    renderHeader: ({ thClasses, thContentClasses, requestSort, SortIcon, ResizeHandle, getThStyle }) => (
-      <th scope="col" className={`${thClasses} text-right`} style={getThStyle('currentPrice')} onClick={() => requestSort('currentPrice')}>
-        <Tooltip content={COLUMN_DESCRIPTIONS.currentPrice} position="bottom" wrap>
-          <div className={`${thContentClasses} justify-end`}><span>현재가</span> <SortIcon sortKey="currentPrice" /></div>
-        </Tooltip>
-        <ResizeHandle columnKey="currentPrice" />
-      </th>
-    ),
+    renderHeader: (ctx) => sortableHeader(ctx, 'currentPrice', '현재가', 'right', COLUMN_DESCRIPTIONS.currentPrice),
     renderCell: ({ asset, getTdStyle }) => {
       const isNonKRW = asset.currency !== Currency.KRW;
       return (
@@ -176,13 +184,23 @@ export const COLUMN_DEFINITIONS: Record<ColumnKey, ColumnDefinition> = {
   returnPercentage: {
     key: 'returnPercentage',
     align: 'right',
-    renderHeader: ({ thClasses, thContentClasses, toggleReturnSort, getReturnHeaderLabel, sortConfig, ResizeHandle, getThStyle }) => (
-      <th scope="col" className={`${thClasses} justify-end`} style={getThStyle('returnPercentage')} onClick={toggleReturnSort}>
-        <Tooltip content={sortConfig?.key === 'profitLossKRW' ? COLUMN_DESCRIPTIONS.profitLossKRW : COLUMN_DESCRIPTIONS.returnPercentage} position="bottom" wrap>
-          <div className={`${thContentClasses} justify-end`}><span>{getReturnHeaderLabel()}</span></div>
-        </Tooltip>
+    // 한 헤더가 수익률/평가손익 2개 정렬키를 4상태로 돈다 → ariaSortKeys 로 둘 다 활성 판정
+    renderHeader: ({ thClasses, toggleReturnSort, getReturnHeaderLabel, sortConfig, ResizeHandle, getThStyle }) => (
+      <SortableTh
+        label={<span>{getReturnHeaderLabel()}</span>}
+        sortKey="returnPercentage"
+        ariaSortKeys={['profitLossKRW']}
+        activeKey={sortConfig?.key ?? null}
+        direction={toSortableDirection(sortConfig)}
+        onSort={toggleReturnSort}
+        className={thClasses}
+        align="right"
+        title="누를 때마다 수익률↓ → 수익률↑ → 평가손익↓ → 평가손익↑ → 정렬 해제"
+        tooltip={sortConfig?.key === 'profitLossKRW' ? COLUMN_DESCRIPTIONS.profitLossKRW : COLUMN_DESCRIPTIONS.returnPercentage}
+        style={getThStyle('returnPercentage')}
+      >
         <ResizeHandle columnKey="returnPercentage" />
-      </th>
+      </SortableTh>
     ),
     renderCell: ({ asset, getTdStyle }) => {
       const { returnPercentage, profitLoss } = asset.metrics;
@@ -201,14 +219,7 @@ export const COLUMN_DEFINITIONS: Record<ColumnKey, ColumnDefinition> = {
   purchaseValue: {
     key: 'purchaseValue',
     align: 'right',
-    renderHeader: ({ thClasses, thContentClasses, requestSort, SortIcon, ResizeHandle, getThStyle }) => (
-      <th scope="col" className={`${thClasses} justify-end`} style={getThStyle('purchaseValue')} onClick={() => requestSort('purchaseValue')}>
-        <Tooltip content={COLUMN_DESCRIPTIONS.purchaseValue} position="bottom" wrap>
-          <div className={`${thContentClasses} justify-end`}><span>투자원금</span> <SortIcon sortKey="purchaseValue" /></div>
-        </Tooltip>
-        <ResizeHandle columnKey="purchaseValue" />
-      </th>
-    ),
+    renderHeader: (ctx) => sortableHeader(ctx, 'purchaseValue', '투자원금', 'right', COLUMN_DESCRIPTIONS.purchaseValue),
     renderCell: ({ asset, getTdStyle }) => {
       const isNonKRW = asset.currency !== Currency.KRW;
       const { purchaseValue, purchaseValueKRW, returnPercentage } = asset.metrics;
@@ -228,14 +239,7 @@ export const COLUMN_DEFINITIONS: Record<ColumnKey, ColumnDefinition> = {
   currentValue: {
     key: 'currentValue',
     align: 'right',
-    renderHeader: ({ thClasses, thContentClasses, requestSort, SortIcon, ResizeHandle, getThStyle }) => (
-      <th scope="col" className={`${thClasses} justify-end`} style={getThStyle('currentValue')} onClick={() => requestSort('currentValue')}>
-        <Tooltip content={COLUMN_DESCRIPTIONS.currentValue} position="bottom" wrap>
-          <div className={`${thContentClasses} justify-end`}><span>평가총액</span> <SortIcon sortKey="currentValue" /></div>
-        </Tooltip>
-        <ResizeHandle columnKey="currentValue" />
-      </th>
-    ),
+    renderHeader: (ctx) => sortableHeader(ctx, 'currentValue', '평가총액', 'right', COLUMN_DESCRIPTIONS.currentValue),
     renderCell: ({ asset, getTdStyle }) => {
       const isNonKRW = asset.currency !== Currency.KRW;
       const { currentValue, currentValueKRW } = asset.metrics;
@@ -254,14 +258,7 @@ export const COLUMN_DEFINITIONS: Record<ColumnKey, ColumnDefinition> = {
   purchaseDate: {
     key: 'purchaseDate',
     align: 'center',
-    renderHeader: ({ thClasses, thContentClasses, requestSort, SortIcon, ResizeHandle, getThStyle }) => (
-      <th scope="col" className={`${thClasses} text-center`} style={getThStyle('purchaseDate')} onClick={() => requestSort('purchaseDate')}>
-        <Tooltip content={COLUMN_DESCRIPTIONS.purchaseDate} position="bottom" wrap>
-          <div className={`${thContentClasses} justify-center`}><span>매수일</span> <SortIcon sortKey="purchaseDate" /></div>
-        </Tooltip>
-        <ResizeHandle columnKey="purchaseDate" />
-      </th>
-    ),
+    renderHeader: (ctx) => sortableHeader(ctx, 'purchaseDate', '매수일', 'center', COLUMN_DESCRIPTIONS.purchaseDate),
     renderCell: ({ asset, getTdStyle }) => (
       <td className="px-4 py-4 text-center overflow-hidden" style={getTdStyle?.('purchaseDate')}>
         <Tooltip content={COLUMN_DESCRIPTIONS.purchaseDate} position="top" wrap>
@@ -273,14 +270,7 @@ export const COLUMN_DEFINITIONS: Record<ColumnKey, ColumnDefinition> = {
   allocation: {
     key: 'allocation',
     align: 'right',
-    renderHeader: ({ thClasses, thContentClasses, requestSort, SortIcon, ResizeHandle, getThStyle }) => (
-      <th scope="col" className={`${thClasses} justify-end`} style={getThStyle('allocation')} onClick={() => requestSort('allocation')}>
-        <Tooltip content={COLUMN_DESCRIPTIONS.allocation} position="bottom" wrap>
-          <div className={`${thContentClasses} justify-end`}><span>비중</span> <SortIcon sortKey="allocation" /></div>
-        </Tooltip>
-        <ResizeHandle columnKey="allocation" />
-      </th>
-    ),
+    renderHeader: (ctx) => sortableHeader(ctx, 'allocation', '비중', 'right', COLUMN_DESCRIPTIONS.allocation),
     renderCell: ({ asset, getTdStyle }) => (
       <td className="px-4 py-4 text-right overflow-hidden" style={getTdStyle?.('allocation')}>
         <Tooltip content={COLUMN_DESCRIPTIONS.allocation} position="top" wrap>
@@ -292,14 +282,7 @@ export const COLUMN_DEFINITIONS: Record<ColumnKey, ColumnDefinition> = {
   dropFromHigh: {
     key: 'dropFromHigh',
     align: 'right',
-    renderHeader: ({ thClasses, thContentClasses, requestSort, SortIcon, ResizeHandle, getThStyle }) => (
-      <th scope="col" className={`${thClasses} justify-end`} style={getThStyle('dropFromHigh')} onClick={() => requestSort('dropFromHigh')}>
-        <Tooltip content={COLUMN_DESCRIPTIONS.dropFromHigh} position="bottom" wrap>
-          <div className={`${thContentClasses} justify-end`}><span>최고가 대비</span> <SortIcon sortKey="dropFromHigh" /></div>
-        </Tooltip>
-        <ResizeHandle columnKey="dropFromHigh" />
-      </th>
-    ),
+    renderHeader: (ctx) => sortableHeader(ctx, 'dropFromHigh', '최고가 대비', 'right', COLUMN_DESCRIPTIONS.dropFromHigh),
     renderCell: ({ asset, getTdStyle }) => {
       const { dropFromHigh, diffFromHigh } = asset.metrics;
       return (
@@ -317,14 +300,7 @@ export const COLUMN_DEFINITIONS: Record<ColumnKey, ColumnDefinition> = {
   yesterdayChange: {
     key: 'yesterdayChange',
     align: 'right',
-    renderHeader: ({ thClasses, thContentClasses, requestSort, SortIcon, ResizeHandle, getThStyle }) => (
-      <th scope="col" className={`${thClasses} justify-end`} style={getThStyle('yesterdayChange')} onClick={() => requestSort('yesterdayChange')}>
-        <Tooltip content={COLUMN_DESCRIPTIONS.yesterdayChange} position="bottom" wrap>
-          <div className={`${thContentClasses} justify-end`}><span>어제대비</span> <SortIcon sortKey="yesterdayChange" /></div>
-        </Tooltip>
-        <ResizeHandle columnKey="yesterdayChange" />
-      </th>
-    ),
+    renderHeader: (ctx) => sortableHeader(ctx, 'yesterdayChange', '어제대비', 'right', COLUMN_DESCRIPTIONS.yesterdayChange),
     renderCell: ({ asset, getTdStyle }) => {
       const { yesterdayChange, diffFromYesterday } = asset.metrics;
       return (

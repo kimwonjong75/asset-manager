@@ -130,6 +130,53 @@ const ids = (rows: Row[]) => rows.map(r => r.id);
   check('1개 배열 안전', ids(sortWatchlistRows([ROWS[0]], { key: 'currentPrice', direction: 'descending' })), ['A']);
 }
 
+// ════════════════════════════════════════════════════════════════════════════
+// 9. 매수 점검(buyReadiness) — 첫 클릭 내림차순(명시적 예외) + 토글
+// ════════════════════════════════════════════════════════════════════════════
+{
+  check('매수 점검 최초 클릭 → 내림차순', nextWatchlistSort(null, 'buyReadiness'), { key: 'buyReadiness', direction: 'descending' });
+  check('다른 컬럼에서 매수 점검 클릭 → 내림차순',
+    nextWatchlistSort({ key: 'name', direction: 'ascending' }, 'buyReadiness'),
+    { key: 'buyReadiness', direction: 'descending' });
+  check('매수 점검 재클릭(내림) → 오름',
+    nextWatchlistSort({ key: 'buyReadiness', direction: 'descending' }, 'buyReadiness'),
+    { key: 'buyReadiness', direction: 'ascending' });
+  check('매수 점검 재클릭(오름) → 내림',
+    nextWatchlistSort({ key: 'buyReadiness', direction: 'ascending' }, 'buyReadiness'),
+    { key: 'buyReadiness', direction: 'descending' });
+  check('매수 점검에서 다른 컬럼 → 그 컬럼 오름',
+    nextWatchlistSort({ key: 'buyReadiness', direction: 'descending' }, 'dropFromHigh'),
+    { key: 'dropFromHigh', direction: 'ascending' });
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// 10. 매수 점검 정렬 — met 순 / 동률은 unknown 적은 행 먼저(방향 무관) / 원래 순서 / null 항상 뒤
+// ════════════════════════════════════════════════════════════════════════════
+{
+  const R: Row[] = [
+    { id: 'E', name: 'E', buyReadiness: { met: 2, unknown: 0 } },
+    { id: 'F', name: 'F', buyReadiness: { met: 3, unknown: 0 } },
+    { id: 'G', name: 'G', buyReadiness: null },
+    { id: 'H', name: 'H', buyReadiness: { met: 2, unknown: 1 } },
+    { id: 'I', name: 'I', buyReadiness: { met: 2, unknown: 0 } },
+    { id: 'J', name: 'J', buyReadiness: { met: 0, unknown: 3 } },
+    { id: 'K', name: 'K' },
+  ];
+  check('매수 점검 내림 (3 > 2[u0 E→I, u1 H] > 0, null·미지정 뒤)',
+    ids(sortWatchlistRows(R, { key: 'buyReadiness', direction: 'descending' })), ['F', 'E', 'I', 'H', 'J', 'G', 'K']);
+  check('매수 점검 오름 (0 < 2[u0 E→I, u1 H] < 3, null·미지정 여전히 뒤)',
+    ids(sortWatchlistRows(R, { key: 'buyReadiness', direction: 'ascending' })), ['J', 'E', 'I', 'H', 'F', 'G', 'K']);
+  const weird: Row[] = [
+    { id: 'W', name: 'W', buyReadiness: { met: NaN, unknown: 0 } },
+    { id: 'X', name: 'X', buyReadiness: { met: 1, unknown: 2 } },
+  ];
+  check('매수 점검 NaN met → 값 없음 취급(뒤)',
+    ids(sortWatchlistRows(weird, { key: 'buyReadiness', direction: 'descending' })), ['X', 'W']);
+  const snap = JSON.stringify(R);
+  sortWatchlistRows(R, { key: 'buyReadiness', direction: 'descending' });
+  check('매수 점검 정렬도 입력 불변', JSON.stringify(R), snap);
+}
+
 // ── 결과 ──
 if (fails.length) {
   console.error(`\n❌ watchlistSort parity 실패 (${fails.length})`);

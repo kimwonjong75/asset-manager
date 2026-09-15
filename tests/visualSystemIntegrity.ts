@@ -88,8 +88,6 @@ const SHADOW_ALLOWLIST: Record<string, string> = {
   'components/layouts/SignalReplayView.tsx': '종목 검색 자동완성 목록(absolute 부유)',
   'components/replay/SignalReplayChart.tsx': '차트 hover 툴팁(absolute 부유)',
   'components/portfolio-table/ColumnSettingsDropdown.tsx': '컬럼 설정 드롭다운(absolute 부유)',
-  'components/PortfolioTable.tsx': '일괄 변경 드롭다운 메뉴(absolute 부유)',
-  'components/WatchlistPage.tsx': '헤더 설정 팝오버(absolute 부유)',
   'App.tsx': '상단 새 버전/오류 배너(z-banner) + 맨 위로 FAB(z-fab)',
 };
 const shadowUsers = FILES.filter(f => SHADOW_RE.test(SOURCES.get(f)!));

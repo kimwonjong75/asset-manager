@@ -1,21 +1,26 @@
 import { directionTextClass } from '../../utils/directionTone';
-import React, { useRef, useState } from 'react';
+import React, { useState } from 'react';
 import { Currency, CURRENCY_SYMBOLS, ExchangeRates, WatchlistItem } from '../../types';
 import { getCategoryName, type CategoryDefinition } from '../../types/category';
-import ActionMenu from '../common/ActionMenu';
+import type { BuyReadiness } from '../../types/stockReview';
 import MemoTooltip from '../common/MemoTooltip';
-import { ClipboardList, MoreHorizontal, Star, StickyNote } from 'lucide-react';
+import { Star, StickyNote } from 'lucide-react';
 import ConfirmDialog from '../common/ConfirmDialog';
+import Badge from '../common/Badge';
+import RowActionMenuButton from '../common/RowActionMenuButton';
+import { clickableProps } from '../common/a11yKeys';
 import { useConfirm } from '../../hooks/useConfirm';
 import AssetTrendChart from '../AssetTrendChart';
 import ChartViewerModal from '../common/ChartViewerModal';
 import StockReviewAccordion from '../stock-review/StockReviewAccordion';
 import TradePlanSection from '../trade-plan/TradePlanSection';
+import BuyReadinessMarks from './BuyReadinessMarks';
+import { buildWatchlistRowMenuItems } from './watchlistRowMenu';
 import { watchlistToPseudoAsset } from '../../utils/alertChecker';
 import { usePortfolio } from '../../contexts/PortfolioContext';
 
 interface WatchlistMobileCardProps {
-  item: WatchlistItem & { dropFromHigh: number | null; yesterdayChange: number };
+  item: WatchlistItem & { dropFromHigh: number | null; yesterdayChange: number; buyReadiness: BuyReadiness | null };
   isSelected: boolean;
   onToggleSelect: (id: string) => void;
   onDelete: (id: string) => void;
@@ -46,10 +51,10 @@ const WatchlistMobileCard: React.FC<WatchlistMobileCardProps> = ({
   isPortfolioHeld,
 }) => {
   const { actions } = usePortfolio();
-  const [menuOpen, setMenuOpen] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
-  const menuAnchorRef = useRef<HTMLButtonElement>(null);
+  // 메뉴 '종목 검토' 요청 번호 — 0 = 요청 없음. 바뀔 때마다 아코디언을 key 로 리마운트해 initialOpen 으로 연다.
+  const [reviewNonce, setReviewNonce] = useState(0);
   const { confirm, confirmRequest } = useConfirm();
 
   const isNonKRW = item.currency !== undefined && item.currency !== Currency.KRW;
@@ -59,6 +64,28 @@ const WatchlistMobileCard: React.FC<WatchlistMobileCardProps> = ({
     if (item.currency === Currency.JPY) return exchangeRates.JPY || 1;
     return 1;
   };
+
+  const toggleExpanded = () => {
+    if (expanded) setReviewNonce(0);
+    setExpanded(!expanded);
+  };
+
+  const menuItems = buildWatchlistRowMenuItems({
+    isTurtleCandidate: !!item.isTurtleCandidate,
+    onTradePlan: () => actions.openTradePlanPlanner({ watchItemId: item.id, ticker: item.ticker, exchange: item.exchange, name: item.name }),
+    onReview: () => {
+      setExpanded(true);
+      setReviewNonce(n => n + 1);
+    },
+    onEdit: () => onOpenEditModal(item),
+    onToggleTurtle: onToggleTurtle ? () => onToggleTurtle(item.id) : undefined,
+    onChartView: toggleExpanded,
+    onChartExpand: () => setFullscreen(true),
+    onDelete: () => {
+      void confirm(`'${item.name}' 종목을 삭제하시겠습니까?`, { title: '관심종목 삭제', confirmLabel: '삭제', tone: 'danger' })
+        .then(ok => { if (ok) onDelete(item.id); });
+    },
+  });
 
   return (
     <div className="border-b border-gray-700">
@@ -70,13 +97,20 @@ const WatchlistMobileCard: React.FC<WatchlistMobileCardProps> = ({
           checked={isSelected}
           onChange={() => onToggleSelect(item.id)}
           className="mt-2 flex-shrink-0"
+          aria-label={`${item.name} 선택`}
         />
 
-        {/* 종목 정보 */}
-        <div className="flex-1 min-w-0" onClick={() => setExpanded(!expanded)}>
+        {/* 종목 정보 — 탭하면 차트·매매 계획·종목 검토 펼침 */}
+        <div
+          className="flex-1 min-w-0 focus-ring rounded-sm"
+          {...clickableProps(toggleExpanded)}
+          aria-expanded={expanded}
+          aria-label={`${item.name} 상세 ${expanded ? '접기' : '펼치기'}`}
+        >
           <div className="flex items-center gap-2 flex-wrap">
             {onTogglePin && (
               <button
+                type="button"
                 onClick={(e) => { e.stopPropagation(); onTogglePin(item.id); }}
                 className={`transition-colors flex-shrink-0 ${item.pinned ? 'text-yellow-400' : 'text-gray-500 hover:text-yellow-400/60'}`}
                 aria-label={item.pinned ? '중요 해제' : '중요 표시'}
@@ -86,7 +120,7 @@ const WatchlistMobileCard: React.FC<WatchlistMobileCardProps> = ({
               </button>
             )}
             {isPortfolioHeld && (
-              <span className="text-xs px-1 py-0.5 rounded bg-sky-500/20 text-sky-300 flex-shrink-0">보유</span>
+              <Badge tone="info" className="flex-shrink-0" title="보유중">보유</Badge>
             )}
             {item.isTurtleCandidate && (
               <span className="text-xs px-1 py-0.5 rounded bg-ok-soft text-ok flex-shrink-0" role="img" aria-label="터틀 후보" title="터틀 후보">🐢</span>
@@ -134,39 +168,20 @@ const WatchlistMobileCard: React.FC<WatchlistMobileCardProps> = ({
               </span>
             )}
           </div>
+
+          {/* 매수 점검 — 데스크탑 '매수 점검' 컬럼과 동일 표시(설명 툴팁은 페이지 모바일 정렬 바) */}
+          <div className="mt-1 text-xs">
+            <BuyReadinessMarks readiness={item.buyReadiness} showLabel />
+          </div>
         </div>
 
-        {/* 메뉴 버튼 */}
-        <button
-          ref={menuAnchorRef}
-          onClick={() => setMenuOpen(!menuOpen)}
-          className="p-2 text-gray-400 hover:text-white flex-shrink-0 mt-1"
-        >
-          <MoreHorizontal className="h-5 w-5" />
-        </button>
-
-        {menuOpen && (
-          <ActionMenu
-            anchorRef={menuAnchorRef}
-            onClose={() => setMenuOpen(false)}
-            items={[
-              { label: '수정', onClick: () => onOpenEditModal(item) },
-              {
-                label: '매매 계획',
-                icon: <ClipboardList />,
-                onClick: () => actions.openTradePlanPlanner({ watchItemId: item.id, ticker: item.ticker, exchange: item.exchange, name: item.name }),
-                colorClass: 'text-gray-200',
-              },
-              ...(onToggleTurtle ? [{ label: item.isTurtleCandidate ? '🐢 터틀 후보 해제' : '🐢 터틀 후보 지정', onClick: () => onToggleTurtle(item.id), colorClass: 'text-gray-200' }] : []),
-              { label: '차트 보기', onClick: () => setExpanded(!expanded), colorClass: 'text-gray-200' },
-              { label: '차트 확대', onClick: () => setFullscreen(true), colorClass: 'text-gray-200' },
-              { label: '삭제', onClick: () => {
-                void confirm(`'${item.name}' 종목을 삭제하시겠습니까?`, { title: '관심종목 삭제', confirmLabel: '삭제', tone: 'danger' })
-                  .then(ok => { if (ok) onDelete(item.id); });
-              }, colorClass: 'text-danger' },
-            ]}
-          />
-        )}
+        {/* 관리 메뉴 — 데스크탑 행 메뉴와 같은 buildWatchlistRowMenuItems */}
+        <RowActionMenuButton
+          items={menuItems}
+          label={`${item.name} 관리 메뉴`}
+          header={item.name}
+          className="flex-shrink-0 mt-1"
+        />
       </div>
 
       {/* 차트 확장 */}
@@ -192,10 +207,12 @@ const WatchlistMobileCard: React.FC<WatchlistMobileCardProps> = ({
             className="px-4"
           />
           <StockReviewAccordion
+            key={`review-${reviewNonce}`}
             asset={watchlistToPseudoAsset(item)}
             source="watchlist"
             displayName={item.name}
             className="px-4"
+            initialOpen={reviewNonce > 0}
           />
         </div>
       )}

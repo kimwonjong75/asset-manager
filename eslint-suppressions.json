@@ -79,9 +79,6 @@
     }
   },
   "components/PortfolioTable.tsx": {
-    "@typescript-eslint/no-unused-expressions": {
-      "count": 2
-    },
     "react-hooks/preserve-manual-memoization": {
       "count": 1
     }

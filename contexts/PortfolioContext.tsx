@@ -28,7 +28,6 @@ import type { ValuationSettings } from '../types/valuation';
 import { evaluateGuruSignals, buildGuruSignalTargets, buildGuruSignalChartTargets, type GuruSignalMatch, type GuruSignalTarget } from '../utils/guruSignalEngine';
 import { buildGuruSignalCaveats } from '../utils/guruDiagnostics';
 import {
-  DEFAULT_COLUMN_CONFIG,
   DEFAULT_FIXED_COLUMN_WIDTHS,
   MIN_COLUMN_WIDTH,
   DEFAULT_SIGNAL_DISPLAY,
@@ -38,6 +37,7 @@ import {
   type SignalDisplaySettings,
 } from '../types/ui';
 import { DEFAULT_MA_CONFIGS, clampMAPeriod, type MALineConfig } from '../utils/maCalculations';
+import { getDefaultColumnConfig, mergeColumnConfig } from '../utils/columnConfig';
 import { OWNER_FILTER_OPTIONS, type OwnerFilter } from '../types/owner';
 import { buildCleanupCommit } from '../utils/cleanupPlan';
 import type { CleanupDecision } from '../types/cleanup';
@@ -95,16 +95,7 @@ const loadChartMAConfigs = (): MALineConfig[] => {
   return DEFAULT_MA_CONFIGS.map(c => ({ ...c }));
 };
 
-// 저장된 컬럼 설정과 현재 DEFAULT_COLUMN_CONFIG를 머지:
-//  - 저장본에 없는 키는 default 위치에 visible 기본값으로 추가
-//  - 저장본의 알 수 없는 키는 제거
-const mergeColumnConfig = (stored: ColumnConfig[]): ColumnConfig[] => {
-  const validKeys = new Set(DEFAULT_COLUMN_CONFIG.map(c => c.key));
-  const cleaned = stored.filter(c => validKeys.has(c.key as ColumnKey));
-  const seen = new Set(cleaned.map(c => c.key));
-  const missing = DEFAULT_COLUMN_CONFIG.filter(c => !seen.has(c.key));
-  return [...cleaned, ...missing];
-};
+// 컬럼 설정 기본값·저장본 머지는 utils/columnConfig (Stage D1 이관, 동작 동일)
 
 export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   // 핵심 데이터/인증/저장 훅
@@ -379,7 +370,7 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         if (Array.isArray(parsed)) return mergeColumnConfig(parsed);
       }
     } catch { /* ignore */ }
-    return DEFAULT_COLUMN_CONFIG;
+    return getDefaultColumnConfig();
   });
   const persistColumnConfig = (next: ColumnConfig[]) => {
     setColumnConfigState(next);
@@ -409,7 +400,7 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     saveNow();
   };
   const handleResetColumnConfig = () => {
-    persistColumnConfig(DEFAULT_COLUMN_CONFIG);
+    persistColumnConfig(getDefaultColumnConfig());
     persistFixedColumnWidths(DEFAULT_FIXED_COLUMN_WIDTHS);
   };
   const handleSetColumnWidth = (key: ColumnKey, width: number) => {

@@ -1,12 +1,23 @@
-import React, { useState } from 'react';
+import React, { useId, useState } from 'react';
+import { ChevronDown, Info, Loader2, RotateCcw, SlidersHorizontal, TriangleAlert } from 'lucide-react';
 import type { SmartFilterState, SmartFilterKey } from '../../types/smartFilter';
 import { SMART_FILTER_CHIPS, SMART_FILTER_GROUP_LABELS } from '../../constants/smartFilterChips';
 import { usePortfolio } from '../../contexts/PortfolioContext';
 import Tooltip from '../common/Tooltip';
+import Button from '../common/Button';
+
+// SmartFilterPanel — 스마트 필터 칩 패널 (Stage D1)
+//   · 모든 화면 폭에서 기본 접힘. 펼침 여부는 localStorage('asset-manager-smart-filter-open', 'true'/'false')에 기억.
+//   · 접힌 헤더: "필터 · 적용 N개" 토글 버튼과 [초기화] 버튼은 **형제**(버튼 안 버튼 금지).
+//   · 칩: 토글 <button aria-pressed> 와 그 옆 기간 <select>/임계 <input> 을 형제로 둔다(인터랙티브 중첩 금지).
+//   · '최고가 N% 이하' 입력은 필터가 아니라 Drive 에 저장되는 설정(sellAlertDropRate) — 펼친 패널 안에 명시 라벨로.
+
+const OPEN_STORAGE_KEY = 'asset-manager-smart-filter-open';
 
 interface SmartFilterPanelProps {
   filter: SmartFilterState;
   onToggleFilter: (key: SmartFilterKey, deactivateKey?: SmartFilterKey) => void;
+  /** 필터 전부 해제(스마트 필터 + 경보 종목만 + 빠른 보기 축) */
   onClearAll: () => void;
   onDropThresholdChange: (value: number) => void;
   onLossThresholdChange: (value: number) => void;
@@ -19,6 +30,8 @@ interface SmartFilterPanelProps {
   filterAlerts: boolean;
   onFilterAlertsChange: (isActive: boolean) => void;
   isEnrichedLoading?: boolean;
+  /** 접힌 헤더에 표시할 적용 중 필터 수(스마트 필터 키 + 경보 종목만 + 빠른 보기 축) */
+  appliedCount: number;
 }
 
 const GROUPS = ['ma', 'rsi', 'signal', 'portfolio'] as const;
@@ -26,6 +39,9 @@ const GROUPS = ['ma', 'rsi', 'signal', 'portfolio'] as const;
 const MA_SHORT_OPTIONS = [5, 10, 20, 60];
 const MA_LONG_OPTIONS = [60, 120, 200];
 
+const readOpen = (): boolean => {
+  try { return localStorage.getItem(OPEN_STORAGE_KEY) === 'true'; } catch { return false; }
+};
 
 const SmartFilterPanel: React.FC<SmartFilterPanelProps> = ({
   filter,
@@ -42,11 +58,17 @@ const SmartFilterPanel: React.FC<SmartFilterPanelProps> = ({
   filterAlerts,
   onFilterAlertsChange,
   isEnrichedLoading = false,
+  appliedCount,
 }) => {
   const { actions } = usePortfolio();
-  const hasActiveFilters = filter.activeFilters.size > 0;
-  const [mobileExpanded, setMobileExpanded] = useState(false);
-  const activeFilterCount = filter.activeFilters.size;
+  const [open, setOpen] = useState<boolean>(readOpen);
+  const panelId = useId();
+
+  const toggleOpen = () => {
+    const next = !open;
+    setOpen(next);
+    try { localStorage.setItem(OPEN_STORAGE_KEY, next ? 'true' : 'false'); } catch { /* ignore */ }
+  };
 
   const handleSellAlertRateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value === '' ? 0 : parseInt(e.target.value, 10);
@@ -57,7 +79,6 @@ const SmartFilterPanel: React.FC<SmartFilterPanelProps> = ({
 
   // 단기 MA 변경 시 장기보다 작게 유지
   const handleShortPeriodChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    e.stopPropagation();
     const newShort = parseInt(e.target.value, 10);
     onMaShortPeriodChange(newShort);
     if (newShort >= filter.maLongPeriod) {
@@ -68,7 +89,6 @@ const SmartFilterPanel: React.FC<SmartFilterPanelProps> = ({
 
   // 장기 MA 변경 시 단기보다 크게 유지
   const handleLongPeriodChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    e.stopPropagation();
     const newLong = parseInt(e.target.value, 10);
     onMaLongPeriodChange(newLong);
     if (newLong <= filter.maShortPeriod) {
@@ -87,118 +107,90 @@ const SmartFilterPanel: React.FC<SmartFilterPanelProps> = ({
     // tri-state 칩: 클릭 시 off → above(>) → below(<) → off 순환
     const handleTriStateClick = () => {
       if (!chip.pairKey) return;
-      if (!isActive && !isPairActive) {
-        // off → above
-        onToggleFilter(chip.key);
-      } else if (isActive) {
-        // above → below
-        onToggleFilter(chip.pairKey, chip.key);
-      } else {
-        // below → off
-        onToggleFilter(chip.pairKey);
-      }
+      if (!isActive && !isPairActive) onToggleFilter(chip.key);
+      else if (isActive) onToggleFilter(chip.pairKey, chip.key);
+      else onToggleFilter(chip.pairKey);
     };
 
-    // tri-state 칩의 활성 색상 결정
     const activeColorClass = isPairActive ? chip.pairColorClass ?? chip.colorClass : chip.colorClass;
-    // tri-state 칩의 방향 기호
     const directionSymbol = isActive ? '>' : isPairActive ? '<' : '↕';
+    const label = isMaPeriodChip ? `현재가${directionSymbol}` : (chip.labelFn ? chip.labelFn(filter) : chip.label);
 
     return (
       <Tooltip key={chip.key} content={chip.description} position="bottom" wrap>
-        <button
-          onClick={isMaPeriodChip ? handleTriStateClick : () => onToggleFilter(chip.key)}
-          className={`
-            px-2 py-0.5 rounded-full text-xs font-medium transition-all flex items-center gap-0.5
-            ${isAnyActive
-              ? `${activeColorClass} text-white`
-              : 'bg-gray-700 text-gray-400 hover:bg-gray-600 hover:text-gray-200'}
-            ${isLoadingChip && isAnyActive ? 'opacity-60' : ''}
-          `}
+        <span
+          className={`inline-flex items-center gap-0.5 rounded-full text-xs font-medium transition-all
+            ${isAnyActive ? `${activeColorClass} text-white` : 'bg-gray-700 text-gray-400 hover:bg-gray-600 hover:text-gray-200'}
+            ${isLoadingChip && isAnyActive ? 'opacity-60' : ''}`}
         >
-          {isLoadingChip && isAnyActive && (
-            <svg className="animate-spin h-3 w-3" viewBox="0 0 24 24" fill="none">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-            </svg>
-          )}
-          {isMaPeriodChip ? (
-            <>
-              <span>현재가{directionSymbol}</span>
-              <select
-                value={chip.key === 'PRICE_ABOVE_SHORT_MA' ? filter.maShortPeriod : filter.maLongPeriod}
-                onChange={chip.key === 'PRICE_ABOVE_SHORT_MA' ? handleShortPeriodChange : handleLongPeriodChange}
-                onClick={(e) => e.stopPropagation()}
-                className={`bg-transparent text-xs font-bold focus-ring rounded cursor-pointer
-                  ${isAnyActive ? 'text-white' : 'text-gray-300'}`}
-              >
-                {(chip.key === 'PRICE_ABOVE_SHORT_MA' ? MA_SHORT_OPTIONS : MA_LONG_OPTIONS).map(p => (
-                  <option
-                    key={p}
-                    value={p}
-                    disabled={
-                      chip.key === 'PRICE_ABOVE_SHORT_MA'
-                        ? p >= filter.maLongPeriod
-                        : p <= filter.maShortPeriod
-                    }
-                    className="bg-gray-800 text-gray-200"
-                  >
-                    MA{p}
-                  </option>
-                ))}
-              </select>
-            </>
-          ) : (
-            chip.labelFn ? chip.labelFn(filter) : chip.label
+          <button
+            type="button"
+            aria-pressed={isAnyActive}
+            onClick={isMaPeriodChip ? handleTriStateClick : () => onToggleFilter(chip.key)}
+            className={`focus-ring inline-flex items-center gap-0.5 rounded-full py-0.5 pl-2 ${isMaPeriodChip || (isActive && (chip.key === 'DROP_FROM_HIGH' || chip.key === 'LOSS_THRESHOLD')) ? 'pr-0.5' : 'pr-2'}`}
+          >
+            {isLoadingChip && isAnyActive && <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />}
+            {label}
+          </button>
+          {isMaPeriodChip && (
+            <select
+              aria-label={chip.key === 'PRICE_ABOVE_SHORT_MA' ? '단기 이동평균 기간' : '장기 이동평균 기간'}
+              value={chip.key === 'PRICE_ABOVE_SHORT_MA' ? filter.maShortPeriod : filter.maLongPeriod}
+              onChange={chip.key === 'PRICE_ABOVE_SHORT_MA' ? handleShortPeriodChange : handleLongPeriodChange}
+              className={`focus-ring mr-1 cursor-pointer rounded bg-transparent text-xs font-bold ${isAnyActive ? 'text-white' : 'text-gray-300'}`}
+            >
+              {(chip.key === 'PRICE_ABOVE_SHORT_MA' ? MA_SHORT_OPTIONS : MA_LONG_OPTIONS).map(p => (
+                <option
+                  key={p}
+                  value={p}
+                  disabled={chip.key === 'PRICE_ABOVE_SHORT_MA' ? p >= filter.maLongPeriod : p <= filter.maShortPeriod}
+                  className="bg-gray-800 text-gray-200"
+                >
+                  MA{p}
+                </option>
+              ))}
+            </select>
           )}
           {chip.key === 'DROP_FROM_HIGH' && isActive && (
-            <>
+            <span className="inline-flex items-center gap-0.5 pr-2">
               <input
                 type="number"
+                aria-label="고점 대비 하락 기준(%)"
                 value={filter.dropFromHighThreshold}
-                onChange={(e) => onDropThresholdChange(
-                  Math.max(0, parseInt(e.target.value) || 0)
-                )}
-                onClick={(e) => e.stopPropagation()}
+                onChange={(e) => onDropThresholdChange(Math.max(0, parseInt(e.target.value) || 0))}
                 className="w-10 bg-gray-900 border border-gray-600 rounded px-1 text-white text-xs text-center"
                 min="0"
               />
               <span>%</span>
-            </>
+            </span>
           )}
           {chip.key === 'LOSS_THRESHOLD' && isActive && (
-            <>
+            <span className="inline-flex items-center gap-0.5 pr-2">
               <input
                 type="number"
+                aria-label="손실 기준(%)"
                 value={filter.lossThreshold}
-                onChange={(e) => onLossThresholdChange(
-                  Math.max(0, parseInt(e.target.value) || 0)
-                )}
-                onClick={(e) => e.stopPropagation()}
+                onChange={(e) => onLossThresholdChange(Math.max(0, parseInt(e.target.value) || 0))}
                 className="w-10 bg-gray-900 border border-gray-600 rounded px-1 text-white text-xs text-center"
                 min="0"
               />
               <span>%</span>
-            </>
+            </span>
           )}
-        </button>
+        </span>
       </Tooltip>
     );
   };
 
   const filterGrid = (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
       {GROUPS.map(group => {
         const chips = SMART_FILTER_CHIPS.filter(c => c.group === group);
         return (
           <div key={group} className="bg-gray-900 border border-gray-600/50 rounded-lg px-2.5 py-2">
-            {/* 그룹 헤더 */}
             <div className="flex items-center gap-1.5 mb-1.5">
-              <span className="text-xs text-gray-400 font-medium">
-                {SMART_FILTER_GROUP_LABELS[group]}
-              </span>
+              <span className="text-xs text-gray-400 font-medium">{SMART_FILTER_GROUP_LABELS[group]}</span>
             </div>
-            {/* 칩 목록 */}
             <div className="flex flex-wrap gap-1.5">
               {chips.map(renderChip)}
             </div>
@@ -206,45 +198,40 @@ const SmartFilterPanel: React.FC<SmartFilterPanelProps> = ({
             {group === 'signal' && (
               <div className="mt-1.5 pt-1.5 border-t border-gray-600/30">
                 <div className="flex items-center gap-1.5 mb-1.5">
-                  <span className="text-xs text-gray-400 font-medium">
-                    {SMART_FILTER_GROUP_LABELS['volume']}
-                  </span>
+                  <span className="text-xs text-gray-400 font-medium">{SMART_FILTER_GROUP_LABELS['volume']}</span>
                 </div>
                 <div className="flex flex-wrap gap-1.5">
                   {SMART_FILTER_CHIPS.filter(c => c.group === 'volume').map(renderChip)}
                 </div>
               </div>
             )}
-            {/* 포트폴리오 그룹: 매도알림 섹션 */}
+            {/* 포트폴리오 그룹: 경보 종목만 필터 + 경보 기준(저장되는 설정) */}
             {group === 'portfolio' && (
-              <div className="mt-2 pt-1.5 border-t border-gray-600/30">
-                <div className="flex flex-wrap items-center gap-1.5">
-                  <button
-                    onClick={() => onFilterAlertsChange(!filterAlerts)}
-                    className={`
-                      px-2 py-0.5 rounded-full text-xs font-medium transition-all flex items-center gap-1
-                      ${filterAlerts
-                        ? 'bg-yellow-600 text-white'
-                        : 'bg-gray-700 text-gray-400 hover:bg-gray-600 hover:text-gray-200'}
-                    `}
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                    </svg>
-                    알림만
-                  </button>
-                  <div className="flex items-center gap-1 text-xs text-gray-400">
-                    <span>최고가</span>
-                    <input
-                      type="number"
-                      value={sellAlertDropRate}
-                      onChange={handleSellAlertRateChange}
-                      min="0"
-                      className="w-10 bg-gray-800 border border-gray-600 rounded px-1 py-0.5 text-white text-xs text-center font-bold focus:outline-none focus:ring-1 focus:ring-primary"
-                    />
-                    <span>% 이하</span>
-                  </div>
-                </div>
+              <div className="mt-2 pt-1.5 border-t border-gray-600/30 space-y-1.5">
+                <button
+                  type="button"
+                  aria-pressed={filterAlerts}
+                  onClick={() => onFilterAlertsChange(!filterAlerts)}
+                  className={`focus-ring inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium transition-all ${
+                    filterAlerts
+                      ? 'border-warning/40 bg-warning-soft text-warning'
+                      : 'border-transparent bg-gray-700 text-gray-400 hover:bg-gray-600 hover:text-gray-200'
+                  }`}
+                >
+                  <TriangleAlert className="h-3 w-3" aria-hidden="true" />
+                  경보 종목만
+                </button>
+                <label className="flex flex-wrap items-center gap-1 text-xs text-gray-400">
+                  <span>경보 기준: 최고가 대비</span>
+                  <input
+                    type="number"
+                    value={sellAlertDropRate}
+                    onChange={handleSellAlertRateChange}
+                    min="0"
+                    className="w-10 bg-gray-800 border border-gray-600 rounded px-1 py-0.5 text-white text-xs text-center font-bold focus:outline-none focus:ring-1 focus:ring-primary"
+                  />
+                  <span>% 이하 <span className="text-gray-500">(저장되는 설정)</span></span>
+                </label>
               </div>
             )}
           </div>
@@ -253,89 +240,37 @@ const SmartFilterPanel: React.FC<SmartFilterPanelProps> = ({
     </div>
   );
 
-  const filterFooter = (
-    <div className="flex items-center justify-end gap-3 mt-2">
-      {hasActiveFilters && (
-        <>
-          <span className="text-xs text-gray-400">
-            {matchCount}/{totalCount}개 매칭
-          </span>
-          <button
-            onClick={onClearAll}
-            className="text-xs text-gray-400 hover:text-white transition"
-          >
-            초기화
-          </button>
-        </>
-      )}
-      <button
-        onClick={() => actions.setActiveTab('guide')}
-        className="text-gray-500 hover:text-gray-300 transition flex items-center gap-1"
-        title="투자 가이드 보기"
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-        <span className="text-xs">가이드</span>
-      </button>
-    </div>
-  );
-
   return (
-    <div className="px-3 sm:px-6 py-2 sm:py-2.5 border-b border-gray-700 bg-gray-800/50">
-      {/* 모바일: 접기/펼치기 토글 바 */}
-      <div className="md:hidden">
+    <div className="px-3 sm:px-6 py-1.5 border-b border-gray-700 bg-gray-800/50">
+      <div className="flex items-center justify-between gap-2">
         <button
-          onClick={() => setMobileExpanded(!mobileExpanded)}
-          className="w-full flex items-center justify-between py-1"
+          type="button"
+          onClick={toggleOpen}
+          aria-expanded={open}
+          aria-controls={panelId}
+          className="focus-ring inline-flex min-h-9 items-center gap-2 rounded-md px-1 text-sm text-gray-300 hover:text-white"
         >
-          <div className="flex items-center gap-2">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
-            </svg>
-            <span className="text-xs text-gray-400 font-medium">필터</span>
-            {activeFilterCount > 0 && (
-              <span className="bg-primary text-white text-xs font-bold px-1.5 py-0.5 rounded-full min-w-[20px] text-center">
-                {activeFilterCount}
-              </span>
-            )}
-            {hasActiveFilters && (
-              <span className="text-xs text-gray-500">
-                {matchCount}/{totalCount}
-              </span>
-            )}
-          </div>
-          <div className="flex items-center gap-2">
-            {hasActiveFilters && (
-              <button
-                onClick={(e) => { e.stopPropagation(); onClearAll(); }}
-                className="text-xs text-gray-500 hover:text-white transition px-1"
-              >
-                초기화
-              </button>
-            )}
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className={`h-4 w-4 text-gray-500 transition-transform ${mobileExpanded ? 'rotate-180' : ''}`}
-              fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-            </svg>
-          </div>
+          <SlidersHorizontal className="h-4 w-4 text-gray-400" aria-hidden="true" />
+          <span className="font-medium">필터{appliedCount > 0 ? ` · 적용 ${appliedCount}개` : ''}</span>
+          {appliedCount > 0 && <span className="text-xs text-gray-400">{matchCount}/{totalCount}개</span>}
+          <ChevronDown className={`h-4 w-4 text-gray-400 transition-transform ${open ? 'rotate-180' : ''}`} aria-hidden="true" />
         </button>
-        {mobileExpanded && (
-          <div className="mt-2">
-            {filterGrid}
-            {filterFooter}
-          </div>
-        )}
+        <div className="flex items-center gap-1">
+          {appliedCount > 0 && (
+            <Button variant="ghost" icon={<RotateCcw />} onClick={onClearAll}>
+              초기화
+            </Button>
+          )}
+          <Button variant="ghost" icon={<Info />} onClick={() => actions.setActiveTab('guide')} title="투자 가이드 보기">
+            가이드
+          </Button>
+        </div>
       </div>
-
-      {/* 데스크탑: 항상 펼침 */}
-      <div className="hidden md:block">
-        {filterGrid}
-        {filterFooter}
-      </div>
+      {open && (
+        <div id={panelId} className="mt-1 pb-1">
+          {filterGrid}
+        </div>
+      )}
     </div>
   );
 };

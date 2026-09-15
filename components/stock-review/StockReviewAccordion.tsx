@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import type { EnrichedAsset } from '../../types/ui';
 import { useStockReview } from '../../hooks/useStockReview';
 import StockReviewPanel from './StockReviewPanel';
@@ -15,14 +15,26 @@ interface StockReviewAccordionProps {
   displayName: string;
   /** 토글 버튼을 감싸는 래퍼 패딩 (배선처별 상이) */
   className?: string;
+  /**
+   * 마운트 시점의 초기 펼침 상태(행 메뉴 '종목 검토' 진입용). 이후 변경은 무시된다 —
+   * 다시 열게 하려면 호출처가 key를 바꿔 리마운트한다. true면 마운트 직후 화면 안으로 스크롤.
+   */
+  initialOpen?: boolean;
 }
 
-const StockReviewAccordion: React.FC<StockReviewAccordionProps> = ({ asset, source, displayName, className }) => {
-  const [open, setOpen] = useState(false);
+const StockReviewAccordion: React.FC<StockReviewAccordionProps> = ({ asset, source, displayName, className, initialOpen = false }) => {
+  const [open, setOpen] = useState(initialOpen);
   const state = useStockReview({ asset, source, displayName, enabled: open });
 
+  // ref 콜백 — 마운트 1회 스크롤(effect 내 setState 없음). initialOpen이 false면 null 콜백.
+  const scrollRef = useCallback((node: HTMLDivElement | null) => {
+    if (node && typeof node.scrollIntoView === 'function') {
+      node.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  }, []);
+
   return (
-    <div className={className}>
+    <div className={className} ref={initialOpen ? scrollRef : undefined}>
       <button
         onClick={() => setOpen(v => !v)}
         aria-expanded={open}

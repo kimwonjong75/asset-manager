@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { GripVertical, Lock } from 'lucide-react';
 import {
   DndContext,
@@ -65,11 +65,26 @@ const SortableRow: React.FC<SortableRowProps> = ({ config, onToggleVisible }) =>
 
 interface ColumnSettingsDropdownProps {
   className?: string;
+  /**
+   * 제어 모드(Stage D1): 지정하면 열림 상태를 호출부가 소유한다(PortfolioTable '보기' 메뉴 → '컬럼 설정…').
+   * 미지정이면 기존처럼 자체 '컬럼' 버튼 + 내부 상태. (Popover 이관은 D2)
+   */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  /** true면 자체 '컬럼' 트리거 버튼을 렌더하지 않는다(제어 모드 전용) */
+  hideTrigger?: boolean;
+  /** 컬럼을 숨겼을 때 알림 — 호출부가 그 컬럼이 정렬 기준이면 정렬을 해제한다 */
+  onColumnHidden?: (key: ColumnKey) => void;
 }
 
-const ColumnSettingsDropdown: React.FC<ColumnSettingsDropdownProps> = ({ className }) => {
+const ColumnSettingsDropdown: React.FC<ColumnSettingsDropdownProps> = ({ className, open: controlledOpen, onOpenChange, hideTrigger = false, onColumnHidden }) => {
   const { ui, actions } = usePortfolio();
-  const [open, setOpen] = useState(false);
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+  const open = controlledOpen ?? uncontrolledOpen;
+  const setOpen = (next: boolean) => {
+    if (controlledOpen === undefined) setUncontrolledOpen(next);
+    onOpenChange?.(next);
+  };
   const wrapperRef = useRef<HTMLDivElement | null>(null);
   useOnClickOutside(wrapperRef, () => setOpen(false), open);
 
@@ -91,18 +106,16 @@ const ColumnSettingsDropdown: React.FC<ColumnSettingsDropdownProps> = ({ classNa
   const handleToggleVisible = (key: ColumnKey, visible: boolean) => {
     const next = ui.columnConfig.map(c => (c.key === key ? { ...c, visible } : c));
     actions.setColumnConfig(next);
+    if (!visible) onColumnHidden?.(key);
   };
 
   const handleReset = () => {
     actions.resetColumnConfig();
   };
 
-  // 정렬키가 숨겨진 컬럼이 되었을 때 알리는 용도는 PortfolioTable이 처리
-  useEffect(() => { /* placeholder for keyboard binding */ }, []);
-
   return (
-    <div className={`relative ${className ?? ''}`} ref={wrapperRef}>
-      <button
+    <div className={hideTrigger ? (className ?? '') : `relative ${className ?? ''}`} ref={wrapperRef}>
+      {!hideTrigger && <button
         onClick={() => setOpen(!open)}
         className="hidden md:flex items-center gap-1.5 py-2 px-2.5 rounded-md text-xs font-medium transition bg-gray-700 text-gray-300 hover:bg-gray-600"
         title="컬럼 표시 / 순서 설정"
@@ -112,7 +125,7 @@ const ColumnSettingsDropdown: React.FC<ColumnSettingsDropdownProps> = ({ classNa
           <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h7" />
         </svg>
         <span className="whitespace-nowrap">컬럼</span>
-      </button>
+      </button>}
       {open && (
         <div className="absolute right-0 top-full mt-1 w-64 bg-gray-800 border border-gray-600 rounded-lg shadow-xl z-30 py-2">
           <div className="px-3 py-1.5 text-xs text-gray-400 font-semibold uppercase tracking-wider border-b border-gray-700 mb-1">

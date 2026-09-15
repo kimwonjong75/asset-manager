@@ -32,6 +32,7 @@ const STORAGE_KEYS: Array<[file: string, key: string]> = [
   ['components/dashboard/RiskCalculatorCard.tsx', "'asset-manager-risk-calc-open'"],
   ['components/today/PrepareSection.tsx', "'asset-manager-today-prepare-open'"],
   ['components/today/TodayActionCenter.tsx', "'asset-manager-today-watch-open'"],
+  ['components/portfolio-table/SmartFilterPanel.tsx', "'asset-manager-smart-filter-open'"], // Stage D1
 ];
 for (const [file, key] of STORAGE_KEYS) {
   const src = read(file);

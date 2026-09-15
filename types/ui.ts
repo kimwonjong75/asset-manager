@@ -3,7 +3,6 @@ import { Asset, PortfolioSnapshot, ExchangeRates } from './index';
 export interface PortfolioTableProps {
   assets: Asset[];
   history: PortfolioSnapshot[];
-  onRefreshAll: () => void;
   onRefreshSelected?: (ids: string[]) => void | Promise<void>;
   onRefreshOne?: (id: string) => void | Promise<void>;
   onEdit: (asset: Asset) => void;
@@ -18,7 +17,6 @@ export interface PortfolioTableProps {
   onFilterAlertsChange: (isActive: boolean) => void;
   searchQuery?: string;
   onSearchChange?: (query: string) => void;
-  onAddSelectedToWatchlist?: (assets: Asset[]) => void;
   failedIds?: Set<string>;
   exchangeRates: ExchangeRates;
 }
@@ -96,19 +94,21 @@ export const DEFAULT_SIGNAL_DISPLAY: SignalDisplaySettings = {
   showGuruSignalsProminently: false,
 };
 
-// 기존 더보기 ON 상태와 동일한 순서/표시 — 마이그레이션 기본값
+// Stage D1(2026-09-15) 기본값 — 표시 5개(현재가·어제대비·평가총액·수익률·최고가 대비), 나머지 6개는 숨김.
+// 저장된 사용자 설정은 바꾸지 않는다: 이 값은 첫 사용·"기본값으로 초기화"·신규 키 추가 시에만 쓰인다
+// (머지 규칙은 utils/columnConfig.mergeColumnConfig, 골든은 tests/columnConfigParity.ts).
 export const DEFAULT_COLUMN_CONFIG: ColumnConfig[] = [
-  { key: 'maCrossDays',      visible: true  },
+  { key: 'currentPrice',     visible: true  },
+  { key: 'yesterdayChange',  visible: true  },
+  { key: 'currentValue',     visible: true  },
+  { key: 'returnPercentage', visible: true  },
+  { key: 'dropFromHigh',     visible: true  },
+  { key: 'maCrossDays',      visible: false },
   { key: 'quantity',         visible: false },
   { key: 'purchasePrice',    visible: false },
-  { key: 'currentPrice',     visible: true  },
-  { key: 'returnPercentage', visible: true  },
-  { key: 'purchaseValue',    visible: true  },
-  { key: 'currentValue',     visible: true  },
+  { key: 'purchaseValue',    visible: false },
   { key: 'purchaseDate',     visible: false },
   { key: 'allocation',       visible: false },
-  { key: 'dropFromHigh',     visible: true  },
-  { key: 'yesterdayChange',  visible: true  },
 ];
 
 export const COLUMN_LABELS: Record<ColumnKey, string> = {
