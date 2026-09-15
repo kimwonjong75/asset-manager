@@ -24,7 +24,7 @@ const TurtleRiskGauge: React.FC<Props> = ({ gauge }) => {
   const fillRatio = riskPct != null && limitPct > 0 ? Math.min(1, riskPct / limitPct) : 0;
   const over = riskPct != null && riskPct >= limitPct;
   const near = riskPct != null && !over && riskPct >= limitPct * 0.75;
-  const barColor = over ? 'bg-orange-500' : near ? 'bg-amber-500' : 'bg-emerald-500';
+  const barColor = over ? 'bg-orange-500' : near ? 'bg-amber-500' : 'bg-ok';
 
   return (
     <div className="mx-3 sm:mx-6 mt-2 sm:mt-3 rounded-md border border-gray-700 bg-gray-800/60 px-3 py-2.5">

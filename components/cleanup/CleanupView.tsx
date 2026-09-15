@@ -23,11 +23,13 @@ import { isStrategyManaged, type OwnerId } from '../../types/owner';
 import { mergeSellRecords } from '../../utils/sellRecords';
 import { computeAssetMetrics } from '../../utils/portfolioMetrics';
 import { Currency } from '../../types';
+import Button from '../common/Button';
+import { ChevronDown, ChevronUp } from 'lucide-react';
 
 const TAG_META: Record<CleanupTag, { label: string; active: string; idle: string }> = {
-  core:      { label: '코어 편입', active: 'bg-emerald-600 text-white border-emerald-600', idle: 'text-emerald-300 border-emerald-500/40 hover:bg-emerald-500/10' },
+  core:      { label: '코어 편입', active: 'bg-ok-soft text-ok border-ok', idle: 'text-ok border-ok/40 hover:bg-ok-soft' },
   turtle:    { label: '터틀 후보', active: 'bg-purple-600 text-white border-purple-600', idle: 'text-purple-300 border-purple-500/40 hover:bg-purple-500/10' },
-  liquidate: { label: '청산',     active: 'bg-blue-600 text-white border-blue-600',     idle: 'text-down border-down/40 hover:bg-down-soft' },
+  liquidate: { label: '청산',     active: 'bg-down-strong text-white border-down-strong', idle: 'text-down border-down/40 hover:bg-down-soft' },
   keep:      { label: '보류',     active: 'bg-gray-600 text-white border-gray-600',     idle: 'text-gray-300 border-gray-500/40 hover:bg-gray-600/40' },
 };
 const TAG_ORDER: CleanupTag[] = ['core', 'turtle', 'liquidate', 'keep'];
@@ -156,11 +158,13 @@ const CleanupView: React.FC = () => {
 
       {/* 세금 참고 패널 */}
       <div className="mb-4 rounded-md border border-gray-700 bg-gray-800/60">
-        <button onClick={() => setTaxOpen(o => !o)} className="w-full flex items-center justify-between px-3 py-2.5 text-left">
+        <button onClick={() => setTaxOpen(o => !o)} aria-expanded={taxOpen} className="w-full flex items-center justify-between px-3 py-2.5 text-left">
           <span className="text-xs sm:text-sm font-medium text-gray-200">
             해외주식 양도세 통산 <span className="text-xs text-amber-300 border border-amber-500/40 rounded px-1 py-0.5 ml-1">추정 · 세무조언 아님</span>
           </span>
-          <span className="text-gray-500 text-xs">{taxOpen ? '▲' : '▼'}</span>
+          {taxOpen
+            ? <ChevronUp className="h-4 w-4 text-gray-500" aria-hidden="true" />
+            : <ChevronDown className="h-4 w-4 text-gray-500" aria-hidden="true" />}
         </button>
         {taxOpen && (
           <div className="px-3 pb-3 text-xs text-gray-300 space-y-1.5">
@@ -169,7 +173,7 @@ const CleanupView: React.FC = () => {
             <div className="flex justify-between"><span className="text-gray-400">합산 − 기본공제({formatKRW(taxEstimate.basicDeductionKRW)})</span><span>과세표준 {formatKRW(taxEstimate.taxableKRW)}</span></div>
             <div className="flex justify-between font-medium"><span className="text-gray-200">추정 세금 (×{Math.round(taxEstimate.rate * 100)}%)</span><span className="text-amber-200">{formatKRW(taxEstimate.estimatedTaxKRW)}</span></div>
             {taxEstimate.offsetSavingsKRW > 0 && (
-              <div className="flex justify-between text-emerald-300"><span>손실 통산 절감(추정)</span><span>−{formatKRW(taxEstimate.offsetSavingsKRW)}</span></div>
+              <div className="flex justify-between text-ok"><span>손실 통산 절감(추정)</span><span>−{formatKRW(taxEstimate.offsetSavingsKRW)}</span></div>
             )}
             <p className="text-xs text-gray-500 pt-1">
               이 금액은 설정과 관계없이 항상 원화(환율 포함) 기준입니다. 해외주식 양도세가 매수일·매도일 환율로 원화 환산해 매겨지기 때문이며,
@@ -191,7 +195,7 @@ const CleanupView: React.FC = () => {
             <span>제외 자산도 표시</span>
           </label>
         </div>
-        <button onClick={applySuggestions} className="text-xs text-gray-200 bg-gray-700 hover:bg-gray-600 px-3 py-1.5 rounded-md transition-colors" title="미검토 후보에 자동 제안을 채웁니다(저장은 별도)">제안대로 채우기</button>
+        <Button variant="secondary" onClick={applySuggestions} title="미검토 후보에 자동 제안을 채웁니다(저장은 별도)">제안대로 채우기</Button>
       </div>
 
       {/* 후보 리스트 */}
@@ -233,8 +237,8 @@ const CleanupView: React.FC = () => {
               )}
             </div>
             <div className="flex items-center gap-2 flex-shrink-0">
-              <button onClick={() => setDecisions({})} className="text-xs text-gray-400 hover:text-white px-3 py-1.5">초기화</button>
-              <button onClick={handleSave} className="text-xs font-medium text-white bg-primary hover:bg-primary-dark px-4 py-1.5 rounded-md transition-colors">분류 저장</button>
+              <Button variant="ghost" onClick={() => setDecisions({})}>초기화</Button>
+              <Button variant="primary" onClick={handleSave}>분류 저장</Button>
             </div>
           </div>
         </div>

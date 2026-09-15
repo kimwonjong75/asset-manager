@@ -1,4 +1,6 @@
 import React, { useMemo } from 'react';
+import { Rocket } from 'lucide-react';
+import Card from '../common/Card';
 import { Asset, ExchangeRates } from '../../types';
 import { getCategoryName } from '../../types/category';
 import { getAssetBucket, BUCKET_LABELS } from '../../types/bucket';
@@ -56,7 +58,7 @@ const CategorySummaryTable: React.FC<CategorySummaryTableProps> = ({ assets, tot
             const totalReturn = data.totalPurchaseValue === 0 ? 0 : (totalProfitLoss / data.totalPurchaseValue) * 100;
             const allocation = totalPortfolioValue > 0 ? (data.totalValue / totalPortfolioValue) * 100 : 0;
             const row: SummaryData = {
-                category: key === 'SAT' ? `🚀 ${BUCKET_LABELS.SATELLITE}` : getCategoryName(key, categories),
+                category: key === 'SAT' ? BUCKET_LABELS.SATELLITE : getCategoryName(key, categories),
                 totalValue: data.totalValue,
                 totalProfitLoss,
                 totalReturn,
@@ -86,14 +88,10 @@ const CategorySummaryTable: React.FC<CategorySummaryTableProps> = ({ assets, tot
     if (summaryData.length === 0) return null;
 
     return (
-        <div className="bg-gray-800 p-4 sm:p-6 rounded-lg shadow-lg" title="자산 종류별 요약 정보입니다.">
-            <div className="flex flex-wrap items-center gap-2 mb-4">
-                <h2 className="text-xl font-bold text-white">자산군별 요약</h2>
-                {headerExtra}
-            </div>
+        <Card title="자산군별 요약" actions={headerExtra}>
             <div className="w-full overflow-x-auto">
                 <table className="w-full text-sm text-left text-gray-400">
-                    <thead className="text-xs text-gray-300 uppercase bg-gray-700">
+                    <thead className="text-xs text-gray-300 uppercase bg-surface-muted">
                         <tr>
                             <th scope="col" className="px-4 py-2">자산 구분</th>
                             <th scope="col" className="px-4 py-2 text-right">평가금액</th>
@@ -104,8 +102,11 @@ const CategorySummaryTable: React.FC<CategorySummaryTableProps> = ({ assets, tot
                     </thead>
                     <tbody>
                         {summaryData.map(item => (
-                            <tr key={item.category} className={`border-b border-gray-700 ${item.isSatellite ? 'bg-purple-900/10' : ''}`}>
-                                <td className={`px-4 py-3 font-medium ${item.isSatellite ? 'text-purple-300' : 'text-white'}`} title={item.isSatellite ? '투더문(위성) 버킷 합산 — 카테고리 배분과 별도로 관리되는 종목들' : undefined}>{item.category}</td>
+                            <tr key={item.category} className={`border-b border-border-subtle ${item.isSatellite ? 'bg-purple-900/10' : ''}`}>
+                                <td className={`px-4 py-3 font-medium ${item.isSatellite ? 'text-purple-300' : 'text-white'}`} title={item.isSatellite ? '투더문(위성) 버킷 합산 — 카테고리 배분과 별도로 관리되는 종목들' : undefined}>
+                                    {item.isSatellite && <Rocket className="inline h-3.5 w-3.5 mr-1 align-[-2px]" aria-hidden="true" />}
+                                    {item.category}
+                                </td>
                                 <td className="px-4 py-3 text-right">{formatKRW(item.totalValue)}</td>
                                 <td className={`px-4 py-3 text-right font-medium ${getChangeColor(item.totalProfitLoss)}`}>{formatKRW(item.totalProfitLoss)}</td>
                                 <td className={`px-4 py-3 text-right font-medium ${getChangeColor(item.totalReturn)}`}>{item.totalReturn.toFixed(2)}%</td>
@@ -115,7 +116,7 @@ const CategorySummaryTable: React.FC<CategorySummaryTableProps> = ({ assets, tot
                     </tbody>
                 </table>
             </div>
-        </div>
+        </Card>
     );
 };
 

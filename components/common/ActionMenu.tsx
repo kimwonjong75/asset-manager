@@ -5,7 +5,20 @@ export interface ActionMenuItem {
   label: string;
   onClick: () => void;
   colorClass?: string;
+  /** 라벨 앞 lucide 아이콘(장식, aria-hidden) — 이모지 대신 사용 */
+  icon?: React.ReactNode;
 }
+
+const ItemContent: React.FC<{ item: ActionMenuItem }> = ({ item }) => (
+  <>
+    {item.icon && (
+      <span className="inline-flex shrink-0 [&>svg]:h-4 [&>svg]:w-4" aria-hidden="true">
+        {item.icon}
+      </span>
+    )}
+    <span className="min-w-0">{item.label}</span>
+  </>
+);
 
 interface ActionMenuProps {
   anchorRef: React.RefObject<HTMLButtonElement | null>;
@@ -160,9 +173,9 @@ const ActionMenu: React.FC<ActionMenuProps> = ({ anchorRef, items, onClose, head
                 role="menuitem"
                 tabIndex={-1}
                 onClick={() => selectItem(item)}
-                className={`block w-full text-left px-4 py-3 text-base rounded-lg hover:bg-gray-700 focus:outline-none focus-visible:bg-gray-700 focus-visible:ring-2 focus-visible:ring-primary-light transition ${item.colorClass || 'text-white'}`}
+                className={`flex items-center gap-3 w-full text-left px-4 py-3 text-base rounded-lg hover:bg-gray-700 focus:outline-none focus-visible:bg-gray-700 focus-visible:ring-2 focus-visible:ring-primary-light transition ${item.colorClass || 'text-white'}`}
               >
-                {item.label}
+                <ItemContent item={item} />
               </button>
             ))}
           </div>
@@ -204,9 +217,9 @@ const ActionMenu: React.FC<ActionMenuProps> = ({ anchorRef, items, onClose, head
           role="menuitem"
           tabIndex={-1}
           onClick={() => selectItem(item)}
-          className={`block w-full text-left px-3 py-2 hover:bg-gray-700 focus:outline-none focus-visible:bg-gray-700 transition ${item.colorClass || 'text-white'}`}
+          className={`flex items-center gap-2 w-full text-left px-3 py-2 hover:bg-gray-700 focus:outline-none focus-visible:bg-gray-700 transition ${item.colorClass || 'text-white'}`}
         >
-          {item.label}
+          <ItemContent item={item} />
         </button>
       ))}
     </div>,

@@ -2,15 +2,14 @@ import React, { useMemo, useState, useCallback, useRef, useEffect } from 'react'
 import { PortfolioSnapshot, Currency } from '../types';
 import { isBaseType, getCategoryName, DEFAULT_CATEGORIES } from '../types/category';
 import { createChart, IChartApi, ISeriesApi, LineSeries, CandlestickSeries, HistogramSeries, LineStyle, ColorType, CrosshairMode, TickMarkType, AutoscaleInfo } from 'lightweight-charts';
-import { Maximize2 } from 'lucide-react';
+import { CircleAlert, Maximize2 } from 'lucide-react';
 import { useHistoricalPriceData } from '../hooks/useHistoricalPriceData';
 import { calculateSMA } from '../utils/maCalculations';
 import { usePortfolio } from '../contexts/PortfolioContext';
 import { getGlobalPeriodDays } from '../hooks/useGlobalPeriodDays';
+import { CANDLE_UP_COLOR, CANDLE_DOWN_COLOR } from '../utils/chartFormat';
 
-// 캔들 색상 — 한국식 (양봉=상승=빨강, 음봉=하락=파랑)
-const CANDLE_UP_COLOR = '#F23645';
-const CANDLE_DOWN_COLOR = '#2962FF';
+// 캔들 색상 — 한국식 (양봉=상승=빨강, 음봉=하락=파랑). 값은 utils/chartFormat 단일 소스(도형 전용).
 const VOLUME_UP_COLOR = 'rgba(242, 54, 69, 0.45)';
 const VOLUME_DOWN_COLOR = 'rgba(41, 98, 255, 0.45)';
 const VOLUME_NEUTRAL_COLOR = 'rgba(74, 85, 104, 0.45)';
@@ -714,7 +713,7 @@ const AssetTrendChart: React.FC<AssetTrendChartProps> = ({
             <span className="text-xs text-amber-400 ml-1">캔들 데이터 없음(라인 표시)</span>
           )}
           {maLoading && <span className="text-xs text-gray-500 ml-1">불러오는 중...</span>}
-          {maError && !maLoading && <span className="text-xs text-red-400 ml-1">{maError}</span>}
+          {maError && !maLoading && <span className="text-xs text-danger ml-1 inline-flex items-center gap-1"><CircleAlert className="h-3 w-3" aria-hidden="true" />{maError}</span>}
           {/* 범례 */}
           <div className="flex items-center gap-2 ml-auto">
             <span className="flex items-center gap-1 text-xs text-gray-300">

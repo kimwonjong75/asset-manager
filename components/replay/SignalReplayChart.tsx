@@ -11,7 +11,9 @@ import {
   createSeriesMarkers, LineStyle,
   type IChartApi, type ISeriesApi, type SeriesMarker, type Time,
 } from 'lightweight-charts';
-import { CANDLE_UP_COLOR, CANDLE_DOWN_COLOR } from '../../utils/chartFormat';
+import { CANDLE_UP_COLOR, CANDLE_DOWN_COLOR, REPLAY_ASOF_MARKER_GLYPH } from '../../utils/chartFormat';
+import { getDefaultMAColor } from '../../utils/maCalculations';
+import { NotebookPen, MapPin } from 'lucide-react';
 import { buildReplayTooltip, RSI_ZONE_LABEL, type ReplayTooltipData, type RsiZone } from '../../utils/replayTooltip';
 import { VERDICT_KIND_LABELS } from './ReplayVerdictPanel';
 import type { ReplayChartPoint, ReplayMarker, ReplayMode, SignalVerdictKind } from '../../types/signalReplay';
@@ -27,17 +29,19 @@ interface SignalReplayChartProps {
   height?: number;
 }
 
-// 오버레이 MA — 5/20 은 골든·데드크로스 쌍이라 굵게/밝게, 장기선은 얇게. 색상은 아래 범례와 1:1.
+// 오버레이 MA — 5/20 은 골든·데드크로스 쌍이라 굵게, 장기선은 얇게. 색상은 아래 범례와 1:1.
+// 기간(5/20/60/120/150)은 리플레이 타임라인(p.ma)이 계산하는 값이라 여기서 고정. 색은 로컬 hex 목록을 두지 않고
+// utils/maCalculations 기본 식별 색을 기간으로 조회(MA150 은 기본 슬롯에 없어 MA_EXTRA_COLOR) — 가드 tests/maColorsParity.ts.
 const MA_LINES: { period: number; color: string; width: 1 | 2 }[] = [
-  { period: 5, color: '#fbbf24', width: 2 },   // amber
-  { period: 20, color: '#38bdf8', width: 2 },  // sky
-  { period: 60, color: '#a78bfa', width: 1 },  // violet
-  { period: 120, color: '#fb923c', width: 1 }, // orange
-  { period: 150, color: '#94a3b8', width: 1 }, // slate
-];
+  { period: 5, width: 2 },
+  { period: 20, width: 2 },
+  { period: 60, width: 1 },
+  { period: 120, width: 1 },
+  { period: 150, width: 1 },
+].map(c => ({ period: c.period, width: c.width as 1 | 2, color: getDefaultMAColor(c.period) }));
 const MA_PERIODS = MA_LINES.map(c => c.period);
 const MA_COLOR: Record<number, string> = Object.fromEntries(MA_LINES.map(c => [c.period, c.color]));
-const RSI_COLOR = '#e879f9';
+const RSI_COLOR = '#67E8F9'; // cyan-light (CATEGORY_PALETTE) — MA 식별 색과 겹치지 않게
 const RSI_PANE_HEIGHT = 90;
 
 const RSI_ZONE_TONE: Record<RsiZone, string> = {
@@ -219,7 +223,7 @@ const SignalReplayChart: React.FC<SignalReplayChartProps> = ({
     }));
     // as-of 위치 강조 마커.
     if (asOfDate && (mode === 'review' || visible.some(p => p.date === asOfDate))) {
-      sm.push({ time: asOfDate as Time, position: 'inBar', color: '#fbbf24', shape: 'circle', text: '◆' });
+      sm.push({ time: asOfDate as Time, position: 'inBar', color: '#FFFFFF', shape: 'circle', text: REPLAY_ASOF_MARKER_GLYPH }); // 캔버스 텍스트(◆)는 글리프 규칙 예외, MA20 노랑과 구분되게 흰색
     }
     sm.sort((a, b) => String(a.time).localeCompare(String(b.time)));
     markersRef.current?.setMarkers(sm);
@@ -233,7 +237,7 @@ const SignalReplayChart: React.FC<SignalReplayChartProps> = ({
         <div ref={containerRef} style={{ width: '100%', height }} className="rounded-lg overflow-hidden" />
         {tooltip && tooltipPos && (
           <div
-            className="absolute pointer-events-none z-10 bg-gray-800/95 border border-gray-600 rounded-lg px-2.5 py-1.5 text-xs leading-tight shadow-lg"
+            className="absolute pointer-events-none z-10 bg-surface-elevated/95 border border-border-subtle rounded-lg px-2.5 py-1.5 text-xs leading-tight shadow-lg"
             style={{
               left: Math.max(4, Math.min(tooltipPos.x + 14, (containerRef.current?.clientWidth ?? 320) - 200)),
               top: Math.min(Math.max(4, tooltipPos.y - 30), height - 175),
@@ -247,8 +251,8 @@ const SignalReplayChart: React.FC<SignalReplayChartProps> = ({
                 <span className={tooltip.changePct >= 0 ? 'text-up' : 'text-down'}>{fmtPct(tooltip.changePct)}</span>
               )}
               {tooltip.guru.map((g, i) => (
-                <span key={i} className={g.kind === 'sell' ? 'text-down' : 'text-up'}>
-                  📍 구루 {g.kind === 'sell' ? '매도' : '매수'} {g.count}
+                <span key={i} className={`inline-flex items-center gap-0.5 ${g.kind === 'sell' ? 'text-down' : 'text-up'}`}>
+                  <MapPin className="h-3 w-3" aria-hidden="true" />구루 {g.kind === 'sell' ? '매도' : '매수'} {g.count}
                 </span>
               ))}
             </div>
@@ -297,7 +301,7 @@ const SignalReplayChart: React.FC<SignalReplayChartProps> = ({
               </div>
             )}
             {tooltip.verdicts.length > 0 && (
-              <div className="mt-1 text-amber-300">📝 내 판정: {tooltip.verdicts.map(k => VERDICT_KIND_LABELS[k]).join(', ')}</div>
+              <div className="mt-1 text-gray-200 flex items-center gap-1"><NotebookPen className="h-3 w-3 shrink-0" aria-hidden="true" />내 판정: {tooltip.verdicts.map(k => VERDICT_KIND_LABELS[k]).join(', ')}</div>
             )}
             <div className="mt-1 text-xs text-gray-500">클릭하면 상세 진단</div>
           </div>

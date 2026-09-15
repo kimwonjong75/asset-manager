@@ -21,7 +21,7 @@ interface StatCardProps {
 
 const StatCard: React.FC<StatCardProps> = ({ title, value, direction, isProfit, tooltip, onClick, isAlert, size = 'normal', breakdown }) => {
   const valueColor = isAlert
-    ? 'text-yellow-400'
+    ? 'text-amber-300'
     : direction !== undefined
     ? directionTextClassOf(direction)
     : isProfit === undefined
@@ -30,8 +30,9 @@ const StatCard: React.FC<StatCardProps> = ({ title, value, direction, isProfit, 
     ? 'text-up'
     : 'text-down';
 
-  const containerClasses = `bg-gray-800 ${size === 'small' ? 'p-3' : 'p-6'} rounded-card shadow-lg ${onClick ? 'cursor-pointer hover:bg-gray-700 transition-colors' : ''}`;
-  const titleClasses = `font-medium uppercase tracking-wider ${size === 'small' ? 'text-xs' : 'text-sm'} ${isAlert ? 'text-yellow-400' : 'text-gray-400'}`;
+  // Stage C 표면 규약 — 카드 그림자 없음, surface 토큰 + 얇은 테두리
+  const containerClasses = `bg-surface-elevated border border-border-subtle ${size === 'small' ? 'p-3' : 'p-5'} rounded-card ${onClick ? 'cursor-pointer hover:bg-surface-muted transition-colors' : ''}`;
+  const titleClasses = `font-medium uppercase tracking-wider ${size === 'small' ? 'text-xs' : 'text-sm'} ${isAlert ? 'text-amber-300' : 'text-gray-400'}`;
   const valueClasses = `font-bold ${size === 'small' ? 'text-2xl mt-1' : 'text-3xl mt-2'} ${valueColor}`;
 
 

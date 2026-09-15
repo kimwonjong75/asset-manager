@@ -4,6 +4,7 @@
 // 데이터는 훅의 missedVerdicts(localStorage 판정에서 파생). 저장/이동 로직은 훅이 담당.
 
 import React, { useMemo } from 'react';
+import { SearchX } from 'lucide-react';
 import type { SignalVerdict } from '../../types/signalReplay';
 import { VERDICT_KIND_LABELS } from './ReplayVerdictPanel';
 
@@ -27,9 +28,10 @@ const ReplayMissedPanel: React.FC<ReplayMissedPanelProps> = ({ missed, currentTi
   }, [missed]);
 
   return (
-    <div className="bg-gray-800 rounded-lg p-3">
-      <h3 className="text-sm font-bold text-white mb-1">
-        🕳️ 놓친 매수/매도 모아보기 <span className="text-xs text-gray-500 font-normal">— 앱이 침묵한 자리</span>
+    <div className="bg-surface-elevated border border-border-subtle rounded-card p-3">
+      <h3 className="text-base font-semibold text-white mb-1 flex items-center gap-1.5 flex-wrap">
+        <SearchX className="h-4 w-4 text-gray-400" aria-hidden="true" />
+        놓친 매수/매도 모아보기 <span className="text-xs text-gray-500 font-normal">— 앱이 침묵한 자리</span>
       </h3>
       <p className="text-xs text-gray-500 mb-2">
         “명백한 기회인데 신호가 없던 날” 기록입니다. 쌓일수록 앱이 놓치는 패턴이 드러납니다(개선 1순위 단서).
@@ -44,7 +46,7 @@ const ReplayMissedPanel: React.FC<ReplayMissedPanelProps> = ({ missed, currentTi
               <div key={ticker}>
                 <div className="text-xs text-gray-400 font-mono mb-0.5">
                   {ticker} <span className="text-gray-500">· {vs.length}건</span>
-                  {!canJump && <span className="text-gray-700 ml-1">(목록에 없어 점프 불가)</span>}
+                  {!canJump && <span className="text-gray-500 ml-1">(목록에 없어 점프 불가)</span>}
                 </div>
                 <ul className="space-y-1">
                   {vs.map(v => (
@@ -54,11 +56,11 @@ const ReplayMissedPanel: React.FC<ReplayMissedPanelProps> = ({ missed, currentTi
                         disabled={!canJump}
                         onClick={() => onJump(v)}
                         className={`w-full text-left flex items-center gap-2 text-xs rounded px-2 py-1 focus-ring ${
-                          canJump ? 'cursor-pointer hover:bg-gray-700/40 bg-gray-900/40' : 'bg-gray-900/20 cursor-default'
+                          canJump ? 'cursor-pointer hover:bg-gray-600/60 bg-surface-muted' : 'bg-surface-muted/50 cursor-default'
                         }`}
                       >
                         <span className="font-mono text-gray-300 whitespace-nowrap">{v.date}</span>
-                        <span className="text-sky-300 whitespace-nowrap">{VERDICT_KIND_LABELS[v.kind]}</span>
+                        <span className="text-info whitespace-nowrap">{VERDICT_KIND_LABELS[v.kind]}</span>
                         {v.memo && <span className="text-gray-500 truncate flex-1">{v.memo}</span>}
                       </button>
                     </li>

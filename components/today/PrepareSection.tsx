@@ -3,6 +3,7 @@
 // 접혀 있어도 건수 배지는 항상 보인다(신호 은폐 금지 — TodayTurtleCard/GuruSignalCard와 동일 규약).
 
 import React, { useState } from 'react';
+import { Hourglass } from 'lucide-react';
 import type { TradePlanSignalRow } from '../../hooks/useTradePlanSignals';
 import TierRowList from './TierRowList';
 import SectionHeader from '../common/SectionHeader';
@@ -28,7 +29,15 @@ const PrepareSection: React.FC<PrepareSectionProps> = ({ rows }) => {
   return (
     <section>
       <div className="mb-2">
-        <SectionHeader title="■ 준비" count={rows.length} tone="warning" collapsible open={open} onToggle={toggle} />
+        <SectionHeader
+          title="준비"
+          count={rows.length}
+          tone="warning"
+          icon={<Hourglass className="h-4 w-4 text-amber-400" aria-hidden="true" />}
+          collapsible
+          open={open}
+          onToggle={toggle}
+        />
       </div>
       {open && <TierRowList rows={rows} />}
     </section>

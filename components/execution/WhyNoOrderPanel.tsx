@@ -7,6 +7,7 @@
 //   55일 미돌파 등 정상 상태는 중립(neutral). 후보는 상위 몇 개만(장황 금지).
 
 import React, { useState } from 'react';
+import { ChevronDown } from 'lucide-react';
 import { RefreshDiagnostics, TurtleEntryDiagReason, TurtleEntryDiag } from '../../types/actionQueue';
 
 interface Props {
@@ -85,14 +86,14 @@ const WhyNoOrderPanel: React.FC<Props> = ({ diagnostics }) => {
   if (rows.length === 0) return null;
 
   return (
-    <div className="mb-3 rounded-md border border-gray-700 bg-gray-800/60">
+    <div className="mb-3 rounded-md border border-border-subtle bg-surface-muted">
       <button
         onClick={() => setOpen(o => !o)}
         className="w-full flex items-center justify-between gap-2 px-3 py-2 text-left"
         aria-expanded={open}
       >
         <span className="text-xs sm:text-sm font-medium text-gray-200">왜 주문이 없나요?</span>
-        <span className="text-gray-500 text-xs">{open ? '▲' : '▼'}</span>
+        <ChevronDown className={`h-4 w-4 text-gray-500 transition-transform ${open ? 'rotate-180' : ''}`} aria-hidden="true" />
       </button>
       {open && (
         <ul className="px-3 pb-3 space-y-1.5">

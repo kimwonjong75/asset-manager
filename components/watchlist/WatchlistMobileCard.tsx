@@ -4,7 +4,9 @@ import { Currency, CURRENCY_SYMBOLS, ExchangeRates, WatchlistItem } from '../../
 import { getCategoryName, type CategoryDefinition } from '../../types/category';
 import ActionMenu from '../common/ActionMenu';
 import MemoTooltip from '../common/MemoTooltip';
-import { MoreHorizontal } from 'lucide-react';
+import { ClipboardList, MoreHorizontal, Star, StickyNote } from 'lucide-react';
+import ConfirmDialog from '../common/ConfirmDialog';
+import { useConfirm } from '../../hooks/useConfirm';
 import AssetTrendChart from '../AssetTrendChart';
 import ChartViewerModal from '../common/ChartViewerModal';
 import StockReviewAccordion from '../stock-review/StockReviewAccordion';
@@ -48,6 +50,7 @@ const WatchlistMobileCard: React.FC<WatchlistMobileCardProps> = ({
   const [expanded, setExpanded] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
   const menuAnchorRef = useRef<HTMLButtonElement>(null);
+  const { confirm, confirmRequest } = useConfirm();
 
   const isNonKRW = item.currency !== undefined && item.currency !== Currency.KRW;
   const getExchangeRate = (): number => {
@@ -59,6 +62,7 @@ const WatchlistMobileCard: React.FC<WatchlistMobileCardProps> = ({
 
   return (
     <div className="border-b border-gray-700">
+      {confirmRequest && <ConfirmDialog {...confirmRequest} />}
       <div className="px-4 py-3 flex items-start gap-3">
         {/* 체크박스 */}
         <input
@@ -74,28 +78,34 @@ const WatchlistMobileCard: React.FC<WatchlistMobileCardProps> = ({
             {onTogglePin && (
               <button
                 onClick={(e) => { e.stopPropagation(); onTogglePin(item.id); }}
-                className={`text-lg leading-none transition-colors flex-shrink-0 ${item.pinned ? 'text-yellow-400' : 'text-gray-500 hover:text-yellow-400/60'}`}
+                className={`transition-colors flex-shrink-0 ${item.pinned ? 'text-yellow-400' : 'text-gray-500 hover:text-yellow-400/60'}`}
+                aria-label={item.pinned ? '중요 해제' : '중요 표시'}
+                aria-pressed={!!item.pinned}
               >
-                {item.pinned ? '★' : '☆'}
+                <Star className="h-5 w-5" fill={item.pinned ? 'currentColor' : 'none'} aria-hidden="true" />
               </button>
             )}
             {isPortfolioHeld && (
               <span className="text-xs px-1 py-0.5 rounded bg-sky-500/20 text-sky-300 flex-shrink-0">보유</span>
             )}
             {item.isTurtleCandidate && (
-              <span className="text-xs px-1 py-0.5 rounded bg-emerald-500/20 text-emerald-300 flex-shrink-0" role="img" aria-label="터틀 후보" title="터틀 후보">🐢</span>
+              <span className="text-xs px-1 py-0.5 rounded bg-ok-soft text-ok flex-shrink-0" role="img" aria-label="터틀 후보" title="터틀 후보">🐢</span>
             )}
             <MemoTooltip memo={item.notes}>
               <span className="font-bold text-primary-light text-sm truncate max-w-[160px]">
                 {item.name}
               </span>
             </MemoTooltip>
-            <span
-              className={`text-lg leading-none cursor-pointer transition-opacity flex-shrink-0 ${
+            <button
+              type="button"
+              className={`text-gray-300 cursor-pointer transition-opacity flex-shrink-0 ${
                 item.notes ? 'opacity-60 hover:opacity-100' : 'opacity-20 hover:opacity-50'
               }`}
               onClick={(e) => { e.stopPropagation(); onMemoEdit?.(item); }}
-            >📝</span>
+              aria-label={item.notes ? '메모 수정' : '메모 추가'}
+            >
+              <StickyNote className="h-4 w-4" aria-hidden="true" />
+            </button>
           </div>
           <div className="text-xs text-gray-500 mt-0.5">
             {item.ticker} | {item.exchange} | {getCategoryName(item.categoryId, categories)}
@@ -142,7 +152,8 @@ const WatchlistMobileCard: React.FC<WatchlistMobileCardProps> = ({
             items={[
               { label: '수정', onClick: () => onOpenEditModal(item) },
               {
-                label: '📋 매매 계획',
+                label: '매매 계획',
+                icon: <ClipboardList />,
                 onClick: () => actions.openTradePlanPlanner({ watchItemId: item.id, ticker: item.ticker, exchange: item.exchange, name: item.name }),
                 colorClass: 'text-gray-200',
               },
@@ -150,7 +161,8 @@ const WatchlistMobileCard: React.FC<WatchlistMobileCardProps> = ({
               { label: '차트 보기', onClick: () => setExpanded(!expanded), colorClass: 'text-gray-200' },
               { label: '차트 확대', onClick: () => setFullscreen(true), colorClass: 'text-gray-200' },
               { label: '삭제', onClick: () => {
-                if (window.confirm(`'${item.name}' 종목을 삭제하시겠습니까?`)) onDelete(item.id);
+                void confirm(`'${item.name}' 종목을 삭제하시겠습니까?`, { title: '관심종목 삭제', confirmLabel: '삭제', tone: 'danger' })
+                  .then(ok => { if (ok) onDelete(item.id); });
               }, colorClass: 'text-danger' },
             ]}
           />

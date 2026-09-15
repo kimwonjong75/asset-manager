@@ -7,6 +7,7 @@
 // `variant` 생략 시(기존 TradePlanSection 소비처) 지금까지와 동일하게 전부 펼쳐 보인다.
 
 import React, { useState } from 'react';
+import { ArrowUpFromLine, Check, OctagonAlert, Target, TrendingDown, TriangleAlert } from 'lucide-react';
 import { Currency } from '../../types';
 import Tooltip from '../common/Tooltip';
 import Badge, { type BadgeTone } from '../common/Badge';
@@ -33,8 +34,12 @@ const ANCHOR_LABELS: Record<TradePlanAnchor, string> = {
   custom: '직접입력 기준',
 };
 
-const LINE_ICON: Record<PlanLineKey, string> = {
-  stop: '🔴', takeProfit: '🟢', exitLine: '🟠', pyramid: '🔵',
+// Stage C: 이모지 점 대신 lucide 아이콘 — 손절=위험(주황) / 익절·불타기=오름·매수 쪽(빨강) / 추세선 이탈=내림(파랑)
+const LINE_ICON: Record<PlanLineKey, React.ReactNode> = {
+  stop: <OctagonAlert className="h-4 w-4 text-amber-400" aria-hidden="true" />,
+  takeProfit: <Target className="h-4 w-4 text-up" aria-hidden="true" />,
+  exitLine: <TrendingDown className="h-4 w-4 text-down" aria-hidden="true" />,
+  pyramid: <ArrowUpFromLine className="h-4 w-4 text-up" aria-hidden="true" />,
 };
 
 const LINE_ACTION_COPY: Record<PlanLineKey, string> = {
@@ -74,6 +79,10 @@ function fmtKRW(n: number): string {
 function primaryLineOf(lines: PlanLineStatus[]): PlanLineStatus | undefined {
   return lines.find(l => l.state === 'hit') ?? lines.find(l => l.state === 'near') ?? lines.find(l => l.key === 'stop');
 }
+
+/** 매매 계획 규칙의 백테스트 근거 한 줄 — 카드 목록 컨테이너가 화면당 1회만 표시한다 */
+export const TRADE_PLAN_BASIS_NOTE =
+  '근거: 백테스트에서 이 규칙은 큰 하락을 절반 이하로 줄였지만 수익률은 그냥 들고 있는 것보다 낮았습니다.';
 
 export interface TradePlanCardProps {
   currency: Currency;
@@ -181,7 +190,7 @@ const TradePlanCard: React.FC<TradePlanCardProps> = ({
         return (
           <div key={line.key} className="border-t border-gray-800 pt-2 first:border-t-0 first:pt-0">
             <div className="flex items-center gap-1.5 flex-wrap">
-              <span>{LINE_ICON[line.key]}</span>
+              <span className="inline-flex shrink-0">{LINE_ICON[line.key]}</span>
               <Tooltip content={LINE_HELP[line.key]} position="top">
                 <span className="font-medium text-gray-200 cursor-help border-b border-dotted border-gray-500">
                   {line.label}
@@ -219,13 +228,13 @@ const TradePlanCard: React.FC<TradePlanCardProps> = ({
                 )}
                 {!plan.brokerStopOrderRegistered ? (
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-xs text-amber-400">⚠ 증권사 손절 예약주문 미등록</span>
+                    <span className="text-xs text-amber-400 inline-flex items-center gap-1"><TriangleAlert className="h-3.5 w-3.5" aria-hidden="true" />증권사 손절 예약주문 미등록</span>
                     <Button variant="warning" onClick={() => onToggleBrokerStop(true)}>
                       등록했어요
                     </Button>
                   </div>
                 ) : (
-                  <span className="text-xs text-ok">✓ 증권사 손절 예약주문 등록됨</span>
+                  <span className="text-xs text-ok inline-flex items-center gap-1"><Check className="h-3.5 w-3.5" aria-hidden="true" />증권사 손절 예약주문 등록됨</span>
                 )}
               </div>
             )}
@@ -245,8 +254,9 @@ const TradePlanCard: React.FC<TradePlanCardProps> = ({
     <div className="border-t border-gray-800 pt-2 space-y-1.5">
       {helpText && <p className="text-xs text-amber-400">{helpText}</p>}
       {showDecisionButtons && currentSignalStreak >= 3 && (
-        <p className="text-xs text-amber-400">
-          ⚠ {currentSignalStreak}번째 미루고 있습니다 — 계획을 바꿀지, 지킬지 지금 정하세요
+        <p className="text-xs text-amber-400 flex items-start gap-1">
+          <TriangleAlert className="h-3.5 w-3.5 mt-px shrink-0" aria-hidden="true" />
+          <span>{currentSignalStreak}번째 미루고 있습니다 — 계획을 바꿀지, 지킬지 지금 정하세요</span>
         </p>
       )}
       {/* 카드당 primary 1개 — 매도 기록/추가매수 기록은 action 이 서로 배타(sell-* vs buy-add)라 동시에 뜨지 않는다 */}
@@ -314,7 +324,7 @@ const TradePlanCard: React.FC<TradePlanCardProps> = ({
     <p className="text-xs text-gray-500 border-t border-gray-800 pt-2">
       최근 결정: {lastDecision.date.slice(5)} {DECISION_CHOICE_LABEL[lastDecision.choice] ?? lastDecision.choice}
       {tomorrowStreak >= 3 && (
-        <span className="ml-1.5 text-amber-400">⚠ {tomorrowStreak}번째 미루고 있습니다 — 계획을 바꿀지, 지킬지 지금 정하세요</span>
+        <span className="ml-1.5 text-amber-400"><TriangleAlert className="inline h-3.5 w-3.5 mr-0.5 align-[-3px]" aria-hidden="true" />{tomorrowStreak}번째 미루고 있습니다 — 계획을 바꿀지, 지킬지 지금 정하세요</span>
       )}
     </p>
   );
@@ -326,11 +336,8 @@ const TradePlanCard: React.FC<TradePlanCardProps> = ({
     </p>
   );
 
-  const disclaimerBlock = (
-    <p className="text-xs text-gray-500 leading-relaxed">
-      ⓘ 근거: 백테스트에서 이 규칙은 큰 하락을 절반 이하로 줄였지만 수익률은 그냥 들고 있는 것보다 낮았습니다. 투자자문이 아닙니다.
-    </p>
-  );
+  // 근거·면책 문구는 카드마다 반복하지 않는다(Stage C) — 종목 아코디언은 TradePlanSection 하단 1회,
+  // 홈 브리핑 목록은 DashboardView 하단 통합 면책 한 줄이 대신한다. (TRADE_PLAN_BASIS_NOTE)
 
   return (
     <div className={`bg-gray-900/50 border border-border-subtle rounded-card p-3.5 space-y-3 text-sm ${className}`}>
@@ -340,7 +347,6 @@ const TradePlanCard: React.FC<TradePlanCardProps> = ({
       {actionBlock}
       {showDetail && lastDecisionBlock}
       {showDetail && timestampBlock}
-      {(!isCompact || detailOpen) && disclaimerBlock}
     </div>
   );
 };

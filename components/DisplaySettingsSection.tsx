@@ -49,7 +49,7 @@ const DisplaySettingsSection: React.FC = () => {
   };
 
   return (
-    <div className="bg-gray-800 rounded-lg shadow-lg">
+    <div className="bg-gray-800 rounded-lg">
       <div className="px-6 py-5 border-b border-gray-700">
         <h2 className="text-xl font-bold text-white">표시 설정</h2>
         <p className="text-gray-400 text-sm mt-1">포트폴리오 리스트의 표시 옵션을 관리합니다.</p>
@@ -201,8 +201,8 @@ const DisplaySettingsSection: React.FC = () => {
           </div>
 
           <SignalToggleRow
-            title="구루 신호를 대시보드 상단에 크게 표시"
-            desc="끄면 대시보드 하단 '참고 지표' 접힘 섹션으로 이동합니다 (기본값)."
+            title="구루 신호를 홈 상단에 크게 표시"
+            desc="끄면 홈 하단 '참고 지표' 접힘 섹션으로 이동합니다 (기본값)."
             checked={ui.signalDisplay.showGuruSignalsProminently}
             onChange={(v) => actions.setSignalDisplay({ showGuruSignalsProminently: v })}
           />

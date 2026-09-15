@@ -5,6 +5,7 @@
 // usePortfolio()로 읽는다(관심종목 배선처는 .map() 내부라 이 컴포넌트 자체가 훅 캡슐화 경계).
 
 import React, { useState } from 'react';
+import { Info } from 'lucide-react';
 import { Currency } from '../../types';
 import type { WatchlistItem } from '../../types';
 import type { EnrichedAsset } from '../../types/ui';
@@ -13,7 +14,7 @@ import { evaluateTradePlan, armExitLine } from '../../utils/tradePlan';
 import { buildTradePlanMarket, fxRateToKRWFor, type TradePlanTarget } from '../../utils/tradePlanMarket';
 import { defaultSellOutcome } from '../../utils/tradePlanLink';
 import type { TradePlan } from '../../types/tradePlan';
-import TradePlanCard from './TradePlanCard';
+import TradePlanCard, { TRADE_PLAN_BASIS_NOTE } from './TradePlanCard';
 import TradePlanEditor from './TradePlanEditor';
 
 type TradePlanSectionProps =
@@ -144,6 +145,11 @@ const TradePlanSection: React.FC<TradePlanSectionProps> = (props) => {
             onTomorrow: handleTomorrow,
           } : {})}
         />
+        {/* 근거·면책 — 카드 안에서 반복하지 않고 이 컨테이너에서 1회 */}
+        <p className="mt-1.5 text-xs text-gray-500 leading-relaxed flex items-start gap-1">
+          <Info className="h-3.5 w-3.5 mt-px shrink-0" aria-hidden="true" />
+          <span>{TRADE_PLAN_BASIS_NOTE} 투자자문이 아닙니다.</span>
+        </p>
       </div>
     </div>
   );

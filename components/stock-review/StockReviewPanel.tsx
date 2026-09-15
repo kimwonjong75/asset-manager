@@ -25,14 +25,14 @@ interface StockReviewPanelProps {
 }
 
 const STATUS_STYLE: Record<StockReviewConditionStatus, string> = {
-  '충족': 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40',
+  '충족': 'bg-ok-soft text-ok border border-ok/40',
   '미충족': 'bg-gray-600/30 text-gray-300 border border-gray-500/40',
   '데이터 부족': 'bg-amber-500/20 text-amber-300 border border-amber-500/40',
   '해당 없음': 'bg-gray-700/40 text-gray-500 border border-gray-600/40',
 };
 
 const DATA_STATUS_STYLE: Record<StockReviewDataStatus, string> = {
-  '정상': 'bg-emerald-500/15 text-emerald-300',
+  '정상': 'bg-ok-soft text-ok',
   '부분': 'bg-amber-500/15 text-amber-300',
   '없음': 'bg-orange-500/15 text-orange-300',
 };
@@ -44,7 +44,7 @@ const StatusChip: React.FC<{ status: StockReviewConditionStatus }> = ({ status }
 );
 
 const ConditionRow: React.FC<{ c: StockReviewCondition }> = ({ c }) => (
-  <li className="flex flex-col gap-1 py-2 border-b border-gray-700/60 last:border-b-0">
+  <li className="flex flex-col gap-1 py-2 border-b border-border-subtle last:border-b-0">
     <div className="flex items-center justify-between gap-2">
       <span className="text-sm text-gray-200">{c.label}</span>
       <div className="flex items-center gap-1.5 flex-shrink-0">
@@ -92,7 +92,7 @@ const SummaryLine: React.FC<{ label: string; s: StockReviewSideSummary; tone: st
 };
 
 const ReadyBody: React.FC<{ vm: StockReviewViewModel }> = ({ vm }) => (
-  <div className="mt-2 rounded-lg bg-gray-800/60 border border-gray-700 p-3 sm:p-4 text-left">
+  <div className="mt-2 rounded-lg bg-surface-muted border border-border-subtle p-3 sm:p-4 text-left">
     {/* 헤더: 제목 + 부제(성격 명시) + 검토일 + 데이터 상태 */}
     <div className="flex flex-wrap items-center justify-between gap-2 mb-1">
       <h4 className="text-sm font-semibold text-gray-200">종목 검토 · {vm.name}</h4>
@@ -116,7 +116,7 @@ const ReadyBody: React.FC<{ vm: StockReviewViewModel }> = ({ vm }) => (
     )}
 
     {/* 상단 요약 (충족 조건 수) */}
-    <div className="grid gap-1 mb-4 rounded-md bg-gray-900/50 px-3 py-2">
+    <div className="grid gap-1 mb-4 rounded-md bg-surface-elevated px-3 py-2">
       <SummaryLine label="매수 지지" s={vm.summary.buy} tone="text-up" />
       <SummaryLine label="매도·리스크" s={vm.summary.sell} tone="text-down" />
     </div>
@@ -126,7 +126,7 @@ const ReadyBody: React.FC<{ vm: StockReviewViewModel }> = ({ vm }) => (
       <div className="text-xs font-semibold text-gray-400 mb-2">기술 지표 요약</div>
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
         {vm.indicators.map(ind => (
-          <div key={ind.key} className="rounded-md bg-gray-900/50 px-2.5 py-1.5 min-w-0">
+          <div key={ind.key} className="rounded-md bg-surface-elevated px-2.5 py-1.5 min-w-0">
             <div className="text-xs text-gray-500 truncate" title={ind.label}>{ind.label}</div>
             <div className="text-sm text-gray-100 font-medium truncate">{ind.display}</div>
           </div>
@@ -151,7 +151,7 @@ const ReadyBody: React.FC<{ vm: StockReviewViewModel }> = ({ vm }) => (
     </div>
 
     {/* 면책 문구 (필수) */}
-    <p className="text-xs text-gray-500 border-t border-gray-700 pt-2">{vm.disclaimer}</p>
+    <p className="text-xs text-gray-500 border-t border-border-subtle pt-2">{vm.disclaimer}</p>
   </div>
 );
 
@@ -159,14 +159,14 @@ const StockReviewPanel: React.FC<StockReviewPanelProps> = ({ state }) => {
   if (state.kind === 'idle') return null;
   if (state.kind === 'loading') {
     return (
-      <div className="mt-2 rounded-lg bg-gray-800/60 border border-gray-700 p-4 text-sm text-gray-400">
+      <div className="mt-2 rounded-lg bg-surface-muted border border-border-subtle p-4 text-sm text-gray-400">
         분석 데이터 준비 중…
       </div>
     );
   }
   if (state.kind === 'unavailable') {
     return (
-      <div className="mt-2 rounded-lg bg-gray-800/40 border border-gray-700 p-4 text-sm text-gray-500">
+      <div className="mt-2 rounded-lg bg-surface-muted border border-border-subtle p-4 text-sm text-gray-500">
         이 종목은 기술 지표를 제공하지 않습니다 (현금/미지원/조회 실패).
       </div>
     );

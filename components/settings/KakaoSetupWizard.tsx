@@ -6,6 +6,7 @@
 // 안내와 진행 표시만 한다.
 
 import React, { useState } from 'react';
+import { ExternalLink } from 'lucide-react';
 
 const WIZARD_PROGRESS_KEY = 'asset-manager-kakao-wizard-progress-v1';
 
@@ -41,7 +42,7 @@ const STEPS: WizardStep[] = [
     body: (
       <>
         <a href="https://developers.kakao.com" target="_blank" rel="noopener noreferrer" className="text-primary-light hover:underline">
-          Kakao Developers ↗
+          Kakao Developers<ExternalLink className="inline h-3 w-3 ml-0.5 align-[-1px]" aria-hidden="true" />
         </a>
         {' '}에서 애플리케이션을 추가하고, <b>카카오 로그인</b>을 켠 뒤 동의항목에서{' '}
         <code className="bg-gray-800 px-1 rounded text-xs">talk_message</code>(카카오톡 메시지 전송)를 설정하세요.
@@ -136,7 +137,7 @@ const KakaoSetupWizard: React.FC<{ className?: string }> = ({ className = '' }) 
                 className="mt-0.5 cursor-pointer flex-shrink-0"
               />
               <div className="min-w-0">
-                <div className={`text-xs font-semibold ${steps[i] ? 'text-emerald-400 line-through decoration-emerald-700' : 'text-gray-200'}`}>
+                <div className={`text-xs font-semibold ${steps[i] ? 'text-ok line-through decoration-ok/60' : 'text-gray-200'}`}>
                   {step.title}
                 </div>
                 <p className="text-xs text-gray-400 leading-relaxed mt-0.5">{step.body}</p>

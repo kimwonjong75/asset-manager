@@ -6,6 +6,9 @@ import { usePortfolio } from '../contexts/PortfolioContext';
 import { useEnrichedIndicators } from '../hooks/useEnrichedIndicators';
 import { setItemSafe, keepLast } from '../utils/safeStorage';
 import { createLogger } from '../utils/logger';
+import { useConfirm } from '../hooks/useConfirm';
+import ConfirmDialog from './common/ConfirmDialog';
+import { Trash2, X } from 'lucide-react';
 
 interface Message {
     role: 'user' | 'model';
@@ -124,6 +127,8 @@ const PortfolioAssistant: React.FC = () => {
         "내 포트폴리오의 전반적인 위험도를 평가해줘."
     ];
     
+    const { confirm, confirmRequest } = useConfirm();
+
     const handleExampleClick = (prompt: string) => {
         setInput(prompt);
         inputRef.current?.focus();
@@ -132,8 +137,11 @@ const PortfolioAssistant: React.FC = () => {
     // 이미 계산된 기술적 지표 재활용 (Zero-Fetch: Cloud Run 중복 호출 제거)
     const { enrichedMap } = useEnrichedIndicators(assets);
 
-    const handleClearHistory = () => {
-        if (window.confirm('대화 기록을 정말 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.')) {
+    const handleClearHistory = async () => {
+        const ok = await confirm('대화 기록을 정말 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.', {
+            title: '대화 기록 삭제', confirmLabel: '삭제', tone: 'danger',
+        });
+        if (ok) {
             setMessages([]);
             localStorage.removeItem(ASSISTANT_HISTORY_KEY);
         }
@@ -170,7 +178,8 @@ const PortfolioAssistant: React.FC = () => {
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center z-modal p-4" onClick={onClose} role="dialog" aria-modal="true" aria-label="AI 어시스턴트">
-            <div className="bg-gray-800 rounded-lg shadow-xl w-full max-w-2xl h-[80vh] h-[80dvh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+            {confirmRequest && <ConfirmDialog {...confirmRequest} />}
+            <div className="bg-surface-elevated border border-border-subtle rounded-card shadow-xl w-full max-w-2xl h-[80vh] h-[80dvh] flex flex-col" onClick={(e) => e.stopPropagation()}>
                 <header className="flex justify-between items-center p-4 border-b border-gray-700">
                     <div className="flex items-center gap-3">
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-primary" viewBox="0 0 24 24" fill="currentColor">
@@ -179,15 +188,11 @@ const PortfolioAssistant: React.FC = () => {
                         <h2 className="text-xl font-bold text-white">포트폴리오 어시스턴트</h2>
                     </div>
                     <div className="flex items-center gap-2">
-                        <button onClick={handleClearHistory} title="대화 기록 초기화" className="text-gray-400 hover:text-white transition p-2">
-                           <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                            </svg>
+                        <button onClick={handleClearHistory} title="대화 기록 초기화" aria-label="대화 기록 초기화" className="text-gray-400 hover:text-white transition p-2">
+                            <Trash2 className="h-5 w-5" aria-hidden="true" />
                         </button>
-                        <button onClick={onClose} title="닫기" className="text-gray-400 hover:text-white transition p-2">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                            </svg>
+                        <button onClick={onClose} title="닫기" aria-label="닫기" className="text-gray-400 hover:text-white transition p-2">
+                            <X className="h-6 w-6" aria-hidden="true" />
                         </button>
                     </div>
                 </header>

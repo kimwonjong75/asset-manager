@@ -9,6 +9,7 @@ import { directionTextClass } from '../../utils/directionTone';
 import React from 'react';
 import { ChevronRight } from 'lucide-react';
 import ScopeChip from '../common/ScopeChip';
+import Card from '../common/Card';
 import type { GlobalPeriod } from '../../types/store';
 import type { PLBasis } from '../../types/valuation';
 import { buildSoldPLBreakdownRows, type RealizedPLBreakdown } from '../../utils/soldPLBreakdown';
@@ -50,15 +51,14 @@ const SoldAssetsStats: React.FC<SoldAssetsStatsProps> = ({ stats, globalPeriod, 
     const breakdown = hasSales ? buildSoldPLBreakdownRows(stats, formatCurrencyKRW) : [];
 
     return (
-        <section className="bg-gray-800 p-4 sm:p-5 rounded-lg shadow-lg" aria-label="실현 손익">
-            <div className="flex flex-wrap items-center gap-2">
-                <h2 className="text-base font-bold text-white">실현 손익</h2>
-                <span className="text-xs text-gray-400">기간: {GLOBAL_PERIOD_SHORT_LABELS[globalPeriod]}</span>
-                <ScopeChip label="전체 계정 기준" tone="warning" title="매도 기록에는 계정 정보가 없습니다" />
-            </div>
+        <Card
+            title="실현 손익"
+            description={`기간: ${GLOBAL_PERIOD_SHORT_LABELS[globalPeriod]}`}
+            actions={<ScopeChip label="전체 계정 기준" tone="warning" title="매도 기록에는 계정 정보가 없습니다" />}
+        >
 
             {hasSales ? (
-                <div className="mt-3">
+                <div>
                     <p className="text-xs text-gray-500">매도 수익</p>
                     <p className={`text-2xl font-bold tabular-nums ${profitColor}`}>{formatCurrencyKRW(stats.totalSoldProfit)}</p>
                     <p className="mt-0.5 text-sm text-gray-400">
@@ -83,7 +83,7 @@ const SoldAssetsStats: React.FC<SoldAssetsStatsProps> = ({ stats, globalPeriod, 
                     )}
                 </div>
             ) : (
-                <p className="mt-3 text-sm text-gray-400">이 기간 매도 기록 없음</p>
+                <p className="text-sm text-gray-400">이 기간 매도 기록 없음</p>
             )}
 
             <button
@@ -94,7 +94,7 @@ const SoldAssetsStats: React.FC<SoldAssetsStatsProps> = ({ stats, globalPeriod, 
                 수익 통계에서 자세히
                 <ChevronRight className="h-4 w-4" aria-hidden="true" />
             </button>
-        </section>
+        </Card>
     );
 };
 

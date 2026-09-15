@@ -5,6 +5,9 @@ import { searchSymbols, validateTicker } from '../services/symbolListService';
 import { searchSymbolsAI } from '../services/geminiService';
 import { getGeminiApiKey } from '../services/geminiSettings';
 import { usePortfolio } from '../contexts/PortfolioContext';
+import Modal from './common/Modal';
+import Button from './common/Button';
+import { CircleAlert, Loader2, Pencil, Sparkles } from 'lucide-react';
 
 const WatchlistAddModal: React.FC = () => {
   const { modal, actions, data } = usePortfolio();
@@ -24,6 +27,8 @@ const WatchlistAddModal: React.FC = () => {
   const [category, setCategory] = useState<number>(2);
   const [exchange, setExchange] = useState<string>('NASDAQ');
   const [notes, setNotes] = useState('');
+  // 제출 시도 후에만 인라인 검증 문구 노출(브라우저 alert 대체 — RULES.md §7)
+  const [submitAttempted, setSubmitAttempted] = useState(false);
 
   const clearForm = useCallback(() => {
     setTicker('');
@@ -34,6 +39,7 @@ const WatchlistAddModal: React.FC = () => {
     setExchange('NASDAQ');
     setNotes('');
     setDuplicateError(null);
+    setSubmitAttempted(false);
   }, []);
 
   useEffect(() => {
@@ -142,7 +148,7 @@ const WatchlistAddModal: React.FC = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!ticker) {
-      alert('종목 검색을 통해 유효한 종목을 선택해주세요.');
+      setSubmitAttempted(true);
       return;
     }
     if (duplicateError) return;
@@ -165,17 +171,19 @@ const WatchlistAddModal: React.FC = () => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center z-modal p-4" onClick={onClose} role="dialog" aria-modal="true">
-      <div className="bg-gray-800 p-4 sm:p-6 rounded-lg shadow-xl w-full max-w-lg max-h-[90dvh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-        <div className="flex justify-between items-center mb-4 sm:mb-6">
-          <h2 className="text-xl sm:text-2xl font-bold text-white">관심종목 추가</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-white transition">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-        <form onSubmit={handleSubmit} className="space-y-4">
+    <Modal
+      open={isOpen}
+      onClose={onClose}
+      title="관심종목 추가"
+      size="md"
+      footer={
+        <>
+          <Button variant="secondary" onClick={onClose}>취소</Button>
+          <Button type="submit" form="watchlist-add-form" variant="primary" disabled={!!duplicateError}>종목 추가</Button>
+        </>
+      }
+    >
+        <form id="watchlist-add-form" onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className={labelClasses}>자산 구분</label>
             <select value={category} onChange={(e) => setCategory(Number(e.target.value))} className={inputClasses}>
@@ -200,14 +208,14 @@ const WatchlistAddModal: React.FC = () => {
               className={inputClasses}
               autoComplete="off"
             />
-            {duplicateError && <p className="text-danger text-sm mt-1">{duplicateError}</p>}
-            {searchError && <p className="text-danger text-sm mt-1">{searchError}</p>}
+            {submitAttempted && !ticker && (
+              <p className="flex items-center gap-1.5 text-danger text-sm mt-1" role="alert"><CircleAlert className="h-4 w-4 shrink-0" aria-hidden="true" />종목 검색을 통해 유효한 종목을 선택해주세요.</p>
+            )}
+            {duplicateError && <p className="flex items-center gap-1.5 text-danger text-sm mt-1" role="alert"><CircleAlert className="h-4 w-4 shrink-0" aria-hidden="true" />{duplicateError}</p>}
+            {searchError && <p className="flex items-center gap-1.5 text-danger text-sm mt-1" role="alert"><CircleAlert className="h-4 w-4 shrink-0" aria-hidden="true" />{searchError}</p>}
             {isSearching && (
               <div className="absolute top-9 right-3">
-                <svg className="animate-spin h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
+                <Loader2 className="animate-spin h-5 w-5 text-gray-400" aria-hidden="true" />
               </div>
             )}
             {showSearchPanel && (
@@ -231,11 +239,11 @@ const WatchlistAddModal: React.FC = () => {
                 )}
                 <div className="border-t border-gray-600">
                   <button type="button" onMouseDown={(e) => { e.preventDefault(); handleManualAdd(); }} disabled={isSearching} className="w-full text-left px-3 py-2 text-sm text-gray-200 hover:bg-primary-dark transition-colors disabled:opacity-50">
-                    ✏ '<span className="font-mono">{searchQuery.trim().toUpperCase()}</span>' 티커로 직접 추가
+                    <Pencil className="inline h-3.5 w-3.5 mr-1 align-[-2px]" aria-hidden="true" />'<span className="font-mono">{searchQuery.trim().toUpperCase()}</span>' 티커로 직접 추가
                   </button>
                   {hasGeminiKey && (
                     <button type="button" onMouseDown={(e) => { e.preventDefault(); handleAiSearch(); }} disabled={isSearching} className="w-full text-left px-3 py-2 text-sm text-primary hover:bg-primary-dark transition-colors disabled:opacity-50">
-                      ✨ AI로 더 찾기
+                      <Sparkles className="inline h-3.5 w-3.5 mr-1 align-[-2px]" aria-hidden="true" />AI로 더 찾기
                     </button>
                   )}
                 </div>
@@ -246,14 +254,8 @@ const WatchlistAddModal: React.FC = () => {
             <label className={labelClasses}>메모</label>
             <textarea value={notes} onChange={(e) => setNotes(e.target.value)} className={inputClasses} rows={2} placeholder="종목에 대한 메모..." />
           </div>
-          <div className="pt-4 flex justify-end">
-            <button type="submit" disabled={!!duplicateError} className="w-full bg-primary hover:bg-primary-dark text-white font-bold py-2.5 px-4 rounded-md disabled:bg-gray-600 disabled:cursor-not-allowed transition duration-300">
-              종목 추가
-            </button>
-          </div>
         </form>
-      </div>
-    </div>
+    </Modal>
   );
 };
 

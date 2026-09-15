@@ -111,7 +111,7 @@ const SmartFilterPanel: React.FC<SmartFilterPanelProps> = ({
           className={`
             px-2 py-0.5 rounded-full text-xs font-medium transition-all flex items-center gap-0.5
             ${isAnyActive
-              ? `${activeColorClass} text-white shadow-sm`
+              ? `${activeColorClass} text-white`
               : 'bg-gray-700 text-gray-400 hover:bg-gray-600 hover:text-gray-200'}
             ${isLoadingChip && isAnyActive ? 'opacity-60' : ''}
           `}
@@ -191,7 +191,7 @@ const SmartFilterPanel: React.FC<SmartFilterPanelProps> = ({
       {GROUPS.map(group => {
         const chips = SMART_FILTER_CHIPS.filter(c => c.group === group);
         return (
-          <div key={group} className="bg-gray-900 border border-gray-600/50 rounded-lg shadow-md px-2.5 py-2">
+          <div key={group} className="bg-gray-900 border border-gray-600/50 rounded-lg px-2.5 py-2">
             {/* 그룹 헤더 */}
             <div className="flex items-center gap-1.5 mb-1.5">
               <span className="text-xs text-gray-400 font-medium">
@@ -224,7 +224,7 @@ const SmartFilterPanel: React.FC<SmartFilterPanelProps> = ({
                     className={`
                       px-2 py-0.5 rounded-full text-xs font-medium transition-all flex items-center gap-1
                       ${filterAlerts
-                        ? 'bg-yellow-600 text-white shadow-sm'
+                        ? 'bg-yellow-600 text-white'
                         : 'bg-gray-700 text-gray-400 hover:bg-gray-600 hover:text-gray-200'}
                     `}
                   >

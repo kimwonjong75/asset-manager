@@ -11,13 +11,13 @@ import Badge, { type BadgeTone } from './Badge';
 const TITLE_COLOR: Record<BadgeTone, string> = {
   up: 'text-up',
   down: 'text-down',
-  ok: 'text-emerald-300',
-  warning: 'text-amber-300',
+  ok: 'text-ok',
+  warning: 'text-warning',
   danger: 'text-danger',
-  info: 'text-sky-300',
+  info: 'text-info',
   neutral: 'text-gray-200',
-  positive: 'text-emerald-300',
-  negative: 'text-amber-300',
+  positive: 'text-ok',
+  negative: 'text-warning',
 };
 
 export interface SectionHeaderProps {
@@ -54,7 +54,10 @@ const SectionHeader: React.FC<SectionHeaderProps> = ({
   const content = (
     <span className="flex items-center gap-2">
       {collapsible && (
-        <ChevronDown className={`h-3.5 w-3.5 text-gray-500 shrink-0 transition-transform ${open ? '' : '-rotate-90'}`} />
+        <ChevronDown
+          aria-hidden="true"
+          className={`h-3.5 w-3.5 text-gray-500 shrink-0 transition-transform ${open ? '' : '-rotate-90'}`}
+        />
       )}
       {icon && <span className="inline-flex shrink-0">{icon}</span>}
       <span>{title}</span>
@@ -74,7 +77,7 @@ const SectionHeader: React.FC<SectionHeaderProps> = ({
           type="button"
           onClick={onToggle}
           aria-expanded={open}
-          className={`flex items-center text-sm font-semibold hover:opacity-80 transition-opacity ${TITLE_COLOR[tone]}`}
+          className={`flex items-center text-sm font-semibold hover:opacity-80 transition-opacity rounded-md focus-ring ${TITLE_COLOR[tone]}`}
         >
           {content}
         </button>

@@ -1,6 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Currency, CURRENCY_SYMBOLS } from '../types';
 import { usePortfolio } from '../contexts/PortfolioContext';
+import { useConfirm } from '../hooks/useConfirm';
+import ConfirmDialog from './common/ConfirmDialog';
+import Modal from './common/Modal';
+import Button from './common/Button';
+import { CircleAlert, TriangleAlert, Trash2 } from 'lucide-react';
 
 const EditSellRecordModal: React.FC = () => {
   const { modal, actions, data, status } = usePortfolio();
@@ -11,9 +16,13 @@ const EditSellRecordModal: React.FC = () => {
   const [sellDate, setSellDate] = useState<string>('');
   const [sellPriceSettlement, setSellPriceSettlement] = useState<string>('');
   const [sellQuantity, setSellQuantity] = useState<string>('');
+  // 제출 시도 후에만 인라인 검증 문구 노출(브라우저 alert 대체 — RULES.md §7)
+  const [submitAttempted, setSubmitAttempted] = useState(false);
+  const { confirm, confirmRequest } = useConfirm();
 
   useEffect(() => {
     if (record && isOpen) {
+      setSubmitAttempted(false);
       setSellDate(record.sellDate);
       const initialPrice = record.sellPriceSettlement ?? record.sellPriceOriginal ?? 0;
       setSellPriceSettlement(String(initialPrice));
@@ -27,20 +36,22 @@ const EditSellRecordModal: React.FC = () => {
   const currencySymbol = CURRENCY_SYMBOLS[settlementCurrency];
   const assetStillExists = data.assets.some(a => a.id === record.assetId);
 
+  const parsedPrice = parseFloat(sellPriceSettlement);
+  const parsedQty = parseFloat(sellQuantity);
+  const formError = (!sellDate || !Number.isFinite(parsedPrice) || !Number.isFinite(parsedQty))
+    ? '모든 필드를 올바르게 입력해주세요.'
+    : parsedPrice <= 0
+      ? '매도가는 0보다 커야 합니다.'
+      : parsedQty <= 0
+        ? '매도 수량은 0보다 커야 합니다.'
+        : null;
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const price = parseFloat(sellPriceSettlement);
     const quantity = parseFloat(sellQuantity);
-    if (!sellDate || !Number.isFinite(price) || !Number.isFinite(quantity)) {
-      alert('모든 필드를 올바르게 입력해주세요.');
-      return;
-    }
-    if (price <= 0) {
-      alert('매도가는 0보다 커야 합니다.');
-      return;
-    }
-    if (quantity <= 0) {
-      alert('매도 수량은 0보다 커야 합니다.');
+    if (formError) {
+      setSubmitAttempted(true);
       return;
     }
     await actions.editSellRecord(record.id, {
@@ -51,8 +62,12 @@ const EditSellRecordModal: React.FC = () => {
     actions.closeEditSellRecord();
   };
 
-  const handleDelete = () => {
-    if (!confirm(`${record.name} 매도 기록을 삭제하시겠습니까?\n\n주의: 매도 기록만 삭제되며 보유 수량은 자동 복구되지 않습니다.`)) return;
+  const handleDelete = async () => {
+    const ok = await confirm(
+      `${record.name} 매도 기록을 삭제하시겠습니까?\n\n주의: 매도 기록만 삭제되며 보유 수량은 자동 복구되지 않습니다.`,
+      { title: '매도 기록 삭제', confirmLabel: '삭제', tone: 'danger' },
+    );
+    if (!ok) return;
     actions.deleteSellRecord(record.id);
     actions.closeEditSellRecord();
   };
@@ -68,21 +83,23 @@ const EditSellRecordModal: React.FC = () => {
       : `${currencySymbol}${new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n)}`;
 
   return (
-    <div
-      className="fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center z-modal p-4"
-      onClick={onClose}
-      role="dialog"
-      aria-modal="true"
+    <>
+    <Modal
+      open={isOpen}
+      onClose={onClose}
+      title={`매도 기록 수정: ${record.name}`}
+      size="md"
+      footer={
+        <>
+          <Button variant="danger" icon={<Trash2 />} onClick={handleDelete} disabled={isLoading} className="mr-auto">
+            삭제
+          </Button>
+          <Button variant="secondary" onClick={onClose} disabled={isLoading}>취소</Button>
+          <Button type="submit" form="edit-sell-record-form" variant="primary" loading={isLoading}>저장</Button>
+        </>
+      }
     >
-      <div
-        className="bg-gray-800 p-4 sm:p-6 rounded-lg shadow-xl w-full max-w-lg max-h-[90dvh] overflow-y-auto"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <h2 className="text-xl sm:text-2xl font-bold text-white mb-4 sm:mb-6">
-          매도 기록 수정: {record.name}
-        </h2>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form id="edit-sell-record-form" onSubmit={handleSubmit} className="space-y-4">
           <div className="bg-gray-700/50 p-3 rounded-md grid grid-cols-2 gap-3 text-sm">
             <div>
               <div className="text-gray-400">티커</div>
@@ -134,7 +151,7 @@ const EditSellRecordModal: React.FC = () => {
 
           <div>
             <label htmlFor="edit-sell-quantity" className={labelClasses}>
-              매도 수량 {!assetStillExists && <span className="text-yellow-400 text-xs">(원본 자산이 삭제되어 수량 변경 시 보유수량 복구 불가)</span>}
+              매도 수량 {!assetStillExists && <span className="inline-flex items-center gap-1 text-amber-400 text-xs"><TriangleAlert className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />(원본 자산이 삭제되어 수량 변경 시 보유수량 복구 불가)</span>}
             </label>
             <input
               id="edit-sell-quantity"
@@ -157,41 +174,13 @@ const EditSellRecordModal: React.FC = () => {
             </div>
           )}
 
-          <div className="pt-4 flex flex-col sm:flex-row gap-3">
-            <button
-              type="button"
-              onClick={handleDelete}
-              disabled={isLoading}
-              className="sm:w-32 bg-danger-strong hover:bg-pink-800 text-white font-medium py-2.5 px-4 rounded-md disabled:bg-gray-600 disabled:cursor-not-allowed transition duration-300"
-            >
-              삭제
-            </button>
-            <div className="flex-1 flex gap-3">
-              <button
-                type="button"
-                onClick={onClose}
-                disabled={isLoading}
-                className="flex-1 bg-gray-600 hover:bg-zinc-500 text-white font-medium py-2.5 px-4 rounded-md disabled:cursor-not-allowed transition duration-300"
-              >
-                취소
-              </button>
-              <button
-                type="submit"
-                disabled={isLoading}
-                className="flex-1 bg-primary hover:bg-primary-dark text-white font-bold py-2.5 px-4 rounded-md disabled:bg-gray-600 disabled:cursor-not-allowed transition duration-300 flex items-center justify-center"
-              >
-                {isLoading ? (
-                  <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                  </svg>
-                ) : '저장'}
-              </button>
-            </div>
-          </div>
+          {submitAttempted && formError && (
+            <p className="flex items-center gap-1.5 text-danger text-sm" role="alert"><CircleAlert className="h-4 w-4 shrink-0" aria-hidden="true" />{formError}</p>
+          )}
         </form>
-      </div>
-    </div>
+    </Modal>
+    {confirmRequest && <ConfirmDialog {...confirmRequest} />}
+    </>
   );
 };
 

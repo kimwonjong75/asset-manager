@@ -9,6 +9,7 @@
 // "보이지 않는 쓰기 금지" 규칙과 무관.
 
 import React from 'react';
+import { Bell } from 'lucide-react';
 import { usePortfolio } from '../../contexts/PortfolioContext';
 import { useKakaoNotify } from '../../hooks/useKakaoNotify';
 
@@ -35,14 +36,15 @@ const KakaoStatusChip: React.FC<KakaoStatusChipProps> = ({ className = '' }) => 
         className={`inline-flex items-center gap-1.5 text-xs px-2 py-1 rounded-full bg-amber-500/10 border border-amber-700/40 text-amber-300 hover:bg-amber-500/20 transition-colors ${className}`}
         title="설정 탭에서 카카오톡 알림을 켤 수 있습니다"
       >
-        🔔 카톡 알림 미설정 · 설정에서 켜기
+        <Bell className="h-3.5 w-3.5" aria-hidden="true" />
+        카톡 알림 미설정 · 설정에서 켜기
       </button>
     );
   }
 
   return (
     <span
-      className={`inline-flex items-center gap-1.5 text-xs px-2 py-1 rounded-full bg-gray-800/70 border border-gray-700 ${className}`}
+      className={`inline-flex items-center gap-1.5 text-xs px-2 py-1 rounded-full bg-surface-muted border border-border-subtle ${className}`}
       title="카카오톡 알림 동기화 상태"
     >
       <span className="text-gray-400">카톡 알림</span>

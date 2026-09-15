@@ -22,6 +22,7 @@
 //     노출이라 부적합).
 
 import React, { useMemo, useState } from 'react';
+import { Loader2, RefreshCw, TriangleAlert } from 'lucide-react';
 import { usePortfolio } from '../../contexts/PortfolioContext';
 import { useActionQueue } from '../../hooks/useActionQueue';
 import { ActionItem, ActionKind, isActiveAction } from '../../types/actionQueue';
@@ -100,7 +101,7 @@ const ExecutionView: React.FC<ExecutionViewProps> = ({ embedded = false }) => {
 
   // 카드 목록 — full/embedded 공용(중복 없이 아래 두 return이 공유).
   const cardList = active.length === 0 ? (
-    <div className="text-center text-gray-500 bg-gray-800/50 border border-gray-700 rounded-lg py-8 px-4">
+    <div className="text-center text-gray-500 bg-surface-muted border border-border-subtle rounded-lg py-8 px-4">
       <p className="text-sm">대기 중인 주문이 없습니다.</p>
       {!embedded && <p className="text-xs mt-1">「오늘 주문 생성」을 눌러 터틀 규칙을 평가하세요.</p>}
     </div>
@@ -158,12 +159,7 @@ const ExecutionView: React.FC<ExecutionViewProps> = ({ embedded = false }) => {
             className="flex-shrink-0 flex items-center gap-1.5 text-xs font-medium text-white bg-primary hover:bg-primary-dark px-2.5 py-1.5 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             title={turtleLocked ? '터틀 주문 잠금 중 — 생성할 수 없습니다' : '지금 리밸런싱/터틀 규칙을 평가해 오늘 주문을 생성합니다'}
           >
-            {isRefreshing && (
-              <svg className="animate-spin h-3.5 w-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-              </svg>
-            )}
+            {isRefreshing && <Loader2 className="animate-spin h-3.5 w-3.5" aria-hidden="true" />}
             <span>{isRefreshing ? '생성 중...' : '오늘 주문 생성'}</span>
           </button>
         </div>
@@ -196,16 +192,9 @@ const ExecutionView: React.FC<ExecutionViewProps> = ({ embedded = false }) => {
           className="flex-shrink-0 flex items-center gap-1.5 text-xs sm:text-sm font-medium text-white bg-primary hover:bg-primary-dark px-3 py-2 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           title={turtleLocked ? '터틀 주문 잠금 중 — 생성할 수 없습니다' : '지금 터틀 규칙을 평가해 오늘 주문을 생성합니다 (화면 진입만으로는 생성되지 않습니다)'}
         >
-          {isRefreshing ? (
-            <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-            </svg>
-          ) : (
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h5M20 20v-5h-5M4 4l1.5 1.5A9 9 0 0120.5 10M20 20l-1.5-1.5A9 9 0 003.5 14" />
-            </svg>
-          )}
+          {isRefreshing
+            ? <Loader2 className="animate-spin h-4 w-4" aria-hidden="true" />
+            : <RefreshCw className="h-4 w-4" aria-hidden="true" />}
           <span>{isRefreshing ? '생성 중...' : '오늘 주문 생성'}</span>
         </button>
       </div>
@@ -216,7 +205,7 @@ const ExecutionView: React.FC<ExecutionViewProps> = ({ embedded = false }) => {
           <p className="text-xs font-semibold text-amber-300">터틀 주문 잠금 중</p>
           <p className="text-xs text-amber-200/80 mt-1 leading-relaxed">{TURTLE_LOCK_MESSAGE}</p>
           <p className="text-xs text-amber-200/60 mt-1">
-            기존 터틀 주문 기록은 그대로 보존됩니다. 손절·청산 확인은 대시보드의 «오늘의 터틀 확인» 카드에서 계속 볼 수 있습니다.
+            기존 터틀 주문 기록은 그대로 보존됩니다. 손절·청산 확인은 홈의 «오늘의 터틀 확인» 카드에서 계속 볼 수 있습니다.
             리밸런싱·대청소 주문은 영향받지 않습니다.
           </p>
         </div>
@@ -271,10 +260,10 @@ const ActionCard: React.FC<ActionCardProps> = ({
   const meta = KIND_META[item.kind];
   const level = actionEscalationLevel(item, today);
   const days = actionDaysIgnored(item, today);
-  const ring = level === 2 ? 'border-orange-500/70 ring-1 ring-orange-500/40' : level === 1 ? 'border-amber-500/50' : 'border-gray-700';
+  const ring = level === 2 ? 'border-orange-500/70 ring-1 ring-orange-500/40' : level === 1 ? 'border-amber-500/50' : 'border-border-subtle';
 
   return (
-    <li className={`bg-gray-800 border ${ring} rounded-lg p-3.5`}>
+    <li className={`bg-surface-elevated border ${ring} rounded-lg p-3.5`}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
@@ -295,8 +284,9 @@ const ActionCard: React.FC<ActionCardProps> = ({
             <span>수량 <span className="text-gray-200 font-medium">{fmt(item.quantity)}</span></span>
             <span>기준가 <span className="text-gray-200 font-medium">{fmt(item.refPrice)}</span></span>
             {days > 0 && (
-              <span className={level >= 1 ? 'text-amber-300 font-medium' : ''}>
-                {level === 2 ? '⚠ ' : ''}{days}일째 미실행
+              <span className={`inline-flex items-center gap-1 ${level >= 1 ? 'text-amber-300 font-medium' : ''}`}>
+                {level === 2 && <TriangleAlert className="h-3.5 w-3.5" aria-label="경고" />}
+                {days}일째 미실행
               </span>
             )}
           </div>

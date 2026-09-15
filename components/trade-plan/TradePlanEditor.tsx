@@ -7,6 +7,7 @@
 // 최신 빌드 결과를 `ref.getResult()`로 부모(모달의 최종 제출 핸들러)에 넘긴다.
 
 import React, { forwardRef, useImperativeHandle, useState } from 'react';
+import { ChevronDown, TriangleAlert } from 'lucide-react';
 import { Currency } from '../../types';
 import { isBaseType } from '../../types/category';
 import { usePortfolio } from '../../contexts/PortfolioContext';
@@ -260,7 +261,7 @@ const TradePlanEditor = forwardRef<TradePlanEditorHandle, TradePlanEditorProps>(
         <FieldHint>
           {`기준가 = 계획의 출발점입니다. 현재 ${anchorPrice > 0 ? formatPlanPrice(anchorPrice, currency) : '미입력'}.`}
           {isLosingOnPurchaseAnchor && (
-            <span className="block mt-0.5 text-amber-400">⚠ 매수가가 현재가보다 높습니다 — 이미 손절선 아래로 시작됩니다.</span>
+            <span className="block mt-0.5 text-amber-400"><TriangleAlert className="inline h-3.5 w-3.5 mr-0.5 align-[-3px]" aria-hidden="true" />매수가가 현재가보다 높습니다 — 이미 손절선 아래로 시작됩니다.</span>
           )}
         </FieldHint>
       </div>
@@ -450,9 +451,11 @@ const TradePlanEditor = forwardRef<TradePlanEditorHandle, TradePlanEditorProps>(
       <button
         type="button"
         onClick={() => setShowPreview(v => !v)}
-        className="w-full text-sm font-medium bg-gray-700 hover:bg-gray-600 text-white py-2 rounded-md transition-colors"
+        className="w-full inline-flex items-center justify-center gap-1 text-sm font-medium bg-gray-700 hover:bg-gray-600 text-white py-2 rounded-md transition-colors"
+        aria-expanded={showPreview}
       >
-        {showPreview ? '계획 보기 접기 ▲' : '계획 보기 ▼'}
+        {showPreview ? '계획 보기 접기' : '계획 보기'}
+        <ChevronDown className={`h-4 w-4 transition-transform ${showPreview ? 'rotate-180' : ''}`} aria-hidden="true" />
       </button>
 
       {!result.ok && (
@@ -501,7 +504,7 @@ const TradePlanEditor = forwardRef<TradePlanEditorHandle, TradePlanEditorProps>(
                 <div>오늘 값 {formatPlanPrice(currentExitLineValue, currency)}</div>
                 {anchorPrice > 0 && anchorPrice < currentExitLineValue && (
                   <div className="text-xs text-amber-400">
-                    ⚠ 지금 이미 이 선 아래입니다 — 종가가 선 위로 올라온(재돌파) 뒤부터 적용됩니다.
+                    <TriangleAlert className="inline h-3.5 w-3.5 mr-0.5 align-[-3px]" aria-hidden="true" />지금 이미 이 선 아래입니다 — 종가가 선 위로 올라온(재돌파) 뒤부터 적용됩니다.
                   </div>
                 )}
               </div>

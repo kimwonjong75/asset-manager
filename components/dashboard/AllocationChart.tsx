@@ -4,6 +4,8 @@ import { getCategoryName } from '../../types/category';
 import { getAssetBucket, BUCKET_LABELS } from '../../types/bucket';
 import { usePortfolio } from '../../contexts/PortfolioContext';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
+import Card from '../common/Card';
+import { CATEGORY_PALETTE, CHART_TOOLTIP_STYLE } from '../../utils/chartFormat';
 
 interface AllocationChartProps {
   assets: Asset[];
@@ -12,9 +14,10 @@ interface AllocationChartProps {
   headerExtra?: React.ReactNode;
 }
 
-const COLORS = ['#6366F1', '#10B981', '#F59E0B', '#EF4444', '#3B82F6', '#8B5CF6', '#EC4899', '#F97316', '#84CC16'];
-// 투더문 조각 전용 색 — 테이블/카드의 투더문 뱃지(purple-500)와 동일 계열로 고정
-const SATELLITE_COLOR = '#A855F7';
+// Stage C 차트 팔레트 — 상태 색(빨강·파랑·주황·핑크·초록)은 조각 색으로 쓰지 않는다(RULES.md §8).
+// 투더문 조각은 팔레트의 violet(투더문 뱃지 보라 계열)로 고정하고, 카테고리 조각은 나머지 7색을 순환 — 둘이 겹치지 않는다.
+const SATELLITE_COLOR = '#A78BFA';
+const COLORS = CATEGORY_PALETTE.filter(c => c !== SATELLITE_COLOR);
 
 interface ChartData {
   name: string;
@@ -33,8 +36,8 @@ const CustomTooltip: React.FC<CustomTooltipProps> = ({ active, payload, totalVal
     const { name, value } = payload[0].payload;
     const percent = totalValue > 0 ? (value / totalValue) * 100 : 0;
     return (
-      <div className="bg-gray-700 p-3 rounded-md border border-gray-600 shadow-lg">
-        <p className="font-bold text-white">{name}</p>
+      <div style={{ ...CHART_TOOLTIP_STYLE.contentStyle, padding: '0.5rem 0.75rem' }}>
+        <p style={CHART_TOOLTIP_STYLE.labelStyle}>{name}</p>
         <p className="text-sm text-gray-300">
           금액: {value.toLocaleString('ko-KR', { style: 'currency', currency: 'KRW', maximumFractionDigits: 0 })}
         </p>
@@ -75,11 +78,7 @@ const AllocationChart: React.FC<AllocationChartProps> = ({ assets, exchangeRates
   const totalValue = useMemo(() => chartData.reduce((sum, entry) => sum + entry.value, 0), [chartData]);
 
   return (
-    <div className="bg-gray-800 p-4 sm:p-6 rounded-lg shadow-lg flex flex-col" title="자산 종류별 비중을 원형 차트로 보여줍니다.">
-      <div className="flex flex-wrap items-center gap-2 mb-2">
-        <h2 className="text-xl font-bold text-white">자산 종류별 배분</h2>
-        {headerExtra}
-      </div>
+    <Card title="자산 종류별 배분" actions={headerExtra} clip={false}>
       {assets.length > 0 ? (
         <div className="h-72">
         <ResponsiveContainer width="100%" height="100%">
@@ -108,7 +107,7 @@ const AllocationChart: React.FC<AllocationChartProps> = ({ assets, exchangeRates
             <p className="text-gray-500">표시할 데이터가 없습니다.</p>
         </div>
       )}
-    </div>
+    </Card>
   );
 };
 

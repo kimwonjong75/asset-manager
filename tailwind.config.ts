@@ -43,13 +43,17 @@ const config: Config = {
         // 빨강을 위험/삭제에 쓰지 않는 이유: "빨강=오름"과 뜻이 겹치면 초보자가 오판한다.
         // 대비(텍스트, #1E1E1E / #2C2C2C): up 6.03/5.05 · down 6.56/5.49 · flat 6.57/5.50 ·
         // ok 8.67/7.26 · info 7.78/6.52 · danger 6.29/5.27 — 모두 AA(4.5) 통과.
+        // strong = 흰 글자를 올리는 채움 칩 전용(Stage C). 흰 글자 대비: up-strong #B91C1C 6.47 /
+        // down-strong #1D4ED8 6.70 (AA 4.5 통과). 텍스트 색으로는 쓰지 말 것(#1E1E1E 위 2.58/2.49).
         up: {
           DEFAULT: '#F87171',
           soft: 'rgba(248, 113, 113, 0.15)',
+          strong: '#B91C1C',
         },
         down: {
           DEFAULT: '#60A5FA',
           soft: 'rgba(96, 165, 250, 0.15)',
+          strong: '#1D4ED8',
         },
         flat: '#9CA3AF',
         /** "등록됨·저장됨·연결됨" 같은 성공 상태 전용 — 가격 방향에는 쓰지 않는다 */
@@ -64,24 +68,14 @@ const config: Config = {
           // 파괴적 버튼 채움 — 흰 글자 대비 6.04
           strong: '#BE185D',
         },
-        /** @deprecated Stage B — 방향이면 up/down, 성공 상태면 ok 를 쓴다. 미이관 파일 호환용 별칭 */
-        success: '#10B981',
         // P6 — 시맨틱 토큰(additive). 기존 gray-9xx 오버라이드와 동일한 헥사값을 의도가 드러나는
         // 이름으로 다시 노출한다(다크 전용, 기존 클래스는 전부 그대로 동작). 신규 코드가 대상.
         surface: '#121212',
         'surface-elevated': '#1E1E1E',
         'surface-muted': '#2C2C2C',
         'border-subtle': '#3A3A3A',
-        /** @deprecated Stage B — up(오름·이익) 또는 ok(성공 상태)로 이관. 미이관 파일 호환용 별칭 */
-        positive: {
-          DEFAULT: '#10B981',
-          soft: 'rgba(16, 185, 129, 0.15)',
-        },
-        /** @deprecated Stage B — down(내림·손실) / warning(위험) / danger(오류)로 이관. 호환용 별칭 */
-        negative: {
-          DEFAULT: '#EF4444',
-          soft: 'rgba(239, 68, 68, 0.15)',
-        },
+        // Stage C 게이트(2026-09-15): 폐기 별칭 success/positive/negative 는 소비처 0건 확인 후 삭제.
+        // 재도입은 eslint no-restricted-syntax + tests/visualSystemIntegrity.ts 가 차단한다.
         warning: {
           DEFAULT: '#F59E0B',
           soft: 'rgba(245, 158, 11, 0.15)',

@@ -9,6 +9,7 @@
 // 지식 근거: constants/knowledgeBase.getPositionSizingBasis() (rule-position-sizing-calc).
 
 import React, { useMemo, useState } from 'react';
+import { BookOpen } from 'lucide-react';
 import { Currency, CURRENCY_SYMBOLS, ExchangeRates } from '../../types';
 import { resolveRate } from '../../utils/exchangeRateCache';
 import {
@@ -30,6 +31,8 @@ interface PositionSizingCalculatorProps {
   allowFractional?: boolean;        // 암호화폐 등 소수 수량 허용
   editableEquity?: boolean;         // 총자산 직접 수정 허용 (대시보드용)
   onApplyQuantity?: (qty: number) => void; // 권장 수량 적용 버튼 (모달용)
+  /** 근거 접힘 안의 면책 한 줄 표시(기본 true). 홈은 화면 하단 통합 면책을 쓰므로 false */
+  showDisclaimer?: boolean;
   className?: string;
 }
 
@@ -54,6 +57,7 @@ const PositionSizingCalculator: React.FC<PositionSizingCalculatorProps> = ({
   allowFractional = false,
   editableEquity = false,
   onApplyQuantity,
+  showDisclaimer = true,
   className = '',
 }) => {
   const [riskPercent, setRiskPercent] = useState('1');
@@ -264,13 +268,13 @@ const PositionSizingCalculator: React.FC<PositionSizingCalculatorProps> = ({
 
       {/* 지식 근거 */}
       <details className="text-xs text-gray-500">
-        <summary className="cursor-pointer hover:text-gray-400 select-none">📚 근거: {BASIS.title}</summary>
+        <summary className="cursor-pointer hover:text-gray-400 select-none"><BookOpen className="inline h-3 w-3 mr-1 align-[-2px]" aria-hidden="true" />근거: {BASIS.title}</summary>
         <div className="mt-1.5 pl-2 border-l-2 border-gray-700 space-y-1">
           {BASIS.riskPolicy && <p className="text-gray-400">{BASIS.riskPolicy}</p>}
           {BASIS.claims.map((c, i) => (
             <p key={i} className="text-gray-500">· {c}</p>
           ))}
-          <p className="text-gray-500 pt-0.5">참고용 계산이며 투자자문이 아닙니다.</p>
+          {showDisclaimer && <p className="text-gray-500 pt-0.5">참고용 계산이며 투자자문이 아닙니다.</p>}
         </div>
       </details>
     </div>

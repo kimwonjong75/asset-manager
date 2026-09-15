@@ -12,6 +12,8 @@ import { defaultEditorInput } from '../../utils/tradePlanMarket';
 import type { TradePlan } from '../../types/tradePlan';
 import TradePlanIntro, { hasSeenTradePlanIntro } from './TradePlanIntro';
 import Badge, { type BadgeTone } from '../common/Badge';
+import Modal from '../common/Modal';
+import Button from '../common/Button';
 
 type RowStatus = 'ready' | 'below-exit' | 'no-price';
 
@@ -27,7 +29,7 @@ interface WizardRow {
 }
 
 const STATUS_LABEL: Record<RowStatus, { label: string; tone: BadgeTone }> = {
-  ready: { label: '정상 대기', tone: 'positive' },
+  ready: { label: '정상 대기', tone: 'ok' },
   'below-exit': { label: '이미 추세선 아래(재돌파 후 적용)', tone: 'warning' },
   'no-price': { label: '시세 없음(제외)', tone: 'neutral' },
 };
@@ -104,15 +106,21 @@ const TradePlanBulkWizard: React.FC = () => {
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center z-modal p-4" onClick={onClose} role="dialog" aria-modal="true">
-      <div className="bg-gray-800 p-4 sm:p-6 rounded-lg shadow-xl w-full max-w-2xl max-h-[90dvh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-start justify-between gap-3 mb-4">
-          <div>
-            <h2 className="text-lg sm:text-xl font-bold text-white">투더문 일괄 계획 만들기</h2>
-            <p className="text-xs text-gray-400 mt-0.5">강의 기본값(오늘가·7%·3배·20일선·불타기 안 함)으로 계획을 만듭니다. 유선 계정·현금·계획 있는 종목은 제외됩니다.</p>
-          </div>
-          <button type="button" onClick={onClose} className="flex-shrink-0 text-gray-400 hover:text-white text-xl leading-none px-1" aria-label="닫기">×</button>
-        </div>
+    <Modal
+      open={isOpen}
+      onClose={onClose}
+      title="투더문 일괄 계획 만들기"
+      description="강의 기본값(오늘가·7%·3배·20일선·불타기 안 함)으로 계획을 만듭니다. 유선 계정·현금·계획 있는 종목은 제외됩니다."
+      size="lg"
+      footer={
+        <>
+          <Button variant="secondary" onClick={onClose}>취소</Button>
+          <Button variant="primary" onClick={handleSubmit} disabled={selectedCount === 0}>
+            {selectedCount}개 계획 만들기
+          </Button>
+        </>
+      }
+    >
 
         {showIntro && <TradePlanIntro onDismiss={() => setShowIntro(false)} className="mb-4" />}
 
@@ -121,7 +129,7 @@ const TradePlanBulkWizard: React.FC = () => {
         ) : (
           <>
             <div className="text-xs text-gray-400 mb-2 flex flex-wrap gap-x-3 gap-y-1">
-              <span className="text-emerald-400">정상 대기 {readyCount}</span>
+              <span className="text-ok">정상 대기 {readyCount}</span>
               <span className="text-amber-400">이미 추세선 아래 {belowExitCount}(재돌파 후 적용)</span>
               <span className="text-gray-500">시세 없음 {noPriceCount}(만들지 않음)</span>
             </div>
@@ -161,19 +169,7 @@ const TradePlanBulkWizard: React.FC = () => {
           </>
         )}
 
-        <div className="flex items-center justify-end gap-2 pt-4">
-          <button type="button" onClick={onClose} className="text-sm text-gray-300 hover:text-white px-4 py-2 rounded-md transition-colors">취소</button>
-          <button
-            type="button"
-            onClick={handleSubmit}
-            disabled={selectedCount === 0}
-            className="text-sm font-medium text-white bg-primary hover:bg-primary-dark px-4 py-2 rounded-md transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            {selectedCount}개 계획 만들기
-          </button>
-        </div>
-      </div>
-    </div>
+    </Modal>
   );
 };
 

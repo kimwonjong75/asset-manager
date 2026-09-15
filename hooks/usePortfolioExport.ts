@@ -155,7 +155,8 @@ export const usePortfolioExport = ({
       return;
     }
     if (assets.length === 0) {
-      alert('내보낼 데이터가 없습니다.');
+      setError('내보낼 데이터가 없습니다.');
+      setTimeout(() => setError(null), 3000);
       return;
     }
     try {

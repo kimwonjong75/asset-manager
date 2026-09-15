@@ -5,13 +5,17 @@
 // 상태/선택/정렬/판정은 useAlertDiagnostics(훅)에 위임 — 이 컴포넌트는 렌더만(프로젝트 규칙).
 
 import React, { useState } from 'react';
+import { ChevronDown } from 'lucide-react';
 import { useAlertDiagnostics } from '../hooks/useAlertDiagnostics';
+import PassMark from './common/PassMark';
+import { tradeSideTextClass } from '../utils/directionTone';
 import type {
   AlertDiagnosticRow, AlertStatusTone, FilterDiagnostic, PopupDeliveryReason,
 } from '../types/alertDiagnostics';
 
+// Stage C 색 규약 — 발화(positive)=ok(충족), 미충족은 회색. 빨강/파랑은 매수/매도 라벨 전용.
 const TONE_CLASS: Record<AlertStatusTone, string> = {
-  positive: 'text-emerald-300',
+  positive: 'text-ok',
   neutral: 'text-gray-300',
   caution: 'text-amber-300',
   muted: 'text-gray-500',
@@ -28,9 +32,7 @@ const POPUP_REASON_TEXT: Record<PopupDeliveryReason, string> = {
 // 필터 leaf 행 — 실제값 vs 기준 + ✓/✗/—. 데이터 품질 저하(partial/missing)는 별도 색으로 캐비엇.
 const FilterRow: React.FC<{ f: FilterDiagnostic }> = ({ f }) => (
   <div className="flex items-center gap-1.5 flex-wrap">
-    <span className={f.result === true ? 'text-emerald-400' : f.result === false ? 'text-rose-400' : 'text-gray-500'}>
-      {f.result === true ? '✓' : f.result === false ? '✗' : '—'}
-    </span>
+    <PassMark state={f.result === true ? 'pass' : f.result === false ? 'fail' : 'unknown'} size="sm" />
     <span className="text-gray-300">{f.label}</span>
     {f.actual !== undefined && <span className="text-white font-mono">{f.actual}</span>}
     {f.threshold !== undefined && <span className="text-gray-500">(기준 {f.threshold})</span>}
@@ -43,11 +45,12 @@ const RuleRow: React.FC<{ row: AlertDiagnosticRow }> = ({ row }) => {
   const { diagnostic: d, status } = row;
   const [open, setOpen] = useState(false);
   return (
-    <li className="bg-gray-900/50 rounded px-2.5 py-2">
+    <li className="bg-surface-muted rounded-lg px-2.5 py-2">
       <div className="flex items-center gap-2 flex-wrap">
+        {/* (구) 매도=빨강/매수=파랑은 규약과 반대였다 → 매수=up(빨강)·매도=down(파랑) */}
         <span className={`text-xs px-1.5 py-0.5 rounded shrink-0 ${
-          d.action === 'sell' ? 'bg-red-500/15 text-red-300' : 'bg-blue-500/15 text-blue-300'
-        }`}>
+          d.action === 'sell' ? 'bg-down-soft' : 'bg-up-soft'
+        } ${tradeSideTextClass(d.action === 'sell' ? 'sell' : 'buy')}`}>
           {d.action === 'sell' ? '매도' : '매수'}
         </span>
         <span className="text-sm text-gray-200 truncate min-w-0">{d.ruleName}</span>
@@ -58,12 +61,14 @@ const RuleRow: React.FC<{ row: AlertDiagnosticRow }> = ({ row }) => {
       </div>
       <button
         onClick={() => setOpen(o => !o)}
-        className="text-xs text-cyan-400/80 hover:text-cyan-300 mt-1"
+        aria-expanded={open}
+        className="inline-flex items-center gap-1 text-xs text-gray-300 hover:text-white mt-1"
       >
-        {open ? '조건 접기 ▴' : '조건별 보기 ▾'}
+        {open ? '조건 접기' : '조건별 보기'}
+        <ChevronDown className={`h-3.5 w-3.5 transition-transform ${open ? 'rotate-180' : ''}`} aria-hidden="true" />
       </button>
       {open && (
-        <div className="mt-1.5 space-y-1 text-xs border-t border-gray-700/50 pt-1.5">
+        <div className="mt-1.5 space-y-1 text-xs border-t border-border-subtle pt-1.5">
           {d.filters.map((f, i) => <FilterRow key={i} f={f} />)}
         </div>
       )}
@@ -76,7 +81,7 @@ const AlertDiagnosticsPanel: React.FC = () => {
 
   if (targets.length === 0) {
     return (
-      <div className="bg-gray-900 rounded-lg p-4 text-xs text-gray-400">
+      <div className="bg-surface-elevated border border-border-subtle rounded-card p-4 text-xs text-gray-400">
         진단할 종목이 없습니다. 보유 종목·관심종목을 추가하거나 시세를 갱신해 주세요.
       </div>
     );
@@ -86,10 +91,10 @@ const AlertDiagnosticsPanel: React.FC = () => {
   const watchlistTargets = targets.filter(t => t.source === 'watchlist');
 
   return (
-    <div className="bg-gray-900 rounded-lg p-4 space-y-3">
+    <div className="bg-surface-elevated border border-border-subtle rounded-card p-4 space-y-3">
       {/* 팝업 전달 상태 — 규칙 발화와 직교 축(별도 표시) */}
       <div className="flex items-center gap-2 text-xs flex-wrap">
-        <span className={`px-1.5 py-0.5 rounded ${popupDelivery.willAutoShow ? 'bg-emerald-500/15 text-emerald-300' : 'bg-gray-700 text-gray-400'}`}>
+        <span className={`px-1.5 py-0.5 rounded ${popupDelivery.willAutoShow ? 'bg-ok-soft text-ok' : 'bg-surface-muted text-gray-400'}`}>
           자동 브리핑: {popupDelivery.willAutoShow ? '표시 예정' : '미표시'}
         </span>
         <span className="text-gray-500">{POPUP_REASON_TEXT[popupDelivery.reason]}</span>
@@ -103,7 +108,7 @@ const AlertDiagnosticsPanel: React.FC = () => {
           id="alert-diag-target"
           value={selectedId ?? ''}
           onChange={(e) => selectTarget(e.target.value)}
-          className="bg-gray-800 border border-gray-700 text-gray-200 text-xs rounded px-2 py-1 max-w-full min-w-0 flex-1"
+          className="bg-surface-muted border border-border-subtle text-gray-200 text-xs rounded px-2 py-1 max-w-full min-w-0 flex-1"
         >
           {portfolioTargets.length > 0 && (
             <optgroup label="보유 종목">

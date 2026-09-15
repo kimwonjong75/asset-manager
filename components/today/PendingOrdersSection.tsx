@@ -5,6 +5,8 @@
 // 건수는 utils/todayViewModel.pendingOrderCounts(data.actionQueue) — 터틀 kind는 집계 제외.
 
 import React from 'react';
+import { Clock } from 'lucide-react';
+import SectionHeader from '../common/SectionHeader';
 import ExecutionView from '../execution/ExecutionView';
 import type { PendingOrderCounts } from '../../utils/todayViewModel';
 
@@ -16,9 +18,15 @@ const PendingOrdersSection: React.FC<PendingOrdersSectionProps> = ({ counts }) =
   if (counts.rebalance === 0 && counts.cleanup === 0) return null;
   return (
     <section>
-      <h2 className="text-sm font-semibold text-gray-200 mb-2">
-        ■ 대기 주문 <span className="text-gray-400 font-normal">(리밸런싱 {counts.rebalance} · 대청소 {counts.cleanup})</span>
-      </h2>
+      <div className="mb-2">
+        <SectionHeader
+          title="대기 주문"
+          icon={<Clock className="h-4 w-4 text-gray-400" aria-hidden="true" />}
+          actions={
+            <span className="text-xs text-gray-400">리밸런싱 {counts.rebalance} · 대청소 {counts.cleanup}</span>
+          }
+        />
+      </div>
       <ExecutionView embedded />
     </section>
   );

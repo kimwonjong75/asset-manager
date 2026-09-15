@@ -1,5 +1,14 @@
 import { getDirection } from '../utils/directionTone';
 import React, { useMemo, useState } from 'react';
+import { ChevronDown, Pencil, Search } from 'lucide-react';
+import Card from './common/Card';
+import { CHART_TOOLTIP_STYLE, SERIES_COLORS } from '../utils/chartFormat';
+
+const AXIS_COLOR = '#9CA3AF';
+const GRID_COLOR = '#3A3A3A';
+// 막대 방향색 — 이익=빨강(up) / 손실=파랑(down). 의미 전용(tailwind up/down 토큰과 같은 값)
+const BAR_UP_COLOR = '#F87171';
+const BAR_DOWN_COLOR = '#60A5FA';
 import { Asset, ExchangeRates, SellRecord } from '../types';
 import { getAllowedCategories, type CategoryDefinition } from '../types/category';
 import StatCard from './StatCard';
@@ -184,7 +193,7 @@ const SellAnalyticsPage: React.FC<SellAnalyticsPageProps> = ({ assets, sellHisto
 
   return (
     <div className="space-y-6">
-      <div className="bg-gray-800 p-3 sm:p-4 rounded-lg shadow-lg space-y-3">
+      <Card bodyClassName="space-y-3">
         {/* 기간 선택 */}
         <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
           <div className="flex items-center gap-1.5">
@@ -229,7 +238,7 @@ const SellAnalyticsPage: React.FC<SellAnalyticsPageProps> = ({ assets, sellHisto
                 <option value="quarterly">분기별</option>
               </select>
               <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-400">
-                <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                <ChevronDown className="h-4 w-4" aria-hidden="true" />
               </div>
             </div>
             <div className="relative">
@@ -240,14 +249,12 @@ const SellAnalyticsPage: React.FC<SellAnalyticsPageProps> = ({ assets, sellHisto
                 ))}
               </select>
               <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-400">
-                <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                <ChevronDown className="h-4 w-4" aria-hidden="true" />
               </div>
             </div>
             <div className="relative flex-1 sm:flex-none">
               <input type="text" value={pendingSearch} onChange={e => setPendingSearch(e.target.value)} placeholder="종목명/티커 검색" className="bg-gray-700 border border-gray-600 rounded-md py-1.5 pl-9 pr-3 text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary w-full sm:w-48" onKeyDown={e => { if (e.key === 'Enter') { setSearch(pendingSearch); setCategory(pendingCategory); } }} />
-              <svg className="absolute left-2.5 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" aria-hidden="true" />
             </div>
             <button
               onClick={() => { setSearch(pendingSearch); setCategory(pendingCategory); }}
@@ -278,7 +285,7 @@ const SellAnalyticsPage: React.FC<SellAnalyticsPageProps> = ({ assets, sellHisto
             CSV 내보내기
           </button>
         </div>
-      </div>
+      </Card>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
         <StatCard title="총 매도금액" value={formatKRW(overview.totalSoldAmount)} tooltip="선택된 필터에 해당하는 매도 합계" />
@@ -293,17 +300,16 @@ const SellAnalyticsPage: React.FC<SellAnalyticsPageProps> = ({ assets, sellHisto
         <StatCard title="매도 횟수" value={String(overview.soldCount)} tooltip="거래 수" />
       </div>
 
-      <div className="bg-gray-800 p-4 sm:p-6 rounded-lg shadow-lg h-72 sm:h-96">
-        <h3 className="text-lg sm:text-xl font-bold text-white mb-3 sm:mb-4">기간별 수익 추이</h3>
+      <Card title="기간별 수익 추이" clip={false} bodyClassName="h-60 sm:h-80">
         {trendData.length > 0 ? (
-          <ResponsiveContainer width="100%" height="85%">
+          <ResponsiveContainer width="100%" height="100%">
             <LineChart data={trendData} margin={{ top: 5, right: 20, left: 20, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#4A5568" />
-              <XAxis dataKey="period" stroke="#A0AEC0" fontSize={12} />
-              <YAxis stroke="#A0AEC0" fontSize={12} tickFormatter={(v: number) => v.toLocaleString('ko-KR')} width={80} />
-              <Tooltip formatter={(v: number) => [`${formatKRW(v)}`, '실현손익']} contentStyle={{ backgroundColor: '#2D3748', border: '1px solid #4A5568', borderRadius: '0.5rem' }} labelStyle={{ color: '#E2E8F0' }} />
+              <CartesianGrid strokeDasharray="3 3" stroke={GRID_COLOR} />
+              <XAxis dataKey="period" stroke={AXIS_COLOR} fontSize={12} />
+              <YAxis stroke={AXIS_COLOR} fontSize={12} tickFormatter={(v: number) => v.toLocaleString('ko-KR')} width={80} />
+              <Tooltip {...CHART_TOOLTIP_STYLE} formatter={(v: number) => [`${formatKRW(v)}`, '실현손익']} />
               <Legend wrapperStyle={{ fontSize: '12px', bottom: -10 }} />
-              <Line type="monotone" dataKey="realized" name="실현손익" stroke="#FFFFFF" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 8 }} />
+              <Line type="monotone" dataKey="realized" name="실현손익" stroke={SERIES_COLORS.valuation} strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 8 }} />
             </LineChart>
           </ResponsiveContainer>
         ) : (
@@ -311,21 +317,20 @@ const SellAnalyticsPage: React.FC<SellAnalyticsPageProps> = ({ assets, sellHisto
             <p className="text-gray-500">표시할 데이터가 없습니다.</p>
           </div>
         )}
-      </div>
+      </Card>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-gray-800 p-4 sm:p-6 rounded-lg shadow-lg">
-          <h3 className="text-lg sm:text-xl font-bold text-white mb-3 sm:mb-4">종목별 수익률 순위(상위 10)</h3>
+        <Card title="종목별 수익률 순위(상위 10)" clip={false}>
           {rankingData.length > 0 ? (
             <ResponsiveContainer width="100%" height={300}>
               <BarChart data={rankingData} layout="vertical" margin={{ left: 40, right: 20 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#4A5568" />
-                <XAxis type="number" stroke="#A0AEC0" fontSize={12} tickFormatter={(v: number) => `${v.toFixed(1)}%`} />
-                <YAxis type="category" dataKey="name" stroke="#A0AEC0" fontSize={12} width={160} />
-                <Tooltip formatter={(v: number) => [`${(v as number).toFixed(2)}%`, '평균 수익률']} contentStyle={{ backgroundColor: '#2D3748', border: '1px solid #4A5568', borderRadius: '0.5rem' }} />
+                <CartesianGrid strokeDasharray="3 3" stroke={GRID_COLOR} />
+                <XAxis type="number" stroke={AXIS_COLOR} fontSize={12} tickFormatter={(v: number) => `${v.toFixed(1)}%`} />
+                <YAxis type="category" dataKey="name" stroke={AXIS_COLOR} fontSize={12} width={160} />
+                <Tooltip {...CHART_TOOLTIP_STYLE} formatter={(v: number) => [`${(v as number).toFixed(2)}%`, '평균 수익률']} />
                 <Bar dataKey="avgReturn" name="평균 수익률">
                   {rankingData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.avgReturn >= 0 ? '#F87171' : '#60A5FA'} />
+                    <Cell key={`cell-${index}`} fill={entry.avgReturn >= 0 ? BAR_UP_COLOR : BAR_DOWN_COLOR} />
                   ))}
                 </Bar>
               </BarChart>
@@ -333,29 +338,27 @@ const SellAnalyticsPage: React.FC<SellAnalyticsPageProps> = ({ assets, sellHisto
           ) : (
             <p className="text-gray-500">표시할 데이터가 없습니다.</p>
           )}
-        </div>
+        </Card>
 
-        <div className="bg-gray-800 p-4 sm:p-6 rounded-lg shadow-lg">
-          <h3 className="text-lg sm:text-xl font-bold text-white mb-3 sm:mb-4">손익 분포(히스토그램)</h3>
+        <Card title="손익 분포(히스토그램)" clip={false}>
           {histogramData.length > 0 ? (
             <ResponsiveContainer width="100%" height={300}>
               <BarChart data={histogramData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#4A5568" />
-                <XAxis dataKey="bucket" stroke="#A0AEC0" fontSize={12} tickFormatter={(v: string) => new Intl.NumberFormat('ko-KR').format(Number(v))} />
-                <YAxis stroke="#A0AEC0" fontSize={12} />
-                <Tooltip contentStyle={{ backgroundColor: '#2D3748', border: '1px solid #4A5568', borderRadius: '0.5rem' }} labelFormatter={(v) => `${v} KRW`} />
-                <Bar dataKey="count" name="거래 수" fill="#34D399" />
+                <CartesianGrid strokeDasharray="3 3" stroke={GRID_COLOR} />
+                <XAxis dataKey="bucket" stroke={AXIS_COLOR} fontSize={12} tickFormatter={(v: string) => new Intl.NumberFormat('ko-KR').format(Number(v))} />
+                <YAxis stroke={AXIS_COLOR} fontSize={12} />
+                <Tooltip {...CHART_TOOLTIP_STYLE} labelFormatter={(v) => `${v} KRW`} />
+                <Bar dataKey="count" name="거래 수" fill={SERIES_COLORS.principal} />
               </BarChart>
             </ResponsiveContainer>
           ) : (
             <p className="text-gray-500">표시할 데이터가 없습니다.</p>
           )}
-        </div>
+        </Card>
       </div>
 
       {/* 매도 기록 리스트 */}
-      <div className="bg-gray-800 p-4 sm:p-6 rounded-lg shadow-lg">
-        <h3 className="text-lg sm:text-xl font-bold text-white mb-3 sm:mb-4">매도 기록</h3>
+      <Card title="매도 기록">
         {recordWithCalc.length > 0 ? (
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-left">
@@ -400,7 +403,7 @@ const SellAnalyticsPage: React.FC<SellAnalyticsPageProps> = ({ assets, sellHisto
                             title="매도 기록 수정/삭제"
                             aria-label="매도 기록 수정"
                           >
-                            ✏️
+                            <Pencil className="h-4 w-4" aria-hidden="true" />
                           </button>
                         </td>
                       </tr>
@@ -412,7 +415,7 @@ const SellAnalyticsPage: React.FC<SellAnalyticsPageProps> = ({ assets, sellHisto
         ) : (
           <p className="text-gray-500 text-center py-8">매도 기록이 없습니다.</p>
         )}
-      </div>
+      </Card>
     </div>
   );
 };

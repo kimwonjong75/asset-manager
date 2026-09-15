@@ -1,11 +1,17 @@
-import React, { useMemo, useState } from 'react';
-import { ChevronDown } from 'lucide-react';
+import React, { useMemo } from 'react';
 import { Asset, PortfolioSnapshot } from '../../types';
 import { GlobalPeriod } from '../../types/store';
 import type { PLBasis } from '../../types/valuation';
 import { deriveSnapshotPurchaseValue } from '../../utils/portfolioMetrics';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import PeriodSelector from '../common/PeriodSelector';
+import Card from '../common/Card';
+import { CHART_TOOLTIP_STYLE, SERIES_COLORS } from '../../utils/chartFormat';
+
+// 축·격자 — surface 토큰과 같은 계열의 중립색 (시리즈 색은 SERIES_COLORS)
+const AXIS_COLOR = '#9CA3AF';
+const GRID_COLOR = '#3A3A3A';
+const PL_LINE_COLOR = '#E5E7EB';
 
 interface ProfitLossChartProps {
   history: PortfolioSnapshot[];
@@ -26,21 +32,6 @@ interface ProfitLossChartProps {
 }
 
 const ProfitLossChart: React.FC<ProfitLossChartProps> = ({ history, assetsToDisplay, title, globalPeriod, onPeriodChange, plBasis, collapsible = false, storageKey, defaultCollapsed = false, headerActions }) => {
-  const [open, setOpen] = useState<boolean>(() => {
-    if (!collapsible) return true;
-    try {
-      const stored = storageKey ? localStorage.getItem(storageKey) : null;
-      if (stored === 'true') return true;
-      if (stored === 'false') return false;
-    } catch { /* ignore */ }
-    return !defaultCollapsed;
-  });
-  const toggleOpen = () => setOpen(prev => {
-    const next = !prev;
-    if (storageKey) { try { localStorage.setItem(storageKey, String(next)); } catch { /* ignore */ } }
-    return next;
-  });
-  const bodyVisible = !collapsible || open;
   const chartData = useMemo(() => {
     if (!history || history.length === 0) {
       return [];
@@ -94,12 +85,12 @@ const ProfitLossChart: React.FC<ProfitLossChartProps> = ({ history, assetsToDisp
     const profit = datum['손익'];
     const returnPct = datum['수익률'];
     return (
-      <div style={{ backgroundColor: '#2D3748', border: '1px solid #4A5568', borderRadius: '0.5rem', padding: '0.5rem 0.75rem' }}>
-        <div style={{ color: '#E2E8F0', marginBottom: 4 }}>{label}</div>
-        <div style={{ color: '#A0AEC0' }}>투자 원금: <span style={{ color: '#E2E8F0', fontWeight: 700 }}>{formatCurrency(principal)} 원</span></div>
-        <div style={{ color: '#A0AEC0' }}>총 평가액: <span style={{ color: '#E2E8F0', fontWeight: 700 }}>{formatCurrency(total)} 원</span></div>
-        <div style={{ color: '#A0AEC0' }}>손익: <span style={{ color: '#E2E8F0', fontWeight: 700 }}>{formatCurrency(profit)} 원</span></div>
-        <div style={{ color: '#D69E2E' }}>수익률: <span style={{ color: '#F6E05E', fontWeight: 700 }}>{formatPercent(returnPct)}</span></div>
+      <div style={{ ...CHART_TOOLTIP_STYLE.contentStyle, padding: '0.5rem 0.75rem' }}>
+        <div style={{ ...CHART_TOOLTIP_STYLE.labelStyle, marginBottom: 4 }}>{label}</div>
+        <div style={CHART_TOOLTIP_STYLE.itemStyle}>투자 원금: <span style={{ color: SERIES_COLORS.principal, fontWeight: 700 }}>{formatCurrency(principal)} 원</span></div>
+        <div style={CHART_TOOLTIP_STYLE.itemStyle}>총 평가액: <span style={{ color: SERIES_COLORS.valuation, fontWeight: 700 }}>{formatCurrency(total)} 원</span></div>
+        <div style={CHART_TOOLTIP_STYLE.itemStyle}>손익: <span style={{ color: PL_LINE_COLOR, fontWeight: 700 }}>{formatCurrency(profit)} 원</span></div>
+        <div style={CHART_TOOLTIP_STYLE.itemStyle}>수익률: <span style={{ color: SERIES_COLORS.returnPct, fontWeight: 700 }}>{formatPercent(returnPct)}</span></div>
       </div>
     );
   };
@@ -108,49 +99,46 @@ const ProfitLossChart: React.FC<ProfitLossChartProps> = ({ history, assetsToDisp
     // 레이아웃: 헤더(제목·보조 슬롯·기간 선택 — 좁으면 줄바꿈) + 고정 높이 차트 영역.
     // 과거 고정 h-96 + 차트 90% 구조는 헤더가 줄바꿈되면 차트가 카드 밖으로 넘쳤다.
     // 기간 선택은 홈의 유일한 기간 컨트롤이라 접혀 있어도 보인다.
-    <div className="bg-gray-800 p-4 sm:p-6 rounded-lg shadow-lg flex flex-col" title="포트폴리오의 평가 손익 추이를 보여줍니다.">
-      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
-        {collapsible ? (
-          <button
-            type="button"
-            onClick={toggleOpen}
-            className="flex items-center gap-2 min-w-0 text-left"
-            aria-expanded={open}
-          >
-            <ChevronDown className={`h-4 w-4 text-gray-400 shrink-0 transition-transform ${open ? '' : '-rotate-90'}`} />
-            <h2 className="text-xl font-bold text-white truncate">{title}</h2>
-          </button>
-        ) : (
-          <h2 className="text-xl font-bold text-white">{title}</h2>
-        )}
-        {headerActions && <div className="flex flex-wrap items-center gap-2">{headerActions}</div>}
-        <div className="max-w-full overflow-x-auto">
-          <PeriodSelector value={globalPeriod} onChange={onPeriodChange} />
+    // Stage C: 공용 Card(collapsible) — 기간 선택·보조 슬롯은 Card `actions`라 접혀 있어도 보인다.
+    // actions 묶음은 헤더 폭의 75%까지만 차지하고 그 안에서 줄바꿈한다(좁은 폭에서 제목이 0폭으로 눌리지 않게).
+    <Card
+      collapsible={collapsible}
+      defaultCollapsed={defaultCollapsed}
+      storageKey={storageKey}
+      clip={false}
+      title={title}
+      actions={
+        <div className="flex flex-wrap items-center justify-end gap-2 max-w-[75%] sm:max-w-none">
+          {headerActions}
+          <div className="max-w-full overflow-x-auto">
+            <PeriodSelector value={globalPeriod} onChange={onPeriodChange} />
+          </div>
         </div>
-      </div>
-      {bodyVisible && (chartData.length > 1 ? (
-        <div className="h-80 mt-4">
+      }
+    >
+      {chartData.length > 1 ? (
+        <div className="h-80">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#4A5568" />
-            <XAxis dataKey="date" stroke="#A0AEC0" fontSize={12} />
-            <YAxis yAxisId="left" stroke="#A0AEC0" fontSize={12} tickFormatter={formatCurrency} width={80} />
-            <YAxis yAxisId="right" orientation="right" stroke="#D69E2E" fontSize={12} tickFormatter={formatPercent} width={60} />
+            <CartesianGrid strokeDasharray="3 3" stroke={GRID_COLOR} />
+            <XAxis dataKey="date" stroke={AXIS_COLOR} fontSize={12} />
+            <YAxis yAxisId="left" stroke={AXIS_COLOR} fontSize={12} tickFormatter={formatCurrency} width={80} />
+            <YAxis yAxisId="right" orientation="right" stroke={SERIES_COLORS.returnPct} fontSize={12} tickFormatter={formatPercent} width={60} />
             <Tooltip content={<CustomTooltip />} />
             <Legend wrapperStyle={{fontSize: "12px", bottom: -10}}/>
-            <Line yAxisId="left" type="monotone" dataKey="투자 원금" name="투자 원금" stroke="#63B3ED" strokeWidth={3} dot={false} />
-            <Line yAxisId="left" type="monotone" dataKey="총 평가액" name="총 평가액" stroke="#48BB78" strokeWidth={3} dot={false} />
-            <Line yAxisId="left" type="monotone" dataKey="손익" name="손익" stroke="#FFFFFF" strokeWidth={2} dot={{ r: 3 }} activeDot={{ r: 6 }} />
-            <Line yAxisId="right" type="monotone" dataKey="수익률" name="수익률(%)" stroke="#F6E05E" strokeWidth={2} dot={false} />
+            <Line yAxisId="left" type="monotone" dataKey="투자 원금" name="투자 원금" stroke={SERIES_COLORS.principal} strokeWidth={2} strokeDasharray="6 4" dot={false} />
+            <Line yAxisId="left" type="monotone" dataKey="총 평가액" name="총 평가액" stroke={SERIES_COLORS.valuation} strokeWidth={3} dot={false} />
+            <Line yAxisId="left" type="monotone" dataKey="손익" name="손익" stroke={PL_LINE_COLOR} strokeWidth={2} dot={{ r: 3 }} activeDot={{ r: 6 }} />
+            <Line yAxisId="right" type="monotone" dataKey="수익률" name="수익률(%)" stroke={SERIES_COLORS.returnPct} strokeWidth={2} dot={false} />
           </LineChart>
         </ResponsiveContainer>
         </div>
       ) : (
-        <div className="flex items-center justify-center h-40 mt-4">
+        <div className="flex items-center justify-center h-40">
           <p className="text-gray-500">손익 추이를 표시하려면 데이터가 2일 이상 필요합니다.</p>
         </div>
-      ))}
-    </div>
+      )}
+    </Card>
   );
 };
 

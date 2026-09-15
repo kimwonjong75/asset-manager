@@ -2,6 +2,9 @@ import React, { useState, useRef, useCallback } from 'react';
 import { Currency, BulkUploadResult } from '../types';
 import { usePortfolio } from '../contexts/PortfolioContext';
 import { getAllowedCategories, EXCHANGE_MAP_BY_BASE_TYPE, BASE_TYPE_LABELS } from '../types/category';
+import Modal from './common/Modal';
+import Button from './common/Button';
+import { CircleAlert, Download, Loader2, Upload } from 'lucide-react';
 
 const BulkUploadModal: React.FC = () => {
   const { modal, actions, data } = usePortfolio();
@@ -61,18 +64,27 @@ const BulkUploadModal: React.FC = () => {
   
   if (!isOpen) return null;
 
+  const title = view === 'instructions' ? 'CSV 일괄 등록' : view === 'loading' ? '자산 정보 처리 중' : '일괄 등록 결과';
+  const footer = view === 'instructions' ? (
+    <>
+      <Button variant="ghost" icon={<Download />} onClick={handleDownloadTemplate} className="mr-auto">양식 다운로드</Button>
+      <Button variant="secondary" onClick={resetModal}>취소</Button>
+      <Button variant="primary" icon={<Upload />} onClick={handleUploadClick}>파일 선택하여 업로드</Button>
+    </>
+  ) : view === 'results' ? (
+    <Button variant="primary" onClick={resetModal}>확인</Button>
+  ) : undefined;
+
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center z-modal p-4" onClick={resetModal} role="dialog" aria-modal="true">
-      <div className="bg-gray-800 p-4 sm:p-6 rounded-lg shadow-xl w-full max-w-3xl max-h-[90dvh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+    <Modal open={isOpen} onClose={resetModal} title={title} size="xl" footer={footer}>
         {view === 'instructions' && (
           <div>
-            <h2 className="text-2xl font-bold text-white mb-4">CSV 일괄 등록</h2>
             <p className="text-gray-400 mb-4">CSV 파일을 사용하여 여러 자산을 한 번에 등록할 수 있습니다. 아래 형식을 준수해주세요.</p>
             <div className="bg-gray-900 p-4 rounded-md mb-4">
               <p className="text-sm text-gray-300 font-mono">ticker,exchange,quantity,purchasePrice,purchaseDate,category,currency</p>
               <p className="text-sm text-gray-500 font-mono mt-2">AAPL,NASDAQ,10,150.00,2023-01-15,미국주식,USD</p>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="text-sm text-gray-400 space-y-2">
                     <p><strong className="text-gray-200">필수 헤더:</strong> <code>ticker, exchange, quantity, purchasePrice, purchaseDate, category, currency</code> 순서로 작성해야 합니다.</p>
                     <p><strong className="text-gray-200">category 값:</strong> <code>{allowedCats.map(c => c.name).join(', ')}</code> 중 하나여야 합니다.</p>
@@ -90,36 +102,24 @@ const BulkUploadModal: React.FC = () => {
                     </div>
                 </div>
             </div>
-
             <input type="file" ref={fileInputRef} onChange={handleFileSelect} accept=".csv,text/csv" className="hidden" />
-            <div className="flex justify-between items-center mt-8">
-              <button onClick={handleDownloadTemplate} className="text-primary hover:text-primary-light transition font-medium">양식 다운로드</button>
-              <div className="flex gap-4">
-                 <button onClick={resetModal} className="bg-gray-600 hover:bg-zinc-500 text-white font-medium py-2 px-4 rounded-md transition duration-300">취소</button>
-                 <button onClick={handleUploadClick} className="bg-primary hover:bg-primary-dark text-white font-bold py-2 px-4 rounded-md transition duration-300">파일 선택하여 업로드</button>
-              </div>
-            </div>
           </div>
         )}
         {view === 'loading' && (
           <div className="flex flex-col items-center justify-center p-8 h-64">
-            <svg className="animate-spin h-10 w-10 text-white mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
+            <Loader2 className="animate-spin h-10 w-10 text-white mb-4" aria-hidden="true" />
             <p className="text-xl text-white">자산 정보를 처리 중입니다...</p>
             <p className="text-gray-400 mt-2">등록할 자산 수에 따라 몇 분 정도 소요될 수 있습니다.</p>
           </div>
         )}
         {view === 'results' && result && (
           <div>
-            <h2 className="text-2xl font-bold text-white mb-4">일괄 등록 결과</h2>
             <div className="flex gap-4 mb-4 text-center">
-               <div className="bg-success/20 text-success p-4 rounded-lg flex-1">
+               <div className="bg-ok-soft text-ok p-4 rounded-lg flex-1">
                     <p className="text-sm">성공</p>
                     <p className="text-3xl font-bold">{result.successCount}</p>
                </div>
-               <div className="bg-danger/20 text-danger p-4 rounded-lg flex-1">
+               <div className="bg-danger-soft text-danger p-4 rounded-lg flex-1">
                     <p className="text-sm">실패</p>
                     <p className="text-3xl font-bold">{result.failedCount}</p>
                </div>
@@ -130,8 +130,8 @@ const BulkUploadModal: React.FC = () => {
                     <div className="max-h-48 overflow-y-auto bg-gray-900 p-3 rounded-md">
                         <ul className="space-y-2 text-sm">
                             {result.errors.map((err, index) => (
-                                <li key={index} className="flex justify-between items-center p-2 rounded bg-gray-700">
-                                    <span className="font-mono text-red-400 font-semibold">{err.ticker}</span>
+                                <li key={index} className="flex justify-between items-center gap-3 p-2 rounded bg-gray-700">
+                                    <span className="inline-flex items-center gap-1 font-mono text-danger font-semibold"><CircleAlert className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />{err.ticker}</span>
                                     <span className="text-gray-300 text-right">{err.reason}</span>
                                 </li>
                             ))}
@@ -139,13 +139,9 @@ const BulkUploadModal: React.FC = () => {
                     </div>
                 </div>
             )}
-            <div className="mt-8 flex justify-end">
-                 <button onClick={resetModal} className="bg-primary hover:bg-primary-dark text-white font-bold py-2 px-4 rounded-md transition duration-300">확인</button>
-            </div>
           </div>
         )}
-      </div>
-    </div>
+    </Modal>
   );
 };
 

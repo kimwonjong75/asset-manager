@@ -7,6 +7,7 @@ import { useKakaoNotify } from '../../hooks/useKakaoNotify';
 import KakaoSetupWizard from './KakaoSetupWizard';
 import Toggle from '../common/Toggle';
 import Badge from '../common/Badge';
+import { CircleAlert, Lock, TriangleAlert } from 'lucide-react';
 
 function formatDateTime(iso: string | null): string {
   if (!iso) return '없음';
@@ -30,7 +31,7 @@ const KakaoNotifySection: React.FC = () => {
   const busy = opStatus !== 'idle';
 
   return (
-    <div className="bg-gray-800 rounded-lg shadow-lg">
+    <div className="bg-gray-800 rounded-lg">
       <div className="px-6 py-5 border-b border-gray-700">
         <h2 className="text-xl font-bold text-white">카카오톡 알림</h2>
         <p className="text-gray-400 text-sm mt-1">
@@ -42,7 +43,7 @@ const KakaoNotifySection: React.FC = () => {
         {/* 고지 */}
         <div className="bg-amber-500/10 border border-amber-700/40 rounded-lg p-3">
           <p className="text-xs text-amber-300 leading-relaxed">
-            ⚠ 카톡은 알려줄 뿐 대신 팔아주지 않습니다 — 손절은 증권사 예약주문이 먼저입니다.
+            <TriangleAlert className="inline h-3.5 w-3.5 mr-1 align-[-2px]" aria-hidden="true" />카톡은 알려줄 뿐 대신 팔아주지 않습니다 — 손절은 증권사 예약주문이 먼저입니다.
           </p>
         </div>
 
@@ -82,7 +83,7 @@ const KakaoNotifySection: React.FC = () => {
               </button>
             </div>
             <p className="text-gray-500 text-xs mt-1">
-              🔒 웹앱 URL·시크릿은 <b>이 브라우저(localStorage)에만</b> 저장됩니다. Google Drive 동기화에 포함되지 않으므로 다른 기기에서는 다시 입력해야 합니다.
+              <Lock className="inline h-3.5 w-3.5 mr-1 align-[-2px]" aria-hidden="true" />웹앱 URL·시크릿은 <b>이 브라우저(localStorage)에만</b> 저장됩니다. Google Drive 동기화에 포함되지 않으므로 다른 기기에서는 다시 입력해야 합니다.
             </p>
           </div>
 
@@ -114,11 +115,11 @@ const KakaoNotifySection: React.FC = () => {
             {needsSync ? (
               <Badge tone="warning" size="md">동기화 필요 · 계획 {manifest.items.length}건</Badge>
             ) : (
-              <Badge tone="positive" size="md">최신 상태</Badge>
+              <Badge tone="ok" size="md">최신 상태</Badge>
             )}
           </div>
 
-          {lastError && <p className="text-xs text-red-400">{lastError}</p>}
+          {lastError && <p className="flex items-center gap-1 text-xs text-danger" role="alert"><CircleAlert className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />{lastError}</p>}
 
           <div className="grid grid-cols-2 gap-3 pt-1 text-xs text-gray-400">
             <div>마지막 동기화: <span className="text-gray-300">{formatDateTime(settings.lastSyncAt)}</span></div>
@@ -127,12 +128,12 @@ const KakaoNotifySection: React.FC = () => {
 
           {gasStatus && gasStatus.ok && (
             <div className="text-xs text-gray-400 border-t border-gray-800 pt-2 space-y-0.5">
-              <div>카카오 연결: <span className={gasStatus.kakaoConnected ? 'text-emerald-400' : 'text-red-400'}>{gasStatus.kakaoConnected ? '연결됨' : '미연결'}</span></div>
+              <div>카카오 연결: <span className={gasStatus.kakaoConnected ? 'text-ok' : 'text-danger'}>{gasStatus.kakaoConnected ? '연결됨' : '미연결'}</span></div>
               {typeof gasStatus.dailyCount === 'number' && <div>오늘 발송: <span className="text-gray-300">{gasStatus.dailyCount}건</span></div>}
               {gasStatus.lastRun && (
                 <div>
                   마지막 실행: <span className="text-gray-300">{formatDateTime(gasStatus.lastRun.at)}</span>{' '}
-                  <span className={gasStatus.lastRun.status === 'ok' ? 'text-emerald-400' : 'text-red-400'}>
+                  <span className={gasStatus.lastRun.status === 'ok' ? 'text-ok' : 'text-danger'}>
                     {gasStatus.lastRun.status === 'ok' ? '정상' : `오류: ${gasStatus.lastRun.message ?? ''}`}
                   </span>
                 </div>

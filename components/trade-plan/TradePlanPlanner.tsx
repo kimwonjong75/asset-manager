@@ -14,6 +14,8 @@ import { useTradePlanPlanner } from '../../hooks/useTradePlanPlanner';
 import { formatPlanPrice } from '../../utils/tradePlan';
 import TradePlanEditor, { type TradePlanEditorHandle } from './TradePlanEditor';
 import TradePlanIntro, { hasSeenTradePlanIntro } from './TradePlanIntro';
+import Button from '../common/Button';
+import { CircleAlert, X } from 'lucide-react';
 
 const TradePlanPlanner: React.FC = () => {
   const { modal, actions } = usePortfolio();
@@ -67,7 +69,7 @@ const TradePlanPlanner: React.FC = () => {
   return (
     <div className="fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center z-modal p-2 sm:p-4" onClick={handleClose} role="dialog" aria-modal="true">
       <div
-        className="bg-gray-800 p-4 sm:p-6 rounded-lg shadow-xl w-full max-w-xl max-h-[95dvh] overflow-y-auto"
+        className="bg-surface-elevated border border-border-subtle p-4 sm:p-6 rounded-card shadow-xl w-full max-w-xl max-h-[95vh] max-h-[95dvh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-start justify-between gap-3 mb-4">
@@ -75,7 +77,7 @@ const TradePlanPlanner: React.FC = () => {
             <h2 className="text-lg sm:text-xl font-bold text-white">새 매수 계획</h2>
             <p className="text-xs text-gray-400 mt-0.5">종목을 검색하고, 사기 전에 손절선·익절선·추세선을 먼저 정합니다.</p>
           </div>
-          <button type="button" onClick={handleClose} className="flex-shrink-0 text-gray-400 hover:text-white text-xl leading-none px-1" aria-label="닫기">×</button>
+          <button type="button" onClick={handleClose} className="flex-shrink-0 inline-flex items-center justify-center min-h-9 min-w-9 rounded-md text-gray-400 hover:text-white hover:bg-gray-700/60" aria-label="닫기"><X className="h-5 w-5" aria-hidden="true" /></button>
         </div>
 
         {showIntro && <TradePlanIntro onDismiss={() => setShowIntro(false)} className="mb-4" />}
@@ -170,29 +172,19 @@ const TradePlanPlanner: React.FC = () => {
         )}
 
         {saveError && (
-          <div className="mt-3 text-sm text-danger bg-danger-soft border border-danger/30 rounded-md px-3 py-2">{saveError}</div>
+          <div className="mt-3 flex items-start gap-1.5 text-sm text-danger bg-danger-soft border border-danger/30 rounded-md px-3 py-2" role="alert"><CircleAlert className="h-4 w-4 mt-0.5 shrink-0" aria-hidden="true" />{saveError}</div>
         )}
 
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-2 pt-5">
-          <button type="button" onClick={handleClose} className="text-sm text-gray-300 hover:text-white px-4 py-2 rounded-md transition-colors order-3 sm:order-1">
+          <Button variant="ghost" onClick={handleClose} className="order-3 sm:order-1">
             닫기
-          </button>
-          <button
-            type="button"
-            onClick={handleSaveToWatchlist}
-            disabled={!planner.target}
-            className="text-sm font-medium text-white bg-gray-600 hover:bg-zinc-500 px-4 py-2 rounded-md transition-colors disabled:opacity-40 disabled:cursor-not-allowed order-2"
-          >
+          </Button>
+          <Button variant="secondary" onClick={handleSaveToWatchlist} disabled={!planner.target} className="order-2">
             관심종목에 계획과 함께 저장
-          </button>
-          <button
-            type="button"
-            onClick={handleBuyNow}
-            disabled={!planner.target}
-            className="text-sm font-medium text-white bg-primary hover:bg-primary-dark px-4 py-2 rounded-md transition-colors disabled:opacity-40 disabled:cursor-not-allowed order-1 sm:order-3"
-          >
+          </Button>
+          <Button variant="primary" onClick={handleBuyNow} disabled={!planner.target} className="order-1 sm:order-3">
             지금 매수 기록하며 저장
-          </button>
+          </Button>
         </div>
       </div>
     </div>

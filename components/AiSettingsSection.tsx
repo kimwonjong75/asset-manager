@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { ExternalLink, Lock } from 'lucide-react';
 import {
   getGeminiApiKey,
   setGeminiApiKey,
@@ -65,7 +66,7 @@ const AiSettingsSection: React.FC = () => {
   };
 
   return (
-    <div className="bg-gray-800 rounded-lg shadow-lg">
+    <div className="bg-gray-800 rounded-lg">
       <div className="px-6 py-5 border-b border-gray-700">
         <h2 className="text-xl font-bold text-white">AI 설정 (Gemini)</h2>
         <p className="text-gray-400 text-sm mt-1">
@@ -84,7 +85,7 @@ const AiSettingsSection: React.FC = () => {
               rel="noopener noreferrer"
               className="text-xs text-primary hover:underline"
             >
-              키 발급받기 ↗
+              키 발급받기<ExternalLink className="inline h-3 w-3 ml-0.5 align-[-1px]" aria-hidden="true" />
             </a>
           </div>
           <div className="flex items-center gap-2">
@@ -110,7 +111,7 @@ const AiSettingsSection: React.FC = () => {
             </button>
           </div>
           <p className="text-gray-500 text-xs">
-            🔒 이 키는 <b>이 브라우저(localStorage)에만</b> 저장됩니다. 서버 전송·Google Drive 동기화·깃 업로드에 포함되지 않습니다.
+            <Lock className="inline h-3.5 w-3.5 mr-1 align-[-2px]" aria-hidden="true" />이 키는 <b>이 브라우저(localStorage)에만</b> 저장됩니다. 서버 전송·Google Drive 동기화·깃 업로드에 포함되지 않습니다.
           </p>
         </div>
 

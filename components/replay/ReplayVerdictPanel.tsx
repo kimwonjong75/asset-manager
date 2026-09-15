@@ -3,8 +3,11 @@
 // UI 렌더링 전용(저장 로직은 useSignalReplay 훅). 놓친 매수/매도는 신호가 안 뜬 날에도 태깅 가능.
 // 판정 대상: "날짜 전체"(ruleId 없음) 또는 그 날 평가된 특정 구루 규칙(ruleId) — 같은 날 여러 규칙에
 //   "이 규칙은 너무 늦다" 식의 규칙별 피드백을 남길 수 있다.
+// Stage C 색: 적절함=ok / 빠름·늦음=warning / 잘못된 신호=danger+CircleAlert / 놓친 매수·매도=info.
 
 import React, { useEffect, useMemo, useState } from 'react';
+import { CircleAlert, NotebookPen, Trash2 } from 'lucide-react';
+import Button from '../common/Button';
 import type { SignalVerdict, SignalVerdictKind } from '../../types/signalReplay';
 
 export const VERDICT_KIND_LABELS: Record<SignalVerdictKind, string> = {
@@ -16,13 +19,14 @@ export const VERDICT_KIND_LABELS: Record<SignalVerdictKind, string> = {
   'missed-sell': '놓친 매도',
 };
 
+// 첫 토큰은 반드시 text-* (목록 라벨이 split(' ')[0] 으로 글자색만 재사용)
 const VERDICT_KIND_TONE: Record<SignalVerdictKind, string> = {
-  'good': 'text-emerald-300 border-emerald-500/50 bg-emerald-500/10',
-  'too-early': 'text-amber-300 border-amber-500/50 bg-amber-500/10',
-  'too-late': 'text-amber-300 border-amber-500/50 bg-amber-500/10',
-  'false': 'text-rose-300 border-rose-500/50 bg-rose-500/10',
-  'missed-buy': 'text-sky-300 border-sky-500/50 bg-sky-500/10',
-  'missed-sell': 'text-sky-300 border-sky-500/50 bg-sky-500/10',
+  'good': 'text-ok border-ok/50 bg-ok-soft',
+  'too-early': 'text-amber-300 border-warning/50 bg-warning-soft',
+  'too-late': 'text-amber-300 border-warning/50 bg-warning-soft',
+  'false': 'text-danger border-danger/50 bg-danger-soft',
+  'missed-buy': 'text-info border-info/50 bg-info-soft',
+  'missed-sell': 'text-info border-info/50 bg-info-soft',
 };
 
 const KIND_ORDER: SignalVerdictKind[] = ['good', 'too-early', 'too-late', 'false', 'missed-buy', 'missed-sell'];
@@ -67,11 +71,14 @@ const ReplayVerdictPanel: React.FC<ReplayVerdictPanelProps> = ({
   if (!date) return null;
 
   return (
-    <div className="bg-gray-800 rounded-lg p-3 space-y-2">
-      <h3 className="text-sm font-bold text-white">📝 내 판정 <span className="text-xs text-gray-500 font-normal">— {date}</span></h3>
+    <div className="bg-surface-elevated border border-border-subtle rounded-card p-3 space-y-2">
+      <h3 className="text-base font-semibold text-white flex items-center gap-1.5 flex-wrap">
+        <NotebookPen className="h-4 w-4 text-gray-400" aria-hidden="true" />
+        내 판정 <span className="text-xs text-gray-500 font-normal">— {date}</span>
+      </h3>
       <p className="text-xs text-gray-500">
         이 시점의 신호 타이밍을 평가해 두면, 나중에 규칙을 보완할 학습 데이터가 됩니다.
-        {!hasSignal && <span className="text-gray-500"> 신호가 안 뜬 날도 <span className="text-sky-400">놓친 매수/매도</span>로 기록할 수 있습니다.</span>}
+        {!hasSignal && <span className="text-gray-500"> 신호가 안 뜬 날도 <span className="text-info">놓친 매수/매도</span>로 기록할 수 있습니다.</span>}
       </p>
 
       {/* 판정 대상: 날짜 전체 / 특정 구루 규칙 */}
@@ -80,7 +87,7 @@ const ReplayVerdictPanel: React.FC<ReplayVerdictPanelProps> = ({
         <select
           value={targetRuleId ?? DAY_SCOPE}
           onChange={e => setTargetRuleId(e.target.value === DAY_SCOPE ? undefined : e.target.value)}
-          className="flex-1 min-w-0 bg-gray-900 text-xs text-white rounded px-2 py-1.5 border border-gray-700 focus:border-primary outline-none"
+          className="flex-1 min-w-0 bg-surface-muted text-xs text-white rounded px-2 py-1.5 border border-border-subtle focus:border-primary outline-none"
         >
           <option value={DAY_SCOPE}>날짜 전체</option>
           {ruleOptions.map(r => (
@@ -94,10 +101,12 @@ const ReplayVerdictPanel: React.FC<ReplayVerdictPanelProps> = ({
           <button
             key={k}
             onClick={() => setKind(k)}
-            className={`text-xs px-2 py-1 rounded border transition-colors ${
-              kind === k ? VERDICT_KIND_TONE[k] : 'bg-gray-900/60 text-gray-400 border-gray-700 hover:bg-gray-700'
+            aria-pressed={kind === k}
+            className={`inline-flex items-center gap-1 text-xs px-2 py-1 rounded border transition-colors ${
+              kind === k ? VERDICT_KIND_TONE[k] : 'bg-surface-muted text-gray-400 border-border-subtle hover:bg-gray-600'
             }`}
           >
+            {k === 'false' && kind === k && <CircleAlert className="h-3 w-3" aria-hidden="true" />}
             {VERDICT_KIND_LABELS[k]}
           </button>
         ))}
@@ -108,26 +117,17 @@ const ReplayVerdictPanel: React.FC<ReplayVerdictPanelProps> = ({
         onChange={e => setMemo(e.target.value)}
         placeholder="메모 (선택) — 예: 거래량 동반 안 됨, 며칠 더 기다렸어야"
         rows={2}
-        className="w-full bg-gray-900 text-xs text-white rounded px-2.5 py-1.5 border border-gray-700 focus:border-primary outline-none resize-none"
+        className="w-full bg-surface-muted text-xs text-white rounded px-2.5 py-1.5 border border-border-subtle focus:border-primary outline-none resize-none"
       />
 
-      <div className="flex items-center gap-2">
-        <button
-          onClick={() => kind && onSet(kind, memo, targetRuleId)}
-          disabled={!kind}
-          className={`text-xs px-3 py-1.5 rounded ${
-            kind ? 'bg-primary/20 text-primary hover:bg-primary/30' : 'bg-gray-800 text-gray-500 cursor-not-allowed'
-          }`}
-        >
+      <div className="flex items-center gap-2 flex-wrap">
+        <Button variant="primary" onClick={() => kind && onSet(kind, memo, targetRuleId)} disabled={!kind}>
           {current ? '판정 수정' : '판정 저장'}
-        </button>
+        </Button>
         {current && (
-          <button
-            onClick={() => onClear(date, targetRuleId)}
-            className="text-xs px-3 py-1.5 rounded bg-gray-900 text-gray-400 hover:bg-gray-700"
-          >
+          <Button variant="danger" icon={<Trash2 className="h-4 w-4" />} onClick={() => onClear(date, targetRuleId)}>
             삭제
-          </button>
+          </Button>
         )}
         {current && (
           <span className="text-xs text-gray-500">
@@ -137,15 +137,15 @@ const ReplayVerdictPanel: React.FC<ReplayVerdictPanelProps> = ({
       </div>
 
       {tickerVerdicts.length > 0 && (
-        <div className="pt-2 border-t border-gray-700/60">
+        <div className="pt-2 border-t border-border-subtle">
           <div className="text-xs text-gray-500 mb-1">이 종목 판정 {tickerVerdicts.length}개</div>
           <ul className="space-y-1 max-h-40 overflow-y-auto">
             {tickerVerdicts.map(v => (
               <li key={`${v.date}-${v.ruleId ?? ''}`}>
                 <button
                   type="button"
-                  className={`w-full text-left flex items-center justify-between gap-2 text-xs rounded px-2 py-1 cursor-pointer hover:bg-gray-700/40 focus-ring ${
-                    v.date === date ? 'bg-gray-700/40' : 'bg-gray-900/40'
+                  className={`w-full text-left flex items-center justify-between gap-2 text-xs rounded px-2 py-1 cursor-pointer hover:bg-gray-600/60 focus-ring ${
+                    v.date === date ? 'bg-gray-600/60' : 'bg-surface-muted'
                   }`}
                   aria-current={v.date === date ? 'true' : undefined}
                   onClick={() => onJump(v.date)}
@@ -153,7 +153,7 @@ const ReplayVerdictPanel: React.FC<ReplayVerdictPanelProps> = ({
                   <span className="font-mono text-gray-300 whitespace-nowrap">{v.date}</span>
                   <span className={`whitespace-nowrap ${VERDICT_KIND_TONE[v.kind].split(' ')[0]}`}>{VERDICT_KIND_LABELS[v.kind]}</span>
                   {v.ruleId && (
-                    <span className="text-xs text-violet-300/80 truncate" title={ruleTitleById[v.ruleId] ?? v.ruleId}>
+                    <span className="text-xs text-gray-400 truncate" title={ruleTitleById[v.ruleId] ?? v.ruleId}>
                       · {ruleTitleById[v.ruleId] ?? v.ruleId}
                     </span>
                   )}

@@ -4,6 +4,7 @@
 // PortfolioContext의 accountView/lowValueThreshold 등 다른 UI 플래그와 동일 관례).
 
 import React, { useState } from 'react';
+import { CalendarDays, Scissors, ShieldCheck } from 'lucide-react';
 
 export const TRADE_PLAN_INTRO_SEEN_KEY = 'asset-manager-tradeplan-intro-seen';
 
@@ -16,24 +17,24 @@ export function hasSeenTradePlanIntro(): boolean {
 }
 
 interface IntroCard {
-  icon: string;
+  icon: React.ReactNode;
   title: string;
   body: string;
 }
 
 const CARDS: IntroCard[] = [
   {
-    icon: '🗓️',
+    icon: <CalendarDays className="h-5 w-5 text-primary-light" aria-hidden="true" />,
     title: '사기 전에 언제 팔지 정한다',
     body: '매수와 동시에 손절선·익절선·추세선을 정해두면, 오를 때도 내릴 때도 미리 정한 대로만 움직이면 됩니다.',
   },
   {
-    icon: '🛡️',
+    icon: <ShieldCheck className="h-5 w-5 text-primary-light" aria-hidden="true" />,
     title: '한 종목에서 총자산의 1%만 잃는다',
     body: '손절선에 닿아도 전체 자산에서 잃는 돈은 미리 정한 한도(기본 1%) 안으로 제한됩니다.',
   },
   {
-    icon: '✂️',
+    icon: <Scissors className="h-5 w-5 text-primary-light" aria-hidden="true" />,
     title: '오르면 절반 팔고, 나머지는 추세선이 깨질 때 판다',
     body: '목표가(손절폭의 3배, 기본값)에 오면 절반을 먼저 팔아 이익을 확정하고, 나머지는 추세선(기본 20일 평균) 아래로 종가가 내려올 때까지 들고 갑니다.',
   },
@@ -59,12 +60,12 @@ const TradePlanIntro: React.FC<TradePlanIntroProps> = ({ onDismiss, className = 
   };
 
   return (
-    <div className={`bg-gray-900/60 border border-gray-700 rounded-lg p-3.5 space-y-3 ${className}`}>
+    <div className={`bg-surface-muted border border-border-subtle rounded-card p-3.5 space-y-3 ${className}`}>
       <h3 className="text-sm font-bold text-white">매매 계획이란?</h3>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
         {CARDS.map((c, i) => (
-          <div key={i} className="bg-gray-800/80 rounded-md p-2.5 space-y-1">
-            <div className="text-lg leading-none">{c.icon}</div>
+          <div key={i} className="bg-surface-elevated rounded-md p-2.5 space-y-1">
+            <div className="leading-none">{c.icon}</div>
             <div className="text-xs font-semibold text-primary-light">{c.title}</div>
             <p className="text-xs text-gray-400 leading-relaxed">{c.body}</p>
           </div>

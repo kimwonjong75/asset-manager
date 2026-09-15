@@ -4,7 +4,13 @@
 // 이 화면은 라이브 구루 신호/기존 알림 동작을 바꾸지 않는다(샌드박스/영구반영은 P3/P4).
 
 import React, { useMemo, useState } from 'react';
+import {
+  Bell, ChevronLeft, ChevronRight, Compass, MapPin, NotebookPen, Repeat, Save, Trash2, TrendingUp, TriangleAlert,
+} from 'lucide-react';
 import { usePortfolio } from '../../contexts/PortfolioContext';
+import Button from '../common/Button';
+import PassMark from '../common/PassMark';
+import { directionTextClass, tradeSideTextClass } from '../../utils/directionTone';
 import { useSignalReplay, type ReplaySymbol } from '../../hooks/useSignalReplay';
 import SignalReplayChart from '../replay/SignalReplayChart';
 import ReplayVerdictPanel, { VERDICT_KIND_LABELS } from '../replay/ReplayVerdictPanel';
@@ -26,8 +32,8 @@ const WINDOW_LABELS: Record<number, string> = { 126: '6개월', 252: '1년', 504
 
 const toneClass = (tone: StatusTone | 'positive' | 'neutral' | 'caution' | 'muted'): string => {
   switch (tone) {
-    case 'positive': return 'text-emerald-400';
-    case 'caution': return 'text-amber-400';
+    case 'positive': return 'text-ok';
+    case 'caution': return 'text-amber-300';
     case 'neutral': return 'text-gray-300';
     default: return 'text-gray-500';
   }
@@ -57,10 +63,10 @@ const formatVal = (v: number | string | undefined): string =>
 const AlertRuleRow: React.FC<{ diag: AlertRuleDiagnostic }> = ({ diag }) => {
   const status = describeAlertRuleStatus(diag);
   return (
-    <li className="bg-gray-900/50 rounded px-2.5 py-2">
+    <li className="bg-surface-muted rounded-lg px-2.5 py-2">
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <span className="text-sm text-white truncate">
-          <span className={`text-xs mr-1 ${diag.action === 'sell' ? 'text-down' : 'text-up'}`}>
+          <span className={`text-xs mr-1 ${tradeSideTextClass(diag.action === 'sell' ? 'sell' : 'buy')}`}>
             {diag.action === 'sell' ? '매도' : '매수'}
           </span>
           {diag.ruleName}
@@ -72,9 +78,7 @@ const AlertRuleRow: React.FC<{ diag: AlertRuleDiagnostic }> = ({ diag }) => {
         <div className="mt-1.5 space-y-1">
           {diag.filters.map((f, i) => (
             <div key={i} className="flex items-center gap-1.5 flex-wrap text-xs">
-              <span className={f.result === true ? 'text-emerald-400' : f.result === false ? 'text-rose-400' : 'text-gray-500'}>
-                {f.result === true ? '✓' : f.result === false ? '✗' : '—'}
-              </span>
+              <PassMark state={f.result === true ? 'pass' : f.result === false ? 'fail' : 'unknown'} size="sm" />
               <span className="text-gray-300">{f.label}</span>
               {f.actual != null && <span className="text-white font-mono">{formatVal(f.actual)}</span>}
               {f.threshold != null && <span className="text-gray-500">(기준 {formatVal(f.threshold)})</span>}
@@ -89,7 +93,7 @@ const AlertRuleRow: React.FC<{ diag: AlertRuleDiagnostic }> = ({ diag }) => {
 const GuruRuleRow: React.FC<{ diag: RuleDiagnostic; distances: (number | null)[] }> = ({ diag, distances }) => {
   const status = describeRuleStatus(diag);
   return (
-    <li className="bg-gray-900/50 rounded px-2.5 py-2">
+    <li className="bg-surface-muted rounded-lg px-2.5 py-2">
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <span className="text-sm text-white truncate">{diag.ruleTitle}</span>
         <span className={`text-xs font-medium ${toneClass(status.tone)}`}>{status.label}</span>
@@ -101,14 +105,12 @@ const GuruRuleRow: React.FC<{ diag: RuleDiagnostic; distances: (number | null)[]
             const d = distances[i];
             return (
               <div key={i} className="flex items-center gap-1.5 flex-wrap text-xs">
-                <span className={lf.passed === true ? 'text-emerald-400' : lf.passed === false ? 'text-rose-400' : 'text-gray-500'}>
-                  {lf.passed === true ? '✓' : lf.passed === false ? '✗' : '—'}
-                </span>
+                <PassMark state={lf.passed === true ? 'pass' : lf.passed === false ? 'fail' : 'unknown'} size="sm" />
                 <span className="text-gray-300">{lf.label}</span>
                 <span className="text-white font-mono">{lf.actual}</span>
                 <span className="text-gray-500">(기준 {lf.condition})</span>
                 {d !== null && (
-                  <span className={d >= 0 ? 'text-emerald-500/80' : 'text-amber-500/80'}>
+                  <span className={d >= 0 ? 'text-ok' : 'text-gray-400'}>
                     {d >= 0 ? `여유 ${d.toFixed(2)}` : `부족 ${d.toFixed(2)}`}
                   </span>
                 )}
@@ -126,16 +128,16 @@ const OutcomeRow: React.FC<{ day: ReplayDay }> = ({ day }) => {
   return (
     <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-xs">
       {([['5일 후', o.ret5], ['20일 후', o.ret20], ['60일 후', o.ret60]] as const).map(([label, v]) => (
-        <div key={label} className="bg-gray-900/50 rounded px-2 py-1.5">
+        <div key={label} className="bg-surface-muted rounded-lg px-2 py-1.5">
           <div className="text-gray-500 text-xs">{label} 수익률</div>
-          <div className={`font-mono ${v != null && v >= 0 ? 'text-up' : v != null ? 'text-down' : 'text-gray-500'}`}>{formatPct(v)}</div>
+          <div className={`font-mono ${directionTextClass(v)}`}>{formatPct(v)}</div>
         </div>
       ))}
-      <div className="bg-gray-900/50 rounded px-2 py-1.5">
+      <div className="bg-surface-muted rounded-lg px-2 py-1.5">
         <div className="text-gray-500 text-xs">신호 후 최대 상승</div>
         <div className="font-mono text-up">{formatPct(o.maxRise)}</div>
       </div>
-      <div className="bg-gray-900/50 rounded px-2 py-1.5">
+      <div className="bg-surface-muted rounded-lg px-2 py-1.5">
         <div className="text-gray-500 text-xs">신호 후 최대 하락</div>
         <div className="font-mono text-down">{formatPct(o.maxDrop)}</div>
       </div>
@@ -242,7 +244,7 @@ const SignalReplayView: React.FC = () => {
   return (
     <div className="px-2 sm:px-4 pb-10 max-w-6xl mx-auto space-y-4">
       <div>
-        <h2 className="text-lg font-bold text-white flex items-center gap-2">🔁 신호 리플레이</h2>
+        <h2 className="text-lg font-bold text-white flex items-center gap-2"><Repeat className="h-5 w-5 text-gray-400" aria-hidden="true" />신호 리플레이</h2>
         <p className="text-xs text-gray-500 mt-1">
           현재 활성 구루 규칙을 과거 가격에 다시 적용한 결과입니다 — <span className="text-gray-400">그날 실제 발송된 알림이 아닙니다.</span>
           시점을 옮기면 그날까지 데이터만으로 신호를 재계산합니다(미래 미반영).
@@ -250,23 +252,23 @@ const SignalReplayView: React.FC = () => {
       </div>
 
       {/* 종목 선택 */}
-      <div className="bg-gray-800 rounded-lg p-3 space-y-2">
+      <div className="bg-surface-elevated border border-border-subtle rounded-card p-3 space-y-2">
         <div className="relative">
           <input
             value={ctrl.searchQuery}
             onChange={e => ctrl.setSearchQuery(e.target.value)}
             placeholder="종목 검색 (티커/이름) — 예: SLV, AAPL, 삼성전자"
-            className="w-full bg-gray-900 text-sm text-white rounded px-3 py-2 border border-gray-700 focus:border-primary outline-none"
+            className="w-full bg-surface-muted text-sm text-white rounded px-3 py-2 border border-border-subtle focus:border-primary outline-none"
           />
           {(ctrl.searchResults.length > 0 || ctrl.isSearching) && (
-            <ul className="absolute z-10 mt-1 w-full max-h-60 overflow-y-auto bg-gray-900 border border-gray-700 rounded shadow-lg">
+            <ul className="absolute z-10 mt-1 w-full max-h-60 overflow-y-auto bg-surface-elevated border border-border-subtle rounded-lg shadow-lg">
               {ctrl.isSearching && <li className="px-3 py-2 text-xs text-gray-500">검색 중…</li>}
               {ctrl.searchResults.map(r => (
                 <li key={`${r.ticker}-${r.exchange}`}>
                   <button
                     type="button"
                     onClick={() => ctrl.selectSymbol({ ticker: r.ticker, name: r.name, exchange: r.exchange, categoryId: 0 })}
-                    className="w-full text-left px-3 py-2 text-sm text-gray-200 hover:bg-gray-800 cursor-pointer flex items-center gap-2 focus:outline-none focus-visible:bg-gray-800"
+                    className="w-full text-left px-3 py-2 text-sm text-gray-200 hover:bg-surface-muted cursor-pointer flex items-center gap-2 focus:outline-none focus-visible:bg-surface-muted"
                   >
                     <span className="text-white">{r.name}</span>
                     <span className="text-xs text-gray-500">{r.ticker}</span>
@@ -285,8 +287,8 @@ const SignalReplayView: React.FC = () => {
                 onClick={() => ctrl.selectSymbol(s)}
                 className={`text-xs px-2 py-1 rounded border transition-colors ${
                   ctrl.selected?.ticker === s.ticker
-                    ? 'bg-primary/15 text-primary border-primary/40'
-                    : 'bg-gray-900/60 text-gray-300 border-gray-700 hover:bg-gray-700'
+                    ? 'bg-primary/15 text-primary-light border-primary/40'
+                    : 'bg-surface-muted text-gray-300 border-border-subtle hover:bg-gray-600'
                 }`}
               >
                 {s.name}
@@ -297,34 +299,34 @@ const SignalReplayView: React.FC = () => {
       </div>
 
       {!ctrl.selected ? (
-        <div className="bg-gray-900/50 rounded-lg px-4 py-10 text-center text-sm text-gray-500">
+        <div className="bg-surface-muted rounded-card px-4 py-10 text-center text-sm text-gray-500">
           종목을 검색하거나 위 칩에서 선택하면 과거 신호 리플레이가 시작됩니다.
         </div>
       ) : ctrl.isFetching ? (
-        <div className="bg-gray-900/50 rounded-lg px-4 py-10 text-center text-sm text-gray-400">시세 불러오는 중…</div>
+        <div className="bg-surface-muted rounded-card px-4 py-10 text-center text-sm text-gray-400">시세 불러오는 중…</div>
       ) : ctrl.fetchFailed ? (
-        <div className="bg-gray-900/50 rounded-lg px-4 py-10 text-center text-sm text-danger">시세를 불러오지 못했습니다. 다른 종목을 시도해 주세요.</div>
+        <div className="bg-surface-muted rounded-card px-4 py-10 text-center text-sm text-danger">시세를 불러오지 못했습니다. 다른 종목을 시도해 주세요.</div>
       ) : (
         <>
           {/* 컨트롤 바 */}
           <div className="flex flex-wrap items-center gap-2">
-            <div className="flex rounded overflow-hidden border border-gray-700">
+            <div className="flex rounded overflow-hidden border border-border-subtle">
               {(['replay', 'review'] as const).map(m => (
                 <button
                   key={m}
                   onClick={() => ctrl.setMode(m)}
-                  className={`text-xs px-3 py-1.5 ${ctrl.mode === m ? 'bg-primary/20 text-primary' : 'bg-gray-800 text-gray-400'}`}
+                  className={`text-xs px-3 py-1.5 ${ctrl.mode === m ? 'bg-primary/20 text-primary-light' : 'bg-surface-elevated text-gray-400'}`}
                 >
                   {m === 'replay' ? '리플레이(미래 숨김)' : '복기(미래 공개)'}
                 </button>
               ))}
             </div>
-            <div className="flex rounded overflow-hidden border border-gray-700">
+            <div className="flex rounded overflow-hidden border border-border-subtle">
               {ctrl.windowOptions.map(w => (
                 <button
                   key={w}
                   onClick={() => ctrl.setWindowTradingDays(w)}
-                  className={`text-xs px-2.5 py-1.5 ${ctrl.windowTradingDays === w ? 'bg-gray-700 text-white' : 'bg-gray-800 text-gray-400'}`}
+                  className={`text-xs px-2.5 py-1.5 ${ctrl.windowTradingDays === w ? 'bg-surface-muted text-white' : 'bg-surface-elevated text-gray-400'}`}
                 >
                   {WINDOW_LABELS[w] ?? w}
                 </button>
@@ -333,11 +335,11 @@ const SignalReplayView: React.FC = () => {
           </div>
 
           <p className="text-xs text-gray-500">
-            📍 차트 마커와 이전/다음 신호 이동은 <span className="text-gray-400">구루 신호 기준</span>입니다. 골든/데드크로스·RSI 등 가격기반 알림은 아래 <span className="text-gray-400">‘가격기반 알림 진단’</span> 박스에서 확인하세요. 차트에는 MA5/20/60/120/150·RSI(14)가 겹쳐 표시됩니다.
+            <MapPin className="inline h-3.5 w-3.5 mr-0.5 align-text-bottom" aria-hidden="true" />차트 마커와 이전/다음 신호 이동은 <span className="text-gray-400">구루 신호 기준</span>입니다. 골든/데드크로스·RSI 등 가격기반 알림은 아래 <span className="text-gray-400">‘가격기반 알림 진단’</span> 박스에서 확인하세요. 차트에는 MA5/20/60/120/150·RSI(14)가 겹쳐 표시됩니다.
           </p>
 
           {/* 차트 */}
-          <div className="bg-gray-800 rounded-lg p-2">
+          <div className="bg-surface-elevated border border-border-subtle rounded-card p-2">
             {ctrl.isComputing ? (
               <div className="h-[360px] flex items-center justify-center text-sm text-gray-500">신호 계산 중…</div>
             ) : ctrl.timeline && ctrl.timeline.chartPoints.length > 0 ? (
@@ -356,25 +358,25 @@ const SignalReplayView: React.FC = () => {
 
           {/* 시점 이동 */}
           {ctrl.timeline && ctrl.timeline.days.length > 0 && (
-            <div className="bg-gray-800 rounded-lg p-3 space-y-2">
+            <div className="bg-surface-elevated border border-border-subtle rounded-card p-3 space-y-2">
               <div className="flex items-center justify-between gap-2 flex-wrap">
                 <div className="text-sm text-white font-mono">
                   {ctrl.selectedDate}
                   {day && (
-                    <span className={`ml-2 ${day.changePct != null && day.changePct >= 0 ? 'text-up' : 'text-down'}`}>
+                    <span className={`ml-2 ${directionTextClass(day.changePct)}`}>
                       {formatPct(day.changePct)}
                     </span>
                   )}
                   {hasAnyVerdict && (
-                    <span className="ml-2 text-xs px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-300 font-sans">📝 {currentVerdict ? VERDICT_KIND_LABELS[currentVerdict.kind] : '판정 있음'}</span>
+                    <span className="ml-2 inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded bg-surface-muted border border-border-subtle text-gray-200 font-sans"><NotebookPen className="h-3 w-3" aria-hidden="true" />{currentVerdict ? VERDICT_KIND_LABELS[currentVerdict.kind] : '판정 있음'}</span>
                   )}
                 </div>
-                <div className="flex items-center gap-1">
-                  <button onClick={ctrl.goPrevSignal} className="text-xs px-2 py-1 rounded bg-gray-900 text-gray-300 hover:bg-gray-700">◀ 이전 신호</button>
-                  <button onClick={ctrl.goPrevDay} className="text-xs px-2 py-1 rounded bg-gray-900 text-gray-300 hover:bg-gray-700">−1일</button>
-                  <button onClick={ctrl.goNextDay} className="text-xs px-2 py-1 rounded bg-gray-900 text-gray-300 hover:bg-gray-700">+1일</button>
-                  <button onClick={ctrl.goNextSignal} className="text-xs px-2 py-1 rounded bg-gray-900 text-gray-300 hover:bg-gray-700">다음 신호 ▶</button>
-                  <button onClick={ctrl.goLatest} className="text-xs px-2 py-1 rounded bg-gray-900 text-gray-300 hover:bg-gray-700">최신</button>
+                <div className="flex items-center gap-1 flex-wrap">
+                  <Button variant="secondary" icon={<ChevronLeft className="h-4 w-4" />} onClick={ctrl.goPrevSignal}>이전 신호</Button>
+                  <Button variant="secondary" onClick={ctrl.goPrevDay}>−1일</Button>
+                  <Button variant="secondary" onClick={ctrl.goNextDay}>+1일</Button>
+                  <Button variant="secondary" iconRight={<ChevronRight className="h-4 w-4" />} onClick={ctrl.goNextSignal}>다음 신호</Button>
+                  <Button variant="ghost" onClick={ctrl.goLatest}>최신</Button>
                 </div>
               </div>
               <input
@@ -393,8 +395,8 @@ const SignalReplayView: React.FC = () => {
           {day && (
             <div className="grid lg:grid-cols-2 gap-4">
               {/* 구루 신호 진단 (중심) */}
-              <div className="bg-gray-800 rounded-lg p-3">
-                <h3 className="text-sm font-bold text-white mb-2">🧭 구루 신호 진단 — 왜 떴나 / 왜 안 떴나</h3>
+              <div className="bg-surface-elevated border border-border-subtle rounded-card p-3">
+                <h3 className="text-base font-semibold text-white mb-2 flex items-center gap-1.5 flex-wrap"><Compass className="h-4 w-4 text-gray-400" aria-hidden="true" />구루 신호 진단 — 왜 떴나 / 왜 안 떴나</h3>
                 {sortedGuru.length === 0 ? (
                   <p className="text-xs text-gray-500">평가할 구루 신호 규칙이 없습니다.</p>
                 ) : (
@@ -408,12 +410,12 @@ const SignalReplayView: React.FC = () => {
 
               {/* 성과 + 가격기반 알림(참고용) */}
               <div className="space-y-4">
-                <div className="bg-gray-800 rounded-lg p-3">
-                  <h3 className="text-sm font-bold text-white mb-2">📈 신호 후 결과 {ctrl.mode === 'replay' && <span className="text-xs text-gray-500 font-normal">(복기 모드에서 차트로도 확인)</span>}</h3>
+                <div className="bg-surface-elevated border border-border-subtle rounded-card p-3">
+                  <h3 className="text-base font-semibold text-white mb-2 flex items-center gap-1.5 flex-wrap"><TrendingUp className="h-4 w-4 text-gray-400" aria-hidden="true" />신호 후 결과 {ctrl.mode === 'replay' && <span className="text-xs text-gray-500 font-normal">(복기 모드에서 차트로도 확인)</span>}</h3>
                   <OutcomeRow day={day} />
                 </div>
-                <div className="bg-gray-800 rounded-lg p-3">
-                  <h3 className="text-sm font-bold text-gray-200 mb-1">🔔 가격기반 알림 진단 <span className="text-xs text-gray-500 font-normal">— 실제 자동 팝업으로 가는 신호</span></h3>
+                <div className="bg-surface-elevated border border-border-subtle rounded-card p-3">
+                  <h3 className="text-base font-semibold text-white mb-1 flex items-center gap-1.5 flex-wrap"><Bell className="h-4 w-4 text-gray-400" aria-hidden="true" />가격기반 알림 진단 <span className="text-xs text-gray-500 font-normal">— 실제 자동 팝업으로 가는 신호</span></h3>
                   <p className="text-xs text-gray-500 mb-2">그날 가격기반 알림이 떴는지/왜 안 떴는지(실제값 vs 기준값). <span className="text-gray-500">미래에 앱이 알림을 보내는 경로는 이쪽입니다 — 검증 무게를 여기에 두세요.</span></p>
                   {alertView.verifiable.length === 0 ? (
                     <p className="text-xs text-gray-500">평가할 가격기반 알림이 없습니다.</p>
@@ -423,8 +425,8 @@ const SignalReplayView: React.FC = () => {
                     </ul>
                   )}
                   {alertView.unverifiable.length > 0 && (
-                    <div className="mt-2 pt-2 border-t border-gray-700/60">
-                      <div className="text-xs text-amber-400/90 mb-1">⚠ 리플레이 검증 불가 <span className="text-gray-500 font-normal">— 발화/미충족 판정을 믿지 마세요(‘놓친 매도’로 태깅 금지)</span></div>
+                    <div className="mt-2 pt-2 border-t border-border-subtle">
+                      <div className="text-xs text-amber-300 mb-1"><TriangleAlert className="inline h-3.5 w-3.5 mr-1 align-text-bottom" aria-hidden="true" />리플레이 검증 불가 <span className="text-gray-500 font-normal">— 발화/미충족 판정을 믿지 마세요(‘놓친 매도’로 태깅 금지)</span></div>
                       <ul className="space-y-1">
                         {alertView.unverifiable.map(({ diag, scope }) => (
                           <li key={diag.ruleId} className="flex items-center justify-between gap-2 text-xs">
@@ -494,30 +496,30 @@ const SignalReplayView: React.FC = () => {
       />
 
       {/* 검증 기록 백업(⑤) — JSON 내보내기/가져오기(localStorage 유실 대비) */}
-      <div className="bg-gray-800 rounded-lg p-3 flex flex-wrap items-center gap-2">
-        <span className="text-xs text-gray-400">💾 검증 기록 백업 <span className="text-gray-500">— 판정·사례 JSON(브라우저 저장소 유실 대비)</span></span>
+      <div className="bg-surface-elevated border border-border-subtle rounded-card p-3 flex flex-wrap items-center gap-2">
+        <span className="text-xs text-gray-400 inline-flex items-center gap-1 flex-wrap"><Save className="h-3.5 w-3.5" aria-hidden="true" />검증 기록 백업 <span className="text-gray-500">— 판정·사례 JSON(브라우저 저장소 유실 대비)</span></span>
         <div className="flex-1" />
-        {importMsg && <span className="text-xs text-emerald-400">{importMsg}</span>}
-        {compactMsg && <span className="text-xs text-emerald-400">{compactMsg}</span>}
-        <button onClick={ctrl.exportReplayRecords} className="text-xs px-2.5 py-1 rounded bg-gray-900 text-gray-300 hover:bg-gray-700">내보내기</button>
-        <label className="text-xs px-2.5 py-1 rounded bg-gray-900 text-gray-300 hover:bg-gray-700 cursor-pointer">
+        {importMsg && <span className="text-xs text-ok">{importMsg}</span>}
+        {compactMsg && <span className="text-xs text-ok">{compactMsg}</span>}
+        <Button variant="secondary" onClick={ctrl.exportReplayRecords}>내보내기</Button>
+        <label className="inline-flex items-center min-h-9 px-3 text-sm rounded-lg bg-surface-muted hover:bg-gray-600 text-gray-100 border border-border-subtle cursor-pointer focus-within:ring-2 focus-within:ring-primary-light">
           가져오기
           <input type="file" accept="application/json,.json" className="hidden" onChange={handleImport} />
         </label>
         {compactTotal > 0 && (
           compactArmed ? (
-            <span className="flex items-center gap-1.5 text-xs text-gray-400">
+            <span className="flex items-center gap-1.5 text-xs text-gray-400 flex-wrap">
               <span>판정 {compactable.verdicts}건·사례 {compactable.cases}건(1년 경과) 삭제 · 먼저 내보내기 권장</span>
-              <button onClick={handleClearOld} className="text-xs px-2.5 py-1 rounded bg-danger-soft text-danger hover:bg-danger/25">삭제</button>
-              <button onClick={() => setCompactArmed(false)} className="text-xs px-2.5 py-1 rounded bg-gray-900 text-gray-300 hover:bg-gray-700">취소</button>
+              <Button variant="danger" icon={<Trash2 className="h-4 w-4" />} onClick={handleClearOld}>삭제</Button>
+              <Button variant="ghost" onClick={() => setCompactArmed(false)}>취소</Button>
             </span>
           ) : (
-            <button onClick={() => { setCompactMsg(null); setCompactArmed(true); }} className="text-xs px-2.5 py-1 rounded bg-gray-900 text-gray-300 hover:bg-gray-700">오래된 기록 정리 ({compactTotal}건)</button>
+            <Button variant="secondary" onClick={() => { setCompactMsg(null); setCompactArmed(true); }}>오래된 기록 정리 ({compactTotal}건)</Button>
           )
         )}
       </div>
 
-      <p className="text-xs text-gray-500 pt-2 border-t border-gray-700/60">
+      <p className="text-xs text-gray-500 pt-2 border-t border-border-subtle">
         지식 규칙 기반 참고 신호이며 투자자문이 아닙니다. 미검증·미구현 지표 규칙은 자동 발화되지 않습니다.
       </p>
     </div>

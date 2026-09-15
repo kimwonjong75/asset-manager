@@ -7,6 +7,7 @@
 import { directionTextClass } from '../../utils/directionTone';
 import React from 'react';
 import ScopeChip from '../common/ScopeChip';
+import Card from '../common/Card';
 
 export interface HomeSnapshotCardProps {
   totalValue: number;
@@ -33,13 +34,11 @@ const HomeSnapshotCard: React.FC<HomeSnapshotCardProps> = ({
   accountLabel,
   actionNeeded,
 }) => (
-  <section className="rounded-card bg-surface-elevated border border-border-subtle p-4" aria-label="포트폴리오 스냅샷">
-    <div className="flex items-center justify-between gap-2 flex-wrap">
-      <h2 className="text-sm font-semibold text-gray-300">포트폴리오</h2>
-      <ScopeChip label={`계정: ${accountLabel}`} title="위 계정 선택을 따릅니다. 자산 구분 필터는 적용되지 않습니다." />
-    </div>
-
-    <p className="mt-3 text-xs text-gray-500">총자산</p>
+  <Card
+    title="포트폴리오"
+    actions={<ScopeChip label={`계정: ${accountLabel}`} title="위 계정 선택을 따릅니다. 자산 구분 필터는 적용되지 않습니다." />}
+  >
+    <p className="text-xs text-gray-500">총자산</p>
     <p className="text-3xl font-bold text-white tabular-nums leading-tight break-all">{formatKRW(totalValue)}</p>
     <p className="mt-1 text-xs text-gray-400">
       원금 <span className="tabular-nums text-gray-300">{formatKRW(totalPurchaseValue)}</span>
@@ -61,7 +60,7 @@ const HomeSnapshotCard: React.FC<HomeSnapshotCardProps> = ({
         </dd>
       </div>
     </dl>
-  </section>
+  </Card>
 );
 
 export default HomeSnapshotCard;

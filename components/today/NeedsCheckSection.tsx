@@ -3,6 +3,7 @@
 // 여기는 렌더 + 손절주문 등록 토글만 담당(렌더 전용, RULES.md §2). 계획서 §4.6 "확인 필요 섹션" 카피.
 
 import React from 'react';
+import { ListChecks } from 'lucide-react';
 import { usePortfolio } from '../../contexts/PortfolioContext';
 import type { NeedsCheckRows } from '../../utils/todayViewModel';
 import SectionHeader from '../common/SectionHeader';
@@ -22,8 +23,9 @@ const NeedsCheckSection: React.FC<NeedsCheckSectionProps> = ({ needsCheck }) => 
     <section className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3">
       <div className="mb-2">
         <SectionHeader
-          title="■ 확인 필요"
+          title="확인 필요"
           tone="warning"
+          icon={<ListChecks className="h-4 w-4 text-amber-400" aria-hidden="true" />}
           actions={
             <span className="text-xs font-normal text-amber-300/80">
               시세 문제 {priceIssues.length} · 손절주문 미등록 {brokerStopMissing.length}

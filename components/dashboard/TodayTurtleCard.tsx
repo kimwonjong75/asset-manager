@@ -9,6 +9,7 @@
 // 접힘은 상위 WatchSection 한 단계만 담당한다(카드 자체 접힘 제거 — 2단 접힘 해소).
 
 import React, { useMemo, useState } from 'react';
+import { ChevronDown } from 'lucide-react';
 import { TodayRow, TodayTurtleModel, WatchRow, PositionRow, LegacySatelliteRow } from '../../types/todayTurtle';
 import { isWaitingRow } from '../../utils/todayTurtle';
 import { TURTLE_LOCK_BADGE, TURTLE_LOCK_MESSAGE, isTurtleOrderLocked } from '../../types/turtleLock';
@@ -98,7 +99,7 @@ const Row: React.FC<{ row: TodayRow }> = ({ row }) => {
     ? { name: '55일 돌파선', v: (row as WatchRow).breakoutLine }
     : { name: '20일 청산선', v: (row as PositionRow | LegacySatelliteRow).exitLine };
   return (
-    <div className="rounded-lg border border-gray-700 bg-gray-800/40 p-3">
+    <div className="rounded-lg border border-border-subtle bg-surface-elevated p-3">
       <div className="flex flex-wrap items-center gap-2">
         <span className="font-semibold text-white text-sm">{row.name}</span>
         <span className="text-xs text-gray-500">{row.ticker}</span>
@@ -147,7 +148,7 @@ const TodayTurtleCard: React.FC<TodayTurtleCardProps> = ({ model }) => {
   const s = model.summary;
 
   return (
-    <div className="rounded-lg border border-border-subtle bg-surface-elevated/60 p-3 sm:p-4">
+    <div className="rounded-card border border-border-subtle bg-surface-muted p-3 sm:p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <h3 className="text-sm font-semibold text-white">오늘의 터틀 확인</h3>
@@ -170,7 +171,7 @@ const TodayTurtleCard: React.FC<TodayTurtleCardProps> = ({ model }) => {
       </div>
 
       {showHelp && (
-        <p className="mt-2 text-xs text-gray-400 leading-relaxed bg-gray-900/40 rounded p-2">
+        <p className="mt-2 text-xs text-gray-400 leading-relaxed bg-surface-elevated rounded p-2">
           {HELP_TEXT}
           <br />
           {TURTLE_LOCK_MESSAGE}
@@ -202,10 +203,11 @@ const TodayTurtleCard: React.FC<TodayTurtleCardProps> = ({ model }) => {
           <button
             type="button"
             onClick={() => setShowWaiting(v => !v)}
-            className="text-xs text-gray-400 hover:text-gray-200"
+            className="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-gray-200"
             aria-expanded={showWaiting}
           >
-            {showWaiting ? '▾' : '▸'} 기다림 {waitingRows.length}종목
+            <ChevronDown className={`h-3.5 w-3.5 transition-transform ${showWaiting ? '' : '-rotate-90'}`} aria-hidden="true" />
+            기다림 {waitingRows.length}종목
           </button>
           {showWaiting && (
             <div className="mt-2 space-y-2">

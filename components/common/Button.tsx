@@ -21,6 +21,8 @@ interface ButtonBaseProps extends Omit<React.ButtonHTMLAttributes<HTMLButtonElem
   /** true 면 스피너 표시 + 비활성 + aria-busy */
   loading?: boolean;
   fullWidth?: boolean;
+  /** 라벨 뒤 아이콘(예: ChevronRight·ExternalLink). 장식용 — aria-hidden */
+  iconRight?: React.ReactNode;
   children?: React.ReactNode;
 }
 
@@ -48,6 +50,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
     variant = 'primary',
     size = 'md',
     icon,
+    iconRight,
     loading = false,
     fullWidth = false,
     disabled,
@@ -82,6 +85,9 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
         <span className="inline-flex shrink-0 [&>svg]:h-4 [&>svg]:w-4" aria-hidden="true">{icon}</span>
       ) : null}
       {children}
+      {iconRight && (
+        <span className="inline-flex shrink-0 [&>svg]:h-4 [&>svg]:w-4" aria-hidden="true">{iconRight}</span>
+      )}
     </button>
   );
 });

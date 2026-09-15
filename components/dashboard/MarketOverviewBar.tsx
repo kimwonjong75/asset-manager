@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, CircleAlert } from 'lucide-react';
 import { usePortfolio } from '../../contexts/PortfolioContext';
 import {
   intlGoldKRWPerG,
@@ -149,7 +149,7 @@ const MarketOverviewBar: React.FC = () => {
     const src = mmdd(snapshot.goldSourceDate);
     const time = hhmm(snapshot.fetchedAt);
     if (status === 'stale-fallback' || status === 'error') {
-      return { text: `${src ? `${src} 종가 · ` : ''}갱신 실패`, tone: 'text-yellow-400' };
+      return { text: `${src ? `${src} 종가 · ` : ''}갱신 실패`, tone: 'text-amber-300' };
     }
     return { text: `${src ? `${src} 종가 · ` : ''}${time} 확인`, tone: 'text-gray-500' };
   }, [snapshot, status, isInitialLoading]);
@@ -157,7 +157,7 @@ const MarketOverviewBar: React.FC = () => {
   const showValue = (fmt: string) => (isInitialLoading ? '…' : fmt);
 
   return (
-    <div className="bg-gray-800 rounded-lg shadow-lg overflow-hidden">
+    <div className="bg-surface-elevated border border-border-subtle rounded-card overflow-hidden">
       {/* 상단 한 줄 — 모바일에서는 wrap */}
       <div className="flex flex-wrap items-stretch">
         {/* 타이틀 */}
@@ -169,7 +169,7 @@ const MarketOverviewBar: React.FC = () => {
 
         {error && !snapshot ? (
           <div className="flex items-center px-4 py-3 flex-1">
-            <p className="text-sm text-danger">{error}</p>
+            <p className="text-sm text-danger inline-flex items-center gap-1.5"><CircleAlert className="h-4 w-4 shrink-0" aria-hidden="true" />{error}</p>
           </div>
         ) : (
           <>
@@ -187,7 +187,7 @@ const MarketOverviewBar: React.FC = () => {
             </div>
 
             {/* 구분선 후 환율 — 같은 줄 */}
-            <div className="hidden sm:block w-px bg-gray-700 my-2" />
+            <div className="hidden sm:block w-px bg-border-subtle my-2" />
             <EditableRate
               label="USD/KRW"
               value={exchangeRates.USD}
@@ -202,7 +202,7 @@ const MarketOverviewBar: React.FC = () => {
             />
             {showRateWarning && (
               <div className="flex items-center px-3 py-3">
-                <span className="text-xs text-yellow-400" title="보유 외화 자산의 원화 환산을 위해 환율을 입력하세요.">
+                <span className="text-xs text-amber-300" title="보유 외화 자산의 원화 환산을 위해 환율을 입력하세요.">
                   환율 확인 필요
                 </span>
               </div>

@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { GripVertical, Lock } from 'lucide-react';
 import {
   DndContext,
   closestCenter,
@@ -44,9 +45,10 @@ const SortableRow: React.FC<SortableRowProps> = ({ config, onToggleVisible }) =>
         {...listeners}
         className="cursor-grab active:cursor-grabbing text-gray-500 hover:text-gray-300 px-1 select-none"
         title="드래그하여 순서 변경"
+        aria-label="드래그하여 순서 변경"
         type="button"
       >
-        ⋮⋮
+        <GripVertical className="h-4 w-4" aria-hidden="true" />
       </button>
       <label className="flex items-center gap-2 flex-1 cursor-pointer">
         <input
@@ -117,7 +119,7 @@ const ColumnSettingsDropdown: React.FC<ColumnSettingsDropdownProps> = ({ classNa
             컬럼 설정
           </div>
           <div className="px-2 py-1 text-xs text-gray-500 flex items-center gap-2">
-            <span>🔒</span><span className="text-gray-400">종목명</span>
+            <Lock className="h-3.5 w-3.5" aria-hidden="true" /><span className="text-gray-400">종목명</span>
             <span className="ml-auto text-gray-500">고정</span>
           </div>
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
@@ -128,7 +130,7 @@ const ColumnSettingsDropdown: React.FC<ColumnSettingsDropdownProps> = ({ classNa
             </SortableContext>
           </DndContext>
           <div className="px-2 py-1 text-xs text-gray-500 flex items-center gap-2 mt-1">
-            <span>🔒</span><span className="text-gray-400">관리</span>
+            <Lock className="h-3.5 w-3.5" aria-hidden="true" /><span className="text-gray-400">관리</span>
             <span className="ml-auto text-gray-500">고정</span>
           </div>
           <div className="border-t border-gray-700 mt-2 pt-2 px-2">

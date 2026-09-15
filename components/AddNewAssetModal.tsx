@@ -9,6 +9,9 @@ import { getGeminiApiKey } from '../services/geminiSettings';
 import { usePortfolio } from '../contexts/PortfolioContext';
 import { useConfirm } from '../hooks/useConfirm';
 import ConfirmDialog from './common/ConfirmDialog';
+import Modal from './common/Modal';
+import Button from './common/Button';
+import { CircleAlert, ClipboardList, Loader2, Pencil, RefreshCw, Shield, Sparkles, ChevronDown, ChevronUp } from 'lucide-react';
 import PositionSizingCalculator from './common/PositionSizingCalculator';
 import TradePlanEditor, { type TradePlanEditorHandle } from './trade-plan/TradePlanEditor';
 import { buildTradePlan } from '../utils/tradePlan';
@@ -47,6 +50,8 @@ const AddNewAssetModal: React.FC = () => {
   const [owner, setOwner] = useState<OwnerId>('WONJONG');
   // 투더문 선택 시 자산 구분은 자동 인식 값으로 접어둠(배분에 미사용) — '변경'으로 펼쳐 수정 가능
   const [showCategoryDetail, setShowCategoryDetail] = useState(false);
+  // 제출 시도 후에만 인라인 검증 문구를 보인다(브라우저 alert 대체 — RULES.md §7 사용자 알림)
+  const [submitAttempted, setSubmitAttempted] = useState(false);
 
   // 매매 계획 이 계획으로 저장(P2a) — 기본 ON. "자세히"를 열면 전체 편집기(embedded)로 커스터마이즈.
   const [saveTradePlanOnAdd, setSaveTradePlanOnAdd] = useState(true);
@@ -68,6 +73,7 @@ const AddNewAssetModal: React.FC = () => {
     setOwner('WONJONG');
     setShowCategoryDetail(false);
     setDuplicateError(null);
+    setSubmitAttempted(false);
     setSaveTradePlanOnAdd(true);
     setShowTradePlanDetail(false);
   }, []);
@@ -257,14 +263,16 @@ const AddNewAssetModal: React.FC = () => {
     setDuplicateError(isDuplicate ? `이미 ${OWNER_LABELS[owner]} 계정에 존재하는 자산입니다.` : null);
   }, [ticker, exchange, owner, assets]);
 
+  const tickerError = !ticker ? '종목 검색을 통해 유효한 자산을 선택해주세요.' : null;
+  const fieldsError = (!quantity || !purchasePrice || !purchaseDate || !exchange || !currency || !category)
+    ? '모든 필드를 입력해주세요.'
+    : null;
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!ticker) {
-      alert('종목 검색을 통해 유효한 자산을 선택해주세요.');
-      return;
-    }
-    if (!quantity || !purchasePrice || !purchaseDate || !exchange || !currency || !category) {
-      alert('모든 필드를 입력해주세요.');
+    // 검증 실패 → 인라인 문구(티커 칸 아래·버튼 위)로 보여주고 중단. 중복은 duplicateError 가 즉시 표시.
+    if (tickerError || fieldsError || duplicateError) {
+      setSubmitAttempted(true);
       return;
     }
     const isDuplicateSubmit = assets.some(
@@ -273,7 +281,7 @@ const AddNewAssetModal: React.FC = () => {
                getAssetOwner(asset) === owner
     );
     if (isDuplicateSubmit) {
-      alert(`이미 ${OWNER_LABELS[owner]} 계정에 존재하는 자산입니다.`);
+      setDuplicateError(`이미 ${OWNER_LABELS[owner]} 계정에 존재하는 자산입니다.`);
       return;
     }
     // [핵심 수정] selectedName을 name으로 전달
@@ -343,17 +351,28 @@ const AddNewAssetModal: React.FC = () => {
 
   return (
     <>
-     <div className="fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center z-modal p-4" onClick={onClose} role="dialog" aria-modal="true">
-      <div className="bg-gray-800 p-4 sm:p-6 rounded-lg shadow-xl w-full max-w-lg max-h-[90dvh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-        <div className="flex justify-between items-center mb-4 sm:mb-6">
-            <h2 className="text-xl sm:text-2xl font-bold text-white">신규 자산 추가</h2>
-            <button onClick={onClose} className="text-gray-400 hover:text-white transition">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-            </button>
-        </div>
-        <form onSubmit={handleSubmit} className="space-y-4">
+    <Modal
+      open={isOpen}
+      onClose={onClose}
+      title="신규 자산 추가"
+      size="md"
+      footer={
+        <>
+          <Button variant="secondary" onClick={onClose}>취소</Button>
+          <Button
+            type="submit"
+            form="add-new-asset-form"
+            variant="primary"
+            loading={isLoading}
+            disabled={!!duplicateError}
+            title="입력한 정보로 새 자산을 포트폴리오에 추가합니다."
+          >
+            자산 추가
+          </Button>
+        </>
+      }
+    >
+        <form id="add-new-asset-form" onSubmit={handleSubmit} className="space-y-4">
             <div>
                 <label htmlFor="category" className={labelClasses}>자산 구분</label>
                 {bucket === 'SATELLITE' && !showCategoryDetail ? (
@@ -442,21 +461,21 @@ const AddNewAssetModal: React.FC = () => {
                 autoComplete="off"
                 title="자산의 이름 또는 티커를 입력하여 검색하세요."
             />
-            {duplicateError && <p className="text-danger text-sm mt-1">{duplicateError}</p>}
-            {searchError && <p className="text-danger text-sm mt-1">{searchError}</p>}
+            {submitAttempted && tickerError && (
+              <p className="flex items-center gap-1.5 text-danger text-sm mt-1" role="alert"><CircleAlert className="h-4 w-4 shrink-0" aria-hidden="true" />{tickerError}</p>
+            )}
+            {duplicateError && <p className="flex items-center gap-1.5 text-danger text-sm mt-1" role="alert"><CircleAlert className="h-4 w-4 shrink-0" aria-hidden="true" />{duplicateError}</p>}
+            {searchError && <p className="flex items-center gap-1.5 text-danger text-sm mt-1" role="alert"><CircleAlert className="h-4 w-4 shrink-0" aria-hidden="true" />{searchError}</p>}
             {isSearching && (
                 <div className="absolute top-9 right-3">
-                    <svg className="animate-spin h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
+                    <Loader2 className="animate-spin h-5 w-5 text-gray-400" aria-hidden="true" />
                 </div>
             )}
             {showSearchPanel && (
                 <div className="absolute z-10 w-full bg-gray-700 border border-gray-600 rounded-md mt-1 max-h-72 overflow-y-auto shadow-lg">
                 {isListLoading && (
                     <div className="px-3 py-2 text-xs text-gray-400 border-b border-gray-600">
-                        ⏳ 종목 목록을 받고 있습니다 — 곧 결과가 나타납니다 <span className="text-gray-500">(약 1.3MB · 기기당 하루 1회)</span>
+                        <Loader2 className="inline h-3.5 w-3.5 mr-1 animate-spin align-[-2px]" aria-hidden="true" />종목 목록을 받고 있습니다 — 곧 결과가 나타납니다 <span className="text-gray-500">(약 1.3MB · 기기당 하루 1회)</span>
                     </div>
                 )}
                 {searchResults.length > 0 && (
@@ -481,14 +500,14 @@ const AddNewAssetModal: React.FC = () => {
                 )}
                 <div className="border-t border-gray-600">
                     <button type="button" onMouseDown={(e) => { e.preventDefault(); handleManualAdd(); }} disabled={isSearching} className="w-full text-left px-3 py-2 text-sm text-gray-200 hover:bg-primary-dark transition-colors disabled:opacity-50">
-                        ✏ '<span className="font-mono">{searchQuery.trim().toUpperCase()}</span>' 티커로 직접 추가
+                        <Pencil className="inline h-3.5 w-3.5 mr-1 align-[-2px]" aria-hidden="true" />'<span className="font-mono">{searchQuery.trim().toUpperCase()}</span>' 티커로 직접 추가
                     </button>
                     <button type="button" onMouseDown={(e) => { e.preventDefault(); handleReloadSymbols(); }} disabled={isSearching} className="w-full text-left px-3 py-2 text-sm text-gray-300 hover:bg-primary-dark transition-colors disabled:opacity-50" title="종목 목록을 서버에서 다시 받아옵니다 (검색이 안 되거나 신규상장 종목이 없을 때)">
-                        🔄 종목 목록 새로 받기
+                        <RefreshCw className="inline h-3.5 w-3.5 mr-1 align-[-2px]" aria-hidden="true" />종목 목록 새로 받기
                     </button>
                     {hasGeminiKey && (
                         <button type="button" onMouseDown={(e) => { e.preventDefault(); handleAiSearch(); }} disabled={isSearching} className="w-full text-left px-3 py-2 text-sm text-primary hover:bg-primary-dark transition-colors disabled:opacity-50">
-                            ✨ AI로 더 찾기
+                            <Sparkles className="inline h-3.5 w-3.5 mr-1 align-[-2px]" aria-hidden="true" />AI로 더 찾기
                         </button>
                     )}
                 </div>
@@ -522,7 +541,7 @@ const AddNewAssetModal: React.FC = () => {
             {/* 리스크 기반 권장 수량 (선택) */}
             <div className="bg-gray-700/40 p-3 rounded-md">
                 <div className={`${labelClasses} flex items-center gap-1.5`}>
-                    <span>🛡️ 리스크 기반 권장 수량</span>
+                    <Shield className="h-4 w-4 text-gray-400" aria-hidden="true" /><span>리스크 기반 권장 수량</span>
                     <span className="text-xs text-gray-500 font-normal">(위 매수가 기준)</span>
                 </div>
                 <PositionSizingCalculator
@@ -539,8 +558,8 @@ const AddNewAssetModal: React.FC = () => {
             {ticker && quantity && purchasePrice && (
               <div className="bg-gray-700/40 p-3 rounded-md space-y-2">
                 {hasMatchedWatchPlan ? (
-                  <p className="text-xs text-sky-300">
-                    📋 관심종목에 세워둔 매매 계획이 있습니다 — 저장하면 실제 매수가·수량으로 자동 이어집니다.
+                  <p className="text-xs text-info">
+                    <ClipboardList className="inline h-3.5 w-3.5 mr-1 align-[-2px]" aria-hidden="true" />관심종목에 세워둔 매매 계획이 있습니다 — 저장하면 실제 매수가·수량으로 자동 이어집니다.
                   </p>
                 ) : (
                 <>
@@ -564,7 +583,9 @@ const AddNewAssetModal: React.FC = () => {
                       onClick={() => setShowTradePlanDetail(v => !v)}
                       className="text-xs text-primary-light hover:underline"
                     >
-                      {showTradePlanDetail ? '자세히 접기 ▲' : '자세히 ▼'}
+                      {showTradePlanDetail
+                        ? <>자세히 접기 <ChevronUp className="inline h-3.5 w-3.5 align-[-2px]" aria-hidden="true" /></>
+                        : <>자세히 <ChevronDown className="inline h-3.5 w-3.5 align-[-2px]" aria-hidden="true" /></>}
                     </button>
                     {showTradePlanDetail && (
                       <TradePlanEditor
@@ -589,19 +610,11 @@ const AddNewAssetModal: React.FC = () => {
               </div>
             )}
 
-            <div className="pt-4 flex justify-end">
-                <button type="submit" disabled={isLoading || !!duplicateError} className="w-full bg-primary hover:bg-primary-dark text-white font-bold py-2.5 px-4 rounded-md disabled:bg-gray-600 disabled:cursor-not-allowed transition duration-300 flex items-center justify-center" title="입력한 정보로 새 자산을 포트폴리오에 추가합니다.">
-                {isLoading ? (
-                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                ) : '자산 추가'}
-                </button>
-            </div>
+            {submitAttempted && !tickerError && fieldsError && (
+              <p className="flex items-center gap-1.5 text-danger text-sm" role="alert"><CircleAlert className="h-4 w-4 shrink-0" aria-hidden="true" />{fieldsError}</p>
+            )}
         </form>
-      </div>
-    </div>
+    </Modal>
     {confirmRequest && <ConfirmDialog {...confirmRequest} />}
     </>
   );

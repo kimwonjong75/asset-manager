@@ -41,7 +41,7 @@ const RiskMatrixPanel: React.FC = () => {
   };
 
   return (
-    <div className="bg-gray-800 rounded-lg p-4">
+    <div>
       <div className="flex items-center gap-2 mb-3">
         <h4 className="text-sm font-semibold text-amber-300 inline-flex items-center gap-1.5">
           <TriangleAlert className="h-4 w-4" aria-hidden="true" />
@@ -96,8 +96,9 @@ const RiskMatrixPanel: React.FC = () => {
         </div>
       )}
 
-      <p className="text-gray-500 text-xs mt-2 italic">
-        참고용 경고이며 투자자문이 아닙니다. 예측이 아닌 과열 리스크 경고입니다.
+      {/* 면책(투자자문 아님)은 홈 하단 한 줄로 통합 — 여기서는 경고의 성격만 */}
+      <p className="text-gray-500 text-xs mt-2">
+        예측이 아닌 과열 리스크 경고입니다.
       </p>
     </div>
   );

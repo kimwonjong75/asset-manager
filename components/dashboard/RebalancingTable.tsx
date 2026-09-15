@@ -318,7 +318,7 @@ const RebalancingTable: React.FC<RebalancingTableProps> = ({ assets, exchangeRat
 
       {/* ① 전략 배분: 코어 vs 투더문 */}
       <section>
-        <h3 className="text-base font-bold text-white mb-1">① 전략 배분 — 코어 vs 투더문</h3>
+        <h3 className="text-sm font-semibold text-white mb-1">① 전략 배분 — 코어 vs 투더문</h3>
         <p className="text-xs text-gray-400 mb-3">
           전체 자산을 자산배분 본체(코어)와 개별 위성 종목(투더문)으로 나눕니다. 먼저 이 비율을 맞추세요.
         </p>
@@ -335,7 +335,7 @@ const RebalancingTable: React.FC<RebalancingTableProps> = ({ assets, exchangeRat
 
       {/* ② 코어 자산배분 */}
       <section>
-        <h3 className="text-base font-bold text-white mb-1">② 코어 자산배분 — 카테고리별</h3>
+        <h3 className="text-sm font-semibold text-white mb-1">② 코어 자산배분 — 카테고리별</h3>
         <p className="text-xs text-gray-400 mb-3">
           코어 버킷({formatKRW(core.currentValue)}) 내부에서만 카테고리 비율을 맞춥니다. 투더문 종목은 제외됩니다.
           {hasSatellite && ' (비중·목표금액은 코어 합계 기준)'}
@@ -379,7 +379,7 @@ const RebalancingTable: React.FC<RebalancingTableProps> = ({ assets, exchangeRat
       {/* ③ 대표 매수 종목 지정 (리밸런싱 매수용) — Phase 4b-1: 매핑 저장까지만, 주문 생성 없음 */}
       {core.rows.length > 0 && (
         <section>
-          <h3 className="text-base font-bold text-white mb-1">③ 대표 매수 종목 지정 (코어 리밸런싱 매수용)</h3>
+          <h3 className="text-sm font-semibold text-white mb-1">③ 대표 매수 종목 지정 (코어 리밸런싱 매수용)</h3>
           <p className="text-xs text-gray-400 mb-3">
             각 코어 카테고리가 목표 대비 <span className="text-gray-300">부족할 때 어떤 종목을 살지</span> 미리 지정합니다.
             지정 후 <span className="text-gray-300">저장하기</span>를 눌러야 반영됩니다. (실제 주문·수량 계산은 다음 단계)
@@ -426,7 +426,7 @@ const RebalancingTable: React.FC<RebalancingTableProps> = ({ assets, exchangeRat
       {/* ④ 투더문 현황 (참고) */}
       {hasSatellite && (
         <section>
-          <h3 className="text-base font-bold text-white mb-1">④ 투더문 현황 (참고)</h3>
+          <h3 className="text-sm font-semibold text-white mb-1">④ 투더문 현황 (참고)</h3>
           <p className="text-xs text-gray-400 mb-3">
             위성 종목은 종류가 섞여 있어 합산 한 덩어리로만 관리합니다. 총 {formatKRW(satelliteValue)}.
           </p>

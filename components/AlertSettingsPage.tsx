@@ -1,5 +1,7 @@
 import React, { useCallback, useState } from 'react';
-import { Info } from 'lucide-react';
+import { ChevronDown, ChevronUp, Info, Lightbulb, Search } from 'lucide-react';
+import { useConfirm } from '../hooks/useConfirm';
+import ConfirmDialog from './common/ConfirmDialog';
 import { usePortfolio } from '../contexts/PortfolioContext';
 import type { AlertRule, AlertSettings } from '../types/alertRules';
 import { DEFAULT_ALERT_SETTINGS } from '../constants/alertRules';
@@ -103,6 +105,7 @@ const AlertSettingsPage: React.FC = () => {
   const { ui, actions } = usePortfolio();
   const { alertSettings } = ui;
   const [showDiagnostics, setShowDiagnostics] = useState(false);
+  const { confirm, confirmRequest } = useConfirm();
 
   const updateRule = useCallback((ruleId: string, updates: Partial<AlertRule>) => {
     const newRules = alertSettings.rules.map(r =>
@@ -120,10 +123,11 @@ const AlertSettingsPage: React.FC = () => {
     actions.updateAlertSettings({ ...alertSettings, rules: newRules });
   }, [alertSettings, actions]);
 
-  const handleResetDefaults = () => {
-    if (window.confirm('모든 알림 설정을 기본값으로 초기화하시겠습니까?')) {
-      actions.updateAlertSettings(DEFAULT_ALERT_SETTINGS);
-    }
+  const handleResetDefaults = async () => {
+    const ok = await confirm('모든 알림 설정을 기본값으로 초기화하시겠습니까?', {
+      title: '알림 설정 초기화', confirmLabel: '초기화', tone: 'danger',
+    });
+    if (ok) actions.updateAlertSettings(DEFAULT_ALERT_SETTINGS);
   };
 
   // 민감도 프리셋 적용 — 비파괴(임계값만 일괄 조정, 규칙 삭제·enabled 변경 없음). 순수 변환은 utils 위임.
@@ -475,7 +479,8 @@ const AlertSettingsPage: React.FC = () => {
 
   return (
     <div className="max-w-3xl mx-auto">
-      <div className="bg-gray-800 rounded-lg shadow-lg">
+      {confirmRequest && <ConfirmDialog {...confirmRequest} />}
+      <div className="bg-gray-800 rounded-lg border border-border-subtle">
         {/* 헤더 */}
         <div className="px-6 py-5 border-b border-gray-700">
           <h2 className="text-xl font-bold text-white">투자 시그널 알림 설정</h2>
@@ -485,7 +490,8 @@ const AlertSettingsPage: React.FC = () => {
         {/* "징후 ≠ 방아쇠" 안내 — 사용자 과신 방지 */}
         <div className="mx-6 mt-4 bg-amber-950/30 border border-amber-700/40 rounded-lg px-4 py-3">
           <p className="text-amber-200 text-xs leading-relaxed">
-            <span className="font-semibold">💡 이 신호들은 과열 상태를 알리는 것이지, 폭락 시점을 정확히 예측하지 않습니다.</span>
+            <Lightbulb className="inline h-3.5 w-3.5 mr-1 align-[-2px]" aria-hidden="true" />
+            <span className="font-semibold">이 신호들은 과열 상태를 알리는 것이지, 폭락 시점을 정확히 예측하지 않습니다.</span>
             <br />
             신호 발생 후 며칠~몇 주는 계속 오를 수도 있으며, 실제 하락은 외부 악재가 방아쇠가 됩니다.
             분할매도 / 비중조절의 참고로만 사용하세요.
@@ -545,9 +551,11 @@ const AlertSettingsPage: React.FC = () => {
             <button
               onClick={() => setShowDiagnostics(v => !v)}
               aria-expanded={showDiagnostics}
-              className="text-sm text-cyan-400/90 hover:text-cyan-300"
+              className="inline-flex items-center gap-1 text-sm text-cyan-400/90 hover:text-cyan-300"
             >
-              {showDiagnostics ? '진단 닫기 ▴' : '🔍 왜 이 알림이 안 떴나요? ▾'}
+              {showDiagnostics
+                ? <>진단 닫기 <ChevronUp className="h-4 w-4" aria-hidden="true" /></>
+                : <><Search className="h-4 w-4" aria-hidden="true" />왜 이 알림이 안 떴나요? <ChevronDown className="h-4 w-4" aria-hidden="true" /></>}
             </button>
             {showDiagnostics && <div className="mt-3"><AlertDiagnosticsPanel /></div>}
           </div>

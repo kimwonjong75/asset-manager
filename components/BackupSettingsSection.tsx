@@ -1,10 +1,15 @@
 import React, { useEffect } from 'react';
 import { usePortfolio } from '../contexts/PortfolioContext';
 import { RETENTION_OPTIONS } from '../types/backup';
+import { useConfirm } from '../hooks/useConfirm';
+import ConfirmDialog from './common/ConfirmDialog';
+import Button from './common/Button';
+import { RotateCcw, Trash2 } from 'lucide-react';
 
 const BackupSettingsSection: React.FC = () => {
   const { derived, actions } = usePortfolio();
   const { backupList, backupSettings, isBackingUp } = derived;
+  const { confirm, confirmRequest } = useConfirm();
 
   // 설정 탭 진입 시 백업 목록 로드
   useEffect(() => {
@@ -25,19 +30,26 @@ const BackupSettingsSection: React.FC = () => {
   };
 
   const handleRestore = async (fileId: string, date: string) => {
-    if (!window.confirm(`${date} 백업으로 복원하면 현재 데이터가 대체됩니다. 계속하시겠습니까?`)) return;
+    const ok = await confirm(`${date} 백업으로 복원하면 현재 데이터가 대체됩니다. 계속하시겠습니까?`, {
+      title: '백업 복원', confirmLabel: '복원', tone: 'danger',
+    });
+    if (!ok) return;
     await actions.restoreBackup(fileId);
   };
 
   const handleDelete = async (fileId: string, date: string) => {
-    if (!window.confirm(`${date} 백업을 삭제하시겠습니까?`)) return;
+    const ok = await confirm(`${date} 백업을 삭제하시겠습니까?`, {
+      title: '백업 삭제', confirmLabel: '삭제', tone: 'danger',
+    });
+    if (!ok) return;
     await actions.deleteBackup(fileId);
   };
 
   const lastBackupDate = localStorage.getItem('asset-manager-last-backup-date');
 
   return (
-    <div className="bg-gray-800 rounded-lg shadow-lg">
+    <div className="bg-gray-800 rounded-lg border border-border-subtle">
+      {confirmRequest && <ConfirmDialog {...confirmRequest} />}
       {/* 헤더 */}
       <div className="px-6 py-5 border-b border-gray-700">
         <h2 className="text-xl font-bold text-white">데이터 백업 설정</h2>
@@ -84,13 +96,9 @@ const BackupSettingsSection: React.FC = () => {
             <span className="text-xs text-gray-400">
               마지막 백업: {lastBackupDate || '없음'}
             </span>
-            <button
-              onClick={handleManualBackup}
-              disabled={isBackingUp}
-              className="text-sm px-3 py-1.5 bg-primary hover:bg-primary-dark text-white rounded-md transition disabled:opacity-50"
-            >
+            <Button variant="primary" onClick={handleManualBackup} loading={isBackingUp}>
               {isBackingUp ? '백업 중...' : '수동 백업'}
-            </button>
+            </Button>
           </div>
         </div>
 
@@ -106,18 +114,12 @@ const BackupSettingsSection: React.FC = () => {
                 >
                   <span className="text-sm text-gray-200">{b.date}</span>
                   <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => handleRestore(b.fileId, b.date)}
-                      className="text-xs px-2 py-1 bg-blue-600 hover:bg-blue-500 text-white rounded transition"
-                    >
+                    <Button variant="secondary" icon={<RotateCcw />} onClick={() => handleRestore(b.fileId, b.date)}>
                       복원
-                    </button>
-                    <button
-                      onClick={() => handleDelete(b.fileId, b.date)}
-                      className="text-xs px-2 py-1 bg-gray-700 hover:bg-red-600 text-gray-300 hover:text-white rounded transition"
-                    >
+                    </Button>
+                    <Button variant="danger" icon={<Trash2 />} onClick={() => handleDelete(b.fileId, b.date)}>
                       삭제
-                    </button>
+                    </Button>
                   </div>
                 </div>
               ))}

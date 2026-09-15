@@ -1,4 +1,5 @@
 import React from 'react';
+import Button from './Button';
 
 interface Props {
   children: React.ReactNode;
@@ -27,18 +28,15 @@ class ErrorBoundary extends React.Component<Props, State> {
   render() {
     if (this.state.hasError) {
       return (
-        <div className="min-h-screen flex items-center justify-center bg-slate-900 text-slate-100 p-6">
-          <div className="max-w-md w-full bg-slate-800 border border-slate-700 rounded-lg p-6 shadow-lg text-center">
-            <h1 className="text-xl font-semibold mb-2">문제가 발생했습니다</h1>
-            <p className="text-slate-300 mb-6">페이지를 새로고침해주세요.</p>
-            <button
-              onClick={this.handleReload}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-md font-medium transition-colors"
-            >
+        <div className="min-h-screen flex items-center justify-center bg-surface text-gray-100 p-6">
+          <div className="max-w-md w-full bg-surface-elevated border border-border-subtle rounded-card p-6 text-center">
+            <h1 className="text-xl font-semibold text-white mb-2">문제가 발생했습니다</h1>
+            <p className="text-gray-300 mb-6">페이지를 새로고침해주세요.</p>
+            <Button variant="primary" size="lg" onClick={this.handleReload}>
               새로고침
-            </button>
+            </Button>
             {this.state.error && (
-              <details className="mt-4 text-left text-xs text-slate-400">
+              <details className="mt-4 text-left text-xs text-gray-400">
                 <summary className="cursor-pointer">에러 상세</summary>
                 <pre className="mt-2 whitespace-pre-wrap break-words">
                   {this.state.error.message}

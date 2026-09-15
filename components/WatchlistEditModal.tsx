@@ -5,6 +5,9 @@ import { searchSymbols } from '../services/symbolListService';
 import { usePortfolio } from '../contexts/PortfolioContext';
 import { useConfirm } from '../hooks/useConfirm';
 import ConfirmDialog from './common/ConfirmDialog';
+import Modal from './common/Modal';
+import Button from './common/Button';
+import { Trash2 } from 'lucide-react';
 
 const WatchlistEditModal: React.FC = () => {
   const { modal, actions, data } = usePortfolio();
@@ -108,8 +111,11 @@ const WatchlistEditModal: React.FC = () => {
     onClose();
   };
 
-  const handleDelete = () => {
-    if (window.confirm(`'${item.name}' 종목을 관심종목에서 삭제하시겠습니까?`)) {
+  const handleDelete = async () => {
+    const ok = await confirm(`'${item.name}' 종목을 관심종목에서 삭제하시겠습니까?`, {
+      title: '관심종목 삭제', confirmLabel: '삭제', tone: 'danger',
+    });
+    if (ok) {
       actions.deleteWatchItem(item.id);
       onClose();
     }
@@ -119,18 +125,22 @@ const WatchlistEditModal: React.FC = () => {
   const labelClasses = "block text-sm font-medium text-gray-300 mb-1";
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center z-modal p-4" onClick={handleClose} role="dialog" aria-modal="true">
-      {confirmRequest && <ConfirmDialog {...confirmRequest} />}
-      <div className="bg-gray-800 p-4 sm:p-6 rounded-lg shadow-xl w-full max-w-lg max-h-[90dvh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-        <div className="flex justify-between items-center mb-4 sm:mb-6">
-          <h2 className="text-xl sm:text-2xl font-bold text-white">관심종목 수정: {item.name}</h2>
-          <button onClick={handleClose} className="text-gray-400 hover:text-white transition">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-        <form onSubmit={handleSubmit} className="space-y-4">
+    <>
+    {/* 모달 닫기 보호(RULES.md §8): Esc·백드롭·X 모두 dirty 확인 래퍼 handleClose */}
+    <Modal
+      open={isOpen}
+      onClose={handleClose}
+      title={`관심종목 수정: ${item.name}`}
+      size="md"
+      footer={
+        <>
+          <Button variant="danger" icon={<Trash2 />} onClick={handleDelete} className="mr-auto">삭제</Button>
+          <Button variant="secondary" onClick={handleClose}>취소</Button>
+          <Button type="submit" form="watchlist-edit-form" variant="primary">저장</Button>
+        </>
+      }
+    >
+        <form id="watchlist-edit-form" onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className={labelClasses}>자산 구분</label>
             <select value={category} onChange={(e) => setCategory(Number(e.target.value))} className={inputClasses}>
@@ -169,22 +179,10 @@ const WatchlistEditModal: React.FC = () => {
             <textarea value={notes} onChange={(e) => setNotes(e.target.value)} className={inputClasses} rows={2} placeholder="종목에 대한 메모..." />
           </div>
 
-          <div className="mt-8 flex justify-between items-center pt-4">
-            <button type="button" onClick={handleDelete} className="bg-danger-strong hover:bg-pink-800 text-white font-medium py-2 px-4 rounded-md transition duration-300">
-              삭제
-            </button>
-            <div className="flex space-x-4">
-              <button type="button" onClick={handleClose} className="bg-gray-600 hover:bg-zinc-500 text-white font-medium py-2 px-4 rounded-md transition duration-300">
-                취소
-              </button>
-              <button type="submit" className="bg-primary hover:bg-primary-dark text-white font-bold py-2 px-4 rounded-md transition duration-300">
-                저장
-              </button>
-            </div>
-          </div>
         </form>
-      </div>
-    </div>
+    </Modal>
+    {confirmRequest && <ConfirmDialog {...confirmRequest} />}
+    </>
   );
 };
 

@@ -14,6 +14,8 @@
 import React, { useEffect, useState } from 'react';
 import { usePortfolio } from '../../contexts/PortfolioContext';
 import { isTurtleOrderLocked, TURTLE_LOCK_MESSAGE } from '../../types/turtleLock';
+import Button from '../common/Button';
+import { Check, Trash2 } from 'lucide-react';
 
 const fmtKRW = (n: number): string =>
   Number.isFinite(n) ? `₩${Math.round(n).toLocaleString('ko-KR')}` : '—';
@@ -98,7 +100,7 @@ const TurtleSettingsPanel: React.FC = () => {
           disabled={!dirty}
           className="text-xs font-medium text-white bg-primary hover:bg-primary-dark px-4 py-2 rounded-md transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
         >저장</button>
-        {saved && !dirty && <span className="text-xs text-emerald-400 pb-1.5">✓ 저장됨</span>}
+        {saved && !dirty && <span className="inline-flex items-center gap-1 text-xs text-ok pb-1.5"><Check className="h-3.5 w-3.5" aria-hidden="true" />저장됨</span>}
       </div>
 
       {budget <= 0 ? (
@@ -167,11 +169,7 @@ const TurtleSettingsPanel: React.FC = () => {
         ) : (
           <>
             <span className="text-xs text-gray-400">{compactable.count}건 삭제 · 자동 백업에 원본 보존됨</span>
-            <button
-              type="button"
-              onClick={runCompact}
-              className="text-xs font-medium text-white bg-red-600 hover:bg-red-500 px-3 py-1.5 rounded-md transition-colors"
-            >삭제</button>
+            <Button variant="danger" icon={<Trash2 />} onClick={runCompact}>삭제</Button>
             <button
               type="button"
               onClick={() => setArmed(false)}
@@ -180,7 +178,7 @@ const TurtleSettingsPanel: React.FC = () => {
           </>
         )}
         {compactDone !== null && compactDone > 0 && !armed && (
-          <span className="text-xs text-emerald-400">✓ {compactDone}건 정리됨</span>
+          <span className="inline-flex items-center gap-1 text-xs text-ok"><Check className="h-3.5 w-3.5" aria-hidden="true" />{compactDone}건 정리됨</span>
         )}
       </div>
     </div>

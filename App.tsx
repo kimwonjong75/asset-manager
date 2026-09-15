@@ -34,7 +34,7 @@ import CleanupView from './components/cleanup/CleanupView';
 // Stage B: 탭별 앱바 구성(화면 제목·계정뷰 세그먼트·기간 선택·더보기 강조)은 constants/tabMeta의
 // TAB_META 한 곳에서 선언한다 — 여기서 `ui.activeTab !== …` 연쇄 조건을 다시 만들지 말 것.
 import { getTabMeta, type AppTab } from './constants/tabMeta';
-import { Bell } from 'lucide-react';
+import { Bell, X } from 'lucide-react';
 
 // P4: 모바일 상단바는 공간이 좁아 `derived.priceFreshnessLabel`(예: '09-03 14:20 (장중)'/'09-02 마감 후')을
 // 전부 못 보여준다 — 시:분만 남기고, 없으면(마감 후·기준시각 없음) 원문을 짧게 자른다. 순수 표시 포맷팅.
@@ -198,10 +198,11 @@ const AppContent: React.FC = () => {
                   업데이트 적용
                 </button>
                 <button
-                  className="ml-2 text-white/80 hover:text-white transition"
+                  className="ml-2 inline-flex items-center justify-center min-h-9 min-w-9 rounded-md text-white/80 hover:text-white transition"
                   onClick={() => setUpdateAvailable(false)}
+                  aria-label="새 버전 알림 닫기"
                 >
-                  ✕
+                  <X className="h-4 w-4" aria-hidden="true" />
                 </button>
               </div>
             </div>
@@ -209,7 +210,7 @@ const AppContent: React.FC = () => {
           {status.error && (
             <div className="bg-danger-strong text-white px-4 py-3 rounded-lg shadow-lg flex justify-between items-center pointer-events-auto">
               <span className="block sm:inline">{status.error}</span>
-              <button className="ml-4 text-white/80 hover:text-white transition" onClick={() => actions.clearError()}>✕</button>
+              <button className="ml-4 inline-flex items-center justify-center min-h-9 min-w-9 rounded-md text-white/80 hover:text-white transition" onClick={() => actions.clearError()} aria-label="오류 메시지 닫기"><X className="h-4 w-4" aria-hidden="true" /></button>
             </div>
           )}
         </div>

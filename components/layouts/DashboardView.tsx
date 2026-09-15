@@ -7,6 +7,7 @@
 // 모든 카드는 계산 범위를 ScopeChip으로 표시한다. 계정 선택(ui.accountView)은 이 화면의 세그먼트가 담당.
 
 import React, { useMemo } from 'react';
+import { Info } from 'lucide-react';
 import { usePortfolio } from '../../contexts/PortfolioContext';
 import { getCategoryName } from '../../types/category';
 import { matchesOwnerFilter, OWNER_FILTER_OPTIONS, OWNER_FILTER_LABELS } from '../../types/owner';
@@ -31,6 +32,7 @@ import MarketDistributionBanner from '../MarketDistributionBanner';
 import RiskCalculatorCard from '../dashboard/RiskCalculatorCard';
 import GuruSignalCard from '../dashboard/GuruSignalCard';
 import ReferenceIndicatorsSection from '../dashboard/ReferenceIndicatorsSection';
+import { TRADE_PLAN_BASIS_NOTE } from '../trade-plan/TradePlanCard';
 
 const ACCOUNT_FILTER_SCOPE_TITLE = '위 계정 선택을 따릅니다. 자산 구분 필터는 적용되지 않습니다.';
 
@@ -224,6 +226,16 @@ const DashboardView: React.FC = () => {
           <RiskCalculatorCard />
         </section>
       </div>
+
+      {/* 화면 면책 — Stage C: 카드마다(리스크 계산기·과열 리스크·시장 디스트리뷰션·구루 신호·매매 계획 카드) 반복하던
+          "투자자문이 아닙니다"를 홈 하단 한 줄로 통합. 각 카드에는 성격 설명(예측 아님 등)만 남긴다. */}
+      <p className="flex items-start gap-1.5 text-xs text-gray-500 leading-relaxed">
+        <Info className="h-3.5 w-3.5 mt-px shrink-0" aria-hidden="true" />
+        <span>
+          이 화면의 신호·경고·계산(오늘의 브리핑, 시장 디스트리뷰션, 구루 신호, 과열 리스크, 리스크 계산기)은 판단을 돕는 참고용이며 투자자문이 아닙니다.
+          매매 계획 {TRADE_PLAN_BASIS_NOTE}
+        </span>
+      </p>
     </div>
   );
 };

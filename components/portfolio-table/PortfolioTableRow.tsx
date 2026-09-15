@@ -6,7 +6,7 @@ import AssetTrendChart from '../AssetTrendChart';
 import ChartViewerModal from '../common/ChartViewerModal';
 import StockReviewAccordion from '../stock-review/StockReviewAccordion';
 import TradePlanSection from '../trade-plan/TradePlanSection';
-import { MoreHorizontal } from 'lucide-react';
+import { MoreHorizontal, Star, StickyNote } from 'lucide-react';
 import MemoTooltip from '../common/MemoTooltip';
 import Tooltip from '../common/Tooltip';
 import ActionMenu from '../common/ActionMenu';
@@ -117,10 +117,12 @@ const PortfolioTableRow: React.FC<PortfolioTableRowProps> = ({
                {onTogglePin && (
                  <button
                    onClick={(e) => { e.stopPropagation(); onTogglePin(asset.id); }}
-                   className={`text-lg leading-none transition-colors flex-shrink-0 ${asset.pinned ? 'text-yellow-400' : 'text-gray-500 hover:text-yellow-400/60'}`}
+                   className={`transition-colors flex-shrink-0 ${asset.pinned ? 'text-yellow-400' : 'text-gray-500 hover:text-yellow-400/60'}`}
                    title={asset.pinned ? '중요 해제' : '중요 표시'}
+                   aria-label={asset.pinned ? '중요 해제' : '중요 표시'}
+                   aria-pressed={!!asset.pinned}
                  >
-                   {asset.pinned ? '★' : '☆'}
+                   <Star className="h-4 w-4" fill={asset.pinned ? 'currentColor' : 'none'} aria-hidden="true" />
                  </button>
                )}
                <MemoTooltip memo={asset.memo}>
@@ -133,11 +135,15 @@ const PortfolioTableRow: React.FC<PortfolioTableRowProps> = ({
                    {(asset.customName?.trim() || asset.name)}
                  </a>
                </MemoTooltip>
-               <span
-                 className={`text-xs leading-none cursor-pointer transition-opacity flex-shrink-0 ${asset.memo ? 'opacity-60 hover:opacity-100' : 'opacity-20 hover:opacity-50'}`}
+               <button
+                 type="button"
+                 className={`text-gray-300 cursor-pointer transition-opacity flex-shrink-0 ${asset.memo ? 'opacity-60 hover:opacity-100' : 'opacity-20 hover:opacity-50'}`}
                  onClick={(e) => { e.stopPropagation(); onMemoEdit?.(asset); }}
                  title={asset.memo ? '메모 수정' : '메모 추가'}
-               >📝</span>
+                 aria-label={asset.memo ? '메모 수정' : '메모 추가'}
+               >
+                 <StickyNote className="h-4 w-4" aria-hidden="true" />
+               </button>
              </div>
             <div className="flex items-center gap-1.5">
               <span className="text-xs text-gray-500 break-all">{asset.ticker} | {asset.exchange}</span>

@@ -14,6 +14,9 @@ import { usePortfolio } from '../../contexts/PortfolioContext';
 import { ActionItem } from '../../types/actionQueue';
 import { TurtleFill } from '../../utils/turtleExecution';
 import { formatKRW, formatOriginalCurrency } from '../portfolio-table/utils';
+import Modal from '../common/Modal';
+import Button from '../common/Button';
+import { CircleAlert } from 'lucide-react';
 
 interface Props {
   executeCleanupAction: (action: ActionItem, fill: TurtleFill) => Promise<{ ok: boolean; reason?: string }>;
@@ -74,24 +77,21 @@ const CleanupExecuteModal: React.FC<Props> = ({ executeCleanupAction }) => {
   const ccy = asset?.currency;
 
   return (
-    <div
-      className="fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center z-modal p-4"
-      onClick={onClose}
-      role="dialog"
-      aria-modal="true"
+    <Modal
+      open
+      onClose={onClose}
+      title="대청소 청산 (전량 매도)"
+      description={<><span className="text-gray-200 font-medium">{action.name}</span><span className="text-gray-500 ml-2">{action.ticker}</span></>}
+      size="md"
+      footer={
+        <>
+          <Button variant="secondary" onClick={onClose} disabled={isSubmitting}>취소</Button>
+          <Button type="submit" form="cleanup-execute-form" variant="primary" disabled={!canSubmit} loading={isSubmitting}>
+            {isSubmitting ? '실행 중...' : '매도 실행'}
+          </Button>
+        </>
+      }
     >
-      <div className="bg-gray-800 p-4 sm:p-6 rounded-lg shadow-xl w-full max-w-lg max-h-[90dvh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-        <div className="flex items-start justify-between gap-3 mb-4">
-          <div className="min-w-0">
-            <h2 className="text-lg sm:text-xl font-bold text-white truncate">대청소 청산 (전량 매도)</h2>
-            <p className="text-sm text-gray-400 mt-0.5">
-              <span className="text-gray-200 font-medium">{action.name}</span>
-              <span className="text-gray-500 ml-2">{action.ticker}</span>
-            </p>
-          </div>
-          <button type="button" onClick={onClose} className="flex-shrink-0 text-gray-400 hover:text-white text-xl leading-none px-1" aria-label="닫기">×</button>
-        </div>
-
         {/* 보유 정보 */}
         {asset && (
           <div className="bg-gray-700/60 rounded-md p-3.5 mb-4 text-xs">
@@ -107,12 +107,12 @@ const CleanupExecuteModal: React.FC<Props> = ({ executeCleanupAction }) => {
         )}
 
         {blocked && (
-          <div className="mb-4 text-sm text-danger bg-danger-soft border border-danger/30 rounded-md px-3 py-2">
-            대상 자산을 찾을 수 없거나 보유수량이 0입니다. 이미 매도되었을 수 있습니다.
+          <div className="mb-4 flex items-start gap-1.5 text-sm text-danger bg-danger-soft border border-danger/30 rounded-md px-3 py-2" role="alert">
+            <CircleAlert className="h-4 w-4 mt-0.5 shrink-0" aria-hidden="true" />대상 자산을 찾을 수 없거나 보유수량이 0입니다. 이미 매도되었을 수 있습니다.
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-3.5">
+        <form id="cleanup-execute-form" onSubmit={handleSubmit} className="space-y-3.5">
           <div>
             <label className="block text-xs font-medium text-gray-400 mb-1">체결일</label>
             <input
@@ -143,18 +143,11 @@ const CleanupExecuteModal: React.FC<Props> = ({ executeCleanupAction }) => {
           </p>
 
           {error && (
-            <div className="text-sm text-danger bg-danger-soft border border-danger/30 rounded-md px-3 py-2">{error}</div>
+            <div className="flex items-start gap-1.5 text-sm text-danger bg-danger-soft border border-danger/30 rounded-md px-3 py-2" role="alert"><CircleAlert className="h-4 w-4 mt-0.5 shrink-0" aria-hidden="true" />{error}</div>
           )}
 
-          <div className="flex items-center justify-end gap-2 pt-1">
-            <button type="button" onClick={onClose} disabled={isSubmitting} className="text-sm text-gray-300 hover:text-white px-4 py-2 rounded-md transition-colors disabled:opacity-50">취소</button>
-            <button type="submit" disabled={!canSubmit} className="text-sm font-medium text-white bg-primary-dark hover:bg-primary px-4 py-2 rounded-md transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
-              {isSubmitting ? '실행 중...' : '매도 실행'}
-            </button>
-          </div>
         </form>
-      </div>
-    </div>
+    </Modal>
   );
 };
 

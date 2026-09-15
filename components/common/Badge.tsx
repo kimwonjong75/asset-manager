@@ -4,7 +4,8 @@
 //
 // Stage B 색 규약(RULES.md §8): up=오름·이익·매수(빨강) / down=내림·손실·매도(파랑) /
 // ok=성공 상태 / warning=위험·확인(주황, 문구와 함께) / danger=삭제·오류(핑크) / info / neutral.
-// positive·negative 는 폐기 예정 별칭 — 신규 코드 금지.
+// tone 'positive'·'negative' 는 옛 호출부 호환용 이름 별칭(클래스는 ok/warning 토큰으로 매핑) — 신규 코드 금지.
+// Tailwind 색 별칭(text-positive 등)은 Stage C 게이트에서 삭제됐다.
 
 import React from 'react';
 

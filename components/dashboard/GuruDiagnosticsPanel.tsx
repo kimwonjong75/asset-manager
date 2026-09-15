@@ -3,25 +3,26 @@
 // 선택 종목의 모든 신호 규칙을 3축(자격/평가/준비도)으로 진단해 사용자용 단일 상태로 보여준다.
 // 상태/선택/정렬은 useGuruDiagnostics(훅)에 위임 — 이 컴포넌트는 렌더만 담당(프로젝트 규칙).
 // 신호 0건이어도 보이며(왜 0건인지 설명이 목적), 포트폴리오+관심종목 전체를 선택 대상으로 노출한다.
+// Stage C: 조건 충족 표시는 PassMark(충족=ok ✓ / 미충족=회색 ✗ / 판단불가=–). 미충족은 오류가 아니므로 빨강·핑크 금지.
 
 import React, { useState } from 'react';
+import { ChevronDown } from 'lucide-react';
 import { useGuruDiagnostics } from '../../hooks/useGuruDiagnostics';
+import PassMark from '../common/PassMark';
 import type { DiagnosticRow } from '../../types/guruDiagnostics';
 import { RULE_ACTION_LABELS, type StatusTone, type LeafExplain } from '../../types/knowledge';
 
 const TONE_CLASS: Record<StatusTone, string> = {
-  positive: 'text-emerald-300',
+  positive: 'text-ok',
   neutral: 'text-gray-300',
   caution: 'text-amber-300',
   muted: 'text-gray-500',
 };
 
-// 조건 leaf별 실제값 vs 기준 — GuruSignalCard의 ExplainBlock과 같은 표기 규약(✓/✗/—).
+// 조건 leaf별 실제값 vs 기준 — PassMark(✓/✗/–) 표기.
 const LeafRow: React.FC<{ leaf: LeafExplain }> = ({ leaf }) => (
   <div className="flex items-center gap-1.5 flex-wrap">
-    <span className={leaf.passed === true ? 'text-emerald-400' : leaf.passed === false ? 'text-rose-400' : 'text-gray-500'}>
-      {leaf.passed === true ? '✓' : leaf.passed === false ? '✗' : '—'}
-    </span>
+    <PassMark state={leaf.passed === true ? 'pass' : leaf.passed === false ? 'fail' : 'unknown'} size="sm" />
     <span className="text-gray-300">{leaf.label}</span>
     <span className="text-white font-mono">{leaf.actual}</span>
     <span className="text-gray-500">(기준 {leaf.condition})</span>
@@ -32,9 +33,9 @@ const RuleDiagnosticRow: React.FC<{ row: DiagnosticRow }> = ({ row }) => {
   const { diagnostic: d, status } = row;
   const [open, setOpen] = useState(false);
   return (
-    <li className="bg-gray-900/50 rounded px-2.5 py-2">
+    <li className="bg-surface-muted rounded-lg px-2.5 py-2">
       <div className="flex items-center gap-2 flex-wrap">
-        <span className="text-xs text-gray-300 bg-gray-700/60 rounded px-1.5 py-0.5 shrink-0">
+        <span className="text-xs text-gray-300 bg-surface-elevated border border-border-subtle rounded px-1.5 py-0.5 shrink-0">
           {RULE_ACTION_LABELS[d.action]}
         </span>
         <span className="text-sm text-gray-200 truncate min-w-0">{d.ruleTitle}</span>
@@ -47,12 +48,14 @@ const RuleDiagnosticRow: React.FC<{ row: DiagnosticRow }> = ({ row }) => {
         <>
           <button
             onClick={() => setOpen(o => !o)}
-            className="text-xs text-cyan-400/80 hover:text-cyan-300 mt-1"
+            aria-expanded={open}
+            className="inline-flex items-center gap-1 text-xs text-gray-300 hover:text-white mt-1"
           >
-            {open ? '조건 접기 ▴' : '조건별 보기 ▾'}
+            {open ? '조건 접기' : '조건별 보기'}
+            <ChevronDown className={`h-3.5 w-3.5 transition-transform ${open ? 'rotate-180' : ''}`} aria-hidden="true" />
           </button>
           {open && (
-            <div className="mt-1.5 space-y-1 text-xs border-t border-gray-700/50 pt-1.5">
+            <div className="mt-1.5 space-y-1 text-xs border-t border-border-subtle pt-1.5">
               {d.leaves.map((lf, i) => <LeafRow key={i} leaf={lf} />)}
             </div>
           )}
@@ -67,7 +70,7 @@ const GuruDiagnosticsPanel: React.FC = () => {
 
   if (targets.length === 0) {
     return (
-      <div className="mt-3 border-t border-gray-700/60 pt-3 text-xs text-gray-400">
+      <div className="mt-3 border-t border-border-subtle pt-3 text-xs text-gray-400">
         진단할 종목이 없습니다. 보유 종목·관심종목을 추가하거나 시세를 갱신해 주세요.
       </div>
     );
@@ -77,14 +80,14 @@ const GuruDiagnosticsPanel: React.FC = () => {
   const watchlistTargets = targets.filter(t => t.source === 'watchlist');
 
   return (
-    <div className="mt-3 border-t border-gray-700/60 pt-3">
+    <div className="mt-3 border-t border-border-subtle pt-3">
       <div className="flex items-center gap-2 mb-2 flex-wrap">
         <label htmlFor="guru-diag-target" className="text-xs text-gray-400 shrink-0">진단 종목</label>
         <select
           id="guru-diag-target"
           value={selectedId ?? ''}
           onChange={(e) => selectTarget(e.target.value)}
-          className="bg-gray-900 border border-gray-700 text-gray-200 text-xs rounded px-2 py-1 max-w-full min-w-0 flex-1"
+          className="bg-surface-muted border border-border-subtle text-gray-200 text-xs rounded px-2 py-1 max-w-full min-w-0 flex-1"
         >
           {portfolioTargets.length > 0 && (
             <optgroup label="보유 종목">
@@ -111,7 +114,7 @@ const GuruDiagnosticsPanel: React.FC = () => {
           {(summary.readiness.partial > 0 || summary.readiness.missing > 0 || summary.readiness.unsupported > 0) && (
             <>
               <span className="text-gray-500">|</span>
-              <span className="text-amber-400/70">
+              <span className="text-amber-300">
                 데이터: 일부 {summary.readiness.partial} · 없음 {summary.readiness.missing} · 미지원 {summary.readiness.unsupported}
               </span>
             </>
@@ -120,7 +123,7 @@ const GuruDiagnosticsPanel: React.FC = () => {
       )}
 
       {rows.length === 0 ? (
-        <div className="text-xs text-gray-400 bg-gray-900/50 rounded px-3 py-2">
+        <div className="text-xs text-gray-400 bg-surface-muted rounded-lg px-3 py-2">
           이 종목에 적용할 신호 규칙이 없습니다.
         </div>
       ) : (

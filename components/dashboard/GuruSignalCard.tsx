@@ -9,7 +9,7 @@
 // 표시 수준은 "관찰 후보"이지 매수 추천이 아니다(문구·면책 명시).
 
 import React, { useState } from 'react';
-import { ChevronDown } from 'lucide-react';
+import { BookOpen, ChevronDown, CircleCheck, ClipboardList, Compass, Info, TriangleAlert } from 'lucide-react';
 import { usePortfolio } from '../../contexts/PortfolioContext';
 import { getActiveSignalRules, groupGuruSignals } from '../../utils/guruSignalEngine';
 import { buildSignalExplanation, type SignalExplanation } from '../../utils/conditionDescribe';
@@ -18,6 +18,8 @@ import AssetTrendChart from '../AssetTrendChart';
 import ChartViewerModal from '../common/ChartViewerModal';
 import GuruDiagnosticsPanel from './GuruDiagnosticsPanel';
 import { clickableProps } from '../common/a11yKeys';
+import Card from '../common/Card';
+import PassMark from '../common/PassMark';
 
 interface ActionStyle {
   label: string;
@@ -47,17 +49,15 @@ const ExplainBlock: React.FC<{ title: string; exp: SignalExplanation }> = ({ tit
     <p className="text-gray-200 font-medium mb-1.5">{title}</p>
     {exp.basis.length > 0 && (
       <p className="mb-1.5 text-gray-400">
-        <span className="text-gray-500">📚 근거 </span>{exp.basis.join(' · ')}
+        <span className="text-gray-500 inline-flex items-center gap-1 align-[-2px]"><BookOpen className="h-3 w-3" aria-hidden="true" />근거 </span>{exp.basis.join(' · ')}
       </p>
     )}
     {exp.leaves.length > 0 ? (
       <div className="space-y-1">
-        <p className="text-gray-500">🟢 이 종목이 충족한 조건</p>
+        <p className="text-gray-500 inline-flex items-center gap-1"><CircleCheck className="h-3 w-3" aria-hidden="true" />이 종목이 충족한 조건</p>
         {exp.leaves.map((lf, i) => (
           <div key={i} className="flex items-center gap-1.5 flex-wrap">
-            <span className={lf.passed === true ? 'text-emerald-400' : lf.passed === false ? 'text-rose-400' : 'text-gray-500'}>
-              {lf.passed === true ? '✓' : lf.passed === false ? '✗' : '—'}
-            </span>
+            <PassMark size="sm" state={lf.passed === true ? 'pass' : lf.passed === false ? 'fail' : 'unknown'} />
             <span className="text-gray-300">{lf.label}</span>
             <span className="text-white font-mono">{lf.actual}</span>
             <span className="text-gray-500">(기준 {lf.condition})</span>
@@ -66,10 +66,10 @@ const ExplainBlock: React.FC<{ title: string; exp: SignalExplanation }> = ({ tit
       </div>
     ) : exp.conditions.length > 0 ? (
       <p className="text-gray-400">
-        <span className="text-gray-500">📋 언제 뜨나 </span>{exp.conditions.join(' · ')}
+        <span className="text-gray-500 inline-flex items-center gap-1 align-[-2px]"><ClipboardList className="h-3 w-3" aria-hidden="true" />언제 뜨나 </span>{exp.conditions.join(' · ')}
       </p>
     ) : null}
-    {exp.riskPolicy && <p className="mt-1.5 text-gray-500">⚠️ 무효: {exp.riskPolicy}</p>}
+    {exp.riskPolicy && <p className="mt-1.5 text-gray-500 flex items-start gap-1"><TriangleAlert className="h-3 w-3 mt-0.5 shrink-0 text-amber-400" aria-hidden="true" /><span>무효: {exp.riskPolicy}</span></p>}
   </div>
 );
 
@@ -102,74 +102,48 @@ const GuruSignalCard: React.FC<GuruSignalCardProps> = ({ collapsible = false, de
   const [explainAssetId, setExplainAssetId] = useState<string | null>(null);
   const [fullscreen, setFullscreen] = useState(false);
   const [showDiagnostics, setShowDiagnostics] = useState(false);
-  const [open, setOpen] = useState<boolean>(() => {
-    if (!collapsible) return true;
-    try {
-      const stored = storageKey ? localStorage.getItem(storageKey) : null;
-      if (stored === 'true') return true;
-      if (stored === 'false') return false;
-    } catch { /* ignore */ }
-    return !defaultCollapsed;
-  });
-  const toggleOpen = () => setOpen(prev => {
-    const next = !prev;
-    if (storageKey) { try { localStorage.setItem(storageKey, String(next)); } catch { /* ignore */ } }
-    return next;
-  });
-  const bodyVisible = !collapsible || open;
   const firstAssetId = groups[0]?.assets[0]?.assetId ?? null;
   const effectiveSelectedId =
     selectedAssetId && chartTargets[selectedAssetId] ? selectedAssetId : firstAssetId;
   const chartTarget = effectiveSelectedId ? chartTargets[effectiveSelectedId] ?? null : null;
 
   return (
-    <div className="bg-gray-800 rounded-lg shadow-lg p-4 sm:p-5">
-      <div className={`flex items-start justify-between gap-2 ${bodyVisible ? 'mb-3' : ''}`}>
-        <div className="min-w-0">
-          {collapsible ? (
-            <button
-              type="button"
-              onClick={toggleOpen}
-              aria-expanded={open}
-              className="flex items-center gap-1.5 min-w-0 text-left"
-            >
-              <ChevronDown className={`h-4 w-4 text-gray-400 shrink-0 transition-transform ${open ? '' : '-rotate-90'}`} />
-              <h3 className="text-base font-bold text-white">🧭 구루 신호 엔진</h3>
-            </button>
-          ) : (
-            <h3 className="text-base font-bold text-white flex items-center gap-1.5">
-              🧭 구루 신호 엔진
-            </h3>
-          )}
-          {bodyVisible && (
-            <p className="text-xs text-gray-500 mt-0.5">
-              지식 규칙 기반 <span className="text-gray-400">관찰 후보</span> · 매수 추천이 아닙니다
-            </p>
-          )}
-        </div>
-        <div className="flex flex-col items-end gap-1 shrink-0">
-          <span className="text-xs text-gray-500 whitespace-nowrap bg-gray-700/60 px-2 py-1 rounded">
-            활성 규칙 {activeRuleCount}개 평가
+    <Card
+      collapsible={collapsible}
+      defaultCollapsed={defaultCollapsed}
+      storageKey={storageKey}
+      clip={false}
+      title={
+        <span className="inline-flex items-center gap-1.5">
+          <Compass className="h-4 w-4 text-gray-300" aria-hidden="true" />
+          구루 신호 엔진
+        </span>
+      }
+      description={<>지식 규칙 기반 관찰 후보 · 매수 추천이 아닙니다</>}
+      summary={
+        <span className="flex flex-col items-end gap-1">
+          <span className="whitespace-nowrap bg-surface-muted px-2 py-1 rounded">활성 규칙 {activeRuleCount}개 평가</span>
+          <span className={`whitespace-nowrap ${signals.length > 0 ? 'text-gray-200' : 'text-gray-500'}`}>
+            {signals.length > 0 ? `신호 ${distinctAssets}종목` : '신호 없음'}
           </span>
-          {bodyVisible ? (
-            <button
-              onClick={() => setShowDiagnostics(v => !v)}
-              aria-expanded={showDiagnostics}
-              className="text-xs text-cyan-400/80 hover:text-cyan-300 whitespace-nowrap"
-            >
-              {showDiagnostics ? '진단 닫기 ▴' : '왜 신호가 안 뜨나요? ▾'}
-            </button>
-          ) : (
-            <span className="text-xs text-gray-500 whitespace-nowrap">
-              {signals.length > 0 ? `신호 ${distinctAssets}종목` : '신호 없음'}
-            </span>
-          )}
-        </div>
+        </span>
+      }
+    >
+      <div className="flex justify-end mb-3">
+        <button
+          type="button"
+          onClick={() => setShowDiagnostics(v => !v)}
+          aria-expanded={showDiagnostics}
+          className="inline-flex items-center gap-1 text-xs text-cyan-400/80 hover:text-cyan-300 whitespace-nowrap rounded focus-ring"
+        >
+          {showDiagnostics ? '진단 닫기' : '왜 신호가 안 뜨나요?'}
+          <ChevronDown className={`h-3.5 w-3.5 transition-transform ${showDiagnostics ? 'rotate-180' : ''}`} aria-hidden="true" />
+        </button>
       </div>
 
-      {bodyVisible && showDiagnostics && <GuruDiagnosticsPanel />}
+      {showDiagnostics && <GuruDiagnosticsPanel />}
 
-      {bodyVisible && (signals.length === 0 ? (
+      {signals.length === 0 ? (
         <div className="bg-gray-900/60 rounded-md px-3 py-3 text-xs text-gray-400">
           {activeRuleCount === 0
             ? '평가 가능한 활성 규칙이 아직 없습니다. 지표·규칙 검증이 진행되면 여기에 신호가 표시됩니다.'
@@ -235,11 +209,12 @@ const GuruSignalCard: React.FC<GuruSignalCardProps> = ({ collapsible = false, de
                               ))}
                             </div>
                             {asset.rules.some(r => caveats.get(`${r.ruleId}__${asset.assetId}`)?.kind === 'firing-partial') && (
-                              <div className="text-xs text-amber-300 mt-1">⚠ 일부 데이터 기준 발화 · 수동 확인 필요</div>
+                              <div className="text-xs text-amber-300 mt-1 flex items-center gap-1"><TriangleAlert className="h-3 w-3 shrink-0" aria-hidden="true" />일부 데이터 기준 발화 · 수동 확인 필요</div>
                             )}
                             {invalidations.length > 0 && (
-                              <div className="text-xs text-gray-500 mt-1">
-                                ⓘ 무효화: {invalidations.join(' / ')}
+                              <div className="text-xs text-gray-500 mt-1 flex items-start gap-1">
+                                <Info className="h-3 w-3 mt-0.5 shrink-0" aria-hidden="true" />
+                                <span>무효화: {invalidations.join(' / ')}</span>
                               </div>
                             )}
                             <button
@@ -247,9 +222,10 @@ const GuruSignalCard: React.FC<GuruSignalCardProps> = ({ collapsible = false, de
                                 e.stopPropagation();
                                 setExplainAssetId(prev => (prev === asset.assetId ? null : asset.assetId));
                               }}
-                              className="text-xs text-cyan-400/80 hover:text-cyan-300 mt-1"
+                              className="inline-flex items-center gap-1 text-xs text-cyan-400/80 hover:text-cyan-300 mt-1"
                             >
-                              {explainAssetId === asset.assetId ? '설명 접기 ▴' : '왜 떴나 ▾'}
+                              {explainAssetId === asset.assetId ? '설명 접기' : '왜 떴나'}
+                              <ChevronDown className={`h-3 w-3 transition-transform ${explainAssetId === asset.assetId ? 'rotate-180' : ''}`} aria-hidden="true" />
                             </button>
                             {explainAssetId === asset.assetId && (
                               <div className="mt-2 space-y-2 border-t border-gray-700/60 pt-2" onClick={(e) => e.stopPropagation()}>
@@ -302,13 +278,11 @@ const GuruSignalCard: React.FC<GuruSignalCardProps> = ({ collapsible = false, de
             )}
           </div>
         </div>
-      ))}
-
-      {bodyVisible && (
-        <p className="text-xs text-gray-500 mt-3 pt-2 border-t border-gray-700/60">
-          지식 규칙 기반 참고 신호이며 투자자문이 아닙니다. 미검증·미구현 지표 규칙은 자동 발화되지 않습니다.
-        </p>
       )}
+
+      <p className="text-xs text-gray-500 mt-3 pt-2 border-t border-border-subtle">
+        미검증·미구현 지표 규칙은 자동 발화되지 않습니다.
+      </p>
 
       {fullscreen && chartTarget && (
         <ChartViewerModal
@@ -326,7 +300,7 @@ const GuruSignalCard: React.FC<GuruSignalCardProps> = ({ collapsible = false, de
           onClose={() => setFullscreen(false)}
         />
       )}
-    </div>
+    </Card>
   );
 };
 

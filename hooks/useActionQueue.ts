@@ -136,7 +136,7 @@ export function useActionQueue() {
       return { generated: generated.length, diagnostics: makeDiag(actionsDiag) };
     } catch (e) {
       log.error('실행 큐 새로고침 실패:', e);
-      setRefreshError('실행 큐를 갱신하지 못했습니다.');
+      setRefreshError('대기 주문을 갱신하지 못했습니다.');
       return { generated: 0, diagnostics: makeDiag(emptyActionsDiag) };
     } finally {
       setIsRefreshing(false);

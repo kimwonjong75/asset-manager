@@ -16,6 +16,9 @@ import { ActionItem } from '../../types/actionQueue';
 import { Currency } from '../../types';
 import { TurtleFill } from '../../utils/turtleExecution';
 import { formatOriginalCurrency } from '../portfolio-table/utils';
+import Modal from '../common/Modal';
+import Button from '../common/Button';
+import { CircleAlert } from 'lucide-react';
 
 interface Props {
   executeRebalanceAction: (action: ActionItem, fill: TurtleFill) => Promise<{ ok: boolean; reason?: string }>;
@@ -115,19 +118,27 @@ const RebalanceExecuteModal: React.FC<Props> = ({ executeRebalanceAction }) => {
   const isSell = resolution.mode === 'sell';
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center z-modal p-4" onClick={onClose} role="dialog" aria-modal="true">
-      <div className="bg-gray-800 p-4 sm:p-6 rounded-lg shadow-xl w-full max-w-lg max-h-[90dvh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-        <div className="flex items-start justify-between gap-3 mb-4">
-          <div className="min-w-0">
-            <h2 className="text-lg sm:text-xl font-bold text-white truncate">{resolution.title}</h2>
-            <p className="text-sm text-gray-400 mt-0.5">
-              <span className="text-gray-200 font-medium">{resolution.name}</span>
-              <span className="text-gray-500 ml-2">{resolution.ticker}</span>
-              {resolution.mode === 'buy-new' && 'exchangeLabel' in resolution && <span className="text-gray-500 ml-1">· {resolution.exchangeLabel}</span>}
-            </p>
-          </div>
-          <button type="button" onClick={onClose} className="flex-shrink-0 text-gray-400 hover:text-white text-xl leading-none px-1" aria-label="닫기">×</button>
-        </div>
+    <Modal
+      open
+      onClose={onClose}
+      title={resolution.title}
+      description={
+        <>
+          <span className="text-gray-200 font-medium">{resolution.name}</span>
+          <span className="text-gray-500 ml-2">{resolution.ticker}</span>
+          {resolution.mode === 'buy-new' && 'exchangeLabel' in resolution && <span className="text-gray-500 ml-1">· {resolution.exchangeLabel}</span>}
+        </>
+      }
+      size="md"
+      footer={
+        <>
+          <Button variant="secondary" onClick={onClose} disabled={isSubmitting}>취소</Button>
+          <Button type="submit" form="rebalance-execute-form" variant="primary" disabled={!canSubmit} loading={isSubmitting}>
+            {isSubmitting ? '실행 중...' : isSell ? '매도 실행' : '매수 실행'}
+          </Button>
+        </>
+      }
+    >
 
         <div className="bg-gray-700/60 rounded-md p-3.5 mb-4 text-xs">
           <p className="text-gray-200">{action.reasonText}</p>
@@ -143,10 +154,10 @@ const RebalanceExecuteModal: React.FC<Props> = ({ executeRebalanceAction }) => {
         </div>
 
         {resolution.blocked && (
-          <div className="mb-4 text-sm text-danger bg-danger-soft border border-danger/30 rounded-md px-3 py-2">{resolution.blockReason}</div>
+          <div className="mb-4 flex items-start gap-1.5 text-sm text-danger bg-danger-soft border border-danger/30 rounded-md px-3 py-2" role="alert"><CircleAlert className="h-4 w-4 mt-0.5 shrink-0" aria-hidden="true" />{resolution.blockReason}</div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-3.5">
+        <form id="rebalance-execute-form" onSubmit={handleSubmit} className="space-y-3.5">
           <div>
             <label className="block text-xs font-medium text-gray-400 mb-1">체결일</label>
             <input type="date" value={fillDate} max={todayISO()} onChange={e => setFillDate(e.target.value)} disabled={isSubmitting || resolution.blocked}
@@ -164,19 +175,12 @@ const RebalanceExecuteModal: React.FC<Props> = ({ executeRebalanceAction }) => {
                 className="w-full text-sm bg-gray-900 border border-gray-600 rounded-md px-2.5 py-2 text-gray-100 focus:outline-none focus:border-primary disabled:opacity-50" />
             </div>
           </div>
-          {overSell && <p className="text-xs text-danger">매도 수량이 보유수량({resolution.maxQty})을 초과했습니다.</p>}
+          {overSell && <p className="flex items-center gap-1 text-xs text-danger" role="alert"><CircleAlert className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />매도 수량이 보유수량({resolution.maxQty})을 초과했습니다.</p>}
 
-          {error && <div className="text-sm text-danger bg-danger-soft border border-danger/30 rounded-md px-3 py-2">{error}</div>}
+          {error && <div className="flex items-start gap-1.5 text-sm text-danger bg-danger-soft border border-danger/30 rounded-md px-3 py-2" role="alert"><CircleAlert className="h-4 w-4 mt-0.5 shrink-0" aria-hidden="true" />{error}</div>}
 
-          <div className="flex items-center justify-end gap-2 pt-1">
-            <button type="button" onClick={onClose} disabled={isSubmitting} className="text-sm text-gray-300 hover:text-white px-4 py-2 rounded-md transition-colors disabled:opacity-50">취소</button>
-            <button type="submit" disabled={!canSubmit} className={`text-sm font-medium text-white px-4 py-2 rounded-md transition-colors disabled:opacity-40 disabled:cursor-not-allowed bg-primary-dark hover:bg-primary`}>
-              {isSubmitting ? '실행 중...' : isSell ? '매도 실행' : '매수 실행'}
-            </button>
-          </div>
         </form>
-      </div>
-    </div>
+    </Modal>
   );
 };
 

@@ -11,14 +11,26 @@ export interface MALineConfig {
   enabled: boolean;
 }
 
+// MA 식별 색 (Stage C, RULES.md §8 색 규약) — 상태 색(up/down·캔들·warning·danger·ok)과 겹치지 않는 중립 식별 색.
+// (구) 20일선 빨강 #EF4444 / 60일선 파랑 #3B82F6 은 "오름/내림"으로 읽혀 교체했다.
+// 색은 저장되지 않는다: PortfolioContext.mergeChartMAConfigs 가 localStorage 에서 period/enabled 만 취하고
+// color 는 항상 이 기본값을 쓴다 → 값을 바꿔도 사용자 저장값을 덮어쓰지 않는다. 골든 가드 tests/maColorsParity.ts.
 export const DEFAULT_MA_CONFIGS: MALineConfig[] = [
-  { id: 'ma1', period: 5,   color: '#F59E0B', enabled: false },
-  { id: 'ma2', period: 10,  color: '#10B981', enabled: false },
-  { id: 'ma3', period: 20,  color: '#EF4444', enabled: true  },
-  { id: 'ma4', period: 60,  color: '#3B82F6', enabled: true  },
-  { id: 'ma5', period: 120, color: '#EC4899', enabled: false },
-  { id: 'ma6', period: 200, color: '#8B5CF6', enabled: false },
+  { id: 'ma1', period: 5,   color: '#E5E7EB', enabled: false }, // light gray
+  { id: 'ma2', period: 10,  color: '#A78BFA', enabled: false }, // violet
+  { id: 'ma3', period: 20,  color: '#FACC15', enabled: true  }, // yellow
+  { id: 'ma4', period: 60,  color: '#2DD4BF', enabled: true  }, // teal
+  { id: 'ma5', period: 120, color: '#A3E635', enabled: false }, // lime
+  { id: 'ma6', period: 200, color: '#E879F9', enabled: false }, // fuchsia
 ];
+
+/** 기본 6슬롯에 없는 기간(예: 리플레이 차트의 MA150)용 중립 식별 색 — slate */
+export const MA_EXTRA_COLOR = '#94A3B8';
+
+/** 기간 → 기본 식별 색. DEFAULT_MA_CONFIGS 에 같은 기간이 있으면 그 색, 없으면 MA_EXTRA_COLOR. */
+export function getDefaultMAColor(period: number): string {
+  return DEFAULT_MA_CONFIGS.find(c => c.period === period)?.color ?? MA_EXTRA_COLOR;
+}
 
 /** 사용자 입력 MA 기간을 유효 범위로 보정 (1~400 정수, 데이터 10년≈2500거래일 내) */
 export function clampMAPeriod(value: number): number {

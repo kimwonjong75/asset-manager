@@ -7,6 +7,9 @@ import { isBaseType } from '../types/category';
 import { formatQuantity } from './portfolio-table/utils';
 import { usePortfolio } from '../contexts/PortfolioContext';
 import PositionSizingCalculator from './common/PositionSizingCalculator';
+import Modal from './common/Modal';
+import Button from './common/Button';
+import { CircleAlert, ChevronDown, ChevronUp, Shield, TriangleAlert } from 'lucide-react';
 import TradePlanEditor, { type TradePlanEditorHandle } from './trade-plan/TradePlanEditor';
 import { buildTradePlan, nextPyramidStep, formatPlanPrice } from '../utils/tradePlan';
 import { defaultEditorInput, fxRateToKRWFor } from '../utils/tradePlanMarket';
@@ -31,6 +34,8 @@ const BuyMoreAssetModal: React.FC = () => {
 
   // 이 추가매수를 불타기 체결로 기록할지 (P2b)
   const [pyramidChecked, setPyramidChecked] = useState(false);
+  // 제출 시도 후에만 인라인 검증 문구 노출(브라우저 alert 대체 — RULES.md §7)
+  const [submitAttempted, setSubmitAttempted] = useState(false);
 
   // 최신 평가 행은 ref로 미러링한다(usePriceFreshnessRefresh와 동일 접근) — derived.tradePlanRows는
   // 배경 시세 갱신마다 참조가 바뀌므로 아래 리셋 effect의 의존성에 넣으면 모달이 열린 채 재발화해
@@ -77,26 +82,24 @@ const BuyMoreAssetModal: React.FC = () => {
     : null;
   const pyramidGateOk = precheck ? precheck.ok : true;
 
+  const formError = (!buyDate || !buyPrice || !buyQuantity)
+    ? '모든 필드를 입력해주세요.'
+    : !(parseFloat(buyQuantity) > 0)
+      ? '매수 수량은 0보다 커야 합니다.'
+      : !(parseFloat(buyPrice) > 0)
+        ? '매수가는 0보다 커야 합니다.'
+        : null;
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!buyDate || !buyPrice || !buyQuantity) {
-      alert('모든 필드를 입력해주세요.');
+    if (formError) {
+      setSubmitAttempted(true);
       return;
     }
 
     const quantity = parseFloat(buyQuantity);
     const price = parseFloat(buyPrice);
-
-    if (quantity <= 0) {
-      alert('매수 수량은 0보다 커야 합니다.');
-      return;
-    }
-
-    if (price <= 0) {
-      alert('매수가는 0보다 커야 합니다.');
-      return;
-    }
 
     const result = await actions.confirmBuyMore(asset.id, buyDate, price, quantity);
 
@@ -160,21 +163,21 @@ const BuyMoreAssetModal: React.FC = () => {
     : 0;
 
   return (
-    <div
-      className="fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center z-modal p-4"
-      onClick={onClose}
-      role="dialog"
-      aria-modal="true"
+    <Modal
+      open={isOpen}
+      onClose={onClose}
+      title={`추가매수: ${asset.customName?.trim() || asset.name}`}
+      size="md"
+      footer={
+        <>
+          <Button variant="secondary" onClick={onClose}>취소</Button>
+          <Button type="submit" form="buy-more-asset-form" variant="primary" loading={isLoading}>
+            추가매수 확인
+          </Button>
+        </>
+      }
     >
-      <div
-        className="bg-gray-800 p-4 sm:p-6 rounded-lg shadow-xl w-full max-w-lg max-h-[90dvh] overflow-y-auto"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <h2 className="text-xl sm:text-2xl font-bold text-white mb-4 sm:mb-6">
-          추가매수: {asset.customName?.trim() || asset.name}
-        </h2>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form id="buy-more-asset-form" onSubmit={handleSubmit} className="space-y-4">
           {/* 보유 정보 */}
           <div className="bg-gray-700 p-4 rounded-md">
             <div className={labelClasses}>보유정보</div>
@@ -205,9 +208,6 @@ const BuyMoreAssetModal: React.FC = () => {
             <div className="flex items-center justify-between">
               <span className="text-sm text-gray-400">매수 통화</span>
               <span className="text-white font-medium flex items-center gap-2">
-                {asset.currency === Currency.USD && '🇺🇸'}
-                {asset.currency === Currency.JPY && '🇯🇵'}
-                {asset.currency === Currency.KRW && '🇰🇷'}
                 {currencyLabel}
               </span>
             </div>
@@ -268,7 +268,7 @@ const BuyMoreAssetModal: React.FC = () => {
           {/* 리스크 기반 권장 수량 (선택) */}
           <div className="bg-gray-700/40 p-3 rounded-md">
             <div className={`${labelClasses} flex items-center gap-1.5`}>
-              <span>🛡️ 리스크 기반 권장 수량</span>
+              <Shield className="h-4 w-4 text-gray-400" aria-hidden="true" /><span>리스크 기반 권장 수량</span>
               <span className="text-xs text-gray-500 font-normal">(위 매수가 기준)</span>
             </div>
             <PositionSizingCalculator
@@ -296,10 +296,10 @@ const BuyMoreAssetModal: React.FC = () => {
                   이 추가매수는 불타기 {pyramidStep.level}차로 기록 (계획 {pyramidStep.plannedQuantity}주 · 트리거 {formatPlanPrice(pyramidStep.triggerPrice, asset.currency)})
                 </label>
                 {precheck && !precheck.ok && (
-                  <p className="text-xs text-amber-400">⚠ {precheck.label}</p>
+                  <p className="flex items-center gap-1 text-xs text-amber-400"><TriangleAlert className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />{precheck.label}</p>
                 )}
                 {precheck && precheck.ok && (
-                  <p className="text-xs text-emerald-400">
+                  <p className="text-xs text-ok">
                     기록 시 손절선이 {formatPlanPrice(precheck.nextPlan.stopPrice, asset.currency)}로 올라갑니다
                   </p>
                 )}
@@ -333,7 +333,9 @@ const BuyMoreAssetModal: React.FC = () => {
                     onClick={() => setShowTradePlanDetail(v => !v)}
                     className="text-xs text-primary-light hover:underline"
                   >
-                    {showTradePlanDetail ? '자세히 접기 ▲' : '자세히 ▼'}
+                    {showTradePlanDetail
+                      ? <>자세히 접기 <ChevronUp className="inline h-3.5 w-3.5 align-[-2px]" aria-hidden="true" /></>
+                      : <>자세히 <ChevronDown className="inline h-3.5 w-3.5 align-[-2px]" aria-hidden="true" /></>}
                   </button>
                   {showTradePlanDetail && (
                     <TradePlanEditor ref={tradePlanEditorRef} embedded target={{ kind: 'asset', asset }} />
@@ -367,31 +369,11 @@ const BuyMoreAssetModal: React.FC = () => {
             </div>
           )}
 
-          {/* 버튼 */}
-          <div className="pt-4 flex gap-3">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 bg-gray-600 hover:bg-zinc-500 text-white font-medium py-2.5 px-4 rounded-md transition duration-300"
-            >
-              취소
-            </button>
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="flex-1 bg-primary hover:bg-primary-dark text-white font-bold py-2.5 px-4 rounded-md disabled:bg-gray-600 disabled:cursor-not-allowed transition duration-300 flex items-center justify-center"
-            >
-              {isLoading ? (
-                <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-              ) : '추가매수 확인'}
-            </button>
-          </div>
+          {submitAttempted && formError && (
+            <p className="flex items-center gap-1.5 text-danger text-sm" role="alert"><CircleAlert className="h-4 w-4 shrink-0" aria-hidden="true" />{formError}</p>
+          )}
         </form>
-      </div>
-    </div>
+    </Modal>
   );
 };
 

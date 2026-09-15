@@ -3,7 +3,7 @@ import type { AlertResult, AlertMatchedAsset, AlertDataGap } from '../../types/a
 import type { DistributionTier } from '../../utils/distributionTierState';
 import type { TurtleReviewSummary } from '../../utils/turtleReview';
 import Tooltip from './Tooltip';
-import { Lightbulb, OctagonAlert, TriangleAlert, Turtle } from 'lucide-react';
+import { Bell, ChevronDown, ChevronRight, ChevronUp, CircleCheck, Lightbulb, OctagonAlert, TrendingDown, TrendingUp, TriangleAlert, Turtle, X } from 'lucide-react';
 import { clickableProps, onActivateKey } from './a11yKeys';
 import {
   BRIEFING_SECTION_TOOLTIPS,
@@ -127,9 +127,7 @@ const AlertPopup: React.FC<AlertPopupProps> = ({ results, sellDataGaps, executio
         onClick={onOpenExecution}
         className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded bg-primary/90 hover:bg-primary text-white transition-colors"
       >
-        <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-        </svg>
+        <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
         홈에서 보기
       </button>
     </div>
@@ -188,9 +186,7 @@ const AlertPopup: React.FC<AlertPopupProps> = ({ results, sellDataGaps, executio
           {asset.rsi != null ? asset.rsi.toFixed(1) : '-'}
         </td>
         <td className="py-1.5 pl-1">
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-          </svg>
+          <ChevronRight className="h-3 w-3 text-gray-500" aria-hidden="true" />
         </td>
       </tr>
     );
@@ -302,10 +298,10 @@ const AlertPopup: React.FC<AlertPopupProps> = ({ results, sellDataGaps, executio
 
   // P6: 모바일은 하단 탭바(BottomTabBar) 위로 띄운다
   return (
-    <div className="fixed bottom-20 left-4 right-4 mb-[env(safe-area-inset-bottom)] md:bottom-4 sm:left-auto sm:right-4 z-popup w-auto sm:w-96 flex flex-col shadow-2xl rounded-xl border border-gray-700 overflow-hidden">
+    <div className="fixed bottom-20 left-4 right-4 mb-[env(safe-area-inset-bottom)] md:bottom-4 sm:left-auto sm:right-4 z-popup w-auto sm:w-96 flex flex-col shadow-2xl rounded-xl border border-border-subtle overflow-hidden">
       {/* 헤더 — 클릭으로 최소화/복원 토글 */}
       <div
-        className="bg-gray-900 px-4 py-3 flex items-center justify-between border-b border-gray-700 shrink-0 cursor-pointer select-none hover:bg-gray-800/60 transition-colors focus-ring"
+        className="bg-surface-elevated px-4 py-3 flex items-center justify-between border-b border-border-subtle shrink-0 cursor-pointer select-none hover:bg-surface-muted transition-colors focus-ring"
         role="button"
         tabIndex={0}
         aria-expanded={!isMinimized}
@@ -314,9 +310,7 @@ const AlertPopup: React.FC<AlertPopupProps> = ({ results, sellDataGaps, executio
         title={isMinimized ? '펼치기' : '최소화'}
       >
         <div className="flex items-center gap-2">
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-amber-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-          </svg>
+          <Bell className="h-4 w-4 text-amber-400 shrink-0" aria-hidden="true" />
           <div>
             <span className="text-sm font-semibold text-white">알림 브리핑</span>
             {hasResults && (
@@ -330,13 +324,9 @@ const AlertPopup: React.FC<AlertPopupProps> = ({ results, sellDataGaps, executio
           {/* 접기/펼치기 화살표 */}
           <span className="text-gray-400 p-1">
             {isMinimized ? (
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" />
-              </svg>
+              <ChevronUp className="h-4 w-4" aria-hidden="true" />
             ) : (
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-              </svg>
+              <ChevronDown className="h-4 w-4" aria-hidden="true" />
             )}
           </span>
           {/* 닫기 — 버블링 방지 */}
@@ -347,16 +337,14 @@ const AlertPopup: React.FC<AlertPopupProps> = ({ results, sellDataGaps, executio
             title="닫기"
             aria-label="알림 브리핑 닫기"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-            </svg>
+            <X className="h-4 w-4" aria-hidden="true" />
           </button>
         </div>
       </div>
 
       {/* 본문 (최소화 시 숨김) */}
       {!isMinimized && (
-        <div className="bg-gray-900 flex flex-col" style={{ maxHeight: '70vh' }}>
+        <div className="bg-surface-elevated flex flex-col" style={{ maxHeight: '70vh' }}>
           <p className="text-gray-500 text-xs px-4 pt-2">{today}</p>
           <div className="px-4 py-3 overflow-y-auto space-y-4 flex-1 min-h-0">
             {(hasResults || hasDataGaps) ? (
@@ -365,7 +353,7 @@ const AlertPopup: React.FC<AlertPopupProps> = ({ results, sellDataGaps, executio
                 {execCard}
 
                 {/* 참고 지표 안내 — 실행할 주문의 단일 소스는 홈 '오늘의 브리핑' 대기 주문 섹션(Stage A). CTA는 실행 카드가 있으면 중복이라 숨김 */}
-                <div className="bg-gray-800/60 border border-gray-700/60 rounded-lg p-2.5">
+                <div className="bg-surface-muted border border-border-subtle rounded-lg p-2.5">
                   <p className="text-xs text-gray-400 leading-snug">
                     <span className="text-gray-300 font-medium">이 브리핑은 참고 지표입니다.</span> 실제 실행할 주문(진입·손절·청산·리밸런싱·정리)은{' '}
                     <span className="text-gray-300">홈의 오늘의 브리핑</span>이 단일 기준입니다.
@@ -376,9 +364,7 @@ const AlertPopup: React.FC<AlertPopupProps> = ({ results, sellDataGaps, executio
                       onClick={onOpenExecution}
                       className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded bg-primary/90 hover:bg-primary text-white transition-colors"
                     >
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                      </svg>
+                      <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
                       홈에서 보기
                     </button>
                   )}
@@ -429,18 +415,14 @@ const AlertPopup: React.FC<AlertPopupProps> = ({ results, sellDataGaps, executio
                 {renderSection(
                   sellResults,
                   '매도 감지',
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                  </svg>,
+                  <TrendingDown className="h-3.5 w-3.5" aria-hidden="true" />,
                   'text-down',
                   BRIEFING_SECTION_TOOLTIPS.sell
                 )}
                 {renderSection(
                   buyResults,
                   '매수 기회',
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-                  </svg>,
+                  <TrendingUp className="h-3.5 w-3.5" aria-hidden="true" />,
                   'text-up',
                   BRIEFING_SECTION_TOOLTIPS.buy
                 )}
@@ -451,9 +433,7 @@ const AlertPopup: React.FC<AlertPopupProps> = ({ results, sellDataGaps, executio
                 {/* 알림 발화 0건이어도 실행할 게 있으면 카드 표시 (게이트가 실행 축으로 will-show 가능) */}
                 {execCard}
                 <div className="text-center py-6">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 mx-auto text-gray-500 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
+                  <CircleCheck className="h-10 w-10 mx-auto text-gray-500 mb-2" aria-hidden="true" />
                   <p className="text-gray-400 text-sm">현재 특이 시그널이 없습니다.</p>
                   <p className="text-gray-500 text-xs mt-1">모든 보유 종목이 정상 범위 내에 있습니다.</p>
                 </div>
@@ -463,7 +443,7 @@ const AlertPopup: React.FC<AlertPopupProps> = ({ results, sellDataGaps, executio
 
           {/* "징후 ≠ 방아쇠" 고정 footer — 사용자 과신 방지 (스크롤되지 않음) */}
           {hasResults && (
-            <div className="shrink-0 px-4 py-2 border-t border-gray-800 bg-gray-950/50">
+            <div className="shrink-0 px-4 py-2 border-t border-border-subtle bg-surface">
               <p className="text-gray-500 text-xs leading-snug">
                 <span className="text-gray-400 inline-flex items-center gap-1 align-[-2px]"><Lightbulb className="h-3 w-3" aria-hidden="true" />과열 상태 알림</span>이지 폭락 시점 예측이 아닙니다.
                 신호 후에도 며칠~몇 주는 계속 오를 수 있고, 실제 하락은 외부 악재가 방아쇠가 됩니다.

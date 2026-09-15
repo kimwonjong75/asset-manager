@@ -4,7 +4,8 @@
 // 렌더 전용(RULES.md §2) — 대상 산출은 utils/tradePlan.isEligibleForBulkPlan(훅에서 이미 계산됨).
 
 import React from 'react';
-import { Plus } from 'lucide-react';
+import { ChevronRight, FileQuestion, Plus } from 'lucide-react';
+import SectionHeader from '../common/SectionHeader';
 import { usePortfolio } from '../../contexts/PortfolioContext';
 import Button from '../common/Button';
 import type { Asset } from '../../types';
@@ -22,7 +23,7 @@ const PlanlessHoldingsSection: React.FC<PlanlessHoldingsSectionProps> = ({ planl
 
   if (hasNoPlansAtAll) {
     return (
-      <section className="rounded-lg border border-gray-700 bg-gray-800/40 p-4 text-center">
+      <section className="rounded-lg border border-border-subtle bg-surface-muted p-4 text-center">
         <p className="text-sm text-gray-300">계획이 없으면 알림도 없어요</p>
         <div className="mt-2.5 flex items-center justify-center gap-2 flex-wrap">
           <Button variant="primary" onClick={actions.openTradePlanBulk}>
@@ -38,9 +39,10 @@ const PlanlessHoldingsSection: React.FC<PlanlessHoldingsSectionProps> = ({ planl
         <button
           type="button"
           onClick={() => actions.setActiveTab('settings')}
-          className="text-xs text-amber-300 hover:text-amber-200 underline underline-offset-2 mt-1"
+          className="inline-flex items-center gap-0.5 text-xs text-amber-300 hover:text-amber-200 underline underline-offset-2 mt-1"
         >
-          설정에서 카카오톡 알림 켜기 →
+          설정에서 카카오톡 알림 켜기
+          <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
         </button>
       </section>
     );
@@ -52,15 +54,18 @@ const PlanlessHoldingsSection: React.FC<PlanlessHoldingsSectionProps> = ({ planl
   const remaining = planless.length - names.length;
 
   return (
-    <section className="rounded-lg border border-gray-700 bg-gray-800/40 p-3">
-      <div className="flex items-center justify-between gap-2 flex-wrap">
-        <h2 className="text-sm font-semibold text-gray-200">
-          ■ 계획 없는 투더문 보유 <span className="text-gray-400 font-normal">{planless.length}</span>
-        </h2>
-        <Button variant="primary" onClick={actions.openTradePlanBulk}>
-          일괄 계획 만들기
-        </Button>
-      </div>
+    <section className="rounded-lg border border-border-subtle bg-surface-muted p-3">
+      <SectionHeader
+        title="계획 없는 투더문 보유"
+        count={planless.length}
+        countUnit="종목"
+        icon={<FileQuestion className="h-4 w-4 text-gray-400" aria-hidden="true" />}
+        actions={
+          <Button variant="primary" onClick={actions.openTradePlanBulk}>
+            일괄 계획 만들기
+          </Button>
+        }
+      />
       <p className="text-xs text-gray-400 mt-1">
         {names.join(', ')}{remaining > 0 && ` 외 ${remaining}`}
       </p>

@@ -9,6 +9,9 @@ import { usePortfolio } from '../contexts/PortfolioContext';
 import { defaultSellOutcome, sellPrefillFor } from '../utils/tradePlanLink';
 import type { SellOutcome } from '../types/tradePlan';
 import Segmented from './common/Segmented';
+import Modal from './common/Modal';
+import Button from './common/Button';
+import { CircleAlert } from 'lucide-react';
 
 /** 매도 효과 선택지 (P2b) — 라벨과 아래 설명이 1:1로 대응한다. */
 const SELL_OUTCOME_OPTIONS: { value: SellOutcome; label: string; hint: string }[] = [
@@ -30,6 +33,8 @@ const SellAssetModal: React.FC = () => {
   const [sellPrice, setSellPrice] = useState<string>('');
   const [sellQuantity, setSellQuantity] = useState<string>('');
   const [sellOutcome, setSellOutcome] = useState<SellOutcome>('none');
+  // 제출 시도 후에만 인라인 검증 문구 노출(브라우저 alert 대체 — RULES.md §7)
+  const [submitAttempted, setSubmitAttempted] = useState(false);
 
   // 최신 평가 행은 ref로 미러링한다(usePriceFreshnessRefresh와 동일 접근) —
   // derived.tradePlanRows는 배경 시세 갱신마다 참조가 바뀌므로 아래 리셋 effect의 의존성에 넣으면
@@ -42,6 +47,7 @@ const SellAssetModal: React.FC = () => {
 
   useEffect(() => {
     if (asset && isOpen) {
+      setSubmitAttempted(false);
       setSellDate(new Date().toISOString().slice(0, 10));
       const activePlan = asset.tradePlan && asset.tradePlan.status === 'active' ? asset.tradePlan : null;
       if (activePlan) {
@@ -75,26 +81,25 @@ const SellAssetModal: React.FC = () => {
     setSellPrice(String(prefill.priceOriginal));
   };
 
+  const parsedSellQty = parseFloat(sellQuantity);
+  const formError = (!sellDate || !sellPrice || !sellQuantity)
+    ? '모든 필드를 입력해주세요.'
+    : !(parsedSellQty > 0 && parsedSellQty <= asset.quantity)
+      ? `매도 수량은 0보다 크고 보유 수량(${asset.quantity}) 이하여야 합니다.`
+      : !(parseFloat(sellPrice) > 0)
+        ? '매도가는 0보다 커야 합니다.'
+        : null;
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!sellDate || !sellPrice || !sellQuantity) {
-      alert('모든 필드를 입력해주세요.');
+    if (formError) {
+      setSubmitAttempted(true);
       return;
     }
 
     const quantity = parseFloat(sellQuantity);
     const price = parseFloat(sellPrice);
-
-    if (quantity <= 0 || quantity > asset.quantity) {
-      alert(`매도 수량은 0보다 크고 보유 수량(${asset.quantity}) 이하여야 합니다.`);
-      return;
-    }
-
-    if (price <= 0) {
-      alert('매도가는 0보다 커야 합니다.');
-      return;
-    }
 
     // 자산의 원래 통화로 매도 처리
     const result = await onSell(
@@ -143,21 +148,22 @@ const SellAssetModal: React.FC = () => {
   const estimatedTotal = parseFloat(sellPrice || '0') * parseFloat(sellQuantity || '0');
 
   return (
-    <div 
-      className="fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center z-modal p-4"
-      onClick={onClose}
-      role="dialog"
-      aria-modal="true"
+    <Modal
+      open={isOpen}
+      onClose={onClose}
+      title={`매도: ${asset.customName?.trim() || asset.name}`}
+      size="md"
+      footer={
+        <>
+          <Button variant="secondary" onClick={onClose}>취소</Button>
+          {/* 매도 제출도 primary + 명시 라벨(파랑 채움 버튼 금지 — RULES.md §8 색 규약) */}
+          <Button type="submit" form="sell-asset-form" variant="primary" loading={isLoading}>
+            매도
+          </Button>
+        </>
+      }
     >
-      <div
-        className="bg-gray-800 p-4 sm:p-6 rounded-lg shadow-xl w-full max-w-lg max-h-[90dvh] overflow-y-auto"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <h2 className="text-xl sm:text-2xl font-bold text-white mb-4 sm:mb-6">
-          매도: {asset.customName?.trim() || asset.name}
-        </h2>
-        
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form id="sell-asset-form" onSubmit={handleSubmit} className="space-y-4">
           {/* 보유 정보 */}
           <div className="bg-gray-700 p-4 rounded-md">
             <div className={labelClasses}>보유정보</div>
@@ -205,9 +211,6 @@ const SellAssetModal: React.FC = () => {
             <div className="flex items-center justify-between">
               <span className="text-sm text-gray-400">매도 통화</span>
               <span className="text-white font-medium flex items-center gap-2">
-                {asset.currency === Currency.USD && '🇺🇸'}
-                {asset.currency === Currency.JPY && '🇯🇵'}
-                {asset.currency === Currency.KRW && '🇰🇷'}
                 {currencyLabel}
               </span>
             </div>
@@ -293,31 +296,11 @@ const SellAssetModal: React.FC = () => {
             </div>
           )}
 
-          {/* 버튼 */}
-          <div className="pt-4 flex gap-3">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 bg-gray-600 hover:bg-zinc-500 text-white font-medium py-2.5 px-4 rounded-md transition duration-300"
-            >
-              취소
-            </button>
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="flex-1 bg-primary-dark hover:bg-primary text-white font-bold py-2.5 px-4 rounded-md disabled:bg-gray-600 disabled:cursor-not-allowed transition duration-300 flex items-center justify-center"
-            >
-              {isLoading ? (
-                <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-              ) : '매도 확인'}
-            </button>
-          </div>
+          {submitAttempted && formError && (
+            <p className="flex items-center gap-1.5 text-danger text-sm" role="alert"><CircleAlert className="h-4 w-4 shrink-0" aria-hidden="true" />{formError}</p>
+          )}
         </form>
-      </div>
-    </div>
+    </Modal>
   );
 };
 

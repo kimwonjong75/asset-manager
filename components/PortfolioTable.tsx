@@ -27,10 +27,14 @@ import { BUCKET_LABELS } from '../types/bucket';
 import { OWNER_LABELS } from '../types/owner';
 import { useConfirm } from '../hooks/useConfirm';
 import ConfirmDialog from './common/ConfirmDialog';
+import Button from './common/Button';
+import { ArrowDown, ArrowUp, ArrowUpDown, ChevronDown, ClipboardList, RefreshCw, Star } from 'lucide-react';
 
 const SortIcon = ({ sortKey, sortConfig }: { sortKey: SortKey, sortConfig: { key: SortKey; direction: SortDirection } | null }) => {
-  if (!sortConfig || sortConfig.key !== sortKey) return <span className="opacity-30">↕</span>;
-  return sortConfig.direction === 'descending' ? <span>▼</span> : <span>▲</span>;
+  if (!sortConfig || sortConfig.key !== sortKey) return <ArrowUpDown className="h-3.5 w-3.5 opacity-30" aria-hidden="true" />;
+  return sortConfig.direction === 'descending'
+    ? <ArrowDown className="h-3.5 w-3.5" aria-label="내림차순" />
+    : <ArrowUp className="h-3.5 w-3.5" aria-label="오름차순" />;
 };
 
 const PortfolioTable: React.FC<PortfolioTableProps> = ({
@@ -78,7 +82,7 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
   // Context에서 가져오기
   const { derived, ui, actions, data } = usePortfolio();
   const { enrichedMap, isEnrichedLoading } = derived;
-  const { confirm, confirmRequest } = useConfirm();
+  const { confirm, notify, confirmRequest } = useConfirm();
 
   // GC/DC 뱃지: 알림 규칙(`golden-cross`, `dead-cross`)의 MA 페어를 직접 참조
   // 사용자가 알림 설정에서 변경한 페어가 즉시 뱃지에 반영됨
@@ -256,7 +260,7 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
   const handleBulkPatch = async (patch: BulkAssetPatch, label: string) => {
     const { assets: nextAssets, changedCount } = applyBulkAssetPatch(data.assets, selectedIds, patch);
     if (changedCount === 0) {
-      window.alert('선택한 자산이 이미 모두 해당 값입니다.');
+      await notify('선택한 자산이 이미 모두 해당 값입니다.');
       return;
     }
     if (!(await confirm(`선택한 ${selectedIds.size}개 자산 중 ${changedCount}개를 '${label}'(으)로 변경합니다.`))) return;
@@ -271,7 +275,7 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
       data.assets, selectedIds, { makeId: (seq) => `bt-${today}-${seqBase}-${seq}` }, data.watchlist,
     );
     if (result.registeredCount === 0) {
-      window.alert(
+      await notify(
         result.skippedFamily.length > 0
           ? `유선 계정 자산은 터틀 후보로 등록하지 않습니다 (${result.skippedFamily.length}건 제외).`
           : '터틀 후보로 등록할 자산이 없습니다.',
@@ -286,8 +290,8 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
 
   const getReturnHeaderLabel = () => {
     if (!sortConfig) return '수익률';
-    if (sortConfig.key === 'returnPercentage') return `수익률 ${sortConfig.direction === 'descending' ? '▼' : '▲'}`;
-    if (sortConfig.key === 'profitLossKRW') return `평가손익 ${sortConfig.direction === 'descending' ? '▼' : '▲'}`;
+    if (sortConfig.key === 'returnPercentage') return `수익률 ${sortConfig.direction === 'descending' ? '↓' : '↑'}`;
+    if (sortConfig.key === 'profitLossKRW') return `평가손익 ${sortConfig.direction === 'descending' ? '↓' : '↑'}`;
     return '수익률';
   };
 
@@ -310,7 +314,7 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
   const thContentClasses = "flex items-center gap-2";
 
   return (
-    <div className="bg-gray-800 rounded-lg shadow-lg">
+    <div className="bg-gray-800 rounded-lg border border-border-subtle">
       {confirmRequest && <ConfirmDialog {...confirmRequest} />}
       {/* 헤더 영역 */}
       <div className="bg-gray-800 px-3 sm:px-6 pt-2 sm:pt-6 pb-2 sm:pb-4 border-b border-gray-700">
@@ -338,14 +342,16 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
             )}
             <button
               onClick={() => setShowPinnedOnly(!showPinnedOnly)}
-              className={`text-xl leading-none py-2 px-2 rounded-md transition-colors flex-shrink-0 ${
+              className={`inline-flex items-center justify-center min-h-9 min-w-9 rounded-md transition-colors flex-shrink-0 ${
                 showPinnedOnly
                   ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/50'
                   : 'text-gray-500 hover:text-yellow-400/60 border border-transparent'
               }`}
               title={showPinnedOnly ? '전체 보기' : '중요 종목만 보기'}
+              aria-label={showPinnedOnly ? '전체 보기' : '중요 종목만 보기'}
+              aria-pressed={showPinnedOnly}
             >
-              {showPinnedOnly ? '★' : '☆'}
+              <Star className="h-5 w-5" fill={showPinnedOnly ? 'currentColor' : 'none'} aria-hidden="true" />
             </button>
           </div>
         <div className="flex items-center gap-2">
@@ -355,23 +361,29 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
                 {selectedIds.size}개 선택됨
               </span>
               {onRefreshSelected && (
-                <button
+                <Button
+                  variant="secondary"
+                  icon={<RefreshCw />}
                   onClick={() => onRefreshSelected(Array.from(selectedIds))}
-                  disabled={isLoading}
-                  className="bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white px-3 py-1 rounded text-xs font-medium transition"
+                  loading={isLoading}
+                  className="whitespace-nowrap"
                 >
                   {isLoading ? '업데이트 중...' : '선택 업데이트'}
-                </button>
+                </Button>
               )}
-              <button
+              <Button
                 ref={bulkMenuRef}
+                variant="secondary"
+                iconRight={<ChevronDown />}
                 onClick={() => setBulkMenuOpen(prev => !prev)}
                 disabled={isLoading}
-                className="bg-gray-600 hover:bg-zinc-500 disabled:opacity-50 text-white px-3 py-1 rounded text-xs font-medium transition whitespace-nowrap"
+                className="whitespace-nowrap"
                 title="선택한 자산의 계정/버킷을 한 번에 변경하거나 터틀 후보로 등록합니다"
+                aria-haspopup="menu"
+                aria-expanded={bulkMenuOpen}
               >
-                일괄 변경 ▾
-              </button>
+                일괄 변경
+              </Button>
               {bulkMenuOpen && (
                 <ActionMenu
                   anchorRef={bulkMenuRef}
@@ -382,7 +394,7 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
                     { label: `버킷 → ${BUCKET_LABELS.CORE}`, onClick: () => handleBulkPatch({ bucket: 'CORE' }, `버킷: ${BUCKET_LABELS.CORE}`) },
                     { label: `버킷 → ${BUCKET_LABELS.SATELLITE}`, onClick: () => handleBulkPatch({ bucket: 'SATELLITE' }, `버킷: ${BUCKET_LABELS.SATELLITE}`) },
                     { label: '🐢 터틀 후보 등록', onClick: handleBulkTurtleRegister, colorClass: 'text-purple-300' },
-                    { label: '📋 투더문 일괄 계획 만들기', onClick: actions.openTradePlanBulk, colorClass: 'text-primary-light' },
+                    { label: '투더문 일괄 계획 만들기', icon: <ClipboardList className="h-4 w-4" />, onClick: actions.openTradePlanBulk, colorClass: 'text-primary-light' },
                   ]}
                   onClose={() => setBulkMenuOpen(false)}
                 />
@@ -396,7 +408,7 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
             title={
               hideLowValue && !lowValueFilterReady
                 ? '환율 미확보 — 외화 자산 KRW 환산이 불가하여 소액 숨김이 일시 정지됩니다. 시세 갱신 후 자동으로 재적용됩니다.'
-                : `평가총액 ${ui.lowValueThreshold.toLocaleString('ko-KR')}원 미만 자산 숨김 (★ 핀 고정 자산은 항상 표시 / 환경설정에서 임계값 변경)`
+                : `평가총액 ${ui.lowValueThreshold.toLocaleString('ko-KR')}원 미만 자산 숨김 (핀 고정 자산은 항상 표시 / 환경설정에서 임계값 변경)`
             }
           >
             <input
@@ -517,7 +529,7 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
               {categoryOptions.map(cat => (
                 <option key={cat.id} value={cat.id}>{cat.name}</option>
               ))}
-              <option value="SATELLITE">🚀 {BUCKET_LABELS.SATELLITE} (위성)</option>
+              <option value="SATELLITE">{BUCKET_LABELS.SATELLITE} (위성)</option>
             </select>
             <svg className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />

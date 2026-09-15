@@ -6,7 +6,7 @@ import TradePlanSection from '../trade-plan/TradePlanSection';
 import { formatOriginalCurrency, formatKRW, formatProfitLoss, getChangeColor } from './utils';
 import ActionMenu from '../common/ActionMenu';
 import CrossDaysBadge from '../common/CrossDaysBadge';
-import { MoreHorizontal } from 'lucide-react';
+import { MoreHorizontal, Star, StickyNote } from 'lucide-react';
 import AssetTrendChart from '../AssetTrendChart';
 import ChartViewerModal from '../common/ChartViewerModal';
 import TurtlePositionInfo from './TurtlePositionInfo';
@@ -90,18 +90,24 @@ const PortfolioMobileCard: React.FC<PortfolioMobileCardProps> = ({
             {onTogglePin && (
               <button
                 onClick={(e) => { e.stopPropagation(); onTogglePin(asset.id); }}
-                className={`text-lg leading-none transition-colors flex-shrink-0 ${asset.pinned ? 'text-yellow-400' : 'text-gray-500 hover:text-yellow-400/60'}`}
+                className={`transition-colors flex-shrink-0 ${asset.pinned ? 'text-yellow-400' : 'text-gray-500 hover:text-yellow-400/60'}`}
+                aria-label={asset.pinned ? '중요 해제' : '중요 표시'}
+                aria-pressed={!!asset.pinned}
               >
-                {asset.pinned ? '★' : '☆'}
+                <Star className="h-5 w-5" fill={asset.pinned ? 'currentColor' : 'none'} aria-hidden="true" />
               </button>
             )}
             <span className="font-bold text-primary-light text-sm truncate max-w-[160px]">
               {asset.customName?.trim() || asset.name}
             </span>
-            <span
-              className={`text-xs leading-none cursor-pointer transition-opacity flex-shrink-0 ${asset.memo ? 'opacity-60 hover:opacity-100' : 'opacity-20 hover:opacity-50'}`}
+            <button
+              type="button"
+              className={`text-gray-300 cursor-pointer transition-opacity flex-shrink-0 ${asset.memo ? 'opacity-60 hover:opacity-100' : 'opacity-20 hover:opacity-50'}`}
               onClick={(e) => { e.stopPropagation(); onMemoEdit?.(asset); }}
-            >📝</span>
+              aria-label={asset.memo ? '메모 수정' : '메모 추가'}
+            >
+              <StickyNote className="h-4 w-4" aria-hidden="true" />
+            </button>
           </div>
           <div className="flex items-center gap-1.5 mt-0.5">
             <span className="text-xs text-gray-500">{asset.ticker} | {asset.exchange}</span>

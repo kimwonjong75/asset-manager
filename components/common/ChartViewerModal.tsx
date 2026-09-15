@@ -33,7 +33,7 @@ const ChartViewerModal: React.FC<ChartViewerModalProps> = ({ onClose, ...chartPr
       aria-label="차트 크게 보기"
     >
       <div
-        className="relative w-full h-full sm:w-[95vw] sm:h-[90vh] flex flex-col"
+        className="relative w-full h-full sm:w-[95vw] sm:h-[90vh] sm:h-[90dvh] flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         <button

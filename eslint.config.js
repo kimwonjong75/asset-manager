@@ -34,6 +34,46 @@ const APP_SOURCE = [
   'config/**/*.{ts,tsx}',
 ];
 
+/** className 문자열(Literal)·템플릿 리터럴 조각(TemplateElement)에 같은 정규식을 건다 — cn() 인자도 Literal 이다 */
+const classBan = (pattern, message) => [
+  { selector: `Literal[value=/${pattern}/]`, message },
+  { selector: `TemplateElement[value.raw=/${pattern}/]`, message },
+];
+
+/**
+ * 앱 소스 전체 no-restricted-syntax (RULES.md §8, §13 ESLint).
+ *  · text-[Npx]: 절대 px 폰트는 useFontScale(루트 rem 15/17px)에 반응하지 않는다 (Stage B)
+ *  · text-gray-600: #3A3A3A 글자는 다크 배경에서 ~1.5:1 → 사실상 안 보인다 (Stage B)
+ *  · success/positive/negative 색 클래스: tailwind.config.ts 에서 삭제된 폐기 별칭 — 쓰면 클래스가
+ *    조용히 사라진다(JIT 는 모르는 클래스를 에러 없이 무시) (Stage C 게이트)
+ */
+const BASE_SYNTAX_BANS = [
+  ...classBan(String.raw`\btext-\[\d+px\]`,
+    '절대 px 폰트(text-[Npx]) 금지 — text-xs/sm/base 등 rem 크기를 쓰세요 (RULES.md §8 레이아웃 및 반응형 제약사항).'),
+  ...classBan(String.raw`\btext-gray-600\b`,
+    'text-gray-600 글자 금지(대비 ~1.5:1) — 흐린 글자는 text-gray-500 을 쓰세요. gray-600 은 테두리·배경 전용 (RULES.md §8).'),
+  ...classBan(String.raw`\b(text|bg|border|ring|fill|stroke)-(success|positive|negative)\b`,
+    '폐기된 색 별칭(success/positive/negative) — 방향은 up/down, 성공 상태는 ok, 위험은 warning, 오류·삭제는 danger (RULES.md §8 색 규약).'),
+];
+
+// 이모지·픽토그램·기하 글리프 — 🐢(U+1F422, 터틀 후보 표식)만 허용.
+// esquery 정규식은 u 플래그 없이 UTF-16 코드 유닛으로 매칭하므로 서로게이트 쌍으로 적는다:
+//   U+1F300–1F3FF = D83C DF00–DFFF / U+1F400–1F7FF = D83D DC00–DFFF (DC22 🐢 제외) / U+1F800–1FAFF = D83E DC00–DEFF
+//   BMP: U+2600–27BF(✅ 2705·❌ 274C 포함) · U+2B50 ⭐ · U+25A0–25FF(■▲▼◆ 등 기하 도형)
+// 캔버스 마커 글리프(◆)처럼 꼭 필요한 글자는 utils/chartFormat.ts 의 이름 붙인 상수로 둔다(규칙 범위 밖).
+const EMOJI_PATTERN =
+  String.raw`\uD83C[\uDF00-\uDFFF]|\uD83D[\uDC00-\uDC21\uDC23-\uDFFF]|\uD83E[\uDC00-\uDEFF]|[\u2600-\u27BF\u2B50\u25A0-\u25FF]`;
+const EMOJI_MESSAGE =
+  '이모지·기호 글리프 금지(🐢만 허용) — lucide-react 아이콘 + 문구를 쓰세요. 캔버스 텍스트 글리프는 utils/chartFormat.ts 상수로 (RULES.md §8 색 규약).';
+
+/** components/ + App.tsx 전용 — 원시 방향색 텍스트와 이모지 */
+const COMPONENT_SYNTAX_BANS = [
+  ...classBan(String.raw`\btext-(red|green|emerald|rose)-\d{2,3}\b`,
+    '원시 방향색 글자(text-red/green/emerald/rose-N) 금지 — text-up / text-down / text-ok / text-danger / text-warning 을 쓰세요 (RULES.md §8 색 규약).'),
+  ...classBan(EMOJI_PATTERN, EMOJI_MESSAGE),
+  { selector: `JSXText[value=/${EMOJI_PATTERN}/]`, message: EMOJI_MESSAGE },
+];
+
 /** 오프라인 진단·연구 스크립트 — console 출력이 곧 결과물이라 규칙을 완화한다 */
 const TOOLING = ['tests/**/*.{ts,tsx,js,mjs}', 'scripts/**/*.{ts,tsx,js,mjs}'];
 
@@ -92,28 +132,20 @@ export default tseslint.config(
         }],
       }],
 
-      // RULES.md §8 레이아웃 — 가독성 회귀 차단 (Stage B, 2026-09-15)
-      //  · text-[Npx]: 절대 px 폰트는 useFontScale(루트 rem 15/17px)에 반응하지 않는다
-      //  · text-gray-600: #3A3A3A 글자는 다크 배경에서 ~1.5:1 → 사실상 안 보인다
-      // className 문자열·템플릿 리터럴·cn() 인자 모두 Literal/TemplateElement 로 잡힌다.
-      'no-restricted-syntax': ['error',
-        {
-          selector: 'Literal[value=/\\btext-\\[\\d+px\\]/]',
-          message: '절대 px 폰트(text-[Npx]) 금지 — text-xs/sm/base 등 rem 크기를 쓰세요 (RULES.md §8 레이아웃 및 반응형 제약사항).',
-        },
-        {
-          selector: 'TemplateElement[value.raw=/\\btext-\\[\\d+px\\]/]',
-          message: '절대 px 폰트(text-[Npx]) 금지 — text-xs/sm/base 등 rem 크기를 쓰세요 (RULES.md §8 레이아웃 및 반응형 제약사항).',
-        },
-        {
-          selector: 'Literal[value=/\\btext-gray-600\\b/]',
-          message: 'text-gray-600 글자 금지(대비 ~1.5:1) — 흐린 글자는 text-gray-500 을 쓰세요. gray-600 은 테두리·배경 전용 (RULES.md §8).',
-        },
-        {
-          selector: 'TemplateElement[value.raw=/\\btext-gray-600\\b/]',
-          message: 'text-gray-600 글자 금지(대비 ~1.5:1) — 흐린 글자는 text-gray-500 을 쓰세요. gray-600 은 테두리·배경 전용 (RULES.md §8).',
-        },
-      ],
+      // RULES.md §7 사용자 알림 — 브라우저 alert/confirm/prompt 금지 (Stage C 게이트, 2026-09-15).
+      // 대체: useConfirm().confirm / notify + ConfirmDialog. tests/dialogPolicyIntegrity.ts 와 이중 가드.
+      'no-alert': 'error',
+
+      // RULES.md §8 — 가독성·색 규약 회귀 차단 (Stage B/C). 선택자 정의는 파일 상단 BASE_SYNTAX_BANS.
+      'no-restricted-syntax': ['error', ...BASE_SYNTAX_BANS],
+    },
+  },
+  {
+    // components/ + App.tsx 전용 추가 금지(색 규약·이모지). flat config 에서 같은 규칙을 다시 선언하면
+    // 앞 설정을 **대체**하므로 BASE_SYNTAX_BANS 를 반드시 함께 펼친다.
+    files: ['components/**/*.{ts,tsx}', 'App.tsx'],
+    rules: {
+      'no-restricted-syntax': ['error', ...BASE_SYNTAX_BANS, ...COMPONENT_SYNTAX_BANS],
     },
   },
   {

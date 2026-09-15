@@ -1,6 +1,9 @@
 import { directionTextClass } from '../utils/directionTone';
 import React, { useMemo, useState, useEffect, Fragment, useRef } from 'react';
-import { Filter, MoreHorizontal, RefreshCw } from 'lucide-react';
+import { ArrowDown, ArrowUp, ArrowUpDown, ClipboardList, Filter, MoreHorizontal, RefreshCw, Star, StickyNote } from 'lucide-react';
+import ActionMenu from './common/ActionMenu';
+import ConfirmDialog from './common/ConfirmDialog';
+import { useConfirm } from '../hooks/useConfirm';
 import MemoTooltip from './common/MemoTooltip';
 import MemoEditPopup from './common/MemoEditPopup';
 import { Asset, Currency, CURRENCY_SYMBOLS, WatchlistItem, ExchangeRates } from '../types';
@@ -9,7 +12,6 @@ import AssetTrendChart from './AssetTrendChart';
 import ChartViewerModal from './common/ChartViewerModal';
 import StockReviewAccordion from './stock-review/StockReviewAccordion';
 import TradePlanSection from './trade-plan/TradePlanSection';
-import { useOnClickOutside } from '../hooks/useOnClickOutside';
 import WatchlistMobileCard from './watchlist/WatchlistMobileCard';
 import { usePortfolio } from '../contexts/PortfolioContext';
 import { watchlistToPseudoAsset } from '../utils/alertChecker';
@@ -34,10 +36,12 @@ interface WatchlistPageProps {
   onTogglePin?: (id: string) => void;
 }
 
-// 정렬 아이콘 (PortfolioTable과 동일 관례: 비활성 ↕, 오름 ▲, 내림 ▼)
+// 정렬 아이콘 (PortfolioTable과 동일 관례: 비활성 ArrowUpDown, 오름 ArrowUp, 내림 ArrowDown)
 const SortIcon: React.FC<{ sortKey: WatchlistSortKey; sortConfig: WatchlistSortConfig | null }> = ({ sortKey, sortConfig }) => {
-  if (!sortConfig || sortConfig.key !== sortKey) return <span className="opacity-30">↕</span>;
-  return <span>{sortConfig.direction === 'descending' ? '▼' : '▲'}</span>;
+  if (!sortConfig || sortConfig.key !== sortKey) return <ArrowUpDown className="h-3.5 w-3.5 opacity-30" aria-hidden="true" />;
+  return sortConfig.direction === 'descending'
+    ? <ArrowDown className="h-3.5 w-3.5" aria-label="내림차순" />
+    : <ArrowUp className="h-3.5 w-3.5" aria-label="오름차순" />;
 };
 
 // 차트 아이콘
@@ -59,11 +63,11 @@ const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, portfolioAsset
   const [showPinnedOnly, setShowPinnedOnly] = useState(false);
   const [memoEditItem, setMemoEditItem] = useState<WatchlistItem | null>(null);
   const [sortConfig, setSortConfig] = useState<WatchlistSortConfig | null>(null);
-  const menuRef = useRef<HTMLDivElement | null>(null);
+  // 행 액션 메뉴 앵커 — 열린 행의 버튼에만 ref 를 붙인다(ActionMenu 가 위치·바깥 클릭·Esc 처리)
+  const menuAnchorRef = useRef<HTMLButtonElement | null>(null);
+  const { confirm, confirmRequest } = useConfirm();
 
   const requestSort = (key: WatchlistSortKey) => setSortConfig(prev => nextWatchlistSort(prev, key));
-
-  useOnClickOutside(menuRef, () => setOpenMenuId(null), !!openMenuId);
 
   // 브리핑에서 관심종목 클릭 시 차트 자동 확장 + 해당 행으로 스크롤
   useEffect(() => {
@@ -151,8 +155,9 @@ const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, portfolioAsset
 
   return (
     <div className="space-y-6">
+      {confirmRequest && <ConfirmDialog {...confirmRequest} />}
       {/* 툴바 */}
-      <div className="bg-gray-800 p-3 sm:p-4 rounded-lg shadow-lg flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
+      <div className="bg-gray-800 p-3 sm:p-4 rounded-lg border border-border-subtle flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
         <div className="flex items-center gap-2 sm:gap-4">
           <div className="relative flex-1 sm:flex-none">
             <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="이름/티커/메모 검색" className="bg-gray-700 border border-gray-600 rounded-md py-2 pl-10 pr-10 text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary w-full sm:w-64" />
@@ -163,14 +168,16 @@ const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, portfolioAsset
           {onTogglePin && (
             <button
               onClick={() => setShowPinnedOnly(!showPinnedOnly)}
-              className={`text-xl leading-none py-2 px-2 rounded-md transition-colors flex-shrink-0 ${
+              className={`inline-flex items-center justify-center min-h-9 min-w-9 rounded-md transition-colors flex-shrink-0 ${
                 showPinnedOnly
                   ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/50'
                   : 'text-gray-500 hover:text-yellow-400/60 border border-transparent'
               }`}
               title={showPinnedOnly ? '전체 보기' : '중요 종목만 보기'}
+              aria-label={showPinnedOnly ? '전체 보기' : '중요 종목만 보기'}
+              aria-pressed={showPinnedOnly}
             >
-              {showPinnedOnly ? '★' : '☆'}
+              <Star className="h-5 w-5" fill={showPinnedOnly ? 'currentColor' : 'none'} aria-hidden="true" />
             </button>
           )}
         </div>
@@ -314,12 +321,14 @@ const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, portfolioAsset
                         {onTogglePin && (
                           <button
                             onClick={(e) => { e.stopPropagation(); onTogglePin(w.id); }}
-                            className={`text-lg leading-none transition-colors flex-shrink-0 mt-0.5 ${
+                            className={`transition-colors flex-shrink-0 mt-0.5 ${
                               w.pinned ? 'text-yellow-400' : 'text-gray-500 hover:text-yellow-400/60'
                             }`}
                             title={w.pinned ? '중요 해제' : '중요 표시'}
+                            aria-label={w.pinned ? '중요 해제' : '중요 표시'}
+                            aria-pressed={!!w.pinned}
                           >
-                            {w.pinned ? '★' : '☆'}
+                            <Star className="h-4 w-4" fill={w.pinned ? 'currentColor' : 'none'} aria-hidden="true" />
                           </button>
                         )}
                         <div className="flex flex-col">
@@ -330,7 +339,7 @@ const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, portfolioAsset
                                   <span className="text-xs px-1 py-0.5 rounded bg-sky-500/20 text-sky-300 flex-shrink-0" title="보유중">보유</span>
                                 )}
                                 {w.isTurtleCandidate && (
-                                  <span className="text-xs px-1 py-0.5 rounded bg-emerald-500/20 text-emerald-300 flex-shrink-0" role="img" aria-label="터틀 후보" title="터틀 후보">🐢</span>
+                                  <span className="text-xs px-1 py-0.5 rounded bg-ok-soft text-ok flex-shrink-0" role="img" aria-label="터틀 후보" title="터틀 후보">🐢</span>
                                 )}
                                 <a
                                   href={`https://www.google.com/search?q=${encodeURIComponent(w.ticker + ' 주가')}`}
@@ -342,13 +351,17 @@ const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, portfolioAsset
                                 </a>
                               </span>
                             </MemoTooltip>
-                            <span
-                              className={`text-xl leading-none cursor-pointer transition-opacity flex-shrink-0 ${
+                            <button
+                              type="button"
+                              className={`text-gray-300 cursor-pointer transition-opacity flex-shrink-0 ${
                                 w.notes ? 'opacity-60 hover:opacity-100' : 'opacity-20 hover:opacity-50'
                               }`}
                               onClick={(e) => { e.stopPropagation(); setMemoEditItem(w); }}
                               title={w.notes ? '메모 수정' : '메모 추가'}
-                            >📝</span>
+                              aria-label={w.notes ? '메모 수정' : '메모 추가'}
+                            >
+                              <StickyNote className="h-4 w-4" aria-hidden="true" />
+                            </button>
                           </div>
                           <span className="text-xs text-gray-500">{w.ticker} | {w.exchange} | {getCategoryName(w.categoryId, categories)}</span>
                         </div>
@@ -367,30 +380,43 @@ const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, portfolioAsset
                         <button onClick={() => handleToggleExpand(w.id)} className="p-2 text-gray-300 hover:text-white" title="차트">
                           <ChartBarIcon />
                         </button>
-                        <button onClick={() => setOpenMenuId(openMenuId === w.id ? null : w.id)} className="p-2 text-gray-300 hover:text-white">
+                        <button
+                          ref={openMenuId === w.id ? menuAnchorRef : undefined}
+                          onClick={() => setOpenMenuId(openMenuId === w.id ? null : w.id)}
+                          className="p-2 text-gray-300 hover:text-white"
+                          aria-label={`${w.name} 메뉴`}
+                          aria-haspopup="menu"
+                          aria-expanded={openMenuId === w.id}
+                        >
                           <MoreHorizontal className="h-5 w-5" />
                         </button>
                       </div>
+                      {/* 드롭다운은 ActionMenu(ui-constraints) — WatchlistMobileCard 메뉴와 같은 항목·순서 */}
                       {openMenuId === w.id && (
-                        <div ref={menuRef} className="absolute right-0 mt-2 w-36 bg-gray-800 border border-gray-700 rounded-md shadow-lg z-30 text-sm">
-                          <button onClick={() => { setOpenMenuId(null); onOpenEditModal(w); }} className="block w-full text-left px-3 py-2 hover:bg-gray-700 text-white">수정</button>
-                          <button
-                            onClick={() => {
-                              setOpenMenuId(null);
-                              actions.openTradePlanPlanner({ watchItemId: w.id, ticker: w.ticker, exchange: w.exchange, name: w.name });
-                            }}
-                            className="block w-full text-left px-3 py-2 text-gray-200 hover:bg-gray-700"
-                          >
-                            📋 매매 계획
-                          </button>
-                          <button onClick={() => { setOpenMenuId(null); toggleTurtle(w.id); }} className="block w-full text-left px-3 py-2 text-gray-200 hover:bg-gray-700">{w.isTurtleCandidate ? '🐢 터틀 후보 해제' : '🐢 터틀 후보 지정'}</button>
-                          <button onClick={() => { setOpenMenuId(null); handleToggleExpand(w.id); }} className="block w-full text-left px-3 py-2 text-gray-200 hover:bg-gray-700">차트 보기</button>
-                          <button onClick={() => { setOpenMenuId(null); setFullscreenItemId(w.id); }} className="block w-full text-left px-3 py-2 text-gray-200 hover:bg-gray-700">차트 확대</button>
-                          <button onClick={() => {
-                            setOpenMenuId(null);
-                            if (window.confirm(`'${w.name}' 종목을 삭제하시겠습니까?`)) onDelete(w.id);
-                          }} className="block w-full text-left px-3 py-2 text-danger hover:bg-gray-700">삭제</button>
-                        </div>
+                        <ActionMenu
+                          anchorRef={menuAnchorRef}
+                          onClose={() => setOpenMenuId(null)}
+                          items={[
+                            { label: '수정', onClick: () => onOpenEditModal(w) },
+                            {
+                              label: '매매 계획',
+                              icon: <ClipboardList />,
+                              onClick: () => actions.openTradePlanPlanner({ watchItemId: w.id, ticker: w.ticker, exchange: w.exchange, name: w.name }),
+                              colorClass: 'text-gray-200',
+                            },
+                            { label: w.isTurtleCandidate ? '🐢 터틀 후보 해제' : '🐢 터틀 후보 지정', onClick: () => toggleTurtle(w.id), colorClass: 'text-gray-200' },
+                            { label: '차트 보기', onClick: () => handleToggleExpand(w.id), colorClass: 'text-gray-200' },
+                            { label: '차트 확대', onClick: () => setFullscreenItemId(w.id), colorClass: 'text-gray-200' },
+                            {
+                              label: '삭제',
+                              onClick: () => {
+                                void confirm(`'${w.name}' 종목을 삭제하시겠습니까?`, { title: '관심종목 삭제', confirmLabel: '삭제', tone: 'danger' })
+                                  .then(ok => { if (ok) onDelete(w.id); });
+                              },
+                              colorClass: 'text-danger',
+                            },
+                          ]}
+                        />
                       )}
                     </td>
                   </tr>
@@ -475,7 +501,7 @@ const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, portfolioAsset
       </div>
 
       {/* 모바일 카드 뷰 */}
-      <div className="block md:hidden bg-gray-800 rounded-lg shadow-lg overflow-hidden">
+      <div className="block md:hidden bg-gray-800 rounded-lg border border-border-subtle overflow-hidden">
         {filtered.length > 0 ? filtered.map(w => (
           <div key={w.id} data-watch-id={w.id}>
           <WatchlistMobileCard
