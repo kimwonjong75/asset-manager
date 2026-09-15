@@ -30,7 +30,7 @@ const ACTION_STYLES: Record<RuleAction, ActionStyle> = {
   'sell-warning': { label: '매도 경고', badge: 'bg-down-soft text-down border-down/40' },
   'buy-setup': { label: '진입 검토', badge: 'bg-up-soft text-up border-up/40' },
   'buy-watch': { label: '관찰 후보', badge: 'bg-transparent text-up border-up/30 border-dashed' },
-  'risk-sizing': { label: '리스크', badge: 'bg-amber-500/15 text-amber-300 border-amber-500/30' },
+  'risk-sizing': { label: '리스크', badge: 'bg-warning-soft text-warning border-warning/30' },
   'regime-filter': { label: '시장 국면', badge: 'bg-purple-500/15 text-purple-300 border-purple-500/30' },
   'review': { label: '복기', badge: 'bg-gray-500/15 text-gray-300 border-gray-500/30' },
 };
@@ -69,7 +69,7 @@ const ExplainBlock: React.FC<{ title: string; exp: SignalExplanation }> = ({ tit
         <span className="text-gray-500 inline-flex items-center gap-1 align-[-2px]"><ClipboardList className="h-3 w-3" aria-hidden="true" />언제 뜨나 </span>{exp.conditions.join(' · ')}
       </p>
     ) : null}
-    {exp.riskPolicy && <p className="mt-1.5 text-gray-500 flex items-start gap-1"><TriangleAlert className="h-3 w-3 mt-0.5 shrink-0 text-amber-400" aria-hidden="true" /><span>무효: {exp.riskPolicy}</span></p>}
+    {exp.riskPolicy && <p className="mt-1.5 text-gray-500 flex items-start gap-1"><TriangleAlert className="h-3 w-3 mt-0.5 shrink-0 text-warning" aria-hidden="true" /><span>무효: {exp.riskPolicy}</span></p>}
   </div>
 );
 
@@ -195,7 +195,7 @@ const GuruSignalCard: React.FC<GuruSignalCardProps> = ({ collapsible = false, de
                               <span className="text-sm text-white truncate max-w-[55%]">{asset.name}</span>
                               <span className="text-xs text-gray-500">{asset.ticker}</span>
                               {asset.source === 'watchlist' && (
-                                <span className="text-xs text-sky-400">관심</span>
+                                <span className="text-xs text-info">관심</span>
                               )}
                             </div>
                             <div className="flex items-center gap-1 flex-wrap mt-1">
@@ -209,7 +209,7 @@ const GuruSignalCard: React.FC<GuruSignalCardProps> = ({ collapsible = false, de
                               ))}
                             </div>
                             {asset.rules.some(r => caveats.get(`${r.ruleId}__${asset.assetId}`)?.kind === 'firing-partial') && (
-                              <div className="text-xs text-amber-300 mt-1 flex items-center gap-1"><TriangleAlert className="h-3 w-3 shrink-0" aria-hidden="true" />일부 데이터 기준 발화 · 수동 확인 필요</div>
+                              <div className="text-xs text-warning mt-1 flex items-center gap-1"><TriangleAlert className="h-3 w-3 shrink-0" aria-hidden="true" />일부 데이터 기준 발화 · 수동 확인 필요</div>
                             )}
                             {invalidations.length > 0 && (
                               <div className="text-xs text-gray-500 mt-1 flex items-start gap-1">

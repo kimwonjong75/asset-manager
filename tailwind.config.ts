@@ -76,15 +76,27 @@ const config: Config = {
         'border-subtle': '#3A3A3A',
         // Stage C 게이트(2026-09-15): 폐기 별칭 success/positive/negative 는 소비처 0건 확인 후 삭제.
         // 재도입은 eslint no-restricted-syntax + tests/visualSystemIntegrity.ts 가 차단한다.
+        // Stage D2 — 경고 글자색은 `text-warning` 하나로 통일(amber-300/400/500 → warning).
+        // 글자 대비: #121212 8.72 / #1E1E1E 7.76 / #2C2C2C 6.50 · warning-soft 위 5.89(#1E1E1E)/4.92(#2C2C2C).
+        // `critical` 토큰은 두지 않는다 — 강한 위험은 text-warning + OctagonAlert + font-semibold + border-warning.
+        // strong = 흰 글자 채움(배지·배너) 전용: #B45309 흰 글자 5.02. 텍스트 색 금지(#1E1E1E 위 3.32).
+        // 사다리(디스트리뷰션 3/4/5·리스크 매트릭스 등)·식별 색은 constants/stateColorLadders.ts 에만 둔다.
         warning: {
           DEFAULT: '#F59E0B',
           soft: 'rgba(245, 158, 11, 0.15)',
+          strong: '#B45309',
         },
         // Stage B — 파랑(down)과 겹치지 않도록 sky 계열로 이동 (#3B82F6은 #2C2C2C에서 3.80로 AA 미달)
+        // Stage D2 — strong: 흰 글자 채움(배지·배너) 전용 #0369A1 흰 글자 5.93. 텍스트 색 금지(#1E1E1E 위 2.81).
         info: {
           DEFAULT: '#38BDF8',
           soft: 'rgba(56, 189, 248, 0.15)',
+          strong: '#0369A1',
         },
+        // Stage D2 — 식별 색(상태 의미 없음): 유선(가족) 계정 배지. utils/chartFormat.CATEGORY_PALETTE 의 sand 와 같은 값.
+        // 글자 대비 #1E1E1E 8.87 / #2C2C2C 7.43 · sand/15 틴트 위 6.46(#1E1E1E)/5.38(#2C2C2C).
+        // 상태(위험·성공 등)에 쓰지 말 것 — 사용처는 constants/stateColorLadders.ts 의 ACCOUNT_IDENTITY_BADGE 경유.
+        sand: '#D6B98C',
       },
       borderRadius: {
         // P6 카드 기본 반경(12px) — 기존 rounded-lg(8px) 사용처는 그대로 두고, 신규 공용 컴포넌트가 사용.

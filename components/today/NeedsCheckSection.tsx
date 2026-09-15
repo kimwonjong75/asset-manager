@@ -20,14 +20,14 @@ const NeedsCheckSection: React.FC<NeedsCheckSectionProps> = ({ needsCheck }) => 
   if (priceIssues.length === 0 && brokerStopMissing.length === 0) return null;
 
   return (
-    <section className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3">
+    <section className="rounded-lg border border-warning/30 bg-warning-soft p-3">
       <div className="mb-2">
         <SectionHeader
           title="확인 필요"
           tone="warning"
-          icon={<ListChecks className="h-4 w-4 text-amber-400" aria-hidden="true" />}
+          icon={<ListChecks className="h-4 w-4 text-warning" aria-hidden="true" />}
           actions={
-            <span className="text-xs font-normal text-amber-300/80">
+            <span className="text-xs font-normal text-gray-300">
               시세 문제 {priceIssues.length} · 손절주문 미등록 {brokerStopMissing.length}
             </span>
           }
@@ -36,7 +36,7 @@ const NeedsCheckSection: React.FC<NeedsCheckSectionProps> = ({ needsCheck }) => 
 
       {priceIssues.length > 0 && (
         <div className="mb-2.5">
-          <p className="text-xs text-amber-200/70 mb-1">
+          <p className="text-xs text-gray-300 mb-1">
             시세 없음 — 새로고침 후에도 없으면 종목 코드를 확인하세요
           </p>
           <ul className="space-y-1">
@@ -54,7 +54,7 @@ const NeedsCheckSection: React.FC<NeedsCheckSectionProps> = ({ needsCheck }) => 
 
       {brokerStopMissing.length > 0 && (
         <div>
-          <p className="text-xs text-amber-200/70 mb-1">
+          <p className="text-xs text-gray-300 mb-1">
             증권사 앱에서 '손절(스탑로스) 예약주문'을 손절선 가격으로 걸어 두세요. 카톡은 알려줄 뿐 대신 팔아주지 않습니다
           </p>
           <ul className="space-y-1">

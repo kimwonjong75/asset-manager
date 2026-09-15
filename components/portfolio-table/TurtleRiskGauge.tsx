@@ -10,6 +10,7 @@
 import { TriangleAlert } from 'lucide-react';
 import React from 'react';
 import { TurtleRiskGaugeModel } from '../../utils/turtlePositionView';
+import { TURTLE_RISK_GAUGE_STEPS } from '../../constants/stateColorLadders';
 import { formatKRW } from './utils';
 
 interface Props {
@@ -24,7 +25,8 @@ const TurtleRiskGauge: React.FC<Props> = ({ gauge }) => {
   const fillRatio = riskPct != null && limitPct > 0 ? Math.min(1, riskPct / limitPct) : 0;
   const over = riskPct != null && riskPct >= limitPct;
   const near = riskPct != null && !over && riskPct >= limitPct * 0.75;
-  const barColor = over ? 'bg-orange-500' : near ? 'bg-amber-500' : 'bg-ok';
+  // 단계 색은 사다리 상수(stateColorLadders)에서만 — over 는 아이콘 + '초과' 문구와 함께 표시
+  const step = TURTLE_RISK_GAUGE_STEPS[over ? 'over' : near ? 'near' : 'normal'];
 
   return (
     <div className="mx-3 sm:mx-6 mt-2 sm:mt-3 rounded-md border border-gray-700 bg-gray-800/60 px-3 py-2.5">
@@ -40,7 +42,7 @@ const TurtleRiskGauge: React.FC<Props> = ({ gauge }) => {
           {hasUnresolved ? '≥ ' : ''}{formatKRW(gauge.openRiskKRW)}
         </span>
         {riskPct != null && (
-          <span className={`text-xs font-medium ${over ? 'text-orange-300 font-bold' : near ? 'text-amber-400' : 'text-gray-400'}`}>
+          <span className={`text-xs font-medium ${step.text}`}>
             {over && <TriangleAlert className="inline h-3.5 w-3.5 mr-0.5 -mt-0.5" aria-hidden="true" />}{hasUnresolved ? '≥ ' : ''}{riskPct.toFixed(1)}% / 한도 {limitPct}%{over ? ' 초과' : ''}
           </span>
         )}
@@ -48,11 +50,11 @@ const TurtleRiskGauge: React.FC<Props> = ({ gauge }) => {
 
       {/* 한도 대비 게이지 바 */}
       <div className="mt-1.5 h-1.5 w-full rounded-full bg-gray-700 overflow-hidden">
-        <div className={`h-full rounded-full ${barColor} transition-all`} style={{ width: `${fillRatio * 100}%` }} />
+        <div className={`h-full rounded-full ${step.bar} transition-all`} style={{ width: `${fillRatio * 100}%` }} />
       </div>
 
       {hasUnresolved && (
-        <p className="text-xs text-amber-300 mt-1.5">
+        <p className="text-xs text-warning mt-1.5">
           환율 미확보 {gauge.unresolved.length}종목({gauge.unresolved.map(u => u.ticker).join(', ')})은 합산에서 제외됨 — 실제 리스크는 표시값보다 큽니다. 시세 갱신 후 재계산됩니다.
         </p>
       )}

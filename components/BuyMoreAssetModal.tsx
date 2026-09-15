@@ -1,7 +1,7 @@
 // components/BuyMoreAssetModal.tsx
 // 보유 종목 추가매수 모달
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useId } from 'react';
 import { Asset, Currency, CURRENCY_SYMBOLS } from '../types';
 import { isBaseType } from '../types/category';
 import { formatQuantity } from './portfolio-table/utils';
@@ -9,7 +9,8 @@ import { usePortfolio } from '../contexts/PortfolioContext';
 import PositionSizingCalculator from './common/PositionSizingCalculator';
 import Modal from './common/Modal';
 import Button from './common/Button';
-import { CircleAlert, ChevronDown, ChevronUp, Shield, TriangleAlert } from 'lucide-react';
+import FieldError from './common/FieldError';
+import { ChevronDown, ChevronUp, Shield, TriangleAlert } from 'lucide-react';
 import TradePlanEditor, { type TradePlanEditorHandle } from './trade-plan/TradePlanEditor';
 import { buildTradePlan, nextPyramidStep, formatPlanPrice } from '../utils/tradePlan';
 import { defaultEditorInput, fxRateToKRWFor } from '../utils/tradePlanMarket';
@@ -36,6 +37,8 @@ const BuyMoreAssetModal: React.FC = () => {
   const [pyramidChecked, setPyramidChecked] = useState(false);
   // 제출 시도 후에만 인라인 검증 문구 노출(브라우저 alert 대체 — RULES.md §7)
   const [submitAttempted, setSubmitAttempted] = useState(false);
+  // 폼 오류 문구 id — 조기 return 앞에서 호출(훅 순서 고정). 오류 필드의 aria-describedby 대상.
+  const formErrorId = useId();
 
   // 최신 평가 행은 ref로 미러링한다(usePriceFreshnessRefresh와 동일 접근) — derived.tradePlanRows는
   // 배경 시세 갱신마다 참조가 바뀌므로 아래 리셋 effect의 의존성에 넣으면 모달이 열린 채 재발화해
@@ -51,6 +54,8 @@ const BuyMoreAssetModal: React.FC = () => {
       setBuyQuantity('');
       setSaveTradePlanOnBuy(true);
       setShowTradePlanDetail(false);
+      // 다시 열 때 이전 제출 시도의 인라인 오류가 남지 않게 (Sell/EditSellRecord 모달과 동일)
+      setSubmitAttempted(false);
       // 불타기 신호(도달·근접)에서 열었을 때만 체크박스를 기본 ON으로 제안한다.
       const activePlan = asset.tradePlan && asset.tradePlan.status === 'active' ? asset.tradePlan : null;
       const step = activePlan && activePlan.pyramid.enabled ? nextPyramidStep(activePlan) : null;
@@ -82,13 +87,22 @@ const BuyMoreAssetModal: React.FC = () => {
     : null;
   const pyramidGateOk = precheck ? precheck.ok : true;
 
-  const formError = (!buyDate || !buyPrice || !buyQuantity)
+  // 검증 단계(순서 = 문구 우선순위). 문구와 필드별 aria-invalid가 같은 판정에서 나온다 —
+  // 지금 보이는 문구가 가리키는 필드에만 오류 표시(렌더 중 파생값, 상태 추가 없음).
+  const missingFields = !buyDate || !buyPrice || !buyQuantity;
+  const quantityNotPositive = !missingFields && !(parseFloat(buyQuantity) > 0);
+  const priceNotPositive = !missingFields && !quantityNotPositive && !(parseFloat(buyPrice) > 0);
+  const formError = missingFields
     ? '모든 필드를 입력해주세요.'
-    : !(parseFloat(buyQuantity) > 0)
+    : quantityNotPositive
       ? '매수 수량은 0보다 커야 합니다.'
-      : !(parseFloat(buyPrice) > 0)
+      : priceNotPositive
         ? '매수가는 0보다 커야 합니다.'
         : null;
+  const errorShown = submitAttempted && formError !== null;
+  const dateInvalid = errorShown && missingFields && !buyDate;
+  const priceInvalid = errorShown && ((missingFields && !buyPrice) || priceNotPositive);
+  const quantityInvalid = errorShown && ((missingFields && !buyQuantity) || quantityNotPositive);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -223,6 +237,8 @@ const BuyMoreAssetModal: React.FC = () => {
               onChange={(e) => setBuyDate(e.target.value)}
               className={inputClasses}
               required
+              aria-invalid={dateInvalid || undefined}
+              aria-describedby={dateInvalid ? formErrorId : undefined}
             />
           </div>
 
@@ -245,6 +261,8 @@ const BuyMoreAssetModal: React.FC = () => {
                 min="0"
                 step="any"
                 placeholder="매수가를 입력하세요"
+                aria-invalid={priceInvalid || undefined}
+                aria-describedby={priceInvalid ? formErrorId : undefined}
               />
             </div>
           </div>
@@ -262,6 +280,8 @@ const BuyMoreAssetModal: React.FC = () => {
               min="1"
               step="any"
               placeholder="추가 매수할 수량을 입력하세요"
+              aria-invalid={quantityInvalid || undefined}
+              aria-describedby={quantityInvalid ? formErrorId : undefined}
             />
           </div>
 
@@ -296,7 +316,7 @@ const BuyMoreAssetModal: React.FC = () => {
                   이 추가매수는 불타기 {pyramidStep.level}차로 기록 (계획 {pyramidStep.plannedQuantity}주 · 트리거 {formatPlanPrice(pyramidStep.triggerPrice, asset.currency)})
                 </label>
                 {precheck && !precheck.ok && (
-                  <p className="flex items-center gap-1 text-xs text-amber-400"><TriangleAlert className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />{precheck.label}</p>
+                  <p className="flex items-center gap-1 text-xs text-warning"><TriangleAlert className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />{precheck.label}</p>
                 )}
                 {precheck && precheck.ok && (
                   <p className="text-xs text-ok">
@@ -369,9 +389,7 @@ const BuyMoreAssetModal: React.FC = () => {
             </div>
           )}
 
-          {submitAttempted && formError && (
-            <p className="flex items-center gap-1.5 text-danger text-sm" role="alert"><CircleAlert className="h-4 w-4 shrink-0" aria-hidden="true" />{formError}</p>
-          )}
+          {errorShown && <FieldError id={formErrorId}>{formError}</FieldError>}
         </form>
     </Modal>
   );

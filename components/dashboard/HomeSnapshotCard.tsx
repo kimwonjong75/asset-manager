@@ -55,7 +55,7 @@ const HomeSnapshotCard: React.FC<HomeSnapshotCardProps> = ({
       </div>
       <div className="rounded-lg bg-surface-muted px-3 py-2" title="긴급·오늘 실행 등급 + 시세 확인·손절주문 미등록 종목(자산 단위, 중복 제외)">
         <dt className="text-xs text-gray-400">조치 필요 (전체 계정)</dt>
-        <dd className={`text-lg font-semibold tabular-nums ${actionNeeded > 0 ? 'text-amber-300' : 'text-gray-300'}`}>
+        <dd className={`text-lg font-semibold tabular-nums ${actionNeeded > 0 ? 'text-warning' : 'text-gray-300'}`}>
           {actionNeeded}건
         </dd>
       </div>

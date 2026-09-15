@@ -66,10 +66,17 @@ const EMOJI_PATTERN =
 const EMOJI_MESSAGE =
   '이모지·기호 글리프 금지(🐢만 허용) — lucide-react 아이콘 + 문구를 쓰세요. 캔버스 텍스트 글리프는 utils/chartFormat.ts 상수로 (RULES.md §8 색 규약).';
 
-/** components/ + App.tsx 전용 — 원시 방향색 텍스트와 이모지 */
+/**
+ * components/ + App.tsx 전용 — 원시 방향색 텍스트, 원시 경고·정보 색(Stage D2), 이모지.
+ *  · amber/orange/yellow/sky: 위험·확인은 warning 토큰, 안내는 info 토큰. 단계 사다리(디스트리뷰션 3/4/5 등)·
+ *    식별 색은 constants/stateColorLadders.ts 에만 둔다(이 규칙 범위 밖). hover:·/opacity 변형도 같은 정규식에 걸린다.
+ *    tests/visualSystemIntegrity.ts (f) 와 이중 가드.
+ */
 const COMPONENT_SYNTAX_BANS = [
   ...classBan(String.raw`\btext-(red|green|emerald|rose)-\d{2,3}\b`,
     '원시 방향색 글자(text-red/green/emerald/rose-N) 금지 — text-up / text-down / text-ok / text-danger / text-warning 을 쓰세요 (RULES.md §8 색 규약).'),
+  ...classBan(String.raw`\b(text|bg|border|ring|fill|stroke|from|via|to|outline|accent|decoration|divide)-(amber|orange|yellow|sky)-\d{2,3}\b`,
+    '원시 경고·정보 색(amber/orange/yellow/sky-N) 금지 — 위험·확인은 text-warning·bg-warning-soft·border-warning/30·bg-warning-strong, 안내는 text-info·bg-info-soft·bg-info-strong, 단계 사다리·식별 색은 constants/stateColorLadders.ts 에서 import 하세요 (RULES.md §8 색 규약).'),
   ...classBan(EMOJI_PATTERN, EMOJI_MESSAGE),
   { selector: `JSXText[value=/${EMOJI_PATTERN}/]`, message: EMOJI_MESSAGE },
 ];

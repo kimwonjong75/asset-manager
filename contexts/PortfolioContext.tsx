@@ -238,7 +238,6 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     handleUpdateWatchItem,
     handleDeleteWatchItem,
     handleBulkDeleteWatchItems,
-    handleAddAssetsToWatchlist,
   } = useAssetActions({
     // setter 를 넘기지 않는다 — 상태 변경은 전부 commitPortfolioPatch 한 경로로만 일어난다.
     assets,
@@ -796,7 +795,6 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       confirmBuyMore: async (id: string, buyDate: string, buyPrice: number, buyQuantity: number) => {
         return await handleConfirmBuyMore(id, buyQuantity, buyPrice, buyDate);
       },
-      addSelectedToWatchlist: handleAddAssetsToWatchlist,
       addWatchItem: handleAddWatchItem,
       updateWatchItem: handleUpdateWatchItem,
       deleteWatchItem: handleDeleteWatchItem,

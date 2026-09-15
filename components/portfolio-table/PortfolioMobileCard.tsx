@@ -13,6 +13,7 @@ import AssetTrendChart from '../AssetTrendChart';
 import ChartViewerModal from '../common/ChartViewerModal';
 import TurtlePositionInfo from './TurtlePositionInfo';
 import type { TurtlePositionView } from '../../utils/turtlePositionView';
+import { PIN_STAR, YUSEON_ACCOUNT_BADGE } from '../../constants/stateColorLadders';
 
 
 interface PortfolioMobileCardProps {
@@ -117,7 +118,7 @@ const PortfolioMobileCard: React.FC<PortfolioMobileCardProps> = ({
             {onTogglePin && (
               <button
                 onClick={(e) => { e.stopPropagation(); onTogglePin(asset.id); }}
-                className={`transition-colors flex-shrink-0 ${asset.pinned ? 'text-yellow-400' : 'text-gray-500 hover:text-yellow-400/60'}`}
+                className={`transition-colors flex-shrink-0 ${asset.pinned ? PIN_STAR.pinned : PIN_STAR.unpinned}`}
                 aria-label={asset.pinned ? '중요 해제' : '중요 표시'}
                 aria-pressed={!!asset.pinned}
               >
@@ -142,7 +143,7 @@ const PortfolioMobileCard: React.FC<PortfolioMobileCardProps> = ({
               <span className="text-xs font-bold px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 whitespace-nowrap" title="투더문(위성) 종목">투더문</span>
             )}
             {asset.owner === 'YUSEON' && (
-              <span className="text-xs font-bold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 whitespace-nowrap" title="유선(가족) 계정 자산 — 리밸런싱·터틀 대상에서 제외">유선</span>
+              <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${YUSEON_ACCOUNT_BADGE} whitespace-nowrap`} title="유선(가족) 계정 자산 — 리밸런싱·터틀 대상에서 제외">유선</span>
             )}
             <CrossDaysBadge crossDays={gcCrossDays} />
             <CrossDaysBadge crossDays={dcCrossDays} />

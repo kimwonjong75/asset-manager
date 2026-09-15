@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useId } from 'react';
 import { usePortfolio } from '../contexts/PortfolioContext';
 import { CategoryBaseType, BASE_TYPE_LABELS, EXCHANGE_MAP_BY_BASE_TYPE } from '../types/category';
 import { useConfirm } from '../hooks/useConfirm';
 import ConfirmDialog from './common/ConfirmDialog';
 import Button from './common/Button';
-import { CircleAlert, Plus, Trash2 } from 'lucide-react';
+import FieldError from './common/FieldError';
+import { Plus, Trash2 } from 'lucide-react';
 
 const ALL_BASE_TYPES: CategoryBaseType[] = [
   'KOREAN_STOCK', 'US_STOCK', 'FOREIGN_STOCK', 'OTHER_FOREIGN_STOCK',
@@ -28,6 +29,10 @@ const CategorySettingsSection: React.FC = () => {
   // 삭제 확인
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [reassignId, setReassignId] = useState<number | null>(null);
+
+  // 중복 이름 문구 id — 입력칸 aria-describedby 대상(편집은 한 번에 한 행만이라 id 1개로 충분)
+  const newNameErrorId = useId();
+  const editNameErrorId = useId();
 
   const DUPLICATE_NAME_MESSAGE = '이미 같은 이름의 카테고리가 있습니다.';
   const editNameDuplicate = editingId !== null && !!editName.trim()
@@ -117,6 +122,7 @@ const CategorySettingsSection: React.FC = () => {
                 className="flex-1 bg-gray-700 border border-gray-600 rounded-md py-1.5 px-3 text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary"
                 onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
                 aria-invalid={newNameDuplicate || undefined}
+                aria-describedby={newNameDuplicate ? newNameErrorId : undefined}
                 autoFocus
               />
               <select
@@ -130,7 +136,7 @@ const CategorySettingsSection: React.FC = () => {
               </select>
             </div>
             {newNameDuplicate && (
-              <p className="flex items-center gap-1.5 text-danger text-sm" role="alert"><CircleAlert className="h-4 w-4 shrink-0" aria-hidden="true" />{DUPLICATE_NAME_MESSAGE}</p>
+              <FieldError id={newNameErrorId}>{DUPLICATE_NAME_MESSAGE}</FieldError>
             )}
             <p className="text-xs text-gray-400">
               기본 유형: 거래소 매핑을 결정합니다. 예) {EXCHANGE_MAP_BY_BASE_TYPE[newBaseType].join(', ')}
@@ -165,10 +171,11 @@ const CategorySettingsSection: React.FC = () => {
                   }}
                   className="bg-gray-700 border border-primary rounded-md py-1 px-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary w-40"
                   aria-invalid={editNameDuplicate || undefined}
+                  aria-describedby={editNameDuplicate ? editNameErrorId : undefined}
                   autoFocus
                 />
                 {editNameDuplicate && (
-                  <p className="flex items-center gap-1 text-danger text-xs" role="alert"><CircleAlert className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />{DUPLICATE_NAME_MESSAGE}</p>
+                  <FieldError id={editNameErrorId} size="xs">{DUPLICATE_NAME_MESSAGE}</FieldError>
                 )}
                 </div>
               ) : (

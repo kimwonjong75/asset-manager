@@ -66,7 +66,7 @@
 - Backend Python source is NOT in this repo — deployed separately on Cloud Run (`asset-manager-887842923289.asia-northeast3.run.app`). Endpoints/response schemas: RULES.md §14. Backend changes mean the user redeploys; the frontend must auto-fallback when response fields are absent. Never conclude "cannot find backend code" — it is out-of-repo by design.
 - Gemini API is BYOK: the user enters their own key in settings (localStorage, not synced). No key → AI analysis features are silently disabled; that is expected, not a bug.
 - Knowledge ingest is manually triggered by the user ("인제스트 해줘") — no scheduler; the user's PC is not always on.
-- Verification = **`npm test`** (typecheck + ESLint + all parity/integrity suites via `scripts/verify.mjs`, ~24s). Never hand-pick suites for a final check — picking is exactly how a red test sat unnoticed. `.github/workflows/ci.yml` runs the same command on push/PR; it is deliberately **not yet wired to block deploys** (see RULES.md §13 통합 검문소) — promote it with `needs: verify` in `deploy.yml` once consecutive green runs are confirmed.
+- Verification = **`npm test`** (typecheck + ESLint + all parity/integrity suites via `scripts/verify.mjs`, ~30s). Never hand-pick suites for a final check — picking is exactly how a red test sat unnoticed. CI runs the same `npm run verify`: `.github/workflows/deploy.yml` has a `verify` job and `build: needs: verify`, so **a red check blocks the main-branch deploy** (promoted 2026-08-08; every deploy since has passed it); `.github/workflows/ci.yml` covers other branches and PRs (see RULES.md §13 통합 검문소).
 - Google Drive access uses the `drive.file` scope via `authenticatedFetch()`; JWT lives in localStorage key `google_drive_jwt`.
 
 ## Communication & workflow

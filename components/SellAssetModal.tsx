@@ -1,7 +1,7 @@
 // components/SellAssetModal.tsx
 // 수정된 버전: 매도 통화를 자산 통화로 고정
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useId } from 'react';
 import { Asset, Currency, CURRENCY_SYMBOLS, SellTransaction } from '../types';
 import { isBaseType } from '../types/category';
 import { formatQuantity } from './portfolio-table/utils';
@@ -11,7 +11,7 @@ import type { SellOutcome } from '../types/tradePlan';
 import Segmented from './common/Segmented';
 import Modal from './common/Modal';
 import Button from './common/Button';
-import { CircleAlert } from 'lucide-react';
+import FieldError from './common/FieldError';
 
 /** 매도 효과 선택지 (P2b) — 라벨과 아래 설명이 1:1로 대응한다. */
 const SELL_OUTCOME_OPTIONS: { value: SellOutcome; label: string; hint: string }[] = [
@@ -35,6 +35,8 @@ const SellAssetModal: React.FC = () => {
   const [sellOutcome, setSellOutcome] = useState<SellOutcome>('none');
   // 제출 시도 후에만 인라인 검증 문구 노출(브라우저 alert 대체 — RULES.md §7)
   const [submitAttempted, setSubmitAttempted] = useState(false);
+  // 폼 오류 문구 id — 조기 return 앞에서 호출(훅 순서 고정). 오류 필드의 aria-describedby 대상.
+  const formErrorId = useId();
 
   // 최신 평가 행은 ref로 미러링한다(usePriceFreshnessRefresh와 동일 접근) —
   // derived.tradePlanRows는 배경 시세 갱신마다 참조가 바뀌므로 아래 리셋 effect의 의존성에 넣으면
@@ -82,13 +84,22 @@ const SellAssetModal: React.FC = () => {
   };
 
   const parsedSellQty = parseFloat(sellQuantity);
-  const formError = (!sellDate || !sellPrice || !sellQuantity)
+  // 검증 단계(순서 = 문구 우선순위). 문구와 필드별 aria-invalid가 같은 판정에서 나온다 —
+  // 지금 보이는 문구가 가리키는 필드에만 오류 표시(렌더 중 파생값, 상태 추가 없음).
+  const missingFields = !sellDate || !sellPrice || !sellQuantity;
+  const quantityOutOfRange = !missingFields && !(parsedSellQty > 0 && parsedSellQty <= asset.quantity);
+  const priceNotPositive = !missingFields && !quantityOutOfRange && !(parseFloat(sellPrice) > 0);
+  const formError = missingFields
     ? '모든 필드를 입력해주세요.'
-    : !(parsedSellQty > 0 && parsedSellQty <= asset.quantity)
+    : quantityOutOfRange
       ? `매도 수량은 0보다 크고 보유 수량(${asset.quantity}) 이하여야 합니다.`
-      : !(parseFloat(sellPrice) > 0)
+      : priceNotPositive
         ? '매도가는 0보다 커야 합니다.'
         : null;
+  const errorShown = submitAttempted && formError !== null;
+  const dateInvalid = errorShown && missingFields && !sellDate;
+  const priceInvalid = errorShown && ((missingFields && !sellPrice) || priceNotPositive);
+  const quantityInvalid = errorShown && ((missingFields && !sellQuantity) || quantityOutOfRange);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -229,6 +240,8 @@ const SellAssetModal: React.FC = () => {
               onChange={(e) => setSellDate(e.target.value)}
               className={inputClasses}
               required
+              aria-invalid={dateInvalid || undefined}
+              aria-describedby={dateInvalid ? formErrorId : undefined}
             />
           </div>
 
@@ -251,6 +264,8 @@ const SellAssetModal: React.FC = () => {
                 min="0"
                 step="any"
                 placeholder="매도가를 입력하세요"
+                aria-invalid={priceInvalid || undefined}
+                aria-describedby={priceInvalid ? formErrorId : undefined}
               />
             </div>
           </div>
@@ -269,6 +284,8 @@ const SellAssetModal: React.FC = () => {
               max={asset.quantity}
               step="any"
               placeholder="매도할 수량을 입력하세요"
+              aria-invalid={quantityInvalid || undefined}
+              aria-describedby={quantityInvalid ? formErrorId : undefined}
             />
             <div className="flex justify-between mt-1">
               <button
@@ -296,9 +313,7 @@ const SellAssetModal: React.FC = () => {
             </div>
           )}
 
-          {submitAttempted && formError && (
-            <p className="flex items-center gap-1.5 text-danger text-sm" role="alert"><CircleAlert className="h-4 w-4 shrink-0" aria-hidden="true" />{formError}</p>
-          )}
+          {errorShown && <FieldError id={formErrorId}>{formError}</FieldError>}
         </form>
     </Modal>
   );

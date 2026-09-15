@@ -1,11 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useId } from 'react';
 import { Currency, CURRENCY_SYMBOLS } from '../types';
 import { usePortfolio } from '../contexts/PortfolioContext';
 import { useConfirm } from '../hooks/useConfirm';
 import ConfirmDialog from './common/ConfirmDialog';
 import Modal from './common/Modal';
 import Button from './common/Button';
-import { CircleAlert, TriangleAlert, Trash2 } from 'lucide-react';
+import FieldError from './common/FieldError';
+import { TriangleAlert, Trash2 } from 'lucide-react';
 
 const EditSellRecordModal: React.FC = () => {
   const { modal, actions, data, status } = usePortfolio();
@@ -18,6 +19,8 @@ const EditSellRecordModal: React.FC = () => {
   const [sellQuantity, setSellQuantity] = useState<string>('');
   // 제출 시도 후에만 인라인 검증 문구 노출(브라우저 alert 대체 — RULES.md §7)
   const [submitAttempted, setSubmitAttempted] = useState(false);
+  // 폼 오류 문구 id — 조기 return 앞에서 호출(훅 순서 고정). 오류 필드의 aria-describedby 대상.
+  const formErrorId = useId();
   const { confirm, confirmRequest } = useConfirm();
 
   useEffect(() => {
@@ -38,13 +41,22 @@ const EditSellRecordModal: React.FC = () => {
 
   const parsedPrice = parseFloat(sellPriceSettlement);
   const parsedQty = parseFloat(sellQuantity);
-  const formError = (!sellDate || !Number.isFinite(parsedPrice) || !Number.isFinite(parsedQty))
+  // 검증 단계(순서 = 문구 우선순위). 문구와 필드별 aria-invalid가 같은 판정에서 나온다 —
+  // 지금 보이는 문구가 가리키는 필드에만 오류 표시(렌더 중 파생값, 상태 추가 없음).
+  const missingOrInvalid = !sellDate || !Number.isFinite(parsedPrice) || !Number.isFinite(parsedQty);
+  const priceNotPositive = !missingOrInvalid && parsedPrice <= 0;
+  const quantityNotPositive = !missingOrInvalid && !priceNotPositive && parsedQty <= 0;
+  const formError = missingOrInvalid
     ? '모든 필드를 올바르게 입력해주세요.'
-    : parsedPrice <= 0
+    : priceNotPositive
       ? '매도가는 0보다 커야 합니다.'
-      : parsedQty <= 0
+      : quantityNotPositive
         ? '매도 수량은 0보다 커야 합니다.'
         : null;
+  const errorShown = submitAttempted && formError !== null;
+  const dateInvalid = errorShown && missingOrInvalid && !sellDate;
+  const priceInvalid = errorShown && ((missingOrInvalid && !Number.isFinite(parsedPrice)) || priceNotPositive);
+  const quantityInvalid = errorShown && ((missingOrInvalid && !Number.isFinite(parsedQty)) || quantityNotPositive);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -127,6 +139,8 @@ const EditSellRecordModal: React.FC = () => {
               onChange={(e) => setSellDate(e.target.value)}
               className={inputClasses}
               required
+              aria-invalid={dateInvalid || undefined}
+              aria-describedby={dateInvalid ? formErrorId : undefined}
             />
           </div>
 
@@ -145,13 +159,15 @@ const EditSellRecordModal: React.FC = () => {
                 required
                 min="0"
                 step="any"
+                aria-invalid={priceInvalid || undefined}
+                aria-describedby={priceInvalid ? formErrorId : undefined}
               />
             </div>
           </div>
 
           <div>
             <label htmlFor="edit-sell-quantity" className={labelClasses}>
-              매도 수량 {!assetStillExists && <span className="inline-flex items-center gap-1 text-amber-400 text-xs"><TriangleAlert className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />(원본 자산이 삭제되어 수량 변경 시 보유수량 복구 불가)</span>}
+              매도 수량 {!assetStillExists && <span className="inline-flex items-center gap-1 text-warning text-xs"><TriangleAlert className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />(원본 자산이 삭제되어 수량 변경 시 보유수량 복구 불가)</span>}
             </label>
             <input
               id="edit-sell-quantity"
@@ -162,6 +178,8 @@ const EditSellRecordModal: React.FC = () => {
               required
               min="0"
               step="any"
+              aria-invalid={quantityInvalid || undefined}
+              aria-describedby={quantityInvalid ? formErrorId : undefined}
             />
           </div>
 
@@ -174,9 +192,7 @@ const EditSellRecordModal: React.FC = () => {
             </div>
           )}
 
-          {submitAttempted && formError && (
-            <p className="flex items-center gap-1.5 text-danger text-sm" role="alert"><CircleAlert className="h-4 w-4 shrink-0" aria-hidden="true" />{formError}</p>
-          )}
+          {errorShown && <FieldError id={formErrorId}>{formError}</FieldError>}
         </form>
     </Modal>
     {confirmRequest && <ConfirmDialog {...confirmRequest} />}

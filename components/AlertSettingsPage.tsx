@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { ChevronDown, ChevronUp, Info, Lightbulb, Search } from 'lucide-react';
+import { ChevronDown, ChevronUp, Info, Lightbulb, OctagonAlert, Search } from 'lucide-react';
 import { useConfirm } from '../hooks/useConfirm';
 import ConfirmDialog from './common/ConfirmDialog';
 import { usePortfolio } from '../contexts/PortfolioContext';
@@ -89,10 +89,19 @@ const FieldLabel: React.FC<{ text: string; tip: string }> = ({ text, tip }) => (
   </Tooltip>
 );
 
-const SEVERITY_COLORS: Record<string, string> = {
-  critical: 'bg-orange-500',
-  warning: 'bg-amber-500',
-  info: 'bg-sky-500',
+// Stage D2 색 규약 — 점(도형, 비텍스트 3.0)과 라벨 배지(흰 글자 채움, AA 4.5)를 분리한다.
+// 이전엔 한 맵(주황·호박·하늘 500 채움)을 둘 다에 써서 배지 흰 글자가 2.80 / 2.15 / 2.77로 AA 미달이었다.
+// 긴급(critical)과 주의(warning)는 같은 warning 계열 — 긴급은 OctagonAlert 아이콘 + font-semibold + '긴급' 문구로 구분.
+const SEVERITY_DOT_COLORS: Record<string, string> = {
+  critical: 'bg-warning', // #1E1E1E 대비 7.76
+  warning: 'bg-warning',
+  info: 'bg-info', //        7.78
+};
+
+const SEVERITY_BADGE_COLORS: Record<string, string> = {
+  critical: 'bg-warning-strong font-semibold', // 흰 글자 5.02
+  warning: 'bg-warning-strong',
+  info: 'bg-info-strong', //                     흰 글자 5.93
 };
 
 const SEVERITY_LABELS: Record<string, string> = {
@@ -171,14 +180,15 @@ const AlertSettingsPage: React.FC = () => {
 
             <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <span className={`w-2 h-2 rounded-full ${SEVERITY_COLORS[rule.severity]}`} />
+                <span className={`w-2 h-2 rounded-full ${SEVERITY_DOT_COLORS[rule.severity]}`} />
                 <span className="text-white font-medium text-sm">{rule.name}</span>
                 {RULE_SUMMARY_TOOLTIPS[rule.id] && (
                   <Tooltip content={RULE_SUMMARY_TOOLTIPS[rule.id]} wrap>
                     <Info className="w-3.5 h-3.5 text-gray-400 cursor-help" />
                   </Tooltip>
                 )}
-                <span className={`text-xs px-1.5 py-0.5 rounded ${SEVERITY_COLORS[rule.severity]} text-white`}>
+                <span className={`inline-flex items-center gap-0.5 text-xs px-1.5 py-0.5 rounded ${SEVERITY_BADGE_COLORS[rule.severity]} text-white`}>
+                  {rule.severity === 'critical' && <OctagonAlert className="h-3 w-3" aria-hidden="true" />}
                   {SEVERITY_LABELS[rule.severity]}
                 </span>
               </div>
@@ -488,9 +498,9 @@ const AlertSettingsPage: React.FC = () => {
         </div>
 
         {/* "징후 ≠ 방아쇠" 안내 — 사용자 과신 방지 */}
-        <div className="mx-6 mt-4 bg-amber-950/30 border border-amber-700/40 rounded-lg px-4 py-3">
-          <p className="text-amber-200 text-xs leading-relaxed">
-            <Lightbulb className="inline h-3.5 w-3.5 mr-1 align-[-2px]" aria-hidden="true" />
+        <div className="mx-6 mt-4 bg-warning-soft border border-warning/30 rounded-lg px-4 py-3">
+          <p className="text-gray-200 text-xs leading-relaxed">
+            <Lightbulb className="inline h-3.5 w-3.5 mr-1 align-[-2px] text-warning" aria-hidden="true" />
             <span className="font-semibold">이 신호들은 과열 상태를 알리는 것이지, 폭락 시점을 정확히 예측하지 않습니다.</span>
             <br />
             신호 발생 후 며칠~몇 주는 계속 오를 수도 있으며, 실제 하락은 외부 악재가 방아쇠가 됩니다.

@@ -247,7 +247,7 @@ const PositionSizingCalculator: React.FC<PositionSizingCalculatorProps> = ({
           </div>
 
           {result.capped && (
-            <div className="text-xs text-amber-400 bg-amber-950/30 rounded px-2 py-1.5">
+            <div className="text-xs text-warning bg-warning-soft rounded px-2 py-1.5">
               손절폭이 좁아 리스크 한도 기준 투자금액이 총자산을 초과합니다 → 총자산 100%로 제한했습니다.
               손절폭을 넓히거나 허용손실을 낮추세요.
             </div>

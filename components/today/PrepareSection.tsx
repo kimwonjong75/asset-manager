@@ -33,7 +33,7 @@ const PrepareSection: React.FC<PrepareSectionProps> = ({ rows }) => {
           title="준비"
           count={rows.length}
           tone="warning"
-          icon={<Hourglass className="h-4 w-4 text-amber-400" aria-hidden="true" />}
+          icon={<Hourglass className="h-4 w-4 text-warning" aria-hidden="true" />}
           collapsible
           open={open}
           onToggle={toggle}

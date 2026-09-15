@@ -46,7 +46,8 @@ export interface UseTradePlanPlannerResult {
   // 선택
   selected: SymbolSearchResult | null;
   selectSymbol: (r: SymbolSearchResult) => void;
-  clearSelection: () => void;
+  /** 선택 해제 + 시세/매수가 초기화. nextQuery(기본 '')가 새 검색어가 된다 — 타이핑 중 해제 시 입력값 보존 */
+  clearSelection: (nextQuery?: string) => void;
   // 현재가 조회
   quote: TradePlanPlannerQuote | null;
   isQuoteLoading: boolean;
@@ -136,12 +137,13 @@ export function useTradePlanPlanner(prefill: TradePlanPlannerPrefill | null): Us
     setBuyPrice('');
   }, []);
 
-  const clearSelection = useCallback(() => {
+  // nextQuery: 선택된 상태에서 사용자가 입력칸에 타이핑하면 그 값을 검색어로 남긴다(생략 = 빈 검색어, '변경' 버튼).
+  const clearSelection = useCallback((nextQuery: string = '') => {
     setSelected(null);
     setQuote(null);
     setQuoteError(null);
     setBuyPrice('');
-    setQuery('');
+    setQuery(nextQuery);
   }, []);
 
   // 현재가 조회 — 종목을 선택할 때마다 1회. selected===null 경로는 setState가 필요 없다

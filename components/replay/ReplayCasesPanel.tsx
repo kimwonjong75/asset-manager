@@ -101,8 +101,8 @@ const ReplayCasesPanel: React.FC<ReplayCasesPanelProps> = ({
           </div>
           {/* P3-④ 과적합 경고 — holdout 사례에서 신호가 바뀌면 규칙을 거기 맞추지 말 것 */}
           {comparingCase.caseRole === 'holdout' && caseDiff && (caseDiff.overall.added.length > 0 || caseDiff.overall.removed.length > 0) && (
-            <p className="text-xs text-amber-300 bg-warning-soft border border-warning/30 rounded px-2 py-1 flex items-start gap-1.5">
-              <TriangleAlert className="h-3.5 w-3.5 shrink-0 mt-px" aria-hidden="true" />
+            <p className="text-xs text-gray-200 bg-warning-soft border border-warning/30 rounded px-2 py-1 flex items-start gap-1.5">
+              <TriangleAlert className="h-3.5 w-3.5 shrink-0 mt-px text-warning" aria-hidden="true" />
               <span>검증용(holdout) 사례입니다. 신호가 바뀌었습니다 — 이 사례에 <span className="font-medium">규칙을 맞추지 마세요</span>(과적합). 조정은 연구용 사례로 하고, holdout에서는 유지/개선되는지만 확인하세요.</span>
             </p>
           )}

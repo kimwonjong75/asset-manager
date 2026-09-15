@@ -8,15 +8,16 @@
 import React from 'react';
 import { Eye, OctagonAlert, TriangleAlert, type LucideIcon } from 'lucide-react';
 import { usePortfolio } from '../../contexts/PortfolioContext';
+import { RISK_TIER_STYLES } from '../../constants/stateColorLadders';
 
 // Stage B 색 규약 — 위험은 주황 계열 + 아이콘 + 문구. 빨강(오름)·파랑(내림)은 쓰지 않는다.
 // 티어 키(red/amber/blue)는 utils/riskMatrix.RiskTier 식별자라 그대로 두고 표시만 바꾼다.
-const RISK_TIER_STYLES: Record<'red' | 'amber' | 'blue', {
-  icon: LucideIcon; badge: string; label: string; bg: string; border: string;
-}> = {
-  red: { icon: OctagonAlert, badge: 'bg-orange-700 text-white', label: '강한 위험 · 정리 검토', bg: 'bg-orange-950/50', border: 'border-orange-500/60' },
-  amber: { icon: TriangleAlert, badge: 'bg-amber-400 text-gray-900', label: '비중 축소', bg: 'bg-amber-950/40', border: 'border-amber-700/50' },
-  blue: { icon: Eye, badge: 'bg-gray-600 text-gray-100', label: '신규 진입 금지 · 관찰', bg: 'bg-gray-900/40', border: 'border-gray-600' },
+// Stage D2 — 티어 색(배지·틴트·테두리)은 사다리라 constants/stateColorLadders.RISK_TIER_STYLES 에서 가져온다.
+// 여기에는 아이콘·라벨(문구)만 둔다.
+const RISK_TIER_META: Record<'red' | 'amber' | 'blue', { icon: LucideIcon; label: string }> = {
+  red: { icon: OctagonAlert, label: '강한 위험 · 정리 검토' },
+  amber: { icon: TriangleAlert, label: '비중 축소' },
+  blue: { icon: Eye, label: '신규 진입 금지 · 관찰' },
 };
 
 const RiskMatrixPanel: React.FC = () => {
@@ -43,7 +44,7 @@ const RiskMatrixPanel: React.FC = () => {
   return (
     <div>
       <div className="flex items-center gap-2 mb-3">
-        <h4 className="text-sm font-semibold text-amber-300 inline-flex items-center gap-1.5">
+        <h4 className="text-sm font-semibold text-warning inline-flex items-center gap-1.5">
           <TriangleAlert className="h-4 w-4" aria-hidden="true" />
           과열 리스크 경고
         </h4>
@@ -58,13 +59,14 @@ const RiskMatrixPanel: React.FC = () => {
             const rows = tieredRows[tier];
             if (rows.length === 0) return null;
             const styles = RISK_TIER_STYLES[tier];
-            const TierIcon = styles.icon;
+            const meta = RISK_TIER_META[tier];
+            const TierIcon = meta.icon;
             return (
               <div key={tier} className={`${styles.bg} border ${styles.border} rounded-lg p-2.5`}>
                 <div className="flex items-center gap-2 mb-1.5">
                   <span className={`inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded ${styles.badge} font-semibold`}>
                     <TierIcon className="h-3.5 w-3.5" aria-hidden="true" />
-                    {styles.label}
+                    {meta.label}
                   </span>
                   <span className="text-gray-400 text-xs">{rows.length}종목</span>
                 </div>

@@ -261,7 +261,7 @@ const TradePlanEditor = forwardRef<TradePlanEditorHandle, TradePlanEditorProps>(
         <FieldHint>
           {`기준가 = 계획의 출발점입니다. 현재 ${anchorPrice > 0 ? formatPlanPrice(anchorPrice, currency) : '미입력'}.`}
           {isLosingOnPurchaseAnchor && (
-            <span className="block mt-0.5 text-amber-400"><TriangleAlert className="inline h-3.5 w-3.5 mr-0.5 align-[-3px]" aria-hidden="true" />매수가가 현재가보다 높습니다 — 이미 손절선 아래로 시작됩니다.</span>
+            <span className="block mt-0.5 text-warning"><TriangleAlert className="inline h-3.5 w-3.5 mr-0.5 align-[-3px]" aria-hidden="true" />매수가가 현재가보다 높습니다 — 이미 손절선 아래로 시작됩니다.</span>
           )}
         </FieldHint>
       </div>
@@ -472,7 +472,7 @@ const TradePlanEditor = forwardRef<TradePlanEditorHandle, TradePlanEditorProps>(
               <div>수량 {result.preview.quantity.toLocaleString('en-US')}{isCrypto ? '' : '주'}</div>
               {result.preview.investmentKRW !== null && <div>투자금액 {fmtKRW(result.preview.investmentKRW)}</div>}
               {result.preview.worstLossKRW !== null && result.preview.worstLossPct !== null ? (
-                <div className={result.preview.exceedsRiskBudget ? 'text-amber-400' : ''}>
+                <div className={result.preview.exceedsRiskBudget ? 'text-warning' : ''}>
                   최악 손실 {fmtKRW(result.preview.worstLossKRW)} (총자산 {result.preview.worstLossPct.toFixed(2)}%)
                   {result.preview.exceedsRiskBudget && ' — 허용손실 초과'}
                 </div>
@@ -482,12 +482,12 @@ const TradePlanEditor = forwardRef<TradePlanEditorHandle, TradePlanEditorProps>(
               {result.preview.adverseLossKRW !== null && (
                 <div className="text-gray-500">갭 하락(−{PLAN_ADVERSE_GAP_PCT}%) 시 최대 {fmtKRW(result.preview.adverseLossKRW)}</div>
               )}
-              {result.preview.capped && <div className="text-amber-400">손절폭이 좁아 총자산 한도로 제한되었습니다.</div>}
+              {result.preview.capped && <div className="text-warning">손절폭이 좁아 총자산 한도로 제한되었습니다.</div>}
             </div>
           </div>
           <div>
             <div className="text-gray-500 mb-0.5">② 손절선</div>
-            <div className="text-amber-300">{formatPlanPrice(result.plan.stopPrice, currency)} (−{result.plan.stopPct.toFixed(1)}%) → 전량 매도</div>
+            <div className="text-warning">{formatPlanPrice(result.plan.stopPrice, currency)} (−{result.plan.stopPct.toFixed(1)}%) → 전량 매도</div>
           </div>
           <div>
             <div className="text-gray-500 mb-0.5">③ 익절선 (1차, 절반 매도)</div>
@@ -500,10 +500,10 @@ const TradePlanEditor = forwardRef<TradePlanEditorHandle, TradePlanEditorProps>(
           <div>
             <div className="text-gray-500 mb-0.5">④ 나머지 매도 — 추세선</div>
             {currentExitLineValue !== null ? (
-              <div className="text-amber-300 space-y-0.5">
+              <div className="text-down space-y-0.5">
                 <div>오늘 값 {formatPlanPrice(currentExitLineValue, currency)}</div>
                 {anchorPrice > 0 && anchorPrice < currentExitLineValue && (
-                  <div className="text-xs text-amber-400">
+                  <div className="text-xs text-warning">
                     <TriangleAlert className="inline h-3.5 w-3.5 mr-0.5 align-[-3px]" aria-hidden="true" />지금 이미 이 선 아래입니다 — 종가가 선 위로 올라온(재돌파) 뒤부터 적용됩니다.
                   </div>
                 )}

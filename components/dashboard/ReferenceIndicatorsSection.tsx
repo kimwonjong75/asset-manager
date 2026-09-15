@@ -42,7 +42,7 @@ const ReferenceIndicatorsSection: React.FC = () => {
       summary={
         <span
           className={`px-1.5 py-0.5 rounded font-medium ${
-            hasSummary ? 'bg-amber-900/30 text-amber-400/80' : 'bg-surface-muted text-gray-400'
+            hasSummary ? 'bg-warning-soft text-warning' : 'bg-surface-muted text-gray-400'
           }`}
         >
           과열 {riskTieredCount}

@@ -185,7 +185,7 @@ const AppContent: React.FC = () => {
         {/* Update Notification & Messages — z-banner: 모달 작업 중 난 오류도 모달 위에 보이게 */}
         <div className="fixed top-4 left-1/2 -translate-x-1/2 z-banner w-[90%] max-w-xl space-y-3 pointer-events-none">
           {updateAvailable && (
-            <div className="bg-sky-700 text-white px-4 py-3 rounded-lg shadow-lg flex justify-between items-center pointer-events-auto" role="alert">
+            <div className="bg-info-strong text-white px-4 py-3 rounded-lg shadow-lg flex justify-between items-center pointer-events-auto" role="alert">
               <span className="block sm:inline">새 버전이 배포되었습니다.</span>
               <div className="flex items-center gap-2">
                 <button
@@ -229,11 +229,11 @@ const AppContent: React.FC = () => {
           <>
             {/* 세션 만료 재로그인 배너 */}
             {status.needsReAuth && (
-              <div className="flex-shrink-0 bg-amber-600/90 text-white px-3 sm:px-4 py-2 sm:py-3 flex items-center justify-between gap-2">
+              <div className="flex-shrink-0 bg-warning-strong text-white px-3 sm:px-4 py-2 sm:py-3 flex items-center justify-between gap-2">
                 <span className="text-xs sm:text-sm font-medium">세션이 만료되었습니다. <span className="hidden sm:inline">데이터는 유지되지만 </span>저장/불러오기가 중단됩니다.</span>
                 <button
                   onClick={actions.signIn}
-                  className="ml-4 bg-white text-amber-700 font-semibold px-4 py-1.5 rounded-md text-sm hover:bg-amber-50 transition flex-shrink-0"
+                  className="ml-4 bg-white text-warning-strong font-semibold px-4 py-1.5 rounded-md text-sm hover:bg-gray-100 transition flex-shrink-0"
                 >
                   다시 로그인
                 </button>
@@ -357,7 +357,7 @@ const AppContent: React.FC = () => {
                     <Bell className="h-5 w-5" aria-hidden="true" />
                     {briefingCount > 0 && (
                       <span
-                        className="absolute -top-0.5 -right-0.5 min-w-[1.125rem] h-[1.125rem] px-1 rounded-full bg-amber-500 text-gray-900 text-xs leading-[1.125rem] font-bold text-center tabular-nums"
+                        className="absolute -top-0.5 -right-0.5 min-w-[1.125rem] h-[1.125rem] px-1 rounded-full bg-warning text-gray-900 text-xs leading-[1.125rem] font-bold text-center tabular-nums"
                         aria-hidden="true"
                       >
                         {briefingBadge}

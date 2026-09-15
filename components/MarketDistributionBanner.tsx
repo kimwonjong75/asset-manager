@@ -13,34 +13,32 @@ import {
   type MarketDistributionSeverity,
 } from '../hooks/useMarketDistributionDays';
 import Tooltip from './common/Tooltip';
+import {
+  DISTRIBUTION_BANNER_STYLES,
+  type DistributionBannerSeverity,
+} from '../constants/stateColorLadders';
 
 // 라벨 뱃지 hover 시 표시 — 산식·단계·면책을 한 번에 설명 (3개 등급 공용)
 const BANNER_TOOLTIP =
   "시장 지수의 '매물 출회일'을 세어 시장 전체의 위험을 진단하는 신호예요. (내 보유종목이 아니라 지수 자체 기준)\n계산: 거래량이 50일 평균의 1.5배 이상인데 가격은 못 오른 날(음봉·윗꼬리·정체)을 '매물 출회일'로 셉니다. 최근 13거래일 기준.\n단계: 3회=주의(노랑) · 4회=약세(주황) · 5회 이상=시장 탈출(진한 주황 + 경고 아이콘). 2회 이하는 표시 안 함.\n참고: 큰손이 물량을 던지는 날이 쌓일수록 시장이 약해진다는 오닐(W.O'Neil)의 진단 도구예요. 예측이 아닌 분위기 경고.";
 
-const SEVERITY_STYLES: Record<Exclude<MarketDistributionSeverity, 'safe'>, {
-  containerClass: string;
-  dotClass: string;
+// Stage D2 — 색(테두리·틴트·글자·점·아이콘 색)은 constants/stateColorLadders.DISTRIBUTION_BANNER_STYLES 사다리.
+// 여기엔 아이콘 종류·라벨·문구만 둔다(컴포넌트에 raw yellow/orange 클래스 금지).
+const SEVERITY_META: Record<DistributionBannerSeverity, {
   /** 있으면 점 대신 아이콘 + 메시지 굵게 (최고 단계 강조) */
   icon?: LucideIcon;
   label: string;
   message: (count: number) => string;
 }> = {
   attention: {
-    containerClass: 'border-yellow-500/40 bg-yellow-500/10 text-yellow-200',
-    dotClass: 'bg-yellow-400',
     label: '주의',
     message: count => `디스트리뷰션 ${count}회 — 매물 출회 누적, 신규 진입 주의`,
   },
   warning: {
-    containerClass: 'border-orange-500/40 bg-orange-500/10 text-orange-200',
-    dotClass: 'bg-orange-400',
     label: '약세 신호',
     message: count => `디스트리뷰션 ${count}회 — 약세 전환 가능성, 비중 축소 검토`,
   },
   exit: {
-    containerClass: 'border-orange-400 bg-orange-500/20 text-orange-100',
-    dotClass: 'bg-orange-400',
     icon: OctagonAlert,
     label: '시장 탈출',
     message: count => `디스트리뷰션 ${count}회 — 시장 전체 위험, 탈출/현금화 검토(오닐)`,
@@ -68,16 +66,18 @@ const MarketDistributionBanner: React.FC = () => {
   return (
     <div className="space-y-1.5">
       {visible.map(entry => {
-        const styles = SEVERITY_STYLES[entry.severity as 'attention' | 'warning' | 'exit'];
+        const severity = entry.severity as DistributionBannerSeverity;
+        const styles = SEVERITY_META[severity];
+        const tone = DISTRIBUTION_BANNER_STYLES[severity];
         const SeverityIcon = styles.icon;
         return (
           <div
             key={entry.ticker}
-            className={`flex items-center gap-3 border rounded-lg px-4 py-2.5 text-sm ${styles.containerClass}`}
+            className={`flex items-center gap-3 border rounded-lg px-4 py-2.5 text-sm ${tone.container}`}
           >
             {SeverityIcon
-              ? <SeverityIcon className="flex-shrink-0 h-4 w-4 text-orange-300" aria-hidden="true" />
-              : <span className={`flex-shrink-0 w-2.5 h-2.5 rounded-full ${styles.dotClass}`} />}
+              ? <SeverityIcon className={`flex-shrink-0 h-4 w-4 ${tone.icon ?? ''}`} aria-hidden="true" />
+              : <span className={`flex-shrink-0 w-2.5 h-2.5 rounded-full ${tone.dot}`} />}
             <span className="font-semibold">{entry.name}</span>
             <Tooltip content={BANNER_TOOLTIP} position="bottom" wrap className="cursor-help">
               <span className="text-xs px-1.5 py-0.5 rounded bg-black/30 inline-flex items-center gap-1">

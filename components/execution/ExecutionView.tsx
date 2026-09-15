@@ -22,7 +22,7 @@
 //     노출이라 부적합).
 
 import React, { useMemo, useState } from 'react';
-import { Loader2, RefreshCw, TriangleAlert } from 'lucide-react';
+import { Loader2, OctagonAlert, RefreshCw } from 'lucide-react';
 import { usePortfolio } from '../../contexts/PortfolioContext';
 import { useActionQueue } from '../../hooks/useActionQueue';
 import { ActionItem, ActionKind, isActiveAction } from '../../types/actionQueue';
@@ -201,10 +201,10 @@ const ExecutionView: React.FC<ExecutionViewProps> = ({ embedded = false }) => {
 
       {/* 터틀 안전잠금 안내 — 사유를 사용자에게 표시(조용한 무동작 금지). 플로팅 토스트 아님. */}
       {turtleLocked && (
-        <div className="mb-4 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3">
-          <p className="text-xs font-semibold text-amber-300">터틀 주문 잠금 중</p>
-          <p className="text-xs text-amber-200/80 mt-1 leading-relaxed">{TURTLE_LOCK_MESSAGE}</p>
-          <p className="text-xs text-amber-200/60 mt-1">
+        <div className="mb-4 rounded-lg border border-warning/40 bg-warning-soft p-3">
+          <p className="text-xs font-semibold text-warning">터틀 주문 잠금 중</p>
+          <p className="text-xs text-gray-200 mt-1 leading-relaxed">{TURTLE_LOCK_MESSAGE}</p>
+          <p className="text-xs text-gray-300 mt-1">
             기존 터틀 주문 기록은 그대로 보존됩니다. 손절·청산 확인은 홈의 «오늘의 터틀 확인» 카드에서 계속 볼 수 있습니다.
             리밸런싱·대청소 주문은 영향받지 않습니다.
           </p>
@@ -260,7 +260,8 @@ const ActionCard: React.FC<ActionCardProps> = ({
   const meta = KIND_META[item.kind];
   const level = actionEscalationLevel(item, today);
   const days = actionDaysIgnored(item, today);
-  const ring = level === 2 ? 'border-orange-500/70 ring-1 ring-orange-500/40' : level === 1 ? 'border-amber-500/50' : 'border-border-subtle';
+  // 강한 위험(2단계)은 색 한 단계가 아니라 진한 테두리+링 + OctagonAlert + font-semibold 로 구분(RULES.md §8 색 규약)
+  const ring = level === 2 ? 'border-warning ring-1 ring-warning/40' : level === 1 ? 'border-warning/40' : 'border-border-subtle';
 
   return (
     <li className={`bg-surface-elevated border ${ring} rounded-lg p-3.5`}>
@@ -276,7 +277,7 @@ const ActionCard: React.FC<ActionCardProps> = ({
               <span className="text-xs text-gray-400 bg-gray-700/60 px-1.5 py-0.5 rounded">내일 다시</span>
             )}
             {executionLocked && (
-              <span className="text-xs text-amber-300 border border-amber-500/40 bg-amber-500/10 px-1.5 py-0.5 rounded">현재 실행 잠금</span>
+              <span className="text-xs text-warning border border-warning/40 bg-warning-soft px-1.5 py-0.5 rounded">현재 실행 잠금</span>
             )}
           </div>
           <p className="text-sm text-gray-300 mt-1.5">{item.reasonText}</p>
@@ -284,8 +285,8 @@ const ActionCard: React.FC<ActionCardProps> = ({
             <span>수량 <span className="text-gray-200 font-medium">{fmt(item.quantity)}</span></span>
             <span>기준가 <span className="text-gray-200 font-medium">{fmt(item.refPrice)}</span></span>
             {days > 0 && (
-              <span className={`inline-flex items-center gap-1 ${level >= 1 ? 'text-amber-300 font-medium' : ''}`}>
-                {level === 2 && <TriangleAlert className="h-3.5 w-3.5" aria-label="경고" />}
+              <span className={`inline-flex items-center gap-1 ${level >= 1 ? `text-warning ${level === 2 ? 'font-semibold' : 'font-medium'}` : ''}`}>
+                {level === 2 && <OctagonAlert className="h-3.5 w-3.5" aria-label="경고" />}
                 {days}일째 미실행
               </span>
             )}

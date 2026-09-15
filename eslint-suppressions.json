@@ -273,11 +273,6 @@
       "count": 5
     }
   },
-  "hooks/useTodayTurtle.ts": {
-    "react-hooks/set-state-in-effect": {
-      "count": 1
-    }
-  },
   "hooks/useTurtleActionReview.ts": {
     "react-hooks/set-state-in-effect": {
       "count": 1

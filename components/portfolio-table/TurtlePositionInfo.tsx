@@ -31,12 +31,12 @@ const TurtlePositionInfo: React.FC<Props> = ({ view }) => {
       </span>
       <Field label="유닛">{view.unitsCount}/{view.maxUnits}</Field>
       <Field label="진입">{formatOriginalCurrency(view.entryPrice, ccy)}</Field>
-      <Field label="손절" tone="text-amber-300">{formatOriginalCurrency(view.stopPrice, ccy)}</Field>
+      <Field label="손절" tone="text-warning">{formatOriginalCurrency(view.stopPrice, ccy)}</Field>
       <Field label="N">{formatOriginalCurrency(view.nAtLastFill, ccy)}</Field>
-      <Field label="불타기" tone="text-sky-300">
+      <Field label="불타기" tone="text-up">
         {view.pyramidTriggerPrice != null ? formatOriginalCurrency(view.pyramidTriggerPrice, ccy) : '상한 도달'}
       </Field>
-      <Field label="리스크" tone={view.riskKRW != null ? 'text-amber-300' : 'text-gray-500'}>
+      <Field label="리스크" tone={view.riskKRW != null ? 'text-warning' : 'text-gray-500'}>
         {view.riskKRW != null ? formatKRW(view.riskKRW) : '환율 대기'}
       </Field>
     </div>

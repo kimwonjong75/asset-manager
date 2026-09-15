@@ -130,7 +130,7 @@ const TradePlanBulkWizard: React.FC = () => {
           <>
             <div className="text-xs text-gray-400 mb-2 flex flex-wrap gap-x-3 gap-y-1">
               <span className="text-ok">정상 대기 {readyCount}</span>
-              <span className="text-amber-400">이미 추세선 아래 {belowExitCount}(재돌파 후 적용)</span>
+              <span className="text-warning">이미 추세선 아래 {belowExitCount}(재돌파 후 적용)</span>
               <span className="text-gray-500">시세 없음 {noPriceCount}(만들지 않음)</span>
             </div>
             <div className="border border-gray-700 rounded-md overflow-hidden">

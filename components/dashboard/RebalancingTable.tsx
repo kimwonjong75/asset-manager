@@ -95,7 +95,7 @@ const TierTable: React.FC<TierTableProps> = ({
             <td className="px-4 py-3 text-white">합계</td>
             <td className="px-4 py-3 text-right">{formatKRW(totalCurrentValue)}</td>
             <td className="px-4 py-3 text-right">100.00%</td>
-            <td className={`px-4 py-3 text-right ${Math.abs(totalTargetWeight - 100) > 0.1 ? 'text-yellow-400' : 'text-ok'}`}>
+            <td className={`px-4 py-3 text-right ${Math.abs(totalTargetWeight - 100) > 0.1 ? 'text-warning' : 'text-ok'}`}>
               {totalTargetWeight.toFixed(2)}%
             </td>
             <td className="px-4 py-3 text-right">{formatKRW(totalTargetValue)}</td>
@@ -273,7 +273,7 @@ const RebalancingTable: React.FC<RebalancingTableProps> = ({ assets, exchangeRat
   const summary = (
     <span className="mt-1 flex flex-wrap items-center gap-1.5">
       <ScopeChip label="원종 전략 기준" title="리밸런싱은 계정 선택과 무관하게 전략 대상(원종) 자산만 계산합니다" />
-      <span className={`text-xs ${bandDeviations.length > 0 ? 'text-amber-300' : 'text-gray-400'}`}>
+      <span className={`text-xs ${bandDeviations.length > 0 ? 'text-warning' : 'text-gray-400'}`}>
         밴드 이탈 {bandDeviations.length}
       </span>
       <span className="text-xs text-gray-400">· 대기 주문 {pendingRebalanceCount}</span>
@@ -354,8 +354,8 @@ const RebalancingTable: React.FC<RebalancingTableProps> = ({ assets, exchangeRat
 
       {/* 코어 밴드 이탈 안내 (Phase 4a-2 — 표시 전용, 주문/수량/종목 없음). 이탈 0건이면 미표시 */}
       {bandDeviations.length > 0 && (
-        <section className="rounded-md border border-amber-500/40 bg-amber-500/5 p-4">
-          <h3 className="text-sm font-bold text-amber-200 mb-1">밴드 이탈 안내 — 코어 카테고리 (±{rebalanceBandPct}%p)</h3>
+        <section className="rounded-md border border-warning/40 bg-warning-soft p-4">
+          <h3 className="text-sm font-bold text-warning mb-1">밴드 이탈 안내 — 코어 카테고리 (±{rebalanceBandPct}%p)</h3>
           <p className="text-xs text-gray-400 mb-3">
             아래 코어 카테고리가 목표 비중에서 ±{rebalanceBandPct}%p 이상 벗어났습니다. <span className="text-gray-300">참고 안내</span>이며, 실제 주문·수량·종목은 다음 단계에서 다룹니다.
           </p>
@@ -409,7 +409,7 @@ const RebalancingTable: React.FC<RebalancingTableProps> = ({ assets, exchangeRat
             >
               {isGeneratingRebalance ? '생성 중...' : '리밸런싱 주문 생성'}
             </button>
-            {hasUnsavedChanges && <span className="text-xs text-amber-300">저장 후 생성 — 미저장 변경이 있습니다.</span>}
+            {hasUnsavedChanges && <span className="text-xs text-warning">저장 후 생성 — 미저장 변경이 있습니다.</span>}
           </div>
 
           {/* 생성 대상 범위 안내 (4b-3c — 항상 표시) */}

@@ -149,7 +149,7 @@ const MarketOverviewBar: React.FC = () => {
     const src = mmdd(snapshot.goldSourceDate);
     const time = hhmm(snapshot.fetchedAt);
     if (status === 'stale-fallback' || status === 'error') {
-      return { text: `${src ? `${src} 종가 · ` : ''}갱신 실패`, tone: 'text-amber-300' };
+      return { text: `${src ? `${src} 종가 · ` : ''}갱신 실패`, tone: 'text-warning' };
     }
     return { text: `${src ? `${src} 종가 · ` : ''}${time} 확인`, tone: 'text-gray-500' };
   }, [snapshot, status, isInitialLoading]);
@@ -202,7 +202,7 @@ const MarketOverviewBar: React.FC = () => {
             />
             {showRateWarning && (
               <div className="flex items-center px-3 py-3">
-                <span className="text-xs text-amber-300" title="보유 외화 자산의 원화 환산을 위해 환율을 입력하세요.">
+                <span className="text-xs text-warning" title="보유 외화 자산의 원화 환산을 위해 환율을 입력하세요.">
                   환율 확인 필요
                 </span>
               </div>

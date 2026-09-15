@@ -15,7 +15,7 @@ import { RULE_ACTION_LABELS, type StatusTone, type LeafExplain } from '../../typ
 const TONE_CLASS: Record<StatusTone, string> = {
   positive: 'text-ok',
   neutral: 'text-gray-300',
-  caution: 'text-amber-300',
+  caution: 'text-warning',
   muted: 'text-gray-500',
 };
 
@@ -114,7 +114,7 @@ const GuruDiagnosticsPanel: React.FC = () => {
           {(summary.readiness.partial > 0 || summary.readiness.missing > 0 || summary.readiness.unsupported > 0) && (
             <>
               <span className="text-gray-500">|</span>
-              <span className="text-amber-300">
+              <span className="text-warning">
                 데이터: 일부 {summary.readiness.partial} · 없음 {summary.readiness.missing} · 미지원 {summary.readiness.unsupported}
               </span>
             </>

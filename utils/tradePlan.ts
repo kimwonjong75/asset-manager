@@ -675,6 +675,26 @@ export interface KakaoTextInput {
   quantity: number;    // 현재 보유 수량
 }
 
+/**
+ * 카톡 문구 선두 이모지 — 앱 색 규약(TradePlanCard, Stage B)에 맞춘다(2026-09-16 Stage D2 F3).
+ *   손절선 = 🟠 주황(warning) · 추세선 이탈 = 🔵 파랑(내림) · 익절선 = 🔴 빨강(오름) · 불타기선 = 🔺 빨강 삼각(오름)
+ *   근접/장중 확인·시세 문제 = ⚠️ · 정보(대기·불타기 근접) = ℹ️ · 추세선 회복 = 🟢 초록(ok) · 요약 = 📋
+ * 🔴는 '오름'(익절) 전용 — 손절에 쓰지 말 것. ⚠️·ℹ️는 VS16(U+FE0F)을 붙여 컬러 이모지로 렌더한다.
+ * 카톡은 앱 밖 평문이라 lucide 아이콘을 쓸 수 없어 이모지가 유일한 색 채널이다
+ * (RULES §8 '이모지로 의미 색 표시 금지'는 components/·App.tsx 한정).
+ * 바꾸면 GAS에 반영하려면 `npm run gas:push` 재배포 필요(번들이 이 파일을 그대로 import).
+ */
+const KAKAO_EMOJI = {
+  stopHit: '\u{1F7E0}',        // 🟠
+  exitLineHit: '\u{1F535}',    // 🔵
+  takeProfitHit: '\u{1F534}',  // 🔴
+  pyramidHit: '\u{1F53A}',     // 🔺
+  caution: '⚠️',     // ⚠️ (near-stop · exit-line-watch · stale · unavailable)
+  info: 'ℹ️',        // ℹ️ (near-pyramid · waiting)
+  armExit: '\u{1F7E2}',        // 🟢
+  digest: '\u{1F4CB}',         // 📋
+} as const;
+
 /** 카카오톡 "나에게 보내기" 본문. 행동 → 숫자 → 근거 → 계획 기준일 순, 200자 이내. */
 export function formatKakaoText(input: KakaoTextInput): string {
   const { name, evaluation: ev, plan, price, priceAsOf, timeLabel, isIntraday, quantity } = input;
@@ -688,36 +708,36 @@ export function formatKakaoText(input: KakaoTextInput): string {
   let body: string;
   switch (ev.signal) {
     case 'stop-hit':
-      body = `🔴 [${tier}·손절선] ${shortName} 전량 매도 확인\n현재 ${formatPlanPrice(price, cur)} ≤ 손절선 ${formatPlanPrice(plan.stopPrice, cur)} (${when})\n수량 ${formatQty(quantity)} · ${basis}`;
+      body = `${KAKAO_EMOJI.stopHit} [${tier}·손절선] ${shortName} 전량 매도 확인\n현재 ${formatPlanPrice(price, cur)} ≤ 손절선 ${formatPlanPrice(plan.stopPrice, cur)} (${when})\n수량 ${formatQty(quantity)} · ${basis}`;
       break;
     case 'take-profit-hit':
-      body = `🟢 [${tier}·익절선] ${shortName} 절반 매도\n현재 ${formatPlanPrice(price, cur)} ≥ 익절선 ${formatPlanPrice(plan.takeProfitPrice ?? 0, cur)} (${when})\n수량 ${formatQty(Math.floor(quantity / 2))} · ${basis}`;
+      body = `${KAKAO_EMOJI.takeProfitHit} [${tier}·익절선] ${shortName} 절반 매도\n현재 ${formatPlanPrice(price, cur)} ≥ 익절선 ${formatPlanPrice(plan.takeProfitPrice ?? 0, cur)} (${when})\n수량 ${formatQty(Math.floor(quantity / 2))} · ${basis}`;
       break;
     case 'exit-line-hit':
-      body = `🟠 [${tier}·추세선] ${shortName} 나머지 전량 매도\n종가 ${formatPlanPrice(price, cur)} < 추세선 ${exitLine && exitLine.price !== null ? formatPlanPrice(exitLine.price, cur) : '-'} (${priceAsOf.slice(5)} 확정)\n수량 ${formatQty(quantity)} · ${basis}`;
+      body = `${KAKAO_EMOJI.exitLineHit} [${tier}·추세선] ${shortName} 나머지 전량 매도\n종가 ${formatPlanPrice(price, cur)} < 추세선 ${exitLine && exitLine.price !== null ? formatPlanPrice(exitLine.price, cur) : '-'} (${priceAsOf.slice(5)} 확정)\n수량 ${formatQty(quantity)} · ${basis}`;
       break;
     case 'exit-line-watch':
-      body = `🟠 [${tier}·추세선] ${shortName} 장중 추세선 아래\n현재 ${formatPlanPrice(price, cur)} < 추세선 ${exitLine && exitLine.price !== null ? formatPlanPrice(exitLine.price, cur) : '-'} (${when})\n종가로 확정되면 나머지 전량 매도 · ${basis}`;
+      body = `${KAKAO_EMOJI.caution} [${tier}·추세선] ${shortName} 장중 추세선 아래\n현재 ${formatPlanPrice(price, cur)} < 추세선 ${exitLine && exitLine.price !== null ? formatPlanPrice(exitLine.price, cur) : '-'} (${when})\n종가로 확정되면 나머지 전량 매도 · ${basis}`;
       break;
     case 'pyramid-hit':
-      body = `🔵 [${tier}·불타기선] ${shortName} ${py ? `${py.level}차` : ''} 도달\n현재 ${formatPlanPrice(price, cur)} ≥ ${py ? formatPlanPrice(py.triggerPrice, cur) : '-'} (${when})\n계획: ${py ? formatQty(py.plannedQuantity) : '-'} 추가매수 검토 (손절선 상향)\n※ 검증되지 않은 기능 · ${basis}`;
+      body = `${KAKAO_EMOJI.pyramidHit} [${tier}·불타기선] ${shortName} ${py ? `${py.level}차` : ''} 도달\n현재 ${formatPlanPrice(price, cur)} ≥ ${py ? formatPlanPrice(py.triggerPrice, cur) : '-'} (${when})\n계획: ${py ? formatQty(py.plannedQuantity) : '-'} 추가매수 검토 (손절선 상향)\n※ 검증되지 않은 기능 · ${basis}`;
       break;
     case 'near-stop':
-      body = `🟡 [${tier}·손절선] ${shortName} 손절선 근접\n현재 ${formatPlanPrice(price, cur)} · 손절선 ${formatPlanPrice(plan.stopPrice, cur)} (${when})\n증권사 손절 예약주문 확인 · ${basis}`;
+      body = `${KAKAO_EMOJI.caution} [${tier}·손절선] ${shortName} 손절선 근접\n현재 ${formatPlanPrice(price, cur)} · 손절선 ${formatPlanPrice(plan.stopPrice, cur)} (${when})\n증권사 손절 예약주문 확인 · ${basis}`;
       break;
     case 'near-pyramid':
-      body = `🟡 [${tier}·불타기선] ${shortName} 불타기선 근접\n현재 ${formatPlanPrice(price, cur)} · 다음 선 ${py ? formatPlanPrice(py.triggerPrice, cur) : '-'} (${when})\n${basis}`;
+      body = `${KAKAO_EMOJI.info} [${tier}·불타기선] ${shortName} 불타기선 근접\n현재 ${formatPlanPrice(price, cur)} · 다음 선 ${py ? formatPlanPrice(py.triggerPrice, cur) : '-'} (${when})\n${basis}`;
       break;
     case 'stale':
-      body = `⚠ [시세 오래됨] ${shortName}\n마지막 시세 ${priceAsOf.slice(5)} — 앱에서 새로고침 후 확인하세요\n${basis}`;
+      body = `${KAKAO_EMOJI.caution} [시세 오래됨] ${shortName}\n마지막 시세 ${priceAsOf.slice(5)} — 앱에서 새로고침 후 확인하세요\n${basis}`;
       break;
     case 'unavailable':
-      body = `⚠ [시세 조회 실패] ${shortName}\n앱에서 직접 확인하세요\n${basis}`;
+      body = `${KAKAO_EMOJI.caution} [시세 조회 실패] ${shortName}\n앱에서 직접 확인하세요\n${basis}`;
       break;
     default:
       body = ev.action === 'arm-exit'
-        ? `🟢 [준비·추세선] ${shortName} 추세선 위로 회복\n종가 ${formatPlanPrice(price, cur)} > 추세선 ${exitLine && exitLine.price !== null ? formatPlanPrice(exitLine.price, cur) : '-'} (${priceAsOf.slice(5)} 확정)\n앱에서 [적용 시작]을 누르면 이탈 감시 시작 · ${basis}`
-        : `ℹ ${shortName} 대기 중\n현재 ${formatPlanPrice(price, cur)} (${when}) · ${basis}`;
+        ? `${KAKAO_EMOJI.armExit} [준비·추세선] ${shortName} 추세선 위로 회복\n종가 ${formatPlanPrice(price, cur)} > 추세선 ${exitLine && exitLine.price !== null ? formatPlanPrice(exitLine.price, cur) : '-'} (${priceAsOf.slice(5)} 확정)\n앱에서 [적용 시작]을 누르면 이탈 감시 시작 · ${basis}`
+        : `${KAKAO_EMOJI.info} ${shortName} 대기 중\n현재 ${formatPlanPrice(price, cur)} (${when}) · ${basis}`;
   }
   return clip(body);
 }
@@ -735,7 +755,7 @@ export interface KakaoDigestInput {
 /** 일일 요약(무신호도 발송 = 생존 신호). */
 export function formatKakaoDigest(d: KakaoDigestInput): string {
   const body =
-    `📋 [오늘 점검 ${d.timeLabel}] 긴급 ${d.urgent} · 오늘 실행 ${d.today} · 준비 ${d.prepare}\n` +
+    `${KAKAO_EMOJI.digest} [오늘 점검 ${d.timeLabel}] 긴급 ${d.urgent} · 오늘 실행 ${d.today} · 준비 ${d.prepare}\n` +
     `확인 필요: 시세 없음 ${d.unavailable} · 손절주문 미등록 ${d.brokerStopMissing}\n` +
     (d.planless > 0 ? `계획 없는 투더문 ${d.planless}종` : '모든 투더문 종목에 계획 있음');
   return clip(body);

@@ -41,9 +41,9 @@ const KakaoNotifySection: React.FC = () => {
 
       <div className="px-6 py-4 space-y-4">
         {/* 고지 */}
-        <div className="bg-amber-500/10 border border-amber-700/40 rounded-lg p-3">
-          <p className="text-xs text-amber-300 leading-relaxed">
-            <TriangleAlert className="inline h-3.5 w-3.5 mr-1 align-[-2px]" aria-hidden="true" />카톡은 알려줄 뿐 대신 팔아주지 않습니다 — 손절은 증권사 예약주문이 먼저입니다.
+        <div className="bg-warning-soft border border-warning/30 rounded-lg p-3">
+          <p className="text-xs text-gray-200 leading-relaxed">
+            <TriangleAlert className="inline h-3.5 w-3.5 mr-1 align-[-2px] text-warning" aria-hidden="true" />카톡은 알려줄 뿐 대신 팔아주지 않습니다 — 손절은 증권사 예약주문이 먼저입니다.
           </p>
         </div>
 

@@ -54,7 +54,7 @@ const ReplayWinRatePanel: React.FC<{ diag: WinRateDiagnostics }> = ({ diag }) =>
       ) : (
         <>
           {diag.smallSample && (
-            <p className="text-xs text-amber-300 mb-2 flex items-start gap-1.5">
+            <p className="text-xs text-warning mb-2 flex items-start gap-1.5">
               <TriangleAlert className="h-3.5 w-3.5 shrink-0 mt-px" aria-hidden="true" />
               <span>표본 {diag.n}건 — {MIN_RELIABLE_SAMPLE}건 미만은 우연일 수 있습니다(예: “승률 100%(2건)” 착시). 더 많은 판정을 쌓으세요.</span>
             </p>

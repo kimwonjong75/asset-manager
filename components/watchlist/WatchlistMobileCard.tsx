@@ -18,6 +18,7 @@ import BuyReadinessMarks from './BuyReadinessMarks';
 import { buildWatchlistRowMenuItems } from './watchlistRowMenu';
 import { watchlistToPseudoAsset } from '../../utils/alertChecker';
 import { usePortfolio } from '../../contexts/PortfolioContext';
+import { PIN_STAR } from '../../constants/stateColorLadders';
 
 interface WatchlistMobileCardProps {
   item: WatchlistItem & { dropFromHigh: number | null; yesterdayChange: number; buyReadiness: BuyReadiness | null };
@@ -112,7 +113,7 @@ const WatchlistMobileCard: React.FC<WatchlistMobileCardProps> = ({
               <button
                 type="button"
                 onClick={(e) => { e.stopPropagation(); onTogglePin(item.id); }}
-                className={`transition-colors flex-shrink-0 ${item.pinned ? 'text-yellow-400' : 'text-gray-500 hover:text-yellow-400/60'}`}
+                className={`transition-colors flex-shrink-0 ${item.pinned ? PIN_STAR.pinned : PIN_STAR.unpinned}`}
                 aria-label={item.pinned ? '중요 해제' : '중요 표시'}
                 aria-pressed={!!item.pinned}
               >

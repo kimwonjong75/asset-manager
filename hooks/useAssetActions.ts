@@ -652,26 +652,6 @@ export const useAssetActions = ({
     commitPortfolioPatch({ watchlist: getSnapshot().watchlist.filter(w => !remove.has(w.id)) });
   }, [getSnapshot, commitPortfolioPatch]);
 
-  // 포트폴리오에서 관심종목으로 추가
-  const handleAddAssetsToWatchlist = useCallback((selectedAssets: Asset[]) => {
-    if (selectedAssets.length === 0) return;
-    const next = [...getSnapshot().watchlist];
-    selectedAssets.forEach(a => {
-      const exists = next.some(w => w.ticker.toUpperCase() === a.ticker.toUpperCase() && normalizeExchange(w.exchange) === normalizeExchange(a.exchange));
-      if (!exists) {
-        next.push({
-          id: `${Date.now()}-${a.id}`,
-          ticker: a.ticker,
-          exchange: a.exchange,
-          name: a.customName?.trim() || a.name,
-          category: a.category,
-          categoryId: a.categoryId,
-        });
-      }
-    });
-    commitPortfolioPatch({ watchlist: next });
-  }, [getSnapshot, commitPortfolioPatch]);
-
   return {
     isLoading,
     editingAsset,
@@ -693,6 +673,5 @@ export const useAssetActions = ({
     handleUpdateWatchItem,
     handleDeleteWatchItem,
     handleBulkDeleteWatchItems,
-    handleAddAssetsToWatchlist,
   };
 };

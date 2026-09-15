@@ -66,7 +66,7 @@ const TurtleSettingsPanel: React.FC = () => {
   };
 
   return (
-    <div className={`mb-3 rounded-lg border p-3.5 ${budget <= 0 ? 'border-amber-500/40 bg-amber-500/5' : 'border-gray-700 bg-gray-800/60'}`}>
+    <div className={`mb-3 rounded-lg border p-3.5 ${budget <= 0 ? 'border-warning/40 bg-warning-soft' : 'border-gray-700 bg-gray-800/60'}`}>
       <div className="flex items-center justify-between gap-2 mb-2">
         <h2 className="text-sm font-semibold text-gray-100">터틀(위성) 예산</h2>
         <span className="text-xs text-gray-500">총자산 {fmtKRW(totalValue)}</span>
@@ -104,7 +104,7 @@ const TurtleSettingsPanel: React.FC = () => {
       </div>
 
       {budget <= 0 ? (
-        <p className="text-xs text-amber-300 mt-2">
+        <p className="text-xs text-warning mt-2">
           예산이 0이면 신규 매수(진입) 주문이 생성되지 않습니다. 위성 계좌에 배정한 금액을 입력하세요.
         </p>
       ) : (
@@ -122,7 +122,7 @@ const TurtleSettingsPanel: React.FC = () => {
         <div className="min-w-0">
           <p className="text-xs font-medium text-gray-200">오늘 주문 자동 생성</p>
           {turtleLocked ? (
-            <p className="text-xs text-amber-300/80 mt-0.5 leading-snug">{TURTLE_LOCK_MESSAGE}</p>
+            <p className="text-xs text-warning mt-0.5 leading-snug">{TURTLE_LOCK_MESSAGE}</p>
           ) : (
             <p className="text-xs text-gray-500 mt-0.5 leading-snug">
               켜면 앱 시작 후 시세 업데이트가 끝났을 때 하루 1회 「오늘 주문 생성」을 자동 실행합니다.

@@ -27,14 +27,15 @@ interface StockReviewPanelProps {
 const STATUS_STYLE: Record<StockReviewConditionStatus, string> = {
   '충족': 'bg-ok-soft text-ok border border-ok/40',
   '미충족': 'bg-gray-600/30 text-gray-300 border border-gray-500/40',
-  '데이터 부족': 'bg-amber-500/20 text-amber-300 border border-amber-500/40',
+  '데이터 부족': 'bg-warning-soft text-warning border border-warning/40',
   '해당 없음': 'bg-gray-700/40 text-gray-500 border border-gray-600/40',
 };
 
 const DATA_STATUS_STYLE: Record<StockReviewDataStatus, string> = {
   '정상': 'bg-ok-soft text-ok',
-  '부분': 'bg-amber-500/15 text-amber-300',
-  '없음': 'bg-orange-500/15 text-orange-300',
+  // Stage D2 — 두 단계 모두 warning 토큰. '없음'은 테두리(border-warning)로 한 단계 더 강하게 구분(라벨 '데이터 없음'이 1차 구분).
+  '부분': 'bg-warning-soft text-warning',
+  '없음': 'bg-warning-soft text-warning border border-warning',
 };
 
 const StatusChip: React.FC<{ status: StockReviewConditionStatus }> = ({ status }) => (
@@ -49,9 +50,9 @@ const ConditionRow: React.FC<{ c: StockReviewCondition }> = ({ c }) => (
       <span className="text-sm text-gray-200">{c.label}</span>
       <div className="flex items-center gap-1.5 flex-shrink-0">
         <StatusChip status={chipStatus(c.evaluation)} />
-        {/* 축B 품질 캐비엇(앰버) — 평가는 유지하고 데이터 저하만 별도 표기 (충족을 숨기지 않음) */}
+        {/* 축B 품질 캐비엇(warning) — 평가는 유지하고 데이터 저하만 별도 표기 (충족을 숨기지 않음) */}
         {c.qualityNote && (
-          <span className="text-xs px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-300/90 border border-amber-500/30 whitespace-nowrap">
+          <span className="text-xs px-1.5 py-0.5 rounded bg-warning-soft text-warning border border-warning/30 whitespace-nowrap">
             {c.qualityNote}
           </span>
         )}
@@ -112,7 +113,7 @@ const ReadyBody: React.FC<{ vm: StockReviewViewModel }> = ({ vm }) => (
       )}
     </p>
     {vm.dataStatusNote && (
-      <p className="text-xs text-amber-300/80 mb-3">{vm.dataStatusNote}</p>
+      <p className="text-xs text-warning mb-3">{vm.dataStatusNote}</p>
     )}
 
     {/* 상단 요약 (충족 조건 수) */}

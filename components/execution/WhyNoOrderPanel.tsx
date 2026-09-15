@@ -99,8 +99,8 @@ const WhyNoOrderPanel: React.FC<Props> = ({ diagnostics }) => {
         <ul className="px-3 pb-3 space-y-1.5">
           {rows.map(r => (
             <li key={r.key} className="flex items-start gap-2 text-xs">
-              <span className={`mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0 ${r.tone === 'action' ? 'bg-amber-400' : 'bg-zinc-500'}`} />
-              <span className={r.tone === 'action' ? 'text-amber-200' : 'text-gray-400'}>{r.text}</span>
+              <span className={`mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0 ${r.tone === 'action' ? 'bg-warning' : 'bg-zinc-500'}`} />
+              <span className={r.tone === 'action' ? 'text-gray-200' : 'text-gray-400'}>{r.text}</span>
             </li>
           ))}
         </ul>

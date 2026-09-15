@@ -5,7 +5,9 @@
 //   · 카드/모달 하나에 primary 는 1개. 나머지는 secondary 또는 ghost.
 //   · 크기는 md(최소 36px) / lg(최소 44px) 두 가지뿐 — 작은 버튼(px-2 py-0.5)의 재발을 막는다.
 //   · primary 채움은 primary-dark(#4F46E5, 흰 글자 6.29). #6366F1 은 4.47로 AA 미달.
-//   · warning: 위험/확인 성격의 동작("등록했어요" 등) — 주황.
+//   · warning: 위험/확인 성격의 동작("등록했어요" 등) — 주황. 토큰만 사용(raw amber 금지, Stage D2).
+//     글자 text-warning 대비: warning-soft 위 #121212 6.77 / #1E1E1E 5.89 / #2C2C2C 4.92.
+//     hover 는 배경을 진하게 하지 않고 테두리만 강조한다 — warning/20 배경은 #2C2C2C 위 4.43으로 AA 미달.
 //   · danger: 삭제·로그아웃 전용 — 핑크 채움(#BE185D, 흰 글자 6.04). **아이콘 필수(타입 강제)**.
 //     빨강/파랑 채움 버튼은 만들지 않는다 — 빨강=오름·매수, 파랑=내림·매도와 뜻이 겹친다.
 //     매도 제출 버튼도 primary + 명시 라벨("매도 실행")을 쓴다.
@@ -36,7 +38,7 @@ const VARIANT_CLASSES: Record<ButtonVariant, string> = {
   primary: 'bg-primary-dark hover:bg-primary text-white border border-transparent',
   secondary: 'bg-surface-muted hover:bg-gray-600 text-gray-100 border border-border-subtle',
   ghost: 'bg-transparent hover:bg-gray-700/60 text-gray-300 hover:text-white border border-transparent',
-  warning: 'bg-warning-soft hover:bg-amber-500/25 text-amber-300 border border-amber-500/30',
+  warning: 'bg-warning-soft text-warning border border-warning/30 hover:border-warning/60',
   danger: 'bg-danger-strong hover:bg-pink-800 text-white border border-transparent',
 };
 

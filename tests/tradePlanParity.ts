@@ -394,6 +394,46 @@ check('종료된 계획 → none', sig(closePlan(P, 'manual', TODAY), { price: 9
   const digest = formatKakaoDigest({ timeLabel: '15:40', urgent: 1, today: 1, prepare: 2, unavailable: 2, brokerStopMissing: 3, planless: 7 });
   checkTrue('요약 200자 이내', digest.length <= KAKAO_TEXT_MAX);
   checkTrue('요약 핵심 숫자', digest.includes('긴급 1') && digest.includes('손절주문 미등록 3') && digest.includes('투더문 7종'));
+
+  // ── 9-b. 선두 이모지 = 앱 색 규약(Stage D2 F3, 2026-09-16) — 첫 줄을 리터럴로 고정 ──
+  //   손절 🟠(주황) · 추세선 이탈 🔵(파랑) · 익절 🔴(빨강=오름 전용) · 불타기 🔺 · 근접/확인 ⚠️ · 정보 ℹ️ · 회복 🟢 · 요약 📋
+  //   ⚠️ = U+26A0 U+FE0F, ℹ️ = U+2139 U+FE0F (VS16 포함 여부까지 고정)
+  const firstLine = (t: string): string => t.split('\n')[0] ?? '';
+  const emojiCases: Array<[string, string, TradePlan, Partial<TradePlanMarket>, string]> = [
+    ['손절', 'stop-hit', P, { price: 9_000, isIntraday: true }, '\u{1F7E0} [긴급·손절선] 풍산 전량 매도 확인'],
+    ['추세 이탈', 'exit-line-hit', P, { price: 10_100, ma: { 20: 10_200 }, isIntraday: false }, '\u{1F535} [긴급·추세선] 풍산 나머지 전량 매도'],
+    ['익절', 'take-profit-hit', P, { price: 12_100, ma: { 20: 11_000 }, isIntraday: true }, '\u{1F534} [오늘 실행·익절선] 풍산 절반 매도'],
+    ['불타기', 'pyramid-hit', PY, { price: 11_000, ma: { 20: 10_200 }, isIntraday: true }, '\u{1F53A} [준비·불타기선] 풍산 1차 도달'],
+    ['손절 근접', 'near-stop', P, { price: 9_400, ma: { 20: 9_000 }, isIntraday: true }, '⚠️ [준비·손절선] 풍산 손절선 근접'],
+    ['추세 장중', 'exit-line-watch', P, { price: 10_100, ma: { 20: 10_200 }, isIntraday: true }, '⚠️ [준비·추세선] 풍산 장중 추세선 아래'],
+    ['불타기 근접', 'near-pyramid', PY, { price: 10_850, ma: { 20: 10_200 }, isIntraday: true }, 'ℹ️ [준비·불타기선] 풍산 불타기선 근접'],
+    ['arm', 'waiting', mustBuild({ currentExitLineValue: 10_500 }), { price: 10_700, ma: { 20: 10_500 }, isIntraday: false }, '\u{1F7E2} [준비·추세선] 풍산 추세선 위로 회복'],
+    ['stale', 'stale', P, { price: 10_500, priceAsOf: '2026-09-02' }, '⚠️ [시세 오래됨] 풍산'],
+    ['unavailable', 'unavailable', P, { price: null }, '⚠️ [시세 조회 실패] 풍산'],
+    ['대기', 'waiting', P, { price: 10_500, ma: { 20: 10_200 }, isIntraday: true }, 'ℹ️ 풍산 대기 중'],
+  ];
+  for (const [label, signal, plan, m, golden] of emojiCases) {
+    check(`카톡 ${label} 신호 전제`, evaluateTradePlan(plan, mkMarket(m)).signal, signal);
+    const t = mkText(plan, m);
+    check(`카톡 ${label} 첫 줄 골든`, firstLine(t), golden);
+    checkTrue(`카톡 ${label} ≤ ${KAKAO_TEXT_MAX}자 (${t.length})`, t.length <= KAKAO_TEXT_MAX);
+    // 🔴(U+1F534)는 익절(오름) 전용 — 손절 등 다른 신호에 섞이면 앱 색 규약 위반
+    check(`카톡 ${label} 🔴 사용 = 익절 전용`, t.includes('\u{1F534}'), signal === 'take-profit-hit');
+  }
+  check('카톡 손절 전문 골든', mkText(P, { price: 9_000, isIntraday: true }),
+    '\u{1F7E0} [긴급·손절선] 풍산 전량 매도 확인\n현재 9,000원 ≤ 손절선 9,300원 (09-03 14:00 장중)\n수량 120주 · 계획 09-03 기준');
+  check('카톡 익절 전문 골든', mkText(P, { price: 12_100, ma: { 20: 11_000 }, isIntraday: true }),
+    '\u{1F534} [오늘 실행·익절선] 풍산 절반 매도\n현재 12,100원 ≥ 익절선 12,100원 (09-03 14:00 장중)\n수량 60주 · 계획 09-03 기준');
+  checkTrue('카톡 손절 문구에 🔴 없음', !mkText(P, { price: 9_000, isIntraday: true }).includes('\u{1F534}'));
+  checkTrue('요약 선두 "📋 [오늘 점검 15:40]"', digest.startsWith('\u{1F4CB} [오늘 점검 15:40] 긴급 1 · 오늘 실행 1 · 준비 2\n'));
+  check('요약 전문 골든', digest, '\u{1F4CB} [오늘 점검 15:40] 긴급 1 · 오늘 실행 1 · 준비 2\n확인 필요: 시세 없음 2 · 손절주문 미등록 3\n계획 없는 투더문 7종');
+  // 긴 종목명 + 최장 신호(불타기, 선두 🔺 2 code unit)도 200자 이내 — clip은 UTF-16 길이 기준
+  const longPy = formatKakaoText({
+    name: '아주아주아주아주아주아주아주아주긴종목이름입니다', evaluation: evaluateTradePlan(PY, mkMarket({ price: 11_000, isIntraday: true })),
+    plan: PY, price: 11_000, priceAsOf: TODAY, timeLabel: '14:00', isIntraday: true, quantity: 123_456_789,
+  });
+  checkTrue(`긴 종목명 불타기 ≤ ${KAKAO_TEXT_MAX}자 (${longPy.length})`, longPy.length <= KAKAO_TEXT_MAX);
+  checkTrue('긴 종목명 불타기 선두 🔺 보존', longPy.startsWith('\u{1F53A} [준비·불타기선] 아주아주아주아주아주아주아… 1차 도달\n'));
   check('formatPlanPrice KRW', formatPlanPrice(10_000, 'KRW'), '10,000원');
   check('formatPlanPrice USD', formatPlanPrice(59.07, 'USD'), '$59.07');
 }

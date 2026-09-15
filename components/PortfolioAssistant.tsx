@@ -8,6 +8,7 @@ import { setItemSafe, keepLast } from '../utils/safeStorage';
 import { createLogger } from '../utils/logger';
 import { useConfirm } from '../hooks/useConfirm';
 import ConfirmDialog from './common/ConfirmDialog';
+import { ASSISTANT_INLINE_CODE } from '../constants/stateColorLadders';
 import { Trash2, X } from 'lucide-react';
 
 interface Message {
@@ -159,7 +160,7 @@ const PortfolioAssistant: React.FC = () => {
         h3: ({...props}) => <h3 className="text-lg font-bold mt-4 mb-2 text-primary-light" {...props} />,
         strong: ({...props}) => <strong className="font-bold text-white" {...props} />,
         code: (props) => ((props as { inline?: boolean }).inline)
-          ? <code className="bg-gray-900 text-yellow-300 px-1.5 py-1 rounded text-sm font-mono" {...props} />
+          ? <code className={`${ASSISTANT_INLINE_CODE} px-1.5 py-1 rounded text-sm font-mono`} {...props} />
           : <pre className="bg-gray-900 p-3 rounded-md overflow-x-auto my-2 text-sm"><code className="font-mono" {...props} /></pre>,
         img: ({...props}) => (
             <img 

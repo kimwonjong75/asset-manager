@@ -16,7 +16,8 @@ export interface ScopeChipProps {
 
 const TONE_CLASSES: Record<ScopeChipTone, string> = {
   neutral: 'border-border-subtle bg-surface-muted text-gray-400',
-  warning: 'border-amber-500/40 bg-amber-500/10 text-amber-300',
+  // Stage D2 — 경고 토큰(글자 #1E1E1E 위 warning-soft 합성 5.87)
+  warning: 'border-warning/40 bg-warning-soft text-warning',
 };
 
 const ScopeChip: React.FC<ScopeChipProps> = ({ label, tone = 'neutral', title, className = '' }) => (

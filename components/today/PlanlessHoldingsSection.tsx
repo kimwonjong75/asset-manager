@@ -39,7 +39,7 @@ const PlanlessHoldingsSection: React.FC<PlanlessHoldingsSectionProps> = ({ planl
         <button
           type="button"
           onClick={() => actions.setActiveTab('settings')}
-          className="inline-flex items-center gap-0.5 text-xs text-amber-300 hover:text-amber-200 underline underline-offset-2 mt-1"
+          className="inline-flex items-center gap-0.5 text-xs text-info hover:opacity-80 transition-opacity underline underline-offset-2 mt-1"
         >
           설정에서 카카오톡 알림 켜기
           <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />

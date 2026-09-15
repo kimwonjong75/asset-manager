@@ -7,6 +7,7 @@ import Tooltip from '../common/Tooltip';
 import SortableTh from '../common/SortableTh';
 import { COLUMN_DESCRIPTIONS } from '../../constants/columnDescriptions';
 import CrossDaysBadge from '../common/CrossDaysBadge';
+import { VOLUME_INTENSITY_TEXT } from '../../constants/stateColorLadders';
 
 const RSIIndicator = ({ rsi, status }: { rsi?: number, status?: string }) => {
   if (typeof rsi !== 'number') return null;
@@ -22,11 +23,12 @@ const RSIIndicator = ({ rsi, status }: { rsi?: number, status?: string }) => {
 
 const VolumeIndicator = ({ ratio }: { ratio?: number }) => {
   if (typeof ratio !== 'number') return null;
-  let colorClass = 'text-gray-400';
+  // 강도 식별 색(매수/매도·위험 판정 아님) — constants/stateColorLadders.VOLUME_INTENSITY_TEXT
+  let colorClass: string = VOLUME_INTENSITY_TEXT.normal;
   let label = '';
-  if (ratio >= 2.0) { colorClass = 'text-orange-400'; label = '!!'; }
-  else if (ratio >= 1.5) { colorClass = 'text-yellow-400'; label = '!'; }
-  else if (ratio < 0.5) { colorClass = 'text-gray-500'; label = '~'; }
+  if (ratio >= 2.0) { colorClass = VOLUME_INTENSITY_TEXT.surge; label = '!!'; }
+  else if (ratio >= 1.5) { colorClass = VOLUME_INTENSITY_TEXT.high; label = '!'; }
+  else if (ratio < 0.5) { colorClass = VOLUME_INTENSITY_TEXT.low; label = '~'; }
   return (
     <div className="text-xs mt-0.5">
       <span className="text-gray-500">VOL:</span>{' '}

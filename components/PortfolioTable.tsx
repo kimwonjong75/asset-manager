@@ -536,25 +536,31 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
               </select>
               <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" aria-hidden="true" />
             </div>
-            <div className="relative ml-auto shrink-0">
+            <div className="ml-auto shrink-0">
               <Button
                 ref={viewMenuRef}
                 variant="secondary"
                 icon={<SlidersHorizontal />}
                 iconRight={<ChevronDown />}
-                onClick={() => setViewMenuOpen(prev => !prev)}
+                onClick={() => {
+                  // 컬럼 설정 팝오버가 열려 있으면 앵커 재클릭 = 그것만 닫기(앵커 클릭은 Popover 바깥 클릭이 아님)
+                  if (columnSettingsOpen) {
+                    setColumnSettingsOpen(false);
+                    return;
+                  }
+                  setViewMenuOpen(prev => !prev);
+                }}
                 aria-haspopup="menu"
-                aria-expanded={viewMenuOpen}
+                aria-expanded={viewMenuOpen || columnSettingsOpen}
                 className="whitespace-nowrap"
               >
                 보기{viewActiveCount > 0 ? ` · ${viewActiveCount}` : ''}
               </Button>
-              {/* '컬럼 설정…' 패널 — 기존 드롭다운을 제어 모드로 재사용(Popover 이관은 D2) */}
+              {/* '컬럼 설정…' 패널 — 공용 Popover(포털) 안에 렌더, '보기' 버튼에 끝 정렬 */}
               <ColumnSettingsDropdown
-                hideTrigger
-                className="absolute right-0 top-full"
+                anchorRef={viewMenuRef}
                 open={columnSettingsOpen}
-                onOpenChange={setColumnSettingsOpen}
+                onClose={() => setColumnSettingsOpen(false)}
                 onColumnHidden={handleColumnHidden}
               />
             </div>

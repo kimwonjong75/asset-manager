@@ -191,7 +191,7 @@ const InvestmentGuideView: React.FC = () => {
           <h4 className="text-sm font-bold text-white mb-3">용어 4가지 — 10,000원에 샀다면</h4>
           <div className="grid sm:grid-cols-2 gap-3 mb-6">
             <div className={INNER_CLS}>
-              <h5 className="text-xs font-bold text-amber-300 mb-1 flex items-center gap-1"><OctagonAlert className="h-3.5 w-3.5" aria-hidden="true" />손절선 — 9,300원</h5>
+              <h5 className="text-xs font-bold text-warning mb-1 flex items-center gap-1"><OctagonAlert className="h-3.5 w-3.5" aria-hidden="true" />손절선 — 9,300원</h5>
               <p className="text-xs text-gray-400">여기 오면 전량 매도. 손절폭 7%를 기본값으로 씁니다(10,000×0.93).</p>
             </div>
             <div className={INNER_CLS}>
@@ -219,7 +219,7 @@ const InvestmentGuideView: React.FC = () => {
               '계획 없이 매수 — 계획이 없으면 알림도, 기준도 없습니다. 사기 전에 먼저 계획을 만드세요',
             ].map((mistake, i) => (
               <div key={i} className="flex gap-3 items-start bg-warning-soft rounded-lg p-3 border border-warning/20">
-                <TriangleAlert className="h-4 w-4 text-amber-300 shrink-0 mt-px" aria-hidden="true" />
+                <TriangleAlert className="h-4 w-4 text-warning shrink-0 mt-px" aria-hidden="true" />
                 <p className="text-xs text-gray-300">{mistake}</p>
               </div>
             ))}
@@ -436,20 +436,20 @@ const InvestmentGuideView: React.FC = () => {
             </div>
             <div className="flex h-6 rounded-lg overflow-hidden">
               <div className="bg-warning-soft flex-[30] flex items-center justify-center">
-                <span className="text-xs text-amber-300 font-bold">과매도</span>
+                <span className="text-xs text-warning font-bold">과매도</span>
               </div>
               <div className="bg-surface-elevated flex-[40] flex items-center justify-center">
                 <span className="text-xs text-gray-300 font-bold">정상 구간</span>
               </div>
               <div className="bg-warning-soft flex-[30] flex items-center justify-center">
-                <span className="text-xs text-amber-300 font-bold">과매수</span>
+                <span className="text-xs text-warning font-bold">과매수</span>
               </div>
             </div>
           </div>
 
           <div className="grid sm:grid-cols-3 gap-3 mb-5">
             <div className={INNER_CLS}>
-              <p className="text-sm font-bold text-amber-300 mb-1 flex items-center gap-1"><TriangleAlert className="h-4 w-4" aria-hidden="true" />RSI &le; 30 (과매도)</p>
+              <p className="text-sm font-bold text-warning mb-1 flex items-center gap-1"><TriangleAlert className="h-4 w-4" aria-hidden="true" />RSI &le; 30 (과매도)</p>
               <p className="text-xs text-gray-400">"너무 많이 떨어졌다"는 신호. 단, RSI는 <span className="text-gray-300">보조 지표</span> — 하락 추세 종목은 과매도만 보고 사지 말고 추세(이평선)와 함께 판단.</p>
             </div>
             <div className={INNER_CLS}>
@@ -457,7 +457,7 @@ const InvestmentGuideView: React.FC = () => {
               <p className="text-xs text-gray-400">정상 범위. 추세 방향은 이동평균선과 함께 판단합니다.</p>
             </div>
             <div className={INNER_CLS}>
-              <p className="text-sm font-bold text-amber-300 mb-1 flex items-center gap-1"><TriangleAlert className="h-4 w-4" aria-hidden="true" />RSI &ge; 70 (과매수)</p>
+              <p className="text-sm font-bold text-warning mb-1 flex items-center gap-1"><TriangleAlert className="h-4 w-4" aria-hidden="true" />RSI &ge; 70 (과매수)</p>
               <p className="text-xs text-gray-400">"너무 많이 올랐다"는 신호. 단, RSI는 <span className="text-gray-300">보조 지표</span> — 상승 추세면 계속 높을 수 있으니 추세(이평선)와 함께 판단.</p>
             </div>
           </div>
@@ -556,7 +556,7 @@ const InvestmentGuideView: React.FC = () => {
                 <div><span className="font-semibold text-white">손실중</span> — 현재 수익률 &lt; 0%</div>
                 <div><span className="font-semibold text-white">고점대비 하락</span> — 52주 최고가 대비 설정 비율(%) 이상 하락</div>
                 <div className="pt-1.5 border-t border-border-subtle">
-                  <span className="font-semibold text-amber-300 inline-flex items-center gap-1"><TriangleAlert className="h-3.5 w-3.5" aria-hidden="true" />매도 알림</span> — 52주 최고가 대비 설정 비율 이상 하락 시 경고 배지 표시 (종목별/전체 설정 가능)
+                  <span className="font-semibold text-warning inline-flex items-center gap-1"><TriangleAlert className="h-3.5 w-3.5" aria-hidden="true" />매도 알림</span> — 52주 최고가 대비 설정 비율 이상 하락 시 경고 배지 표시 (종목별/전체 설정 가능)
                 </div>
               </div>
             </div>
@@ -601,8 +601,8 @@ const InvestmentGuideView: React.FC = () => {
                   <span className={CHIP_CLS}>손실중</span>
                 </div>
                 <p className="text-xs text-gray-300 flex items-start gap-1.5">
-                  <TriangleAlert className="h-4 w-4 text-amber-300 shrink-0" aria-hidden="true" />
-                  <span>기술적으로 매수 신호여도 매입가보다 낮은 상태에서의 추가매수는 '물타기'예요. <span className="text-amber-300 font-semibold">손실 종목 물타기는 피하고, 먼저 손절·무효화 기준을 확인하세요.</span></span>
+                  <TriangleAlert className="h-4 w-4 text-warning shrink-0" aria-hidden="true" />
+                  <span>기술적으로 매수 신호여도 매입가보다 낮은 상태에서의 추가매수는 '물타기'예요. <span className="text-warning font-semibold">손실 종목 물타기는 피하고, 먼저 손절·무효화 기준을 확인하세요.</span></span>
                 </p>
               </div>
             </div>

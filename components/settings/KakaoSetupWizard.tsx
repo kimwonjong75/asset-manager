@@ -141,7 +141,7 @@ const KakaoSetupWizard: React.FC<{ className?: string }> = ({ className = '' }) 
                   {step.title}
                 </div>
                 <p className="text-xs text-gray-400 leading-relaxed mt-0.5">{step.body}</p>
-                <p className="text-xs text-amber-500/80 mt-1">{step.hint}</p>
+                <p className="text-xs text-warning mt-1">{step.hint}</p>
               </div>
             </label>
           </li>

@@ -47,7 +47,7 @@ const RSI_PANE_HEIGHT = 90;
 const RSI_ZONE_TONE: Record<RsiZone, string> = {
   oversold: 'text-down',
   neutral: 'text-gray-400',
-  'near-overbought': 'text-amber-300',
+  'near-overbought': 'text-warning',
   overbought: 'text-up',
 };
 

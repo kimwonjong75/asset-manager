@@ -22,7 +22,7 @@ const UrgentSection: React.FC<UrgentSectionProps> = ({ rows }) => {
           title="긴급"
           count={rows.length}
           tone="warning"
-          icon={<OctagonAlert className="h-4 w-4 text-orange-400" aria-hidden="true" />}
+          icon={<OctagonAlert className="h-4 w-4 text-warning" aria-hidden="true" />}
         />
       </div>
       <TierRowList rows={rows} />

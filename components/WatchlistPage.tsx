@@ -26,6 +26,7 @@ import WatchlistMobileCard from './watchlist/WatchlistMobileCard';
 import BuyReadinessMarks from './watchlist/BuyReadinessMarks';
 import { buildWatchlistRowMenuItems } from './watchlist/watchlistRowMenu';
 import { usePortfolio } from '../contexts/PortfolioContext';
+import { PIN_STAR } from '../constants/stateColorLadders';
 import { watchlistToPseudoAsset } from '../utils/alertChecker';
 import {
   nextWatchlistSort,
@@ -380,7 +381,7 @@ const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, portfolioAsset
                             type="button"
                             onClick={(e) => { e.stopPropagation(); onTogglePin(w.id); }}
                             className={`transition-colors flex-shrink-0 mt-0.5 ${
-                              w.pinned ? 'text-yellow-400' : 'text-gray-500 hover:text-yellow-400/60'
+                              w.pinned ? PIN_STAR.pinned : PIN_STAR.unpinned
                             }`}
                             title={w.pinned ? '중요 해제' : '중요 표시'}
                             aria-label={w.pinned ? '중요 해제' : '중요 표시'}

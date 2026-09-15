@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useId } from 'react';
 import { Asset, Currency, SymbolSearchResult, normalizeExchange } from '../types';
 import { getAllowedCategories, inferCategoryIdFromExchange, getCategoryBaseType, getCategoryName } from '../types/category';
 import { BucketId, ALL_BUCKETS, BUCKET_LABELS, BUCKET_DESCRIPTIONS } from '../types/bucket';
@@ -11,7 +11,9 @@ import { useConfirm } from '../hooks/useConfirm';
 import ConfirmDialog from './common/ConfirmDialog';
 import Modal from './common/Modal';
 import Button from './common/Button';
-import { CircleAlert, ClipboardList, Loader2, Pencil, RefreshCw, Shield, Sparkles, ChevronDown, ChevronUp } from 'lucide-react';
+import Combobox, { type ComboboxAction } from './common/Combobox';
+import FieldError from './common/FieldError';
+import { ClipboardList, Loader2, Pencil, RefreshCw, Shield, Sparkles, ChevronDown, ChevronUp } from 'lucide-react';
 import PositionSizingCalculator from './common/PositionSizingCalculator';
 import TradePlanEditor, { type TradePlanEditorHandle } from './trade-plan/TradePlanEditor';
 import { buildTradePlan } from '../utils/tradePlan';
@@ -34,7 +36,6 @@ const AddNewAssetModal: React.FC = () => {
   const [selectedName, setSelectedName] = useState('');
   const [searchResults, setSearchResults] = useState<SymbolSearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
-  const [isFocused, setIsFocused] = useState(false);
   const [duplicateError, setDuplicateError] = useState<string | null>(null);
   const [searchError, setSearchError] = useState<string | null>(null);
   // 목록 프리페치가 '체감될 만큼' 오래 걸리는 중인지 — 안내 문구 노출 + 오해 유발 '결과 없음' 억제용
@@ -57,6 +58,11 @@ const AddNewAssetModal: React.FC = () => {
   const [saveTradePlanOnAdd, setSaveTradePlanOnAdd] = useState(true);
   const [showTradePlanDetail, setShowTradePlanDetail] = useState(false);
   const tradePlanEditorRef = useRef<TradePlanEditorHandle>(null);
+  // 인라인 오류 문구 id(FieldError ↔ aria-describedby)
+  const tickerErrorId = useId();
+  const duplicateErrorId = useId();
+  const searchErrorId = useId();
+  const fieldsErrorId = useId();
 
   const clearForm = useCallback(() => {
     setTicker('');
@@ -126,8 +132,7 @@ const AddNewAssetModal: React.FC = () => {
     return () => { alive = false; clearTimeout(hintTimer); };
   }, [isOpen]);
 
-  const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const newQuery = e.target.value;
+  const handleSearchChange = useCallback((newQuery: string) => {
     setSearchQuery(newQuery);
     if (ticker) {
       setTicker('');
@@ -165,6 +170,8 @@ const AddNewAssetModal: React.FC = () => {
     setSearchResults([]);
     const current = (ticker || '').trim();
     let nextTicker = current;
+    // 참고: 검색 목록은 티커 미확정(!ticker)일 때만 열리므로 선택 시점의 current 는 사실상 항상 빈 값이다.
+    // 아래 confirm 분기는 사실상 도달하지 않지만 기존 동작 보존을 위해 남겨 둔다(Stage D2).
     if (!current) {
       nextTicker = result.ticker;
     } else {
@@ -344,8 +351,45 @@ const AddNewAssetModal: React.FC = () => {
   const inputClasses = "w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition";
   const labelClasses = "block text-sm font-medium text-gray-300 mb-1";
   const hasGeminiKey = !!getGeminiApiKey();
-  // 검색어가 2자 이상이고 아직 종목을 확정하지 않은 동안 검색 패널(결과/직접추가/AI) 노출
-  const showSearchPanel = isFocused && !ticker && searchQuery.trim().length >= 2;
+  // 검색어가 2자 이상이고 아직 종목을 확정하지 않은 동안 검색 패널(결과/직접추가/AI) 노출.
+  // 포커스 조건은 Combobox 가 소유(입력칸 포커스 중에만 보임 — 예전 onBlur 150ms 지연 해킹 제거).
+  const searchPanelOpen = !ticker && searchQuery.trim().length >= 2;
+  const trimmedQueryUpper = searchQuery.trim().toUpperCase();
+  const searchActions: ComboboxAction[] = [
+    {
+      key: 'manual-add',
+      icon: <Pencil />,
+      label: <>'<span className="font-mono">{trimmedQueryUpper}</span>' 티커로 직접 추가</>,
+      onSelect: () => { void handleManualAdd(); },
+      disabled: isSearching,
+    },
+    {
+      key: 'reload-symbols',
+      icon: <RefreshCw className="text-gray-300" />,
+      label: <span className="text-gray-300" title="종목 목록을 서버에서 다시 받아옵니다 (검색이 안 되거나 신규상장 종목이 없을 때)">종목 목록 새로 받기</span>,
+      onSelect: () => { void handleReloadSymbols(); },
+      disabled: isSearching,
+    },
+    ...(hasGeminiKey
+      ? [{
+          key: 'ai-search',
+          icon: <Sparkles className="text-primary" />,
+          label: <span className="text-primary">AI로 더 찾기</span>,
+          onSelect: () => { void handleAiSearch(); },
+          disabled: isSearching,
+        }]
+      : []),
+  ];
+
+  // 인라인 오류 ↔ 입력칸 접근성 연결(FieldError 패턴: 오류일 때만 aria-invalid, 문구가 보이는 동안만 describedby)
+  const showTickerError = submitAttempted && !!tickerError;
+  const showFieldsError = submitAttempted && !tickerError && !!fieldsError;
+  const searchDescribedBy = [
+    showTickerError ? tickerErrorId : null,
+    duplicateError ? duplicateErrorId : null,
+    searchError ? searchErrorId : null,
+  ].filter(Boolean).join(' ') || undefined;
+  const fieldsDescribedBy = showFieldsError ? fieldsErrorId : undefined;
 
   if (!isOpen) return null;
 
@@ -446,83 +490,49 @@ const AddNewAssetModal: React.FC = () => {
                 <input value={exchange} readOnly className="w-full bg-gray-600 border border-gray-500 rounded-md py-2 px-3 text-gray-300 cursor-not-allowed" title="자산구분 또는 종목 검색에 따라 자동으로 결정됩니다." />
             </div>
             
-            <div className="relative">
+            <div>
             <label htmlFor="ticker-search" className={labelClasses}>티커 (종목 검색)</label>
-            <input 
-                id="ticker-search" 
-                type="text" 
-                value={searchQuery} 
-                onChange={handleSearchChange} 
-                onFocus={() => setIsFocused(true)}
-                onBlur={() => setTimeout(() => setIsFocused(false), 150)} // Delay to allow click on results
+            <Combobox<SymbolSearchResult>
+                inputId="ticker-search"
+                inputValue={searchQuery}
+                onInputChange={handleSearchChange}
                 placeholder="예: Apple, 삼성전자"
-                className={inputClasses}
-                required 
-                autoComplete="off"
-                title="자산의 이름 또는 티커를 입력하여 검색하세요."
+                aria-invalid={showTickerError || !!duplicateError ? true : undefined}
+                aria-describedby={searchDescribedBy}
+                endAdornment={isSearching ? <Loader2 className="animate-spin h-5 w-5 text-gray-400" aria-hidden="true" /> : undefined}
+                options={searchResults}
+                getOptionKey={(result) => `${result.ticker}-${result.exchange}`}
+                renderOption={(result) => (
+                    <>
+                    <div className="font-bold text-white">{result.name} ({result.ticker})</div>
+                    <div className="text-sm text-gray-400">{result.exchange}</div>
+                    </>
+                )}
+                onSelect={(result) => { void handleSelectSymbol(result); }}
+                open={searchPanelOpen}
+                notice={isListLoading
+                    ? <><Loader2 className="inline h-3.5 w-3.5 mr-1 animate-spin align-[-2px]" aria-hidden="true" />종목 목록을 받고 있습니다 — 곧 결과가 나타납니다 <span className="text-gray-500">(약 1.3MB · 기기당 하루 1회)</span></>
+                    : undefined}
+                // 목록은 입력칸 바로 아래에 겹쳐 열려 아래 FieldError 를 가리므로, 검색 오류는 목록 안에도 보여 준다
+                error={searchError}
+                // 목록 수신 중에는 '결과 없음'을 띄우지 않는다 — 아직 검색할 목록이 없는 상태라 오해를 준다
+                emptyText={!isSearching && !isListLoading ? '검색 결과가 없습니다.' : undefined}
+                actions={searchActions}
+                listboxLabel="종목 검색 결과"
             />
-            {submitAttempted && tickerError && (
-              <p className="flex items-center gap-1.5 text-danger text-sm mt-1" role="alert"><CircleAlert className="h-4 w-4 shrink-0" aria-hidden="true" />{tickerError}</p>
-            )}
-            {duplicateError && <p className="flex items-center gap-1.5 text-danger text-sm mt-1" role="alert"><CircleAlert className="h-4 w-4 shrink-0" aria-hidden="true" />{duplicateError}</p>}
-            {searchError && <p className="flex items-center gap-1.5 text-danger text-sm mt-1" role="alert"><CircleAlert className="h-4 w-4 shrink-0" aria-hidden="true" />{searchError}</p>}
-            {isSearching && (
-                <div className="absolute top-9 right-3">
-                    <Loader2 className="animate-spin h-5 w-5 text-gray-400" aria-hidden="true" />
-                </div>
-            )}
-            {showSearchPanel && (
-                <div className="absolute z-10 w-full bg-gray-700 border border-gray-600 rounded-md mt-1 max-h-72 overflow-y-auto shadow-lg">
-                {isListLoading && (
-                    <div className="px-3 py-2 text-xs text-gray-400 border-b border-gray-600">
-                        <Loader2 className="inline h-3.5 w-3.5 mr-1 animate-spin align-[-2px]" aria-hidden="true" />종목 목록을 받고 있습니다 — 곧 결과가 나타납니다 <span className="text-gray-500">(약 1.3MB · 기기당 하루 1회)</span>
-                    </div>
-                )}
-                {searchResults.length > 0 && (
-                    <ul>
-                    {searchResults.map((result) => (
-                        <li
-                        key={`${result.ticker}-${result.exchange}`}
-                        onMouseDown={() => handleSelectSymbol(result)}
-                        className="px-3 py-2 cursor-pointer hover:bg-primary-dark transition-colors"
-                        role="option"
-                        aria-selected="false"
-                        >
-                        <div className="font-bold text-white">{result.name} ({result.ticker})</div>
-                        <div className="text-sm text-gray-400">{result.exchange}</div>
-                        </li>
-                    ))}
-                    </ul>
-                )}
-                {/* 목록 수신 중에는 '결과 없음'을 띄우지 않는다 — 아직 검색할 목록이 없는 상태라 오해를 준다 */}
-                {!isSearching && !isListLoading && !searchError && searchResults.length === 0 && (
-                    <div className="px-3 py-2 text-sm text-gray-400">검색 결과가 없습니다.</div>
-                )}
-                <div className="border-t border-gray-600">
-                    <button type="button" onMouseDown={(e) => { e.preventDefault(); handleManualAdd(); }} disabled={isSearching} className="w-full text-left px-3 py-2 text-sm text-gray-200 hover:bg-primary-dark transition-colors disabled:opacity-50">
-                        <Pencil className="inline h-3.5 w-3.5 mr-1 align-[-2px]" aria-hidden="true" />'<span className="font-mono">{searchQuery.trim().toUpperCase()}</span>' 티커로 직접 추가
-                    </button>
-                    <button type="button" onMouseDown={(e) => { e.preventDefault(); handleReloadSymbols(); }} disabled={isSearching} className="w-full text-left px-3 py-2 text-sm text-gray-300 hover:bg-primary-dark transition-colors disabled:opacity-50" title="종목 목록을 서버에서 다시 받아옵니다 (검색이 안 되거나 신규상장 종목이 없을 때)">
-                        <RefreshCw className="inline h-3.5 w-3.5 mr-1 align-[-2px]" aria-hidden="true" />종목 목록 새로 받기
-                    </button>
-                    {hasGeminiKey && (
-                        <button type="button" onMouseDown={(e) => { e.preventDefault(); handleAiSearch(); }} disabled={isSearching} className="w-full text-left px-3 py-2 text-sm text-primary hover:bg-primary-dark transition-colors disabled:opacity-50">
-                            <Sparkles className="inline h-3.5 w-3.5 mr-1 align-[-2px]" aria-hidden="true" />AI로 더 찾기
-                        </button>
-                    )}
-                </div>
-                </div>
-            )}
+            {showTickerError && <FieldError id={tickerErrorId} className="mt-1">{tickerError}</FieldError>}
+            {duplicateError && <FieldError id={duplicateErrorId} className="mt-1">{duplicateError}</FieldError>}
+            {searchError && <FieldError id={searchErrorId} className="mt-1">{searchError}</FieldError>}
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
                 <label htmlFor="quantity" className={labelClasses}>수량</label>
-                <input id="quantity" type="number" value={quantity} onChange={(e) => setQuantity(e.target.value)} placeholder="10" className={inputClasses} required min="0" step="any" title="보유하고 있는 자산의 수량을 입력하세요."/>
+                <input id="quantity" type="number" value={quantity} onChange={(e) => setQuantity(e.target.value)} placeholder="10" className={inputClasses} required min="0" step="any" title="보유하고 있는 자산의 수량을 입력하세요." aria-invalid={showFieldsError && !quantity ? true : undefined} aria-describedby={fieldsDescribedBy}/>
             </div>
             <div>
                 <label htmlFor="purchasePrice" className={labelClasses}>매수가</label>
-                <input id="purchasePrice" type="number" value={purchasePrice} onChange={(e) => setPurchasePrice(e.target.value)} placeholder="150.00" className={inputClasses} required min="0" step="any" title="자산을 매수한 평균 단가를 선택한 통화 기준으로 입력하세요." />
+                <input id="purchasePrice" type="number" value={purchasePrice} onChange={(e) => setPurchasePrice(e.target.value)} placeholder="150.00" className={inputClasses} required min="0" step="any" title="자산을 매수한 평균 단가를 선택한 통화 기준으로 입력하세요." aria-invalid={showFieldsError && !purchasePrice ? true : undefined} aria-describedby={fieldsDescribedBy} />
             </div>
             <div>
                 <label htmlFor="currency" className={labelClasses}>통화</label>
@@ -535,7 +545,7 @@ const AddNewAssetModal: React.FC = () => {
             </div>
             <div>
             <label htmlFor="purchaseDate" className={labelClasses}>매수/보유 시작일</label>
-            <input id="purchaseDate" type="date" value={purchaseDate} onChange={(e) => setPurchaseDate(e.target.value)} className={inputClasses} required title="자산을 매수했거나 보유하기 시작한 날짜를 선택하세요."/>
+            <input id="purchaseDate" type="date" value={purchaseDate} onChange={(e) => setPurchaseDate(e.target.value)} className={inputClasses} required title="자산을 매수했거나 보유하기 시작한 날짜를 선택하세요." aria-invalid={showFieldsError && !purchaseDate ? true : undefined} aria-describedby={fieldsDescribedBy}/>
             </div>
 
             {/* 리스크 기반 권장 수량 (선택) */}
@@ -610,9 +620,7 @@ const AddNewAssetModal: React.FC = () => {
               </div>
             )}
 
-            {submitAttempted && !tickerError && fieldsError && (
-              <p className="flex items-center gap-1.5 text-danger text-sm" role="alert"><CircleAlert className="h-4 w-4 shrink-0" aria-hidden="true" />{fieldsError}</p>
-            )}
+            {showFieldsError && <FieldError id={fieldsErrorId}>{fieldsError}</FieldError>}
         </form>
     </Modal>
     {confirmRequest && <ConfirmDialog {...confirmRequest} />}

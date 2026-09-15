@@ -1,5 +1,5 @@
-import React, { useRef, useState } from 'react';
-import { GripVertical, Lock } from 'lucide-react';
+import React, { useState } from 'react';
+import { GripVertical, Lock, RotateCcw } from 'lucide-react';
 import {
   DndContext,
   closestCenter,
@@ -17,7 +17,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { useOnClickOutside } from '../../hooks/useOnClickOutside';
+import Popover from '../common/Popover';
 import { usePortfolio } from '../../contexts/PortfolioContext';
 import { ColumnConfig, ColumnKey, COLUMN_LABELS } from '../../types/ui';
 
@@ -64,29 +64,23 @@ const SortableRow: React.FC<SortableRowProps> = ({ config, onToggleVisible }) =>
 };
 
 interface ColumnSettingsDropdownProps {
-  className?: string;
-  /**
-   * 제어 모드(Stage D1): 지정하면 열림 상태를 호출부가 소유한다(PortfolioTable '보기' 메뉴 → '컬럼 설정…').
-   * 미지정이면 기존처럼 자체 '컬럼' 버튼 + 내부 상태. (Popover 이관은 D2)
-   */
-  open?: boolean;
-  onOpenChange?: (open: boolean) => void;
-  /** true면 자체 '컬럼' 트리거 버튼을 렌더하지 않는다(제어 모드 전용) */
-  hideTrigger?: boolean;
+  /** 패널을 붙일 앵커(PortfolioTable '보기' 버튼) */
+  anchorRef: React.RefObject<HTMLElement | null>;
+  open: boolean;
+  /** 바깥 클릭·Esc·포커스 이탈로 닫힘 — 열림 상태는 호출부가 소유 */
+  onClose: () => void;
   /** 컬럼을 숨겼을 때 알림 — 호출부가 그 컬럼이 정렬 기준이면 정렬을 해제한다 */
   onColumnHidden?: (key: ColumnKey) => void;
 }
 
-const ColumnSettingsDropdown: React.FC<ColumnSettingsDropdownProps> = ({ className, open: controlledOpen, onOpenChange, hideTrigger = false, onColumnHidden }) => {
+/**
+ * 컬럼 표시/순서 설정 패널 (데스크탑 전용). Stage D2: 공용 `Popover`(포털·z-menu) 안에 렌더.
+ * dnd-kit 드래그 중에는 `dismissible=false` — KeyboardSensor/PointerSensor 가 Esc 로 드래그를 취소하므로
+ * 그 Esc 가 팝오버까지 닫지 않게 한다.
+ */
+const ColumnSettingsDropdown: React.FC<ColumnSettingsDropdownProps> = ({ anchorRef, open, onClose, onColumnHidden }) => {
   const { ui, actions } = usePortfolio();
-  const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
-  const open = controlledOpen ?? uncontrolledOpen;
-  const setOpen = (next: boolean) => {
-    if (controlledOpen === undefined) setUncontrolledOpen(next);
-    onOpenChange?.(next);
-  };
-  const wrapperRef = useRef<HTMLDivElement | null>(null);
-  useOnClickOutside(wrapperRef, () => setOpen(false), open);
+  const [dragging, setDragging] = useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
@@ -94,6 +88,7 @@ const ColumnSettingsDropdown: React.FC<ColumnSettingsDropdownProps> = ({ classNa
   );
 
   const handleDragEnd = (event: DragEndEvent) => {
+    setDragging(false);
     const { active, over } = event;
     if (!over || active.id === over.id) return;
     const oldIndex = ui.columnConfig.findIndex(c => c.key === active.id);
@@ -113,54 +108,57 @@ const ColumnSettingsDropdown: React.FC<ColumnSettingsDropdownProps> = ({ classNa
     actions.resetColumnConfig();
   };
 
+  const handleClose = () => {
+    setDragging(false);
+    onClose();
+  };
+
   return (
-    <div className={hideTrigger ? (className ?? '') : `relative ${className ?? ''}`} ref={wrapperRef}>
-      {!hideTrigger && <button
-        onClick={() => setOpen(!open)}
-        className="hidden md:flex items-center gap-1.5 py-2 px-2.5 rounded-md text-xs font-medium transition bg-gray-700 text-gray-300 hover:bg-gray-600"
-        title="컬럼 표시 / 순서 설정"
-        type="button"
+    <Popover
+      anchorRef={anchorRef}
+      open={open}
+      onClose={handleClose}
+      label="컬럼 설정"
+      align="end"
+      width={256}
+      dismissible={!dragging}
+      className="py-2"
+    >
+      <div className="px-3 py-1.5 text-xs text-gray-400 font-semibold uppercase tracking-wider border-b border-gray-700 mb-1">
+        컬럼 설정
+      </div>
+      <div className="px-2 py-1 text-xs text-gray-500 flex items-center gap-2">
+        <Lock className="h-3.5 w-3.5" aria-hidden="true" /><span className="text-gray-400">종목명</span>
+        <span className="ml-auto text-gray-500">고정</span>
+      </div>
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragStart={() => setDragging(true)}
+        onDragEnd={handleDragEnd}
+        onDragCancel={() => setDragging(false)}
       >
-        <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h7" />
-        </svg>
-        <span className="whitespace-nowrap">컬럼</span>
-      </button>}
-      {open && (
-        <div className="absolute right-0 top-full mt-1 w-64 bg-gray-800 border border-gray-600 rounded-lg shadow-xl z-30 py-2">
-          <div className="px-3 py-1.5 text-xs text-gray-400 font-semibold uppercase tracking-wider border-b border-gray-700 mb-1">
-            컬럼 설정
-          </div>
-          <div className="px-2 py-1 text-xs text-gray-500 flex items-center gap-2">
-            <Lock className="h-3.5 w-3.5" aria-hidden="true" /><span className="text-gray-400">종목명</span>
-            <span className="ml-auto text-gray-500">고정</span>
-          </div>
-          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-            <SortableContext items={ui.columnConfig.map(c => c.key)} strategy={verticalListSortingStrategy}>
-              {ui.columnConfig.map(c => (
-                <SortableRow key={c.key} config={c} onToggleVisible={handleToggleVisible} />
-              ))}
-            </SortableContext>
-          </DndContext>
-          <div className="px-2 py-1 text-xs text-gray-500 flex items-center gap-2 mt-1">
-            <Lock className="h-3.5 w-3.5" aria-hidden="true" /><span className="text-gray-400">관리</span>
-            <span className="ml-auto text-gray-500">고정</span>
-          </div>
-          <div className="border-t border-gray-700 mt-2 pt-2 px-2">
-            <button
-              onClick={handleReset}
-              className="w-full text-left px-2 py-1.5 text-xs text-gray-400 hover:bg-gray-700 hover:text-white transition rounded flex items-center gap-2"
-              type="button"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
-              기본값으로 초기화
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
+        <SortableContext items={ui.columnConfig.map(c => c.key)} strategy={verticalListSortingStrategy}>
+          {ui.columnConfig.map(c => (
+            <SortableRow key={c.key} config={c} onToggleVisible={handleToggleVisible} />
+          ))}
+        </SortableContext>
+      </DndContext>
+      <div className="px-2 py-1 text-xs text-gray-500 flex items-center gap-2 mt-1">
+        <Lock className="h-3.5 w-3.5" aria-hidden="true" /><span className="text-gray-400">관리</span>
+        <span className="ml-auto text-gray-500">고정</span>
+      </div>
+      <div className="border-t border-gray-700 mt-2 pt-2 px-2">
+        <button
+          onClick={handleReset}
+          className="w-full text-left px-2 py-1.5 text-xs text-gray-400 hover:bg-gray-700 hover:text-white transition rounded flex items-center gap-2"
+          type="button"
+        >
+          <RotateCcw className="h-3 w-3" aria-hidden="true" />
+          기본값으로 초기화
+        </button>
+      </div>
+    </Popover>
   );
 };
 

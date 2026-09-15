@@ -10,12 +10,14 @@ import {
   BRIEFING_COLUMN_TOOLTIPS,
   BRIEFING_RULE_TOOLTIPS,
 } from '../../constants/briefingDescriptions';
+import { DISTRIBUTION_TIER_BADGE } from '../../constants/stateColorLadders';
 
 // P4.5 D1: distribution-high 단계별 뱃지 — 'new'는 컬러, 'ongoing'은 회색
+// Stage D2: 'new' 채움 색은 사다리 상수(constants/stateColorLadders) — 4단계 흰 글자 3.92(AA 미달) 교정
 const TIER_NEW_STYLES: Record<DistributionTier, { bg: string; label: string }> = {
-  3: { bg: 'bg-yellow-500/80 text-black', label: '주의 (3)' },
-  4: { bg: 'bg-orange-500/80 text-white', label: '약세 (4)' },
-  5: { bg: 'bg-orange-700 text-white', label: '위험 (5+)' },
+  3: { bg: DISTRIBUTION_TIER_BADGE[3], label: '주의 (3)' },
+  4: { bg: DISTRIBUTION_TIER_BADGE[4], label: '약세 (4)' },
+  5: { bg: DISTRIBUTION_TIER_BADGE[5], label: '위험 (5+)' },
 };
 
 const TIER_ONGOING_STYLES: Record<DistributionTier, { bg: string; label: string }> = {
@@ -38,10 +40,13 @@ interface AlertPopupProps {
   onOpenExecution: () => void;
 }
 
+// Stage D2 색 규약 — critical 은 warning 과 같은 토큰 계열. 구분은 불투명 border-warning + OctagonAlert + font-semibold.
+// 배지 = 흰 글자 채움(-strong: warning 5.02 / info 5.93). 글자 굵기도 여기서 정한다(배지 span 에 font-* 를 겹치지 않게).
+// 틴트(-soft) 위 보조 글자는 text-gray-400(#1E1E1E 합성 4.97) — gray-500 은 4.19 로 AA 미달이라 카드 안에서 쓰지 않는다.
 const SEVERITY_STYLES: Record<string, { bg: string; border: string; badge: string }> = {
-  critical: { bg: 'bg-orange-950/40', border: 'border-orange-500/60', badge: 'bg-orange-700' },
-  warning: { bg: 'bg-amber-950/30', border: 'border-amber-800/40', badge: 'bg-amber-700' },
-  info: { bg: 'bg-sky-950/30', border: 'border-sky-800/40', badge: 'bg-sky-700' },
+  critical: { bg: 'bg-warning-soft', border: 'border-warning', badge: 'bg-warning-strong font-semibold' },
+  warning: { bg: 'bg-warning-soft', border: 'border-warning/30', badge: 'bg-warning-strong font-medium' },
+  info: { bg: 'bg-info-soft', border: 'border-info/30', badge: 'bg-info-strong font-medium' },
 };
 
 const fmtPct = (v: number | undefined): string => {
@@ -50,7 +55,7 @@ const fmtPct = (v: number | undefined): string => {
 };
 
 const pctColor = (v: number | undefined): string => {
-  if (v == null) return 'text-gray-500';
+  if (v == null) return 'text-gray-400';
   if (v > 0) return 'text-up';
   if (v < 0) return 'text-down';
   return 'text-gray-400';
@@ -77,11 +82,16 @@ const AlertPopup: React.FC<AlertPopupProps> = ({ results, sellDataGaps, executio
   // 잠금 기록만 있고 실행 가능 건이 없으면 카드를 띄우지 않는다 — 행동할 수 없는 걸 재촉하지 않기 위함.
   const showExecCard = exec.actionableCount > 0 || exec.isChecking;
   const hasSellSignalPreview = exec.previewStop > 0 || exec.previewExit > 0;
+  // 손절·청산 프리뷰 또는 3일+ 미실행 = 강한 위험 — Stage D2: 불투명 border-warning + OctagonAlert (색만으로 구분하지 않음)
+  const execRisky = hasSellSignalPreview || exec.escalatedCount > 0;
   const execCard = showExecCard ? (
-    <div className={`rounded-lg border p-2.5 ${hasSellSignalPreview || exec.escalatedCount > 0 ? 'border-orange-500/50 bg-orange-950/30' : 'border-primary/40 bg-primary/10'}`}>
+    <div className={`rounded-lg border p-2.5 ${execRisky ? 'border-warning bg-warning-soft' : 'border-primary/40 bg-primary/10'}`}>
       <div className="flex items-center justify-between gap-2">
-        <span className="text-xs font-semibold text-white inline-flex items-center gap-1"><Turtle className="h-3.5 w-3.5" aria-hidden="true" />터틀 실행 대기</span>
-        {exec.checkedAt && <span className="text-xs text-gray-500">{exec.checkedAt} 검토 기준</span>}
+        <span className="text-xs font-semibold text-white inline-flex items-center gap-1">
+          <Turtle className="h-3.5 w-3.5" aria-hidden="true" />터틀 실행 대기
+          {execRisky && <OctagonAlert className="h-3.5 w-3.5 text-warning" aria-label="위험: 손절·청산 또는 3일+ 미실행" />}
+        </span>
+        {exec.checkedAt && <span className="text-xs text-gray-400">{exec.checkedAt} 검토 기준</span>}
       </div>
       {exec.isChecking ? (
         <p className="text-xs text-gray-400 mt-1.5">오늘 신호를 자동 검토하는 중입니다...</p>
@@ -90,7 +100,7 @@ const AlertPopup: React.FC<AlertPopupProps> = ({ results, sellDataGaps, executio
           {exec.activeCount > 0 && (
             <p>
               홈 브리핑에 <span className="text-white font-semibold">{exec.activeCount}건</span> 대기 중
-              {exec.escalatedCount > 0 && <span className="text-amber-300 font-medium"> · {exec.escalatedCount}건 3일+ 미실행 <TriangleAlert className="inline h-3 w-3 align-[-2px]" aria-label="경고" /></span>}
+              {exec.escalatedCount > 0 && <span className="text-warning font-medium"> · {exec.escalatedCount}건 3일+ 미실행 <TriangleAlert className="inline h-3 w-3 align-[-2px]" aria-label="경고" /></span>}
             </p>
           )}
           {exec.previewCount > 0 && (
@@ -115,10 +125,10 @@ const AlertPopup: React.FC<AlertPopupProps> = ({ results, sellDataGaps, executio
           )}
           {/* 예산 미설정 안내는 진입 검토가 실제로 돌 때만 의미가 있다(잠금 중엔 검토 자체를 안 함) */}
           {!exec.turtleLocked && exec.budgetMissing && exec.turtleCandidateCount > 0 && (
-            <p className="text-amber-300">위성 예산 미설정 — 신규 진입은 검토되지 않습니다.</p>
+            <p className="text-warning">위성 예산 미설정 — 신규 진입은 검토되지 않습니다.</p>
           )}
           {!exec.turtleLocked && exec.reviewFailed && (
-            <p className="text-amber-300">자동 검토 실패 — 홈 브리핑에서 수동으로 생성하세요.</p>
+            <p className="text-warning">자동 검토 실패 — 홈 브리핑에서 수동으로 생성하세요.</p>
           )}
         </div>
       )}
@@ -169,7 +179,7 @@ const AlertPopup: React.FC<AlertPopupProps> = ({ results, sellDataGaps, executio
               </span>
             )}
             <span className="text-white font-medium truncate">{asset.assetName}</span>
-            <span className="text-gray-500 text-xs shrink-0">{asset.ticker}</span>
+            <span className="text-gray-400 text-xs shrink-0">{asset.ticker}</span>
           </div>
         </td>
         <td className={`text-right py-1.5 px-1 tabular-nums ${pctColor(asset.dailyChange)}`}>
@@ -181,7 +191,7 @@ const AlertPopup: React.FC<AlertPopupProps> = ({ results, sellDataGaps, executio
         <td className={`text-right py-1.5 pl-1 tabular-nums ${
           asset.rsi != null
             ? asset.rsi < 30 ? 'text-down' : asset.rsi > 70 ? 'text-up' : 'text-gray-300'
-            : 'text-gray-500'
+            : 'text-gray-400'
         }`}>
           {asset.rsi != null ? asset.rsi.toFixed(1) : '-'}
         </td>
@@ -231,22 +241,22 @@ const AlertPopup: React.FC<AlertPopupProps> = ({ results, sellDataGaps, executio
                 <div className="flex items-center gap-2 mb-1.5 flex-wrap">
                   {BRIEFING_RULE_TOOLTIPS[rule.id] ? (
                     <Tooltip content={BRIEFING_RULE_TOOLTIPS[rule.id]} wrap className="cursor-help">
-                      <span className={`text-xs px-1.5 py-0.5 rounded inline-flex items-center gap-1 ${styles.badge} text-white font-medium`}>
+                      <span className={`text-xs px-1.5 py-0.5 rounded inline-flex items-center gap-1 ${styles.badge} text-white`}>
                         {rule.severity === 'critical' && <OctagonAlert className="h-3 w-3" aria-hidden="true" />}
                         {rule.name}
                       </span>
                     </Tooltip>
                   ) : (
-                    <span className={`text-xs px-1.5 py-0.5 rounded inline-flex items-center gap-1 ${styles.badge} text-white font-medium`}>
+                    <span className={`text-xs px-1.5 py-0.5 rounded inline-flex items-center gap-1 ${styles.badge} text-white`}>
                       {rule.severity === 'critical' && <OctagonAlert className="h-3 w-3" aria-hidden="true" />}
                       {rule.name}
                     </span>
                   )}
                   {rule.id === 'distribution-high' && (newCount > 0 || ongoingCount > 0) && (
                     <span className="text-xs flex items-center gap-1.5">
-                      {newCount > 0 && <span className="text-amber-300 font-medium">신규 {newCount}건</span>}
-                      {newCount > 0 && ongoingCount > 0 && <span className="text-gray-500">·</span>}
-                      {ongoingCount > 0 && <span className="text-gray-500">지속 {ongoingCount}건</span>}
+                      {newCount > 0 && <span className="text-warning font-medium">신규 {newCount}건</span>}
+                      {newCount > 0 && ongoingCount > 0 && <span className="text-gray-400">·</span>}
+                      {ongoingCount > 0 && <span className="text-gray-400">지속 {ongoingCount}건</span>}
                     </span>
                   )}
                   <span className="text-gray-400 text-xs">{rule.description}</span>
@@ -260,7 +270,7 @@ const AlertPopup: React.FC<AlertPopupProps> = ({ results, sellDataGaps, executio
                     <col className="w-5" />
                   </colgroup>
                   <thead>
-                    <tr className="text-gray-500 border-b border-gray-700/50">
+                    <tr className="text-gray-400 border-b border-gray-700/50">
                       <th className="text-left py-1 pr-2 font-medium truncate">
                         <Tooltip content={BRIEFING_COLUMN_TOOLTIPS.asset} position="bottom" wrap className="cursor-help">
                           <span>종목</span>
@@ -310,11 +320,11 @@ const AlertPopup: React.FC<AlertPopupProps> = ({ results, sellDataGaps, executio
         title={isMinimized ? '펼치기' : '최소화'}
       >
         <div className="flex items-center gap-2">
-          <Bell className="h-4 w-4 text-amber-400 shrink-0" aria-hidden="true" />
+          <Bell className="h-4 w-4 text-warning shrink-0" aria-hidden="true" />
           <div>
             <span className="text-sm font-semibold text-white">알림 브리핑</span>
             {hasResults && (
-              <span className="ml-2 text-xs bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded-full font-medium">
+              <span className="ml-2 text-xs bg-warning-soft text-warning px-1.5 py-0.5 rounded-full font-medium">
                 {totalCount}건
               </span>
             )}
@@ -376,16 +386,16 @@ const AlertPopup: React.FC<AlertPopupProps> = ({ results, sellDataGaps, executio
 
                 {hasDataGaps && (
                   <div>
-                    <h3 className="text-xs font-semibold text-amber-300 mb-2 flex items-center gap-1.5">
+                    <h3 className="text-xs font-semibold text-warning mb-2 flex items-center gap-1.5">
                       <TriangleAlert className="h-3.5 w-3.5" aria-hidden="true" />
                       <span>데이터 불완전 — 수동 확인</span>
                       <span className="text-gray-500 font-normal">({dataGapAssetCount}종목)</span>
                     </h3>
                     <div className="space-y-2">
                       {sellDataGaps.map(gap => (
-                        <div key={gap.rule.id} className="bg-amber-950/30 border border-amber-700/40 rounded-lg p-2.5">
+                        <div key={gap.rule.id} className="bg-warning-soft border border-warning/30 rounded-lg p-2.5">
                           <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-                            <span className="text-xs px-1.5 py-0.5 rounded bg-amber-700 text-white font-medium">{gap.rule.name}</span>
+                            <span className="text-xs px-1.5 py-0.5 rounded bg-warning-strong text-white font-medium">{gap.rule.name}</span>
                             <span className="text-gray-400 text-xs">데이터 누락으로 매도 가드 평가 불가</span>
                           </div>
                           <div className="space-y-1">
@@ -399,9 +409,9 @@ const AlertPopup: React.FC<AlertPopupProps> = ({ results, sellDataGaps, executio
                               >
                                 <span className="flex items-center gap-1 min-w-0 overflow-hidden">
                                   <span className="text-white truncate">{a.assetName}</span>
-                                  <span className="text-gray-500 text-xs shrink-0">{a.ticker}</span>
+                                  <span className="text-gray-400 text-xs shrink-0">{a.ticker}</span>
                                 </span>
-                                <span className="text-gray-500 text-xs shrink-0 ml-2">미평가 {a.missingFilters.length}개 조건</span>
+                                <span className="text-gray-400 text-xs shrink-0 ml-2">미평가 {a.missingFilters.length}개 조건</span>
                               </button>
                             ))}
                           </div>

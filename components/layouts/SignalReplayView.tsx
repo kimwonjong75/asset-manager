@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { usePortfolio } from '../../contexts/PortfolioContext';
 import Button from '../common/Button';
+import Combobox from '../common/Combobox';
 import PassMark from '../common/PassMark';
 import { directionTextClass, tradeSideTextClass } from '../../utils/directionTone';
 import { useSignalReplay, type ReplaySymbol } from '../../hooks/useSignalReplay';
@@ -33,7 +34,7 @@ const WINDOW_LABELS: Record<number, string> = { 126: '6개월', 252: '1년', 504
 const toneClass = (tone: StatusTone | 'positive' | 'neutral' | 'caution' | 'muted'): string => {
   switch (tone) {
     case 'positive': return 'text-ok';
-    case 'caution': return 'text-amber-300';
+    case 'caution': return 'text-warning';
     case 'neutral': return 'text-gray-300';
     default: return 'text-gray-500';
   }
@@ -253,32 +254,29 @@ const SignalReplayView: React.FC = () => {
 
       {/* 종목 선택 */}
       <div className="bg-surface-elevated border border-border-subtle rounded-card p-3 space-y-2">
-        <div className="relative">
-          <input
-            value={ctrl.searchQuery}
-            onChange={e => ctrl.setSearchQuery(e.target.value)}
-            placeholder="종목 검색 (티커/이름) — 예: SLV, AAPL, 삼성전자"
-            className="w-full bg-surface-muted text-sm text-white rounded px-3 py-2 border border-border-subtle focus:border-primary outline-none"
-          />
-          {(ctrl.searchResults.length > 0 || ctrl.isSearching) && (
-            <ul className="absolute z-10 mt-1 w-full max-h-60 overflow-y-auto bg-surface-elevated border border-border-subtle rounded-lg shadow-lg">
-              {ctrl.isSearching && <li className="px-3 py-2 text-xs text-gray-500">검색 중…</li>}
-              {ctrl.searchResults.map(r => (
-                <li key={`${r.ticker}-${r.exchange}`}>
-                  <button
-                    type="button"
-                    onClick={() => ctrl.selectSymbol({ ticker: r.ticker, name: r.name, exchange: r.exchange, categoryId: 0 })}
-                    className="w-full text-left px-3 py-2 text-sm text-gray-200 hover:bg-surface-muted cursor-pointer flex items-center gap-2 focus:outline-none focus-visible:bg-surface-muted"
-                  >
-                    <span className="text-white">{r.name}</span>
-                    <span className="text-xs text-gray-500">{r.ticker}</span>
-                    <span className="text-xs text-gray-500">{r.exchange}</span>
-                  </button>
-                </li>
-              ))}
-            </ul>
+        {/* 종목 검색 — 공용 Combobox(입력칸 포커스 중에만 목록, ↑↓/Enter/Esc). 검색·debounce·선택 후 검색어 비움은 useSignalReplay */}
+        <label htmlFor="replay-symbol-search" className="sr-only">종목 검색</label>
+        <Combobox
+          inputId="replay-symbol-search"
+          inputValue={ctrl.searchQuery}
+          onInputChange={ctrl.setSearchQuery}
+          placeholder="종목 검색 (티커/이름) — 예: SLV, AAPL, 삼성전자"
+          inputClassName="w-full bg-surface-muted text-sm text-white placeholder-gray-400 rounded px-3 py-2 border border-border-subtle focus:border-primary focus:outline-none"
+          options={ctrl.searchResults}
+          getOptionKey={r => `${r.ticker}-${r.exchange}`}
+          renderOption={r => (
+            <span className="flex items-center gap-2 min-w-0">
+              <span className="text-white truncate">{r.name}</span>
+              <span className="text-xs text-gray-500">{r.ticker}</span>
+              <span className="text-xs text-gray-500">{r.exchange}</span>
+            </span>
           )}
-        </div>
+          onSelect={r => ctrl.selectSymbol({ ticker: r.ticker, name: r.name, exchange: r.exchange, categoryId: 0 })}
+          open={ctrl.searchResults.length > 0 || ctrl.isSearching}
+          loading={ctrl.isSearching}
+          loadingText="검색 중…"
+          listboxLabel="종목 검색 결과"
+        />
         {quickPicks.length > 0 && (
           <div className="flex flex-wrap gap-1.5">
             {quickPicks.map(s => (
@@ -426,7 +424,7 @@ const SignalReplayView: React.FC = () => {
                   )}
                   {alertView.unverifiable.length > 0 && (
                     <div className="mt-2 pt-2 border-t border-border-subtle">
-                      <div className="text-xs text-amber-300 mb-1"><TriangleAlert className="inline h-3.5 w-3.5 mr-1 align-text-bottom" aria-hidden="true" />리플레이 검증 불가 <span className="text-gray-500 font-normal">— 발화/미충족 판정을 믿지 마세요(‘놓친 매도’로 태깅 금지)</span></div>
+                      <div className="text-xs text-warning mb-1"><TriangleAlert className="inline h-3.5 w-3.5 mr-1 align-text-bottom" aria-hidden="true" />리플레이 검증 불가 <span className="text-gray-500 font-normal">— 발화/미충족 판정을 믿지 마세요(‘놓친 매도’로 태깅 금지)</span></div>
                       <ul className="space-y-1">
                         {alertView.unverifiable.map(({ diag, scope }) => (
                           <li key={diag.ruleId} className="flex items-center justify-between gap-2 text-xs">

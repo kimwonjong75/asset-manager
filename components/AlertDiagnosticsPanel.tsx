@@ -17,7 +17,7 @@ import type {
 const TONE_CLASS: Record<AlertStatusTone, string> = {
   positive: 'text-ok',
   neutral: 'text-gray-300',
-  caution: 'text-amber-300',
+  caution: 'text-warning',
   muted: 'text-gray-500',
 };
 
@@ -36,7 +36,7 @@ const FilterRow: React.FC<{ f: FilterDiagnostic }> = ({ f }) => (
     <span className="text-gray-300">{f.label}</span>
     {f.actual !== undefined && <span className="text-white font-mono">{f.actual}</span>}
     {f.threshold !== undefined && <span className="text-gray-500">(기준 {f.threshold})</span>}
-    {f.quality === 'partial' && <span className="text-amber-400/80">데이터 일부</span>}
+    {f.quality === 'partial' && <span className="text-warning">데이터 일부</span>}
     {f.quality === 'missing' && <span className="text-gray-500">데이터 없음</span>}
   </div>
 );

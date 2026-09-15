@@ -33,7 +33,7 @@ const KakaoStatusChip: React.FC<KakaoStatusChipProps> = ({ className = '' }) => 
       <button
         type="button"
         onClick={() => actions.setActiveTab('settings')}
-        className={`inline-flex items-center gap-1.5 text-xs px-2 py-1 rounded-full bg-amber-500/10 border border-amber-700/40 text-amber-300 hover:bg-amber-500/20 transition-colors ${className}`}
+        className={`inline-flex items-center gap-1.5 text-xs px-2 py-1 rounded-full bg-warning-soft border border-warning/40 text-warning hover:border-warning/60 transition-colors ${className}`}
         title="설정 탭에서 카카오톡 알림을 켤 수 있습니다"
       >
         <Bell className="h-3.5 w-3.5" aria-hidden="true" />
@@ -50,7 +50,7 @@ const KakaoStatusChip: React.FC<KakaoStatusChipProps> = ({ className = '' }) => 
       <span className="text-gray-400">카톡 알림</span>
       <span className="text-gray-300">마지막 동기화 {formatTime(settings.lastSyncAt)}</span>
       {needsSync && (
-        <span className="text-amber-400">· 동기화 필요 {manifest.items.length}건</span>
+        <span className="text-warning">· 동기화 필요 {manifest.items.length}건</span>
       )}
     </span>
   );

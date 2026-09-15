@@ -2,7 +2,7 @@
 // 신호 리플레이 샌드박스(P3, 렌더 전용) — 구루 규칙 leaf를 "값 + on/off"로 즉석 조정 → 마커/신호 즉시 재계산.
 // **라이브 구루 신호·KnowledgeBase·시드 규칙은 절대 안 바뀜**(이 화면 state 한정). operator/value 형태 변경은 P4.
 // 계산/가드 로직은 utils/ruleSandbox(순수), 저장은 useSignalReplay. 컴포넌트는 렌더 + 콜백만.
-// Stage C: 범위 역전(입력 오류)=danger+CircleAlert, 변경됨 표시=CircleDot(amber), 신호일 변화는 중립색+Plus/Minus.
+// Stage C: 범위 역전(입력 오류)=danger+CircleAlert, 변경됨 표시=CircleDot(warning), 신호일 변화는 중립색+Plus/Minus.
 
 import React from 'react';
 import { CircleAlert, CircleDot, FlaskConical, Minus, Plus, RotateCcw } from 'lucide-react';
@@ -58,7 +58,7 @@ const LeafRow: React.FC<{
           <span className="text-xs text-gray-200 truncate">{label}</span>
           <span className="text-xs text-gray-500">{OP_LABEL[leaf.operator]}</span>
           {leaf.overridden && (
-            <span className="text-amber-300" title="기준값에서 변경됨">
+            <span className="text-warning" title="기준값에서 변경됨">
               <CircleDot className="h-3 w-3" aria-hidden="true" />
               <span className="sr-only">기준값에서 변경됨</span>
             </span>
@@ -159,7 +159,7 @@ const ReplaySandboxPanel: React.FC<ReplaySandboxPanelProps> = (props) => {
             <span className="text-gray-400">기준(조정 전) 대비 신호일 변화 없음.</span>
           ) : (
             <div className="space-y-0.5">
-              <span className="text-amber-300 font-medium">기준 대비 변화</span>
+              <span className="text-warning font-medium">기준 대비 변화</span>
               {diff.overall.added.length > 0 && (
                 <div>
                   <span className="inline-flex items-center gap-1 text-gray-200 font-medium"><Plus className="h-3 w-3" aria-hidden="true" />{diff.overall.added.length}일 추가</span>{' '}

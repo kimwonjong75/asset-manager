@@ -22,8 +22,8 @@ export const VERDICT_KIND_LABELS: Record<SignalVerdictKind, string> = {
 // 첫 토큰은 반드시 text-* (목록 라벨이 split(' ')[0] 으로 글자색만 재사용)
 const VERDICT_KIND_TONE: Record<SignalVerdictKind, string> = {
   'good': 'text-ok border-ok/50 bg-ok-soft',
-  'too-early': 'text-amber-300 border-warning/50 bg-warning-soft',
-  'too-late': 'text-amber-300 border-warning/50 bg-warning-soft',
+  'too-early': 'text-warning border-warning/50 bg-warning-soft',
+  'too-late': 'text-warning border-warning/50 bg-warning-soft',
   'false': 'text-danger border-danger/50 bg-danger-soft',
   'missed-buy': 'text-info border-info/50 bg-info-soft',
   'missed-sell': 'text-info border-info/50 bg-info-soft',

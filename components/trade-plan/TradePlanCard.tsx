@@ -36,7 +36,7 @@ const ANCHOR_LABELS: Record<TradePlanAnchor, string> = {
 
 // Stage C: 이모지 점 대신 lucide 아이콘 — 손절=위험(주황) / 익절·불타기=오름·매수 쪽(빨강) / 추세선 이탈=내림(파랑)
 const LINE_ICON: Record<PlanLineKey, React.ReactNode> = {
-  stop: <OctagonAlert className="h-4 w-4 text-amber-400" aria-hidden="true" />,
+  stop: <OctagonAlert className="h-4 w-4 text-warning" aria-hidden="true" />,
   takeProfit: <Target className="h-4 w-4 text-up" aria-hidden="true" />,
   exitLine: <TrendingDown className="h-4 w-4 text-down" aria-hidden="true" />,
   pyramid: <ArrowUpFromLine className="h-4 w-4 text-up" aria-hidden="true" />,
@@ -204,7 +204,7 @@ const TradePlanCard: React.FC<TradePlanCardProps> = ({
               )}
               {line.distancePct !== null && (
                 // 여유% = 선까지 남은 거리(위험 지표) — 방향 색이 아니라 주황(warning)으로 고정
-                <span className="text-amber-300">
+                <span className="text-warning">
                   여유 {line.distancePct >= 0 ? '+' : ''}{line.distancePct.toFixed(1)}%
                 </span>
               )}
@@ -228,7 +228,7 @@ const TradePlanCard: React.FC<TradePlanCardProps> = ({
                 )}
                 {!plan.brokerStopOrderRegistered ? (
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-xs text-amber-400 inline-flex items-center gap-1"><TriangleAlert className="h-3.5 w-3.5" aria-hidden="true" />증권사 손절 예약주문 미등록</span>
+                    <span className="text-xs text-warning inline-flex items-center gap-1"><TriangleAlert className="h-3.5 w-3.5" aria-hidden="true" />증권사 손절 예약주문 미등록</span>
                     <Button variant="warning" onClick={() => onToggleBrokerStop(true)}>
                       등록했어요
                     </Button>
@@ -252,9 +252,9 @@ const TradePlanCard: React.FC<TradePlanCardProps> = ({
 
   const actionBlock = (showSellButton || showBuyButton || showDecisionButtons) && (
     <div className="border-t border-gray-800 pt-2 space-y-1.5">
-      {helpText && <p className="text-xs text-amber-400">{helpText}</p>}
+      {helpText && <p className="text-xs text-warning">{helpText}</p>}
       {showDecisionButtons && currentSignalStreak >= 3 && (
-        <p className="text-xs text-amber-400 flex items-start gap-1">
+        <p className="text-xs text-warning flex items-start gap-1">
           <TriangleAlert className="h-3.5 w-3.5 mt-px shrink-0" aria-hidden="true" />
           <span>{currentSignalStreak}번째 미루고 있습니다 — 계획을 바꿀지, 지킬지 지금 정하세요</span>
         </p>
@@ -324,13 +324,13 @@ const TradePlanCard: React.FC<TradePlanCardProps> = ({
     <p className="text-xs text-gray-500 border-t border-gray-800 pt-2">
       최근 결정: {lastDecision.date.slice(5)} {DECISION_CHOICE_LABEL[lastDecision.choice] ?? lastDecision.choice}
       {tomorrowStreak >= 3 && (
-        <span className="ml-1.5 text-amber-400"><TriangleAlert className="inline h-3.5 w-3.5 mr-0.5 align-[-3px]" aria-hidden="true" />{tomorrowStreak}번째 미루고 있습니다 — 계획을 바꿀지, 지킬지 지금 정하세요</span>
+        <span className="ml-1.5 text-warning"><TriangleAlert className="inline h-3.5 w-3.5 mr-0.5 align-[-3px]" aria-hidden="true" />{tomorrowStreak}번째 미루고 있습니다 — 계획을 바꿀지, 지킬지 지금 정하세요</span>
       )}
     </p>
   );
 
   const timestampBlock = (
-    <p className={`text-xs ${evaluation.stale ? 'text-amber-400' : 'text-gray-500'} border-t border-gray-800 pt-2`}>
+    <p className={`text-xs ${evaluation.stale ? 'text-warning' : 'text-gray-500'} border-t border-gray-800 pt-2`}>
       데이터 {priceAsOf.slice(5)} {isIntraday ? '장중' : '확정'}
       {evaluation.stale && ' — 시세가 오래됐습니다. 새로고침 후 확인하세요.'}
     </p>

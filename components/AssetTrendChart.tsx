@@ -710,7 +710,7 @@ const AssetTrendChart: React.FC<AssetTrendChartProps> = ({
             </button>
           )}
           {chartType === 'candle' && !canShowCandle && !maLoading && (
-            <span className="text-xs text-amber-400 ml-1">캔들 데이터 없음(라인 표시)</span>
+            <span className="text-xs text-warning ml-1">캔들 데이터 없음(라인 표시)</span>
           )}
           {maLoading && <span className="text-xs text-gray-500 ml-1">불러오는 중...</span>}
           {maError && !maLoading && <span className="text-xs text-danger ml-1 inline-flex items-center gap-1"><CircleAlert className="h-3 w-3" aria-hidden="true" />{maError}</span>}

@@ -40,7 +40,7 @@ function displayOf(entry: IngestQueueEntry): { title: string; tags: string[] } {
 // 신뢰도: high=ok(충족) / medium=warning(확인 필요) / low=중립
 const CONFIDENCE_STYLE: Record<string, string> = {
   high: 'bg-ok-soft text-ok',
-  medium: 'bg-warning-soft text-amber-300',
+  medium: 'bg-warning-soft text-warning',
   low: 'bg-surface-muted text-gray-300',
 };
 

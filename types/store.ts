@@ -217,7 +217,6 @@ export interface PortfolioActions {
   /** 매도 기록 삭제 — `sellHistory` + 자산의 `sellTransactions` 양쪽에서 제거. 보유수량 복구하지 않음 */
   deleteSellRecord: (recordId: string) => void;
   confirmBuyMore: (id: string, buyDate: string, buyPrice: number, buyQuantity: number) => Promise<BuyMoreResult>;
-  addSelectedToWatchlist: (assets: Asset[]) => void;
 
   // 관심종목
   addWatchItem: (item: Omit<WatchlistItem, 'id' | 'currentPrice' | 'priceOriginal' | 'currency' | 'previousClosePrice' | 'highestPrice'>) => void;

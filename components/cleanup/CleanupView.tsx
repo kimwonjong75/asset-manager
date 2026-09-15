@@ -24,6 +24,7 @@ import { mergeSellRecords } from '../../utils/sellRecords';
 import { computeAssetMetrics } from '../../utils/portfolioMetrics';
 import { Currency } from '../../types';
 import Button from '../common/Button';
+import Badge from '../common/Badge';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 
 const TAG_META: Record<CleanupTag, { label: string; active: string; idle: string }> = {
@@ -144,7 +145,7 @@ const CleanupView: React.FC = () => {
         <p className="text-xs sm:text-sm text-gray-400 mt-1">
           손실·먼지 종목을 <span className="text-gray-200">코어 편입 · 터틀 후보 · 청산 · 보류</span>로 분류합니다.
         </p>
-        <div className="mt-2 text-xs sm:text-sm text-amber-200 bg-amber-500/10 border border-amber-500/30 rounded-md px-3 py-2">
+        <div className="mt-2 text-xs sm:text-sm text-gray-200 bg-warning-soft border border-warning/30 rounded-md px-3 py-2">
           이 손실은 <span className="font-semibold">이미 발생</span>했습니다. 지금 결정은 "손실을 되돌리는 것"이 아니라
           <span className="font-semibold"> 앞으로 이 자금을 어디에 둘지</span>입니다.
         </div>
@@ -160,7 +161,7 @@ const CleanupView: React.FC = () => {
       <div className="mb-4 rounded-md border border-gray-700 bg-gray-800/60">
         <button onClick={() => setTaxOpen(o => !o)} aria-expanded={taxOpen} className="w-full flex items-center justify-between px-3 py-2.5 text-left">
           <span className="text-xs sm:text-sm font-medium text-gray-200">
-            해외주식 양도세 통산 <span className="text-xs text-amber-300 border border-amber-500/40 rounded px-1 py-0.5 ml-1">추정 · 세무조언 아님</span>
+            해외주식 양도세 통산 <span className="text-xs text-warning border border-warning/40 rounded px-1 py-0.5 ml-1">추정 · 세무조언 아님</span>
           </span>
           {taxOpen
             ? <ChevronUp className="h-4 w-4 text-gray-500" aria-hidden="true" />
@@ -171,7 +172,7 @@ const CleanupView: React.FC = () => {
             <div className="flex justify-between"><span className="text-gray-400">{taxYear}년 실현 해외손익</span><span>{formatKRW(taxEstimate.realizedForeignGainKRW)}</span></div>
             <div className="flex justify-between"><span className="text-gray-400">청산 예정 해외 미실현손익</span><span>{formatKRW(taxEstimate.plannedForeignGainKRW)}</span></div>
             <div className="flex justify-between"><span className="text-gray-400">합산 − 기본공제({formatKRW(taxEstimate.basicDeductionKRW)})</span><span>과세표준 {formatKRW(taxEstimate.taxableKRW)}</span></div>
-            <div className="flex justify-between font-medium"><span className="text-gray-200">추정 세금 (×{Math.round(taxEstimate.rate * 100)}%)</span><span className="text-amber-200">{formatKRW(taxEstimate.estimatedTaxKRW)}</span></div>
+            <div className="flex justify-between font-medium"><span className="text-gray-200">추정 세금 (×{Math.round(taxEstimate.rate * 100)}%)</span><span className="text-warning">{formatKRW(taxEstimate.estimatedTaxKRW)}</span></div>
             {taxEstimate.offsetSavingsKRW > 0 && (
               <div className="flex justify-between text-ok"><span>손실 통산 절감(추정)</span><span>−{formatKRW(taxEstimate.offsetSavingsKRW)}</span></div>
             )}
@@ -232,7 +233,7 @@ const CleanupView: React.FC = () => {
                 <div className="text-xs text-gray-500 mt-0.5">
                   {sideEffects.watchRegistered > 0 && <span className="mr-2">관심종목 등록 {sideEffects.watchRegistered}</span>}
                   {sideEffects.cleanupGenerated > 0 && <span className="mr-2">청산 주문 {sideEffects.cleanupGenerated}</span>}
-                  {sideEffects.cleanupSkippedNoPrice.length > 0 && <span className="text-amber-400">시세 갱신 필요 {sideEffects.cleanupSkippedNoPrice.length}</span>}
+                  {sideEffects.cleanupSkippedNoPrice.length > 0 && <span className="text-warning">시세 갱신 필요 {sideEffects.cleanupSkippedNoPrice.length}</span>}
                 </div>
               )}
             </div>
@@ -264,9 +265,10 @@ const CandidateCard: React.FC<CardProps> = ({ c, tag, excluded, onTag, onToggleE
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-white font-semibold truncate">{c.name}</span>
             <span className="text-xs text-gray-500">{c.ticker}</span>
-            {c.flags.deepLoss && <Badge tone="red">깊은손실</Badge>}
-            {c.flags.dust && <Badge tone="gray">먼지</Badge>}
-            {c.flags.foreign && <Badge tone="blue">해외</Badge>}
+            {/* 플래그 배지(공용 Badge, §8 색 규약): 깊은손실=손실→down · 먼지=중립 · 해외=분류 정보→info */}
+            {c.flags.deepLoss && <Badge tone="down">깊은손실</Badge>}
+            {c.flags.dust && <Badge tone="neutral">먼지</Badge>}
+            {c.flags.foreign && <Badge tone="info">해외</Badge>}
           </div>
           <div className="flex items-center gap-3 text-xs text-gray-400 mt-1">
             <span className={lossColor}>{pct(c.returnPercentage)}</span>
@@ -295,13 +297,6 @@ const CandidateCard: React.FC<CardProps> = ({ c, tag, excluded, onTag, onToggleE
       )}
     </li>
   );
-};
-
-const Badge: React.FC<{ tone: 'red' | 'gray' | 'blue'; children: React.ReactNode }> = ({ tone, children }) => {
-  const cls = tone === 'red' ? 'text-amber-300 bg-amber-500/10 border-amber-500/30'
-    : tone === 'blue' ? 'text-sky-300 bg-sky-500/10 border-sky-500/30'
-    : 'text-gray-300 bg-gray-500/10 border-gray-500/30';
-  return <span className={`text-xs px-1.5 py-0.5 rounded border ${cls}`}>{children}</span>;
 };
 
 export default CleanupView;

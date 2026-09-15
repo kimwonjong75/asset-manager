@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useId } from 'react';
 import { SymbolSearchResult, normalizeExchange } from '../types';
 import { getAllowedCategories, inferCategoryIdFromExchange, getCategoryBaseType } from '../types/category';
 import { searchSymbols, validateTicker } from '../services/symbolListService';
@@ -7,7 +7,9 @@ import { getGeminiApiKey } from '../services/geminiSettings';
 import { usePortfolio } from '../contexts/PortfolioContext';
 import Modal from './common/Modal';
 import Button from './common/Button';
-import { CircleAlert, Loader2, Pencil, Sparkles } from 'lucide-react';
+import Combobox, { type ComboboxAction } from './common/Combobox';
+import FieldError from './common/FieldError';
+import { Loader2, Pencil, Sparkles } from 'lucide-react';
 
 const WatchlistAddModal: React.FC = () => {
   const { modal, actions, data } = usePortfolio();
@@ -20,7 +22,6 @@ const WatchlistAddModal: React.FC = () => {
   const [selectedName, setSelectedName] = useState('');
   const [searchResults, setSearchResults] = useState<SymbolSearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
-  const [isFocused, setIsFocused] = useState(false);
   const [duplicateError, setDuplicateError] = useState<string | null>(null);
   const [searchError, setSearchError] = useState<string | null>(null);
 
@@ -29,6 +30,11 @@ const WatchlistAddModal: React.FC = () => {
   const [notes, setNotes] = useState('');
   // 제출 시도 후에만 인라인 검증 문구 노출(브라우저 alert 대체 — RULES.md §7)
   const [submitAttempted, setSubmitAttempted] = useState(false);
+  // 검색 입력칸 id + 인라인 오류 문구 id(FieldError ↔ aria-describedby)
+  const searchInputId = useId();
+  const noTickerErrorId = useId();
+  const duplicateErrorId = useId();
+  const searchErrorId = useId();
 
   const clearForm = useCallback(() => {
     setTicker('');
@@ -46,8 +52,7 @@ const WatchlistAddModal: React.FC = () => {
     if (!isOpen) clearForm();
   }, [isOpen, clearForm]);
 
-  const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const newQuery = e.target.value;
+  const handleSearchChange = useCallback((newQuery: string) => {
     setSearchQuery(newQuery);
     if (ticker) {
       setTicker('');
@@ -166,7 +171,34 @@ const WatchlistAddModal: React.FC = () => {
   const inputClasses = "w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition";
   const labelClasses = "block text-sm font-medium text-gray-300 mb-1";
   const hasGeminiKey = !!getGeminiApiKey();
-  const showSearchPanel = isFocused && !ticker && searchQuery.trim().length >= 2;
+  // 검색어 2자 이상 && 종목 미확정 동안 검색 패널 노출. 포커스 조건은 Combobox 가 소유(onBlur 150ms 지연 해킹 제거).
+  const searchPanelOpen = !ticker && searchQuery.trim().length >= 2;
+  const searchActions: ComboboxAction[] = [
+    {
+      key: 'manual-add',
+      icon: <Pencil />,
+      label: <>'<span className="font-mono">{searchQuery.trim().toUpperCase()}</span>' 티커로 직접 추가</>,
+      onSelect: () => { void handleManualAdd(); },
+      disabled: isSearching,
+    },
+    ...(hasGeminiKey
+      ? [{
+          key: 'ai-search',
+          icon: <Sparkles className="text-primary" />,
+          label: <span className="text-primary">AI로 더 찾기</span>,
+          onSelect: () => { void handleAiSearch(); },
+          disabled: isSearching,
+        }]
+      : []),
+  ];
+
+  // 인라인 오류 ↔ 입력칸 접근성 연결(오류일 때만 aria-invalid, 문구가 보이는 동안만 describedby)
+  const showNoTickerError = submitAttempted && !ticker;
+  const searchDescribedBy = [
+    showNoTickerError ? noTickerErrorId : null,
+    duplicateError ? duplicateErrorId : null,
+    searchError ? searchErrorId : null,
+  ].filter(Boolean).join(' ') || undefined;
 
   if (!isOpen) return null;
 
@@ -196,59 +228,35 @@ const WatchlistAddModal: React.FC = () => {
             <label className={labelClasses}>거래소/시장</label>
             <input value={exchange} readOnly className="w-full bg-gray-600 border border-gray-500 rounded-md py-2 px-3 text-gray-300 cursor-not-allowed" />
           </div>
-          <div className="relative">
-            <label className={labelClasses}>종목 검색</label>
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={handleSearchChange}
-              onFocus={() => setIsFocused(true)}
-              onBlur={() => setTimeout(() => setIsFocused(false), 150)}
+          <div>
+            <label htmlFor={searchInputId} className={labelClasses}>종목 검색</label>
+            <Combobox<SymbolSearchResult>
+              inputId={searchInputId}
+              inputValue={searchQuery}
+              onInputChange={handleSearchChange}
               placeholder="예: Apple, 삼성전자"
-              className={inputClasses}
-              autoComplete="off"
+              aria-invalid={showNoTickerError || !!duplicateError ? true : undefined}
+              aria-describedby={searchDescribedBy}
+              endAdornment={isSearching ? <Loader2 className="animate-spin h-5 w-5 text-gray-400" aria-hidden="true" /> : undefined}
+              options={searchResults}
+              getOptionKey={(result) => `${result.ticker}-${result.exchange}`}
+              renderOption={(result) => (
+                <>
+                  <div className="font-bold text-white">{result.name} ({result.ticker})</div>
+                  <div className="text-sm text-gray-400">{result.exchange}</div>
+                </>
+              )}
+              onSelect={handleSelectSymbol}
+              open={searchPanelOpen}
+              // 목록이 입력칸 바로 아래에 겹쳐 열려 아래 FieldError 를 가리므로, 검색 오류는 목록 안에도 보여 준다
+              error={searchError}
+              emptyText={!isSearching ? '검색 결과가 없습니다.' : undefined}
+              actions={searchActions}
+              listboxLabel="종목 검색 결과"
             />
-            {submitAttempted && !ticker && (
-              <p className="flex items-center gap-1.5 text-danger text-sm mt-1" role="alert"><CircleAlert className="h-4 w-4 shrink-0" aria-hidden="true" />종목 검색을 통해 유효한 종목을 선택해주세요.</p>
-            )}
-            {duplicateError && <p className="flex items-center gap-1.5 text-danger text-sm mt-1" role="alert"><CircleAlert className="h-4 w-4 shrink-0" aria-hidden="true" />{duplicateError}</p>}
-            {searchError && <p className="flex items-center gap-1.5 text-danger text-sm mt-1" role="alert"><CircleAlert className="h-4 w-4 shrink-0" aria-hidden="true" />{searchError}</p>}
-            {isSearching && (
-              <div className="absolute top-9 right-3">
-                <Loader2 className="animate-spin h-5 w-5 text-gray-400" aria-hidden="true" />
-              </div>
-            )}
-            {showSearchPanel && (
-              <div className="absolute z-10 w-full bg-gray-700 border border-gray-600 rounded-md mt-1 max-h-72 overflow-y-auto shadow-lg">
-                {searchResults.length > 0 && (
-                  <ul>
-                    {searchResults.map((result) => (
-                      <li
-                        key={`${result.ticker}-${result.exchange}`}
-                        onMouseDown={() => handleSelectSymbol(result)}
-                        className="px-3 py-2 cursor-pointer hover:bg-primary-dark transition-colors"
-                      >
-                        <div className="font-bold text-white">{result.name} ({result.ticker})</div>
-                        <div className="text-sm text-gray-400">{result.exchange}</div>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-                {!isSearching && !searchError && searchResults.length === 0 && (
-                  <div className="px-3 py-2 text-sm text-gray-400">검색 결과가 없습니다.</div>
-                )}
-                <div className="border-t border-gray-600">
-                  <button type="button" onMouseDown={(e) => { e.preventDefault(); handleManualAdd(); }} disabled={isSearching} className="w-full text-left px-3 py-2 text-sm text-gray-200 hover:bg-primary-dark transition-colors disabled:opacity-50">
-                    <Pencil className="inline h-3.5 w-3.5 mr-1 align-[-2px]" aria-hidden="true" />'<span className="font-mono">{searchQuery.trim().toUpperCase()}</span>' 티커로 직접 추가
-                  </button>
-                  {hasGeminiKey && (
-                    <button type="button" onMouseDown={(e) => { e.preventDefault(); handleAiSearch(); }} disabled={isSearching} className="w-full text-left px-3 py-2 text-sm text-primary hover:bg-primary-dark transition-colors disabled:opacity-50">
-                      <Sparkles className="inline h-3.5 w-3.5 mr-1 align-[-2px]" aria-hidden="true" />AI로 더 찾기
-                    </button>
-                  )}
-                </div>
-              </div>
-            )}
+            {showNoTickerError && <FieldError id={noTickerErrorId} className="mt-1">종목 검색을 통해 유효한 종목을 선택해주세요.</FieldError>}
+            {duplicateError && <FieldError id={duplicateErrorId} className="mt-1">{duplicateError}</FieldError>}
+            {searchError && <FieldError id={searchErrorId} className="mt-1">{searchError}</FieldError>}
           </div>
           <div>
             <label className={labelClasses}>메모</label>

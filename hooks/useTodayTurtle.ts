@@ -11,6 +11,16 @@
 // 재조회 수명주기 (C-3): 세션 1회가 아니라 **requestKey 기반**.
 //   계정 필터·관심종목 추가/삭제·보유 변경·포지션 연결 변경·날짜 변경 시 재조회하고,
 //   장중 가격 변동만으로는 재조회하지 않는다. 오래된 응답이 새 응답을 덮어쓰지 않도록 request id 로 가드.
+//
+// 모듈 캐시 (Stage D2 F1): 홈은 탭 전환마다 재마운트되므로 loadedKeyRef(마운트 단위)만으로는 재진입마다
+//   POST /history 를 다시 불렀다. 이제 모듈 Map 에 requestKey 별 결과를 30분 보관하고, 판정은 순수 함수
+//   utils/todayTurtleCache 에 위임한다.
+//   · fresh(키 일치 + 시장 현지 날짜 서명 일치 + TTL 이내) → 조회 없이 재사용. 렌더 중 엿보기로 첫 화면부터 표시.
+//   · 같은 키 조회가 진행 중이면(in-flight) 같은 Promise 를 기다린다 — 동시 마운트가 요청을 공유.
+//   · **완전 성공만 저장**(isCacheableResult) — 부분 실패·빈 결과는 저장하지 않아 다음 마운트에서 재시도된다.
+//   · 가격 새로고침 버튼은 이 캐시를 비우지 않는다(장중 가격은 원래 재조회 사유가 아님 — 날짜·서명·requestKey 가 담당).
+//   · 마운트된 채로 TTL 이 지나도 자동 재조회하지 않는다(기존과 동일 — 같은 requestKey 는 마운트 중 1회).
+//   · 저장·쓰기·큐 생성 없음(읽기 전용 보장 불변). 캐시는 메모리 전용 — 새로고침하면 비워진다.
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { usePortfolio } from '../contexts/PortfolioContext';
@@ -25,6 +35,10 @@ import {
   buildWatchRow, buildPositionRow, buildLegacyRow, sortRows, summarizeRows,
   todayInstrumentKey, buildTodayRequestKey, isStaleResponse, RawSeries,
 } from '../utils/todayTurtle';
+import {
+  marketDaySignature, evaluateCacheEntry, isCacheableResult, pruneCacheEntries, selectDisplayedResult,
+  TODAY_TURTLE_CACHE_TTL_MS, TODAY_TURTLE_CACHE_MAX_ENTRIES, KeyedTodayResult,
+} from '../utils/todayTurtleCache';
 import { TodayRow, TodayTurtleModel } from '../types/todayTurtle';
 import { getAssetBucket } from '../types/bucket';
 import { matchesOwnerFilter } from '../types/owner';
@@ -51,6 +65,102 @@ interface Target {
   intradayPrice: number | null;
   stopPrice?: number | null;
   linkError?: boolean;
+}
+
+// ── 모듈 캐시 (탭 재진입 재조회 방지) ─────────────────────────────────────────
+
+type RawMap = Map<string, HistoricalPriceResult>;
+
+/** 한 번의 조회(또는 대상 0 / 캐시 재사용) 결과 */
+interface FetchOutcome {
+  raw: RawMap | null;
+  failedKeys: ReadonlySet<string>;
+}
+
+interface CacheEntry {
+  requestKey: string;
+  raw: RawMap;
+  failedKeys: ReadonlySet<string>;
+  /** 조회 **시작** 시각 — 보수적(TTL·서명 모두 요청 시점 기준) */
+  fetchedAtMs: number;
+  /** 조회 시작 시점의 marketDaySignature */
+  signature: string;
+}
+
+const todayCache = new Map<string, CacheEntry>();
+const inFlight = new Map<string, { promise: Promise<FetchOutcome>; signature: string }>();
+
+/** 렌더 중 엿보기 — 읽기만 한다(삭제·저장 없음). fresh 가 아니면 null. */
+function peekFreshEntry(requestKey: string, now: Date): CacheEntry | null {
+  const entry = todayCache.get(requestKey);
+  const verdict = evaluateCacheEntry(
+    entry,
+    { requestKey, nowMs: now.getTime(), signature: marketDaySignature(now) },
+    { ttlMs: TODAY_TURTLE_CACHE_TTL_MS }
+  );
+  return verdict === 'fresh' && entry ? entry : null;
+}
+
+/** 배치 조회 — 한쪽이 실패해도 다른 쪽은 살린다(부분 성공). 실패 종목은 failedKeys 로. */
+async function fetchTodaySeries(targets: Target[], startDate: string, endDate: string): Promise<FetchOutcome> {
+  const cryptoTickers = targets.filter(t => t.isCrypto).map(t => t.fetchTicker);
+  const stockTickers = targets.filter(t => !t.isCrypto).map(t => t.fetchTicker);
+  const empty: Record<string, HistoricalPriceResult> = {};
+  const [cryptoRes, stockRes] = await Promise.all([
+    cryptoTickers.length
+      ? fetchCryptoHistoricalPrices(cryptoTickers, startDate, endDate).catch(e => { log.error('코인 시세 조회 실패:', e); return empty; })
+      : Promise.resolve(empty),
+    stockTickers.length
+      ? fetchStockHistoricalPrices(stockTickers, startDate, endDate).catch(e => { log.error('주식 시세 조회 실패:', e); return empty; })
+      : Promise.resolve(empty),
+  ]);
+  const merged: RawMap = new Map();
+  const failed = new Set<string>();
+  for (const t of targets) {
+    const r = (t.isCrypto ? cryptoRes : stockRes)[t.fetchTicker];
+    if (r && r.data && Object.keys(r.data).length > 0) merged.set(t.key, r);
+    else failed.add(t.key);   // 조회 실패 → no-high-low 가 아니라 fetch-failed 로 표시
+  }
+  return { raw: merged, failedKeys: failed };
+}
+
+/** 새 조회를 시작하고 in-flight 로 공유한다. 완전 성공일 때만 캐시에 저장. */
+function startSharedFetch(requestKey: string, targets: Target[], now: Date, asOfDate: string): Promise<FetchOutcome> {
+  const fetchedAtMs = now.getTime();
+  const signature = marketDaySignature(now);
+  const promise: Promise<FetchOutcome> = fetchTodaySeries(targets, isoDaysAgo(LOOKBACK_CALENDAR_DAYS, now), asOfDate)
+    .catch((e: unknown): FetchOutcome => {
+      // 예기치 못한 처리 오류 → 전 종목 fetch-failed 로 폴백(로딩에 갇히지 않게). 저장하지 않는다.
+      log.error('오늘의 터틀 조회 처리 실패:', e);
+      return { raw: new Map(), failedKeys: new Set(targets.map(t => t.key)) };
+    })
+    .then(outcome => {
+      if (outcome.raw && isCacheableResult({ failed: outcome.failedKeys.size, total: targets.length })) {
+        todayCache.delete(requestKey);   // delete→set 으로 삽입 순서 갱신(오래된 것부터 정리)
+        todayCache.set(requestKey, { requestKey, raw: outcome.raw, failedKeys: outcome.failedKeys, fetchedAtMs, signature });
+        for (const k of pruneCacheEntries(todayCache, TODAY_TURTLE_CACHE_MAX_ENTRIES)) todayCache.delete(k);
+      }
+      return outcome;
+    })
+    .finally(() => {
+      if (inFlight.get(requestKey)?.promise === promise) inFlight.delete(requestKey);
+    });
+  inFlight.set(requestKey, { promise, signature });
+  return promise;
+}
+
+/** requestKey 의 결과를 얻는다: 대상 0 → 빈 결과 / fresh 캐시 → 재사용 / 같은 서명 in-flight → 공유 / 그 외 → 새 조회 */
+function acquireOutcome(requestKey: string, targets: Target[], asOfDate: string): Promise<FetchOutcome> {
+  if (targets.length === 0) return Promise.resolve({ raw: null, failedKeys: new Set<string>() });
+  const now = new Date();
+  const signature = marketDaySignature(now);
+  const entry = todayCache.get(requestKey);
+  const verdict = evaluateCacheEntry(entry, { requestKey, nowMs: now.getTime(), signature }, { ttlMs: TODAY_TURTLE_CACHE_TTL_MS });
+  if (verdict === 'fresh' && entry) return Promise.resolve(entry);
+  if (verdict === 'expired') todayCache.delete(requestKey);
+  const pending = inFlight.get(requestKey);
+  if (pending && pending.signature === signature) return pending.promise;
+  return startSharedFetch(requestKey, targets, now, asOfDate);
 }
 
 export interface PositionLinkResult {
@@ -103,9 +213,8 @@ export function useTodayTurtle(): TodayTurtleModel {
   const { data, ui } = usePortfolio();
   const { assets, watchlist, turtlePositions } = data;
 
-  const [rawByTicker, setRawByTicker] = useState<Map<string, HistoricalPriceResult> | null>(null);
-  const [failedKeys, setFailedKeys] = useState<Set<string>>(new Set());
-  const [isLoading, setIsLoading] = useState(false);
+  /** 커밋된 결과 — 어떤 requestKey 의 결과인지 함께 보관. 로딩·캐시 표시는 렌더에서 파생한다. */
+  const [loaded, setLoaded] = useState<KeyedTodayResult<RawMap> | null>(null);
   const loadedKeyRef = useRef<string | null>(null);
   const requestIdRef = useRef(0);
 
@@ -196,51 +305,32 @@ export function useTodayTurtle(): TodayTurtleModel {
     [fetchTargets, asOfDate]
   );
 
+  const hasTargets = fetchTargets.length > 0;
+  // 렌더 중 캐시 엿보기(읽기 전용) — 탭 재진입 첫 화면부터 캐시 결과를 보여 로딩 깜빡임을 없앤다.
+  // requestKey 단위로 고정: 마운트 중 TTL 이 지나도 표시가 비지 않는다(그 사이 effect 가 같은 결과를 커밋).
+  const peek = useMemo(
+    () => (hasTargets ? peekFreshEntry(requestKey, new Date()) : null),
+    [requestKey, hasTargets]
+  );
+
   useEffect(() => {
     if (loadedKeyRef.current === requestKey) return; // 동일 requestKey → 재조회 없음
-    if (fetchTargets.length === 0) {
-      loadedKeyRef.current = requestKey;
-      setRawByTicker(null);      // 대상 0 → 이전 raw map 을 남기지 않는다
-      setFailedKeys(new Set());
-      setIsLoading(false);
-      return;
-    }
     loadedKeyRef.current = requestKey;
     const reqId = ++requestIdRef.current;
-    setIsLoading(true);
-
-    const now = new Date();
-    const startDate = isoDaysAgo(LOOKBACK_CALENDAR_DAYS, now);
-    const endDate = asOfDate;
-
-    (async () => {
-      const cryptoTickers = fetchTargets.filter(t => t.isCrypto).map(t => t.fetchTicker);
-      const stockTickers = fetchTargets.filter(t => !t.isCrypto).map(t => t.fetchTicker);
-      const empty: Record<string, HistoricalPriceResult> = {};
-      // 배치 조회 — 한쪽이 실패해도 다른 쪽은 살린다(부분 성공)
-      const [cryptoRes, stockRes] = await Promise.all([
-        cryptoTickers.length
-          ? fetchCryptoHistoricalPrices(cryptoTickers, startDate, endDate).catch(e => { log.error('코인 시세 조회 실패:', e); return empty; })
-          : Promise.resolve(empty),
-        stockTickers.length
-          ? fetchStockHistoricalPrices(stockTickers, startDate, endDate).catch(e => { log.error('주식 시세 조회 실패:', e); return empty; })
-          : Promise.resolve(empty),
-      ]);
+    // 대상 0 / fresh 캐시 / in-flight 공유 / 새 조회 — 모두 같은 비동기 커밋 경로로 모인다.
+    // (effect 본문에서 동기 setState 하지 않음: 로딩·대상0·캐시 표시는 selectDisplayedResult 로 렌더에서 파생)
+    void acquireOutcome(requestKey, fetchTargets, asOfDate).then(outcome => {
       // 오래된 응답이 새 요청 결과를 덮어쓰지 않게 가드 (순수 판정은 utils 로 분리 — 테스트 가능)
       if (isStaleResponse(reqId, requestIdRef.current)) return;
-
-      const merged = new Map<string, HistoricalPriceResult>();
-      const failed = new Set<string>();
-      for (const t of fetchTargets) {
-        const r = (t.isCrypto ? cryptoRes : stockRes)[t.fetchTicker];
-        if (r && r.data && Object.keys(r.data).length > 0) merged.set(t.key, r);
-        else failed.add(t.key);   // 조회 실패 → no-high-low 가 아니라 fetch-failed 로 표시
-      }
-      setRawByTicker(merged);
-      setFailedKeys(failed);
-      setIsLoading(false);
-    })();
+      // 대상 0 이면 raw=null 커밋 → 이전 raw map 을 남기지 않는다
+      setLoaded({ requestKey, raw: outcome.raw, failedKeys: outcome.failedKeys });
+    });
   }, [requestKey, fetchTargets, asOfDate]);
+
+  const display = selectDisplayedResult<RawMap>({ requestKey, hasTargets, loaded, peek });
+  const rawByTicker = display.raw;
+  const failedKeys = display.failedKeys;
+  const isLoading = display.isLoading;
 
   return useMemo<TodayTurtleModel>(() => {
     const now = new Date();
