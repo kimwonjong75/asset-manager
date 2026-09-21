@@ -18,7 +18,8 @@ import React, { useEffect, useId, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 
-export type ModalSize = 'sm' | 'md' | 'lg' | 'xl';
+/** 'full' — 거의 전체 화면(폭 95vw·높이 90dvh 고정). 본문이 확정 높이를 가지므로 `h-full` 차트를 담을 수 있다 */
+export type ModalSize = 'sm' | 'md' | 'lg' | 'xl' | 'full';
 
 export interface ModalProps {
   open: boolean;
@@ -44,6 +45,7 @@ const SIZE_CLASSES: Record<ModalSize, string> = {
   md: 'sm:max-w-lg',
   lg: 'sm:max-w-2xl',
   xl: 'sm:max-w-4xl',
+  full: 'sm:max-w-[95vw] h-[90dvh]',
 };
 
 export const FOCUSABLE_SELECTOR =

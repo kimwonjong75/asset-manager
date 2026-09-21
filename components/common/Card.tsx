@@ -8,6 +8,10 @@
 //   · 접힌 상태에서도 헤더의 `summary`(건수 등)와 `actions`는 보인다 — 신호/건수를 접힘 뒤에 숨기지 않는다.
 //   · 기본 `clip`(overflow-hidden). **sticky thead 표는 Card로 감싸지 말 것** — overflow 조상이 생기면
 //     sticky가 깨진다(RULES.md §8). 부득이 감쌀 때는 `clip={false}`.
+//   · `toolbar`(선택) — 제목 행 **아래** 줄에 flex-wrap으로 렌더되는 넓은 컨트롤 묶음(필터·기간 버튼 등).
+//     `actions`는 `shrink-0`이라 넓은 컨트롤을 넣으면 제목이 0폭으로 눌려 한 글자씩 세로로 쌓인다
+//     (홈 손익 추이 카드 버그) → 넓은 컨트롤은 toolbar, actions는 칩·아이콘 버튼처럼 짧은 것만.
+//     toolbar도 접혀 있어도 보인다(actions와 같은 계약).
 
 import React, { useState } from 'react';
 import { ChevronDown } from 'lucide-react';
@@ -34,6 +38,8 @@ export interface CardProps {
   summary?: React.ReactNode;
   /** 헤더 우측 — 버튼/뱃지 등. 접혀 있어도 표시 */
   actions?: React.ReactNode;
+  /** 제목 행 아래 줄(flex-wrap) — 필터·기간 선택처럼 넓은 컨트롤. 접혀 있어도 표시 */
+  toolbar?: React.ReactNode;
   children: React.ReactNode;
   className?: string;
   bodyClassName?: string;
@@ -52,6 +58,7 @@ const Card: React.FC<CardProps> = ({
   description,
   summary,
   actions,
+  toolbar,
   children,
   className = '',
   bodyClassName = '',
@@ -85,16 +92,14 @@ const Card: React.FC<CardProps> = ({
     });
   const bodyVisible = !collapsible || open;
   const hasSummary = summary !== undefined && summary !== null;
-  const hasHeader = !!title || !!actions || hasSummary;
+  const hasToolbar = toolbar !== undefined && toolbar !== null && toolbar !== false;
+  const hasHeader = !!title || !!actions || hasSummary || hasToolbar;
 
   return (
     <div className={`rounded-card ${clip ? 'overflow-hidden' : ''} ${VARIANT_CLASSES[variant]} ${className}`}>
       {hasHeader && (
-        <div
-          className={`flex items-start justify-between gap-2 px-4 py-3.5 ${
-            bodyVisible ? 'border-b border-border-subtle' : ''
-          }`}
-        >
+        <div className={`px-4 py-3.5 ${bodyVisible ? 'border-b border-border-subtle' : ''}`}>
+        <div className="flex items-start justify-between gap-2">
           {collapsible ? (
             <button
               type="button"
@@ -121,6 +126,8 @@ const Card: React.FC<CardProps> = ({
             <div className="shrink-0 flex items-center gap-1.5 text-xs text-gray-400 mt-0.5">{summary}</div>
           )}
           {actions && <div className="shrink-0 flex items-center gap-1.5">{actions}</div>}
+        </div>
+        {hasToolbar && <div className="mt-2.5 flex flex-wrap items-center gap-2 min-w-0">{toolbar}</div>}
         </div>
       )}
       {bodyVisible && <div className={`p-4 ${bodyClassName}`}>{children}</div>}

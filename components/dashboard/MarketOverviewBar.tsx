@@ -1,13 +1,14 @@
 import React, { useMemo, useState } from 'react';
-import { ChevronDown, CircleAlert } from 'lucide-react';
+import { ChevronDown, CircleAlert, Maximize2 } from 'lucide-react';
 import { usePortfolio } from '../../contexts/PortfolioContext';
 import {
   intlGoldKRWPerG,
   goldPremiumPct,
   effectiveUsdKrw,
 } from '../../utils/marketOverviewCalculations';
-import { OverviewChartPeriod } from '../../hooks/useMarketOverviewHistory';
+import { useMarketOverviewHistory, OverviewChartPeriod } from '../../hooks/useMarketOverviewHistory';
 import MarketOverviewCharts from './MarketOverviewCharts';
+import Modal from '../common/Modal';
 
 const OPEN_KEY = 'asset-manager-market-overview-open';
 const PERIOD_KEY = 'asset-manager-market-overview-period';
@@ -113,6 +114,12 @@ const MarketOverviewBar: React.FC = () => {
     } catch { /* ignore */ }
     return '3M';
   });
+
+  // 확대 모달 — 영속하지 않는다(열 때마다 사용자 클릭)
+  const [expanded, setExpanded] = useState(false);
+  // 히스토리 훅은 여기서 한 번만 — 인라인 차트와 확대 모달이 같은 기간별 캐시를 공유한다(중복 /history 없음).
+  // 접힘 + 모달 닫힘이면 enabled=false → /history 요청 0건(지연 로딩 계약 유지).
+  const { history, loading: historyLoading, error: historyError } = useMarketOverviewHistory(open || expanded, period);
 
   const toggleOpen = () => setOpen((prev) => {
     const next = !prev;
@@ -232,15 +239,42 @@ const MarketOverviewBar: React.FC = () => {
             차트
             <ChevronDown className={`h-4 w-4 transition-transform ${open ? '' : '-rotate-90'}`} />
           </button>
+          <button
+            type="button"
+            onClick={() => setExpanded(true)}
+            title="전체화면으로 보기"
+            aria-label="시장 차트 전체화면으로 보기"
+            className="inline-flex items-center justify-center min-h-8 min-w-8 -ml-2 rounded-md text-gray-400 hover:text-white hover:bg-gray-700/60 transition-colors focus-ring"
+          >
+            <Maximize2 className="h-4 w-4" aria-hidden="true" />
+          </button>
         </div>
       </div>
 
-      {/* 펼침 시 차트 — 접혀 있으면 /history 요청 0건 */}
+      {/* 펼침 시 차트 — 접혀 있고 확대 모달도 닫혀 있으면 /history 요청 0건 */}
       {open && (
         <div className="px-4 pb-4">
-          <MarketOverviewCharts enabled={open} period={period} onPeriodChange={changePeriod} />
+          <MarketOverviewCharts
+            history={history}
+            loading={historyLoading}
+            error={historyError}
+            period={period}
+            onPeriodChange={changePeriod}
+          />
         </div>
       )}
+
+      {/* 확대 모달 — 같은 훅 결과·같은 기간 상태를 공유(모달에서 기간을 바꾸면 인라인도 따라간다) */}
+      <Modal open={expanded} onClose={() => setExpanded(false)} title="금 시세 · 환율 일별 추이" size="full">
+        <MarketOverviewCharts
+          history={history}
+          loading={historyLoading}
+          error={historyError}
+          period={period}
+          onPeriodChange={changePeriod}
+          size="fill"
+        />
+      </Modal>
     </div>
   );
 };

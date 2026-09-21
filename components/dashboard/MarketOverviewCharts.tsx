@@ -7,13 +7,20 @@ const GRID_COLOR = '#3A3A3A';
 const TOOLTIP_BOX: React.CSSProperties = { ...CHART_TOOLTIP_STYLE.contentStyle, padding: '0.5rem 0.75rem' };
 const TOOLTIP_LABEL: React.CSSProperties = { ...CHART_TOOLTIP_STYLE.labelStyle, marginBottom: 4 };
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { useMarketOverviewHistory, OverviewChartPeriod } from '../../hooks/useMarketOverviewHistory';
+import type { OverviewChartPeriod } from '../../hooks/useMarketOverviewHistory';
+import type { MarketOverviewHistory } from '../../types/marketOverview';
+
+/** 'inline' — 바 아래 펼침(차트당 240px 고정) / 'fill' — 부모 높이를 채움(확대 모달, 두 차트가 절반씩) */
+export type MarketOverviewChartsSize = 'inline' | 'fill';
 
 interface Props {
-  /** 펼침 상태 — false면 히스토리 훅이 /history를 호출하지 않음(지연 로딩) */
-  enabled: boolean;
+  /** 히스토리 — 훅(`useMarketOverviewHistory`)은 MarketOverviewBar가 소유한다(인라인·확대 모달이 캐시 공유, 중복 /history 없음) */
+  history: MarketOverviewHistory | null;
+  loading: boolean;
+  error: string | null;
   period: OverviewChartPeriod;
   onPeriodChange: (p: OverviewChartPeriod) => void;
+  size?: MarketOverviewChartsSize;
 }
 
 const PERIODS: OverviewChartPeriod[] = ['1M', '3M', '6M', '1Y'];
@@ -79,12 +86,17 @@ const FxTooltip = ({ active, payload, label }: { active?: boolean; payload?: Arr
 };
 
 /**
- * 시장 요약 상세 차트 (지연 로딩). 펼쳤을 때만 렌더/조회.
+ * 시장 요약 상세 차트 (렌더 전용). 조회는 MarketOverviewBar의 `useMarketOverviewHistory`가 담당 —
+ * 펼침 또는 확대 모달이 열렸을 때만 /history 요청.
  *  · 금/프리미엄: 좌축 KRW/g(국내금·국제금환산) + 우축 %(프리미엄)
  *  · 환율: 좌축 USD/KRW + 우축 JPY/KRW (단위 차이 커 이중축)
  */
-const MarketOverviewCharts: React.FC<Props> = ({ enabled, period, onPeriodChange }) => {
-  const { history, loading, error } = useMarketOverviewHistory(enabled, period);
+const MarketOverviewCharts: React.FC<Props> = ({ history, loading, error, period, onPeriodChange, size = 'inline' }) => {
+  const fill = size === 'fill';
+  // fill: 섹션이 flex-1로 절반씩 나누고 차트는 남은 높이를 100%로 채운다. inline: 240px 고정(기존과 동일).
+  const sectionCls = fill ? 'flex-1 min-h-[12rem] flex flex-col' : '';
+  const chartBoxCls = fill ? 'flex-1 min-h-0' : '';
+  const chartHeight: number | `${number}%` = fill ? '100%' : 240;
 
   const goldData = useMemo(
     () =>
@@ -107,8 +119,8 @@ const MarketOverviewCharts: React.FC<Props> = ({ enabled, period, onPeriodChange
   );
 
   return (
-    <div className="mt-3 pt-3 border-t border-border-subtle space-y-6">
-      <div className="flex items-center justify-between">
+    <div className={fill ? 'h-full flex flex-col gap-6' : 'mt-3 pt-3 border-t border-border-subtle space-y-6'}>
+      <div className="shrink-0 flex flex-wrap items-center justify-between gap-2">
         <span className="text-sm font-medium text-gray-300">일별 추이</span>
         <PeriodTabs value={period} onChange={onPeriodChange} />
       </div>
@@ -120,10 +132,11 @@ const MarketOverviewCharts: React.FC<Props> = ({ enabled, period, onPeriodChange
       ) : (
         <>
           {/* 금 / 프리미엄 */}
-          <div>
-            <p className="text-xs text-gray-400 mb-2">금 시세 · 김치 프리미엄</p>
+          <div className={sectionCls}>
+            <p className="shrink-0 text-xs text-gray-400 mb-2">금 시세 · 김치 프리미엄</p>
             {goldData.length > 1 ? (
-              <ResponsiveContainer width="100%" height={240}>
+              <div className={chartBoxCls}>
+              <ResponsiveContainer width="100%" height={chartHeight}>
                 <LineChart data={goldData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke={GRID_COLOR} />
                   <XAxis dataKey="date" stroke={AXIS_COLOR} fontSize={11} minTickGap={24} />
@@ -136,16 +149,18 @@ const MarketOverviewCharts: React.FC<Props> = ({ enabled, period, onPeriodChange
                   <Line yAxisId="right" type="monotone" dataKey="프리미엄" stroke={SERIES_COLORS.premium} strokeWidth={2} dot={false} />
                 </LineChart>
               </ResponsiveContainer>
+              </div>
             ) : (
               <div className="h-40 flex items-center justify-center text-sm text-gray-500">표시할 데이터가 부족합니다.</div>
             )}
           </div>
 
           {/* 환율 */}
-          <div>
-            <p className="text-xs text-gray-400 mb-2">환율 (USD/KRW · JPY/KRW)</p>
+          <div className={sectionCls}>
+            <p className="shrink-0 text-xs text-gray-400 mb-2">환율 (USD/KRW · JPY/KRW)</p>
             {fxData.length > 1 ? (
-              <ResponsiveContainer width="100%" height={240}>
+              <div className={chartBoxCls}>
+              <ResponsiveContainer width="100%" height={chartHeight}>
                 <LineChart data={fxData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke={GRID_COLOR} />
                   <XAxis dataKey="date" stroke={AXIS_COLOR} fontSize={11} minTickGap={24} />
@@ -157,6 +172,7 @@ const MarketOverviewCharts: React.FC<Props> = ({ enabled, period, onPeriodChange
                   <Line yAxisId="right" type="monotone" dataKey="JPY/KRW" stroke={SERIES_COLORS.jpy} strokeWidth={2} dot={false} connectNulls />
                 </LineChart>
               </ResponsiveContainer>
+              </div>
             ) : (
               <div className="h-40 flex items-center justify-center text-sm text-gray-500">표시할 데이터가 부족합니다.</div>
             )}

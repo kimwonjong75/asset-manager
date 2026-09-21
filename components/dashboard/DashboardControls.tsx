@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useId, useMemo } from 'react';
 import { ChevronDown } from 'lucide-react';
 import { Asset } from '../../types';
 import { getAllowedCategories } from '../../types/category';
@@ -20,6 +20,8 @@ const DashboardControls: React.FC<DashboardControlsProps> = ({
 }) => {
     const { data } = usePortfolio();
     const cats = data.categoryStore.categories;
+    // 손익 추이 카드 인라인 + 확대 모달에 동시에 렌더되므로 고정 id 대신 인스턴스별 id(label 연결 유지)
+    const selectId = useId();
 
     const categoryOptions = useMemo(() => {
         const allowed = getAllowedCategories(cats);
@@ -31,12 +33,12 @@ const DashboardControls: React.FC<DashboardControlsProps> = ({
 
     return (
         <div className="flex items-center gap-2" title="손익 추이 차트에 표시할 자산의 종류를 선택합니다.">
-            <label htmlFor="dashboard-filter" className="text-xs text-gray-400 whitespace-nowrap">
+            <label htmlFor={selectId} className="text-xs text-gray-400 whitespace-nowrap">
                 자산 구분
             </label>
             <div className="relative">
                 <select
-                    id="dashboard-filter"
+                    id={selectId}
                     value={filterCategory}
                     onChange={(e) => { const v = e.target.value; onFilterChange(v === 'ALL' || v === 'SATELLITE' ? v : Number(v)); }}
                     className="bg-gray-700 border border-gray-600 rounded-md min-h-9 pl-3 pr-8 text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent appearance-none"

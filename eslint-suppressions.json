@@ -143,14 +143,6 @@
       "count": 3
     }
   },
-  "components/dashboard/ProfitLossChart.tsx": {
-    "@typescript-eslint/no-explicit-any": {
-      "count": 2
-    },
-    "react-hooks/static-components": {
-      "count": 1
-    }
-  },
   "components/dashboard/RebalanceExecuteModal.tsx": {
     "react-hooks/set-state-in-effect": {
       "count": 1

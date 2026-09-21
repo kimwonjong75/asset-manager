@@ -159,7 +159,7 @@ const DashboardView: React.FC = () => {
           <MarketOverviewBar />
         </section>
 
-        {/* 손익 추이 — 자산 구분 필터 + 기간 선택(홈의 유일한 기간 컨트롤) */}
+        {/* 손익 추이 — 자산 구분 필터 + 기간 선택(홈의 유일한 기간 컨트롤)은 제목 아래 toolbar 줄, 범위 칩·확대 버튼은 제목 행 */}
         <div className="min-w-0 md:col-span-2 xl:col-span-7">
           <ProfitLossChart
             history={portfolioHistory}
@@ -171,16 +171,14 @@ const DashboardView: React.FC = () => {
             collapsible
             defaultCollapsed={false}
             storageKey="asset-manager-profitloss-open"
-            headerActions={
-              <>
-                <DashboardControls
-                  assets={viewAssets}
-                  filterCategory={dashboardFilterCategory}
-                  onFilterChange={(cat) => setDashboardFilterCategory(cat)}
-                />
-                <ScopeChip label="계정 필터 적용" title="위 계정 선택과 자산 구분 필터를 함께 따릅니다." />
-              </>
+            filterSlot={
+              <DashboardControls
+                assets={viewAssets}
+                filterCategory={dashboardFilterCategory}
+                onFilterChange={(cat) => setDashboardFilterCategory(cat)}
+              />
             }
+            scopeChip={<ScopeChip label="계정 필터 적용" title="위 계정 선택과 자산 구분 필터를 함께 따릅니다." />}
           />
         </div>
 

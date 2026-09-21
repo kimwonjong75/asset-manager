@@ -77,30 +77,58 @@ const AllocationChart: React.FC<AllocationChartProps> = ({ assets, exchangeRates
 
   const totalValue = useMemo(() => chartData.reduce((sum, entry) => sum + entry.value, 0), [chartData]);
 
+  // 표시 전용 정렬·색 배정 — 큰 조각부터(범례 목록과 파이 순서 일치), 0원 조각은 제외.
+  // 파이 바깥 라벨은 쓰지 않는다: 작은 조각(4~5%) 라벨이 서로 겹치고 좌우 라벨이 컨테이너에 잘렸다
+  // → 도넛 + 아래 범례 목록(색·이름·비중)으로 대체. 금액·정밀 비중은 툴팁.
+  const slices = useMemo(
+    () =>
+      chartData
+        .filter(entry => entry.value > 0)
+        .sort((a, b) => b.value - a.value)
+        .map((entry, index) => ({
+          ...entry,
+          color: entry.name === BUCKET_LABELS.SATELLITE ? SATELLITE_COLOR : COLORS[index % COLORS.length],
+          percent: totalValue > 0 ? (entry.value / totalValue) * 100 : 0,
+        })),
+    [chartData, totalValue],
+  );
+
   return (
     <Card title="자산 종류별 배분" actions={headerExtra} clip={false}>
-      {assets.length > 0 ? (
-        <div className="h-72">
-        <ResponsiveContainer width="100%" height="100%">
-          <PieChart margin={{ top: 20, right: 30, bottom: 20, left: 30 }}>
-            <Pie
-              data={chartData}
-              cx="50%"
-              cy="50%"
-              labelLine={true}
-              label={({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}
-              outerRadius={80}
-              fill="#8884d8"
-              dataKey="value"
-              nameKey="name"
-            >
-              {chartData.map((entry, index) => (
-                <Cell key={`cell-${index}`} fill={entry.name === BUCKET_LABELS.SATELLITE ? SATELLITE_COLOR : COLORS[index % COLORS.length]} />
-              ))}
-            </Pie>
-            <Tooltip content={<CustomTooltip totalValue={totalValue} />} />
-          </PieChart>
-        </ResponsiveContainer>
+      {slices.length > 0 ? (
+        <div className="space-y-3">
+          <div className="h-56">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={slices}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius="55%"
+                  outerRadius="90%"
+                  paddingAngle={1}
+                  stroke="none"
+                  labelLine={false}
+                  dataKey="value"
+                  nameKey="name"
+                >
+                  {slices.map(entry => (
+                    <Cell key={entry.name} fill={entry.color} />
+                  ))}
+                </Pie>
+                <Tooltip content={<CustomTooltip totalValue={totalValue} />} />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+          <ul className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs" aria-label="자산 종류별 비중">
+            {slices.map(entry => (
+              <li key={entry.name} className="flex items-center gap-2 min-w-0">
+                <span className="h-2.5 w-2.5 shrink-0 rounded-sm" style={{ backgroundColor: entry.color }} aria-hidden="true" />
+                <span className="truncate text-gray-300" title={entry.name}>{entry.name}</span>
+                <span className="ml-auto shrink-0 tabular-nums text-gray-400">{entry.percent.toFixed(1)}%</span>
+              </li>
+            ))}
+          </ul>
         </div>
       ) : (
         <div className="flex items-center justify-center h-40">
