@@ -1,0 +1,62 @@
+{
+  "hypothesisId": "holdings-turtle-cycle-v1",
+  "preregisteredAt": "2026-09-25",
+  "evidenceGrade": "EXPLORATORY",
+  "evidenceGradeReason": "생존편향(현재 보유 종목만) + 시작일 그리드 사후 관찰. 확증적 검증 아님.",
+  "scope": "사용자가 지금 보유한 종목 각각에 완전한 터틀 사이클(보유 청산 → 현금 대기 → 신고가 재매수 → 2N/청산선 매도 → 반복)을 적용했을 때 B&H와 비교. 편입정책(§13-1)·신규진입불타기검증(§13-2)과 무관한 별도 실험 — 이번이 재진입을 포함한 첫 완전 사이클 검증.",
+  "question": "지금 보유 중인 종목에 완전한 터틀 사이클을 적용했다면 그냥 계속 보유(B&H)한 것과 비교해 어땠는가?",
+  "variants": {
+    "V1": { "name": "표준(사용자 기본안)", "entryLookback": 55, "exitLookback": 20, "atrPeriod": 20, "stopMultipleN": 2 },
+    "V2": { "name": "System 1식(빠른 청산)", "entryLookback": 20, "exitLookback": 10, "atrPeriod": 20, "stopMultipleN": 2 },
+    "V3": { "name": "느린 판(둔감)", "entryLookback": 55, "exitLookback": 55, "atrPeriod": 20, "stopMultipleN": 2 }
+  },
+  "commonRules": {
+    "pyramiding": "없음 (13-2 T2 FAIL — 이번 범위에 포함하지 않음)",
+    "system1Filter": "없음",
+    "initialHoldingStop": "없음 (매수가 미지 — 청산선 이탈만으로 매도)",
+    "reentryStop": "체결가 − stopMultipleN × 신호일 N(ATR20)",
+    "reentry": "완전 청산 후 새 진입 채널 돌파 시에만",
+    "channelExcludesCurrentBar": true,
+    "sizing": "종목별 독립 자본곡선(재매수 시 그 종목 현금 100% 재투입). 위험기반 사이징은 이번 범위 밖.",
+    "fxUsage": "사용하지 않음 — B&H·터틀 모두 같은 종목·같은 통화 비율 비교라 환율이 소거됨(비용모델의 통화 라벨에만 currency 사용)."
+  },
+  "execution": {
+    "signalOn": "D일 종가",
+    "fillOn": "다음 실제 거래일 시가",
+    "forbiddenFillClamps": ["max(open, 돌파선)", "min(open, 손절선)", "min(open, 청산선)"],
+    "gapHandling": "다음 시가 갭을 실제 손익에 그대로 반영",
+    "sameDayOrder": "매도 체결 먼저 → (같은 종목) 재매수 신호 평가는 그 다음",
+    "signalPriority": ["stop(재매수분만)", "channel-exit"],
+    "endOfWindow": "강제청산 없음 — 종료 시 상태(보유/현금) 그대로 기록"
+  },
+  "costs": {
+    "source": "연구용 가정 — 실제 증권사 비용 아님",
+    "baseOneWaySlippageFee": { "default": 0.001, "crypto": 0.0005 },
+    "krSellTaxOnIndividualStocksOnly": "getKrSellTaxBps(체결일) — KRX 상장 ETF는 면제(이름 키워드 휴리스틱)",
+    "tiers": { "zero": 0, "base": 1, "double": 2 },
+    "tierNote": "배수는 편도율+세금 합산액에 그대로 곱한다(2배 티어에서 세금도 함께 스케일 — 단순화 가정, 보고서에 명시)"
+  },
+  "grid": {
+    "startDateRule": "월 첫 거래일마다 '이날 이 종목을 보유 중'이라 가정",
+    "warmupRequirement": "ATR20 + 해당 변형의 진입/청산 채널이 모두 유효해야 시작일로 채택",
+    "horizonRule": "각 시작일에서 그 종목의 데이터 끝(최신)까지 B&H·터틀사이클을 동일하게 실행 — 고정 평가창 아님",
+    "periodBuckets": ["2015-2019", "2020-2022", "2023-present"],
+    "periodBucketBasis": "시작일이 속한 구간으로 셀을 분류(각 셀의 실제 호라이즌은 시작일~데이터끝으로 구간마다 다름)"
+  },
+  "universe": {
+    "source": "CLI 인자로 받은 보유자산 CSV. 고유 티커 전부 사용(중복 계좌 합산).",
+    "csvNotCommitted": true,
+    "fetchSymbolRule": "scripts/backtest/holdingsTurtleCycle/symbolResolve.ts — KRX 6자리 원형(.KS 접미 금지, 백엔드 실측), 코인은 -USD 접미, 도쿄는 CSV 표기(.T) 그대로",
+    "survivorshipBias": "현재 보유 종목만 — 과거 매도/청산된 종목 미포함 (1급 한계)",
+    "selectionBias": "실제 매수 시점·금액 무시, 세금 통산 미반영"
+  },
+  "metrics": {
+    "cagrYears": "실제 경과일 ÷ 365.2425",
+    "mdd": "정규화 자본비율 곡선의 최대낙폭(피크 대비)",
+    "worst50Definition": "시작일 대비 자본비율이 한 번이라도 0.5 이하로 떨어졌는지",
+    "whipsawDefinition": "매도 후 20거래일 안에 더 높은 가격으로 재매수",
+    "roundTripDefinition": "재진입(매수) 체결 수. completedRoundTrips = 창 안에서 다시 청산까지 끝난 수"
+  },
+  "notTested": ["불타기", "System 1 필터", "위험기반 포지션 사이징", "3유닛 이상", "다른 ATR 기간"],
+  "amendmentPolicy": "결과 확인 후 구현 결함 수정은 동일 설계로 1회만. 전략 정의·판정 기준은 사후 변경 금지."
+}

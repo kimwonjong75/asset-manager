@@ -64,11 +64,18 @@ function toSeries(symbol: string, entry: HistoryEntry | null): SymbolSeries {
 /**
  * 심볼별 일봉 히스토리를 가져온다. 캐시 파일이 있으면 그대로 사용(재다운로드 금지).
  * 실패해도 예외를 던지지 않고 ok:false 로 반환 — 호출부가 해당 종목만 제외하고 계속 진행.
+ * @param force true면 캐시가 있어도 읽지 않고 강제로 재조회한다(캐시가 정체된 종목 갱신용,
+ *   holdings-turtle-cycle-v1 재검증 §RULES 13-6). 결과는 그대로 캐시 파일에 덮어쓴다.
  */
-export async function fetchSymbolHistory(symbol: string, startDate: string, endDate: string): Promise<SymbolSeries> {
+export async function fetchSymbolHistory(
+  symbol: string,
+  startDate: string,
+  endDate: string,
+  force = false
+): Promise<SymbolSeries> {
   if (!existsSync(CACHE_DIR)) mkdirSync(CACHE_DIR, { recursive: true });
   const file = cachePath(symbol);
-  if (existsSync(file)) {
+  if (!force && existsSync(file)) {
     try {
       const cached = JSON.parse(readFileSync(file, 'utf-8')) as SymbolSeries;
       if (cached.ok) return cached;
@@ -90,12 +97,13 @@ export async function fetchSymbolHistory(symbol: string, startDate: string, endD
 export async function fetchManySymbols(
   symbols: string[],
   startDate: string,
-  endDate: string
+  endDate: string,
+  force = false
 ): Promise<Map<string, SymbolSeries>> {
   const uniq = Array.from(new Set(symbols));
   const out = new Map<string, SymbolSeries>();
   for (const sym of uniq) {
-    const series = await fetchSymbolHistory(sym, startDate, endDate);
+    const series = await fetchSymbolHistory(sym, startDate, endDate, force);
     out.set(sym, series);
     console.log(`  ${series.ok ? '✓' : '✗'} ${sym}${series.ok ? ` (${series.dates.length}일, ${series.dates[0]}~${series.dates[series.dates.length - 1]})` : ` — ${series.error}`}`);
   }

@@ -1645,6 +1645,103 @@ npm run ingest:kr              # 4단계 일괄 실행
 5. 카카오 개발자 앱·Apps Script 배포·1회 동의는 직접 하셔야 합니다(가이드 제공).
 6. 앱은 열 때 "오래됐으면" 시세를 갱신하고 기준 시각을 항상 보여줍니다. 알림 규칙 기본값(포화 4종 OFF)은 이번 범위에 넣지 않았습니다.
 
+### 13-6. 보유종목 완전 사이클 검증 (`holdings-turtle-cycle-v1`, 완료 — EXPLORATORY)
+
+§13-1(편입정책, 재진입 없는 축소판 P2)과 §13-2(신규진입·불타기, 위성예산 신규 현금)에 이어 **재진입까지 포함한 완전한 터틀 사이클**을 처음 검증한다. 질문: 지금 보유 중인 종목에 완전한 사이클(보유 청산 → 현금 대기 → 신고가 재매수 → 2N/청산선 매도 → 반복)을 적용했다면 B&H와 비교해 어땠는가 — 자산군·변형별. 사이징은 위험기반이 아니라 **그 종목 현금 100% 재투입**(정규화 자본비율)이라 §13-1/§13-2와 직접 비교 불가(사이징 규약이 다르다). **환율을 쓰지 않는다** — B&H·터틀 모두 같은 종목·같은 통화 비율이라 환율이 소거되고, 통화 라벨은 비용모델(한국 개별주 매도세)에만 쓰인다.
+
+| 파일 | 책임 | 비고 |
+|------|------|------|
+| `scripts/backtest/holdingsTurtleCycle/config.json` | 동결 설정. 변형 3종(V1 20/55·V2 10/20·V3 55/55, 공통 2N손절·ATR20·불타기없음)·비용 3단계(0/기본/2배)·구간버킷(2015-2019/2020-2022/2023-present) | 정규화 SHA-256 = `a6a96e07…6404` |
+| `scripts/backtest/holdingsTurtleCycle/configTypes.ts`·`configHash.ts` | 런타임 검증(`parseConfig`, unknown 기반, 실패 시 throw) + 재귀 키정렬 SHA-256(기존 PREREG 규약) | — |
+| `scripts/backtest/holdingsTurtleCycle/csvHoldings.ts` | 보유자산 CSV 파서. `parseHoldingsCsvText`(순수, 헤더 열 순서 검증 후 불일치 시 throw)·`loadHoldingsCsv`(파일 로더)·`dedupeByTicker`(계좌 분산 중복 티커 합산 — 예: BMNR) | 개인정보(실제 티커·금액)는 이 파일에 없음 |
+| `scripts/backtest/holdingsTurtleCycle/symbolResolve.ts` | 순수. `classifyExchange`(거래소 표기→통화+코인거래소 여부)·`resolveSymbol`(조회심볼: KRX 원형 6자리·코인은 `-USD`·도쿄는 CSV 표기 그대로)·`isKrEtfName`(브랜드/법정용어 키워드 휴리스틱 — 매칭 안 되면 개별주로 간주해 매도세 부과, 보수적) | KRX에 `.KS` 접미 금지(백엔드 실측 거부, reprUniverse.ts와 동일 결론) |
+| `scripts/backtest/holdingsTurtleCycle/costs.ts` | 순수 비용모델. `baseOneWayRate`(코인 0.05%·그 외 0.1%)·`krSellTaxRate`(KRW 비-ETF 매도만, `conditionalChannel/pipeline/corporateActions.getKrSellTaxBps` 재사용)·`computeCostRates`(비용단계 0/1/2가 편도율+세금 합산액에 그대로 곱함 — 2배 티어도 세금까지 스케일하는 단순화, 보고서에 명시) | — |
+| `scripts/backtest/holdingsTurtleCycle/data.ts` | 로드·정렬·지표(순수). `classifyBar`는 freshTurtleLifecycle/data.ts를 **import 재사용**(재발명 금지), `rollingExcludingCurrent`는 비export 헬퍼라 로컬 사본. ATR은 firstValid 슬라이스(워밍업-null 우회, 기존 관례). `highChannel`/`lowChannel`은 lookback(10/20/55) → 배열의 Record로 종목당 1회만 계산해 3변형이 공유 | 환율 테이블 없음(설계상 불필요, 위 배경 참고) |
+| `scripts/backtest/holdingsTurtleCycle/engine.ts` | **전용 실행기**(순수). `simulateCell`(종목×시작일×변형×비용단계 1셀): 신호=D일 종가→다음 실제 거래일 시가 체결(클램프 금지, 갭 그대로), 상태기계 HOLD_INITIAL(손절 없음, 청산선만)→CASH→HOLD_REENTERED(2N손절+청산선, 손절 우선)→반복. 사이징=정규화 자본비율(시작=1.0), 재매수 시 현금 100% 재투입. `CellResult`에 B&H·터틀 양쪽의 최종비율·CAGR(실경과일÷365.2425)·MDD·"-50%경험"·시장참여시간%·왕복/완료왕복/휩쏘(매도 후 20거래일 내 더 높은 가격 재매수)·`fills`(체결로그, 검증용)·`finalState`(강제청산 없음). `monthlyFirstTradingDayIndices`(월별 시작일 그리드, onboardingPolicy와 동일 알고리즘)·`latestChannelStatus`(최신 종가 기준 청산선 위/아래·재진입선까지 거리 — 종목별_결과.md용) | 앱 순수함수 재사용 없음(computeN과는 별도로 동일 알고리즘, parity 테스트로 확인) |
+| `scripts/backtest/holdingsTurtleCycle/gridRunner.ts` | `runGridForSecurity`/`runGrid` — 종목×변형×비용단계×월별시작일 그리드 실행, 스킵 사유 집계(조용한 제외 금지) | 순수 |
+| `scripts/backtest/holdingsTurtleCycle/aggregate.ts` | 순수 집계. `mean`/`median`/`percentile`/`fractionTrue`/`groupBy`/`periodBucketOf`/`summarize`(CellStats)·`leaveOneOutMaxContributor`(최대 기여 종목 절댓값 기준 제거 후 median 방향 유지 확인 — §13-2 BTC 교훈) | — |
+| `scripts/backtest/holdingsTurtleCycle/prefetch.ts` | CLI. CSV→고유심볼 해석→`lib/fetchHistory.fetchManySymbols`(기존 캐시 재사용, 실패해도 계속)→확보/실패 목록을 `DB/holdingsTurtleCycle/prefetch_report.json`(로컬)에 기록 | `npm run prefetch:holdingscycle -- "<CSV경로>"` |
+| `scripts/backtest/holdingsTurtleCycle/run.ts` | CLI. CSV→유니버스→데이터로드→그리드→집계(전체/변형별/자산군별/손익구간별/기간구간별/민감도)→`DB/holdingsTurtleCycle/results.json`+`종목별_결과.md`(로컬, 개인정보) 저장 + 콘솔 요약 | `npm run backtest:holdingscycle -- "<CSV경로>"` |
+| `tests/holdingsTurtleCycleParity.ts` | **골든·불변식 90 단언**(합성 데이터 전용, 실사용자 데이터 없음). symbolResolve/costs 골든·`computeN` parity(앱 `utils/turtleEngine.computeN`과 동일 알고리즘 값 일치)·비정상 OHLC 행 제거가 채널 창을 오염시키지 않음·현재봉 제외 채널 골든·**완전 사이클 골든**(보유청산→현금→재진입→손절, 익일 시가 체결·클램프 없음·갭 그대로, 최종가치비율=47/48, MDD, 왕복/휩쏘/최초청산일 전부 명시적 절대값)·KR 개별주 비용(세금 포함) 골든·워밍업 스킵·입력순서 무관(종목 배열 셔플)·CSV 헤더 검증 throw·중복 티커 합산·집계 함수·최대기여 제거 민감도 | `npm run test:holdingscycle` |
+
+**결과** (2026-09-25, CSV 84행→고유 83종, 제외 0종, 비정상 OHLC 625행 제거, 그리드 73,809셀): 전체 중앙값 기준 터틀 최종가치비율(기본비용) V1=0.906·V2=0.816·V3=0.916 — **B&H보다 평균적으로 손해**이나 MDD 중앙 45.8%→28.0%(V1), −50%경험률 19.8%→8.2%로 위험은 크게 축소. **현재 −30% 이하 손실 종목만 보면 역전**(V1 최종비율 중앙 1.195, 터틀승률 68.2%) — 손절 규칙이 통계적으로 유리했던 패턴. 자산군별로 추세가 꾸준했던 암호화폐·한국채권·미국채권·(표본상)한국주식은 터틀이 유리, 최근 강한 상승세였던 실물자산(금/은)·미국주식·기타해외주식은 B&H가 압도적 우위. V2(10/20)는 V1 대비 수익·위험방어 양쪽 다 열세(매매 2배 증가). V3(55/55)는 V1보다 수익 근소 우위·위험방어 근소 열세·매매 훨씬 적음(순수 트레이드오프). 최대 기여 종목 1개 제거해도 방향 불변(3변형 모두). 보고서(집계만, 커밋됨): `docs/backtest/REPORT_보유종목_터틀사이클_260925.md`. 종목별 상세(로컬 전용, 개인정보): `DB/holdingsTurtleCycle/종목별_결과.md`·`results.json`.
+
+**한계**: 생존편향(현재 보유 종목만)·선택편향(실제 매수시점·금액 무시)·사이징 단순화(위험기반 아님)·현금 무이자·비용은 연구용 가정(2배 티어가 세금까지 스케일)·"현재 손익 구간"은 사후 정보(결과4는 기술통계일 뿐).
+
+### 13-6-부록. 금·은 재검증 (2026-09-25, 사용자 반박에 대한 응답)
+
+사용자가 "실물자산(금·은) 0.53 — B&H 압도적 우위" 결과에 "급락 구간이 있었는데도?"라고 반박 → 재검증.
+아래 6개 항목은 13-6 원본 파일들을 **수정하지 않고 추가**로 만든 것(원본 결과 §13-6은 그대로 유효).
+
+| 파일 | 책임 | 비고 |
+|------|------|------|
+| `scripts/backtest/lib/fetchHistory.ts` | `fetchSymbolHistory`/`fetchManySymbols`에 `force`(기본 false) 매개변수 추가 — true면 캐시가 있어도 무시하고 강제 재조회(기존 호출부는 인자 생략 시 기존과 100% 동일 동작) | 하위호환 확인(기존 8개 호출부 전부 무수정으로 통과) |
+| `scripts/backtest/holdingsTurtleCycle/refreshStale.ts` | CLI. 캐시 중 "그 시점 전체 최신일 대비 21일 이상 뒤처진" 종목만 데이터 기반으로 골라 강제 재조회(하드코딩 날짜 없음) → `DB/holdingsTurtleCycle/refresh_report.json` | `npx tsx .../refreshStale.ts "<CSV>"`. 실행 결과 83종 중 30종이 2026-07-06~10에서 정체(SLV·GLD 포함, 즉 이번 급락·반등 구간이 캐시에 전혀 없었음) → 전부 2026-09-23~25까지 갱신 성공 |
+| `scripts/backtest/holdingsTurtleCycle/engine.ts` | `simulateCell`에 5번째 선택 인자 `opts: SimulateCellOptions`(기본 `{}`, 생략 시 기존과 완전히 동일 — 기존 골든 90개 무수정 통과) 추가. `cashAnnualRatePct`(현금 대기 중 연이율 복리 오버레이, 신호 판정과 무관·순수 자본비율 오버레이) · `includeSeries`(true면 `CellResult.series`에 날짜별 B&H/터틀 비율 전체 배열 포함) · `maxEndIdx`(지정 시 그 own 인덱스까지만 시뮬레이션 — 고정기간 롤링창용, 창 밖 체결 예약 금지로 미래정보 누출 차단) | `CellResult`에 선택적 `series` 필드 추가(기존 필드는 무변경) |
+| `scripts/backtest/holdingsTurtleCycle/episodeAnalysis.ts` (신규) | 순수. `detectDrawdownEpisodes`(가격계열에서 고점 대비 −N%+ 하락 에피소드를 찾음, 회복/미회복 판정) · `decomposeEpisodes`(에피소드 구간에 `simulateCell(includeSeries:true)`의 실제 궤적을 겹쳐 "피한 하락%p vs 놓친 반등%p" 분해, 클램프 없음 — 터틀이 그 구간에 오히려 이득을 봤다면 100% 넘는 avoidedDeclinePct도 허용) | — |
+| `scripts/backtest/holdingsTurtleCycle/rollingWindow.ts` (신규) | 순수. `runRollingWindow`/`runRollingWindowForSecurity` — "데이터 끝까지"가 아니라 시작일로부터 정확히 N년 뒤(`opts.maxEndIdx`로 자름) 마크투마켓 비교. 데이터가 N년을 못 채우는 최근 시작일은 `windowComplete:false`로 표시하고 기본 제외 | — |
+| `scripts/backtest/holdingsTurtleCycle/independentVerify.ts` (신규) | CLI. **engine.ts/data.ts를 전혀 import하지 않고** ATR(Wilder)·채널·상태기계·체결을 처음부터 재구현해 SLV·GLD V1 4개 시작월(2015-01·2020-01·2024-01·2025-06)을 엔진과 대조 — 6/6(2015-01은 양쪽 다 워밍업 미충족으로 스킵) 완전 일치, 체결 로그까지 동일. **엔진 버그 증거 없음** | `npx tsx .../independentVerify.ts` |
+| `scripts/backtest/holdingsTurtleCycle/goldSilverDeepDive.ts` (신규) | CLI. SLV·GLD 대상 거래일지(시작 5개 시점×현금이자 2단계) + 고점 전후 위상분해(`phaseSplit`, 시작→고점/고점→현재 배수를 series에서 곱셈 분해) + 에피소드 분해 → `DB/holdingsTurtleCycle/goldSilverDeepDive.json`(개인정보 없음 — 시장상품이라 로컬 보관은 편의상, 공개돼도 무방) | — |
+| `scripts/backtest/holdingsTurtleCycle/evaluationDesigns.ts` (신규) | CLI. 실물자산 8종+전체 83종에 롤링윈도(1y/3y)·에피소드분해(V1·V3·현금0%/2.5%) 적용, 자산군 집계만 콘솔 출력, 종목별 상세는 `DB/holdingsTurtleCycle/evaluationDesigns.json`(로컬, 개인정보 — 보유 종목 식별) | 52,308셀 25.8초 |
+| `scripts/backtest/holdingsTurtleCycle/personalPurchaseAnalysis.ts` (신규) | CLI. 앱 내보내기 JSON(`purchaseDate`/`purchasePrice`)을 CSV 83종과 티커 조인 → 실제 매수일 기준 터틀 vs B&H. 여러 lot은 수량가중 평균, 매수정보 없음/워밍업 미충족은 사유와 함께 기록(조용한 제외 금지) → `DB/holdingsTurtleCycle/매수시점기준_결과.md`+`personalPurchaseAnalysis.json`(**개인정보 — 절대 커밋 금지**) | 82/83 매칭, 유효 76종 중앙값 1.074·승률68.4%(1차 그리드 0.906/41.0%보다 터틀에 유리 — 실제 매수시점이 평균적으로 최근에 쏠려 있다는 뜻) |
+| `scripts/backtest/holdingsTurtleCycle/run.ts` | 3번째 CLI 인자(출력태그) 추가 — 지정 시 `results_<태그>.json`/`종목별_결과_<태그>.md`로 저장(기존 파일 보존), 생략 시 기존과 동일 파일명(하위호환) | `npx tsx .../run.ts "<CSV>" v1_1` |
+| `tests/holdingsTurtleCycleParity.ts` | §13~16 신규 44단언 추가(총 90→**134**): 현금이자 오버레이(7일 복리 골든, 손으로 유도한 명시적 절댓값)·maxEndIdx 창 밖 체결 누출 금지(신호일 자체에서 자른 경우까지)·`detectDrawdownEpisodes`(경계값 20%/25% 골든, 미회복 케이스)·`decomposeEpisodes`(피한하락 360/13%p·놓친반등 9.375%p, 손으로 유도) | `npm run test:holdingscycle` — 134 passed |
+
+**재검증 결과 요약**: SLV(2026-01-28 고점 $105.60 → 2026-07-16 저점 $50.39, −52.3%)·GLD(2026-01-29 고점
+$495.90 → 2026-07-16 저점 $364.96, −26.4%) 급락이 실제로 있었고, 터틀은 각각 $67.72(−35.9%)·$428.09/재진입 후
+$399.71에 청산해 B&H보다 덜 잃었다(고점→현재 배수: SLV B&H 0.546배 vs 터틀 0.641배, GLD 0.790배 vs 0.818배).
+다만 이 급락 구간에서 1차 보고서와 결론이 갈리는 건 **평가창 설계** 때문 — "데이터 끝까지 보유"는 2015~2024년
+시작(절대다수)이 2025년의 거대한 랠리를 B&H로 전부 흡수해 중앙값을 끌어당긴다. 고정기간 1년 롤링창으로 보면
+실물자산도 중앙값 0.92~0.95(원 설계 0.52보다 훨씬 근접), 사용자처럼 2025년 하반기(고점 근처)에 매수한 경우엔
+SLV·GLD 둘 다 터틀이 B&H를 이겼다(비율 1.04~1.19). 엔진 교차검증 6/6 완전 일치로 **버그 없음** 확인. 갱신된
+데이터로 1차 그리드를 재실행해도(`results_v1_1.json`) 실물자산 결론(B&H 우위, 0.533→0.517) 자체는 거의
+그대로 — 1차 결과가 "틀렸던" 게 아니라 "이번 급락 구간을 아예 볼 수 없었던" 것이 문제였고, 이번에 그 구간을
+직접 들여다봤다. 상세 보고서(커밋됨): `docs/backtest/REPORT_금은_재검증_260925.md`.
+
+**한계(추가분)**: 앱 JSON의 `purchaseDate`가 실제 최초 매수일이 아니라 통합/편집 시점일 가능성 발견(SLV·GLD
+교차검증 중 — 그 날짜의 시장가가 CSV 평균단가보다 훨씬 낮음) → 매수시점 기준 분석 전체에 근사치 한계로 명시.
+하락 에피소드의 "미회복" 판정은 데이터 끝(2026-09-24) 기준 스냅샷이라 사후에 달라질 수 있음. 롤링창 1년/3년도
+사후 관찰(실전에서 미리 알 수 없음). 엔진 교차검증은 SLV·GLD·V1 한정(전수 재검증 아님, 다만 동일 코드 경로).
+
+### 13-7. 포트폴리오 터틀(공유 현금) 2차 백테스트 (`portfolio-turtle-v1`, 완료 — EXPLORATORY)
+
+§13-6(보유종목 완전 사이클, 종목별 독립 자본곡선)·§13-2(신규진입·불타기, 위성 신규현금)의 후속. 이번이 처음으로
+**사용자의 실제 보유 83종목을 한 계좌(공유 현금)로** 보고, 위험기반 사이징(그 시점 포트폴리오 평가액 기준
+1%)과 불타기를 결합해 검증한다. 질문: 청산선(W1~W4)·사이징(B/G/A/C)·종목 상한·적용범위 조합 중 어떤 것이
+B&H 대비 가장 나았는가. 설계 근거 문서: `docs/터틀_사이징_불타기_기준_260925.md`(§⑤·§⑥ 변형 A~F·판정기준
+1~9, Advisor 보충 변형 G)·`docs/터틀_청산기준_최신조사_260925.md`(§⑤ W1~W4 정의).
+
+| 파일 | 책임 | 비고 |
+|------|------|------|
+| `scripts/backtest/portfolioTurtle/config.json` | 동결 설정. 진입(55일 고정)·청산 W1~W4·사이징 B/G/A/C·종목상한 민감도(5/10/15%, G×W1 한정)·드로다운축소(G×W1 한정)·적용범위 S-ALL/S-CORE-EXCL(G×W1·B×W1 한정)·가드(총위험12%·최소주문5만원)·비용(기본/2배)·현금이자(0%/2.5%)·시작일 12개(2016~2025 1월 + 2025-06·2025-10)·15개 조합 목록·판정기준 1~9 | 정규화 SHA-256 = `54d146d7…7d7db` |
+| `scripts/backtest/portfolioTurtle/configTypes.ts`·`configHash.ts` | 런타임 검증(`parseConfig`, unknown 기반, 실패 시 throw) + 재귀 키정렬 SHA-256(기존 PREREG 규약) | — |
+| `scripts/backtest/portfolioTurtle/classification.ts` | 순수. `classifyScope` — S-CORE-EXCL 적용범위 분류(CSV 자산구분이 실물자산·한국채권·미국채권이면, 또는 KR ETF명에 지수추종 키워드(코스피·200·S&P 등)가 있으면, 또는 티커가 SPY/QQQ 등 대표 지수 ETF면 `CORE_EXCL_BH`; 그 외는 `SATELLITE_TURTLE`). 실제 상관계수 측정이 아닌 근사(사용자 결정 필요 사안으로 보고서에 명시) | 분류 결과 전체 목록은 `DB/portfolioTurtle/scope_classification.md`(로컬) |
+| `scripts/backtest/portfolioTurtle/data.ts` | 로드·union 캘린더·지표(순수). CSV·티커해석은 `holdingsTurtleCycle/{csvHoldings,symbolResolve}` 재사용, 비정상 OHLC 제거는 `freshTurtleLifecycle.classifyBar` 재사용. 종목별 ATR20(인과적)·55일 고채널(재진입, 현재봉 제외)·20/55일 저채널(W1/W2, 현재봉 제외)·SMA50(W4, 당일 포함 — `coreStopLoss/lib/movingAverage.ts` 재사용)을 전부 계산해 어떤 조합이 오든 동일 워밍업 기준을 쓴다. **환율 필요**(holdingsTurtleCycle과 달리 공유현금·KRW 단일계좌라 환산이 필수) — `lib/fx.ts`(USD/KRW) + **JPY=X 교차환산**(JPY/KRW = USD/KRW ÷ USD/JPY, 도쿄 상장 5종목 대응, 이번에 신규로 캐시 확보) | `buildSecurityIndicators` export(테스트가 캐시 없이 직접 구성 가능) |
+| `scripts/backtest/portfolioTurtle/exitRules.ts` | 순수. `checkExitSignal`(W1/W2 도치안·W3 ATR트레일링·W4 SMA)·`checkEntrySignal`(55일 고돌파, 방식 무관 고정)·`isWarmedUp`·W3 전용 `initTrailState`/`updateTrailState`(진입일 고가부터 누적, 래칫 하향 금지) | — |
+| `scripts/backtest/portfolioTurtle/sizing.ts` | 순수. `sizeUnitWithRoom`(B·A — 기존 포지션 room 반영, 매번 재계산 가능)·`sizeFixedUnitCapDiv`(G — 유닛=min(리스크공식, 상한÷maxUnits), 최초 1회 고정)·`sizeFixedUnitNoCap`(C — 리스크공식 그대로 고정, 상한 없음)·`roundQty` | `utils/turtleEngine.computeUnitSize`는 "기존 포지션에 추가"를 지원하지 않아 재사용 불가 — 자체 구현(주석에 근거 명시) |
+| `scripts/backtest/portfolioTurtle/engine.ts` | **전용 실행기**(순수). `buildInitialHoldings`(CSV 현재비중을 시작일에 가상 적용, 지표 미충족/미상장 종목은 그 시작일에서만 제외 후 비중 재정규화)·`simulatePortfolio`(공유현금 상태기계 — HOLD_INITIAL(손절 없음, 청산선만)→CASH→HOLD_REENTERED(2N손절+청산선+불타기)→반복, 같은날 매도먼저·매수나중, 동시매수는 티커 오름차순+λ 이분탐색). **`reentryEnabled`/`tradable` 두 플래그로 B&H·팔기만·완전사이클 세 모드를 한 함수로 표현**(tradable=항상false → B&H, reentryEnabled=false → 팔기만, 둘 다 true → 사이클). 가드는 `freshTurtleLifecycle/engine.ts`의 `checkCreateGuard`/`checkFillGuard`/`positionRiskOriginal`을 **그대로 재사용**(재발명 금지) | G/C의 고정크기 불타기 유닛은 상한을 매번 재확인하지 않으므로, 오늘 가격 기준 room 재검사를 추가로 걸어 상한 위반 오탐(가격상승에 따른 기존 유닛 재평가)을 차단 |
+| `scripts/backtest/portfolioTurtle/metrics.ts` | 순수 집계. `summarizeCombo`(CAGR/MDD/Calmar/최종비율/승률/λ발동일수/최대동시재매수/회복일수 등)·`recoveryDays`(MDD 이후 직전고점 회복까지 달력일, 낙폭없음=0·미회복=null)·`periodBucketOfStart`·`incrementalContributions`/`maxContributorConcentration`(§13-2 BTC 교훈과 동일 정의의 종목별 집중도) | — |
+| `scripts/backtest/portfolioTurtle/run.ts` | CLI. CSV→유니버스→15개 조합×12개 시작일(기본비용·현금이자0%) + 민감도(12개 조합×비용2배, ×현금이자2.5%) + LOO(G/A/C 6개 조합, 최대증분기여 종목 1개 제외 재실행) → `DB/portfolioTurtle/{results.json, scope_classification.md, 종목별_기여.md}`(로컬, 개인정보) + 콘솔 요약(집계만) | `npm run backtest:portfolioturtle -- "<CSV경로>"`, 실행 122.5초 |
+| `tests/portfolioTurtleParity.ts` | **골든·불변식 113단언**(합성 데이터 전용, <3초). classification/sizing/exitRules 단위 골든(W3 래칫 하향금지·W4 당일포함·G 유닛=min(공식,상한÷4)·roundQty)·`buildInitialHoldings` 워밍업제외+비중재정규화+FX·가드 직접호출(checkCreateGuard/checkFillGuard)·**엔진 통합 골든**(보유청산→현금→재진입→불타기→손절, 명시적 절대값: qty·체결가·pnl·R배수·최종평가액)·λ 비례축소(두 종목 동일비율 확인)·현금이자 복리(폐쇄형 공식 대조)·5만원 미만 재진입 생략 | `npm run test:portfolioturtle` — 113 passed |
+
+**결과** (2026-09-25, CSV 84행→고유83종, 데이터확보83/누락0, 적용범위 SATELLITE_TURTLE=68·CORE_EXCL_BH=15, 총예산 약8.52억원, 시작일 12개):
+
+1. **15개 조합 전부 B&H보다 중앙CAGR이 낮았다** — 터틀 사이클(불타기 유무·청산방식·상한 무관) 어떤 조합도 이 표본기간(2016~2025, 크립토·미국주식 강세장 포함)에서 B&H를 CAGR로 이기지 못함. 최종가치비율(터틀÷BH) 중앙값 범위 0.30(W1C)~0.87(W2G). 최상위는 W2G(도치안55청산+G불타기, 0.869)·W4G(0.850)·W2B(0.829).
+2. **위험 방어는 확실히 개선**: 전 조합 MDD가 B&H(중앙 31.0%)보다 낮음(12.4%~31.5%) — 특히 상한 5%(W1G_CAP5, MDD 12.4%·Calmar 0.77)·G×W1_COREEXCL(MDD 18.3%·Calmar 0.77)이 위험조정수익(Calmar) 상위.
+3. **종목상한이 없으면(C) 재앙적**: W1C(동일크기 유닛, 상한 없음)만 CAGR 2.38%·MDD 52.7%·Calmar 0.05로 다른 모든 조합과 분리된 최하위 — ③장이 예측한 "저변동 자산 과집중" 위험이 실제로 발현(설계문서 §③의 이론적 경고를 실증). **G(상한÷4로 나눈 고정유닛)가 C보다 압도적으로 우월**(판정기준9: 같은 불타기라도 상한 도입이 CAGR·Calmar 둘 다 개선) — 이번 백테스트의 가장 명확한 단일 결론.
+4. **불타기(G) 자체는 순증분 기준 혼재**: W1G/W3G/W4G는 LOO(최대증분기여 종목 1개 제거) 후 방향이 뒤집힘(판정기준5 실패) — 즉 그 조합의 "베이스라인(B) 대비 우위"가 소수 종목에 취약. **W2G(도치안55 청산)만 LOO 방향 유지**(판정기준5 통과) — 청산선이 느릴수록(매매가 적을수록) 불타기의 증분효과가 더 여러 종목에 분산돼 견고했다. **W1A(매번 재계산, §13-2 방식)도 LOO 통과** — 다만 평균 R=16.8로 폭발(§13-2와 동일한 "λ축소로 미세수량 첫진입 후 정상크기 불타기가 붙는" R척도 오염, **위험단위로 해석 금지**, 캐비엇 재확인).
+5. **판정기준 1~9 프로그램적 평가**: 전 조합 완료거래≥30건(기준1)·기본비용 CAGR>0(기준2, W1C만 예외 아님에 유의 — 절대 CAGR 2.38%는 양수)·불변식 위반 0건(기준7) 충족. 2배비용 CAGR>0(기준3)은 W1C만 실패(-1.25%). 3구간(2016-2019/2020-2022/2023-present) 중 ≥2개 양수(기준4, 터틀 자체 CAGR 절대치 기준)는 W1C만 실패(1/3) — 나머지 14개 전부 3/3 충족. **종합**: A(W1A)·G(W2G만)가 불타기 판정기준 1~7을 전부 통과, G(W1/W3/W4)는 기준5(LOO)에서 탈락, C(W1C)는 기준3·4에서 탈락.
+6. **적용범위(S-CORE-EXCL) 영향은 미미**: G×W1_COREEXCL(0.767)·B×W1_COREEXCL(0.756)이 S-ALL 버전(0.713/0.737)보다 오히려 근소 우위(핵심자산 15종을 B&H로 고정한 효과) — 그러나 차이가 크지 않아 "전부 터틀 vs 코어 제외" 결정을 가를 만큼 명확하지 않음.
+7. **드로다운 축소(G×W1_DD)는 CAGR·MDD 모두 근소 개선**(0.695 vs 0.713 최종비율은 오히려 근소 하락, Calmar는 동일) — 이 표본에서 뚜렷한 이득은 없음.
+8. **λ(공유현금 비례축소) 발동 빈도가 매우 높음**(조합별 434~12,944일) — §⑥ 한계 경고("동시 신호 충돌이 훨씬 자주 발생할 것")가 실증됐다. 상한을 좁힐수록(W1G_CAP5) λ발동이 급감(434일) — 상한이 좁으면 애초에 큰 주문이 잘 안 생겨 경합 자체가 줄어든다는 뜻.
+9. **비용 2배 민감도**: 대부분 조합 CAGR이 1~5%p 하락(W1C는 아예 음수로 전환), 방향은 안 바뀜. **현금이자 2.5% 민감도**: 전 조합 CAGR이 소폭 개선(+0.3~2.5%p) — 파킹 이자가 터틀 쪽에 항상 유리하게 작동(당연: B&H는 현금을 아예 안 보유).
+
+**최종 판정**(§⑥ 매핑 재사용): 원조 그대로(A, 매번 재계산)·G(W2 한정)가 불타기 판정기준을 통과했으나, **이번 조합 전체가 B&H를 이기지 못했으므로 "불타기를 켤지"는 "터틀 사이클 자체를 켤지"에 종속된 2차 질문**이다. 사용자에게 제시할 결론은: (1) 순수 수익 추구라면 B&H가 이 표본에서 전부 우위, (2) 위험(MDD) 축소가 목적이라면 청산선은 **W1(20일) 또는 W2(55일)**, 사이징은 **G(유닛=min(공식,상한÷4))**, 종목상한은 **10%(5%는 더 안전하지만 자본 활용률이 낮음, Calmar 최고는 5%)**, 불타기는 **G보다 원조방식(A)이나 느린 청산(W2G)일 때 더 견고**하지만 어느 쪷도 나머지 결과를 뒤집지 못함, (3) 종목상한을 없애는 것(C)은 명백히 회피해야 함.
+
+**한계**: §13-6과 동일한 생존편향(현재 보유 종목만)·선택편향(가상의 과거 비중, 실제 매수 시점 무시)에 더해 이번 특유의 한계 — **워밍업 요건을 4개 청산방식 공통(전부 유효)으로 통일**해 실제로는 그 조합에 불필요한 지표(예: W1엔 SMA50 불필요)까지 요구하는 보수적 단순화·**S-CORE-EXCL 분류가 실제 상관계수 측정이 아닌 자산구분+이름 키워드 근사**·LOO는 G/A/C 6개 조합만 재실행(민감도 전용 조합 4개는 LOO 미실행)·비용/현금이자 민감도는 12개 주 조합에만 적용(전 조합 교차는 과도한 격자라 생략)·회복일수는 사후 스냅샷(MDD 발생 후 이 데이터 끝까지 미회복이면 그 이후 회복 가능성 배제 안 함).
+
+**Advisor 강건성 점검(2026-09-25, 보고서 "Advisor 강건성 점검" 절이 우선)**: 초기 비중을 CSV 현재비중으로 쓰면 끝 시점 정보(많이 오른 종목=큰 비중)라 B&H가 부풀려진다 → `run.ts --equal-weight`(균등 1/N, 산출 `DB/portfolioTurtle_equalWeight/`)로 대조: B&H 중앙 CAGR 24.65%→19.78%. 두 방식 공통으로 유지된 결론 = 전 조합 수익↓·MDD↓, C 재앙, 팔기만(재진입 없음) 연 0.1~6%, **W4(MA50) > W1(20일)**(§13-5와 일치), **코어 ETF 제외가 Calmar 일관 개선**(원 보고서의 "차이 작음" 정정). 불타기 판정 통과 조합은 비중 방식에 따라 바뀜(불안정). `--posthoc`(동결 해시 불변, 조합만 뒤에 덧붙임): W4G_COREEXCL = MDD 약 16.7%·Calmar 0.86~0.91·최종비율 0.78~0.99(EXPLORATORY, 결과를 보고 고른 조합). `--posthoc` 사용 시 팔기만 기준선을 조합 목록의 (청산규칙|적용범위) 전부에 대해 보충 계산.
+
 ## 14. 백엔드 (Cloud Run, 별도 리포)
 
 백엔드 Python 소스는 이 리포에 없음 — Cloud Run에 배포됨 (`asset-manager-887842923289.asia-northeast3.run.app`).

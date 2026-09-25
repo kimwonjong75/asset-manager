@@ -1,0 +1,115 @@
+{
+  "hypothesisId": "portfolio-turtle-v1",
+  "preregisteredAt": "2026-09-25",
+  "evidenceGrade": "EXPLORATORY",
+  "evidenceGradeReason": "가상의 과거 비중(현재 CSV 비중을 과거 시작일에 그대로 뒤집어씌움) + 시작일 그리드 사후 관찰 + 생존편향(현재 보유 종목만). 확증적 검증 아님.",
+  "scope": "사용자의 실제 보유 포트폴리오(83종목, CSV 현재 평가금액 비중)를 한 계좌(공유 현금)로 보고, 청산선 이탈 시 매도→파킹→55일 신고가 재매수(터틀 공식 사이징, 선택적 불타기)→2N/청산선 재매도를 반복했다면 B&H 대비 어땠는지 검증. holdings-turtle-cycle-v1(§13-6, 종목별 독립 자본곡선·위험기반 사이징 없음)과 fresh-turtle-lifecycle-v1(§13-2, 위성 신규현금·불타기)의 후속 — 이번이 처음으로 '공유 현금 포트폴리오 + 위험기반 사이징 + 불타기'를 결합한 검증.",
+  "question": "청산선(W1~W4)·사이징(B/G/A/C)·종목 상한·적용범위 조합 중 어떤 것이 B&H 대비 가장 나았는가?",
+  "priorArt": {
+    "sizingPyramidDesign": "docs/터틀_사이징_불타기_기준_260925.md §⑤·§⑥ (변형 A~F·판정기준 1~9), Advisor 보충(변형 G)",
+    "exitDesign": "docs/터틀_청산기준_최신조사_260925.md §⑤ (W1~W4 정의)",
+    "firstPass": ["docs/backtest/REPORT_보유종목_터틀사이클_260925.md", "docs/backtest/REPORT_금은_재검증_260925.md"],
+    "rulesRefs": ["RULES.md §13-6", "RULES.md §13-6-부록"]
+  },
+  "account": {
+    "totalBudgetSource": "CSV(portfolio (4).csv, 2026-09-25 기준) 고유 티커 83종의 현재평가금액(원화) 합계 — 정확한 원 단위는 개인정보라 이 파일에 하드코딩하지 않는다(실행 시 CSV에서 계산, 약 8.5억 원)",
+    "initialWeightBasis": "각 종목의 CSV 현재평가금액 ÷ 전체 합계 (0~1) — 12개 시작일 전부에 동일 비중을 가상으로 적용(과거 실제 비중 아님, 한계로 명시)",
+    "warmupExclusionPolicy": "시작일에 워밍업(ATR20·채널55·채널20·SMA50) 미충족 또는 미상장인 종목은 그 시작일에서만 제외하고 나머지 종목 비중으로 재정규화(합=1 유지). 침묵 제외 금지 — 보고서에 시작일별 제외 종목 수 명시"
+  },
+  "entry": { "method": "donchian", "lookback": 55, "currentBarExcluded": true, "note": "재진입은 전부 55일 신고가 돌파 — 청산 방식(W1~W4)과 무관하게 고정" },
+  "exitRules": {
+    "W1": { "method": "donchian", "lookback": 20, "currentBarExcluded": true, "label": "도치안 20일 (기존 기본안)" },
+    "W2": { "method": "donchian", "lookback": 55, "currentBarExcluded": true, "label": "도치안 55일" },
+    "W3": { "method": "atrTrailing", "atrPeriod": 20, "multiple": 3, "ratchet": "하향 금지, 매일 갱신", "label": "ATR 트레일링(3×N)" },
+    "W4": { "method": "smaCross", "period": 50, "currentBarIncluded": true, "label": "이동평균 50일 이탈(당일 포함, coreStopLoss/lib/movingAverage.ts 관례)" }
+  },
+  "reentryStop": { "stopMultipleN": 2, "appliesTo": "재매수분만 — 보유분(시작일 포지션)엔 2N 손절 없음, 청산선(W1~W4)만 적용", "priority": ["stop(재매수분만)", "channel/atr/ma-exit"] },
+  "sizingVariants": {
+    "B": { "label": "베이스라인(불타기 없음)", "riskPerUnitPct": 1, "maxUnits": 1, "positionCapPct": 10, "pyramid": "none" },
+    "G": { "label": "유닛=min(공식,상한÷4), 고정크기", "riskPerUnitPct": 1, "maxUnits": 4, "positionCapPct": 10, "pyramid": "fixed-cap-div4", "pyramidStepN": 0.5, "unitFormula": "min(riskAmount/N, positionCapKRW/maxUnits) — 최초 진입 시 1회 계산, 이후 유닛 전부 동일 크기" },
+    "A": { "label": "매번 공식 재계산(§13-2 T2 방식)", "riskPerUnitPct": 1, "maxUnits": 4, "positionCapPct": 10, "pyramid": "recompute-each-time", "pyramidStepN": 0.5, "unitFormula": "riskAmount/N — 매 유닛(최초+불타기)마다 그 시점 N으로 재계산, 상한은 가드로만 작동" },
+    "C": { "label": "동일크기 유닛, 상한 없음", "riskPerUnitPct": 1, "maxUnits": 4, "positionCapPct": null, "pyramid": "fixed-first-entry", "pyramidStepN": 0.5, "unitFormula": "riskAmount/N — 최초 진입 시 1회 계산(상한 미적용), 이후 유닛 전부 동일 크기. 총위험 12%·현금 한도만 구속" }
+  },
+  "positionCapSensitivityPct": [5, 10, 15],
+  "positionCapSensitivityAppliesTo": ["W1G"],
+  "drawdownScaling": {
+    "stepDown": 0.10,
+    "reduce": 0.20,
+    "referenceEquityBasis": "달력 연초(그 해 첫 거래일) 시점 평가액 — utils/turtleEngine.applyDrawdownScaling과 동일 공식",
+    "appliesTo": ["W1G"],
+    "note": "켠 판/끈 판 둘 다 실행 — 사이징 분모(riskAmount·positionCapKRW)를 원 평가액 대신 감쇄된 명목예산으로 계산할지 여부"
+  },
+  "scopeVariants": {
+    "S-ALL": "전 종목 터틀 대상(기본)",
+    "S-CORE-EXCL": "금·은·채권·지수추종 ETF 성격 종목은 항상 B&H(매매 대상에서 제외), 나머지만 터틀 사이클 — 분류 목록은 DB/portfolioTurtle/scope_classification.md(로컬)"
+  },
+  "scopeVariantAppliesTo": ["W1G", "W1B"],
+  "guards": {
+    "maxTotalRiskPct": 12,
+    "maxTotalRiskBasis": "재매수분(REENTERED) 포지션의 공통 2N 손절가 기준 오픈위험 합만 산입 — 보유분(HOLD_INITIAL)은 손절이 없어 산입되지 않음",
+    "cashConstraint": "총 매수금액 ≤ 가용 현금(레버리지 없음) — 부족 시 λ 비례 축소(선착순 금지, freshTurtleLifecycle 방식 재사용)",
+    "minOrderKRW": 50000,
+    "roundingNonCrypto": "정수(내림)",
+    "roundingCrypto": "1e-8 내림"
+  },
+  "costs": {
+    "source": "연구용 가정 — 실제 증권사 비용 아님. holdingsTurtleCycle/costs.ts 재사용",
+    "baseOneWaySlippageFee": { "default": 0.001, "crypto": 0.0005 },
+    "krSellTaxOnIndividualStocksOnly": "getKrSellTaxBps(체결일), KRX ETF 면제",
+    "tiers": { "base": 1, "double": 2 }
+  },
+  "cashInterest": { "annualRatePctOptions": [0, 2.5], "compounding": "달력일 복리(365.2425 기준)" },
+  "startDates": {
+    "rule": "2016~2025 매년 1월 첫 거래일(연합 캘린더 기준) + 2025-06·2025-10 첫 거래일",
+    "list": [
+      "2016-01", "2017-01", "2018-01", "2019-01", "2020-01",
+      "2021-01", "2022-01", "2023-01", "2024-01", "2025-01",
+      "2025-06", "2025-10"
+    ],
+    "count": 12
+  },
+  "periodBuckets": {
+    "list": ["2016-2019", "2020-2022", "2023-present"],
+    "basis": "시작일이 속한 연도로 분류(holdingsTurtleCycle periodBucketOf와 동일 경계, 최솟값만 2016으로 이동 — 이번 그리드가 2016년부터 시작하므로)"
+  },
+  "benchmarks": {
+    "BH": "같은 초기비중, 리밸런싱 없음, 거래비용 없음",
+    "SELL_ONLY": "그 청산 규칙(W1~W4)으로 청산만 하고 재진입은 하지 않음 — 현금은 파킹(이자 옵션 동일 적용)",
+    "CYCLE": "완전한 터틀 사이클(청산→파킹→재진입→2N/청산선)"
+  },
+  "comboList": [
+    { "id": "W1B", "exitRule": "W1", "sizing": "B", "positionCapPct": 10, "drawdownScaling": false, "scope": "S-ALL" },
+    { "id": "W1G", "exitRule": "W1", "sizing": "G", "positionCapPct": 10, "drawdownScaling": false, "scope": "S-ALL" },
+    { "id": "W2B", "exitRule": "W2", "sizing": "B", "positionCapPct": 10, "drawdownScaling": false, "scope": "S-ALL" },
+    { "id": "W2G", "exitRule": "W2", "sizing": "G", "positionCapPct": 10, "drawdownScaling": false, "scope": "S-ALL" },
+    { "id": "W3B", "exitRule": "W3", "sizing": "B", "positionCapPct": 10, "drawdownScaling": false, "scope": "S-ALL" },
+    { "id": "W3G", "exitRule": "W3", "sizing": "G", "positionCapPct": 10, "drawdownScaling": false, "scope": "S-ALL" },
+    { "id": "W4B", "exitRule": "W4", "sizing": "B", "positionCapPct": 10, "drawdownScaling": false, "scope": "S-ALL" },
+    { "id": "W4G", "exitRule": "W4", "sizing": "G", "positionCapPct": 10, "drawdownScaling": false, "scope": "S-ALL" },
+    { "id": "W1A", "exitRule": "W1", "sizing": "A", "positionCapPct": 10, "drawdownScaling": false, "scope": "S-ALL" },
+    { "id": "W1C", "exitRule": "W1", "sizing": "C", "positionCapPct": null, "drawdownScaling": false, "scope": "S-ALL" },
+    { "id": "W1G_CAP5", "exitRule": "W1", "sizing": "G", "positionCapPct": 5, "drawdownScaling": false, "scope": "S-ALL" },
+    { "id": "W1G_CAP15", "exitRule": "W1", "sizing": "G", "positionCapPct": 15, "drawdownScaling": false, "scope": "S-ALL" },
+    { "id": "W1G_DD", "exitRule": "W1", "sizing": "G", "positionCapPct": 10, "drawdownScaling": true, "scope": "S-ALL" },
+    { "id": "W1G_COREEXCL", "exitRule": "W1", "sizing": "G", "positionCapPct": 10, "drawdownScaling": false, "scope": "S-CORE-EXCL" },
+    { "id": "W1B_COREEXCL", "exitRule": "W1", "sizing": "B", "positionCapPct": 10, "drawdownScaling": false, "scope": "S-CORE-EXCL" }
+  ],
+  "sensitivitySweep": {
+    "costDouble": "12개 주 조합(W1~W4×{B,G}·W1×{A,C}·W1G_CAP5·W1G_CAP15)에 비용 2배 적용, 그 외 조건 동일",
+    "cashInterest25": "위 12개 주 조합에 현금이자 연2.5% 적용, 그 외 조건 동일",
+    "excluded": "DD·COREEXCL 변형은 각자 목적(축소규칙·적용범위)에만 집중 — 비용/이자 교차는 과도한 격자라 생략"
+  },
+  "adoptionCriteria": [
+    "완료거래(재매수분) ≥ 30건(조합별, 12개 시작일 합산) — 미달 시 INCONCLUSIVE, 설정 변경 금지",
+    "기본비용(0.1% 편도) CAGR·평균 R > 0",
+    "2배 비용(0.2%)에서도 CAGR·평균 R > 0",
+    "3개 구간(2016-2019/2020-2022/2023-present) 중 ≥2개에서 평균 R > 0",
+    "최대 증분기여 종목 1개 제거 후에도 (해당 변형 − 베이스라인 B) 차이가 양수 유지 (A/C/G는 불타기 증분손익 기준)",
+    "한 종목이 증분손익의 50% 초과 기여하지 않음",
+    "회계·안전 불변식(음수 현금·상한 위반·총위험 한도 위반·중복 포지션·같은 봉 체결) 위반 0건",
+    "C vs A: 동일크기 유닛(C)이 매번 재계산(A)보다 최대기여종목 집중도가 낮아야 채택 근거",
+    "G vs C: 상한 도입(G)이 CAGR을 얼마나 깎는지, MDD를 얼마나 개선하는지 — Calmar 비교"
+  ],
+  "notTested": ["W5 혼합형", "상관그룹 유닛한도(4/6/10/12)", "자산군별 서로 다른 청산기준", "실제 매수시점·금액", "세금 통산"],
+  "amendmentPolicy": "결과 확인 후 구현 결함 수정은 동일 설계로 1회만. 전략 정의·판정 기준은 사후 변경 금지."
+}
