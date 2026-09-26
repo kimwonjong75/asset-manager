@@ -1,6 +1,7 @@
 import { Currency, LegacyAssetShape, Asset } from '../types';
 import { DEFAULT_CATEGORIES } from '../types/category';
 import { inferOwnerFromText } from '../types/owner';
+import { sanitizeTurtleHoldDecisions } from './turtleHoldingsState';
 
 const DEFAULT_EXCHANGE_MAP: { [key: number]: string[] } = {
   1: ['KRX', 'KONEX'],           // KOREAN_STOCK
@@ -89,6 +90,10 @@ export const mapToNewAssetStructure = (asset: LegacyAssetShape | Asset): Asset =
 
   // 대청소 필드(cleanupTag/excludedFromCleanup)는 spread로 그대로 보존한다 —
   // **기본값 강제 주입 금지**: cleanupTag 미지정=미검토(≠'keep'), excludedFromCleanup 미지정=false로 해석(false 저장 안 함).
+
+  // "보유종목 터틀" 보류 이력(P1 §6) — 저장본이 손상돼도 값을 지어내지 않고 유효 항목만 남긴다
+  // (필드 자체가 없으면 undefined 그대로 통과 — 기본값 강제 주입 금지, RULES §8).
+  (newAsset as Partial<Asset>).turtleDecisions = sanitizeTurtleHoldDecisions((newAsset as Partial<Asset>).turtleDecisions);
 
   const { region, ...cleaned } = newAsset as any;
   return cleaned as Asset;

@@ -20,6 +20,7 @@ import { mergeSaveSnapshot, type PortfolioSaveSnapshot, type PortfolioSavePatch 
 import { shouldRefreshPrices, LAST_PRICE_REFRESH_AT_KEY } from '../utils/priceFreshness';
 import { classifyHoldingMarkets } from '../utils/holdingMarkets';
 import { localDateString } from '../utils/localDate';
+import { sanitizeWatchlistTurtleFields } from '../utils/turtleHoldingsState';
 import { SUCCESS_MESSAGE_TTL_MS, PROGRESS_MESSAGE_MAX_MS } from '../constants/ui';
 
 const log = createLogger('PortfolioData');
@@ -181,7 +182,7 @@ export const usePortfolioData = () => {
 
             // 자동 저장 트리거 (백필된 데이터 저장)
             if (isSignedIn) {
-              const watchlistData = Array.isArray(data.watchlist) ? data.watchlist : [];
+              const watchlistData = sanitizeWatchlistTurtleFields(Array.isArray(data.watchlist) ? data.watchlist : []);
               const sellData = Array.isArray(data.sellHistory) ? data.sellHistory : [];
               const allocData = loaded.allocationTargets && 'weights' in loaded.allocationTargets
                 ? loaded.allocationTargets
@@ -215,7 +216,7 @@ export const usePortfolioData = () => {
     const resolvedSell = Array.isArray(data.sellHistory) ? data.sellHistory : [];
     setSellHistory(resolvedSell);
 
-    const resolvedWatchlist = Array.isArray(data.watchlist) ? data.watchlist : [];
+    const resolvedWatchlist = sanitizeWatchlistTurtleFields(Array.isArray(data.watchlist) ? data.watchlist : []);
     setWatchlist(resolvedWatchlist);
 
     let resolvedRates: ExchangeRates;

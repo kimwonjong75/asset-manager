@@ -72,7 +72,10 @@ export interface BuildTurtleActionsInput {
 export function buildTurtleActions(input: BuildTurtleActionsInput): ActionItem[] {
   const { positions, candidates, marketByTicker, settings, existingQueue, today, makeId } = input;
 
-  const openPositions = positions.filter(p => p.status === 'open');
+  // P1: origin='holdings-reentry' 포지션(보유종목 터틀 재매수분)은 위성 설정(satelliteBudgetKRW 기준)이
+  // 아니라 TurtleHoldingsSettings(관리자산 기준)로 관리된다 — 이 생성기가 오인해 위성 손절/청산/피라미딩
+  // 주문을 만들지 않도록 오픈 포지션 평가에서 제외한다(types/turtle.ts TurtlePosition.origin 참고).
+  const openPositions = positions.filter(p => p.status === 'open' && p.origin !== 'holdings-reentry');
   const openTickers = new Set(openPositions.map(p => p.ticker));
 
   // 중복 방지: 이미 대기 중(pending/snoozed)인 주문.
@@ -199,7 +202,8 @@ export function buildTurtleActions(input: BuildTurtleActionsInput): ActionItem[]
 export function diagnoseTurtleActions(input: Omit<BuildTurtleActionsInput, 'makeId'>): TurtleActionDiagnostics {
   const { positions, candidates, marketByTicker, settings, existingQueue } = input;
 
-  const openPositions = positions.filter(p => p.status === 'open');
+  // P1: buildTurtleActions와 동일하게 holdings-reentry 포지션 제외(진단이 생성과 어긋나지 않도록).
+  const openPositions = positions.filter(p => p.status === 'open' && p.origin !== 'holdings-reentry');
   const openTickers = new Set(openPositions.map(p => p.ticker));
 
   const activeKeys = new Set<string>();

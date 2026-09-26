@@ -3,7 +3,13 @@
 // "any 절대 금지" 준수 — config를 any로 캐스팅하지 않고 검증 후 좁힌다.
 
 export type ExitRuleId = 'W1' | 'W2' | 'W3' | 'W4';
-export type SizingId = 'B' | 'G' | 'A' | 'C';
+/** 동결 config.json에 실제로 존재하는 사이징 키(§13-7 원안). */
+export type FrozenSizingId = 'B' | 'G' | 'A' | 'C';
+/**
+ * 'L'·'LH' = 루카스식 불타기 변형(§13-7 Advisor 강건성 점검 후속, 2026-09-26) — config.json에는 없고
+ * run.ts가 `--lucas` 플래그일 때만 코드로 구성해 comboList 뒤에 덧붙인다(해시 불변, posthoc과 동일 관례).
+ */
+export type SizingId = FrozenSizingId | 'L' | 'LH';
 export type ScopeId = 'S-ALL' | 'S-CORE-EXCL';
 
 export interface DonchianExitRuleConfig { method: 'donchian'; lookback: number; currentBarExcluded: true }
@@ -15,8 +21,14 @@ export interface SizingVariantConfig {
   riskPerUnitPct: number;
   maxUnits: number;
   positionCapPct: number | null;
-  pyramid: 'none' | 'fixed-cap-div4' | 'recompute-each-time' | 'fixed-first-entry';
+  /**
+   * 'lucas' = 루카스 강의식(2R=4N 간격, G와 동일 고정유닛 공식, 추가유닛에 lucasSizeMultiplier 적용) —
+   * §13-7 후속 추가(2026-09-26), sizing.ts/engine.ts는 기존 브랜치에 더하기만 했다(기존 4종 결과 불변).
+   */
+  pyramid: 'none' | 'fixed-cap-div4' | 'recompute-each-time' | 'fixed-first-entry' | 'lucas';
   pyramidStepN?: number;
+  /** 'lucas' 전용 — 최초 유닛 이후(2·3·4번째) 유닛 크기에 곱하는 배수. 미지정 시 1(=G와 동일 크기). */
+  lucasSizeMultiplier?: number;
 }
 
 export interface ComboConfig {
@@ -34,7 +46,7 @@ export interface PortfolioTurtleConfig {
   entry: { method: 'donchian'; lookback: number; currentBarExcluded: true };
   exitRules: Record<ExitRuleId, ExitRuleConfig>;
   reentryStop: { stopMultipleN: number };
-  sizingVariants: Record<SizingId, SizingVariantConfig>;
+  sizingVariants: Record<FrozenSizingId, SizingVariantConfig>;
   positionCapSensitivityPct: number[];
   drawdownScaling: { stepDown: number; reduce: number };
   guards: { maxTotalRiskPct: number; minOrderKRW: number };
@@ -95,8 +107,8 @@ function parseExitRule(v: unknown, p: string): ExitRuleConfig {
   return { method: 'smaCross', period: num(o.period, `${p}.period`), currentBarIncluded: true };
 }
 
-const SIZING_IDS: SizingId[] = ['B', 'G', 'A', 'C'];
-const PYRAMID_MODES = ['none', 'fixed-cap-div4', 'recompute-each-time', 'fixed-first-entry'] as const;
+const SIZING_IDS: SizingId[] = ['B', 'G', 'A', 'C', 'L', 'LH'];
+const PYRAMID_MODES = ['none', 'fixed-cap-div4', 'recompute-each-time', 'fixed-first-entry', 'lucas'] as const;
 
 function parseSizingVariant(v: unknown, p: string): SizingVariantConfig {
   const o = obj(v, p);
@@ -108,6 +120,7 @@ function parseSizingVariant(v: unknown, p: string): SizingVariantConfig {
     positionCapPct: numOrNull(o.positionCapPct, `${p}.positionCapPct`),
     pyramid: pyramid as SizingVariantConfig['pyramid'],
     pyramidStepN: o.pyramidStepN === undefined ? undefined : num(o.pyramidStepN, `${p}.pyramidStepN`),
+    lucasSizeMultiplier: o.lucasSizeMultiplier === undefined ? undefined : num(o.lucasSizeMultiplier, `${p}.lucasSizeMultiplier`),
   };
 }
 

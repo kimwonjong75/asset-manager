@@ -60,7 +60,11 @@ export type ColumnKey =
   | 'purchaseDate'
   | 'allocation'
   | 'dropFromHigh'
-  | 'yesterdayChange';
+  | 'yesterdayChange'
+  /** "보유종목 터틀"(P2) — 청산선까지 거리(%). 정렬 불가(비동기 훅 데이터, EnrichedAsset 밖) */
+  | 'turtleExitGapPct'
+  /** "보유종목 터틀"(P2) — 상태(보유 유지/팔 때/감시 중/다시 살 때/추가 매수/확인 불가/범위 제외). 정렬 불가 */
+  | 'turtleStatus';
 
 export interface ColumnConfig {
   key: ColumnKey;
@@ -109,6 +113,8 @@ export const DEFAULT_COLUMN_CONFIG: ColumnConfig[] = [
   { key: 'purchaseValue',    visible: false },
   { key: 'purchaseDate',     visible: false },
   { key: 'allocation',       visible: false },
+  { key: 'turtleExitGapPct', visible: false },
+  { key: 'turtleStatus',     visible: false },
 ];
 
 export const COLUMN_LABELS: Record<ColumnKey, string> = {
@@ -123,4 +129,6 @@ export const COLUMN_LABELS: Record<ColumnKey, string> = {
   allocation:       '비중',
   dropFromHigh:     '최고가 대비',
   yesterdayChange:  '어제대비',
+  turtleExitGapPct: '청산선까지',
+  turtleStatus:     '터틀 상태',
 };

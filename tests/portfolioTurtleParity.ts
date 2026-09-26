@@ -493,6 +493,70 @@ console.log('10. 최소 재매수 금액(5만원) 미만 — 재진입 생략');
   check('불변식 위반 0', Object.values(run.invariants).reduce((a, b) => a + b, 0), 0);
 }
 
+// ════════════════════════════════════════════════════════════════════════════
+console.log('11. 루카스 강의식 불타기(2R=4N 간격) — G(½N 간격)와 비교, §13-7 후속(2026-09-26)');
+// ════════════════════════════════════════════════════════════════════════════
+{
+  // day90 보유 시작(종가190) → day95 크래시(150)→day96 시가145 체결(보유분 매도) → day97~100 회복(148,160,180,200)
+  // → day100 종가200이 55일 고채널(194) 돌파 → day101 시가205 체결(재매수, 종가210).
+  // day102~178 완만한 상승(+1/일, TR≈1) — G는 ½N 간격마다, 루카스는 2R(=2×stopMultipleN×N=4N) 간격마다 불타기.
+  // day179부터 급락 후 등락하며 하락 지속 → 공통 손절가 이하로 체결(손절).
+  const CLIMB_END = 178;
+  const bars: Bar[] = [];
+  for (let i = 0; i <= CLIMB_END + 15; i++) {
+    if (i === 95) bars.push({ o: 150, h: 150, l: 150, c: 150 });
+    else if (i === 96) bars.push({ o: 145, h: 145, l: 145, c: 145 });
+    else if (i === 97) bars.push({ o: 148, h: 148, l: 148, c: 148 });
+    else if (i === 98) bars.push({ o: 160, h: 160, l: 160, c: 160 });
+    else if (i === 99) bars.push({ o: 180, h: 180, l: 180, c: 180 });
+    else if (i === 100) bars.push({ o: 200, h: 200, l: 200, c: 200 });
+    else if (i === 101) bars.push({ o: 205, h: 210, l: 205, c: 210 });
+    else if (i > 101 && i <= CLIMB_END) bars.push({ o: 210 + (i - 101), h: 211 + (i - 101), l: 209 + (i - 101), c: 210 + (i - 101) });
+    else if (i === CLIMB_END + 1) { const c = 210 + (CLIMB_END - 101); bars.push({ o: c, h: c, l: c - 60, c: c - 60 }); }
+    else if (i > CLIMB_END + 1) {
+      const base = 210 + (CLIMB_END - 101) - 60 - (i - CLIMB_END - 1) * 2;
+      bars.push({ o: base + 1, h: base + 2, l: base - 1, c: base });
+    } else bars.push({ o: 100 + i, h: 100 + i, l: 100 + i, c: 100 + i });
+  }
+  const sec = buildTestSec({ ticker: 'TEST', bars, weightPct: 1 });
+  const initial = buildInitialHoldings([sec], EMPTY_FX, 90, 100_000_000, () => true);
+
+  const runOf = (sizing: Parameters<typeof simulatePortfolio>[0]['sizing']): PortfolioRunResult => simulatePortfolio({
+    securities: [sec], fx: EMPTY_FX, calendar: sec.ownDates, initial,
+    exitRule: { method: 'donchian', lookback: 20, currentBarExcluded: true }, stopMultipleN: 2,
+    sizing, reentryEnabled: true, tradable: () => true,
+    costMultiplier: 1, cashAnnualRatePct: 0, maxTotalRiskPct: 12, minOrderKRW: 50000,
+    drawdownScaling: false, drawdownStepDown: 0.1, drawdownReduce: 0.2,
+  });
+
+  const runG = runOf({ riskPerUnitPct: 1, maxUnits: 4, positionCapPct: 10, pyramid: 'fixed-cap-div4', pyramidStepN: 0.5 });
+  const runL = runOf({ riskPerUnitPct: 1, maxUnits: 4, positionCapPct: 10, pyramid: 'lucas', lucasSizeMultiplier: 1 });
+  const runLH = runOf({ riskPerUnitPct: 1, maxUnits: 4, positionCapPct: 10, pyramid: 'lucas', lucasSizeMultiplier: 0.5 });
+
+  check('G: 불변식 위반 0', Object.values(runG.invariants).reduce((a, b) => a + b, 0), 0);
+  check('L: 불변식 위반 0', Object.values(runL.invariants).reduce((a, b) => a + b, 0), 0);
+  check('LH: 불변식 위반 0', Object.values(runLH.invariants).reduce((a, b) => a + b, 0), 0);
+
+  const gTrade = runG.trades[1], lTrade = runL.trades[1], lhTrade = runLH.trades[1];
+  check('G: 재매수 종가체결 사유=청산(20일 채널)', gTrade?.exitReason, 'exit');
+  check('G: 재매수 수량(3유닛×9280, ½N 간격)', gTrade?.qty, 27840);
+  checkClose('G: 재매수 R배수(1유닛 rDenom 기준, §13-2 캐비엇과 동일 해석)', gTrade?.rMultiple as number, 4.226325152261585, 1e-9);
+
+  check('L(1배): 재매수 청산사유=손절(공통 2N 손절가)', lTrade?.exitReason, 'stop');
+  check('L(1배): 재매수 수량(3유닛×9280, 유닛크기는 G와 동일 공식)', lTrade?.qty, 27840);
+  checkClose('L(1배): 재매수 R배수', lTrade?.rMultiple as number, 1.1821196034890697, 1e-9);
+  checkClose('L(1배): 재매수 pnl', lTrade?.pnlKRW as number, 115430.208, 1e-3);
+
+  check('LH(0.5배): 재매수 청산사유=손절', lhTrade?.exitReason, 'stop');
+  // 최초유닛 9280 + 추가유닛 3개×(9280×0.5) = 9280×2.5 = 23200 — lucasSizeMultiplier=0.5가 추가분에만 적용됨을 확인.
+  check('LH(0.5배): 재매수 수량(최초9280 + 추가3×4640=23200)', lhTrade?.qty, 23200);
+  checkClose('LH(0.5배): 재매수 R배수', lhTrade?.rMultiple as number, 0.4618768408789472, 1e-9);
+  checkClose('LH(0.5배): 재매수 pnl', lhTrade?.pnlKRW as number, 45100.8, 1e-2);
+
+  // 같은 최초유닛 크기(9280) — G/L 둘 다 fixed-cap-div4 공식 그대로(사이징 함수 결과 불변 확인용 교차검증).
+  check('G/L 최초유닛 크기 동일(사이징 공식 불변)', gTrade!.qty / 3, lTrade!.qty / 3);
+}
+
 // ── 결과 ──
 console.log(`\n${pass} passed, ${fail} failed`);
 if (fail > 0) process.exit(1);

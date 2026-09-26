@@ -19,6 +19,7 @@ import type { AlertRule } from '../types/alertRules';
 import { hasResolvableRates } from '../utils/exchangeRateCache';
 import { Currency } from '../types';
 import { buildTurtlePositionViews, computeTurtleRiskGauge } from '../utils/turtlePositionView';
+import { useTurtleHoldings } from '../hooks/useTurtleHoldings';
 import TurtleRiskGauge from './portfolio-table/TurtleRiskGauge';
 import ActionMenu, { type ActionMenuEntry, type ActionMenuItem } from './common/ActionMenu';
 import { applyBulkAssetPatch, buildTurtleCandidateRegistration, type BulkAssetPatch } from '../utils/bulkAssetOps';
@@ -198,6 +199,9 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
     () => computeTurtleRiskGauge(data.turtlePositions, data.assets, exchangeRates, data.turtleSettings),
     [data.turtlePositions, data.assets, exchangeRates, data.turtleSettings],
   );
+  // "보유종목 터틀"(P2) 화면 컬럼(청산선까지/터틀 상태) — 모듈 캐시 공유(hooks/useTurtleHoldings)라
+  // 홈 카드가 이미 조회했으면 재조회 없이 재사용된다.
+  const turtleHoldingsRowsByAssetId = useTurtleHoldings().rowsByAssetId;
 
   // 현재 가시 컬럼 (Context의 columnConfig 사용)
   const visibleColumns = ui.columnConfig;
@@ -728,6 +732,7 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
                 dcCrossDays={dcRaw != null && dcRaw < 0 ? dcRaw : null}
                 getTdStyle={getThStyle}
                 turtle={turtleViews.get(asset.id)}
+                turtleHoldingsRow={turtleHoldingsRowsByAssetId.get(asset.id)}
               />
               );
             }) : (
@@ -764,6 +769,7 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
             gcCrossDays={gcRaw != null && gcRaw >= 0 ? gcRaw : null}
             dcCrossDays={dcRaw != null && dcRaw < 0 ? dcRaw : null}
             turtle={turtleViews.get(asset.id)}
+            turtleHoldingsRow={turtleHoldingsRowsByAssetId.get(asset.id)}
           />
           );
         }) : emptyContent}

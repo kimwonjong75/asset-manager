@@ -183,6 +183,11 @@ export interface WatchInput {
   now: Date;
   /** 조회 자체가 실패했는가 (no-high-low 와 구분) */
   fetchFailed?: boolean;
+  /**
+   * 진입 돌파 채널(일). 기본 ENTRY_LOOKBACK(55) — 미지정 시 기존 동작과 완전히 동일.
+   * P0(2026-09-26): `utils/turtleHoldings.TurtleHoldingsSettings.entryLookback` 연결용(P2 화면에서 전달).
+   */
+  entryLookback?: number;
 }
 
 /**
@@ -191,6 +196,8 @@ export interface WatchInput {
  * 채널 계산은 완전한 유효 OHLC 를 요구하고 **종가 폴백을 금지**한다(C-4 예외는 stopPrice 비교에만 적용).
  */
 export function buildWatchRow(input: WatchInput): WatchRow {
+  const entryLookback = input.entryLookback ?? ENTRY_LOOKBACK;
+  const entryMinBars = entryLookback + 1;
   const marketTz = resolveMarketTz(input.exchange, input.isCrypto);
   const r = extractCompletedBars(input.raw, marketTz, input.now);
   const quality = baseQuality(r, marketTz);
@@ -199,7 +206,7 @@ export function buildWatchRow(input: WatchInput): WatchRow {
     quality.issues.push('fetch-failed');
   }
 
-  const enough = r.bars.length >= ENTRY_MIN_BARS;
+  const enough = r.bars.length >= entryMinBars;
   if (!quality.issues.length && !enough) quality.issues.push('insufficient-bars');
 
   const base = {
@@ -211,7 +218,7 @@ export function buildWatchRow(input: WatchInput): WatchRow {
   }
 
   const d = r.bars[r.bars.length - 1];
-  const line = entryBreakoutLine(r.bars)!;
+  const line = entryBreakoutLine(r.bars, entryLookback)!;
   const confirmed = d.close >= line;
   const intradayAbove = !confirmed && input.intradayPrice != null && input.intradayPrice >= line;
 
@@ -238,6 +245,8 @@ export interface PositionInput {
   fetchFailed?: boolean;
   /** 포지션↔자산 연결 실패 (assetId 없음/깨짐 + ticker 후보 0개 또는 2개 이상) */
   linkError?: boolean;
+  /** 청산 채널(일). 기본 EXIT_LOOKBACK(20) — 미지정 시 기존 동작과 완전히 동일. (P0 §todayTurtle 하드코딩 해소) */
+  exitLookback?: number;
 }
 
 /**
@@ -290,10 +299,11 @@ export function buildPositionRow(input: PositionInput): PositionRow {
   // 채널의 D 는 **마지막 유효 OHLC 봉**이고 비교 종가는 **최신 완료종가**다. 최신 행에 close 만 있고
   // OHLC 가 불완전하면 두 날짜가 어긋나는데, 그때 과거 채널과 최신 종가를 비교하면 **서로 다른 날짜를
   // 결합**한 판정이 된다. 날짜가 정확히 같을 때만 청산 판정에 쓴다(다르면 '확인 불가').
+  const exitLookback = input.exitLookback ?? EXIT_LOOKBACK;
   const channelDate = r.bars.length > 0 ? r.bars[r.bars.length - 1].date : null;
   const sameAsOf = channelDate != null && channelDate === lastCloseDate;
   const hasChannel = r.hasHighLow && r.bars.length > 0 && sameAsOf;
-  const exitLine = hasChannel ? exitChannelLine(r.bars) : null;
+  const exitLine = hasChannel ? exitChannelLine(r.bars, exitLookback) : null;
 
   // 2순위: 손절 — **완료종가만으로 판정**(high/low 부족과 무관)
   if (lastClose <= stopPrice) {
@@ -322,6 +332,8 @@ export interface LegacyInput {
   now: Date;
   /** 조회 자체가 실패했는가 (no-high-low 와 구분) */
   fetchFailed?: boolean;
+  /** 청산 채널(일). 기본 EXIT_LOOKBACK(20) — 미지정 시 기존 동작과 완전히 동일. */
+  exitLookback?: number;
 }
 
 /**
@@ -329,6 +341,8 @@ export interface LegacyInput {
  * 2N 손절·불타기는 계산하지 않는다(진입 당시 N 기록 없음 / 불타기 검증 탈락).
  */
 export function buildLegacyRow(input: LegacyInput): LegacySatelliteRow {
+  const exitLookback = input.exitLookback ?? EXIT_LOOKBACK;
+  const exitMinBars = exitLookback + 1;
   const marketTz = resolveMarketTz(input.exchange, input.isCrypto);
   const r = extractCompletedBars(input.raw, marketTz, input.now);
   const quality = baseQuality(r, marketTz);
@@ -337,7 +351,7 @@ export function buildLegacyRow(input: LegacyInput): LegacySatelliteRow {
     quality.issues.push('fetch-failed');
   }
 
-  const enough = r.bars.length >= EXIT_MIN_BARS;
+  const enough = r.bars.length >= exitMinBars;
   if (!quality.issues.length && !enough) quality.issues.push('insufficient-bars');
 
   const base = { kind: 'legacy' as const, ticker: input.ticker, name: input.name, quality };
@@ -345,7 +359,7 @@ export function buildLegacyRow(input: LegacyInput): LegacySatelliteRow {
     return { ...base, status: 'unavailable', completedClose: null, exitLine: null };
   }
   const d = r.bars[r.bars.length - 1];
-  const line = exitChannelLine(r.bars)!;
+  const line = exitChannelLine(r.bars, exitLookback)!;
   return {
     ...base,
     status: d.close <= line ? 'exit-line-touched' : 'above-exit-line',

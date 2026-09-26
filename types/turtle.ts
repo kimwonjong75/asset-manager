@@ -1,5 +1,9 @@
 // types/turtle.ts
 // ---------------------------------------------------------------------------
+// P0(2026-09-26) 추가: `TurtleSettings.holdings?: TurtleHoldingsSettings`(types/turtleHoldings.ts) —
+// "보유종목 터틀"(계획서 PLAN_터틀중심_앱재정비_260925) 확장 설정. 기존 필드·DEFAULT_TURTLE_SETTINGS는
+// 절대 수정하지 않는다(기존 위성 주문 엔진 동작 불변). 병합은 utils/turtleHoldings.resolveHoldingsSettings.
+// ---------------------------------------------------------------------------
 // 터틀 트레이딩(투더문/위성 10%) 전략 포지션 모델 및 설정.
 // 규칙 원전: 터틀트레이딩_통합검증_최종본.md §4(유닛 사이징)·§6(피라미딩)·§7(손절)·§8(청산)·§14(규칙 카드).
 //
@@ -8,6 +12,8 @@
 //   · 손절가는 "약속"으로 포지션에 저장된다 (결과 기준 %손절이 아니라, 진입 시 확정되는 절대 가격).
 //   · 1% 손실규칙의 계좌 = 위성 예산(satelliteBudgetKRW). 코어(90%)에는 손절이 없다.
 //   · 물타기 불가: 추가매수(피라미딩)는 "직전 체결가보다 위"에서만 발생하므로 하락 시 추가매수는 구조적으로 불가능.
+
+import type { TurtleHoldingsSettings } from './turtleHoldings';
 
 export type TurtleExitReason = 'stop' | 'channel-exit' | 'manual';
 
@@ -33,6 +39,20 @@ export interface TurtlePosition {
   openedAt: string;              // YYYY-MM-DD
   closedAt?: string;
   exitReason?: TurtleExitReason;
+  /**
+   * P1(2026-09-26) — 포지션 출처. 'holdings-reentry' = 계획서 §6 P1 "보유종목 터틀" 재매수 유닛
+   * (원래 보유분과 구분). 미지정(undefined) = 기존 위성(90/10) 포지션 — 하위 호환, 기존 골든 테스트 불변.
+   * ⚠ `utils/actionQueueGenerator.ts`(위성 실행 큐 생성기)는 이 값이 'holdings-reentry'인 포지션을
+   * 오픈 포지션 평가(손절/청산/피라미딩)에서 제외한다 — 위성 설정(satelliteBudgetKRW 기준)과 보유종목
+   * 설정(관리자산 기준)은 사이징 분모가 달라 섞이면 안 된다. 생성은 `utils/turtleHoldingsState.recordTurtleReentry`.
+   */
+  origin?: 'holdings-reentry';
+  /**
+   * P1 — ATR 추적 청산(TurtleHoldingsSettings.exitMethod='atrTrail') 상태 캐시: 진입/재진입 이후
+   * 관측된 최고 체결가(래칫, 하향 금지). `utils/turtleHoldings.computeExitLine`은 매 호출 시 bars
+   * 전체로 재계산하므로 필수는 아니나, P2가 일별 캐시로 쓸 수 있도록 최초 진입 체결가로 초기화한다.
+   */
+  trailHighClose?: number;
 }
 
 /** 터틀 운영 파라미터. 기본값은 DEFAULT_TURTLE_SETTINGS. */
@@ -53,6 +73,11 @@ export interface TurtleSettings {
    * 원칙상 사용자가 설정으로 명시 동의했을 때만 켜진다. (구 저장본은 필드 없음 → false 취급)
    */
   autoGenerateQueue?: boolean;
+  /**
+   * P0(2026-09-26) — "보유종목 터틀"(계획서) 확장 설정. 구 저장본은 필드 없음 → undefined.
+   * 호출부는 항상 `resolveHoldingsSettings(settings.holdings)`로 읽는다(직접 참조 금지 — 부분 필드/무효값 가드).
+   */
+  holdings?: TurtleHoldingsSettings;
 }
 
 export const DEFAULT_TURTLE_SETTINGS: TurtleSettings = {

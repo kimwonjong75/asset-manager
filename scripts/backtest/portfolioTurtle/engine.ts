@@ -397,12 +397,15 @@ export function simulatePortfolio(params: SimulateParams): PortfolioRunResult {
       const ctx: SizingContext = { equityKRW: o.equityAtSignalKRW, riskPerUnitPct: params.sizing.riskPerUnitPct, positionCapPct: capPct, maxUnits: params.sizing.maxUnits };
 
       let rawQty: number;
-      if (params.sizing.pyramid === 'fixed-cap-div4' || params.sizing.pyramid === 'fixed-first-entry') {
+      if (params.sizing.pyramid === 'fixed-cap-div4' || params.sizing.pyramid === 'fixed-first-entry' || params.sizing.pyramid === 'lucas') {
         if (isFirstUnit || h.fixedUnitQty === null) {
-          const res = params.sizing.pyramid === 'fixed-cap-div4'
-            ? sizeFixedUnitCapDiv(ctx, o.nAtSignal, open, fxRate)
-            : sizeFixedUnitNoCap(ctx, o.nAtSignal, fxRate);
+          const res = params.sizing.pyramid === 'fixed-first-entry'
+            ? sizeFixedUnitNoCap(ctx, o.nAtSignal, fxRate)
+            : sizeFixedUnitCapDiv(ctx, o.nAtSignal, open, fxRate); // fixed-cap-div4·lucas 공통(G와 동일 유닛 공식)
           rawQty = res.qty;
+        } else if (params.sizing.pyramid === 'lucas') {
+          // 루카스 — 최초유닛(fixedUnitQty)에 lucasSizeMultiplier(미지정 시 1)를 곱해 추가유닛 크기를 정한다.
+          rawQty = h.fixedUnitQty * (params.sizing.lucasSizeMultiplier ?? 1);
         } else {
           rawQty = h.fixedUnitQty;
         }
@@ -414,7 +417,7 @@ export function simulatePortfolio(params: SimulateParams): PortfolioRunResult {
       // G/C의 고정크기 불타기 유닛은 room을 미리 안 깎으므로(설계상 "고정"), 오늘 가격 기준으로 상한을
       // 넘는지 별도로 재확인한다(freshTurtleLifecycle과 동일한 "오늘 가격으로 room 검사" 관례) —
       // 안 하면 상승 추세 중 누적된 기존 유닛이 오늘가로 재평가되며 상한을 형식상 넘는 오탐이 생긴다.
-      if (!isFirstUnit && capPct !== null && (params.sizing.pyramid === 'fixed-cap-div4' || params.sizing.pyramid === 'fixed-first-entry')) {
+      if (!isFirstUnit && capPct !== null && (params.sizing.pyramid === 'fixed-cap-div4' || params.sizing.pyramid === 'fixed-first-entry' || params.sizing.pyramid === 'lucas')) {
         const capKRW = ctx.equityKRW * (capPct / 100);
         if (existingValueKRW + capQty * open * fxRate > capKRW + 1e-3) { pending.delete(ticker); continue; }
       }
@@ -482,7 +485,7 @@ export function simulatePortfolio(params: SimulateParams): PortfolioRunResult {
 
         const newUnit: Unit = { qty: q, fillPrice: c.open, nAtSignal: c.o.nAtSignal, fxAtFill: c.fxRate };
         if (c.isFirstUnit) {
-          const fixedQty = params.sizing.pyramid === 'fixed-cap-div4' || params.sizing.pyramid === 'fixed-first-entry' ? q : null;
+          const fixedQty = params.sizing.pyramid === 'fixed-cap-div4' || params.sizing.pyramid === 'fixed-first-entry' || params.sizing.pyramid === 'lucas' ? q : null;
           holdings.set(c.ticker, {
             status: 'HOLD_REENTERED', units: [newUnit], stopPrice: c.newStop,
             trail: params.exitRule.method === 'atrTrailing' ? initTrailState(c.sec, c.sec.ownIdxOfCal[i], params.exitRule.multiple) : null,
@@ -568,10 +571,13 @@ export function simulatePortfolio(params: SimulateParams): PortfolioRunResult {
         }
         if (h.status === 'HOLD_REENTERED' && params.sizing.pyramid !== 'none' && h.units.length < params.sizing.maxUnits) {
           const lastFill = h.units[h.units.length - 1];
-          const step = params.sizing.pyramidStepN ?? 0.5;
           const n = sec.atr[ownIdx];
           if (isNum(n)) {
-            const trigger = lastFill.fillPrice + step * n;
+            // 루카스 강의식 — 1R = 재매수분 손절폭(stopMultipleN×N), 추가는 마지막 체결가 + 2R(=2×stopMultipleN×N)마다.
+            // 그 외(G/A/C)는 기존 ½N(pyramidStepN) 간격 그대로.
+            const trigger = params.sizing.pyramid === 'lucas'
+              ? lastFill.fillPrice + 2 * params.stopMultipleN * n
+              : lastFill.fillPrice + (params.sizing.pyramidStepN ?? 0.5) * n;
             if (close >= trigger) createOrder('pyramid');
           }
         }

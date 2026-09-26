@@ -8,6 +8,7 @@ import { formatQuantity } from './portfolio-table/utils';
 import { usePortfolio } from '../contexts/PortfolioContext';
 import { defaultSellOutcome, sellPrefillFor } from '../utils/tradePlanLink';
 import type { SellOutcome } from '../types/tradePlan';
+import { resolveHoldingsSettings, isInHoldingsScope } from '../utils/turtleHoldings';
 import Segmented from './common/Segmented';
 import Modal from './common/Modal';
 import Button from './common/Button';
@@ -22,17 +23,19 @@ const SELL_OUTCOME_OPTIONS: { value: SellOutcome; label: string; hint: string }[
 ];
 
 const SellAssetModal: React.FC = () => {
-  const { modal, actions, status, derived } = usePortfolio();
+  const { data, modal, actions, status, derived } = usePortfolio();
   const asset = modal.sellingAsset;
   const isOpen = !!modal.sellingAsset;
   const onClose = actions.closeSellModal;
-  const onSell = (assetId: string, sellDate: string, sellPrice: number, sellQuantity: number, currency: Currency) =>
-    actions.confirmSell(assetId, sellDate, sellPrice, sellQuantity, currency);
   const isLoading = status.isLoading;
   const [sellDate, setSellDate] = useState<string>(new Date().toISOString().slice(0, 10));
   const [sellPrice, setSellPrice] = useState<string>('');
   const [sellQuantity, setSellQuantity] = useState<string>('');
   const [sellOutcome, setSellOutcome] = useState<SellOutcome>('none');
+  // "보유종목 터틀" 감시 명단 추가(계획서 §4.2) — 범위 내 자산만 체크박스 노출, 기본 켬(사용자 동작 동반).
+  const holdingsSettings = resolveHoldingsSettings(data.turtleSettings.holdings);
+  const inHoldingsScope = !!asset && isInHoldingsScope(asset, holdingsSettings);
+  const [addToTurtleWatch, setAddToTurtleWatch] = useState(true);
   // 제출 시도 후에만 인라인 검증 문구 노출(브라우저 alert 대체 — RULES.md §7)
   const [submitAttempted, setSubmitAttempted] = useState(false);
   // 폼 오류 문구 id — 조기 return 앞에서 호출(훅 순서 고정). 오류 필드의 aria-describedby 대상.
@@ -51,6 +54,7 @@ const SellAssetModal: React.FC = () => {
     if (asset && isOpen) {
       setSubmitAttempted(false);
       setSellDate(new Date().toISOString().slice(0, 10));
+      setAddToTurtleWatch(true);
       const activePlan = asset.tradePlan && asset.tradePlan.status === 'active' ? asset.tradePlan : null;
       if (activePlan) {
         // 계획 카드에서 열었으면 그쪽 프리필이 우선, 아니면 현재 신호로 기본 효과를 고른다.
@@ -112,14 +116,16 @@ const SellAssetModal: React.FC = () => {
     const quantity = parseFloat(sellQuantity);
     const price = parseFloat(sellPrice);
 
-    // 자산의 원래 통화로 매도 처리
-    const result = await onSell(
-      asset.id,
+    // 자산의 원래 통화로 매도 처리 — recordTurtleSell이 confirmSell을 감싸 돈 기록 성공 후에만
+    // (범위 내 + 체크됐을 때) "다시 살 때 감시" 등록까지 한 번에 처리한다(계획서 §4.2, §5-2).
+    const result = await actions.recordTurtleSell({
+      assetId: asset.id,
+      sellQuantity: quantity,
+      sellPrice: price,       // 자산 통화 기준 매도가
       sellDate,
-      price,           // 자산 통화 기준 매도가
-      quantity,
-      asset.currency   // 자산의 통화
-    );
+      settlementCurrency: asset.currency,
+      addToWatchlist: inHoldingsScope && addToTurtleWatch,
+    });
 
     // 매매 계획 상태 전이(P2b) — 돈 기록이 성공하고 자산이 남아 있을 때만.
     // 전량 매도로 자산이 사라졌으면(assetClosed) 계획을 얹을 대상이 없다.
@@ -311,6 +317,24 @@ const SellAssetModal: React.FC = () => {
                 </span>
               </div>
             </div>
+          )}
+
+          {/* "보유종목 터틀" 감시 명단 추가(계획서 §4.2) — 범위 내 자산만, 기본 켬 */}
+          {inHoldingsScope && (
+            <label className="flex items-start gap-2 bg-gray-700/50 p-3 rounded-md cursor-pointer">
+              <input
+                type="checkbox"
+                checked={addToTurtleWatch}
+                onChange={(e) => setAddToTurtleWatch(e.target.checked)}
+                className="mt-0.5 accent-primary"
+              />
+              <span className="text-sm text-gray-200">
+                "다시 살 때" 감시 명단에 추가
+                <span className="block text-xs text-gray-500 mt-0.5">
+                  체크하면 이 종목이 55일 최고가를 돌파할 때 재매수 후보로 알려 드립니다. (전량 매도일 때만 적용)
+                </span>
+              </span>
+            </label>
           )}
 
           {errorShown && <FieldError id={formErrorId}>{formError}</FieldError>}

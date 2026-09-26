@@ -14,7 +14,7 @@ import {
   incrementalContributions, maxContributorConcentration, pnlByAssetClass, median,
 } from './metrics';
 import { configHash } from './configHash';
-import { parseConfig, ComboConfig, ExitRuleId, ScopeId } from './configTypes';
+import { parseConfig, ComboConfig, ExitRuleId, ScopeId, SizingVariantConfig } from './configTypes';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // Advisor 강건성 점검(2026-09-25): `--equal-weight` 이면 CSV 현재비중 대신 균등 초기비중을 쓴다.
@@ -45,6 +45,29 @@ if (process.argv.includes('--posthoc')) {
   );
   console.log('\n[--posthoc] 사후 탐색 조합 추가: W4G_COREEXCL, W4G_CAP5 (EXPLORATORY)');
 }
+
+// Advisor 강건성 점검 후속(2026-09-26): `--lucas`면 루카스 강의식 불타기(2R=4N 간격) 조합을 **뒤에 덧붙인다**
+// (해시·기존 조합 불변, --posthoc과 동일 관례). config.json에는 sizing 'L'(1배)·'LH'(0.5배)가 없으므로
+// 여기서 코드로 SizingVariantConfig를 구성한다(sizing.ts/engine.ts는 'lucas' 분기를 추가만 했다).
+const LUCAS = process.argv.includes('--lucas');
+const LUCAS_SIZING: Record<'L' | 'LH', SizingVariantConfig> = {
+  L: { riskPerUnitPct: 1, maxUnits: 4, positionCapPct: 10, pyramid: 'lucas', lucasSizeMultiplier: 1 },
+  LH: { riskPerUnitPct: 1, maxUnits: 4, positionCapPct: 10, pyramid: 'lucas', lucasSizeMultiplier: 0.5 },
+};
+if (LUCAS) {
+  C.comboList.push(
+    { id: 'W1L', exitRule: 'W1', sizing: 'L', positionCapPct: 10, drawdownScaling: false, scope: 'S-ALL' },
+    { id: 'W1L_H', exitRule: 'W1', sizing: 'LH', positionCapPct: 10, drawdownScaling: false, scope: 'S-ALL' },
+    { id: 'W4L', exitRule: 'W4', sizing: 'L', positionCapPct: 10, drawdownScaling: false, scope: 'S-ALL' },
+    { id: 'W1L_COREEXCL', exitRule: 'W1', sizing: 'L', positionCapPct: 10, drawdownScaling: false, scope: 'S-CORE-EXCL' },
+  );
+  console.log('\n[--lucas] 루카스 강의식 불타기 조합 추가: W1L, W1L_H, W4L, W1L_COREEXCL (EXPLORATORY)');
+}
+
+// P0(2026-09-26) 후속: `--riskcap`이면 전체 위험 한도 24% vs 12%를 W1L(있으면) 또는 W1G 조합으로 비교
+// 실행한다(--posthoc/--lucas와 동일 관례 — 동결 config·해시·기존 조합은 건드리지 않고 뒤에 덧붙인다).
+// `--equal-weight`와 함께 쓰면 균등비중 비교도 같은 실행에서 얻는다.
+const RISKCAP = process.argv.includes('--riskcap');
 
 const t0 = Date.now();
 const data = loadPortfolioData(csvPath);
@@ -105,7 +128,9 @@ function runCycleImpl(
   costMultiplier: number, cashAnnualRatePct: number, excludeTicker?: string
 ): PortfolioRunResult {
   const initial = getInitial(startYyyyMm, combo.scope);
-  const sizingVariant = C.sizingVariants[combo.sizing];
+  const sizingVariant: SizingVariantConfig = combo.sizing === 'L' || combo.sizing === 'LH'
+    ? LUCAS_SIZING[combo.sizing]
+    : C.sizingVariants[combo.sizing];
   const baseTradable = scopePredicates[combo.scope];
   const tradable = excludeTicker ? (t: string) => t !== excludeTicker && baseTradable(t) : baseTradable;
   return simulatePortfolio({
@@ -166,6 +191,56 @@ for (const sd of startDates) {
 }
 console.log(`   완료 (${Date.now() - t1}ms)`);
 
+// ── [--riskcap] 전체 위험 한도 24% vs 12% 비교 (EXPLORATORY, 동결 config·해시 불변) ──
+// P0 계획서(§6): "전체 위험 한도 24%(선택값) vs 12%(원 검증값) 차이를 백테스트로 확인".
+// 동결 comboList는 건드리지 않고, 같은 조합(--lucas면 W1L, 아니면 W1G)을 maxTotalRiskPct만 바꿔
+// 두 번(24%/12%) 별도로 돌린다. simulatePortfolio는 maxTotalRiskPct를 인자로 받으므로 config.json이나
+// comboList를 변경할 필요가 없다(해시 불변 — --posthoc/--lucas와 동일 원칙). bhCache/sellOnlyCache가
+// 채워진 뒤(위 1단계)라야 요약에 쓸 B&H/팔기만 대조값을 찾을 수 있어 이 위치에 둔다.
+if (RISKCAP) {
+  const riskCapComboId = LUCAS ? 'W1L' : 'W1G';
+  const riskCapCombo = C.comboList.find(c => c.id === riskCapComboId);
+  if (!riskCapCombo) {
+    console.log(`\n[--riskcap] 조합 ${riskCapComboId} 을(를) 찾지 못해 건너뜀`);
+  } else {
+    console.log(`\n[--riskcap] 전체 위험 한도 24% vs 12% 비교 (조합=${riskCapComboId}, EXPLORATORY)...`);
+    const sizingVariant: SizingVariantConfig = riskCapCombo.sizing === 'L' || riskCapCombo.sizing === 'LH'
+      ? LUCAS_SIZING[riskCapCombo.sizing] : C.sizingVariants[riskCapCombo.sizing as 'B' | 'G' | 'A' | 'C'];
+    const baseTradable = scopePredicates[riskCapCombo.scope];
+
+    for (const riskCapPct of [24, 12]) {
+      const entries: StartRunEntry[] = [];
+      let totalLambdaScaleDays = 0;
+      for (const sd of startDates) {
+        const initial = getInitial(sd.yyyyMm, riskCapCombo.scope);
+        const turtle = simulatePortfolio({
+          securities: data.securities, fx: data.fx, calendar: data.calendar, initial,
+          exitRule: EXIT_RULE_CFG[riskCapCombo.exitRule], stopMultipleN: REENTRY_STOP_N,
+          sizing: sizingVariant, positionCapPctOverride: riskCapCombo.positionCapPct,
+          reentryEnabled: true, tradable: baseTradable,
+          costMultiplier: 1, cashAnnualRatePct: 0,
+          maxTotalRiskPct: riskCapPct, minOrderKRW: MIN_ORDER_KRW,
+          drawdownScaling: riskCapCombo.drawdownScaling, drawdownStepDown: C.drawdownScaling.stepDown, drawdownReduce: C.drawdownScaling.reduce,
+        });
+        totalLambdaScaleDays += turtle.lambdaScaleDays;
+        const bh = bhCache.get(`${sd.yyyyMm}|${riskCapCombo.scope}`);
+        const sellOnly = sellOnlyCache.get(`${sd.yyyyMm}|${riskCapCombo.exitRule}|${riskCapCombo.scope}`);
+        if (bh && sellOnly) entries.push({ startYyyyMm: sd.yyyyMm, turtle, bh, sellOnly });
+      }
+      if (entries.length > 0) {
+        const s = summarizeCombo(entries);
+        console.log(
+          `  위험한도=${riskCapPct}%  중앙CAGR(터틀)=${(s.medianCagrTurtle * 100).toFixed(2)}% ` +
+          `MDD터틀=${(s.medianMddTurtle * 100).toFixed(1)}% 완료거래=${s.completedRoundTrips} ` +
+          `λ발동일 합계=${totalLambdaScaleDays} 최대동시재매수=${s.maxConcurrentReenteredAcrossStarts}`
+        );
+      } else {
+        console.log(`  위험한도=${riskCapPct}%  (대응하는 B&H/팔기만 캐시 없음 — 건너뜀)`);
+      }
+    }
+  }
+}
+
 // ── 2) 15개 조합 × 12 시작일 (기본비용·현금이자0%) ──
 console.log('[2/4] 주 조합(15개) × 시작일(12개) 실행 중...');
 const t2 = Date.now();
@@ -205,8 +280,11 @@ console.log(`   완료 (${Date.now() - t3}ms)`);
 // ── 4) LOO(최대 증분기여 종목 1개 제거) — G/A/C 6개 조합 ──
 console.log('[4/4] LOO(최대 증분기여 종목 제거) 실행 중...');
 const t4 = Date.now();
-const LOO_COMBO_IDS = ['W1G', 'W2G', 'W3G', 'W4G', 'W1A', 'W1C'];
-const BASELINE_FOR: Record<string, string> = { W1G: 'W1B', W2G: 'W2B', W3G: 'W3B', W4G: 'W4B', W1A: 'W1B', W1C: 'W1B' };
+const LOO_COMBO_IDS = ['W1G', 'W2G', 'W3G', 'W4G', 'W1A', 'W1C', ...(LUCAS ? ['W1L', 'W1L_H', 'W4L', 'W1L_COREEXCL'] : [])];
+const BASELINE_FOR: Record<string, string> = {
+  W1G: 'W1B', W2G: 'W2B', W3G: 'W3B', W4G: 'W4B', W1A: 'W1B', W1C: 'W1B',
+  ...(LUCAS ? { W1L: 'W1B', W1L_H: 'W1B', W4L: 'W4B', W1L_COREEXCL: 'W1B_COREEXCL' } : {}),
+};
 interface LooResult {
   comboId: string; maxContributorTicker: string; shareOfTotal: number;
   beforeExcessRatio: number; afterExcessRatio: number; directionUnchanged: boolean;

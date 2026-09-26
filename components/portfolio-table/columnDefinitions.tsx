@@ -8,6 +8,21 @@ import SortableTh from '../common/SortableTh';
 import { COLUMN_DESCRIPTIONS } from '../../constants/columnDescriptions';
 import CrossDaysBadge from '../common/CrossDaysBadge';
 import { VOLUME_INTENSITY_TEXT } from '../../constants/stateColorLadders';
+import type { TurtleHoldingsRow, TurtleHoldingsStatus } from '../../utils/turtleHoldingsView';
+
+/**
+ * "보유종목 터틀"(P2) 상태 라벨 + 색 톤(§8 색 규약: up=오름/이익, down=내림/손실, warning=확인 필요).
+ * PortfolioMobileCard도 같은 맵을 재사용한다(ui-constraints.md — 표에 추가한 기능은 모바일 카드에도 반영).
+ */
+export const TURTLE_HOLDINGS_STATUS_META: Record<TurtleHoldingsStatus, { label: string; className: string }> = {
+  hold: { label: '보유 유지', className: 'text-gray-300' },
+  sell: { label: '팔 때', className: 'text-down font-semibold' },
+  watching: { label: '감시 중', className: 'text-gray-300' },
+  reentry: { label: '다시 살 때', className: 'text-up font-semibold' },
+  pyramid: { label: '추가 매수', className: 'text-up font-semibold' },
+  unavailable: { label: '확인 불가', className: 'text-warning' },
+  'out-of-scope': { label: '범위 제외', className: 'text-gray-500' },
+};
 
 const RSIIndicator = ({ rsi, status }: { rsi?: number, status?: string }) => {
   if (typeof rsi !== 'number') return null;
@@ -64,6 +79,8 @@ export interface CellRenderContext {
   dcCrossDays?: number | null;
   /** <td>에 적용할 inline 너비 스타일. 미정의 시 자동 너비 */
   getTdStyle?: (columnKey: ColumnKey) => React.CSSProperties | undefined;
+  /** "보유종목 터틀"(P2) 화면 행 — hooks/useTurtleHoldings 결과(assetId 매칭). 없으면 범위 밖/미로드 */
+  turtleHoldingsRow?: TurtleHoldingsRow;
 }
 
 export interface ColumnDefinition {
@@ -84,10 +101,14 @@ export const toSortableDirection = (
   sortConfig: { key: SortKey; direction: SortDirection } | null,
 ): 'asc' | 'desc' | null => (sortConfig ? (sortConfig.direction === 'ascending' ? 'asc' : 'desc') : null);
 
-/** 단일 정렬키 헤더 — th 에 onClick 없음(버튼이 정렬), 리사이즈 핸들은 th 직계 자식 */
+/**
+ * 단일 정렬키 헤더 — th 에 onClick 없음(버튼이 정렬), 리사이즈 핸들은 th 직계 자식.
+ * `ColumnKey & SortKey`로 좁힌다 — "보유종목 터틀" 두 컬럼(turtleExitGapPct/turtleStatus)은 ColumnKey에는
+ * 있지만 SortKey에는 없다(정렬 불가, staticHeader 전용). 이 함수를 그 키로 호출하면 컴파일 타임에 막힌다.
+ */
 const sortableHeader = (
   ctx: HeaderRenderContext,
-  key: ColumnKey,
+  key: ColumnKey & SortKey,
   label: string,
   align: HeaderAlign,
   tooltip: React.ReactNode,
@@ -107,6 +128,27 @@ const sortableHeader = (
     >
       <ResizeHandle columnKey={key} />
     </SortableTh>
+  );
+};
+
+/**
+ * 정렬 불가 헤더 — "보유종목 터틀" 두 컬럼 전용(값이 비동기 훅 데이터라 EnrichedAsset 기반 정렬 파이프라인
+ * 밖에 있다). SortableTh와 같은 DOM 골격(th·정렬 상태 없는 버튼 없이 라벨만)을 재사용해 시각적으로만 맞춘다.
+ */
+const staticHeader = (
+  ctx: HeaderRenderContext,
+  key: ColumnKey,
+  label: string,
+  align: HeaderAlign,
+  tooltip: React.ReactNode,
+) => {
+  const { ResizeHandle } = ctx;
+  const content = <span className={`flex w-full items-center gap-2 ${alignToHeaderContent(align)}`}>{label}</span>;
+  return (
+    <th scope="col" className={ctx.thClasses} style={ctx.getThStyle(key)}>
+      <Tooltip content={tooltip} position="top" wrap className="w-full">{content}</Tooltip>
+      <ResizeHandle columnKey={key} />
+    </th>
   );
 };
 
@@ -312,6 +354,38 @@ export const COLUMN_DEFINITIONS: Record<ColumnKey, ColumnDefinition> = {
               <div>{yesterdayChange.toFixed(2)}%</div>
               <div className="text-xs opacity-80">{formatProfitLoss(diffFromYesterday, Currency.KRW)}</div>
             </div>
+          </Tooltip>
+        </td>
+      );
+    },
+  },
+  turtleExitGapPct: {
+    key: 'turtleExitGapPct',
+    align: 'right',
+    renderHeader: (ctx) => staticHeader(ctx, 'turtleExitGapPct', '청산선까지', 'right', COLUMN_DESCRIPTIONS.turtleExitGapPct),
+    renderCell: ({ turtleHoldingsRow, getTdStyle }) => {
+      const gap = turtleHoldingsRow?.exitGapPct;
+      return (
+        <td className="px-4 py-4 text-right overflow-hidden" style={getTdStyle?.('turtleExitGapPct')}>
+          <Tooltip content={COLUMN_DESCRIPTIONS.turtleExitGapPct} position="top" wrap>
+            <span className={typeof gap === 'number' && gap < 0 ? 'text-down' : 'text-gray-300'}>
+              {typeof gap === 'number' ? `${gap.toFixed(1)}%` : '—'}
+            </span>
+          </Tooltip>
+        </td>
+      );
+    },
+  },
+  turtleStatus: {
+    key: 'turtleStatus',
+    align: 'center',
+    renderHeader: (ctx) => staticHeader(ctx, 'turtleStatus', '터틀 상태', 'center', COLUMN_DESCRIPTIONS.turtleStatus),
+    renderCell: ({ turtleHoldingsRow, getTdStyle }) => {
+      const meta = turtleHoldingsRow ? TURTLE_HOLDINGS_STATUS_META[turtleHoldingsRow.status] : null;
+      return (
+        <td className="px-4 py-4 text-center overflow-hidden" style={getTdStyle?.('turtleStatus')}>
+          <Tooltip content={COLUMN_DESCRIPTIONS.turtleStatus} position="top" wrap>
+            <span className={meta?.className ?? 'text-gray-500'}>{meta?.label ?? '—'}</span>
           </Tooltip>
         </td>
       );

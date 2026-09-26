@@ -27,12 +27,14 @@ function check(label: string, actual: unknown, expected: unknown): void {
 }
 
 // ① 기본값
+// P2(2026-09-26) — "보유종목 터틀" 열 2개(turtleExitGapPct/turtleStatus) 추가, 기본 숨김(신규 키 관례).
 check('기본 표시 키', DEFAULT_VISIBLE_COLUMN_KEYS, ['currentPrice', 'yesterdayChange', 'currentValue', 'returnPercentage', 'dropFromHigh']);
 check('기본값 전체 키 순서', DEFAULT_COLUMN_CONFIG.map(c => c.key), [
   'currentPrice', 'yesterdayChange', 'currentValue', 'returnPercentage', 'dropFromHigh',
   'maCrossDays', 'quantity', 'purchasePrice', 'purchaseValue', 'purchaseDate', 'allocation',
+  'turtleExitGapPct', 'turtleStatus',
 ]);
-check('기본값 숨김 6개', DEFAULT_COLUMN_CONFIG.filter(c => !c.visible).length, 6);
+check('기본값 숨김 8개', DEFAULT_COLUMN_CONFIG.filter(c => !c.visible).length, 8);
 check('기본값 width 없음', DEFAULT_COLUMN_CONFIG.some(c => c.width !== undefined), false);
 
 // ② 저장된 11컬럼 커스텀(옛 기본값 + 너비) — 그대로 유지
@@ -50,7 +52,12 @@ const storedCustom: ColumnConfig[] = [
   { key: 'yesterdayChange', visible: true, width: 100 },
 ];
 const mergedCustom = mergeColumnConfig(storedCustom);
-check('커스텀 11컬럼 라운드트립 동일', mergedCustom, storedCustom);
+// 옛 11컬럼 저장본은 원형 유지 + 신규 터틀 2컬럼이 기본값(숨김)으로 뒤에 추가된다(누락 키 관례).
+check('커스텀 11컬럼 라운드트립 + 신규 2컬럼 추가', mergedCustom, [
+  ...storedCustom,
+  { key: 'turtleExitGapPct', visible: false },
+  { key: 'turtleStatus', visible: false },
+]);
 check('커스텀 표시 7개 유지', mergedCustom.filter(c => c.visible).map(c => c.key), [
   'maCrossDays', 'currentPrice', 'returnPercentage', 'purchaseValue', 'currentValue', 'dropFromHigh', 'yesterdayChange',
 ]);
@@ -62,7 +69,7 @@ const withUnknown = [
   ...storedCustom.filter(c => c.key !== 'currentPrice'),
 ] as ColumnConfig[];
 const mergedUnknown = mergeColumnConfig(withUnknown);
-check('알 수 없는 키 제거 후 길이', mergedUnknown.length, 11);
+check('알 수 없는 키 제거 후 길이(11 + 신규 터틀 2)', mergedUnknown.length, 13);
 check('legacyColumn 없음', mergedUnknown.some(c => (c.key as string) === 'legacyColumn'), false);
 check('제거 후 첫 키', mergedUnknown[0], { key: 'currentPrice', visible: true });
 
@@ -76,6 +83,7 @@ check('부분 저장본: 앞 2개 원형', mergedPartial.slice(0, 2), partial);
 check('부분 저장본: 뒤 추가 순서', mergedPartial.slice(2).map(c => c.key), [
   'currentPrice', 'yesterdayChange', 'currentValue', 'returnPercentage',
   'maCrossDays', 'purchasePrice', 'purchaseValue', 'purchaseDate', 'allocation',
+  'turtleExitGapPct', 'turtleStatus',
 ]);
 check('누락 currentValue → visible true(기본)', mergedPartial.find(c => c.key === 'currentValue'), { key: 'currentValue', visible: true });
 check('누락 allocation → visible false(기본)', mergedPartial.find(c => c.key === 'allocation'), { key: 'allocation', visible: false });

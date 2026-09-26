@@ -13,6 +13,7 @@ import { COLUMN_DEFINITIONS } from './columnDefinitions';
 import TurtlePositionInfo from './TurtlePositionInfo';
 import { buildAssetRowMenuItems } from './rowMenuItems';
 import type { TurtlePositionView } from '../../utils/turtlePositionView';
+import type { TurtleHoldingsRow } from '../../utils/turtleHoldingsView';
 import { PIN_STAR, YUSEON_ACCOUNT_BADGE } from '../../constants/stateColorLadders';
 
 interface PortfolioTableRowProps {
@@ -37,6 +38,8 @@ interface PortfolioTableRowProps {
   getTdStyle?: (columnKey: ColumnKey | 'name') => React.CSSProperties | undefined;
   /** 터틀 오픈 포지션 표시 모델 (있으면 읽기 전용 스트립 행 추가, Phase 2b-5) */
   turtle?: TurtlePositionView;
+  /** "보유종목 터틀"(P2) 화면 행 — 청산선까지/터틀 상태 컬럼용 */
+  turtleHoldingsRow?: TurtleHoldingsRow;
 }
 
 /** 행 메뉴에서 펼침 영역의 어느 섹션으로 들어왔는지 (마운트 시 초기 상태 + 스크롤) */
@@ -59,6 +62,7 @@ const PortfolioTableRow: React.FC<PortfolioTableRowProps> = ({
   dcCrossDays,
   getTdStyle,
   turtle,
+  turtleHoldingsRow,
 }) => {
   const [expanded, setExpanded] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
@@ -191,7 +195,7 @@ const PortfolioTableRow: React.FC<PortfolioTableRowProps> = ({
           if (!def) return null;
           return (
             <Fragment key={c.key}>
-              {def.renderCell({ asset, gcCrossDays, dcCrossDays, getTdStyle })}
+              {def.renderCell({ asset, gcCrossDays, dcCrossDays, getTdStyle, turtleHoldingsRow })}
             </Fragment>
           );
         })}

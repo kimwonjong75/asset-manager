@@ -25,6 +25,7 @@ import {
 import { TurtleMarketInput } from '../utils/actionQueueGenerator';
 import { Asset, Currency, ExchangeRates, WatchlistItem } from '../types';
 import { TurtlePosition, TurtleSettings } from '../types/turtle';
+import { SATELLITE_TURTLE_EVALUATION_ENABLED } from '../types/satelliteTurtleVisibility';
 
 interface TickerMeta {
   ticker: string;
@@ -43,8 +44,16 @@ export interface TurtleMarketSnapshot {
   targetCount: number;
 }
 
-/** 진입 후보로 평가 가능한 터틀 후보 (isTurtleCandidate + 유효 현재가) — 생성·검토가 동일 필터 공유. */
+/**
+ * 진입 후보로 평가 가능한 터틀 후보 (isTurtleCandidate + 유효 현재가) — 생성·검토가 동일 필터 공유.
+ *
+ * `SATELLITE_TURTLE_EVALUATION_ENABLED`(types/satelliteTurtleVisibility)가 false면 항상 빈 배열을
+ * 돌려준다 — "보유종목 터틀" 도입 이후 옛 위성 후보 평가를 끄는 단일 지점(코드는 보존, 플래그만 되돌리면
+ * 즉시 복원). `isTurtleCandidate`는 "보유종목 터틀"의 "다시 살 때 감시" 표식과 공유되는 필드라, 이 게이트가
+ * 없으면 위성 엔진이 그 종목을 자기 예산으로 오인해 진입 프리뷰를 만들 수 있다.
+ */
 export function turtleCandidateItems(watchlist: WatchlistItem[]): WatchlistItem[] {
+  if (!SATELLITE_TURTLE_EVALUATION_ENABLED) return [];
   return watchlist.filter(w => w.isTurtleCandidate && (w.priceOriginal ?? 0) > 0);
 }
 

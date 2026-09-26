@@ -33,6 +33,7 @@ import {
 import { computeDeployedBudgetKRW } from '../utils/turtleMarketData';
 import { buildTurtleReviewSummary, TurtleReviewSummary } from '../utils/turtleReview';
 import { isTurtleOrderLocked } from '../types/turtleLock';
+import { SATELLITE_TURTLE_EVALUATION_ENABLED } from '../types/satelliteTurtleVisibility';
 import { createLogger } from '../utils/logger';
 import { localDateString } from '../utils/localDate';
 
@@ -93,11 +94,14 @@ export function useTurtleActionReview({
     () => turtlePositions.filter(p => p.status === 'open'),
     [turtlePositions],
   );
+  // 옛 위성 터틀 후보 카운트 — "보유종목 터틀" 도입 이후 SATELLITE_TURTLE_EVALUATION_ENABLED=false면
+  // 항상 0(코드 보존, 단일 플래그로 복원 가능). isTurtleCandidate는 "보유종목 터틀" 감시 표식과 공유되므로
+  // 이 게이트가 없으면 그 종목 수만큼 옛 위성 배지("신호 N")가 오인 표시된다.
   const turtleCandidateCount = useMemo(
-    () => watchlist.filter(w => w.isTurtleCandidate).length,
+    () => (SATELLITE_TURTLE_EVALUATION_ENABLED ? watchlist.filter(w => w.isTurtleCandidate).length : 0),
     [watchlist],
   );
-  const hasTargets = turtleCandidateCount > 0 || openPositions.length > 0;
+  const hasTargets = SATELLITE_TURTLE_EVALUATION_ENABLED && (turtleCandidateCount > 0 || openPositions.length > 0);
 
   // 시세 준비: 이 세션에서 자동 업데이트 완료 or 오늘 이미 업데이트됨(새로고침 재진입 — hasAutoUpdated는 false로 남음)
   const alreadyUpdatedToday = (() => {
@@ -169,6 +173,7 @@ export function useTurtleActionReview({
   // 설정 값 자체는 덮어쓰거나 마이그레이션하지 않는다(사용자 설정 보존 — 잠금 해제 시 원래 값 복원).
   useEffect(() => {
     if (isTurtleOrderLocked()) return; // 자동 생성 금지 — Drive 무저장
+    if (!SATELLITE_TURTLE_EVALUATION_ENABLED) return; // 옛 위성 평가 비활성(코드 보존, 플래그로 복원)
     if (!snapshot || snapshot.targetCount === 0 || autoGenAttemptedRef.current) return;
     if (!turtleSettings.autoGenerateQueue) return; // opt-in 아님 — ref 미설정(세션 중 켜면 즉시 동작)
     let lastGenDate: string | null = null;

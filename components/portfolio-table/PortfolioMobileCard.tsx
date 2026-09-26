@@ -13,6 +13,8 @@ import AssetTrendChart from '../AssetTrendChart';
 import ChartViewerModal from '../common/ChartViewerModal';
 import TurtlePositionInfo from './TurtlePositionInfo';
 import type { TurtlePositionView } from '../../utils/turtlePositionView';
+import type { TurtleHoldingsRow } from '../../utils/turtleHoldingsView';
+import { TURTLE_HOLDINGS_STATUS_META } from './columnDefinitions';
 import { PIN_STAR, YUSEON_ACCOUNT_BADGE } from '../../constants/stateColorLadders';
 
 
@@ -32,6 +34,8 @@ interface PortfolioMobileCardProps {
   dcCrossDays?: number | null;
   /** 터틀 오픈 포지션 표시 모델 (있으면 읽기 전용 스트립, Phase 2b-5) */
   turtle?: TurtlePositionView;
+  /** "보유종목 터틀"(P2) 화면 행 — 청산선까지/터틀 상태 표시용 */
+  turtleHoldingsRow?: TurtleHoldingsRow;
   /** 선택 상태 (일괄 변경/선택 업데이트용) — onSelect와 함께 전달 시 체크박스 표시 */
   selected?: boolean;
   onSelect?: (id: string, checked: boolean) => void;
@@ -51,6 +55,7 @@ const PortfolioMobileCard: React.FC<PortfolioMobileCardProps> = ({
   gcCrossDays,
   dcCrossDays,
   turtle,
+  turtleHoldingsRow,
   selected,
   onSelect,
 }) => {
@@ -165,6 +170,20 @@ const PortfolioMobileCard: React.FC<PortfolioMobileCardProps> = ({
             <span className={getChangeColor(dropFromHigh)}>고가대비 {dropFromHigh.toFixed(1)}%</span>
             <span className={getChangeColor(yesterdayChange)}>전일 {yesterdayChange >= 0 ? '+' : ''}{yesterdayChange.toFixed(1)}%</span>
           </div>
+
+          {/* "보유종목 터틀"(P2) 상태 — 범위 밖 자산은 표시하지 않는다(노이즈 방지) */}
+          {turtleHoldingsRow && turtleHoldingsRow.status !== 'out-of-scope' && (
+            <div className="flex items-center gap-3 mt-1 text-xs">
+              <span className={TURTLE_HOLDINGS_STATUS_META[turtleHoldingsRow.status].className}>
+                터틀 {TURTLE_HOLDINGS_STATUS_META[turtleHoldingsRow.status].label}
+              </span>
+              {typeof turtleHoldingsRow.exitGapPct === 'number' && (
+                <span className={turtleHoldingsRow.exitGapPct < 0 ? 'text-down' : 'text-gray-400'}>
+                  청산선까지 {turtleHoldingsRow.exitGapPct.toFixed(1)}%
+                </span>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Right: menu button — PortfolioTableRow 와 같은 항목·순서(rowMenuItems) */}

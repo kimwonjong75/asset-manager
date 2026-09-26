@@ -137,6 +137,7 @@ import type { BucketId } from './bucket';
 import type { OwnerId } from './owner';
 import type { CleanupTag } from './cleanup';
 import type { TradePlan } from './tradePlan';
+import type { TurtleHoldingsWatchEntry, TurtleHoldDecision } from './turtleHoldings';
 
 export interface WatchlistItem {
   id: string;
@@ -159,6 +160,12 @@ export interface WatchlistItem {
   isTurtleCandidate?: boolean;
   /** 매매 계획(매수 전 계획, mode 'new-buy'). 매수 기록 시 자산으로 이전. 미지정=계획 없음 */
   tradePlan?: TradePlan;
+  /**
+   * "보유종목 터틀" 재매수 감시 표식(P1, 계획서 §6 P1) — 터틀 청산선 이탈로 판 종목이 여기 등록된다.
+   * `isTurtleCandidate`와 함께 설정(재사용, 새 필드 아님). 미지정=감시 대상 아님(또는 수동 등록만).
+   * 저장·전이는 `utils/turtleHoldingsState.recordTurtleExit`.
+   */
+  turtleWatch?: TurtleHoldingsWatchEntry;
 }
 
 export interface SellTransaction {
@@ -216,6 +223,12 @@ export interface Asset {
   indicators?: Indicators;
   /** 매매 계획(손절선·익절선·추세선·불타기선). **미지정=계획 없음** — 기본값 강제 주입 금지 */
   tradePlan?: TradePlan;
+  /**
+   * "보유종목 터틀" 보류 결정 이력(P1, 계획서 §6 P1) — 청산/재매수 신호가 왔는데도 사용자가 "이번엔 보류"를
+   * 선택한 기록. **미지정=보류 이력 없음** — 기본값 강제 주입 금지. 최근 `TURTLE_HOLD_DECISIONS_CAP`개만 유지.
+   * 연속 보류 횟수는 `utils/turtleHoldingsState.consecutiveHoldCount`로 파생(저장하지 않음).
+   */
+  turtleDecisions?: TurtleHoldDecision[];
 }
 
 export type NewAssetForm = Omit<Asset, 'id' | 'name' | 'currentPrice' | 'priceOriginal' | 'highestPrice' | 'purchaseExchangeRate' | 'previousClosePrice'>;

@@ -170,7 +170,7 @@
   },
   "components/portfolio-table/columnDefinitions.tsx": {
     "@typescript-eslint/no-unused-vars": {
-      "count": 2
+      "count": 1
     }
   },
   "components/portfolio-table/usePortfolioData.ts": {

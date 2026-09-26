@@ -6,6 +6,7 @@ import EditSellRecordModal from './components/EditSellRecordModal';
 import BuyMoreAssetModal from './components/BuyMoreAssetModal';
 import BulkUploadModal from './components/BulkUploadModal';
 import AddNewAssetModal from './components/AddNewAssetModal';
+import TurtleHoldingsBuyModal from './components/execution/TurtleHoldingsBuyModal';
 import TradePlanBulkWizard from './components/trade-plan/TradePlanBulkWizard';
 import TradePlanPlanner from './components/trade-plan/TradePlanPlanner';
 import PortfolioAssistant from './components/PortfolioAssistant';
@@ -29,7 +30,10 @@ import AnalyticsView from './components/layouts/AnalyticsView';
 import WatchlistView from './components/layouts/WatchlistView';
 import InvestmentGuideView from './components/layouts/InvestmentGuideView';
 import SignalReplayView from './components/layouts/SignalReplayView';
-import CleanupView from './components/cleanup/CleanupView';
+// 옛 '대청소' 코드는 보존한다(components/cleanup/CleanupView.tsx, 삭제하지 않음) — 계획서 §6 P2로
+// 'cleanup' 탭이 아래 TurtleCleanupView로 교체됐다. 되돌리려면 import를 CleanupView로 바꾸고 아래
+// 렌더의 컴포넌트명만 바꾸면 된다.
+import TurtleCleanupView from './components/cleanup/TurtleCleanupView';
 
 // Stage B: 탭별 앱바 구성(화면 제목·계정뷰 세그먼트·기간 선택·더보기 강조)은 constants/tabMeta의
 // TAB_META 한 곳에서 선언한다 — 여기서 `ui.activeTab !== …` 연쇄 조건을 다시 만들지 말 것.
@@ -408,7 +412,7 @@ const AppContent: React.FC = () => {
                 {ui.activeTab === 'analytics' && <AnalyticsView />}
                 {ui.activeTab === 'watchlist' && <WatchlistView />}
                 {ui.activeTab === 'replay' && <SignalReplayView />}
-                {ui.activeTab === 'cleanup' && <CleanupView />}
+                {ui.activeTab === 'cleanup' && <TurtleCleanupView />}
                 {ui.activeTab === 'guide' && <InvestmentGuideView />}
                 {ui.activeTab === 'settings' && <SettingsPage />}
               </div>
@@ -446,6 +450,7 @@ const AppContent: React.FC = () => {
             <AddNewAssetModal />
             <TradePlanBulkWizard />
             <TradePlanPlanner />
+            <TurtleHoldingsBuyModal />
 
             {/* P6: 어시스턴트 FAB 제거 — 더보기 메뉴 "AI 어시스턴트" 항목으로 이동(모달 마운트는 유지) */}
             <PortfolioAssistant />

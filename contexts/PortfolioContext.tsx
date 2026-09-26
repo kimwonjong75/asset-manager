@@ -53,6 +53,14 @@ import { fxRateToKRWFor } from '../utils/tradePlanMarket';
 import { transferWatchPlanToAsset, findWatchItemForAsset } from '../utils/tradePlanTransfer';
 import type { TradePlan, PlanDecision, PlanFill, PyramidFillResult, SellOutcome } from '../types/tradePlan';
 import { PYRAMID_FILL_ERROR_LABELS } from '../types/tradePlan';
+import { resolveHoldingsSettings } from '../utils/turtleHoldings';
+import { recordTurtleExit, recordTurtleReentry, recordTurtlePyramid, recordTurtleHold as recordTurtleHoldPure } from '../utils/turtleHoldingsState';
+import type { TurtleHoldingsRow } from '../utils/turtleHoldingsView';
+import type {
+  RecordTurtleSellInput, RecordTurtleSellOutcome,
+  RecordTurtleBuyInput, RecordTurtleBuyOutcome,
+  RecordTurtleHoldOutcome,
+} from '../types/turtleHoldingsActions';
 
 const PortfolioContext = createContext<PortfolioContextValue | null>(null);
 
@@ -295,6 +303,7 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [turtleExecAction, setTurtleExecAction] = useState<ActionItem | null>(null);
   const [cleanupExecAction, setCleanupExecAction] = useState<ActionItem | null>(null);
   const [rebalanceExecAction, setRebalanceExecAction] = useState<ActionItem | null>(null);
+  const [turtleHoldingsBuyTarget, setTurtleHoldingsBuyTarget] = useState<TurtleHoldingsRow | null>(null);
   // 매매 계획 일괄 만들기 마법사(TradePlanBulkWizard) 열림 여부 (P2a)
   const [tradePlanBulkOpen, setTradePlanBulkOpen] = useState<boolean>(false);
 
@@ -725,6 +734,7 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       turtleExecAction,
       cleanupExecAction,
       rebalanceExecAction,
+      turtleHoldingsBuyTarget,
       tradePlanBulkOpen,
       sellPrefill,
       plannerOpen,
@@ -858,6 +868,8 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       closeCleanupExecution: () => setCleanupExecAction(null),
       openRebalanceExecution: (action: ActionItem) => setRebalanceExecAction(action),
       closeRebalanceExecution: () => setRebalanceExecAction(null),
+      openTurtleHoldingsBuy: (row: TurtleHoldingsRow) => setTurtleHoldingsBuyTarget(row),
+      closeTurtleHoldingsBuy: () => setTurtleHoldingsBuyTarget(null),
       // 카테고리 관리
       addCategory: (name: string, baseType: CategoryBaseType) => {
         const newCat = {
@@ -941,6 +953,112 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         });
         commitPortfolioPatch({ assets: result.assets, watchlist: result.watchlist, actionQueue: result.actionQueue });
       },
+
+      // "보유종목 터틀" 저장 액션 (P2, 계획서 §6 P2 2-2) — 돈 기록이 먼저 성공한 뒤에만 터틀 상태를 커밋한다
+      // (RULES §6-S 단일 저장 경로, CLAUDE.md "보이지 않는 쓰기 금지"). getSnapshot()을 읽는다 —
+      // handleConfirmSell/handleAddAsset/handleConfirmBuyMore의 커밋 직후 같은 틱에 이어질 수 있어
+      // 렌더 클로저(watchlist/turtlePositions)가 stale일 수 있다(§8 stale 규약).
+      recordTurtleSell: async (input: RecordTurtleSellInput): Promise<RecordTurtleSellOutcome> => {
+        const asset = getSnapshot().assets.find(a => a.id === input.assetId);
+        if (!asset) return { ok: false, reason: 'asset-not-found' };
+
+        const sellResult = await handleConfirmSell(input.assetId, input.sellQuantity, input.sellPrice, input.sellDate, input.settlementCurrency);
+        if (!sellResult.ok) return sellResult;
+
+        // 일부 매도는 터틀 청산이 아니다 — 전량 매도(assetClosed)일 때만 감시 등록·포지션 종료(Advisor 보정 2026-09-26)
+        if (!input.addToWatchlist || !sellResult.assetClosed) {
+          return {
+            ok: true, sellRecordId: sellResult.sellRecordId, assetClosed: sellResult.assetClosed,
+            updatedAsset: sellResult.updatedAsset, watchItemId: null, isNewWatchItem: false, closedPositionId: null,
+          };
+        }
+
+        const snap = getSnapshot();
+        const position = snap.turtlePositions.find(
+          p => p.assetId === input.assetId && p.status === 'open' && p.origin === 'holdings-reentry',
+        ) ?? null;
+        const exitResult = recordTurtleExit({
+          asset: {
+            ticker: asset.ticker, exchange: asset.exchange, name: asset.customName?.trim() || asset.name,
+            categoryId: asset.categoryId, currency: asset.currency,
+          },
+          soldAt: sellResult.sellRecord.sellDate,
+          soldPriceOriginal: sellResult.sellRecord.sellPriceOriginal ?? 0,
+          source: 'turtle-exit',
+          watchlist: snap.watchlist,
+          position,
+          makeWatchId: () => `tw-${Date.now()}`,
+        });
+        if (!exitResult.ok) return { ok: false, reason: exitResult.reason };
+
+        commitPortfolio({
+          watchlist: exitResult.watchlist,
+          turtlePositions: exitResult.closedPosition
+            ? snap.turtlePositions.map(p => (p.id === exitResult.closedPosition!.id ? exitResult.closedPosition! : p))
+            : snap.turtlePositions,
+        });
+        setSuccessMessage('매도를 기록했습니다. "다시 살 때" 감시 명단에 추가했습니다.');
+        return {
+          ok: true, sellRecordId: sellResult.sellRecordId, assetClosed: sellResult.assetClosed,
+          updatedAsset: sellResult.updatedAsset, watchItemId: exitResult.watchItemId,
+          isNewWatchItem: exitResult.isNewWatchItem, closedPositionId: exitResult.closedPosition?.id ?? null,
+        };
+      },
+      recordTurtleBuy: async (input: RecordTurtleBuyInput): Promise<RecordTurtleBuyOutcome> => {
+        const settings = resolveHoldingsSettings(getSnapshot().turtleSettings.holdings);
+
+        if (input.mode === 'reentry') {
+          const form = {
+            ticker: input.ticker, exchange: input.exchange, name: input.name, categoryId: input.categoryId,
+            currency: input.currency, quantity: input.quantity, purchasePrice: input.fillPrice, purchaseDate: input.fillDate,
+          } as unknown as Parameters<typeof handleAddAsset>[0];
+          const addResult = await handleAddAsset(form);
+          if (!addResult.ok) return addResult;
+
+          const reentryResult = recordTurtleReentry({
+            id: `tp-${Date.now()}`, ticker: input.ticker, name: input.name, assetId: addResult.assetId,
+            fillDate: input.fillDate, fillPrice: input.fillPrice, quantity: input.quantity, nAtFill: input.nAtFill,
+            fxRate: input.fxRate, donchianHigh: input.donchianHigh, settings,
+          });
+          if (!reentryResult.ok) return { ok: false, reason: reentryResult.reason };
+
+          commitPortfolio({ assets: addResult.nextAssets, turtlePositions: [...getSnapshot().turtlePositions, reentryResult.position] });
+          setSuccessMessage(`${input.name} 재매수를 기록했습니다.`);
+          return { ok: true, assetId: addResult.assetId, positionId: reentryResult.position.id };
+        }
+
+        // mode === 'pyramid'
+        const buyResult = await handleConfirmBuyMore(input.assetId, input.quantity, input.fillPrice, input.fillDate);
+        if (!buyResult.ok) return buyResult;
+
+        const snap = getSnapshot();
+        const position = snap.turtlePositions.find(p => p.id === input.positionId);
+        if (!position) return { ok: false, reason: 'position-missing' };
+        const pyramidResult = recordTurtlePyramid(
+          position,
+          { fillDate: input.fillDate, fillPrice: input.fillPrice, quantity: input.quantity, nAtFill: input.nAtFill, fxRate: input.fxRate },
+          settings,
+        );
+        if (!pyramidResult.ok) return { ok: false, reason: pyramidResult.reason };
+
+        commitPortfolio({
+          assets: buyResult.nextAssets,
+          turtlePositions: snap.turtlePositions.map(p => (p.id === position.id ? pyramidResult.position : p)),
+        });
+        setSuccessMessage(`${position.name} 추가 매수(불타기)를 기록했습니다.`);
+        return { ok: true, assetId: input.assetId, positionId: position.id };
+      },
+      recordTurtleHold: (assetId: string, reason: string): RecordTurtleHoldOutcome => {
+        const snap = getSnapshot();
+        const asset = snap.assets.find(a => a.id === assetId);
+        if (!asset) return { ok: false, reason: 'asset-not-found' };
+        const result = recordTurtleHoldPure({ decisions: asset.turtleDecisions, date: localDateString(), reason });
+        if (!result.ok) return result;
+        commitPortfolio({ assets: snap.assets.map(a => (a.id === assetId ? { ...a, turtleDecisions: result.decisions } : a)) });
+        setSuccessMessage('이번엔 보류로 기록했습니다.');
+        return { ok: true };
+      },
+
       // 시장 요약(금 김치 프리미엄 + 환율)
       refreshMarketOverview,
       // 백업

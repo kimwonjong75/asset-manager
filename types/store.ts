@@ -21,6 +21,12 @@ import type { PortfolioSavePatch } from './portfolioSave';
 import type { TradePlan, PlanDecision, PlanFill, PyramidFillResult, SellOutcome } from './tradePlan';
 import type { TradePlanSignalRow } from '../hooks/useTradePlanSignals';
 import type { TradePlanSignalSummary } from '../utils/tradePlanMarket';
+import type {
+  RecordTurtleSellInput, RecordTurtleSellOutcome,
+  RecordTurtleBuyInput, RecordTurtleBuyOutcome,
+  RecordTurtleHoldOutcome,
+} from './turtleHoldingsActions';
+import type { TurtleHoldingsRow } from '../utils/turtleHoldingsView';
 
 export type PortfolioHistory = PortfolioSnapshot[];
 
@@ -113,6 +119,8 @@ export interface ModalState {
   cleanupExecAction: ActionItem | null;
   /** 리밸런싱 실행 모달 대상 (Phase 4c-2). null=닫힘. 전용 RebalanceExecuteModal만 사용 */
   rebalanceExecAction: ActionItem | null;
+  /** "보유종목 터틀" 재매수 계산기 모달 대상 (P2 §4.3). null=닫힘. 전용 TurtleHoldingsBuyModal만 사용 */
+  turtleHoldingsBuyTarget: TurtleHoldingsRow | null;
   /** 매매 계획 일괄 만들기 마법사(TradePlanBulkWizard) 열림 여부 (P2a) */
   tradePlanBulkOpen: boolean;
   /**
@@ -290,6 +298,9 @@ export interface PortfolioActions {
   /** 리밸런싱 실행 모달 열기/닫기 (Phase 4c-2). 여는 것만으로는 아무 상태도 바뀌지 않음 */
   openRebalanceExecution: (action: ActionItem) => void;
   closeRebalanceExecution: () => void;
+  /** "보유종목 터틀" 재매수 계산기 모달 열기/닫기 (P2 §4.3). 여는 것만으로는 아무 상태도 바뀌지 않음 */
+  openTurtleHoldingsBuy: (row: TurtleHoldingsRow) => void;
+  closeTurtleHoldingsBuy: () => void;
 
   // 카테고리 관리
   addCategory: (name: string, baseType: CategoryBaseType) => void;
@@ -311,6 +322,15 @@ export interface PortfolioActions {
   commitPortfolioPatch: (patch: PortfolioPatch) => void;
   /** 대청소 일괄 분류 저장 (Phase 3b) — assetId별 결정을 자산에 적용 후 단일 커밋. 결정 없는 자산 불변 */
   saveCleanupDecisions: (decisions: Record<string, CleanupDecision>) => void;
+
+  // "보유종목 터틀" 저장 액션 (P2, 계획서 §6 P2 2-2) — 돈 기록(confirmSell/addAsset/confirmBuyMore)이
+  // 먼저 성공한 뒤에만 터틀 상태(watchlist/turtlePositions)를 커밋한다.
+  /** 매도 확정 성공 후 → (addToWatchlist면) "다시 살 때 감시" 등록 + 재매수분이면 포지션 종료, 단일 커밋 */
+  recordTurtleSell: (input: RecordTurtleSellInput) => Promise<RecordTurtleSellOutcome>;
+  /** 재매수(신규 자산+포지션) 또는 불타기(기존 포지션 유닛 추가) — 돈 기록 성공 후 포지션 커밋 */
+  recordTurtleBuy: (input: RecordTurtleBuyInput) => Promise<RecordTurtleBuyOutcome>;
+  /** 청산/재매수 신호가 왔는데 이번엔 보류 — 사유 필수, `Asset.turtleDecisions`에 기록(최근 20건 유지) */
+  recordTurtleHold: (assetId: string, reason: string) => RecordTurtleHoldOutcome;
 
   // 시장 요약(금 김치 프리미엄 + 환율)
   refreshMarketOverview: () => Promise<void>;

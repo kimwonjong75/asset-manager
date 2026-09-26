@@ -20,6 +20,7 @@ import { actionNeededCount, pendingOrderCounts } from '../../utils/todayViewMode
 // Home / Dashboard Components
 import ScopeChip from '../common/ScopeChip';
 import TodayActionCenter, { HOME_STRATEGY_SECTION_ID } from '../today/TodayActionCenter';
+import TurtleHoldingsTodayCard from '../dashboard/TurtleHoldingsTodayCard';
 import HomeSnapshotCard from '../dashboard/HomeSnapshotCard';
 import DashboardControls from '../dashboard/DashboardControls';
 import SoldAssetsStats from '../dashboard/SoldAssetsStats';
@@ -132,6 +133,11 @@ const DashboardView: React.FC = () => {
         <p className="hidden sm:block text-xs text-gray-500">
           계정 선택은 이 화면 전체에 적용돼요. 따르지 않는 카드는 범위를 표시합니다.
         </p>
+      </div>
+
+      {/* 터틀 오늘 할 일 — 홈 맨 위(계획서 §4.1, P2). 계정 선택과 무관하게 전체 범위(가족 제외)로 계산 */}
+      <div className="mb-4">
+        <TurtleHoldingsTodayCard />
       </div>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:grid-flow-row-dense xl:grid-cols-12 xl:gap-5 items-start">
