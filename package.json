@@ -52,6 +52,7 @@
     "test:tradeplanmarket": "npx --yes tsx tests/tradePlanMarketParity.ts",
     "test:tradeplantransfer": "npx --yes tsx tests/tradePlanTransferParity.ts",
     "test:notifymanifest": "npx --yes tsx tests/notifyManifestParity.ts",
+    "test:turtlenotify": "npx --yes tsx tests/turtleHoldingsNotifyParity.ts",
     "test:markethours": "npx --yes tsx tests/marketHoursParity.ts",
     "test:freshness": "npx --yes tsx tests/priceFreshnessParity.ts",
     "test:deeplink": "npx --yes tsx tests/deepLinkParity.ts",

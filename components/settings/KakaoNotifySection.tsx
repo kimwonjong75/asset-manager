@@ -29,6 +29,8 @@ const KakaoNotifySection: React.FC = () => {
 
   const [showSecret, setShowSecret] = useState(false);
   const busy = opStatus !== 'idle';
+  const turtleHoldingCount = (manifest.turtle?.legacyHoldings.length ?? 0) + (manifest.turtle?.reentryPositions.length ?? 0);
+  const turtleWatchCount = manifest.turtle?.watchItems.length ?? 0;
 
   return (
     <div className="bg-gray-800 rounded-lg">
@@ -36,6 +38,9 @@ const KakaoNotifySection: React.FC = () => {
         <h2 className="text-xl font-bold text-white">카카오톡 알림</h2>
         <p className="text-gray-400 text-sm mt-1">
           매매 계획의 손절선·익절선·불타기선은 개장 중 매시간, 추세선 이탈은 마감 확정 종가로 1회 카카오톡("나에게 보내기")으로 알려드립니다.
+        </p>
+        <p className="text-gray-400 text-xs mt-1">
+          터틀 알림 포함 — 보유 {turtleHoldingCount}종목 · 감시 {turtleWatchCount}종목의 팔 때·다시 살 때·추가 매수·손절 이탈을 마감 후 1회 + 아침 요약으로 알려드립니다.
         </p>
       </div>
 

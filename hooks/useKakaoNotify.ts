@@ -110,8 +110,11 @@ export function useKakaoNotify(): UseKakaoNotifyResult {
       appUrl: APP_PUBLIC_URL,
       now: new Date().toISOString(),
       pyramidAlerts: settings.pyramidAlerts,
+      watchlist: data.watchlist,
+      turtlePositions: data.turtlePositions,
+      turtleHoldingsSettings: data.turtleSettings.holdings,
     }),
-    [data.assets, settings.pyramidAlerts],
+    [data.assets, data.watchlist, data.turtlePositions, data.turtleSettings.holdings, settings.pyramidAlerts],
   );
 
   const currentHash = useMemo(() => manifestHash(manifest), [manifest]);

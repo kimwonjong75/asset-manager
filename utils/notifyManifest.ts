@@ -10,10 +10,16 @@
 // 대상 필터: tradePlan.status==='active' && CASH 아님 && owner!=='YUSEON'(옵션으로 포함 가능).
 // 통화 규약(D6): 가격은 TradePlan 내부에 이미 원통화로 저장돼 있다 — 여기서 환산하지 않는다.
 
-import type { Asset, Currency } from '../types';
+import { Currency, normalizeExchange } from '../types';
+import type { Asset, WatchlistItem } from '../types';
 import { isBaseType } from '../types/category';
 import type { TradePlan } from '../types/tradePlan';
+import type { TurtlePosition } from '../types/turtle';
+import type { TurtleHoldingsSettings } from '../types/turtleHoldings';
 import { isEligibleForBulkPlan } from './tradePlan';
+import { resolveHoldingsSettings, isInHoldingsScope } from './turtleHoldings';
+import { todayInstrumentKey } from './todayTurtle';
+import { marketIdForExchange } from './holdingMarkets';
 
 export const NOTIFY_MANIFEST_VERSION = 1 as const;
 
@@ -25,6 +31,62 @@ export interface NotifyManifestItem {
   currency: Currency;
   quantity: number;
   plan: TradePlan;
+}
+
+// ── P4(2026-09-26) — "보유종목 터틀" 섹션(계획서 §4.5·§6 P4) ────────────────────
+// 개인 정보(금액·수량 등)는 발송 문구 계산에 필요한 최소만 싣는다. 청산/재진입선은 절대
+// 싣지 않는다 — GAS가 확정 종가로 매일 재계산한다(`utils/turtleHoldings.ts`를 그대로 재사용).
+
+export interface NotifyManifestTurtleHolding {
+  assetId: string;
+  ticker: string;
+  exchange: string;
+  name: string;
+  currency: Currency;
+  isCrypto: boolean;
+  quantity: number;
+}
+
+export interface NotifyManifestTurtleReentryUnit {
+  fillPrice: number;
+  quantity: number;
+  nAtFill: number;
+}
+
+export interface NotifyManifestTurtleReentryPosition {
+  positionId: string;
+  assetId: string;
+  ticker: string;
+  exchange: string;
+  name: string;
+  currency: Currency;
+  isCrypto: boolean;
+  units: NotifyManifestTurtleReentryUnit[];
+  /** 전체 유닛 합산 보유 수량(문구 표시용 — Σunits.quantity, 앱이 미리 더해 보낸다). */
+  quantity: number;
+  /** 공통 손절가(원통화) — 앱이 최신 계산값을 싣는다(GAS는 이 값을 그대로 비교만 한다). */
+  stopPrice: number;
+  /** ATR 추적 청산 전용 래칫 상태. 미사용/미보유면 null. */
+  trailHighClose: number | null;
+  /** 포지션 시작일(YYYY-MM-DD) — atrTrail 청산의 진입 인덱스 산정용. */
+  openedAt: string;
+}
+
+export interface NotifyManifestTurtleWatch {
+  watchItemId: string;
+  ticker: string;
+  exchange: string;
+  name: string;
+  currency: Currency;
+  isCrypto: boolean;
+}
+
+export interface NotifyManifestTurtleSection {
+  /** 병합·범위 가드까지 끝난 완성 설정(`resolveHoldingsSettings` 결과) — GAS는 그대로 쓰면 된다. */
+  settings: TurtleHoldingsSettings;
+  legacyHoldings: NotifyManifestTurtleHolding[];
+  reentryPositions: NotifyManifestTurtleReentryPosition[];
+  watchItems: NotifyManifestTurtleWatch[];
 }
 
 export interface NotifyManifest {
@@ -43,6 +105,12 @@ export interface NotifyManifest {
    */
   planlessCount: number;
   items: NotifyManifestItem[];
+  /**
+   * P4(2026-09-26) — "보유종목 터틀" 섹션. optional인 이유: 이 필드 도입 이전에 저장된 매니페스트
+   * (GAS Drive 파일에 캐시된 옛 JSON)에는 실제로 값이 없을 수 있다 — GAS는 항상 `manifest.turtle?.`로
+   * 접근해야 한다(사용자가 재동기화하면 항상 채워진다).
+   */
+  turtle?: NotifyManifestTurtleSection;
 }
 
 export interface BuildNotifyManifestInput {
@@ -53,6 +121,88 @@ export interface BuildNotifyManifestInput {
   /** 유선(가족) 자산도 포함할지. 기본 false — owner 축 규약(RULES: 유선=전략 상시 제외)과 동일. */
   includeYuseon?: boolean;
   pyramidAlerts: boolean;
+  /** P4 — "보유종목 터틀" 감시 명단(isTurtleCandidate 항목만 추린다). 미지정=빈 배열(터틀 섹션 빈 목록). */
+  watchlist?: WatchlistItem[];
+  /** P4 — 오픈 포지션(origin==='holdings-reentry' && status==='open'만 추린다). 미지정=빈 배열. */
+  turtlePositions?: TurtlePosition[];
+  /** P4 — 저장된 원본 설정(부분/손상 허용, `resolveHoldingsSettings`가 병합·가드). 미지정=전부 기본값. */
+  turtleHoldingsSettings?: Partial<TurtleHoldingsSettings> | null;
+}
+
+/**
+ * "보유종목 터틀" 섹션 조립(P4) — 가족(유선) 제외는 `resolveHoldingsSettings().excludeFamilyOwner`
+ * (터틀 설정 축)로 판정한다. TradePlan 섹션의 `includeYuseon`(레거시 옵션)과는 별개다.
+ */
+function buildTurtleSection(input: BuildNotifyManifestInput): NotifyManifestTurtleSection {
+  const settings = resolveHoldingsSettings(input.turtleHoldingsSettings);
+  const assetById = new Map(input.assets.map(a => [a.id, a] as const));
+  const watchlist = input.watchlist ?? [];
+  const turtlePositions = input.turtlePositions ?? [];
+
+  const openReentryPositions = turtlePositions.filter(
+    p => p.origin === 'holdings-reentry' && p.status === 'open',
+  );
+  const reentryAssetIds = new Set(
+    openReentryPositions.map(p => p.assetId).filter((x): x is string => typeof x === 'string'),
+  );
+
+  const legacyHoldings: NotifyManifestTurtleHolding[] = input.assets
+    .filter(a => !isBaseType(a.categoryId, 'CASH'))
+    .filter(a => a.quantity > 0)
+    .filter(a => !reentryAssetIds.has(a.id))
+    .filter(a => isInHoldingsScope(a, settings))
+    .map(a => ({
+      assetId: a.id,
+      ticker: a.ticker,
+      exchange: a.exchange,
+      name: a.customName ?? a.name,
+      currency: a.currency,
+      isCrypto: marketIdForExchange(a.exchange) === 'CRYPTO',
+      quantity: a.quantity,
+    }));
+
+  const reentryPositions: NotifyManifestTurtleReentryPosition[] = [];
+  for (const p of openReentryPositions) {
+    const asset = p.assetId ? assetById.get(p.assetId) : undefined;
+    if (!asset) continue; // 자산 연결이 끊긴 포지션 — 통화/거래소를 알 수 없어 판정 불가, 건너뜀
+    if (!isInHoldingsScope(asset, settings)) continue;
+    reentryPositions.push({
+      positionId: p.id,
+      assetId: asset.id,
+      ticker: p.ticker,
+      exchange: asset.exchange,
+      name: asset.customName ?? asset.name,
+      currency: asset.currency,
+      isCrypto: marketIdForExchange(asset.exchange) === 'CRYPTO',
+      units: p.units.map(u => ({ fillPrice: u.fillPrice, quantity: u.quantity, nAtFill: u.nAtFill })),
+      quantity: p.units.reduce((sum, u) => sum + u.quantity, 0),
+      stopPrice: p.stopPrice,
+      trailHighClose: p.trailHighClose ?? null,
+      openedAt: p.openedAt,
+    });
+  }
+
+  // 이미 보유/재매수 중인 종목은 감시 후보에서 뺀다(중복 매수 방지 — turtleHoldingsView의
+  // heldTickerKeys 관례와 동일).
+  const heldKeys = new Set<string>([
+    ...legacyHoldings.map(h => todayInstrumentKey(h.ticker, h.exchange, normalizeExchange)),
+    ...reentryPositions.map(h => todayInstrumentKey(h.ticker, h.exchange, normalizeExchange)),
+  ]);
+
+  const watchItems: NotifyManifestTurtleWatch[] = watchlist
+    .filter(w => w.isTurtleCandidate === true)
+    .filter(w => isInHoldingsScope({ id: w.id, categoryId: w.categoryId }, settings))
+    .filter(w => !heldKeys.has(todayInstrumentKey(w.ticker, w.exchange, normalizeExchange)))
+    .map(w => ({
+      watchItemId: w.id,
+      ticker: w.ticker,
+      exchange: w.exchange,
+      name: w.name,
+      currency: w.currency ?? Currency.KRW,
+      isCrypto: marketIdForExchange(w.exchange) === 'CRYPTO',
+    }));
+
+  return { settings, legacyHoldings, reentryPositions, watchItems };
 }
 
 function isEligibleForNotify(asset: Asset, includeYuseon: boolean): boolean {
@@ -77,6 +227,7 @@ export function buildNotifyManifest(input: BuildNotifyManifestInput): NotifyMani
       plan: a.tradePlan as TradePlan,
     }));
   const planlessCount = input.assets.filter(a => isEligibleForBulkPlan(a)).length;
+  const turtle = buildTurtleSection(input);
   return {
     version: NOTIFY_MANIFEST_VERSION,
     asOf: input.now,
@@ -85,6 +236,7 @@ export function buildNotifyManifest(input: BuildNotifyManifestInput): NotifyMani
     pyramidAlerts: input.pyramidAlerts,
     planlessCount,
     items,
+    turtle,
   };
 }
 
@@ -114,6 +266,8 @@ export function manifestHash(manifest: NotifyManifest): string {
     pyramidAlerts: manifest.pyramidAlerts,
     planlessCount: manifest.planlessCount,
     items: manifest.items,
+    // P4 — turtle 섹션에는 시각 필드가 없으므로 그대로 포함해도 무방(needsSync가 실제 내용 변화만 잡는다).
+    turtle: manifest.turtle ?? null,
   };
   const s = stableStringify(stable);
   let h = 0x811c9dc5; // FNV-1a 32bit offset basis

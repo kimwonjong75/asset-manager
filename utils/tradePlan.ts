@@ -660,7 +660,8 @@ function formatQty(q: number): string {
   return Number.isInteger(q) ? `${q}주` : `${q}`;
 }
 
-function clip(s: string, max = KAKAO_TEXT_MAX): string {
+/** ≤max자로 자르고 말줄임표를 붙인다. P4(2026-09-26)부터 `utils/turtleHoldingsNotify.ts`도 공유(재구현 금지). */
+export function clip(s: string, max = KAKAO_TEXT_MAX): string {
   return s.length <= max ? s : s.slice(0, max - 1) + '…';
 }
 
@@ -683,8 +684,10 @@ export interface KakaoTextInput {
  * 카톡은 앱 밖 평문이라 lucide 아이콘을 쓸 수 없어 이모지가 유일한 색 채널이다
  * (RULES §8 '이모지로 의미 색 표시 금지'는 components/·App.tsx 한정).
  * 바꾸면 GAS에 반영하려면 `npm run gas:push` 재배포 필요(번들이 이 파일을 그대로 import).
+ * P4(2026-09-26)부터 `utils/turtleHoldingsNotify.ts`(터틀 알림 문구)도 이 상수를 그대로 재사용한다
+ * — "유일한 정의"는 이 파일 하나로 유지된다(RULES §8).
  */
-const KAKAO_EMOJI = {
+export const KAKAO_EMOJI = {
   stopHit: '\u{1F7E0}',        // 🟠
   exitLineHit: '\u{1F535}',    // 🔵
   takeProfitHit: '\u{1F534}',  // 🔴

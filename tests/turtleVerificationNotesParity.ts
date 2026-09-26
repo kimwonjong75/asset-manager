@@ -107,7 +107,7 @@ function check(name: string, actual: unknown, expected: unknown): void {
   check('collect: 기본값 불타기 문구 = 2R 문구', notes.pyramid, TURTLE_VERIFICATION_NOTES['pyramid-2r']);
   check('collect: 기본값 한도 문구 = 10% 문구', notes.cap, TURTLE_VERIFICATION_NOTES['cap-10']);
   check('collect: 기본값 전체위험 문구 = 24% 문구', notes.totalRisk, TURTLE_VERIFICATION_NOTES['total-risk-24']);
-  check('collect: 기본값 계좌축소 문구 = on 문구(기본 true)', notes.drawdown, TURTLE_VERIFICATION_NOTES['drawdown-on']);
+  check('collect: 기본값 계좌축소 문구 = off 문구(2026-09-26 사용자 결정: 기본 꺼짐)', notes.drawdown, TURTLE_VERIFICATION_NOTES['drawdown-off']);
   check('collect: 기본값 코어제외 문구 = off 문구(기본 빈 배열)', notes.coreExcl, TURTLE_VERIFICATION_NOTES['core-excl-off']);
 }
 

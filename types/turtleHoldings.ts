@@ -72,7 +72,7 @@ export const DEFAULT_TURTLE_HOLDINGS_SETTINGS: TurtleHoldingsSettings = {
   pyramidSizeMultiplier: 1,
   positionCapPct: 10,
   maxTotalRiskPct: 24,
-  drawdownScalingEnabled: true,
+  drawdownScalingEnabled: false, // 2026-09-26 사용자 결정: 검증상 이득 없음 → 기본 꺼짐(원조는 켜짐, 설정에서 켤 수 있음)
   minOrderKRW: 50_000,
   excludeFamilyOwner: true,
   excludedAssetIds: [],

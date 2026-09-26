@@ -39,7 +39,25 @@ import type {
   TradePlanEvaluation,
   TradePlanMarket,
 } from '../../../types/tradePlan';
-import type { NotifyManifest, NotifyManifestItem } from '../../../utils/notifyManifest';
+import type {
+  NotifyManifest,
+  NotifyManifestItem,
+  NotifyManifestTurtleSection,
+  NotifyManifestTurtleHolding,
+  NotifyManifestTurtleReentryPosition,
+  NotifyManifestTurtleWatch,
+} from '../../../utils/notifyManifest';
+import { resolveHoldingsSettings } from '../../../utils/turtleHoldings';
+import { resolveMarketTz, extractCompletedBars } from '../../../utils/todayTurtle';
+import type { DailyBar, RawSeries } from '../../../utils/todayTurtle';
+import type { TurtleHoldingsSettings } from '../../../types/turtleHoldings';
+import {
+  evaluateLegacyHoldingForNotify,
+  evaluateReentryPositionForNotify,
+  evaluateWatchItemForNotify,
+  formatTurtleMorningDigest,
+} from '../../../utils/turtleHoldingsNotify';
+import type { TurtleNotifyCandidate } from '../../../utils/turtleHoldingsNotify';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // 상수
@@ -563,7 +581,6 @@ function buildDeepLink(assetId: string | null): string {
 // ═══════════════════════════════════════════════════════════════════════════
 
 interface NotifyCandidate {
-  ev: TradePlanEvaluation;
   text: string;
   summary: string;
   linkUrl: string;
@@ -579,9 +596,136 @@ function buildCandidate(item: NotifyManifestItem, ev: TradePlanEvaluation, marke
     timeLabel: hhmmKst(now), isIntraday: market.isIntraday, quantity: item.quantity,
   });
   return {
-    ev, text, summary: `${item.name} ${PLAN_TIER_LABELS[ev.tier]}`,
+    text, summary: `${item.name} ${PLAN_TIER_LABELS[ev.tier]}`,
     linkUrl: buildDeepLink(item.assetId), idempotencyKey,
   };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// "보유종목 터틀" 판정 — P4(계획서 §4.5·§6 P4). 마감 확정 종가로만 판정한다(장중 미판정).
+// 재사용(재구현 금지): 판정 자체는 utils/turtleHoldings.ts(P0)·utils/turtleHoldingsNotify.ts(문구
+// 조립)를 그대로 쓴다. 이 파일은 OHLCV 조회(UrlFetchApp)와 시장별 배선만 담당한다.
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * 완료봉 조회 창(달력일) — `utils/turtleHoldingsView.ts`의
+ * `turtleHoldingsRequiredTradingDays`/`turtleHoldingsLookbackCalendarDays`와 동일한 여유 공식
+ * (값 자체는 골든 대상이 아님, RULES §15). 그 파일 전체를 GAS 번들에 끌어오지 않기 위해
+ * 이 계산만 별도로 둔다 — 판정 로직 자체(청산선·재진입선 등)는 utils/turtleHoldings.ts를
+ * 값으로 그대로 import해서 쓰므로 재구현이 아니다.
+ */
+function turtleOhlcvLookbackDays(settings: TurtleHoldingsSettings): number {
+  const tradingDays = Math.max(settings.entryLookback + 1, settings.exitLookback + 1, settings.maPeriod, 21);
+  return Math.ceil(tradingDays * 2.4) + 30;
+}
+
+/** OHLCV(시가/고가/저가/종가) 배치 조회 — `/history`·`/upbit/history` 확장 응답(RULES §14)을 그대로 쓴다. */
+function fetchOhlcvBatch(tickers: string[], market: MarketId, startDate: string, endDate: string): Map<string, RawSeries> {
+  const result = new Map<string, RawSeries>();
+  if (tickers.length === 0) return result;
+  if (market === 'CRYPTO') {
+    try {
+      const data = httpPostJson(`${CLOUD_RUN_BASE_URL}/upbit/history`, {
+        symbols: tickers, start_date: startDate, end_date: endDate,
+      }) as Record<string, RawSeries>;
+      for (const ticker of tickers) {
+        const pair = toUpbitPair(ticker);
+        const entry = data[pair] ?? data[ticker.toUpperCase()];
+        if (entry) result.set(ticker.toUpperCase(), entry);
+      }
+    } catch (e) {
+      console.error('터틀 crypto OHLCV 조회 실패:', e);
+    }
+    return result;
+  }
+  const upper = tickers.map(t => t.toUpperCase());
+  for (let i = 0; i < upper.length; i += QUOTE_CHUNK_SIZE) {
+    const chunk = upper.slice(i, i + QUOTE_CHUNK_SIZE);
+    try {
+      const data = httpPostJson(`${CLOUD_RUN_BASE_URL}/history`, {
+        tickers: chunk, start_date: startDate, end_date: endDate,
+      }) as Record<string, RawSeries>;
+      for (const ticker of chunk) {
+        if (data[ticker]) result.set(ticker, data[ticker]);
+      }
+    } catch (e) {
+      console.error('터틀 history OHLCV 청크 실패:', e);
+    }
+  }
+  return result;
+}
+
+type TurtleItemKind = 'legacy' | 'reentry' | 'watch';
+type TurtleNotifyItem = NotifyManifestTurtleHolding | NotifyManifestTurtleReentryPosition | NotifyManifestTurtleWatch;
+
+/**
+ * 한 시장(KR/US/CRYPTO)의 터틀 대상(원래 보유분·재매수분·감시 관심종목)을 전부 평가해
+ * 신호가 난 것만 콜백으로 넘긴다. OHLCV는 이 함수 안에서 한 번만 배치 조회한다.
+ */
+function evaluateTurtleMarket(
+  turtle: NotifyManifestTurtleSection,
+  market: MarketId,
+  sessionDate: string,
+  now: Date,
+  onResult: (kind: TurtleItemKind, item: TurtleNotifyItem, candidate: TurtleNotifyCandidate) => void,
+): void {
+  const settings = resolveHoldingsSettings(turtle.settings);
+  const legacyItems = turtle.legacyHoldings.filter(it => classifyMarket(it.exchange) === market);
+  const reentryItems = turtle.reentryPositions.filter(it => classifyMarket(it.exchange) === market);
+  const watchItems = turtle.watchItems.filter(it => classifyMarket(it.exchange) === market);
+  const tickers = [...legacyItems, ...reentryItems, ...watchItems].map(it => it.ticker);
+  if (tickers.length === 0) return;
+
+  const lookbackDays = turtleOhlcvLookbackDays(settings);
+  const startDate = addDaysStr(sessionDate, -lookbackDays);
+  const ohlcv = fetchOhlcvBatch(tickers, market, startDate, sessionDate);
+  const barsFor = (it: { ticker: string; exchange: string; isCrypto: boolean }): DailyBar[] =>
+    extractCompletedBars(ohlcv.get(it.ticker.toUpperCase()), resolveMarketTz(it.exchange, it.isCrypto), now).bars;
+
+  for (const it of legacyItems) {
+    const c = evaluateLegacyHoldingForNotify(it, barsFor(it), settings);
+    if (c) onResult('legacy', it, c);
+  }
+  for (const it of reentryItems) {
+    const c = evaluateReentryPositionForNotify(it, barsFor(it), settings);
+    if (c) onResult('reentry', it, c);
+  }
+  for (const it of watchItems) {
+    const c = evaluateWatchItemForNotify(it, barsFor(it), settings);
+    if (c) onResult('watch', it, c);
+  }
+}
+
+/** closeCheck 전용 — 신호를 실제 발송 후보(NotifyCandidate)로 변환해 candidates에 쌓는다(멱등 가드 포함). */
+function dispatchTurtleForMarket(
+  turtle: NotifyManifestTurtleSection, market: MarketId, sessionDate: string, now: Date, candidates: NotifyCandidate[],
+): void {
+  evaluateTurtleMarket(turtle, market, sessionDate, now, (kind, item, c) => {
+    const idBase = kind === 'watch' ? (item as NotifyManifestTurtleWatch).watchItemId
+      : (item as NotifyManifestTurtleHolding | NotifyManifestTurtleReentryPosition).assetId;
+    const idempotencyKey = `turtle|${kind}|${idBase}|${c.signal}|${sessionDate}`;
+    if (hasSent(idempotencyKey)) return;
+    const linkAssetId = kind === 'watch' ? null : (item as NotifyManifestTurtleHolding | NotifyManifestTurtleReentryPosition).assetId;
+    candidates.push({ text: c.text, summary: c.summary, linkUrl: buildDeepLink(linkAssetId), idempotencyKey });
+  });
+}
+
+/** morningDigest 전용 — 발송 없이 종목명만 신호 종류별로 모은다(멱등 무관, 매번 신선 재계산). */
+function collectTurtleMorningSummary(turtle: NotifyManifestTurtleSection, now: Date): {
+  sellNames: string[]; reentryNames: string[]; pyramidNames: string[];
+} {
+  const sellNames: string[] = [];
+  const reentryNames: string[] = [];
+  const pyramidNames: string[] = [];
+  for (const market of MARKET_IDS) {
+    const sessionDate = lastSessionDate(market, now);
+    evaluateTurtleMarket(turtle, market, sessionDate, now, (_kind, item, c) => {
+      if (c.signal === 'reentry-pyramid') pyramidNames.push(item.name);
+      else if (c.signal === 'watch-reentry') reentryNames.push(item.name);
+      else sellNames.push(item.name);
+    });
+  }
+  return { sellNames, reentryNames, pyramidNames };
 }
 
 function clipText(s: string, max = 200): string {
@@ -807,6 +951,10 @@ function closeCheck(): void {
           }
         }
       }
+      // P4 — "보유종목 터틀"(팔 때·손절 이탈·추가 매수·다시 살 때)도 같은 마감 확정 시점에 1회 판정한다.
+      if (manifest.turtle) {
+        dispatchTurtleForMarket(manifest.turtle, market, sessionDate, now, candidates);
+      }
       setProp(doneKey, sessionDate);
       ranAny = true;
       if (market === 'KR') krRan = true;
@@ -834,16 +982,52 @@ function formatPendingBundle(pending: PendingEntry[]): string {
   return clipText(`📋 [밤사이 보류분 ${pending.length}건] ${top3}${rest > 0 ? ` 외 ${rest}건` : ''}\n앱에서 전체 확인하세요`);
 }
 
+/**
+ * P4 — "보유종목 터틀" 아침 요약(계획서 §4.5 "아침 요약 1번: 오늘 할 일 목록"). 발송이 아니라
+ * 신선 재평가(멱등 무관)라 closeCheck에서 이미 개별 발송된 항목과 겹칠 수 있다 — 의도된 중복이다
+ * (요약은 "오늘 할 일을 한눈에" 용도, 개별 알림은 "그때그때" 용도로 목적이 다르다).
+ * 하루 1회만 보내도록 `LAST_TURTLE_DIGEST_DATE`로 가드한다(정숙시간 보류 묶음과는 별개 게이트).
+ */
+function buildTurtleMorningText(manifest: NotifyManifest, now: Date): string | null {
+  if (!manifest.turtle) return null;
+  const todayKst = kstDateStr(now);
+  if (getProp('LAST_TURTLE_DIGEST_DATE') === todayKst) return null;
+  const { sellNames, reentryNames, pyramidNames } = collectTurtleMorningSummary(manifest.turtle, now);
+  return formatTurtleMorningDigest({ sellNames, reentryNames, pyramidNames });
+}
+
 function morningDigest(): void {
+  const now = new Date();
   try {
     const pending = loadPending();
-    if (pending.length === 0) { recordLastRun('ok', 'morningDigest: 보류된 메시지 없음'); return; }
-    const text = formatPendingBundle(pending);
-    if (sendKakaoMessage(text, buildDeepLink(null))) {
-      clearPending();
-      recordLastRun('ok', `morningDigest: 보류 ${pending.length}건 → 요약 1건 발송`);
+    const manifest = loadManifest();
+    const turtleText = manifest ? buildTurtleMorningText(manifest, now) : null;
+
+    if (pending.length === 0 && !turtleText) {
+      recordLastRun('ok', 'morningDigest: 보낼 내용 없음(보류 메시지 없음 · 터틀 오늘 할 일 없음)');
+      return;
+    }
+
+    // 각각 이미 200자 이내로 clip된 별개 메시지다 — 하나로 합쳐 재차 자르면 뒤쪽이 잘릴 수 있어
+    // **두 통으로 나눠 보낸다**(계획서 §4.5 "200자 초과 시 분할").
+    let sentAny = false;
+    if (pending.length > 0) {
+      if (sendKakaoMessage(formatPendingBundle(pending), buildDeepLink(null))) {
+        clearPending();
+        sentAny = true;
+      }
+    }
+    if (turtleText) {
+      if (sendKakaoMessage(turtleText, buildDeepLink(null))) {
+        setProp('LAST_TURTLE_DIGEST_DATE', kstDateStr(now));
+        sentAny = true;
+      }
+    }
+
+    if (sentAny) {
+      recordLastRun('ok', `morningDigest: 보류 ${pending.length}건 · 터틀 요약 ${turtleText ? '포함' : '없음'}`);
     } else {
-      recordLastRun('error', 'morningDigest: 발송 실패(보류 유지, 다음 실행에서 재시도)');
+      recordLastRun('error', 'morningDigest: 발송 실패(보류/터틀 요약 유지, 다음 실행에서 재시도)');
     }
   } catch (err) {
     handleFailure('morningDigest', err);

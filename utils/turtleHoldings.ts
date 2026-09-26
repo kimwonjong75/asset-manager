@@ -25,6 +25,7 @@ import {
   VolatilityLabel,
   HoldingsSkipReason,
   LegacyHoldingsStatus,
+  HoldingsExitMethod,
 } from '../types/turtleHoldings';
 
 export { computeN };
@@ -88,13 +89,18 @@ export function resolveHoldingsSettings(saved?: Partial<TurtleHoldingsSettings> 
 
 // ── 1. 청산선 ────────────────────────────────────────────────────────────────
 
-/** 이동평균(SMA) 청산선 — **당일 포함**, 관례상 마지막 `period`개 종가 평균. 부족/결측이면 null. */
+/**
+ * 이동평균(SMA) 청산선 — **당일 포함**, 관례상 마지막 `period`개 종가 평균. 부족/결측이면 null.
+ * 로컬 변수명 `win`(과거 `window`) — 카카오톡 GAS 번들 가드가 브라우저 전역 `window` 참조를
+ * 문자열 그렙으로 잡는데 식별자 vs 전역을 구분 못해 오탐한다(2026-09-26, P4 — 이 함수가 GAS
+ * 번들에 처음 포함됨. `utils/todayTurtle.ts`의 동일 사유 주석 참고).
+ */
 export function computeMaExitLine(bars: readonly DailyBar[], period: number): number | null {
   if (!Number.isInteger(period) || period <= 0) return null;
   if (bars.length < period) return null;
-  const window = bars.slice(bars.length - period);
+  const win = bars.slice(bars.length - period);
   let sum = 0;
-  for (const b of window) {
+  for (const b of win) {
     if (!isNum(b.close)) return null;
     sum += b.close;
   }
@@ -411,10 +417,15 @@ export function describeStopExplanation(params: {
  */
 export function describeExitLineExplanation(params: {
   exitLookback: number; exitLine: number; lastClose: number; currency?: string;
+  /** 청산 방식별 선 이름 — 미지정이면 donchian(기존 문구 그대로). Advisor 보정 2026-09-26 */
+  exitMethod?: HoldingsExitMethod; maPeriod?: number; atrTrailMultiple?: number;
 }): string {
-  const { exitLookback, exitLine, lastClose, currency } = params;
+  const { exitLookback, exitLine, lastClose, currency, exitMethod, maPeriod, atrTrailMultiple } = params;
+  const lineName = exitMethod === 'ma' ? `${maPeriod ?? 50}일 이동평균`
+    : exitMethod === 'atrTrail' ? `추적 손절선(최고 종가 − ${atrTrailMultiple ?? 3}N)`
+    : `${exitLookback}일 최저가`;
   // 판정은 종가 <= 청산선(백테스트·todayTurtle 동일 규약) — 같은 값도 포함하므로 '이하'로 표기(Advisor 보정 2026-09-26)
-  return `${exitLookback}일 최저가 ${formatMoney(exitLine, currency)} 이하로 마감 (종가 ${formatMoney(lastClose, currency)})`;
+  return `${lineName} ${formatMoney(exitLine, currency)} 이하로 마감 (종가 ${formatMoney(lastClose, currency)})`;
 }
 
 /** 재진입선 설명 — 예: "55일 최고가 62,000원 위로 마감 (종가 62,400원)". */
@@ -423,6 +434,29 @@ export function describeReentryLineExplanation(params: {
 }): string {
   const { entryLookback, reentryLine, lastClose, currency } = params;
   return `${entryLookback}일 최고가 ${formatMoney(reentryLine, currency)} 위로 마감 (종가 ${formatMoney(lastClose, currency)})`;
+}
+
+/**
+ * 재매수분 손절 이탈 설명 — 예: "손절가 68,000원 아래로 마감했습니다(종가 67,500원)."
+ * P4(2026-09-26) — 카카오톡 알림(GAS)·화면(`turtleHoldingsView.buildTurtleHoldingsReentryRow`)이
+ * 같은 문장을 공유하도록 분리(재구현 금지 원칙, `describeExitLineExplanation`과 동일 패턴).
+ */
+export function describeStopHitExplanation(params: {
+  stopPrice: number; lastClose: number; currency?: string;
+}): string {
+  const { stopPrice, lastClose, currency } = params;
+  return `손절가 ${formatMoney(stopPrice, currency)} 아래로 마감했습니다(종가 ${formatMoney(lastClose, currency)}).`;
+}
+
+/**
+ * 불타기(추가 매수) 트리거 도달 설명 — 예: "마지막 매수가 60,000원에서 6,000원 오른 66,000원
+ * 이상으로 마감해 추가 매수(불타기) 기준을 충족했습니다." P4 — 화면·GAS 공유(위와 동일 사유).
+ */
+export function describePyramidHitExplanation(params: {
+  lastFillPrice: number; triggerPrice: number; currency?: string;
+}): string {
+  const { lastFillPrice, triggerPrice, currency } = params;
+  return `마지막 매수가 ${formatMoney(lastFillPrice, currency)}에서 ${formatMoney(triggerPrice - lastFillPrice, currency)} 오른 ${formatMoney(triggerPrice, currency)} 이상으로 마감해 추가 매수(불타기) 기준을 충족했습니다.`;
 }
 
 /**

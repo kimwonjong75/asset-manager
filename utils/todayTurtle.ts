@@ -154,20 +154,25 @@ function baseQuality(r: CompletedBarsResult, marketTz: MarketTz): BarQuality {
   };
 }
 
-/** D 제외 직전 `lookback` 개 완료봉의 high 최댓값. 봉수 부족이면 null. */
+/**
+ * D 제외 직전 `lookback` 개 완료봉의 high 최댓값. 봉수 부족이면 null.
+ * 로컬 변수명 `win`(과거 `window`) — 카카오톡 GAS 번들 가드(`scripts/notify/build-gas.mjs`)가
+ * 브라우저 전역 `window` 참조를 문자열 그렙으로 잡는데, 로컬 변수 `window`는 실제로는 무해하지만
+ * 그렙이 식별자 vs 전역을 구분하지 못해 오탐한다(2026-09-26, P4 — 이 함수가 GAS 번들에 처음 포함됨).
+ */
 export function entryBreakoutLine(bars: DailyBar[], lookback: number = ENTRY_LOOKBACK): number | null {
   if (bars.length < lookback + 1) return null;
   const end = bars.length - 1;                 // D 인덱스 — 비교선에서 제외
-  const window = bars.slice(end - lookback, end);
-  return window.reduce((m, b) => (b.high > m ? b.high : m), -Infinity);
+  const win = bars.slice(end - lookback, end);
+  return win.reduce((m, b) => (b.high > m ? b.high : m), -Infinity);
 }
 
-/** D 제외 직전 `lookback` 개 완료봉의 low 최솟값. 봉수 부족이면 null. */
+/** D 제외 직전 `lookback` 개 완료봉의 low 최솟값. 봉수 부족이면 null. (변수명 `win` 사유는 위 참고) */
 export function exitChannelLine(bars: DailyBar[], lookback: number = EXIT_LOOKBACK): number | null {
   if (bars.length < lookback + 1) return null;
   const end = bars.length - 1;
-  const window = bars.slice(end - lookback, end);
-  return window.reduce((m, b) => (b.low < m ? b.low : m), Infinity);
+  const win = bars.slice(end - lookback, end);
+  return win.reduce((m, b) => (b.low < m ? b.low : m), Infinity);
 }
 
 // ── 행 빌더 ────────────────────────────────────────────────────────────────

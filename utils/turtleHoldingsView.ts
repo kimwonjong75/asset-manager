@@ -42,6 +42,8 @@ import {
   describeExitLineExplanation,
   describeReentryLineExplanation,
   describeStopOrderCheckText,
+  describeStopHitExplanation,
+  describePyramidHitExplanation,
   formatMoney,
   ScopeCheckAsset,
 } from './turtleHoldings';
@@ -241,7 +243,7 @@ export function buildTurtleHoldingsLegacyRow(input: LegacyHoldingRowInput): Turt
   const exitGapPct = exitLine != null ? ((lastClose - exitLine) / exitLine) * 100 : null;
   const dataIssue: TurtleHoldingsDataIssue | null = status === 'unavailable' ? 'insufficient-bars' : null;
   const reasonText = status === 'sell' && exitLine != null
-    ? describeExitLineExplanation({ exitLookback: settings.exitLookback, exitLine, lastClose, currency: asset.currency })
+    ? describeExitLineExplanation({ exitLookback: settings.exitLookback, exitMethod: settings.exitMethod, maPeriod: settings.maPeriod, atrTrailMultiple: settings.atrTrailMultiple, exitLine, lastClose, currency: asset.currency })
     : status === 'hold'
       ? `청산선 ${exitLine != null ? formatMoney(exitLine, asset.currency) : '—'} 위에서 마감했습니다(종가 ${formatMoney(lastClose, asset.currency)}). 규칙상 보유를 유지합니다.`
       : dataIssueText('insufficient-bars');
@@ -305,16 +307,16 @@ export function buildTurtleHoldingsReentryRow(input: ReentryPositionRowInput): T
 
   if (lastClose <= stopPrice) {
     status = 'sell';
-    reasonText = `손절가 ${formatMoney(stopPrice, asset.currency)} 아래로 마감했습니다(종가 ${formatMoney(lastClose, asset.currency)}). 손절 매도 후 [팔았음 기록]하세요.`;
+    reasonText = `${describeStopHitExplanation({ stopPrice, lastClose, currency: asset.currency })} 손절 매도 후 [팔았음 기록]하세요.`;
   } else if (exitLine != null && lastClose <= exitLine) {
     status = 'sell';
-    reasonText = describeExitLineExplanation({ exitLookback: settings.exitLookback, exitLine, lastClose, currency: asset.currency });
+    reasonText = describeExitLineExplanation({ exitLookback: settings.exitLookback, exitMethod: settings.exitMethod, maPeriod: settings.maPeriod, atrTrailMultiple: settings.atrTrailMultiple, exitLine, lastClose, currency: asset.currency });
   } else {
     const canPyramid = unitsCount < maxUnits && n != null;
     const triggerPrice = canPyramid ? computePyramidTriggerPrice(lastUnit.fillPrice, n as number, settings) : null;
     if (canPyramid && triggerPrice != null && lastClose >= triggerPrice) {
       status = 'pyramid';
-      reasonText = `마지막 매수가 ${formatMoney(lastUnit.fillPrice, asset.currency)}에서 ${formatMoney(triggerPrice - lastUnit.fillPrice, asset.currency)} 오른 ${formatMoney(triggerPrice, asset.currency)} 이상으로 마감해 추가 매수(불타기) 기준을 충족했습니다.`;
+      reasonText = describePyramidHitExplanation({ lastFillPrice: lastUnit.fillPrice, triggerPrice, currency: asset.currency });
     } else {
       status = 'hold';
       reasonText = exitLine != null

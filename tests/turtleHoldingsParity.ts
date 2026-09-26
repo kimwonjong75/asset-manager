@@ -282,6 +282,9 @@ function mkBars(closes: number[], highs?: number[], lows?: number[]): DailyBar[]
   const exitExpl = describeExitLineExplanation({ exitLookback: 20, exitLine: 51_200, lastClose: 50_800 });
   check('청산선 설명 문구(예시)', exitExpl, '20일 최저가 51,200원 이하로 마감 (종가 50,800원)');
   // Advisor 보정(2026-09-26): 같은 값도 청산(<=)이라 '이하', 달러 종목은 $·소수 2자리
+  // Advisor 보정(2026-09-26): 청산 방식별 선 이름(카톡·화면 공통)
+  check('청산선 설명 — 이동평균', describeExitLineExplanation({ exitLookback: 20, exitLine: 50_000, lastClose: 49_500, exitMethod: 'ma', maPeriod: 50 }), '50일 이동평균 50,000원 이하로 마감 (종가 49,500원)');
+  check('청산선 설명 — ATR 추적', describeExitLineExplanation({ exitLookback: 20, exitLine: 50_000, lastClose: 49_500, exitMethod: 'atrTrail', atrTrailMultiple: 3 }), '추적 손절선(최고 종가 − 3N) 50,000원 이하로 마감 (종가 49,500원)');
   check('청산선 설명 — USD 통화 표기', describeExitLineExplanation({ exitLookback: 20, exitLine: 79.12, lastClose: 79.12, currency: 'USD' }), '20일 최저가 $79.12 이하로 마감 (종가 $79.12)');
 
   // formatMoney — KRW/JPY 정수+기호, USD·CNY 소수 2자리(§4.1 통화 단위 누락 수정, 2026-09-26)

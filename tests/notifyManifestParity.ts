@@ -7,9 +7,10 @@
 //
 // 수동 실행: npm run test:notifymanifest (tsx). 통과 시 exit 0.
 
-import { Currency, type Asset } from '../types';
+import { Currency, type Asset, type WatchlistItem } from '../types';
 import { DEFAULT_CATEGORIES } from '../types/category';
 import type { TradePlan } from '../types/tradePlan';
+import type { TurtlePosition } from '../types/turtle';
 import { buildTradePlan } from '../utils/tradePlan';
 import { buildNotifyManifest, manifestHash, type NotifyManifest } from '../utils/notifyManifest';
 
@@ -154,6 +155,121 @@ function mkAsset(o: Partial<Asset> = {}): Asset {
 
   const differentQty: NotifyManifest = { ...m1, items: [{ ...m1.items[0], quantity: 999 }] };
   ok('수량 변경 → 해시 변경', manifestHash(m1) !== manifestHash(differentQty));
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// 4. buildNotifyManifest — "보유종목 터틀" 섹션(P4, 2026-09-26)
+// ════════════════════════════════════════════════════════════════════════════
+{
+  const legacyHolding = mkAsset({ id: 'h1', ticker: 'OTTOGI', name: '오뚜기', quantity: 10, tradePlan: undefined });
+  const reentryAsset = mkAsset({ id: 'h2', ticker: 'SAMSUNG', name: '삼성전자', quantity: 50, tradePlan: undefined });
+  const yuseonHolding = mkAsset({ id: 'h3', ticker: 'FAMILY', name: '가족종목', quantity: 5, owner: 'YUSEON', tradePlan: undefined });
+  const cashAsset = mkAsset({ id: 'h4', ticker: 'CASH2', categoryId: CASH_CATEGORY_ID, quantity: 1, tradePlan: undefined });
+
+  const reentryPosition: TurtlePosition = {
+    id: 'pos1', ticker: 'SAMSUNG', name: '삼성전자', assetId: 'h2',
+    units: [{ fillDate: '2026-09-01', fillPrice: 68_000, quantity: 50, nAtFill: 1_500 }],
+    stopPrice: 65_000, entryDonchianHigh: 70_000, status: 'open', openedAt: '2026-09-01',
+    origin: 'holdings-reentry',
+  };
+  const closedPosition: TurtlePosition = {
+    ...reentryPosition, id: 'pos-closed', status: 'closed', closedAt: '2026-09-10',
+  };
+  const satellitePosition: TurtlePosition = {
+    id: 'pos-satellite', ticker: 'ETC', name: '위성종목', units: [{ fillDate: '2026-09-01', fillPrice: 1000, quantity: 1, nAtFill: 10 }],
+    stopPrice: 900, entryDonchianHigh: 1100, status: 'open', openedAt: '2026-09-01', // origin 미지정 — 위성(90/10)
+  };
+
+  const watchCandidate: WatchlistItem = {
+    id: 'w1', ticker: 'HYUNDAI', exchange: 'KRX (코스피/코스닥)', name: '현대차', categoryId: STOCK_CATEGORY_ID,
+    isTurtleCandidate: true,
+  };
+  const watchNotCandidate: WatchlistItem = {
+    id: 'w2', ticker: 'KIA', exchange: 'KRX (코스피/코스닥)', name: '기아', categoryId: STOCK_CATEGORY_ID,
+    isTurtleCandidate: false,
+  };
+  // 이미 보유(legacyHolding=OTTOGI)와 같은 종목의 감시 항목 — 중복 매수 방지로 제외되어야 함
+  const watchDuplicateOfHeld: WatchlistItem = {
+    id: 'w3', ticker: 'OTTOGI', exchange: 'KRX (코스피/코스닥)', name: '오뚜기(중복)', categoryId: STOCK_CATEGORY_ID,
+    isTurtleCandidate: true,
+  };
+
+  const manifest = buildNotifyManifest({
+    assets: [legacyHolding, reentryAsset, yuseonHolding, cashAsset],
+    watchlist: [watchCandidate, watchNotCandidate, watchDuplicateOfHeld],
+    turtlePositions: [reentryPosition, closedPosition, satellitePosition],
+    appUrl: 'https://example.test/', now: '2026-09-15T00:00:00.000Z', pyramidAlerts: false,
+  });
+
+  ok('turtle 섹션 존재', manifest.turtle !== undefined);
+  const turtle = manifest.turtle!;
+
+  check('legacyHoldings: 재매수 포지션 있는 자산·현금·유선 제외 → OTTOGI만',
+    turtle.legacyHoldings.map(h => h.ticker), ['OTTOGI']);
+  check('legacyHoldings 필드 매핑', turtle.legacyHoldings[0], {
+    assetId: 'h1', ticker: 'OTTOGI', exchange: 'KRX (코스피/코스닥)', name: '오뚜기',
+    currency: Currency.KRW, isCrypto: false, quantity: 10,
+  });
+
+  check('reentryPositions: open + origin=holdings-reentry만(위성·closed 제외) → 1건',
+    turtle.reentryPositions.map(p => p.positionId), ['pos1']);
+  check('reentryPositions 필드 매핑', turtle.reentryPositions[0], {
+    positionId: 'pos1', assetId: 'h2', ticker: 'SAMSUNG', exchange: 'KRX (코스피/코스닥)', name: '삼성전자',
+    currency: Currency.KRW, isCrypto: false,
+    units: [{ fillPrice: 68_000, quantity: 50, nAtFill: 1_500 }],
+    quantity: 50, stopPrice: 65_000, trailHighClose: null, openedAt: '2026-09-01',
+  });
+
+  check('watchItems: isTurtleCandidate만 + 이미 보유 중인 티커(OTTOGI) 중복 제외 → HYUNDAI만',
+    turtle.watchItems.map(w => w.ticker), ['HYUNDAI']);
+  check('watchItems 필드 매핑', turtle.watchItems[0], {
+    watchItemId: 'w1', ticker: 'HYUNDAI', exchange: 'KRX (코스피/코스닥)', name: '현대차',
+    currency: Currency.KRW, isCrypto: false,
+  });
+
+  ok('turtle.settings는 resolveHoldingsSettings 결과(기본값 exitLookback=20 포함)', turtle.settings.exitLookback === 20);
+
+  // 가족(유선) 제외 옵션 끄기 — excludeFamilyOwner:false 로 재조립하면 유선 보유도 legacyHoldings에 포함
+  const manifestWithFamily = buildNotifyManifest({
+    assets: [legacyHolding, yuseonHolding],
+    turtleHoldingsSettings: { excludeFamilyOwner: false },
+    appUrl: 'https://example.test/', now: '2026-09-15T00:00:00.000Z', pyramidAlerts: false,
+  });
+  check('excludeFamilyOwner:false → 유선 보유도 포함(2건)',
+    manifestWithFamily.turtle!.legacyHoldings.map(h => h.ticker).sort(), ['FAMILY', 'OTTOGI']);
+
+  // watchlist/turtlePositions 미지정 → 빈 배열(하위 호환)
+  const bareManifest = buildNotifyManifest({
+    assets: [legacyHolding], appUrl: 'https://example.test/', now: '2026-09-15T00:00:00.000Z', pyramidAlerts: false,
+  });
+  check('watchlist/turtlePositions 미지정 → 터틀 섹션도 정상 조립(빈 목록)', {
+    reentry: bareManifest.turtle!.reentryPositions.length, watch: bareManifest.turtle!.watchItems.length,
+  }, { reentry: 0, watch: 0 });
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// 4b. manifestHash — 터틀 섹션 변경 감지
+// ════════════════════════════════════════════════════════════════════════════
+{
+  const legacyHolding = mkAsset({ id: 'th1', ticker: 'OTTOGI', name: '오뚜기', quantity: 10, tradePlan: undefined });
+  const base = buildNotifyManifest({
+    assets: [legacyHolding], appUrl: 'https://a.test', now: '2026-09-15T00:00:00.000Z', pyramidAlerts: false,
+  });
+  const qtyChanged = buildNotifyManifest({
+    assets: [{ ...legacyHolding, quantity: 999 }], appUrl: 'https://a.test', now: '2026-09-20T00:00:00.000Z', pyramidAlerts: false,
+  });
+  ok('터틀 보유 수량 변경 → 해시 변경(시각만 다른 재조립과 구분)', manifestHash(base) !== manifestHash(qtyChanged));
+
+  const settingsChanged = buildNotifyManifest({
+    assets: [legacyHolding], turtleHoldingsSettings: { exitLookback: 10 },
+    appUrl: 'https://a.test', now: '2026-09-15T00:00:00.000Z', pyramidAlerts: false,
+  });
+  ok('터틀 설정 변경(exitLookback) → 해시 변경', manifestHash(base) !== manifestHash(settingsChanged));
+
+  const sameAgain = buildNotifyManifest({
+    assets: [legacyHolding], appUrl: 'https://a.test', now: '2026-09-25T00:00:00.000Z', pyramidAlerts: false,
+  });
+  ok('내용 동일 + 시각만 다름(터틀 포함) → 해시 동일', manifestHash(base) === manifestHash(sameAgain));
 }
 
 // ── 결과 ──
