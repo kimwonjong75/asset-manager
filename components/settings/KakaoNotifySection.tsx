@@ -7,6 +7,7 @@ import { useKakaoNotify } from '../../hooks/useKakaoNotify';
 import KakaoSetupWizard from './KakaoSetupWizard';
 import Toggle from '../common/Toggle';
 import Badge from '../common/Badge';
+import ManualHelpLink from '../common/ManualHelpLink';
 import { CircleAlert, Lock, TriangleAlert } from 'lucide-react';
 
 function formatDateTime(iso: string | null): string {
@@ -35,7 +36,10 @@ const KakaoNotifySection: React.FC = () => {
   return (
     <div className="bg-gray-800 rounded-lg">
       <div className="px-6 py-5 border-b border-gray-700">
-        <h2 className="text-xl font-bold text-white">카카오톡 알림</h2>
+        <div className="flex items-center gap-2">
+          <h2 className="text-xl font-bold text-white">카카오톡 알림</h2>
+          <ManualHelpLink anchor="kakao" />
+        </div>
         <p className="text-gray-400 text-sm mt-1">
           매매 계획의 손절선·익절선·불타기선은 개장 중 매시간, 추세선 이탈은 마감 확정 종가로 1회 카카오톡("나에게 보내기")으로 알려드립니다.
         </p>

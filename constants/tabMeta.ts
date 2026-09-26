@@ -33,6 +33,9 @@ export const TAB_META: Record<AppTab, TabMeta> = {
   guide: { title: '투자 가이드', mobileTitle: true, showAccountView: false, showPeriod: false, inMoreMenu: true },
   replay: { title: '연구실', mobileTitle: true, showAccountView: false, showPeriod: false, inMoreMenu: true },
   settings: { title: '설정', mobileTitle: true, showAccountView: false, showPeriod: false, inMoreMenu: true },
+  // 사용설명서(터틀 앱 재정비 문서화, 2026-09-26): 더보기 전용 정적 문서 화면 — guide/replay와 달리
+  // moreMenuVisibility에서 숨기지 않는다(항상 보임).
+  manual: { title: '사용설명서', mobileTitle: true, showAccountView: false, showPeriod: false, inMoreMenu: true },
 };
 
 /** 별칭('today'/'execution')까지 받아 실제 탭의 메타를 돌려준다. */

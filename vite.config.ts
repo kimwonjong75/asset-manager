@@ -10,5 +10,10 @@ export default defineConfig({
   base: '/asset-manager/', // GitHub Pages 저장소 이름에 맞게 변경하세요
       server: {
     port: 3000 // 원하는 포트로 변경 가능
-      }
+      },
+  // 사용설명서(manual 탭)가 "이 문서는 앱과 함께 자동 업데이트됨"을 보여줄 때 쓰는 빌드 시각.
+  // 빌드 시점에 한 번 고정되는 상수 — 런타임에 바뀌지 않는다(vite-env.d.ts에 타입 선언).
+  define: {
+    __BUILD_TIME__: JSON.stringify(new Date().toISOString()),
+  },
 })

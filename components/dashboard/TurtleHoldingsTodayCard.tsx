@@ -13,6 +13,7 @@ import { TurtleHoldingsRow, shouldPromptDrawdownReferenceRefresh } from '../../u
 import { resolveHoldingsSettings } from '../../utils/turtleHoldings';
 import { formatKRW } from '../portfolio-table/utils';
 import Badge from '../common/Badge';
+import ManualHelpLink from '../common/ManualHelpLink';
 
 interface Bucket {
   key: string;
@@ -109,7 +110,10 @@ const TurtleHoldingsTodayCard: React.FC = () => {
   return (
     <div className="rounded-card border border-primary/40 bg-primary/5 p-4 sm:p-5" aria-label="터틀 오늘 할 일">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h3 className="text-sm sm:text-base font-semibold text-white">터틀 오늘 할 일</h3>
+        <div className="flex items-center gap-2">
+          <h3 className="text-sm sm:text-base font-semibold text-white">터틀 오늘 할 일</h3>
+          <ManualHelpLink anchor="today" />
+        </div>
         <div className="flex items-center gap-2">
           {model.drawdownApplied && <Badge tone="warning">계좌 축소 적용 중</Badge>}
           <span className="text-xs text-gray-400">대기 자금 {formatKRW(model.parkedCashKRW)}</span>

@@ -74,7 +74,7 @@ export interface UIState {
    *  'today'·'execution'은 폐지된 탭이지만 **별칭 입력값**으로 union에 남긴다 — 발송된 카톡의
    *  `?tab=today` 링크·옛 세션이 이 값을 넘길 수 있고, `actions.setActiveTab`이 `resolveTabAlias`
    *  (utils/deepLink)로 'dashboard'로 바꿔 상태에는 저장되지 않는다. 제거 금지. */
-  activeTab: 'today' | 'dashboard' | 'portfolio' | 'analytics' | 'watchlist' | 'replay' | 'execution' | 'cleanup' | 'guide' | 'settings';
+  activeTab: 'today' | 'dashboard' | 'portfolio' | 'analytics' | 'watchlist' | 'replay' | 'execution' | 'cleanup' | 'guide' | 'settings' | 'manual';
   globalPeriod: GlobalPeriod;
   /** 계정 뷰 필터 (통합/원종/유선) — 대시보드·포트폴리오 **표시 계층 전용**. 원본 data.assets는 절대 거르지 않음(저장 유실 방지). 매도통계·히스토리는 통합 기준 유지(1차 한계) */
   accountView: OwnerFilter;

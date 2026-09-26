@@ -26,6 +26,7 @@ import { Currency } from '../../types';
 import { formatKRW } from '../portfolio-table/utils';
 import Button from '../common/Button';
 import Badge from '../common/Badge';
+import ManualHelpLink from '../common/ManualHelpLink';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 
 const DUST_ALLOCATION_PCT = 1; // 총자산 1% 미만 — cleanupPlan.ts DEFAULT_DUST_PCT과 동일 기준
@@ -139,7 +140,10 @@ const TurtleCleanupView: React.FC = () => {
   return (
     <div className="max-w-3xl mx-auto px-1 sm:px-0 pb-24">
       <div className="mb-4">
-        <h1 className="text-lg sm:text-xl font-bold text-white">터틀 정리</h1>
+        <div className="flex items-center gap-2">
+          <h1 className="text-lg sm:text-xl font-bold text-white">터틀 정리</h1>
+          <ManualHelpLink anchor="cleanup" />
+        </div>
         <p className="text-xs sm:text-sm text-gray-400 mt-1">
           청산선({holdingsSettings.exitLookback}일 최저가) 이하로 마감한 종목입니다. 팔면 자동으로 <span className="text-gray-200">"다시 살 때" 감시 명단</span>에 등록됩니다.
         </p>

@@ -24,6 +24,7 @@ import {
 } from '../../utils/turtleVerificationNotes';
 import { formatKRW } from '../portfolio-table/utils';
 import Badge from '../common/Badge';
+import ManualHelpLink from '../common/ManualHelpLink';
 import { localDateString } from '../../utils/localDate';
 import { Check } from 'lucide-react';
 
@@ -113,7 +114,10 @@ const TurtleHoldingsSettingsSection: React.FC = () => {
   return (
     <div className="bg-gray-800 rounded-lg">
       <div className="px-6 py-5 border-b border-gray-700">
-        <h2 className="text-xl font-bold text-white">터틀 규칙</h2>
+        <div className="flex items-center gap-2">
+          <h2 className="text-xl font-bold text-white">터틀 규칙</h2>
+          <ManualHelpLink anchor="settings" />
+        </div>
         <p className="text-gray-400 text-sm mt-1 leading-relaxed">
           보유종목 터틀이 매일 계산하는 선(청산·재진입·손절·불타기)의 기준값입니다. 값을 바꾸면 과거 검증 성적을
           함께 보여줍니다 — 투자자문이 아니며, 과거 데이터 기준입니다.

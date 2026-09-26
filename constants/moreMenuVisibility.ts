@@ -14,7 +14,8 @@ export type MoreMenuItemId =
   | 'assistant'      // AI 어시스턴트
   | 'guide'          // 투자 가이드
   | 'replay'         // 연구실 · 신호 리플레이
-  | 'settings';      // 설정
+  | 'settings'       // 설정
+  | 'manual';        // 사용설명서(2026-09-26 — 항상 표시, HIDDEN_MORE_MENU_ITEM_IDS에 넣지 않는다)
 
 /**
  * 숨길 항목 — 터틀 중심 재정비 이후 더보기는 "수익 통계 · 터틀 정리 · 설정"만 남긴다(§4.6).

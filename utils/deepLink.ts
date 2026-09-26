@@ -30,9 +30,9 @@ export function resolveTabAlias(tab: UIState['activeTab']): UIState['activeTab']
 }
 
 /** 딥링크로 이동 가능한 탭 화이트리스트. */
-export type DeepLinkTab = Extract<UIState['activeTab'], 'today' | 'dashboard' | 'portfolio' | 'watchlist' | 'analytics' | 'settings' | 'guide' | 'cleanup'>;
+export type DeepLinkTab = Extract<UIState['activeTab'], 'today' | 'dashboard' | 'portfolio' | 'watchlist' | 'analytics' | 'settings' | 'guide' | 'cleanup' | 'manual'>;
 
-const ALLOWED_TABS: readonly DeepLinkTab[] = ['today', 'dashboard', 'portfolio', 'watchlist', 'analytics', 'settings', 'guide', 'cleanup'];
+const ALLOWED_TABS: readonly DeepLinkTab[] = ['today', 'dashboard', 'portfolio', 'watchlist', 'analytics', 'settings', 'guide', 'cleanup', 'manual'];
 
 /** asset 파라미터 참조 — 자산 id 그대로거나 `ticker:exchange` 형태 */
 export type DeepLinkAssetRef =

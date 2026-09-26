@@ -29,6 +29,8 @@ check('콜론이 첫 글자면 id로 취급', parseDeepLink('?tab=settings&asset
 check('무관한 파라미터는 무시(tab 있음)', parseDeepLink('?utm_source=kakao&tab=cleanup'), { tab: 'cleanup', assetRef: null });
 check('대소문자 불일치 탭 → null', parseDeepLink('?tab=Dashboard'), null);
 check('tab=dashboard(신규 카톡 링크) + asset', parseDeepLink('?tab=dashboard&asset=abc123'), { tab: 'dashboard', assetRef: { kind: 'id', id: 'abc123' } });
+// 사용설명서(manual) 탭 — "? 설명" 링크·직접 공유 링크(?tab=manual#앵커, 해시는 파서 밖에서 ManualView가 처리)
+check('tab=manual(사용설명서) → 허용', parseDeepLink('?tab=manual'), { tab: 'manual', assetRef: null });
 
 // ── resolveTabAlias: 폐지 탭 별칭(영구 유지 — 발송된 카톡 ?tab=today 링크 회수 불가) ──
 check("resolveTabAlias('today') → dashboard", resolveTabAlias('today'), 'dashboard');

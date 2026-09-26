@@ -15,7 +15,7 @@ function check(cond: boolean, msg: string): void {
 }
 
 // ① 실제 화면 탭 전수 (UIState['activeTab'] − 별칭 today/execution) — 순서 무관, 정확히 일치
-const EXPECTED_TABS: AppTab[] = ['dashboard', 'portfolio', 'watchlist', 'analytics', 'cleanup', 'guide', 'replay', 'settings'];
+const EXPECTED_TABS: AppTab[] = ['dashboard', 'portfolio', 'watchlist', 'analytics', 'cleanup', 'guide', 'replay', 'settings', 'manual'];
 const actualTabs = Object.keys(TAB_META).sort();
 check(JSON.stringify(actualTabs) === JSON.stringify([...EXPECTED_TABS].sort()), `TAB_META 키 불일치: ${actualTabs.join(',')}`);
 
@@ -30,6 +30,7 @@ const GOLDEN: Record<AppTab, [title: string, mobileTitle: boolean, showAccountVi
   guide: ['투자 가이드', true, false, false, true],
   replay: ['연구실', true, false, false, true],
   settings: ['설정', true, false, false, true],
+  manual: ['사용설명서', true, false, false, true],
 };
 for (const tab of EXPECTED_TABS) {
   const m = TAB_META[tab];
@@ -43,7 +44,7 @@ for (const tab of EXPECTED_TABS) {
 
 // ③ 더보기 파생 목록 — 명시값
 check(
-  JSON.stringify([...MORE_MENU_TABS].sort()) === JSON.stringify(['analytics', 'cleanup', 'guide', 'replay', 'settings']),
+  JSON.stringify([...MORE_MENU_TABS].sort()) === JSON.stringify(['analytics', 'cleanup', 'guide', 'manual', 'replay', 'settings']),
   `MORE_MENU_TABS = ${MORE_MENU_TABS.join(',')}`,
 );
 

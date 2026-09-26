@@ -17,6 +17,7 @@ import { resolvePositionFxRate } from '../../utils/turtleHoldingsView';
 import { VOLATILITY_LABELS } from '../../types/turtleHoldings';
 import Modal from '../common/Modal';
 import Button from '../common/Button';
+import ManualHelpLink from '../common/ManualHelpLink';
 import { CircleAlert } from 'lucide-react';
 
 const todayISO = (): string => new Date().toISOString().slice(0, 10);
@@ -148,7 +149,10 @@ const TurtleHoldingsBuyModal: React.FC = () => {
     >
       {/* 계산 근거 */}
       <div className="bg-gray-700/60 rounded-md p-3.5 mb-4">
-        <p className="text-sm text-gray-200">{row.reasonText}</p>
+        <div className="flex items-start justify-between gap-2">
+          <p className="text-sm text-gray-200">{row.reasonText}</p>
+          <ManualHelpLink anchor="rebuy" onBeforeNavigate={onClose} className="shrink-0 inline-flex items-center gap-0.5 text-xs text-primary-light hover:text-primary hover:underline focus-ring rounded" />
+        </div>
         <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 mt-3 text-xs">
           <div className="flex items-center justify-between gap-2">
             <span className="text-gray-400">N (20일 ATR)</span>

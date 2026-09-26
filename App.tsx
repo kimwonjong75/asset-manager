@@ -34,6 +34,7 @@ import SignalReplayView from './components/layouts/SignalReplayView';
 // 'cleanup' 탭이 아래 TurtleCleanupView로 교체됐다. 되돌리려면 import를 CleanupView로 바꾸고 아래
 // 렌더의 컴포넌트명만 바꾸면 된다.
 import TurtleCleanupView from './components/cleanup/TurtleCleanupView';
+import ManualView from './components/layouts/ManualView';
 
 // Stage B: 탭별 앱바 구성(화면 제목·계정뷰 세그먼트·기간 선택·더보기 강조)은 constants/tabMeta의
 // TAB_META 한 곳에서 선언한다 — 여기서 `ui.activeTab !== …` 연쇄 조건을 다시 만들지 말 것.
@@ -75,6 +76,8 @@ const AppContent: React.FC = () => {
     { id: 'guide', label: '투자 가이드', onClick: () => actions.setActiveTab('guide') },
     { id: 'replay', label: '연구실 · 신호 리플레이', onClick: () => actions.setActiveTab('replay') },
     { id: 'settings', label: '설정', onClick: () => actions.setActiveTab('settings') },
+    // 더보기에서 직접 열 때는 이전 "? 설명" 이동이 남긴 해시를 지운다(그래야 맨 위부터 보인다).
+    { id: 'manual', label: '사용설명서', onClick: () => { window.location.hash = ''; actions.setActiveTab('manual'); } },
   ], [actions]);
   const moreMenuItems: ActionMenuItem[] = useMemo(
     () => ALL_MORE_MENU_ITEMS.filter(item => !isMoreMenuItemHidden(item.id)),
@@ -424,6 +427,7 @@ const AppContent: React.FC = () => {
                 {ui.activeTab === 'cleanup' && <TurtleCleanupView />}
                 {ui.activeTab === 'guide' && <InvestmentGuideView />}
                 {ui.activeTab === 'settings' && <SettingsPage />}
+                {ui.activeTab === 'manual' && <ManualView />}
               </div>
             </main>
 

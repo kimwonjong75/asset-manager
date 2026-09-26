@@ -13,6 +13,7 @@ import Segmented from './common/Segmented';
 import Modal from './common/Modal';
 import Button from './common/Button';
 import FieldError from './common/FieldError';
+import ManualHelpLink from './common/ManualHelpLink';
 
 /** 매도 효과 선택지 (P2b) — 라벨과 아래 설명이 1:1로 대응한다. */
 const SELL_OUTCOME_OPTIONS: { value: SellOutcome; label: string; hint: string }[] = [
@@ -321,20 +322,27 @@ const SellAssetModal: React.FC = () => {
 
           {/* "보유종목 터틀" 감시 명단 추가(계획서 §4.2) — 범위 내 자산만, 기본 켬 */}
           {inHoldingsScope && (
-            <label className="flex items-start gap-2 bg-gray-700/50 p-3 rounded-md cursor-pointer">
-              <input
-                type="checkbox"
-                checked={addToTurtleWatch}
-                onChange={(e) => setAddToTurtleWatch(e.target.checked)}
-                className="mt-0.5 accent-primary"
-              />
-              <span className="text-sm text-gray-200">
-                "다시 살 때" 감시 명단에 추가
-                <span className="block text-xs text-gray-500 mt-0.5">
-                  체크하면 이 종목이 55일 최고가를 돌파할 때 재매수 후보로 알려 드립니다. (전량 매도일 때만 적용)
+            <div className="bg-gray-700/50 p-3 rounded-md">
+              <label className="flex items-start gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={addToTurtleWatch}
+                  onChange={(e) => setAddToTurtleWatch(e.target.checked)}
+                  className="mt-0.5 accent-primary"
+                />
+                <span className="text-sm text-gray-200">
+                  "다시 살 때" 감시 명단에 추가
+                  <span className="block text-xs text-gray-500 mt-0.5">
+                    {/* 구 버그: 여기 숫자가 "55일"로 하드코딩돼 있어 entryLookback을 바꾸면 문구와 실제 판정이
+                        어긋났다 — 설정값(holdingsSettings.entryLookback)을 그대로 쓰도록 수정(2026-09-26). */}
+                    체크하면 이 종목이 {holdingsSettings.entryLookback}일 최고가를 돌파할 때 재매수 후보로 알려 드립니다. (전량 매도일 때만 적용)
+                  </span>
                 </span>
-              </span>
-            </label>
+              </label>
+              <div className="mt-1.5">
+                <ManualHelpLink anchor="sell" onBeforeNavigate={onClose} />
+              </div>
+            </div>
           )}
 
           {errorShown && <FieldError id={formErrorId}>{formError}</FieldError>}
