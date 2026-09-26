@@ -9,7 +9,10 @@
 
 import React, { useMemo, useState } from 'react';
 import { usePortfolio } from '../../contexts/PortfolioContext';
-import { resolveHoldingsSettings, computeCommonStopPrice, computePyramidTriggerPrice } from '../../utils/turtleHoldings';
+import {
+  resolveHoldingsSettings, computeCommonStopPrice, computePyramidTriggerPrice,
+  describeStopExplanation, formatMoney,
+} from '../../utils/turtleHoldings';
 import { resolvePositionFxRate } from '../../utils/turtleHoldingsView';
 import { VOLATILITY_LABELS } from '../../types/turtleHoldings';
 import Modal from '../common/Modal';
@@ -17,8 +20,9 @@ import Button from '../common/Button';
 import { CircleAlert } from 'lucide-react';
 
 const todayISO = (): string => new Date().toISOString().slice(0, 10);
-const fmt = (n: number | null | undefined): string =>
-  typeof n === 'number' && Number.isFinite(n) ? n.toLocaleString('ko-KR', { maximumFractionDigits: 4 }) : '—';
+// 원통화 표기(KRW 정수+원, USD $소수2 — utils/turtleHoldings.formatMoney 재사용). currency 없으면 '—'.
+const fmt = (n: number | null | undefined, currency?: string): string =>
+  typeof n === 'number' && Number.isFinite(n) ? formatMoney(n, currency) : '—';
 
 const SKIP_REASON_LABEL: Record<string, string> = {
   'below-min-order': '매수 금액이 최소 주문 금액 미만입니다.',
@@ -83,7 +87,14 @@ const TurtleHoldingsBuyModal: React.FC = () => {
   const projectedStop = n != null && priceNum > 0 ? computeCommonStopPrice(priceNum, n, settings) : null;
   const projectedNextTrigger = n != null && priceNum > 0 && settings.maxUnitsPerPosition > 1
     ? computePyramidTriggerPrice(priceNum, n, settings) : null;
-  const estimatedTotal = priceNum > 0 && qtyNum > 0 ? priceNum * qtyNum : 0;
+  // "왜 이 손절가인지" 설명 — 계획서 §4.3, 체결가를 바꾸면 같이 갱신된다(같은 N 고정).
+  const stopExplanation = n != null && priceNum > 0 && projectedStop != null
+    ? describeStopExplanation({ priceLocal: priceNum, n, stopMultipleN: settings.stopMultipleN, stopPrice: projectedStop, currency: row.currency })
+    : null;
+  const estimatedLocalTotal = priceNum > 0 && qtyNum > 0 ? priceNum * qtyNum : 0;
+  // 예상 매수금액은 KRW로 표기(외화 종목도 통일) — 환율 미확보면 값을 지어내지 않고 안내만 한다.
+  const displayFxRate = resolvePositionFxRate(row.currency, data.exchangeRates);
+  const estimatedTotalKRW = estimatedLocalTotal > 0 && displayFxRate != null ? estimatedLocalTotal * displayFxRate : null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -141,7 +152,7 @@ const TurtleHoldingsBuyModal: React.FC = () => {
         <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 mt-3 text-xs">
           <div className="flex items-center justify-between gap-2">
             <span className="text-gray-400">N (20일 ATR)</span>
-            <span className="text-gray-100 font-medium">{fmt(n)}</span>
+            <span className="text-gray-100 font-medium">{fmt(n, row.currency)}</span>
           </div>
           <div className="flex items-center justify-between gap-2">
             <span className="text-gray-400">변동성</span>
@@ -149,13 +160,14 @@ const TurtleHoldingsBuyModal: React.FC = () => {
           </div>
           <div className="flex items-center justify-between gap-2">
             <span className="text-gray-400">손절 예약가(증권사)</span>
-            <span className="text-gray-100 font-medium">{fmt(projectedStop)}</span>
+            <span className="text-gray-100 font-medium">{fmt(projectedStop, row.currency)}</span>
           </div>
           <div className="flex items-center justify-between gap-2">
             <span className="text-gray-400">다음 불타기가</span>
-            <span className="text-gray-100 font-medium">{fmt(projectedNextTrigger)}</span>
+            <span className="text-gray-100 font-medium">{fmt(projectedNextTrigger, row.currency)}</span>
           </div>
         </div>
+        {stopExplanation && <p className="mt-2.5 text-xs text-gray-400">{stopExplanation}</p>}
         {row.rebuy?.skipReason && (
           <p className="mt-2 text-xs text-warning">{SKIP_REASON_LABEL[row.rebuy.skipReason] ?? row.rebuy.skipReason}</p>
         )}
@@ -196,10 +208,12 @@ const TurtleHoldingsBuyModal: React.FC = () => {
           </div>
         </div>
 
-        {estimatedTotal > 0 && (
+        {estimatedLocalTotal > 0 && (
           <div className="bg-gray-900 p-3 rounded-md flex justify-between items-center">
             <span className="text-xs text-gray-400">예상 매수금액</span>
-            <span className="text-base font-bold text-white">{fmt(estimatedTotal)}</span>
+            <span className="text-base font-bold text-white">
+              {estimatedTotalKRW != null ? formatMoney(estimatedTotalKRW, 'KRW') : '환율 정보 없음'}
+            </span>
           </div>
         )}
 

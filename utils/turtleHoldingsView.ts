@@ -16,12 +16,12 @@
 //     쓴다 — 위성 엔진의 `evaluatePyramid`와 동일 관례(`utils/turtlePositionView.ts`의 저장N 기반 미리보기와는
 //     다른 용도: 그쪽은 fetch 없는 동기 표시, 이쪽은 fetch된 라이브 데이터 기반의 정확한 판정).
 
-import { Currency, WatchlistItem } from '../types';
+import { Currency, WatchlistItem, normalizeExchange } from '../types';
 import { EnrichedAsset } from '../types/ui';
 import { TurtlePosition } from '../types/turtle';
 import { isBaseType } from '../types/category';
 import { applyDrawdownScaling } from './turtleEngine';
-import { resolveMarketTz, extractCompletedBars, DailyBar, RawSeries } from './todayTurtle';
+import { resolveMarketTz, extractCompletedBars, todayInstrumentKey, DailyBar, RawSeries } from './todayTurtle';
 import { resolvePositionFxRate } from './turtlePositionView';
 import {
   TurtleHoldingsSettings,
@@ -41,6 +41,8 @@ import {
   classifyVolatility,
   describeExitLineExplanation,
   describeReentryLineExplanation,
+  describeStopOrderCheckText,
+  formatMoney,
   ScopeCheckAsset,
 } from './turtleHoldings';
 
@@ -150,12 +152,14 @@ export interface TurtleHoldingsRow {
   rebuy: TurtleHoldingsRebuy | null;
   /** "왜 떴는지" 한 줄 설명(계획서 §4.1). */
   reasonText: string;
+  /**
+   * "손절선 확인" 칸 전용 문구(증권사 손절 예약주문 점검 용도) — 재매수분(reentry-position)의
+   * '보유 유지'/'추가 매수' 상태에서만 값이 있다. `reasonText`(판정 사유)와 절대 같은 문장을
+   * 재사용하지 않는다(칸 의미 혼동 방지, 계획서 §4.1 Advisor 지적 2026-09-26).
+   */
+  stopCheckText: string | null;
   dataIssue: TurtleHoldingsDataIssue | null;
   asOfDate: string | null;
-}
-
-function fmtOriginal(v: number): string {
-  return v.toLocaleString('ko-KR', { maximumFractionDigits: 2 });
 }
 
 function dataIssueText(issue: TurtleHoldingsDataIssue): string {
@@ -196,7 +200,7 @@ export function buildTurtleHoldingsLegacyRow(input: LegacyHoldingRowInput): Turt
   const base = {
     kind: 'legacy-holding' as const, assetId: asset.id, ticker: asset.ticker,
     name: asset.customName?.trim() || asset.name, currency: asset.currency,
-    reentryLine: null, unitsCount: null, maxUnits: null, rebuy: null,
+    reentryLine: null, unitsCount: null, maxUnits: null, rebuy: null, stopCheckText: null,
   };
   if (!isInHoldingsScope(asset, settings)) {
     return {
@@ -224,9 +228,9 @@ export function buildTurtleHoldingsLegacyRow(input: LegacyHoldingRowInput): Turt
   const exitGapPct = exitLine != null ? ((lastClose - exitLine) / exitLine) * 100 : null;
   const dataIssue: TurtleHoldingsDataIssue | null = status === 'unavailable' ? 'insufficient-bars' : null;
   const reasonText = status === 'sell' && exitLine != null
-    ? describeExitLineExplanation({ exitLookback: settings.exitLookback, exitLine, lastClose })
+    ? describeExitLineExplanation({ exitLookback: settings.exitLookback, exitLine, lastClose, currency: asset.currency })
     : status === 'hold'
-      ? `청산선 ${exitLine != null ? fmtOriginal(exitLine) : '—'} 위에서 마감했습니다(종가 ${fmtOriginal(lastClose)}). 규칙상 보유를 유지합니다.`
+      ? `청산선 ${exitLine != null ? formatMoney(exitLine, asset.currency) : '—'} 위에서 마감했습니다(종가 ${formatMoney(lastClose, asset.currency)}). 규칙상 보유를 유지합니다.`
       : dataIssueText('insufficient-bars');
   return { ...base, status, lastClose, exitLine, exitGapPct, n, volatilityLabel, reasonText, dataIssue, asOfDate };
 }
@@ -253,7 +257,7 @@ export function buildTurtleHoldingsReentryRow(input: ReentryPositionRowInput): T
   const base = {
     kind: 'reentry-position' as const, assetId: asset.id, positionId: position.id,
     ticker: position.ticker, name: asset.customName?.trim() || asset.name, currency: asset.currency,
-    reentryLine: null, unitsCount, maxUnits,
+    reentryLine: null, unitsCount, maxUnits, stopCheckText: null,
   };
   if (!isInHoldingsScope(asset, settings)) {
     return {
@@ -288,24 +292,30 @@ export function buildTurtleHoldingsReentryRow(input: ReentryPositionRowInput): T
 
   if (lastClose <= stopPrice) {
     status = 'sell';
-    reasonText = `손절가 ${fmtOriginal(stopPrice)} 아래로 마감했습니다(종가 ${fmtOriginal(lastClose)}). 손절 매도 후 [팔았음 기록]하세요.`;
+    reasonText = `손절가 ${formatMoney(stopPrice, asset.currency)} 아래로 마감했습니다(종가 ${formatMoney(lastClose, asset.currency)}). 손절 매도 후 [팔았음 기록]하세요.`;
   } else if (exitLine != null && lastClose <= exitLine) {
     status = 'sell';
-    reasonText = describeExitLineExplanation({ exitLookback: settings.exitLookback, exitLine, lastClose });
+    reasonText = describeExitLineExplanation({ exitLookback: settings.exitLookback, exitLine, lastClose, currency: asset.currency });
   } else {
     const canPyramid = unitsCount < maxUnits && n != null;
     const triggerPrice = canPyramid ? computePyramidTriggerPrice(lastUnit.fillPrice, n as number, settings) : null;
     if (canPyramid && triggerPrice != null && lastClose >= triggerPrice) {
       status = 'pyramid';
-      reasonText = `마지막 매수가 ${fmtOriginal(lastUnit.fillPrice)}에서 ${fmtOriginal(triggerPrice - lastUnit.fillPrice)} 오른 ${fmtOriginal(triggerPrice)} 이상으로 마감해 추가 매수(불타기) 기준을 충족했습니다.`;
+      reasonText = `마지막 매수가 ${formatMoney(lastUnit.fillPrice, asset.currency)}에서 ${formatMoney(triggerPrice - lastUnit.fillPrice, asset.currency)} 오른 ${formatMoney(triggerPrice, asset.currency)} 이상으로 마감해 추가 매수(불타기) 기준을 충족했습니다.`;
     } else {
       status = 'hold';
       reasonText = exitLine != null
-        ? `손절가 ${fmtOriginal(stopPrice)}, 청산선 ${fmtOriginal(exitLine)} 어디에도 닿지 않았습니다. 규칙상 보유를 유지합니다.`
-        : `손절가 ${fmtOriginal(stopPrice)} 위에 있습니다. 규칙상 보유를 유지합니다.`;
+        ? `손절가 ${formatMoney(stopPrice, asset.currency)}, 청산선 ${formatMoney(exitLine, asset.currency)} 어디에도 닿지 않았습니다. 규칙상 보유를 유지합니다.`
+        : `손절가 ${formatMoney(stopPrice, asset.currency)} 위에 있습니다. 규칙상 보유를 유지합니다.`;
       if (exitLine == null) dataIssue = 'insufficient-bars';
     }
   }
+
+  // "손절선 확인" 칸 전용 문구(증권사 손절 예약주문 점검) — '보유 유지'/'추가 매수'에서만.
+  // reasonText(판정 사유)와 다른 문장이어야 칸 의미가 혼동되지 않는다(§4.1 Advisor 지적 2026-09-26).
+  const stopCheckText = status === 'hold' || status === 'pyramid'
+    ? describeStopOrderCheckText({ stopPrice, exitLine, currency: asset.currency })
+    : null;
 
   // 불타기 사이징 미리보기 — 손절('sell') 상태에서는 매수 미리보기를 만들지 않는다.
   let rebuy: TurtleHoldingsRebuy | null = null;
@@ -325,7 +335,7 @@ export function buildTurtleHoldingsReentryRow(input: ReentryPositionRowInput): T
     }
   }
 
-  return { ...base, status, lastClose, exitLine, exitGapPct, n, volatilityLabel, rebuy, reasonText, dataIssue, asOfDate };
+  return { ...base, status, lastClose, exitLine, exitGapPct, n, volatilityLabel, rebuy, reasonText, stopCheckText, dataIssue, asOfDate };
 }
 
 // ── 3. 관심종목 감시(watch) ──────────────────────────────────────────────────
@@ -339,16 +349,31 @@ export interface WatchRowInput {
   settings: TurtleHoldingsSettings;
   fxRate: number | null;
   effectiveManagedEquityKRW: number;
+  /**
+   * 범위 내 보유 자산(원래 보유분·재매수분)의 정규화 티커 키 집합(`todayInstrumentKey`,
+   * 티커+`normalizeExchange` 거래소) — 같은 종목을 이미 보유/재매수 중이면 감시 행을 만들지 않는다
+   * (방금 [샀음 기록]한 종목이 '다시 살 때'로 계속 뜨는 중복 매수 유도 방지, Advisor 지적 2026-09-26).
+   */
+  heldTickerKeys: ReadonlySet<string>;
 }
 
 export function buildTurtleHoldingsWatchRow(input: WatchRowInput): TurtleHoldingsRow {
-  const { watchItem, raw, isCrypto, fetchFailed, now, settings, fxRate, effectiveManagedEquityKRW } = input;
+  const { watchItem, raw, isCrypto, fetchFailed, now, settings, fxRate, effectiveManagedEquityKRW, heldTickerKeys } = input;
   const scopeAsset: ScopeCheckAsset = { id: watchItem.id, categoryId: watchItem.categoryId };
   const base = {
     kind: 'watch' as const, watchItemId: watchItem.id, ticker: watchItem.ticker,
     name: watchItem.name, currency: watchItem.currency ?? Currency.KRW,
-    exitLine: null, exitGapPct: null, unitsCount: null, maxUnits: null,
+    exitLine: null, exitGapPct: null, unitsCount: null, maxUnits: null, stopCheckText: null,
   };
+  const watchKey = todayInstrumentKey(watchItem.ticker, watchItem.exchange, normalizeExchange);
+  if (heldTickerKeys.has(watchKey)) {
+    return {
+      ...base, status: 'out-of-scope', lastClose: null, reentryLine: null, n: null,
+      volatilityLabel: null, rebuy: null,
+      reasonText: '이미 보유 중이거나 재매수 포지션이 있어 감시 대상에서 제외했습니다(중복 매수 방지).',
+      dataIssue: null, asOfDate: null,
+    };
+  }
   if (!isInHoldingsScope(scopeAsset, settings)) {
     return {
       ...base, status: 'out-of-scope', lastClose: null, reentryLine: null, n: null,
@@ -378,11 +403,11 @@ export function buildTurtleHoldingsWatchRow(input: WatchRowInput): TurtleHolding
     reasonText = dataIssueText('insufficient-bars');
   } else if (lastClose >= reentryLine) {
     status = 'reentry';
-    reasonText = describeReentryLineExplanation({ entryLookback: settings.entryLookback, reentryLine, lastClose });
+    reasonText = describeReentryLineExplanation({ entryLookback: settings.entryLookback, reentryLine, lastClose, currency: watchItem.currency ?? Currency.KRW });
   } else {
     status = 'watching';
     const gapPct = ((reentryLine - lastClose) / lastClose) * 100;
-    reasonText = `${settings.entryLookback}일 최고가 ${fmtOriginal(reentryLine)}까지 ${gapPct.toFixed(1)}% 남았습니다.`;
+    reasonText = `${settings.entryLookback}일 최고가 ${formatMoney(reentryLine, watchItem.currency ?? Currency.KRW)}까지 ${gapPct.toFixed(1)}% 남았습니다.`;
   }
 
   let rebuy: TurtleHoldingsRebuy | null = null;

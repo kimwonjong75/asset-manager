@@ -18,6 +18,7 @@ import { calculateATR } from './maCalculations';
 import { computeN } from './turtleEngine';
 import { entryBreakoutLine, exitChannelLine, DailyBar } from './todayTurtle';
 import { getAssetOwner } from '../types/owner';
+import { formatPlanPrice } from './tradePlan';
 import {
   TurtleHoldingsSettings,
   DEFAULT_TURTLE_HOLDINGS_SETTINGS,
@@ -377,8 +378,9 @@ export function classifyVolatility(nPctOfPrice: number): VolatilityLabel {
   return 'volatile';
 }
 
-function formatKRW(v: number): string {
-  return `${Math.round(v).toLocaleString('ko-KR')}원`;
+/** 원통화 표기 — KRW 기본, USD는 $·소수 2자리(카톡과 동일 규약, utils/tradePlan.formatPlanPrice 재사용). */
+export function formatMoney(v: number, currency: string = 'KRW'): string {
+  return formatPlanPrice(v, currency);
 }
 function formatPct(v: number): string {
   return `${(Math.round(v * 10) / 10).toFixed(1)}%`;
@@ -389,30 +391,45 @@ function formatPct(v: number): string {
  * 그래서 손절가를 3,000원(6%) 아래인 47,000원으로 잡았습니다."
  */
 export function describeStopExplanation(params: {
-  priceLocal: number; n: number; stopMultipleN: number; stopPrice: number; currencySymbol?: string;
+  priceLocal: number; n: number; stopMultipleN: number; stopPrice: number; currency?: string;
 }): string {
-  const { priceLocal, n, stopMultipleN, stopPrice } = params;
+  const { priceLocal, n, stopMultipleN, stopPrice, currency } = params;
   const nPct = priceLocal > 0 ? (n / priceLocal) * 100 : 0;
   const stopDistance = stopMultipleN * n;
   const stopPct = priceLocal > 0 ? (stopDistance / priceLocal) * 100 : 0;
-  return `이 종목은 하루 평균 ${formatKRW(n)}(${formatPct(nPct)})씩 움직입니다. ` +
-    `그래서 손절가를 ${formatKRW(stopDistance)}(${formatPct(stopPct)}) 아래인 ${formatKRW(stopPrice)}으로 잡았습니다.`;
+  return `이 종목은 하루 평균 ${formatMoney(n, currency)}(${formatPct(nPct)})씩 움직입니다. ` +
+    `그래서 손절가를 ${formatMoney(stopDistance, currency)}(${formatPct(stopPct)}) 아래인 ${formatMoney(stopPrice, currency)}으로 잡았습니다.`;
 }
 
 /**
  * 청산선 설명(도치안 예) — 예: "20일 최저가 51,200원 아래로 마감 (종가 50,800원)".
  */
 export function describeExitLineExplanation(params: {
-  exitLookback: number; exitLine: number; lastClose: number;
+  exitLookback: number; exitLine: number; lastClose: number; currency?: string;
 }): string {
-  const { exitLookback, exitLine, lastClose } = params;
-  return `${exitLookback}일 최저가 ${formatKRW(exitLine)} 아래로 마감 (종가 ${formatKRW(lastClose)})`;
+  const { exitLookback, exitLine, lastClose, currency } = params;
+  // 판정은 종가 <= 청산선(백테스트·todayTurtle 동일 규약) — 같은 값도 포함하므로 '이하'로 표기(Advisor 보정 2026-09-26)
+  return `${exitLookback}일 최저가 ${formatMoney(exitLine, currency)} 이하로 마감 (종가 ${formatMoney(lastClose, currency)})`;
 }
 
 /** 재진입선 설명 — 예: "55일 최고가 62,000원 위로 마감 (종가 62,400원)". */
 export function describeReentryLineExplanation(params: {
-  entryLookback: number; reentryLine: number; lastClose: number;
+  entryLookback: number; reentryLine: number; lastClose: number; currency?: string;
 }): string {
-  const { entryLookback, reentryLine, lastClose } = params;
-  return `${entryLookback}일 최고가 ${formatKRW(reentryLine)} 위로 마감 (종가 ${formatKRW(lastClose)})`;
+  const { entryLookback, reentryLine, lastClose, currency } = params;
+  return `${entryLookback}일 최고가 ${formatMoney(reentryLine, currency)} 위로 마감 (종가 ${formatMoney(lastClose, currency)})`;
+}
+
+/**
+ * 손절 예약주문 점검 문구(재매수분 '보유 유지'/'추가 매수' 전용, §4.1 "손절선 확인" 칸).
+ * 증권사에 실제로 손절 예약이 걸려 있는지 점검하라는 용도이지, 손절/청산 여부 판정문(§"팔 때" 칸의
+ * `사유` 텍스트)과는 목적이 다르다 — 같은 문장을 두 칸에 중복 표시하지 않도록 별도 함수로 분리한다.
+ * 예: "증권사 손절 예약 48,800원이 걸려 있는지 확인하세요 (청산선 49,000원)."
+ */
+export function describeStopOrderCheckText(params: {
+  stopPrice: number; exitLine: number | null; currency?: string;
+}): string {
+  const { stopPrice, exitLine, currency } = params;
+  const exitPart = exitLine != null ? ` (청산선 ${formatMoney(exitLine, currency)})` : '';
+  return `증권사 손절 예약 ${formatMoney(stopPrice, currency)}이 걸려 있는지 확인하세요${exitPart}.`;
 }

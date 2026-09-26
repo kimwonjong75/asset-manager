@@ -22,10 +22,10 @@ import {
   convertTickerForAPI,
   HistoricalPriceResult,
 } from '../services/historicalPriceService';
-import { Currency } from '../types';
+import { Currency, normalizeExchange } from '../types';
 import { TurtlePosition } from '../types/turtle';
 import { EnrichedAsset } from '../types/ui';
-import { resolveHoldingsSettings } from '../utils/turtleHoldings';
+import { resolveHoldingsSettings, isInHoldingsScope } from '../utils/turtleHoldings';
 import {
   buildTurtleHoldingsLegacyRow,
   buildTurtleHoldingsReentryRow,
@@ -43,6 +43,7 @@ import {
   marketDaySignature, evaluateCacheEntry, isCacheableResult, pruneCacheEntries, selectDisplayedResult,
   TODAY_TURTLE_CACHE_TTL_MS, TODAY_TURTLE_CACHE_MAX_ENTRIES, KeyedTodayResult,
 } from '../utils/todayTurtleCache';
+import { todayInstrumentKey } from '../utils/todayTurtle';
 import { createLogger } from '../utils/logger';
 
 const log = createLogger('TurtleHoldings');
@@ -172,6 +173,20 @@ export function useTurtleHoldings(): TurtleHoldingsModel {
     return m;
   }, [turtlePositions]);
 
+  // 범위 내 보유 자산(원래 보유분·재매수분)의 정규화 티커 키 — 관심종목 감시 행 중복 제외용
+  // (useTodayTurtle의 heldKeys와 동일 관례: ticker + normalizeExchange 거래소).
+  // 방금 [샀음 기록]해 생긴 reentry-position도 assetId·quantity>0인 enrichedAssets에 이미 반영되므로
+  // 별도로 turtlePositions를 다시 훑을 필요 없다.
+  const heldTickerKeys = useMemo(() => {
+    const s = new Set<string>();
+    for (const a of enrichedAssets) {
+      if (a.quantity <= 0) continue;
+      if (!isInHoldingsScope(a, settings)) continue;
+      s.add(todayInstrumentKey(a.ticker, a.exchange, normalizeExchange));
+    }
+    return s;
+  }, [enrichedAssets, settings]);
+
   const watchCandidates = useMemo(() => watchlist.filter(w => w.isTurtleCandidate), [watchlist]);
 
   const targets = useMemo<Target[]>(() => {
@@ -244,7 +259,7 @@ export function useTurtleHoldings(): TurtleHoldingsModel {
         const fxRate = resolvePositionFxRate(w.currency ?? Currency.KRW, exchangeRates);
         rows.push(buildTurtleHoldingsWatchRow({
           watchItem: w, raw, isCrypto: t.isCrypto, fetchFailed, now, settings, fxRate,
-          effectiveManagedEquityKRW,
+          effectiveManagedEquityKRW, heldTickerKeys,
         }));
       } else {
         const assetId = t.key.split('|')[1];
@@ -279,5 +294,5 @@ export function useTurtleHoldings(): TurtleHoldingsModel {
       isLoading,
       partialFailure: failedKeys.size > 0,
     };
-  }, [targets, rawByKey, failedKeys, isLoading, enrichedAssets, enrichedById, openReentryByAssetId, watchCandidates, exchangeRates, settings]);
+  }, [targets, rawByKey, failedKeys, isLoading, enrichedAssets, enrichedById, openReentryByAssetId, watchCandidates, exchangeRates, settings, heldTickerKeys]);
 }

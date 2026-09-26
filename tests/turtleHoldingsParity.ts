@@ -10,7 +10,8 @@ import {
   computeAtrTrailExitLine, computeExitLine, computeReentryLine, checkReentrySignal,
   computeFirstUnitSize, computePyramidUnitSize, computePyramidTriggerPrice, computeCommonStopPrice,
   evaluateLegacyHoldingsStatus, computeLambdaScale, checkTotalRiskLimit, isInHoldingsScope,
-  classifyVolatility, describeStopExplanation, describeExitLineExplanation, roundHoldingsQty,
+  classifyVolatility, describeStopExplanation, describeExitLineExplanation, describeStopOrderCheckText,
+  formatMoney, roundHoldingsQty,
   DailyBar,
 } from '../utils/turtleHoldings';
 import { DEFAULT_TURTLE_HOLDINGS_SETTINGS, TurtleHoldingsSettings } from '../types/turtleHoldings';
@@ -279,7 +280,22 @@ function mkBars(closes: number[], highs?: number[], lows?: number[]): DailyBar[]
     '이 종목은 하루 평균 1,500원(3.0%)씩 움직입니다. 그래서 손절가를 3,000원(6.0%) 아래인 47,000원으로 잡았습니다.');
 
   const exitExpl = describeExitLineExplanation({ exitLookback: 20, exitLine: 51_200, lastClose: 50_800 });
-  check('청산선 설명 문구(예시)', exitExpl, '20일 최저가 51,200원 아래로 마감 (종가 50,800원)');
+  check('청산선 설명 문구(예시)', exitExpl, '20일 최저가 51,200원 이하로 마감 (종가 50,800원)');
+  // Advisor 보정(2026-09-26): 같은 값도 청산(<=)이라 '이하', 달러 종목은 $·소수 2자리
+  check('청산선 설명 — USD 통화 표기', describeExitLineExplanation({ exitLookback: 20, exitLine: 79.12, lastClose: 79.12, currency: 'USD' }), '20일 최저가 $79.12 이하로 마감 (종가 $79.12)');
+
+  // formatMoney — KRW/JPY 정수+기호, USD·CNY 소수 2자리(§4.1 통화 단위 누락 수정, 2026-09-26)
+  check('formatMoney KRW(기본값)', formatMoney(48_800), '48,800원');
+  check('formatMoney KRW(명시)', formatMoney(48_800, 'KRW'), '48,800원');
+  check('formatMoney USD', formatMoney(79.123, 'USD'), '$79.12');
+  check('formatMoney JPY', formatMoney(1_234, 'JPY'), '¥1,234');
+
+  // 손절 예약주문 점검 문구("손절선 확인" 칸 전용) — describeExitLineExplanation(판정 사유)과 문장이 겹치면 안 됨
+  const stopCheckExpl = describeStopOrderCheckText({ stopPrice: 48_800, exitLine: 49_000 });
+  check('손절 예약주문 점검 문구(예시)', stopCheckExpl, '증권사 손절 예약 48,800원이 걸려 있는지 확인하세요 (청산선 49,000원).');
+  check('손절 예약주문 점검 문구 — 청산선 없음(ma/atrTrail 등)', describeStopOrderCheckText({ stopPrice: 48_800, exitLine: null }), '증권사 손절 예약 48,800원이 걸려 있는지 확인하세요.');
+  check('손절 예약주문 점검 문구 — USD 통화 표기', describeStopOrderCheckText({ stopPrice: 96.7, exitLine: 99, currency: 'USD' }), '증권사 손절 예약 $96.70이 걸려 있는지 확인하세요 (청산선 $99.00).');
+  check('손절 예약주문 점검 문구 ≠ 청산선 이탈 판정 문구(칸 의미 혼동 방지)', stopCheckExpl !== describeExitLineExplanation({ exitLookback: 20, exitLine: 49_000, lastClose: 48_800 }), true);
 }
 
 // ════════════════════════════════════════════════════════════════════════════

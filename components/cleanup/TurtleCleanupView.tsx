@@ -14,6 +14,7 @@ import React, { useMemo, useState } from 'react';
 import { usePortfolio } from '../../contexts/PortfolioContext';
 import { useTurtleHoldings } from '../../hooks/useTurtleHoldings';
 import { TurtleHoldingsRow } from '../../utils/turtleHoldingsView';
+import { resolveHoldingsSettings } from '../../utils/turtleHoldings';
 import { consecutiveHoldCount } from '../../utils/turtleHoldingsState';
 import {
   realizedForeignGainYTD, plannedForeignGainKRW, estimateForeignCapGainsTax,
@@ -41,6 +42,7 @@ interface CandidateRow {
 const TurtleCleanupView: React.FC = () => {
   const { data, derived, actions } = usePortfolio();
   const holdings = useTurtleHoldings();
+  const holdingsSettings = useMemo(() => resolveHoldingsSettings(data.turtleSettings.holdings), [data.turtleSettings.holdings]);
   const [selectedSmallIds, setSelectedSmallIds] = useState<Set<string>>(new Set());
   const [holdDrafts, setHoldDrafts] = useState<Record<string, string>>({});
   const [openHoldFor, setOpenHoldFor] = useState<string | null>(null);
@@ -139,7 +141,7 @@ const TurtleCleanupView: React.FC = () => {
       <div className="mb-4">
         <h1 className="text-lg sm:text-xl font-bold text-white">터틀 정리</h1>
         <p className="text-xs sm:text-sm text-gray-400 mt-1">
-          청산선(20일 최저가) 아래로 마감한 종목입니다. 팔면 자동으로 <span className="text-gray-200">"다시 살 때" 감시 명단</span>에 등록됩니다.
+          청산선({holdingsSettings.exitLookback}일 최저가) 이하로 마감한 종목입니다. 팔면 자동으로 <span className="text-gray-200">"다시 살 때" 감시 명단</span>에 등록됩니다.
         </p>
       </div>
 

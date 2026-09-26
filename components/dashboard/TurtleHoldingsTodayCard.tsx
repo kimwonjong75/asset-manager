@@ -19,16 +19,23 @@ interface Bucket {
   rows: TurtleHoldingsRow[];
   /** true면 행을 눌러 재매수 계산기를 연다(다시 살 때/추가 매수 칸만) */
   clickable: boolean;
+  /**
+   * 칸에 보여줄 문구 선택자 — 기본은 `reasonText`(판정 사유). "손절선 확인" 칸은 증권사 손절 예약주문
+   * 점검 용도라 별도 문구(`stopCheckText`)를 쓴다(같은 문장이 두 칸에 중복 표시되는 것을 막는다,
+   * Advisor 지적 2026-09-26). 같은 행 객체가 '추가 매수'·'손절선 확인' 두 칸에 동시에 나올 수 있으므로
+   * 행을 복제하지 않고 칸별로 다른 텍스트를 뽑아 쓴다.
+   */
+  textFor?: (row: TurtleHoldingsRow) => string;
 }
 
-const RowLine: React.FC<{ row: TurtleHoldingsRow; onOpenBuy?: (row: TurtleHoldingsRow) => void }> = ({ row, onOpenBuy }) => {
+const RowLine: React.FC<{ row: TurtleHoldingsRow; onOpenBuy?: (row: TurtleHoldingsRow) => void; text: string }> = ({ row, onOpenBuy, text }) => {
   const body = (
     <>
       <div className="flex flex-wrap items-center gap-2">
         <span className="font-semibold text-white text-sm">{row.name}</span>
         <span className="text-xs text-gray-500">{row.ticker}</span>
       </div>
-      <p className="mt-1 text-xs text-gray-300 leading-relaxed">{row.reasonText}</p>
+      <p className="mt-1 text-xs text-gray-300 leading-relaxed">{text}</p>
     </>
   );
   if (!onOpenBuy) {
@@ -58,7 +65,12 @@ const BucketSection: React.FC<{ bucket: Bucket; onOpenBuy: (row: TurtleHoldingsR
     ) : (
       <ul className="space-y-1.5">
         {bucket.rows.map(r => (
-          <RowLine key={`${r.kind}-${r.assetId ?? r.watchItemId ?? r.ticker}`} row={r} onOpenBuy={bucket.clickable ? onOpenBuy : undefined} />
+          <RowLine
+            key={`${r.kind}-${r.assetId ?? r.watchItemId ?? r.ticker}`}
+            row={r}
+            onOpenBuy={bucket.clickable ? onOpenBuy : undefined}
+            text={bucket.textFor ? bucket.textFor(r) : r.reasonText}
+          />
         ))}
       </ul>
     )}
@@ -79,7 +91,9 @@ const TurtleHoldingsTodayCard: React.FC = () => {
       { key: 'sell', title: '팔 때', rows: sell, clickable: false },
       { key: 'reentry', title: '다시 살 때', rows: reentry, clickable: true },
       { key: 'pyramid', title: '추가 매수', rows: pyramid, clickable: true },
-      { key: 'stopCheck', title: '손절선 확인', rows: stopCheck, clickable: false },
+      // 증권사 손절 예약주문 점검 용도 — '팔 때'·'추가 매수' 칸의 판정 사유 문구와 겹치지 않도록
+      // stopCheckText(없으면 reasonText로 안전하게 대체)를 쓴다.
+      { key: 'stopCheck', title: '손절선 확인', rows: stopCheck, clickable: false, textFor: r => r.stopCheckText ?? r.reasonText },
     ];
   }, [model.rows]);
 
@@ -122,7 +136,7 @@ const TurtleHoldingsTodayCard: React.FC = () => {
           {showAll && (
             <ul className="mt-2 space-y-1.5">
               {model.rows.filter(r => r.status === 'unavailable').map(r => (
-                <RowLine key={`na-${r.kind}-${r.assetId ?? r.watchItemId ?? r.ticker}`} row={r} />
+                <RowLine key={`na-${r.kind}-${r.assetId ?? r.watchItemId ?? r.ticker}`} row={r} text={r.reasonText} />
               ))}
             </ul>
           )}

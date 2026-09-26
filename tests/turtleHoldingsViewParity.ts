@@ -6,11 +6,11 @@
 //
 // 실행: npx tsx tests/turtleHoldingsViewParity.ts
 
-import { Currency, WatchlistItem } from '../types';
+import { Currency, WatchlistItem, normalizeExchange } from '../types';
 import { EnrichedAsset } from '../types/ui';
 import { TurtlePosition } from '../types/turtle';
 import { TurtleHoldingsSettings, DEFAULT_TURTLE_HOLDINGS_SETTINGS } from '../types/turtleHoldings';
-import { RawSeries } from '../utils/todayTurtle';
+import { RawSeries, todayInstrumentKey } from '../utils/todayTurtle';
 import {
   computeManagedEquity,
   resolveEffectiveManagedEquity,
@@ -140,6 +140,7 @@ console.log('3. buildTurtleHoldingsLegacyRow — 원래 보유분(청산선만, 
   check('3-c 청산선=99', rowHold.exitLine, 99);
   checkClose('3-c N=2.0', rowHold.n, 2.0);
   check('3-c 변동성=보통(2%)', rowHold.volatilityLabel, 'normal');
+  check('3-c stopCheckText 없음(원래 보유분은 손절 예약 자체가 없음)', rowHold.stopCheckText, null);
 
   // 3-d. 팔 때(오늘 종가 98 ≤ 청산선 99, TR20=3 → N=(38+3)/20=2.05)
   const barsSell: B[] = [...flatWindow(), { o: 98, h: 99, l: 97, c: 98 }];
@@ -172,6 +173,9 @@ console.log('4. buildTurtleHoldingsReentryRow — 재매수분(2N 손절 + 불�
   check('4-a 상태=보유 유지', rowHold.status, 'hold');
   checkClose('4-a N=2.0', rowHold.n, 2.0);
   check('4-a 유닛 1/4', { u: rowHold.unitsCount, m: rowHold.maxUnits }, { u: 1, m: 4 });
+  // "손절선 확인" 전용 문구 — reasonText(판정 사유)와 다른 문장이어야 한다(칸 의미 혼동 방지).
+  check('4-a 손절선 확인 문구(예시)', rowHold.stopCheckText, '증권사 손절 예약 90원이 걸려 있는지 확인하세요 (청산선 99원).');
+  check('4-a 손절선 확인 문구 ≠ reasonText(칸 중복 금지)', rowHold.stopCheckText !== rowHold.reasonText, true);
 
   // 4-b. 손절(종가 89 ≤ stopPrice 90)
   const barsStop: B[] = [...flatWindow(), { o: 90, h: 91, l: 88, c: 89 }];
@@ -181,6 +185,7 @@ console.log('4. buildTurtleHoldingsReentryRow — 재매수분(2N 손절 + 불�
   });
   check('4-b 상태=팔 때(손절)', rowStop.status, 'sell');
   check('4-b rebuy 없음(팔 때)', rowStop.rebuy, null);
+  check('4-b stopCheckText 없음("팔 때"엔 손절선 확인 칸 자체가 안 뜸)', rowStop.stopCheckText, null);
 
   // 4-c. 청산선 이탈(종가 98 ≤ 청산선 99, 손절 90은 안 닿음)
   const barsExit: B[] = [...flatWindow(), { o: 98, h: 99, l: 97, c: 98 }];
@@ -189,6 +194,7 @@ console.log('4. buildTurtleHoldingsReentryRow — 재매수분(2N 손절 + 불�
     now: nowAfter(barsExit), settings, fxRate: 1, effectiveManagedEquityKRW: 100_000_000,
   });
   check('4-c 상태=팔 때(청산선)', rowExit.status, 'sell');
+  check('4-c stopCheckText 없음("팔 때"엔 손절선 확인 칸 자체가 안 뜸)', rowExit.stopCheckText, null);
 
   // 4-d. 추가 매수(불타기) — 종가105, TR20=6 → N=(38+6)/20=2.2, 트리거=100+0.5*2.2=101.1 ≤ 105
   const barsPyr: B[] = [...flatWindow(), { o: 105, h: 106, l: 104, c: 105 }];
@@ -198,6 +204,9 @@ console.log('4. buildTurtleHoldingsReentryRow — 재매수분(2N 손절 + 불�
   });
   check('4-d 상태=추가 매수', rowPyr.status, 'pyramid');
   checkClose('4-d N=2.2', rowPyr.n, 2.2);
+  check('4-d 손절선 확인 문구(예시, 추가 매수 상태에도 뜬다)', rowPyr.stopCheckText, '증권사 손절 예약 90원이 걸려 있는지 확인하세요 (청산선 99원).');
+  check('4-d 불타기 사유(reasonText)에 통화 단위(원) 포함', rowPyr.reasonText.includes('원'), true);
+  check('4-d 손절선 확인 문구 ≠ 불타기 사유(reasonText, 칸 중복 금지)', rowPyr.stopCheckText !== rowPyr.reasonText, true);
   if (rowPyr.rebuy) {
     check('4-d rebuy qty=10(첫유닛 10×배수1)', rowPyr.rebuy.qty, 10);
     checkClose('4-d rebuy positionValueKRW=10×101.1', rowPyr.rebuy.positionValueKRW, 10 * 101.1, 1e-6);
@@ -218,6 +227,7 @@ console.log('4. buildTurtleHoldingsReentryRow — 재매수분(2N 손절 + 불�
   });
   check('4-e 유닛 한도 도달 → 보유 유지(불타기 아님)', rowFull.status, 'hold');
   check('4-e rebuy 없음(한도 도달)', rowFull.rebuy, null);
+  check('4-e 유닛 한도 도달해도 손절선 확인 문구는 그대로 뜬다(hold 상태)', rowFull.stopCheckText, '증권사 손절 예약 90원이 걸려 있는지 확인하세요 (청산선 99원).');
 }
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -226,11 +236,13 @@ console.log('5. buildTurtleHoldingsWatchRow — 관심종목 감시(재매수 �
 {
   const settings = H({ riskPerUnitPct: 1, positionCapPct: 10, maxUnitsPerPosition: 4, minOrderKRW: 50_000, stopMultipleN: 2 });
   const watch: WatchlistItem = { id: 'w1', ticker: 'AAA', exchange: KR_EX, name: '테스트종목', categoryId: 1, currency: Currency.KRW };
+  const noHeld = new Set<string>(); // 대부분의 시나리오는 보유 중복이 없는 경우
 
   // 5-a. 범위 제외(카테고리)
   const outScope = buildTurtleHoldingsWatchRow({
     watchItem: { ...watch, categoryId: 77 }, raw: undefined, isCrypto: false, fetchFailed: false,
     now: new Date(), settings: H({ excludedCategoryIds: [77] }), fxRate: 1, effectiveManagedEquityKRW: 100_000_000,
+    heldTickerKeys: noHeld,
   });
   check('5-a 범위 제외', outScope.status, 'out-of-scope');
 
@@ -239,6 +251,7 @@ console.log('5. buildTurtleHoldingsWatchRow — 관심종목 감시(재매수 �
   const rowWatch = buildTurtleHoldingsWatchRow({
     watchItem: watch, raw: mkRaw(barsWatch), isCrypto: false, fetchFailed: false,
     now: nowAfter(barsWatch), settings, fxRate: 1, effectiveManagedEquityKRW: 100_000_000,
+    heldTickerKeys: noHeld,
   });
   check('5-b 상태=감시 중', rowWatch.status, 'watching');
   check('5-b 재진입선=101', rowWatch.reentryLine, 101);
@@ -252,12 +265,14 @@ console.log('5. buildTurtleHoldingsWatchRow — 관심종목 감시(재매수 �
   } else {
     fail++; console.error('  ✗ 5-b rebuy가 null이면 안 됨');
   }
+  check('5-b stopCheckText는 watch 행에 없음(재매수분 전용)', rowWatch.stopCheckText, null);
 
   // 5-c. 다시 살 때(종가102 ≥ 재진입선101)
   const barsReentry: B[] = [...flatWindow(), { o: 102, h: 103, l: 101, c: 102 }];
   const rowReentry = buildTurtleHoldingsWatchRow({
     watchItem: watch, raw: mkRaw(barsReentry), isCrypto: false, fetchFailed: false,
     now: nowAfter(barsReentry), settings, fxRate: 1, effectiveManagedEquityKRW: 100_000_000,
+    heldTickerKeys: noHeld,
   });
   check('5-c 상태=다시 살 때', rowReentry.status, 'reentry');
 
@@ -265,9 +280,31 @@ console.log('5. buildTurtleHoldingsWatchRow — 관심종목 감시(재매수 �
   const rowNoFx = buildTurtleHoldingsWatchRow({
     watchItem: { ...watch, currency: Currency.CNY }, raw: mkRaw(barsWatch), isCrypto: false, fetchFailed: false,
     now: nowAfter(barsWatch), settings, fxRate: null, effectiveManagedEquityKRW: 100_000_000,
+    heldTickerKeys: noHeld,
   });
   check('5-d rebuy skip=no-fx', rowNoFx.rebuy?.skipReason, 'no-fx');
   check('5-d rebuy qty=0', rowNoFx.rebuy?.qty, 0);
+
+  // 5-e. 이미 보유 중(방금 [샀음 기록]해 reentry-position이 생긴 경우) → 감시 행을 만들지 않는다
+  //   (중복 매수 유도 버그 수정, Advisor 지적 2026-09-26). 티커+정규화 거래소로 매칭 — 대소문자·거래소 별칭 무관.
+  const heldKey = todayInstrumentKey(watch.ticker, watch.exchange, normalizeExchange);
+  const rowAlreadyHeld = buildTurtleHoldingsWatchRow({
+    watchItem: watch, raw: mkRaw(barsReentry), isCrypto: false, fetchFailed: false,
+    now: nowAfter(barsReentry), settings, fxRate: 1, effectiveManagedEquityKRW: 100_000_000,
+    heldTickerKeys: new Set([heldKey]),
+  });
+  check('5-e 이미 보유 중 → 감시 제외(범위 제외로 처리)', rowAlreadyHeld.status, 'out-of-scope');
+  check('5-e rebuy 없음', rowAlreadyHeld.rebuy, null);
+  check('5-e 사유 = 중복 매수 방지 문구', rowAlreadyHeld.reasonText, '이미 보유 중이거나 재매수 포지션이 있어 감시 대상에서 제외했습니다(중복 매수 방지).');
+
+  // 5-e'. 대소문자·거래소 별칭이 달라도 매칭(정규화 — todayInstrumentKey/normalizeExchange 재사용)
+  const heldKeyLower = todayInstrumentKey('aaa', KR_EX.toLowerCase(), normalizeExchange);
+  const rowAlreadyHeldNormalized = buildTurtleHoldingsWatchRow({
+    watchItem: watch, raw: mkRaw(barsReentry), isCrypto: false, fetchFailed: false,
+    now: nowAfter(barsReentry), settings, fxRate: 1, effectiveManagedEquityKRW: 100_000_000,
+    heldTickerKeys: new Set([heldKeyLower]),
+  });
+  check('5-e\' 대소문자 달라도 정규화 매칭 → 감시 제외', rowAlreadyHeldNormalized.status, 'out-of-scope');
 }
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -277,7 +314,7 @@ console.log('6. summarizeTurtleHoldingsRows · sortTurtleHoldingsRows');
   const mk = (over: Partial<TurtleHoldingsRow>): TurtleHoldingsRow => ({
     kind: 'legacy-holding', ticker: 'X', name: 'X', currency: Currency.KRW, status: 'hold',
     lastClose: null, exitLine: null, reentryLine: null, exitGapPct: null, n: null, volatilityLabel: null,
-    unitsCount: null, maxUnits: null, rebuy: null, reasonText: '', dataIssue: null, asOfDate: null,
+    unitsCount: null, maxUnits: null, rebuy: null, reasonText: '', stopCheckText: null, dataIssue: null, asOfDate: null,
     ...over,
   });
   const rows: TurtleHoldingsRow[] = [
