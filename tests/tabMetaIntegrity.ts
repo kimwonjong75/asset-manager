@@ -25,7 +25,8 @@ const GOLDEN: Record<AppTab, [title: string, mobileTitle: boolean, showAccountVi
   portfolio: ['보유자산', true, true, true, false],
   watchlist: ['관심종목', true, false, true, false],
   analytics: ['수익 통계', true, false, false, true],
-  cleanup: ['대청소', true, false, false, true],
+  // P3(터틀 재정비, 2026-09-26): cleanup 탭 화면이 TurtleCleanupView로 교체되며 라벨도 '터틀 정리'로.
+  cleanup: ['터틀 정리', true, false, false, true],
   guide: ['투자 가이드', true, false, false, true],
   replay: ['연구실', true, false, false, true],
   settings: ['설정', true, false, false, true],

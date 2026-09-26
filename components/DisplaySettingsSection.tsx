@@ -206,6 +206,14 @@ const DisplaySettingsSection: React.FC = () => {
             checked={ui.signalDisplay.showGuruSignalsProminently}
             onChange={(v) => actions.setSignalDisplay({ showGuruSignalsProminently: v })}
           />
+          <div className="mt-3 pt-3 border-t border-gray-800">
+            <SignalToggleRow
+              title="기존 신호 보기"
+              desc="터틀 중심 재정비 이후 숨긴 구루 신호 카드 · 참고 지표(리스크 매트릭스/과열) · 알림 브리핑 자동 팝업을 한 번에 복원합니다 (기본 꺼짐). 계산·발화는 바뀌지 않고 표시만 켜고 끕니다. 브리핑 벨(수동 열기)은 이 설정과 무관하게 항상 동작합니다."
+              checked={ui.signalDisplay.showLegacySignals}
+              onChange={(v) => actions.setSignalDisplay({ showLegacySignals: v })}
+            />
+          </div>
         </div>
 
         {/* 글자 크게 (P6) — 루트 폰트 크기(rem 기준)를 바꾸므로 카드·표·여백까지 함께 커진다 */}

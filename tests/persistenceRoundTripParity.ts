@@ -180,6 +180,24 @@ function roundTrip<T>(v: T): T {
   const resolvedLegacy = resolveHoldingsSettings(loadedLegacy.holdings as TurtleHoldingsSettings | undefined);
   check('구 저장본 → resolveHoldingsSettings 기본값(entryLookback=55)', resolvedLegacy.entryLookback, 55);
   check('구 저장본 → resolveHoldingsSettings 기본값(positionCapPct=10)', resolvedLegacy.positionCapPct, 10);
+
+  // P3(2026-09-26, §4.7) — 계좌 축소 기준 자산(drawdownReferenceKRW/drawdownReferenceSetAt) 왕복.
+  const holdingsWithRef: TurtleHoldingsSettings = { ...holdings, drawdownReferenceKRW: 852_000_000, drawdownReferenceSetAt: '2026-09-26' };
+  const loadedRef = roundTrip({ ...settings, holdings: holdingsWithRef });
+  check('drawdownReferenceKRW 라운드트립 보존', loadedRef.holdings?.drawdownReferenceKRW, 852_000_000);
+  check('drawdownReferenceSetAt 라운드트립 보존', loadedRef.holdings?.drawdownReferenceSetAt, '2026-09-26');
+  check('resolveHoldingsSettings — 기준자산 그대로 반환', resolveHoldingsSettings(loadedRef.holdings).drawdownReferenceKRW, 852_000_000);
+
+  // 미설정(undefined) — 직렬화에서 키 자체가 생략되고, resolveHoldingsSettings는 undefined를 유지한다.
+  const holdingsNoRef: TurtleHoldingsSettings = { ...holdings, drawdownReferenceKRW: undefined, drawdownReferenceSetAt: undefined };
+  const loadedNoRef = roundTrip({ ...settings, holdings: holdingsNoRef }) as TurtleSettings & { holdings: { drawdownReferenceKRW?: unknown } };
+  check('기준자산 미설정 → 직렬화에 키 없음', 'drawdownReferenceKRW' in loadedNoRef.holdings, false);
+  check('기준자산 미설정 → resolveHoldingsSettings undefined 유지', resolveHoldingsSettings(loadedNoRef.holdings as TurtleHoldingsSettings).drawdownReferenceKRW, undefined);
+
+  // 손상값 가드 — 음수·0·NaN·빈 문자열은 undefined로 되돌린다(throw 없이 fail-closed).
+  check('drawdownReferenceKRW 음수 → undefined로 폴백', resolveHoldingsSettings({ ...holdings, drawdownReferenceKRW: -100 }).drawdownReferenceKRW, undefined);
+  check('drawdownReferenceKRW 0 → undefined로 폴백', resolveHoldingsSettings({ ...holdings, drawdownReferenceKRW: 0 }).drawdownReferenceKRW, undefined);
+  check('drawdownReferenceSetAt 빈 문자열 → undefined로 폴백', resolveHoldingsSettings({ ...holdings, drawdownReferenceSetAt: '' }).drawdownReferenceSetAt, undefined);
 }
 
 // ════════════════════════════════════════════════════════════════════════════

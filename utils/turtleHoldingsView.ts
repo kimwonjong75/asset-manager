@@ -87,12 +87,11 @@ export interface EffectiveManagedEquity {
  * 계좌 축소(드로다운 감쇄) 적용 — `drawdownScalingEnabled`면 `applyDrawdownScaling`(utils/turtleEngine,
  * 원조 §10)을 반드시 거친 뒤에 사이징에 넘긴다(P0 §6 체크 항목).
  *
- * ⚠️ **기준자산(연초 시작 자산) 출처는 이번 범위에서 미해결이다.** 원조 규칙은 "연초 시작 자산"을
- * 기준으로 삼지만, "보유종목 터틀"에는 아직 그 값을 저장하는 필드가 없다(추가하려면 계획서 §5.3에
- * 따라 별도 승인이 필요 — 새 최상위 도메인은 아니지만 정책 결정이 필요한 사용자 입력 항목이다).
- * `referenceEquityKRW`를 넘기지 않으면 **현재 관리자산을 그 자체의 기준으로 삼아**(자기참조)
- * 항상 감쇄가 적용되지 않은 값을 반환한다 — 잘못된 기준으로 사이징을 과소평가하는 것보다
- * 안전한 기본값이다. 기준자산을 확정하면(설정 UI는 P3) 이 함수의 세 번째 인자로 넘기기만 하면 된다.
+ * **기준자산(연초 시작 자산) 출처(P3, 2026-09-26 확정)**: 사용자가 설정 화면에서 직접 정한다
+ * (`TurtleHoldingsSettings.drawdownReferenceKRW`, [지금 자산으로 기준 정하기] 버튼 — 보이지 않는
+ * 자동 기록 없음). 호출부(`hooks/useTurtleHoldings.ts`)가 그 값을 `referenceEquityKRW`로 넘긴다.
+ * 아직 기준을 정하지 않았으면(undefined 또는 0 이하) **현재 관리자산을 그 자체의 기준으로 삼아**(자기참조)
+ * 항상 감쇄가 적용되지 않은 값을 반환한다 — 잘못된 기준으로 사이징을 과소평가하는 것보다 안전한 기본값이다.
  */
 export function resolveEffectiveManagedEquity(
   managedEquityKRW: number,
@@ -103,6 +102,20 @@ export function resolveEffectiveManagedEquity(
   const reference = referenceEquityKRW != null && referenceEquityKRW > 0 ? referenceEquityKRW : managedEquityKRW;
   const scaled = applyDrawdownScaling(managedEquityKRW, reference);
   return { equityKRW: scaled, drawdownApplied: scaled < reference - 1e-6 };
+}
+
+/**
+ * 계좌 축소 기준 자산을 새로 정할 시점인지(표시 전용, §4.7) — 매년 1월이거나 기준을 정한 지
+ * 365일이 지났으면 true. 기준이 아예 없으면(아직 안 정함) false — "기준을 정하세요"가 아니라
+ * "기준을 정할 수 있습니다"(설정 화면 버튼)로 충분하다.
+ */
+export function shouldPromptDrawdownReferenceRefresh(referenceSetAt: string | undefined, now: Date): boolean {
+  if (!referenceSetAt) return false;
+  const set = new Date(`${referenceSetAt}T00:00:00`);
+  if (Number.isNaN(set.getTime())) return false;
+  const daysSince = (now.getTime() - set.getTime()) / 86_400_000;
+  if (daysSince >= 365) return true;
+  return now.getMonth() === 0; // 1월(로컬 기준, 0-indexed)
 }
 
 // ── 행 모델 ──────────────────────────────────────────────────────────────────

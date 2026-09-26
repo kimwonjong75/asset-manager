@@ -9,7 +9,8 @@
 import React, { useMemo, useState } from 'react';
 import { useTurtleHoldings } from '../../hooks/useTurtleHoldings';
 import { usePortfolio } from '../../contexts/PortfolioContext';
-import { TurtleHoldingsRow } from '../../utils/turtleHoldingsView';
+import { TurtleHoldingsRow, shouldPromptDrawdownReferenceRefresh } from '../../utils/turtleHoldingsView';
+import { resolveHoldingsSettings } from '../../utils/turtleHoldings';
 import { formatKRW } from '../portfolio-table/utils';
 import Badge from '../common/Badge';
 
@@ -79,8 +80,13 @@ const BucketSection: React.FC<{ bucket: Bucket; onOpenBuy: (row: TurtleHoldingsR
 
 const TurtleHoldingsTodayCard: React.FC = () => {
   const model = useTurtleHoldings();
-  const { actions } = usePortfolio();
+  const { data, actions } = usePortfolio();
   const [showAll, setShowAll] = useState(false);
+  // P3(2026-09-26, §4.7): 계좌 축소 기준 자산을 새로 정할 시점 안내(표시 전용 — 자동 저장 없음).
+  // 지금 당장 감쇄가 적용 중인지와 무관하게, 계좌 축소를 쓰는 한 기준이 오래됐으면 안내한다.
+  const holdingsSettings = resolveHoldingsSettings(data.turtleSettings.holdings);
+  const refreshReferencePrompt = holdingsSettings.drawdownScalingEnabled
+    && shouldPromptDrawdownReferenceRefresh(holdingsSettings.drawdownReferenceSetAt, new Date());
 
   const buckets = useMemo<Bucket[]>(() => {
     const sell = model.rows.filter(r => r.status === 'sell');
@@ -109,6 +115,10 @@ const TurtleHoldingsTodayCard: React.FC = () => {
           <span className="text-xs text-gray-400">대기 자금 {formatKRW(model.parkedCashKRW)}</span>
         </div>
       </div>
+
+      {refreshReferencePrompt && (
+        <p className="mt-2 text-xs text-warning">기준 자산을 새로 정하세요 — 1월이거나 정한 지 1년이 넘었습니다(설정 → 터틀 규칙).</p>
+      )}
 
       {model.isLoading && <p className="mt-3 text-xs text-gray-500">시세를 불러오는 중입니다…</p>}
       {model.partialFailure && !model.isLoading && (

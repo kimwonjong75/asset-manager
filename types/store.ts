@@ -13,6 +13,7 @@ import type { ColumnConfig, ColumnKey, FixedColumnWidths, EnrichedAsset, SignalD
 import type { MALineConfig } from '../utils/maCalculations';
 import type { ActionItem } from './actionQueue';
 import type { TurtlePosition, TurtleSettings } from './turtle';
+import type { TurtleHoldingsSettings } from './turtleHoldings';
 import type { ValuationSettings } from './valuation';
 import type { OwnerFilter } from './owner';
 import type { AddAssetResult, SellResult, BuyMoreResult } from './assetActionResult';
@@ -316,6 +317,8 @@ export interface PortfolioActions {
   compactActionQueue: () => number;
   updateTurtlePositions: (positions: TurtlePosition[]) => void;
   updateTurtleSettings: (settings: TurtleSettings) => void;
+  /** "터틀 규칙" 설정 화면(P3, 계획서 §4.7) 저장 — turtleSettings.holdings만 교체 + 단일 커밋 + 성공 메시지 */
+  saveTurtleHoldingsSettings: (settings: TurtleHoldingsSettings) => void;
   /** 수익률 기준 전환 (표시 설정) — 상태 갱신 + Drive 자동 저장. 표·대시보드·알림 판정이 함께 바뀐다 */
   updateValuationSettings: (settings: ValuationSettings) => void;
   /** 교차도메인 원자 커밋 — 지정 도메인 set + 단일 autosave (터틀 실행의 저장 경합 방지) */

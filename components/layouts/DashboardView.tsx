@@ -217,14 +217,20 @@ const DashboardView: React.FC = () => {
           aria-label="전략 점검"
         >
           <h2 className="text-sm font-semibold text-gray-300">전략 점검</h2>
-          {/* 구루 신호 엔진 — 강조 토글이 켜지면 펼쳐 표시, 꺼지면 같은 자리에서 접힘(localStorage 영속). 계산/발화 무변경. */}
-          <GuruSignalCard
-            collapsible={!ui.signalDisplay.showGuruSignalsProminently}
-            defaultCollapsed
-            storageKey="asset-manager-guru-card-open"
-          />
-          {/* 참고 지표(리스크 매트릭스 등) — 구루 카드는 중복 제외. */}
-          <ReferenceIndicatorsSection />
+          {/* P3(터틀 재정비, 2026-09-26): 구루 신호 카드 · 참고 지표(리스크 매트릭스/과열)는 기본 숨김 —
+              설정 → 표시 설정 → "기존 신호 보기"(기본 꺼짐)로만 복원한다. 계산/발화는 무변경, 표시만 숨긴다. */}
+          {ui.signalDisplay.showLegacySignals && (
+            <>
+              {/* 구루 신호 엔진 — 강조 토글이 켜지면 펼쳐 표시, 꺼지면 같은 자리에서 접힘(localStorage 영속). 계산/발화 무변경. */}
+              <GuruSignalCard
+                collapsible={!ui.signalDisplay.showGuruSignalsProminently}
+                defaultCollapsed
+                storageKey="asset-manager-guru-card-open"
+              />
+              {/* 참고 지표(리스크 매트릭스 등) — 구루 카드는 중복 제외. */}
+              <ReferenceIndicatorsSection />
+            </>
+          )}
           <RebalancingTable assets={assets} exchangeRates={exchangeRates} pendingRebalanceCount={pendingRebalanceCount} />
           {/* 리스크 계산기(평소 접힘). */}
           <RiskCalculatorCard />

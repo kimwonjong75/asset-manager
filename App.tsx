@@ -38,6 +38,7 @@ import TurtleCleanupView from './components/cleanup/TurtleCleanupView';
 // Stage B: 탭별 앱바 구성(화면 제목·계정뷰 세그먼트·기간 선택·더보기 강조)은 constants/tabMeta의
 // TAB_META 한 곳에서 선언한다 — 여기서 `ui.activeTab !== …` 연쇄 조건을 다시 만들지 말 것.
 import { getTabMeta, type AppTab } from './constants/tabMeta';
+import { isMoreMenuItemHidden, type MoreMenuItemId } from './constants/moreMenuVisibility';
 import { Bell, X } from 'lucide-react';
 
 // P4: 모바일 상단바는 공간이 좁아 `derived.priceFreshnessLabel`(예: '09-03 14:20 (장중)'/'09-02 마감 후')을
@@ -62,15 +63,23 @@ const AppContent: React.FC = () => {
 
   // P6: '더보기' 메뉴 항목 — 데스크탑 드롭다운과 모바일 하단 탭바(BottomTabBar)가 **같은 배열**을
   // 공유한다(둘 다 ActionMenu를 쓰므로 하나만 정의하면 됨). 어시스턴트 FAB을 없애면서 여기로 이동.
-  const moreMenuItems: ActionMenuItem[] = useMemo(() => [
-    { label: '수익 통계', onClick: () => actions.setActiveTab('analytics') },
-    { label: '매매 계획 세우기', onClick: () => actions.openTradePlanPlanner() },
-    { label: '대청소', onClick: () => actions.setActiveTab('cleanup') },
-    { label: 'AI 어시스턴트', onClick: () => actions.openAssistant() },
-    { label: '투자 가이드', onClick: () => actions.setActiveTab('guide') },
-    { label: '연구실 · 신호 리플레이', onClick: () => actions.setActiveTab('replay') },
-    { label: '설정', onClick: () => actions.setActiveTab('settings') },
+  // P3(터틀 재정비, 2026-09-26, 계획서 §4.6): 연구실·신호 리플레이/투자 가이드/AI 어시스턴트/매매 계획
+  // 세우기는 메뉴에서만 숨긴다(탭·모달·액션 코드는 그대로 — `constants/moreMenuVisibility`
+  // HIDDEN_MORE_MENU_ITEM_IDS 한 곳만 고치면 되돌아온다). 딥링크(`?tab=…`)는 이 배열을 거치지 않으므로
+  // 숨겨도 깨지지 않는다. '대청소' 라벨은 화면이 TurtleCleanupView로 바뀌며 '터틀 정리'로 갱신.
+  const ALL_MORE_MENU_ITEMS: (ActionMenuItem & { id: MoreMenuItemId })[] = useMemo(() => [
+    { id: 'analytics', label: '수익 통계', onClick: () => actions.setActiveTab('analytics') },
+    { id: 'tradePlanner', label: '매매 계획 세우기', onClick: () => actions.openTradePlanPlanner() },
+    { id: 'cleanup', label: '터틀 정리', onClick: () => actions.setActiveTab('cleanup') },
+    { id: 'assistant', label: 'AI 어시스턴트', onClick: () => actions.openAssistant() },
+    { id: 'guide', label: '투자 가이드', onClick: () => actions.setActiveTab('guide') },
+    { id: 'replay', label: '연구실 · 신호 리플레이', onClick: () => actions.setActiveTab('replay') },
+    { id: 'settings', label: '설정', onClick: () => actions.setActiveTab('settings') },
   ], [actions]);
+  const moreMenuItems: ActionMenuItem[] = useMemo(
+    () => ALL_MORE_MENU_ITEMS.filter(item => !isMoreMenuItemHidden(item.id)),
+    [ALL_MORE_MENU_ITEMS],
+  );
 
   // P4: 딥링크 — 로그인 완료 후 1회, `?tab=…&asset=…`을 해석해 탭 이동 + 종목 포커스.
   // asset 참조가 있는데 아직 포트폴리오/관심종목이 비어 있고 로딩 중이면(Drive 로드 전) 다음
@@ -455,10 +464,12 @@ const AppContent: React.FC = () => {
             {/* P6: 어시스턴트 FAB 제거 — 더보기 메뉴 "AI 어시스턴트" 항목으로 이동(모달 마운트는 유지) */}
             <PortfolioAssistant />
 
-            {/* 투자 브리핑 팝업 — P6 정보 다이어트: 홈(dashboard) 탭에서는 자동으로 뜨지 않는다(홈 상단
-                '오늘의 브리핑'이 이미 같은 내용을 보여줌). 사용자가 명시적으로 [브리핑 다시 보기]를 눌렀을 때만
-                (`ui.briefingManual`) 홈에서도 뜬다 — 게이트 판정(derived.showAlertPopup)은 무변경 */}
-            {derived.showAlertPopup && (ui.activeTab !== 'dashboard' || ui.briefingManual) && (
+            {/* 투자 브리핑 팝업 — P3(터틀 재정비, 2026-09-26, §4.6): 기존 신호(구루/과열/매도 경보 등)
+                자동 팝업은 탭과 무관하게 기본 억제한다(설정 → 표시 설정 → "기존 신호 보기"로 복원, 기본
+                꺼짐). 상단 브리핑 벨(수동 열기, `ui.briefingManual`)은 이 설정과 무관하게 항상 동작한다 —
+                사용자가 직접 누른 동작이라 "보이지 않는 팝업"이 아니다. 게이트 판정(derived.showAlertPopup)
+                자체는 무변경(P6 이전 홈 전용 억제 로직을 전 탭으로 확장한 것뿐). */}
+            {derived.showAlertPopup && (ui.signalDisplay.showLegacySignals || ui.briefingManual) && (
               <AlertPopup
                 results={derived.alertResults}
                 sellDataGaps={derived.sellDataGaps}

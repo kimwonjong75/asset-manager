@@ -78,6 +78,11 @@ export function resolveHoldingsSettings(saved?: Partial<TurtleHoldingsSettings> 
     excludeFamilyOwner: typeof s.excludeFamilyOwner === 'boolean' ? s.excludeFamilyOwner : D.excludeFamilyOwner,
     excludedAssetIds: Array.isArray(s.excludedAssetIds) ? s.excludedAssetIds.filter((x): x is string => typeof x === 'string') : [],
     excludedCategoryIds: Array.isArray(s.excludedCategoryIds) ? s.excludedCategoryIds.filter((x): x is number => typeof x === 'number') : [],
+    // P3(2026-09-26) — 계좌 축소 기준 자산. 잘못된 값(음수·NaN·빈 문자열)은 undefined로 되돌린다
+    // (throw 금지 원칙 — 화면이 깨지는 대신 "미설정"으로 fail-closed).
+    drawdownReferenceKRW: isPos(s.drawdownReferenceKRW) ? (s.drawdownReferenceKRW as number) : undefined,
+    drawdownReferenceSetAt: typeof s.drawdownReferenceSetAt === 'string' && s.drawdownReferenceSetAt.trim() !== ''
+      ? s.drawdownReferenceSetAt : undefined,
   };
 }
 

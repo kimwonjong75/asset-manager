@@ -54,6 +54,7 @@ import { transferWatchPlanToAsset, findWatchItemForAsset } from '../utils/tradeP
 import type { TradePlan, PlanDecision, PlanFill, PyramidFillResult, SellOutcome } from '../types/tradePlan';
 import { PYRAMID_FILL_ERROR_LABELS } from '../types/tradePlan';
 import { resolveHoldingsSettings } from '../utils/turtleHoldings';
+import type { TurtleHoldingsSettings } from '../types/turtleHoldings';
 import { recordTurtleExit, recordTurtleReentry, recordTurtlePyramid, recordTurtleHold as recordTurtleHoldPure } from '../utils/turtleHoldingsState';
 import type { TurtleHoldingsRow } from '../utils/turtleHoldingsView';
 import type {
@@ -350,6 +351,10 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
             typeof parsed.showGuruSignalsProminently === 'boolean'
               ? parsed.showGuruSignalsProminently
               : DEFAULT_SIGNAL_DISPLAY.showGuruSignalsProminently,
+          showLegacySignals:
+            typeof parsed.showLegacySignals === 'boolean'
+              ? parsed.showLegacySignals
+              : DEFAULT_SIGNAL_DISPLAY.showLegacySignals,
         };
       }
     } catch { /* ignore */ }
@@ -933,6 +938,14 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       },
       updateTurtleSettings: (settings: TurtleSettings) => {
         commitPortfolio({ turtleSettings: settings });
+      },
+      // "터틀 규칙" 설정 화면(P3, 계획서 §4.7) 저장 액션 — 단일 [저장] 버튼 경로(키 입력마다 저장 금지).
+      // getSnapshot()으로 최신 turtleSettings를 읽어 holdings만 교체 후 단일 커밋 + 성공 피드백
+      // (RULES.md "성공 피드백은 UpdateStatusIndicator만" — status.successMessage 경유).
+      saveTurtleHoldingsSettings: (settings: TurtleHoldingsSettings) => {
+        const snap = getSnapshot();
+        commitPortfolio({ turtleSettings: { ...snap.turtleSettings, holdings: settings } });
+        setSuccessMessage('터틀 규칙을 저장했습니다.');
       },
       // 수익률 기준 전환 — 저장 데이터는 그대로고 **표시·판정 규약만** 바뀐다.
       // 커밋 즉시 enrichedAssets가 재계산되어 표·대시보드·알림이 같은 기준을 쓴다.

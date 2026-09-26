@@ -246,7 +246,9 @@ export function useTurtleHoldings(): TurtleHoldingsModel {
   return useMemo<TurtleHoldingsModel>(() => {
     const now = new Date();
     const { holdingsValueKRW, parkedCashKRW, managedEquityKRW } = computeManagedEquity(enrichedAssets, settings);
-    const { equityKRW: effectiveManagedEquityKRW, drawdownApplied } = resolveEffectiveManagedEquity(managedEquityKRW, settings);
+    const { equityKRW: effectiveManagedEquityKRW, drawdownApplied } = resolveEffectiveManagedEquity(
+      managedEquityKRW, settings, settings.drawdownReferenceKRW,
+    );
     void holdingsValueKRW;
 
     const rows: TurtleHoldingsRow[] = [];

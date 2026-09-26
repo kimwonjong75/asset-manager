@@ -92,10 +92,17 @@ export const MIN_COLUMN_WIDTH = 80;
 export interface SignalDisplaySettings {
   /** 구루 신호 카드를 대시보드 상단에 큰 카드로 표시 (기본 false=하단 '참고 지표' 접힘 섹션으로 강등) */
   showGuruSignalsProminently: boolean;
+  /**
+   * 기존 신호 보기 — 터틀 중심 재정비(P3, 2026-09-26) 이후 숨긴 것들을 한 번에 복원한다:
+   * 구루 신호 카드 · 참고 지표(리스크 매트릭스/과열) · 알림 브리핑 **자동** 팝업(수동 브리핑 벨은
+   * 이 토글과 무관하게 항상 동작). 계산·발화 로직은 무관 — 표시만 켜고 끈다. 기본 false(숨김).
+   */
+  showLegacySignals: boolean;
 }
 
 export const DEFAULT_SIGNAL_DISPLAY: SignalDisplaySettings = {
   showGuruSignalsProminently: false,
+  showLegacySignals: false,
 };
 
 // Stage D1(2026-09-15) 기본값 — 표시 5개(현재가·어제대비·평가총액·수익률·최고가 대비), 나머지 6개는 숨김.

@@ -28,7 +28,8 @@ export const TAB_META: Record<AppTab, TabMeta> = {
   // 관심종목 인라인 차트(AssetTrendChart)가 globalPeriod를 쓰므로 기간 선택 유지
   watchlist: { title: '관심종목', mobileTitle: true, showAccountView: false, showPeriod: true, inMoreMenu: false },
   analytics: { title: '수익 통계', mobileTitle: true, showAccountView: false, showPeriod: false, inMoreMenu: true },
-  cleanup: { title: '대청소', mobileTitle: true, showAccountView: false, showPeriod: false, inMoreMenu: true },
+  // P3(터틀 재정비, 2026-09-26): 'cleanup' 탭 화면은 TurtleCleanupView로 교체됐다(App.tsx) — 라벨도 맞춘다.
+  cleanup: { title: '터틀 정리', mobileTitle: true, showAccountView: false, showPeriod: false, inMoreMenu: true },
   guide: { title: '투자 가이드', mobileTitle: true, showAccountView: false, showPeriod: false, inMoreMenu: true },
   replay: { title: '연구실', mobileTitle: true, showAccountView: false, showPeriod: false, inMoreMenu: true },
   settings: { title: '설정', mobileTitle: true, showAccountView: false, showPeriod: false, inMoreMenu: true },

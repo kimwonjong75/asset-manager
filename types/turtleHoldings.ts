@@ -47,6 +47,15 @@ export interface TurtleHoldingsSettings {
   excludedAssetIds: string[];
   /** 카테고리 제외 목록(categoryId). */
   excludedCategoryIds: number[];
+  /**
+   * 계좌 축소(드로다운 감쇄) 기준 자산(KRW) — P3(2026-09-26, 계획서 §4.7). 사용자가 설정에서
+   * [지금 자산으로 기준 정하기]를 눌렀을 때만 값이 생긴다("보이지 않는 쓰기 금지" — 자동 기록 없음).
+   * 미설정(undefined)이면 `resolveEffectiveManagedEquity`가 자기참조(현재 관리자산=기준)로 폴백해
+   * 항상 감쇄 미적용으로 계산한다(기존 P2 동작과 동일, 안전한 기본값).
+   */
+  drawdownReferenceKRW?: number;
+  /** 기준 자산을 정한 날짜 — YYYY-MM-DD. 홈 카드가 "매년 1월 또는 365일 경과" 안내에 사용(표시 전용). */
+  drawdownReferenceSetAt?: string;
 }
 
 export const DEFAULT_TURTLE_HOLDINGS_SETTINGS: TurtleHoldingsSettings = {
