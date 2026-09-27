@@ -133,3 +133,31 @@ export function stripForDisplay(md: string): string {
     .replace(/<!--[\s\S]*?-->/g, '')
     .replace(/^[ \t]*<a id="[^"]*"><\/a>[ \t]*\r?\n?/gm, '');
 }
+
+/**
+ * "? 설명" 사이드 패널(ManualDrawer, 2026-09-27)용 — `<a id="X"></a>` 줄부터 그 다음 `<a id="`
+ * 줄(또는 EOF) 직전까지 해당 앵커 구간 원문을 그대로 잘라낸다(치환 전/후 md 어느 쪽에 대해서도 동작 —
+ * `{{키}}` 치환 결과가 잘려나가는 위치에 영향을 주지 않는다). 앵커가 문서에 없으면 null(크래시 대신
+ * 드로어가 "해당 없음" 안내를 보여줄 신호). ManualMarkdown이 렌더 전에 소비하므로 여기서는 원본 그대로
+ * 반환한다(앵커 줄 제거는 stripForDisplay가 그 다음 단계에서 처리).
+ */
+export function extractManualSection(md: string, anchorId: string): string | null {
+  const lines = md.split('\n');
+  const anchorLineRe = /^[ \t]*<a id="([a-zA-Z0-9_-]+)"><\/a>[ \t]*\r?$/;
+  let start = -1;
+  let end = lines.length;
+  for (let i = 0; i < lines.length; i++) {
+    const m = lines[i].match(anchorLineRe);
+    if (!m) continue;
+    if (start === -1 && m[1] === anchorId) {
+      start = i;
+      continue;
+    }
+    if (start !== -1) {
+      end = i;
+      break;
+    }
+  }
+  if (start === -1) return null;
+  return lines.slice(start, end).join('\n');
+}

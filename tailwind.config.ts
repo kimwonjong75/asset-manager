@@ -109,6 +109,7 @@ const config: Config = {
         fab: '45',      // 맨 위로 버튼·하단 고정 액션 바
         popup: '50',    // AlertPopup(알림 브리핑)
         modal: '60',    // 모달·ChartViewerModal·MemoEditPopup·PortfolioAssistant
+        drawer: '65',   // ManualDrawer("? 설명" 비모달 사이드 패널) — 열린 모달(60) 위에 겹쳐 보여야 한다
         menu: '70',     // ActionMenu(드롭다운·바텀시트)
         dialog: '80',   // ConfirmDialog(모달 위 확인창)
         banner: '85',   // App 상단 오류/새 버전 배너 — 모달 작업 중 오류도 보이게

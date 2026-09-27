@@ -111,6 +111,7 @@ for (const [file, code] of SOURCES) {
 //   컬럼 설정 드롭다운은 공용 Popover 로 이관되어 목록에서 빠졌다.
 const SHADOW_ALLOWLIST: Record<string, string> = {
   'components/common/Modal.tsx': '공용 모달 패널(shadow-xl)',
+  'components/common/ManualDrawer.tsx': '"? 설명" 비모달 사이드 패널(z-drawer, shadow-xl — 2026-09-27)',
   'components/common/ConfirmDialog.tsx': '확인 대화상자 패널 — 모달 위 z-dialog',
   'components/common/ActionMenu.tsx': '포털 드롭다운·바텀시트',
   'components/common/Combobox.tsx': '포털 자동완성 목록(z-menu, Stage D2 P0)',

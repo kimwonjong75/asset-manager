@@ -20,7 +20,7 @@
 
 import { readdirSync, readFileSync, statSync, existsSync } from 'node:fs';
 import path from 'node:path';
-import { renderManualTemplate, extractAnchors, extractBracketLabels, stripForDisplay } from '../utils/manualTemplate';
+import { renderManualTemplate, extractAnchors, extractBracketLabels, stripForDisplay, extractManualSection } from '../utils/manualTemplate';
 import { DEFAULT_TURTLE_HOLDINGS_SETTINGS } from '../types/turtleHoldings';
 import { MANUAL_TOC } from '../constants/manualToc';
 
@@ -153,6 +153,44 @@ check(!/<!--/.test(shownForUser), 'stripForDisplay: 관리자 메모(HTML 주석
 check(extractAnchors(md).length === 12, 'stripForDisplay는 표시용일 뿐 — 원본 앵커 12개는 그대로여야 함');
 check(!/\*\*\[[^\]\n]+\]\*\*[가-힣]/.test(md), '설명서: **[라벨]** 바로 뒤 한글은 굵게가 깨져 별표가 보임 — 대괄호 칩만 쓰세요');
 check(!/\*\*"[^"\n]+"\*\*[가-힣]/.test(md), '설명서: **"문구"** 바로 뒤 한글은 굵게가 깨져 별표가 보임');
+
+// ── ⑤ extractManualSection 골든(ManualDrawer "? 설명" 사이드 패널, Advisor 2026-09-27) ──────
+// 각 앵커의 구간이 (a) null이 아니고 (b) 그 앵커 줄로 시작하고 (c) 다른 앵커 줄을 포함하지 않고
+// (d) 마크다운 제목을 포함하는지 — 12개 전부 명시 검사(비교 대상이 자기 자신인 자기참조 검사가
+// 아니라 정규식으로 직접 재검증).
+const ANCHOR_LINE_RE = /^<a id="[a-zA-Z0-9_-]+"><\/a>$/m;
+const HEADING_LINE_RE = /^#{1,6}\s+\S/m;
+for (const id of EXPECTED_ANCHORS) {
+  const section = extractManualSection(md, id);
+  check(section !== null, `extractManualSection('${id}') 이 null(앵커를 못 찾음)`);
+  if (section == null) continue;
+  check(section.startsWith(`<a id="${id}"></a>`), `extractManualSection('${id}') 이 그 앵커 줄로 시작하지 않음`);
+  const otherAnchorInside = section
+    .split('\n')
+    .slice(1)
+    .some(line => ANCHOR_LINE_RE.test(line.trim()));
+  check(!otherAnchorInside, `extractManualSection('${id}') 안에 다른 앵커 줄이 섞여 있음(다음 섹션까지 잘림)`);
+  check(HEADING_LINE_RE.test(section), `extractManualSection('${id}') 안에 마크다운 제목이 없음`);
+}
+check(extractManualSection(md, 'not-a-real-anchor') === null, 'extractManualSection: 존재하지 않는 앵커는 null');
+
+// 명시 골든 — 'rebuy' 섹션의 실제 첫 제목 문구(자기참조 아닌 문서 원문 그대로의 리터럴).
+const rebuySection = extractManualSection(md, 'rebuy');
+check(
+  rebuySection?.includes('## ④ 다시 살 때 / 추가 매수 — 재매수 계산기') === true,
+  "extractManualSection('rebuy') 골든: '## ④ 다시 살 때 / 추가 매수 — 재매수 계산기' 제목 문구가 없음",
+);
+
+// 연결 길이 sanity — 12개 섹션을 등장 순서대로 이어붙이면 첫 앵커부터 EOF까지의 원문과 정확히 같아야
+// 한다(빠뜨리거나 겹치는 구간이 없다는 뜻 — extractAnchors가 이미 등장 순서를 보장한다).
+const orderedAnchors = extractAnchors(md);
+const concatenated = orderedAnchors.map(id => extractManualSection(md, id)).join('\n');
+const firstAnchorIdx = md.indexOf(`<a id="${orderedAnchors[0]}"></a>`);
+const tailFromFirstAnchor = md.slice(firstAnchorIdx);
+check(
+  concatenated === tailFromFirstAnchor,
+  'extractManualSection: 12개 섹션을 이어붙인 결과가 첫 앵커~EOF 원문과 다름(구간 경계 누락/중복 의심)',
+);
 
 if (fails.length > 0) {
   console.error(`manualIntegrity: ${fails.length}건 실패 / ${pass}건 통과`);
