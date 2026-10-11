@@ -1,5 +1,5 @@
 import { directionTextClass } from '../../utils/directionTone';
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Currency, CURRENCY_SYMBOLS, ExchangeRates, WatchlistItem } from '../../types';
 import { getCategoryName, type CategoryDefinition } from '../../types/category';
 import type { BuyReadiness } from '../../types/stockReview';
@@ -19,6 +19,7 @@ import { buildWatchlistRowMenuItems } from './watchlistRowMenu';
 import { watchlistToPseudoAsset } from '../../utils/alertChecker';
 import { usePortfolio } from '../../contexts/PortfolioContext';
 import { PIN_STAR } from '../../constants/stateColorLadders';
+import { resolveMarketCurrency } from '../../utils/marketCurrency';
 
 interface WatchlistMobileCardProps {
   item: WatchlistItem & { dropFromHigh: number | null; yesterdayChange: number; buyReadiness: BuyReadiness | null };
@@ -51,18 +52,29 @@ const WatchlistMobileCard: React.FC<WatchlistMobileCardProps> = ({
   exchangeRates,
   isPortfolioHeld,
 }) => {
-  const { actions } = usePortfolio();
+  const { actions, ui } = usePortfolio();
   const [expanded, setExpanded] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
   // 메뉴 '종목 검토' 요청 번호 — 0 = 요청 없음. 바뀔 때마다 아코디언을 key 로 리마운트해 initialOpen 으로 연다.
   const [reviewNonce, setReviewNonce] = useState(0);
+  const cardRef = useRef<HTMLDivElement>(null);
   const { confirm, confirmRequest } = useConfirm();
 
-  const isNonKRW = item.currency !== undefined && item.currency !== Currency.KRW;
+  useEffect(() => {
+    if (ui.focusedWatchItemId !== item.id || cardRef.current?.offsetParent === null) return;
+    const openTimer = window.setTimeout(() => {
+      setExpanded(true);
+      if (ui.focusedWatchItemEntry === 'review') setReviewNonce(n => n + 1);
+    }, 0);
+    return () => window.clearTimeout(openTimer);
+  }, [item.id, ui.focusedWatchItemEntry, ui.focusedWatchItemId]);
+
+  const displayCurrency = resolveMarketCurrency(item.exchange, undefined, item.currency);
+  const isNonKRW = displayCurrency !== Currency.KRW;
   const getExchangeRate = (): number => {
-    if (!item.currency || item.currency === Currency.KRW) return 1;
-    if (item.currency === Currency.USD) return exchangeRates.USD || 1;
-    if (item.currency === Currency.JPY) return exchangeRates.JPY || 1;
+    if (displayCurrency === Currency.KRW) return 1;
+    if (displayCurrency === Currency.USD) return exchangeRates.USD || 1;
+    if (displayCurrency === Currency.JPY) return exchangeRates.JPY || 1;
     return 1;
   };
 
@@ -89,7 +101,7 @@ const WatchlistMobileCard: React.FC<WatchlistMobileCardProps> = ({
   });
 
   return (
-    <div className="border-b border-gray-700">
+    <div ref={cardRef} className="border-b border-gray-700">
       {confirmRequest && <ConfirmDialog {...confirmRequest} />}
       <div className="px-4 py-3 flex items-start gap-3">
         {/* 체크박스 */}
@@ -149,11 +161,11 @@ const WatchlistMobileCard: React.FC<WatchlistMobileCardProps> = ({
           {/* 가격 행 */}
           <div className="flex items-baseline gap-3 mt-2">
             <span className="text-white font-semibold text-sm">
-              {item.currentPrice !== undefined ? formatKRW(item.currentPrice) : '-'}
+              {item.currentPrice !== undefined ? formatOriginalCurrency(item.currentPrice, displayCurrency) : '-'}
             </span>
-            {isNonKRW && item.priceOriginal !== undefined && item.currency !== undefined && (
+            {isNonKRW && item.priceOriginal !== undefined && getExchangeRate() > 1 && (
               <span className="text-xs text-gray-500">
-                {formatOriginalCurrency(item.priceOriginal, item.currency)}
+                ≈ {formatKRW(item.priceOriginal * getExchangeRate())}
               </span>
             )}
           </div>
@@ -194,7 +206,7 @@ const WatchlistMobileCard: React.FC<WatchlistMobileCardProps> = ({
             assetName={item.name}
             currentQuantity={1}
             currentPrice={item.priceOriginal || item.currentPrice || 0}
-            currency={item.currency}
+            currency={displayCurrency}
             exchangeRate={getExchangeRate()}
             ticker={item.ticker}
             exchange={item.exchange}
@@ -225,7 +237,7 @@ const WatchlistMobileCard: React.FC<WatchlistMobileCardProps> = ({
           assetName={item.name}
           currentQuantity={1}
           currentPrice={item.priceOriginal || item.currentPrice || 0}
-          currency={item.currency}
+          currency={displayCurrency}
           exchangeRate={getExchangeRate()}
           ticker={item.ticker}
           exchange={item.exchange}

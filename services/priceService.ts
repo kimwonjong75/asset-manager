@@ -3,6 +3,7 @@ import { isBaseType } from '../types/category';
 import { AssetDataResult, PriceAPIResponse, PriceItem } from '../types/api';
 import { CLOUD_RUN_BASE_URL } from '../constants/api';
 import { createLogger } from '../utils/logger';
+import { resolveMarketCurrency } from '../utils/marketCurrency';
 
 const log = createLogger('priceService');
 const STOCK_API_URL = CLOUD_RUN_BASE_URL;
@@ -97,17 +98,13 @@ export async function fetchBatchAssetPrices(
             }
 
             // 통화 처리
-            const currencyFromServer = String(item.currency ?? matched.currency ?? Currency.USD);
+            const currencyFromServer = String(item.currency ?? '');
             const keepOriginalCurrency = matched.category === AssetCategory.CRYPTOCURRENCY || (matched.categoryId != null && isBaseType(matched.categoryId, 'CRYPTOCURRENCY'));
             const currencyStr = keepOriginalCurrency ? String(matched.currency ?? currencyFromServer) : currencyFromServer;
-            let currency: Currency = [Currency.KRW, Currency.USD, Currency.JPY, Currency.CNY].includes(currencyStr as Currency)
+            const apiCurrency = [Currency.KRW, Currency.USD, Currency.JPY, Currency.CNY].includes(currencyStr as Currency)
               ? (currencyStr as Currency)
-              : Currency.KRW;
-
-            // 업비트/빗썸 등은 무조건 KRW
-            if (['Upbit', 'Bithumb'].includes(matched.exchange)) {
-                currency = Currency.KRW;
-            }
+              : undefined;
+            const currency = resolveMarketCurrency(matched.exchange, apiCurrency, matched.currency);
 
             const priceKRW = typeof item.priceKRW === 'number'
               ? item.priceKRW
@@ -151,7 +148,7 @@ export async function fetchBatchAssetPrices(
             name: s.ticker,
             priceOriginal: 0,
             priceKRW: 0,
-            currency: s.currency ?? Currency.USD,
+            currency: resolveMarketCurrency(s.exchange, undefined, s.currency),
             previousClosePrice: 0,
             highestPrice: 0,
             isMocked: true,

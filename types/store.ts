@@ -69,6 +69,8 @@ export interface PortfolioStatus {
   showExchangeRateWarning: boolean;
 }
 
+export type FocusedDetailEntry = 'chart' | 'review';
+
 export interface UIState {
   /** 'dashboard'가 기본 탭(라벨 '홈', 2026-09-14 사용자가 P3의 'today' 기본 탭 결정을 번복).
    *  'today'·'execution'은 폐지된 탭이지만 **별칭 입력값**으로 union에 남긴다 — 발송된 카톡의
@@ -87,7 +89,9 @@ export interface UIState {
   sellAlertDropRate: number;
   alertSettings: AlertSettings;
   focusedAssetId: string | null;
+  focusedAssetEntry: FocusedDetailEntry | null;
   focusedWatchItemId: string | null;
+  focusedWatchItemEntry: FocusedDetailEntry | null;
   /** 포트폴리오 표시 임계값 (KRW) — 토글 활성 시 평가총액이 이 값 미만인 자산 숨김. 기본 1,000,000 */
   lowValueThreshold: number;
   /** 포트폴리오 테이블 컬럼 표시/순서 설정 (데스크탑 전용, 양끝 name/actions 제외) */
@@ -248,6 +252,8 @@ export interface PortfolioActions {
   setActiveTab: (tab: UIState['activeTab']) => void;
   setFocusedAssetId: (id: string | null) => void;
   setFocusedWatchItemId: (id: string | null) => void;
+  focusPortfolioAsset: (id: string, entry?: FocusedDetailEntry) => void;
+  focusWatchItem: (id: string, entry?: FocusedDetailEntry) => void;
   setGlobalPeriod: (p: GlobalPeriod) => void;
   /** 계정 뷰 필터 변경 (통합/원종/유선) — localStorage 영속. 표시 계층만 영향 */
   setAccountView: (f: OwnerFilter) => void;

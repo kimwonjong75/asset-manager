@@ -14,12 +14,16 @@ import { resolveHoldingsSettings } from '../../utils/turtleHoldings';
 import { formatKRW } from '../portfolio-table/utils';
 import Badge from '../common/Badge';
 import ManualHelpLink from '../common/ManualHelpLink';
+import Button from '../common/Button';
+import AssetTrendChart from '../AssetTrendChart';
+import { buildTurtleHoldingsChartTarget } from '../../utils/turtleHoldingsDetail';
+import type { TurtleHoldingsChartTarget } from '../../types/turtleHoldingsDetail';
 
 interface Bucket {
   key: string;
   title: string;
   rows: TurtleHoldingsRow[];
-  /** true면 행을 눌러 재매수 계산기를 연다(다시 살 때/추가 매수 칸만) */
+  /** true면 별도 버튼으로 재매수 계산기를 연다(다시 살 때/추가 매수 칸만) */
   clickable: boolean;
   /**
    * 칸에 보여줄 문구 선택자 — 기본은 `reasonText`(판정 사유). "손절선 확인" 칸은 증권사 손절 예약주문
@@ -30,7 +34,22 @@ interface Bucket {
   textFor?: (row: TurtleHoldingsRow) => string;
 }
 
-const RowLine: React.FC<{ row: TurtleHoldingsRow; onOpenBuy?: (row: TurtleHoldingsRow) => void; text: string }> = ({ row, onOpenBuy, text }) => {
+function rowIdentity(row: TurtleHoldingsRow): string {
+  return `${row.kind}-${row.assetId ?? row.watchItemId ?? row.ticker}`;
+}
+
+interface RowLineProps {
+  row: TurtleHoldingsRow;
+  text: string;
+  target: TurtleHoldingsChartTarget | null;
+  expanded: boolean;
+  onToggle: () => void;
+  onReview: (target: TurtleHoldingsChartTarget) => void;
+  onOpenBuy?: (row: TurtleHoldingsRow) => void;
+  history: ReturnType<typeof usePortfolio>['data']['portfolioHistory'];
+}
+
+const RowLine: React.FC<RowLineProps> = ({ row, text, target, expanded, onToggle, onReview, onOpenBuy, history }) => {
   const body = (
     <>
       <div className="flex flex-wrap items-center gap-2">
@@ -40,24 +59,62 @@ const RowLine: React.FC<{ row: TurtleHoldingsRow; onOpenBuy?: (row: TurtleHoldin
       <p className="mt-1 text-xs text-gray-300 leading-relaxed">{text}</p>
     </>
   );
-  if (!onOpenBuy) {
-    return <li className="rounded-md border border-border-subtle bg-surface-elevated px-3 py-2">{body}</li>;
-  }
   return (
-    <li>
-      <button
-        type="button"
-        onClick={() => onOpenBuy(row)}
-        className="w-full text-left rounded-md border border-border-subtle bg-surface-elevated px-3 py-2 hover:border-primary/60 hover:bg-surface-muted transition-colors"
-      >
-        {body}
-        <span className="mt-1 inline-block text-xs text-primary-light">재매수 계산기 열기 →</span>
-      </button>
+    <li className="rounded-md border border-border-subtle bg-surface-elevated">
+      {target ? (
+        <button
+          type="button"
+          onClick={onToggle}
+          className="focus-ring w-full rounded-md px-3 py-2 text-left hover:bg-surface-muted transition-colors"
+          aria-expanded={expanded}
+          aria-label={`${row.name} 차트 ${expanded ? '접기' : '펼치기'}`}
+        >
+          {body}
+          <span className="mt-1 inline-block text-xs text-primary-light">차트 {expanded ? '접기' : '펼치기'} →</span>
+        </button>
+      ) : (
+        <div className="px-3 py-2">{body}</div>
+      )}
+      {onOpenBuy && (
+        <div className="px-3 pb-2">
+          <Button variant="secondary" onClick={() => onOpenBuy(row)}>재매수 계산기 열기 →</Button>
+        </div>
+      )}
+      {expanded && target && (
+        <div className="border-t border-border-subtle pb-2">
+          <AssetTrendChart
+            history={history}
+            assetId={target.assetId}
+            assetName={target.assetName}
+            currentQuantity={target.currentQuantity}
+            currentPrice={target.currentPrice}
+            currency={target.currency}
+            exchangeRate={target.exchangeRate}
+            ticker={target.ticker}
+            exchange={target.exchange}
+            categoryId={target.categoryId}
+            purchasePrice={target.purchasePrice}
+          />
+          <div className="px-3 pt-2">
+            <Button variant="secondary" onClick={() => onReview(target)}>종목 검토</Button>
+          </div>
+        </div>
+      )}
     </li>
   );
 };
 
-const BucketSection: React.FC<{ bucket: Bucket; onOpenBuy: (row: TurtleHoldingsRow) => void }> = ({ bucket, onOpenBuy }) => (
+interface BucketSectionProps {
+  bucket: Bucket;
+  targetByRow: ReadonlyMap<string, TurtleHoldingsChartTarget | null>;
+  expandedKey: string | null;
+  onToggle: (key: string) => void;
+  onReview: (target: TurtleHoldingsChartTarget) => void;
+  onOpenBuy: (row: TurtleHoldingsRow) => void;
+  history: ReturnType<typeof usePortfolio>['data']['portfolioHistory'];
+}
+
+const BucketSection: React.FC<BucketSectionProps> = ({ bucket, targetByRow, expandedKey, onToggle, onReview, onOpenBuy, history }) => (
   <div>
     <h4 className="text-xs font-semibold text-gray-300 mb-1.5">
       {bucket.title} <span className="text-gray-500">{bucket.rows.length}</span>
@@ -66,14 +123,23 @@ const BucketSection: React.FC<{ bucket: Bucket; onOpenBuy: (row: TurtleHoldingsR
       <p className="text-xs text-gray-500">해당 없음</p>
     ) : (
       <ul className="space-y-1.5">
-        {bucket.rows.map(r => (
+        {bucket.rows.map(r => {
+          const identity = rowIdentity(r);
+          const instanceKey = `${bucket.key}:${identity}`;
+          return (
           <RowLine
-            key={`${r.kind}-${r.assetId ?? r.watchItemId ?? r.ticker}`}
+            key={instanceKey}
             row={r}
+            target={targetByRow.get(identity) ?? null}
+            expanded={expandedKey === instanceKey}
+            onToggle={() => onToggle(instanceKey)}
+            onReview={onReview}
             onOpenBuy={bucket.clickable ? onOpenBuy : undefined}
             text={bucket.textFor ? bucket.textFor(r) : r.reasonText}
+            history={history}
           />
-        ))}
+          );
+        })}
       </ul>
     )}
   </div>
@@ -83,6 +149,7 @@ const TurtleHoldingsTodayCard: React.FC = () => {
   const model = useTurtleHoldings();
   const { data, actions } = usePortfolio();
   const [showAll, setShowAll] = useState(false);
+  const [expandedKey, setExpandedKey] = useState<string | null>(null);
   // P3(2026-09-26, §4.7): 계좌 축소 기준 자산을 새로 정할 시점 안내(표시 전용 — 자동 저장 없음).
   // 지금 당장 감쇄가 적용 중인지와 무관하게, 계좌 축소를 쓰는 한 기준이 오래됐으면 안내한다.
   const holdingsSettings = resolveHoldingsSettings(data.turtleSettings.holdings);
@@ -106,6 +173,21 @@ const TurtleHoldingsTodayCard: React.FC = () => {
 
   const totalActionable = model.summary.sellCount + model.summary.reentryCount + model.summary.pyramidCount;
   const unavailableCount = model.rows.filter(r => r.status === 'unavailable').length;
+  const targetByRow = useMemo(() => {
+    const targets = new Map<string, TurtleHoldingsChartTarget | null>();
+    for (const row of model.rows) {
+      targets.set(rowIdentity(row), buildTurtleHoldingsChartTarget(row, data.assets, data.watchlist, data.exchangeRates));
+    }
+    return targets;
+  }, [data.assets, data.exchangeRates, data.watchlist, model.rows]);
+
+  const handleReview = (target: TurtleHoldingsChartTarget) => {
+    if (target.reviewTarget.source === 'portfolio') {
+      actions.focusPortfolioAsset(target.reviewTarget.id, 'review');
+    } else {
+      actions.focusWatchItem(target.reviewTarget.id, 'review');
+    }
+  };
 
   return (
     <div className="rounded-card border border-primary/40 bg-primary/5 p-4 sm:p-5" aria-label="터틀 오늘 할 일">
@@ -134,7 +216,18 @@ const TurtleHoldingsTodayCard: React.FC = () => {
       )}
 
       <div className="mt-3 space-y-3">
-        {buckets.map(b => <BucketSection key={b.key} bucket={b} onOpenBuy={actions.openTurtleHoldingsBuy} />)}
+        {buckets.map(b => (
+          <BucketSection
+            key={b.key}
+            bucket={b}
+            targetByRow={targetByRow}
+            expandedKey={expandedKey}
+            onToggle={(key) => setExpandedKey(current => current === key ? null : key)}
+            onReview={handleReview}
+            onOpenBuy={actions.openTurtleHoldingsBuy}
+            history={data.portfolioHistory}
+          />
+        ))}
       </div>
 
       {unavailableCount > 0 && (
@@ -150,7 +243,16 @@ const TurtleHoldingsTodayCard: React.FC = () => {
           {showAll && (
             <ul className="mt-2 space-y-1.5">
               {model.rows.filter(r => r.status === 'unavailable').map(r => (
-                <RowLine key={`na-${r.kind}-${r.assetId ?? r.watchItemId ?? r.ticker}`} row={r} text={r.reasonText} />
+                <RowLine
+                  key={`na-${rowIdentity(r)}`}
+                  row={r}
+                  text={r.reasonText}
+                  target={targetByRow.get(rowIdentity(r)) ?? null}
+                  expanded={expandedKey === `unavailable:${rowIdentity(r)}`}
+                  onToggle={() => setExpandedKey(current => current === `unavailable:${rowIdentity(r)}` ? null : `unavailable:${rowIdentity(r)}`)}
+                  onReview={handleReview}
+                  history={data.portfolioHistory}
+                />
               ))}
             </ul>
           )}

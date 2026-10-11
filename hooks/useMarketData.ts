@@ -9,6 +9,7 @@ import { fetchUpbitPricesBatch } from '../services/upbitService';
 import { fetchStockHistoricalPrices, fetchCryptoHistoricalPrices, isCryptoExchange } from '../services/historicalPriceService';
 import { createLogger } from '../utils/logger';
 import { saveLastKnownRates } from '../utils/exchangeRateCache';
+import { resolveMarketCurrency } from '../utils/marketCurrency';
 
 const log = createLogger('MarketData');
 
@@ -241,10 +242,11 @@ export const useMarketData = ({
                 }
                 const d = wlPriceMap.get(item.id);
                 if (d && !d.isMocked) {
-                    const newCurrent = (item.currency === Currency.KRW) ? d.priceKRW : d.priceOriginal;
+                    const currency = resolveMarketCurrency(item.exchange, d.currency, item.currency);
+                    const newCurrent = currency === Currency.KRW ? d.priceKRW : d.priceOriginal;
                     const newHighest = Math.max(item.highestPrice || 0, d.highestPrice || 0, newCurrent);
                     const cr = d.changeRate;
-                    return { ...item, currentPrice: newCurrent, priceOriginal: d.priceOriginal, currency: (item.currency || d.currency) as Currency, previousClosePrice: d.previousClosePrice, changeRate: cr, indicators: d.indicators, highestPrice: newHighest, yesterdayChange: cr != null ? cr * 100 : (d.previousClosePrice > 0 ? ((newCurrent - d.previousClosePrice) / d.previousClosePrice) * 100 : 0) };
+                    return { ...item, currentPrice: newCurrent, priceOriginal: d.priceOriginal, currency, previousClosePrice: d.previousClosePrice, changeRate: cr, indicators: d.indicators, highestPrice: newHighest, yesterdayChange: cr != null ? cr * 100 : (d.previousClosePrice > 0 ? ((newCurrent - d.previousClosePrice) / d.previousClosePrice) * 100 : 0) };
                 }
                 return item;
             });
@@ -459,7 +461,8 @@ export const useMarketData = ({
             }
             const d = priceMap.get(item.id);
             if (d && !d.isMocked) {
-                const newCurrent = (item.currency === Currency.KRW) ? d.priceKRW : d.priceOriginal;
+                const currency = resolveMarketCurrency(item.exchange, d.currency, item.currency);
+                const newCurrent = currency === Currency.KRW ? d.priceKRW : d.priceOriginal;
                 const histHigh = histHighMap.get(item.ticker.toUpperCase()) || 0;
                 const newHighest = Math.max(item.highestPrice || 0, d.highestPrice || 0, histHigh, newCurrent);
                 let cr = d.changeRate;
@@ -472,7 +475,7 @@ export const useMarketData = ({
                         cr = (d.priceOriginal - histPrev) / histPrev;
                     }
                 }
-                return { ...item, currentPrice: newCurrent, priceOriginal: d.priceOriginal, currency: (item.currency || d.currency) as Currency, previousClosePrice: prevClose, changeRate: cr, indicators: d.indicators, highestPrice: newHighest, yesterdayChange: cr != null ? cr * 100 : (prevClose > 0 ? ((newCurrent - prevClose) / prevClose) * 100 : 0) };
+                return { ...item, currentPrice: newCurrent, priceOriginal: d.priceOriginal, currency, previousClosePrice: prevClose, changeRate: cr, indicators: d.indicators, highestPrice: newHighest, yesterdayChange: cr != null ? cr * 100 : (prevClose > 0 ? ((newCurrent - prevClose) / prevClose) * 100 : 0) };
             }
             return item;
         });

@@ -6,7 +6,7 @@ import {
   WatchlistItem,
   SellRecord,
 } from '../types';
-import { PortfolioContextValue, UIState, GlobalPeriod } from '../types/store';
+import { PortfolioContextValue, UIState, GlobalPeriod, type FocusedDetailEntry } from '../types/store';
 import { usePortfolioData } from '../hooks/usePortfolioData';
 import { useMarketData } from '../hooks/useMarketData';
 import { useAssetActions } from '../hooks/useAssetActions';
@@ -298,8 +298,10 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [isAssistantOpen, setIsAssistantOpen] = useState<boolean>(false);
   const [editingWatchItem, setEditingWatchItem] = useState<WatchlistItem | null>(null);
   const [isAddWatchItemOpen, setIsAddWatchItemOpen] = useState<boolean>(false);
-  const [focusedAssetId, setFocusedAssetId] = useState<string | null>(null);
-  const [focusedWatchItemId, setFocusedWatchItemId] = useState<string | null>(null);
+  const [focusedAssetId, setFocusedAssetIdState] = useState<string | null>(null);
+  const [focusedAssetEntry, setFocusedAssetEntry] = useState<FocusedDetailEntry | null>(null);
+  const [focusedWatchItemId, setFocusedWatchItemIdState] = useState<string | null>(null);
+  const [focusedWatchItemEntry, setFocusedWatchItemEntry] = useState<FocusedDetailEntry | null>(null);
   const [editingSellRecord, setEditingSellRecord] = useState<SellRecord | null>(null);
   const [turtleExecAction, setTurtleExecAction] = useState<ActionItem | null>(null);
   const [cleanupExecAction, setCleanupExecAction] = useState<ActionItem | null>(null);
@@ -681,6 +683,34 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     setActiveTab(tab);
   };
 
+  const handleSetFocusedAssetId = (id: string | null) => {
+    setFocusedAssetEntry(id ? 'chart' : null);
+    setFocusedAssetIdState(id);
+  };
+
+  const handleSetFocusedWatchItemId = (id: string | null) => {
+    setFocusedWatchItemEntry(id ? 'chart' : null);
+    setFocusedWatchItemIdState(id);
+  };
+
+  const focusPortfolioAsset = (id: string, entry: FocusedDetailEntry = 'chart') => {
+    setFilterAlerts(false);
+    setFilterCategory('ALL');
+    setSearchQuery('');
+    handleSetAccountView('ALL');
+    setActiveTab('portfolio');
+    setFocusedAssetEntry(entry);
+    setFocusedAssetIdState(id);
+  };
+
+  const focusWatchItem = (id: string, entry: FocusedDetailEntry = 'chart') => {
+    setFilterCategory('ALL');
+    setSearchQuery('');
+    setActiveTab('watchlist');
+    setFocusedWatchItemEntry(entry);
+    setFocusedWatchItemIdState(id);
+  };
+
   const value: PortfolioContextValue = {
     data: {
       assets,
@@ -718,7 +748,9 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       sellAlertDropRate,
       alertSettings,
       focusedAssetId,
+      focusedAssetEntry,
       focusedWatchItemId,
+      focusedWatchItemEntry,
       lowValueThreshold,
       columnConfig,
       fixedColumnWidths,
@@ -827,8 +859,10 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       clearError: () => setError(null),
       clearSuccessMessage: () => setSuccessMessage(null),
       setActiveTab: handleTabChange,
-      setFocusedAssetId,
-      setFocusedWatchItemId,
+      setFocusedAssetId: handleSetFocusedAssetId,
+      setFocusedWatchItemId: handleSetFocusedWatchItemId,
+      focusPortfolioAsset,
+      focusWatchItem,
       setGlobalPeriod: handleSetGlobalPeriod,
       setAccountView: handleSetAccountView,
       setDashboardFilterCategory,

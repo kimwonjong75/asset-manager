@@ -35,6 +35,7 @@ import {
   type WatchlistSortKey,
 } from '../utils/watchlistSort';
 import { getWatchlistEmptyState, type WatchlistEmptyState } from '../utils/watchlistEmptyState';
+import { resolveMarketCurrency } from '../utils/marketCurrency';
 
 interface WatchlistPageProps {
   watchlist: WatchlistItem[];
@@ -103,7 +104,9 @@ const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, portfolioAsset
     if (ui.focusedWatchItemId) {
       const targetId = ui.focusedWatchItemId;
       setExpandedItemId(targetId);
-      actions.setFocusedWatchItemId(null);
+      if (ui.focusedWatchItemEntry === 'review') {
+        setReviewTarget(prev => ({ id: targetId, nonce: (prev?.nonce ?? 0) + 1 }));
+      }
       setTimeout(() => {
         const elements = document.querySelectorAll<HTMLElement>(`[data-watch-id="${targetId}"]`);
         elements.forEach(el => {
@@ -112,8 +115,9 @@ const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, portfolioAsset
           }
         });
       }, 150);
+      setTimeout(() => actions.setFocusedWatchItemId(null), 2500);
     }
-  }, [ui.focusedWatchItemId]);
+  }, [ui.focusedWatchItemEntry, ui.focusedWatchItemId]);
 
   const categoryOptions = useMemo(() => {
     const allowed = getAllowedCategories(categories);
@@ -342,8 +346,9 @@ const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, portfolioAsset
           </thead>
           <tbody>
             {filtered.length > 0 ? filtered.map(w => {
-              const isNonKRW = w.currency !== undefined && w.currency !== Currency.KRW;
-              const derivedExchangeRate = getExchangeRate(w.currency);
+              const displayCurrency = resolveMarketCurrency(w.exchange, undefined, w.currency);
+              const isNonKRW = displayCurrency !== Currency.KRW;
+              const derivedExchangeRate = getExchangeRate(displayCurrency);
               const isExpanded = expandedItemId === w.id;
               const reviewRequested = reviewTarget?.id === w.id;
               const menuItems = buildWatchlistRowMenuItems({
@@ -427,9 +432,9 @@ const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, portfolioAsset
                       </div>
                     </td>
                     <td className="px-4 py-3 text-right">
-                      {w.currentPrice !== undefined ? formatKRW(w.currentPrice) : '-'}
-                      {isNonKRW && w.priceOriginal !== undefined && w.currency !== undefined && (
-                        <div className="text-xs text-gray-500">{formatOriginalCurrency(w.priceOriginal, w.currency)}</div>
+                      {w.currentPrice !== undefined ? formatOriginalCurrency(w.currentPrice, displayCurrency) : '-'}
+                      {isNonKRW && w.priceOriginal !== undefined && derivedExchangeRate > 1 && (
+                        <div className="text-xs text-gray-500">≈ {formatKRW(w.priceOriginal * derivedExchangeRate)}</div>
                       )}
                     </td>
                     <td className={`px-4 py-3 text-right ${getChangeColor(w.yesterdayChange || 0)}`}>{w.yesterdayChange !== undefined ? `${(w.yesterdayChange || 0).toFixed(2)}%` : '-'}</td>
@@ -463,7 +468,7 @@ const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, portfolioAsset
                           assetName={w.name}
                           currentQuantity={1}
                           currentPrice={w.priceOriginal || w.currentPrice || 0}
-                          currency={w.currency}
+                          currency={displayCurrency}
                           exchangeRate={derivedExchangeRate}
                           ticker={w.ticker}
                           exchange={w.exchange}
@@ -494,7 +499,7 @@ const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, portfolioAsset
                       assetName={w.name}
                       currentQuantity={1}
                       currentPrice={w.priceOriginal || w.currentPrice || 0}
-                      currency={w.currency}
+                      currency={displayCurrency}
                       exchangeRate={derivedExchangeRate}
                       ticker={w.ticker}
                       exchange={w.exchange}

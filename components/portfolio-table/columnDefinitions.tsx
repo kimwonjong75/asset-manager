@@ -30,9 +30,9 @@ const RSIIndicator = ({ rsi, status }: { rsi?: number, status?: string }) => {
   if (status === 'OVERBOUGHT' || rsi >= 70) colorClass = 'text-up';
   else if (status === 'OVERSOLD' || rsi <= 30) colorClass = 'text-down';
   return (
-    <div className="text-xs mt-0.5">
+    <span className="whitespace-nowrap">
       <span className="text-gray-500">RSI:</span> <span className={colorClass}>{rsi.toFixed(1)}</span>
-    </div>
+    </span>
   );
 };
 
@@ -45,9 +45,24 @@ const VolumeIndicator = ({ ratio }: { ratio?: number }) => {
   else if (ratio >= 1.5) { colorClass = VOLUME_INTENSITY_TEXT.high; label = '!'; }
   else if (ratio < 0.5) { colorClass = VOLUME_INTENSITY_TEXT.low; label = '~'; }
   return (
-    <div className="text-xs mt-0.5">
+    <span className="whitespace-nowrap">
       <span className="text-gray-500">VOL:</span>{' '}
       <span className={colorClass}>{ratio.toFixed(1)}x{label && ` ${label}`}</span>
+    </span>
+  );
+};
+
+export const PriceIndicators: React.FC<{
+  rsi?: number;
+  rsiStatus?: string;
+  volumeRatio?: number;
+  className?: string;
+}> = ({ rsi, rsiStatus, volumeRatio, className = '' }) => {
+  if (typeof rsi !== 'number' && typeof volumeRatio !== 'number') return null;
+  return (
+    <div className={`mt-1 flex flex-wrap justify-end gap-x-2 gap-y-0.5 text-xs ${className}`}>
+      <RSIIndicator rsi={rsi} status={rsiStatus} />
+      <VolumeIndicator ratio={volumeRatio} />
     </div>
   );
 };
@@ -208,17 +223,14 @@ export const COLUMN_DEFINITIONS: Record<ColumnKey, ColumnDefinition> = {
       return (
         <td className="px-4 py-4 overflow-hidden" style={getTdStyle?.('currentPrice')}>
           <Tooltip content={COLUMN_DESCRIPTIONS.currentPrice} position="top" wrap>
-            <div className="flex items-start justify-between gap-3">
-              <div className="text-right">
-                <div className="font-semibold text-white">{formatOriginalCurrency(asset.currentPrice, asset.currency)}</div>
-                {isNonKRW && <div className="text-xs text-gray-500">≈ {formatKRW(asset.metrics.currentPriceKRW)}</div>}
-              </div>
-              {(asset.indicators?.rsi != null || asset.indicators?.volume_ratio != null) && (
-                <div className="text-right shrink-0">
-                  <RSIIndicator rsi={asset.indicators?.rsi} status={asset.indicators?.rsi_status} />
-                  <VolumeIndicator ratio={asset.indicators?.volume_ratio} />
-                </div>
-              )}
+            <div className="text-right">
+              <div className="font-semibold text-white">{formatOriginalCurrency(asset.currentPrice, asset.currency)}</div>
+              {isNonKRW && <div className="text-xs text-gray-500">≈ {formatKRW(asset.metrics.currentPriceKRW)}</div>}
+              <PriceIndicators
+                rsi={asset.indicators?.rsi}
+                rsiStatus={asset.indicators?.rsi_status}
+                volumeRatio={asset.indicators?.volume_ratio}
+              />
             </div>
           </Tooltip>
         </td>

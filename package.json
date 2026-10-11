@@ -43,6 +43,7 @@
     "test:sensitivity": "npx --yes tsx tests/alertSensitivityParity.ts",
     "test:alertsync": "npx --yes tsx tests/alertSettingsSyncParity.ts",
     "test:watchsort": "npx --yes tsx tests/watchlistSortParity.ts",
+    "test:marketcurrency": "npx --yes tsx tests/marketCurrencyParity.ts",
     "test:replay": "npx --yes tsx tests/signalReplayParity.ts",
     "test:replaycompact": "npx --yes tsx tests/replayRecordsCompactionParity.ts",
     "test:winrate": "npx --yes tsx tests/winRateDiagnosticsParity.ts",

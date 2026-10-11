@@ -76,17 +76,25 @@ const PortfolioTableRow: React.FC<PortfolioTableRowProps> = ({
   const isFocused = ui.focusedAssetId === asset.id;
 
   useEffect(() => {
-    if (isFocused) {
-      setExpanded(true);
-      setTimeout(() => rowRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
-      setTimeout(() => actions.setFocusedAssetId(null), 2500);
+    if (!isFocused || rowRef.current?.offsetParent === null) return;
+    setExpanded(true);
+    if (ui.focusedAssetEntry === 'review') {
+      setEntry('review');
+      setReviewNonce(n => n + 1);
     }
-  }, [isFocused]); // eslint-disable-line react-hooks/exhaustive-deps
+    setTimeout(() => rowRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
+    setTimeout(() => actions.setFocusedAssetId(null), 2500);
+  }, [isFocused, ui.focusedAssetEntry]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleToggleExpand = () => {
     const next = !expanded;
     setExpanded(next);
     if (!next) setEntry(null);
+  };
+  const handleRowClick = (event: React.MouseEvent<HTMLTableRowElement>) => {
+    const target = event.target as HTMLElement;
+    if (target.closest('[data-no-chart-toggle], button, a, input, select, textarea, [role="menuitem"]')) return;
+    handleToggleExpand();
   };
   const openTradePlan = () => {
     setExpanded(true);
@@ -136,7 +144,11 @@ const PortfolioTableRow: React.FC<PortfolioTableRowProps> = ({
 
   return (
     <Fragment>
-      <tr ref={rowRef} className={`border-b border-gray-700 transition-colors duration-200 hover:bg-gray-700/50 ${isFocused ? 'ring-2 ring-inset ring-blue-500 bg-blue-900/20' : ''}`}>
+      <tr
+        ref={rowRef}
+        onClick={handleRowClick}
+        className={`cursor-pointer border-b border-gray-700 transition-colors duration-200 hover:bg-gray-700/50 ${isFocused ? 'ring-2 ring-inset ring-blue-500 bg-blue-900/20' : ''}`}
+      >
         <td className="px-4 py-4 text-center">
           <input
             type="checkbox"
@@ -145,7 +157,7 @@ const PortfolioTableRow: React.FC<PortfolioTableRowProps> = ({
             onChange={(e) => onSelect(asset.id, e.target.checked)}
           />
         </td>
-        <td className="px-4 py-4 font-medium text-white break-words overflow-hidden" style={getTdStyle?.('name')}>
+        <td data-no-chart-toggle className="px-4 py-4 font-medium text-white break-words overflow-hidden cursor-default" style={getTdStyle?.('name')}>
           <div className="flex flex-col">
              <div className="flex items-center gap-2">
                {onTogglePin && (

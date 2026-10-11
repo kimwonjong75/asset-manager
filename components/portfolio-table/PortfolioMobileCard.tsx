@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Asset, Currency, PortfolioSnapshot, ExchangeRates } from '../../types';
 import { EnrichedAsset } from '../../types/ui';
 import StockReviewAccordion from '../stock-review/StockReviewAccordion';
@@ -14,8 +14,9 @@ import ChartViewerModal from '../common/ChartViewerModal';
 import TurtlePositionInfo from './TurtlePositionInfo';
 import type { TurtlePositionView } from '../../utils/turtlePositionView';
 import type { TurtleHoldingsRow } from '../../utils/turtleHoldingsView';
-import { TURTLE_HOLDINGS_STATUS_META } from './columnDefinitions';
+import { PriceIndicators, TURTLE_HOLDINGS_STATUS_META } from './columnDefinitions';
 import { PIN_STAR, YUSEON_ACCOUNT_BADGE } from '../../constants/stateColorLadders';
+import { usePortfolio } from '../../contexts/PortfolioContext';
 
 
 interface PortfolioMobileCardProps {
@@ -65,7 +66,24 @@ const PortfolioMobileCard: React.FC<PortfolioMobileCardProps> = ({
   const [entry, setEntry] = useState<'plan' | 'review' | null>(null);
   const [planNonce, setPlanNonce] = useState(0);
   const [reviewNonce, setReviewNonce] = useState(0);
+  const cardRef = useRef<HTMLDivElement>(null);
+  const { ui, actions } = usePortfolio();
   const displayName = asset.customName?.trim() || asset.name;
+
+  useEffect(() => {
+    const isFocused = ui.focusedAssetId === asset.id;
+    if (!isFocused || cardRef.current?.offsetParent === null) return;
+    const openTimer = window.setTimeout(() => {
+      setExpanded(true);
+      if (ui.focusedAssetEntry === 'review') {
+        setEntry('review');
+        setReviewNonce(n => n + 1);
+      }
+    }, 0);
+    setTimeout(() => cardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
+    setTimeout(() => actions.setFocusedAssetId(null), 2500);
+    return () => window.clearTimeout(openTimer);
+  }, [asset.id, ui.focusedAssetEntry, ui.focusedAssetId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleToggleExpand = () => {
     const next = !expanded;
@@ -99,7 +117,7 @@ const PortfolioMobileCard: React.FC<PortfolioMobileCardProps> = ({
   }
 
   return (
-    <div className="border-b border-gray-700">
+    <div ref={cardRef} className="border-b border-gray-700">
       <div className="px-4 py-3 flex items-start gap-3">
         {/* Left: selection checkbox (일괄 변경/선택 업데이트) */}
         {onSelect && (
@@ -163,6 +181,12 @@ const PortfolioMobileCard: React.FC<PortfolioMobileCardProps> = ({
               {returnPercentage >= 0 ? '+' : ''}{returnPercentage.toFixed(2)}%
             </span>
           </div>
+          <PriceIndicators
+            rsi={asset.indicators?.rsi}
+            rsiStatus={asset.indicators?.rsi_status}
+            volumeRatio={asset.indicators?.volume_ratio}
+            className="justify-start"
+          />
 
           {/* Secondary info row */}
           <div className="flex items-center gap-4 mt-1 text-xs text-gray-400">

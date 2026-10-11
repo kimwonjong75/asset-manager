@@ -46,7 +46,6 @@ const ManualView: React.FC = () => {
       document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
     return () => cancelAnimationFrame(raf);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- resolvedMd가 바뀔 때만(=렌더된 뒤) 재시도
   }, [resolvedMd]);
 
   const buildDate = formatBuildDate();
