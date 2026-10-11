@@ -8,7 +8,13 @@
   "variants": {
     "V1": { "name": "표준(사용자 기본안)", "entryLookback": 55, "exitLookback": 20, "atrPeriod": 20, "stopMultipleN": 2 },
     "V2": { "name": "System 1식(빠른 청산)", "entryLookback": 20, "exitLookback": 10, "atrPeriod": 20, "stopMultipleN": 2 },
-    "V3": { "name": "느린 판(둔감)", "entryLookback": 55, "exitLookback": 55, "atrPeriod": 20, "stopMultipleN": 2 }
+    "V3": { "name": "느린 판(둔감)", "entryLookback": 55, "exitLookback": 55, "atrPeriod": 20, "stopMultipleN": 2 },
+    "W1": { "name": "W1=V1(도치안20, 재사용)", "entryLookback": 55, "exitLookback": 20, "atrPeriod": 20, "stopMultipleN": 2, "exitType": "donchian" },
+    "W2": { "name": "W2=V3(도치안55, 재사용)", "entryLookback": 55, "exitLookback": 55, "atrPeriod": 20, "stopMultipleN": 2, "exitType": "donchian" },
+    "W3": { "name": "ATR 트레일링(챈들리어형, 3배)", "entryLookback": 55, "exitLookback": 20, "atrPeriod": 20, "stopMultipleN": 2, "exitType": "atrTrail", "atrTrailMultiple": 3 },
+    "W3_2x": { "name": "ATR 트레일링 감도(2배, 참고용)", "entryLookback": 55, "exitLookback": 20, "atrPeriod": 20, "stopMultipleN": 2, "exitType": "atrTrail", "atrTrailMultiple": 2 },
+    "W3_4x": { "name": "ATR 트레일링 감도(4배, 참고용)", "entryLookback": 55, "exitLookback": 20, "atrPeriod": 20, "stopMultipleN": 2, "exitType": "atrTrail", "atrTrailMultiple": 4 },
+    "W4": { "name": "이동평균(SMA50) 이탈", "entryLookback": 55, "exitLookback": 20, "atrPeriod": 20, "stopMultipleN": 2, "exitType": "sma", "smaPeriod": 50 }
   },
   "commonRules": {
     "pyramiding": "없음 (13-2 T2 FAIL — 이번 범위에 포함하지 않음)",

@@ -50,6 +50,8 @@ export interface CellStats {
   medianWhipsaws: number;
   worst50RateBh: number;
   worst50RateTurtle: number;
+  /** 청산 이벤트별 give-back(runningHigh 대비 미실현이익 반납 비율)의 중앙값. 이벤트 없으면 0. */
+  medianGiveback: number;
 }
 
 export function summarize(cells: readonly CellResult[]): CellStats {
@@ -70,6 +72,7 @@ export function summarize(cells: readonly CellResult[]): CellStats {
     medianWhipsaws: median(cells.map(c => c.whipsaws)),
     worst50RateBh: fractionTrue(cells.map(c => c.bhWorst50)),
     worst50RateTurtle: fractionTrue(cells.map(c => c.turtleWorst50)),
+    medianGiveback: median(cells.flatMap(c => c.givebacks)),
   };
 }
 

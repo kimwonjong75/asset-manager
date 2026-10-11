@@ -16,17 +16,32 @@
 import { SecurityData } from './data';
 import { computeCostRates, CostInputs } from './costs';
 
+/**
+ * 청산 방식(2차 백테스트 §⑤) — 미지정 시 'donchian'(1차 V1~V3와 완전히 동일, 하위호환).
+ *   · donchian  : D일 종가 <= 직전 exitLookback완료봉 최저가(당일 제외) — 1차와 동일.
+ *   · atrTrail  : ATR 트레일링(챈들리어형, W3) — 진입 후 러닝하이 − atrTrailMultiple×ATR(atrPeriod),
+ *                 래칫(하향 금지). D일 종가 < trailStop(D)면 청산. 당일 제외 규약과 무관(채널이 아님).
+ *   · sma       : 이동평균 이탈(W4) — D일 종가 < SMA(smaPeriod)(D), **당일 종가 포함**(도치안과 다른 관례).
+ */
+export type ExitType = 'donchian' | 'atrTrail' | 'sma';
+
 export interface VariantRules {
   id: string;
   name: string;
   /** 재진입(신고가 돌파) 판정에 쓰는 고가 채널 lookback. */
   entryLookback: number;
-  /** 매도(채널청산) 판정에 쓰는 저가 채널 lookback. 보유분·재매수분 공통. */
+  /** 매도(채널청산) 판정에 쓰는 저가 채널 lookback. exitType='donchian'일 때만 쓰임. 보유분·재매수분 공통. */
   exitLookback: number;
   /** N = ATR(atrPeriod). 이번 연구에서는 3변형 전부 20 고정. */
   atrPeriod: number;
   /** 재매수분 손절 = 체결가 − stopMultipleN × 신호일 N. */
   stopMultipleN: number;
+  /** 청산 방식. 미지정 시 'donchian'(하위호환). */
+  exitType?: ExitType;
+  /** exitType='atrTrail'일 때 배수(기본 3 — 르보/엘더 표준). */
+  atrTrailMultiple?: number;
+  /** exitType='sma'일 때 기간(기본 50). */
+  smaPeriod?: number;
 }
 
 export type SkipReason = 'no-warmup' | 'bad-start-price';
@@ -63,6 +78,13 @@ export interface CellResult {
   completedRoundTrips: number;
   /** 매도 후 20거래일 안에 더 높은 가격으로 재매수된 수. */
   whipsaws: number;
+  /**
+   * 청산 이벤트별 give-back(보유 중 도달한 최고가 대비 미실현이익 반납 비율). 진입가(refPrice) 대비
+   * 러닝하이(runningHigh, high가격 기준)가 더 높았던 이벤트만 포함(미실현이익이 없으면 반납할 것도 없음).
+   *   giveback = (runningHigh − 청산체결가) / (runningHigh − 진입가). 1에 가까울수록 최고점 이익을 거의
+   *   다 반납(늦은 청산), 0에 가까우면 최고점 근처에서 청산(빠른 청산). 갭에 따라 음수·1 초과도 가능.
+   */
+  givebacks: number[];
   /** 최초 보유분이 청산된 날짜(없으면 끝까지 보유 — null). */
   initialExitDate: string | null;
   /** 창 종료 시 상태(보유/현금) — 강제청산 없음. */
@@ -137,12 +159,18 @@ export function simulateCell(
   opts: SimulateCellOptions = {}
 ): CellResult | SkipRecord {
   const n = sec.ownDates.length;
+  const exitType: ExitType = rules.exitType ?? 'donchian';
+  const atrTrailMultiple = rules.atrTrailMultiple ?? 3;
+  const smaPeriod = rules.smaPeriod ?? 50;
   const hiArr = sec.highChannel[rules.entryLookback];
-  const loArr = sec.lowChannel[rules.exitLookback];
-  if (!hiArr || !loArr) return { skip: true, reason: 'no-warmup' };
-  if (!isNum(sec.atr[startIdx]) || !isNum(hiArr[startIdx]) || !isNum(loArr[startIdx])) {
-    return { skip: true, reason: 'no-warmup' };
-  }
+  const loArr = exitType === 'donchian' ? sec.lowChannel[rules.exitLookback] : undefined;
+  const smaArr = exitType === 'sma' ? sec.sma[smaPeriod] : undefined;
+  if (!hiArr) return { skip: true, reason: 'no-warmup' };
+  if (exitType === 'donchian' && !loArr) return { skip: true, reason: 'no-warmup' };
+  if (exitType === 'sma' && !smaArr) return { skip: true, reason: 'no-warmup' };
+  if (!isNum(sec.atr[startIdx]) || !isNum(hiArr[startIdx])) return { skip: true, reason: 'no-warmup' };
+  if (exitType === 'donchian' && !isNum((loArr as (number | null)[])[startIdx])) return { skip: true, reason: 'no-warmup' };
+  if (exitType === 'sma' && !isNum((smaArr as (number | null)[])[startIdx])) return { skip: true, reason: 'no-warmup' };
   const startClose = sec.ownClose[startIdx];
   if (!isNum(startClose) || !(startClose > 0)) return { skip: true, reason: 'bad-start-price' };
 
@@ -173,9 +201,14 @@ export function simulateCell(
   let refPrice = startClose;
   let stopPrice: number | null = null;
   let pending: PendingOrder | null = null;
+  // 진입 이후 러닝하이(high 기준, 챈들리어형 정의) — give-back 계산과 atrTrail 청산 양쪽에 공용.
+  // 보유분(HOLD_INITIAL)은 매수 시점을 모르므로 시작일을 진입 시점으로 취급(기존 refPrice 관례와 동일).
+  let runningHigh: number | null = isNum(sec.ownHigh[startIdx]) ? (sec.ownHigh[startIdx] as number) : startClose;
+  let trailStop: number | null = null;
 
   const turtleRatios: number[] = [];
   const fills: FillLog[] = [];
+  const givebacks: number[] = [];
   let daysInMarket = 0;
   let roundTrips = 0, completedRoundTrips = 0, whipsaws = 0;
   let initialExitDate: string | null = null;
@@ -199,12 +232,16 @@ export function simulateCell(
         const dateISO = sec.ownDates[i];
         const { buyRate, sellRate } = computeCostRates(costInputs, dateISO, costMultiplier);
         if (pending.kind === 'sell') {
+          if (isNum(runningHigh) && (runningHigh as number) > refPrice) {
+            givebacks.push(((runningHigh as number) - openPx) / ((runningHigh as number) - refPrice));
+          }
           const grossRatio = capitalRatio * (openPx / refPrice);
           capitalRatio = grossRatio * (1 - sellRate);
           if (state === 'HOLD_REENTERED') completedRoundTrips++;
           else initialExitDate = dateISO;
           lastSellIdx = i; lastSellPrice = openPx;
           state = 'CASH'; stopPrice = null;
+          runningHigh = null; trailStop = null;
         } else {
           capitalRatio = capitalRatio * (1 - buyRate);
           refPrice = openPx;
@@ -212,6 +249,9 @@ export function simulateCell(
           stopPrice = isNum(nAtSignal) ? openPx - rules.stopMultipleN * nAtSignal : null;
           state = 'HOLD_REENTERED';
           roundTrips++;
+          // 새 진입 — 러닝하이·트레일스톱을 이 체결일부터 다시 쌓기 시작.
+          runningHigh = isNum(sec.ownHigh[i]) ? (sec.ownHigh[i] as number) : openPx;
+          trailStop = null;
           if (lastSellIdx !== null && lastSellPrice !== null && i - lastSellIdx <= 20 && openPx > lastSellPrice) {
             whipsaws++;
           }
@@ -221,11 +261,18 @@ export function simulateCell(
       pending = null;
     }
 
-    // 2) 오늘 평가 (종가 기준)
+    // 2) 오늘 평가 (종가 기준) — 보유 중이면 러닝하이·트레일스톱도 매일 갱신(래칫, 하향 금지).
     const closeToday = sec.ownClose[i];
     if (state !== 'CASH') {
       turtleRatios.push(isNum(closeToday) ? capitalRatio * (closeToday / refPrice) : capitalRatio);
       daysInMarket++;
+      const hiToday = sec.ownHigh[i];
+      if (isNum(hiToday) && (runningHigh === null || hiToday > runningHigh)) runningHigh = hiToday;
+      const atrToday = sec.atr[i];
+      if (isNum(runningHigh) && isNum(atrToday)) {
+        const candidate = (runningHigh as number) - atrTrailMultiple * atrToday;
+        trailStop = trailStop === null ? candidate : Math.max(trailStop, candidate);
+      }
     } else {
       turtleRatios.push(capitalRatio);
     }
@@ -236,8 +283,12 @@ export function simulateCell(
       if (state === 'HOLD_REENTERED' && isNum(stopPrice) && closeToday <= (stopPrice as number)) {
         pending = { kind: 'sell', reason: 'stop', signalIdx: i, fillIdx: i + 1 };
       } else if (state !== 'CASH') {
-        const loVal = loArr[i];
-        if (isNum(loVal) && closeToday <= loVal) pending = { kind: 'sell', reason: 'exit', signalIdx: i, fillIdx: i + 1 };
+        const exitSignal: boolean = exitType === 'atrTrail'
+          ? isNum(trailStop) && closeToday < (trailStop as number)
+          : exitType === 'sma'
+          ? isNum((smaArr as (number | null)[])[i]) && closeToday < ((smaArr as (number | null)[])[i] as number)
+          : isNum((loArr as (number | null)[])[i]) && closeToday <= ((loArr as (number | null)[])[i] as number);
+        if (exitSignal) pending = { kind: 'sell', reason: 'exit', signalIdx: i, fillIdx: i + 1 };
       } else {
         const hiVal = hiArr[i];
         if (isNum(hiVal) && closeToday >= hiVal) pending = { kind: 'buy', reason: 'entry', signalIdx: i, fillIdx: i + 1 };
@@ -268,7 +319,7 @@ export function simulateCell(
     timeInMarketPct: horizonBars > 0 ? (daysInMarket / horizonBars) * 100 : 0,
     roundTrips, completedRoundTrips, whipsaws, initialExitDate,
     finalState: state,
-    fills,
+    fills, givebacks,
   };
   if (opts.includeSeries) {
     result.series = { dates: sec.ownDates.slice(startIdx, lastIdx + 1), bh: bhRatios, turtle: turtleRatios };

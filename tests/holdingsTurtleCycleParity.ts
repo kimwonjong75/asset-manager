@@ -48,12 +48,12 @@ function mkSymbolSeries(bars: Bar[]): SymbolSeries {
 }
 
 function buildTestSecurity(bars: Bar[], opts: Partial<{
-  currency: 'KRW' | 'USD' | 'JPY'; isCryptoTicker: boolean; isKrEtf: boolean;
+  currency: 'KRW' | 'USD' | 'JPY'; isCryptoTicker: boolean; isKrEtf: boolean; smaPeriods: readonly number[];
 }> = {}): SecurityData {
   return buildSecurity({
     ticker: 'X', name: '테스트종목', assetClass: '한국주식',
     currency: opts.currency ?? 'KRW', isCryptoTicker: opts.isCryptoTicker ?? false, isKrEtf: opts.isKrEtf ?? false,
-    raw: mkSymbolSeries(bars), atrPeriod: 5, lookbacks: [3, 5],
+    raw: mkSymbolSeries(bars), atrPeriod: 5, lookbacks: [3, 5], smaPeriods: opts.smaPeriods ?? [5],
   });
 }
 
@@ -339,7 +339,7 @@ console.log('12. aggregate — median/percentile/구간분류/최대기여 제�
       turtleFinalRatio: finalRatioRatio, turtleCagr: 0, turtleMdd: 0, turtleWorst50: false,
       finalRatioRatio, turtleBeatsBh: finalRatioRatio > 1, timeInMarketPct: 100,
       roundTrips: 0, completedRoundTrips: 0, whipsaws: 0, initialExitDate: null,
-      finalState: 'HOLD_INITIAL', fills: [],
+      finalState: 'HOLD_INITIAL', fills: [], givebacks: [],
     };
   }
   // A: 살짝 우위(1.05) 5셀, B: 압도적 우위(3.0) 1셀 → 전체 median>1(B의 극단값 때문일 수 있음), B 제거 시 결론이 뒤집히는지 확인.
@@ -514,6 +514,76 @@ console.log('16. decomposeEpisodes — 피한 하락 vs 놓친 반등 분해(엔
   // 워밍업 시작을 고점(idx10) 이후로 늦추면 이 에피소드는 대상에서 제외되어야 한다(시작 전 고점은 포함 불가).
   const { episodes: episodesLate } = decomposeEpisodes(sec, rules, 0, 12, { thresholdPct: 20 });
   check('시작일을 고점 이후(idx12)로 하면 에피소드 0건(고점이 시작 이전)', episodesLate.length, 0);
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+console.log('17. 2차 백테스트 W3 — ATR 트레일링(챈들리어형) 청산 골든');
+// ════════════════════════════════════════════════════════════════════════════
+{
+  // TR=500 고정(h=c+250,l=c-250, |Δc|≤250) 유지하며 완만히 상승 → idx13에 급락(Δc=-1700)으로 TR이
+  // 튀면서(1950) Wilder ATR도 500→790으로 점프 — 그래도 러닝하이 기준 트레일스톱(래칫)이 여전히
+  // 종가보다 높아 그 날 청산 신호가 뜬다(직접 손으로 계산, PR 설명 참고).
+  const bars: Bar[] = [];
+  for (let i = 0; i < 10; i++) bars.push({ o: 10000, h: 10250, l: 9750, c: 10000 }); // 0-9(9=시작일), TR=500
+  bars.push({ o: 10200, h: 10450, l: 9950, c: 10200 });  // 10, TR=500
+  bars.push({ o: 10450, h: 10700, l: 10200, c: 10450 }); // 11, TR=500
+  bars.push({ o: 10700, h: 10950, l: 10450, c: 10700 }); // 12, TR=500
+  bars.push({ o: 9000, h: 9250, l: 8750, c: 9000 });     // 13, 급락 신호일 — TR=1950 → atr[13]=790
+  bars.push({ o: 8900, h: 9150, l: 8650, c: 8800 });     // 14, 체결일(갭 8900)
+
+  const sec = buildTestSecurity(bars);
+  checkClose('atr[9]=500(1차와 동일 워밍업)', sec.atr[9] as number, 500, 1e-9);
+  checkClose('atr[13]=790(Wilder: (500*4+1950)/5)', sec.atr[13] as number, 790, 1e-9);
+
+  const rules: VariantRules = {
+    id: 'W3', name: 'ATR트레일링테스트', entryLookback: 5, exitLookback: 3, atrPeriod: 5,
+    stopMultipleN: 2, exitType: 'atrTrail', atrTrailMultiple: 3,
+  };
+  const r = simulateCell(sec, 9, rules, 0, { maxEndIdx: 14 });
+  checkTrue('W3 셀 스킵되지 않음', !isSkip(r));
+  if (!isSkip(r)) {
+    check('체결일 = idx14(신호는 idx13: 종가 9000 < 트레일스톱 9450)', r.fills[0]?.date, iso(14));
+    check('체결가 = 8900(다음 시가, 갭 그대로)', r.fills[0]?.price, 8900);
+    check('체결 사유 = exit', r.fills[0]?.reason, 'exit');
+    check('초기 보유분 청산일(=체결일) = idx14', r.initialExitDate, iso(14));
+    check('종료 상태 = CASH', r.finalState, 'CASH');
+    checkClose('터틀 최종비율 = 8900/10000 = 0.89(비용0)', r.turtleFinalRatio, 0.89, 1e-12);
+    check('give-back 이벤트 1건', r.givebacks.length, 1);
+    if (r.givebacks.length === 1) {
+      // give-back = (러닝하이10950 − 체결가8900) / (러닝하이10950 − 진입가10000) = 2050/950
+      checkClose('give-back = 2050/950(최고점 대비 이익을 초과 반납)', r.givebacks[0], 2050 / 950, 1e-9);
+    }
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+console.log('18. 2차 백테스트 W4 — SMA(당일 포함) 이탈 청산 골든');
+// ════════════════════════════════════════════════════════════════════════════
+{
+  const bars: Bar[] = [];
+  for (let i = 0; i < 10; i++) bars.push({ o: 10000, h: 10250, l: 9750, c: 10000 }); // 0-9(9=시작일)
+  bars.push({ o: 9800, h: 10050, l: 9550, c: 9800 }); // 10: SMA5(idx6..10)=(4*10000+9800)/5=9960 > 9800 → 신호일
+  bars.push({ o: 9700, h: 9950, l: 9450, c: 9700 });  // 11: 체결일(갭 9700)
+
+  const sec = buildTestSecurity(bars, { smaPeriods: [5] });
+  checkClose('sma[5][10] = 9960(당일 종가 포함)', sec.sma[5][10] as number, 9960, 1e-9);
+
+  const rules: VariantRules = {
+    id: 'W4', name: 'SMA50테스트', entryLookback: 5, exitLookback: 3, atrPeriod: 5,
+    stopMultipleN: 2, exitType: 'sma', smaPeriod: 5,
+  };
+  const r = simulateCell(sec, 9, rules, 0, { maxEndIdx: 11 });
+  checkTrue('W4 셀 스킵되지 않음', !isSkip(r));
+  if (!isSkip(r)) {
+    check('체결일 = idx11(신호는 idx10: 종가 9800 < SMA5 9960)', r.fills[0]?.date, iso(11));
+    check('체결가 = 9700(다음 시가, 갭 그대로)', r.fills[0]?.price, 9700);
+    checkClose('터틀 최종비율 = 9700/10000 = 0.97(비용0)', r.turtleFinalRatio, 0.97, 1e-12);
+    check('give-back 이벤트 1건', r.givebacks.length, 1);
+    if (r.givebacks.length === 1) {
+      // give-back = (러닝하이10250 − 체결가9700) / (러닝하이10250 − 진입가10000) = 550/250
+      checkClose('give-back = 550/250 = 2.2', r.givebacks[0], 2.2, 1e-9);
+    }
+  }
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

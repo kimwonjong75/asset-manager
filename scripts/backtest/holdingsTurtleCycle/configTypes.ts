@@ -8,12 +8,17 @@ export interface VariantConfig {
   exitLookback: number;
   atrPeriod: number;
   stopMultipleN: number;
+  /** 2차 백테스트(§⑤ W1~W4) — 미지정 시 'donchian'(1차 V1~V3와 동일, 하위호환). */
+  exitType?: 'donchian' | 'atrTrail' | 'sma';
+  atrTrailMultiple?: number;
+  smaPeriod?: number;
 }
 
 export interface HoldingsTurtleCycleConfig {
   hypothesisId: string;
   evidenceGrade: string;
-  variants: { V1: VariantConfig; V2: VariantConfig; V3: VariantConfig };
+  /** V1~V3(1차, 필수)는 하위호환을 위해 항상 존재. W1~W4·감도변형(W3_2x 등)은 선택적 추가 키. */
+  variants: { V1: VariantConfig; V2: VariantConfig; V3: VariantConfig } & Record<string, VariantConfig>;
   costTiers: { zero: number; base: number; double: number };
   periodBuckets: string[];
 }
@@ -39,14 +44,30 @@ function strArr(v: unknown, p: string): string[] {
   return v.map((x, i) => str(x, `${p}[${i}]`));
 }
 
+function optStr(v: unknown, p: string): string | undefined {
+  if (v === undefined) return undefined;
+  return str(v, p);
+}
+function optNum(v: unknown, p: string): number | undefined {
+  if (v === undefined) return undefined;
+  return num(v, p);
+}
+
 function parseVariant(v: unknown, p: string): VariantConfig {
   const o = obj(v, p);
+  const exitType = optStr(o.exitType, `${p}.exitType`);
+  if (exitType !== undefined && exitType !== 'donchian' && exitType !== 'atrTrail' && exitType !== 'sma') {
+    fail(`${p}.exitType`, `donchian|atrTrail|sma 중 하나가 아님 (${exitType})`);
+  }
   return {
     name: str(o.name, `${p}.name`),
     entryLookback: num(o.entryLookback, `${p}.entryLookback`),
     exitLookback: num(o.exitLookback, `${p}.exitLookback`),
     atrPeriod: num(o.atrPeriod, `${p}.atrPeriod`),
     stopMultipleN: num(o.stopMultipleN, `${p}.stopMultipleN`),
+    exitType: exitType as VariantConfig['exitType'],
+    atrTrailMultiple: optNum(o.atrTrailMultiple, `${p}.atrTrailMultiple`),
+    smaPeriod: optNum(o.smaPeriod, `${p}.smaPeriod`),
   };
 }
 
@@ -57,14 +78,18 @@ export function parseConfig(raw: unknown): HoldingsTurtleCycleConfig {
   const tiers = obj(costs.tiers, 'costs.tiers');
   const grid = obj(c.grid, 'grid');
 
+  const allVariants: Record<string, VariantConfig> = {};
+  for (const key of Object.keys(variants)) {
+    allVariants[key] = parseVariant(variants[key], `variants.${key}`);
+  }
+  if (!allVariants.V1 || !allVariants.V2 || !allVariants.V3) {
+    fail('variants', 'V1/V2/V3(1차 변형)가 모두 있어야 함');
+  }
+
   return {
     hypothesisId: str(c.hypothesisId, 'hypothesisId'),
     evidenceGrade: str(c.evidenceGrade, 'evidenceGrade'),
-    variants: {
-      V1: parseVariant(variants.V1, 'variants.V1'),
-      V2: parseVariant(variants.V2, 'variants.V2'),
-      V3: parseVariant(variants.V3, 'variants.V3'),
-    },
+    variants: allVariants as HoldingsTurtleCycleConfig['variants'],
     costTiers: {
       zero: num(tiers.zero, 'costs.tiers.zero'),
       base: num(tiers.base, 'costs.tiers.base'),

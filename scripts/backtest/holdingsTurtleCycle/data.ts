@@ -11,7 +11,7 @@
 import { existsSync, readFileSync } from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { calculateATR } from '../../../utils/maCalculations';
+import { calculateATR, calculateSMA } from '../../../utils/maCalculations';
 import { classifyBar, ExcludedRow } from '../freshTurtleLifecycle/data';
 import type { SymbolSeries } from '../lib/fetchHistory';
 import type { Currency } from './symbolResolve';
@@ -23,6 +23,9 @@ export type { ExcludedRow };
 
 /** 이번 연구에서 쓰는 채널 lookback 전부 (V1=55/20, V2=20/10, V3=55/55) — 종목당 한 번만 계산해 재사용. */
 export const CHANNEL_LOOKBACKS = [10, 20, 55] as const;
+
+/** 2차 백테스트(W4, 이동평균 이탈) — 당일 종가 포함 SMA. §13-5 lib/movingAverage.ts와 동일 관례. */
+export const SMA_PERIODS = [50] as const;
 
 export interface UniverseEntry {
   ticker: string;
@@ -53,6 +56,8 @@ export interface SecurityData {
   highChannel: Record<number, (number | null)[]>;
   /** lookback → 현재 봉 제외 rolling 최저가(저가 배열 기준). */
   lowChannel: Record<number, (number | null)[]>;
+  /** period → **당일 종가 포함** SMA (W4 이동평균 이탈용 — 도치안 채널의 "당일 제외"와 다른 관례, 의도적). */
+  sma: Record<number, (number | null)[]>;
   validUpTo: number[];
 }
 
@@ -111,8 +116,10 @@ export function buildSecurity(params: {
   raw: SymbolSeries;
   atrPeriod: number;
   lookbacks?: readonly number[];
+  smaPeriods?: readonly number[];
 }): SecurityData {
   const lookbacks = params.lookbacks ?? CHANNEL_LOOKBACKS;
+  const smaPeriods = params.smaPeriods ?? SMA_PERIODS;
   const s = params.raw;
   const excludedRows: ExcludedRow[] = [];
   const dates: string[] = [];
@@ -146,12 +153,25 @@ export function buildSecurity(params: {
     lowChannel[lb] = rollingExcludingCurrent(low, lb, 'min');
   }
 
+  // SMA(당일 종가 포함) — ATR과 동일하게 firstValid부터 슬라이스해 calculateSMA(utils/maCalculations, 앱과 동일 함수) 재사용.
+  const sma: Record<number, (number | null)[]> = {};
+  for (const period of smaPeriods) {
+    const points = close.slice(fv).map((c, idx) => ({ date: dates[fv + idx], price: c as number }));
+    const smaSlice = calculateSMA(points, period);
+    const arr: (number | null)[] = new Array(dates.length).fill(null);
+    for (let i = 0; i < smaSlice.length; i++) {
+      const c = close[fv + i];
+      arr[fv + i] = isNum(c) ? smaSlice[i] : null; // close가 null인 행은 calculateSMA가 NaN을 만들 수 있어 명시적으로 null 처리.
+    }
+    sma[period] = arr;
+  }
+
   return {
     ticker: params.ticker, name: params.name, assetClass: params.assetClass,
     currency: params.currency, isCryptoTicker: params.isCryptoTicker, isKrEtf: params.isKrEtf,
     excludedRows,
     ownDates: dates, ownOpen: open, ownHigh: high, ownLow: low, ownClose: close,
-    atr, highChannel, lowChannel, validUpTo,
+    atr, highChannel, lowChannel, sma, validUpTo,
   };
 }
 
@@ -167,6 +187,7 @@ export function loadUniverseData(params: {
   entries: UniverseEntry[];
   atrPeriod: number;
   lookbacks?: readonly number[];
+  smaPeriods?: readonly number[];
 }): LoadResult {
   const missing: MissingData[] = [];
   const securities: SecurityData[] = [];
@@ -178,7 +199,7 @@ export function loadUniverseData(params: {
     securities.push(buildSecurity({
       ticker: e.ticker, name: e.name, assetClass: e.assetClass,
       currency: e.currency, isCryptoTicker: e.isCryptoTicker, isKrEtf: e.isKrEtf,
-      raw, atrPeriod: params.atrPeriod, lookbacks: params.lookbacks,
+      raw, atrPeriod: params.atrPeriod, lookbacks: params.lookbacks, smaPeriods: params.smaPeriods,
     }));
   }
   return { securities, missing };
