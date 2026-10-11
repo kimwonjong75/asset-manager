@@ -1,5 +1,5 @@
 import { Currency, type Asset, type ExchangeRates, type WatchlistItem } from '../types';
-import { inferCurrencyFromExchange, resolveMarketCurrency } from '../utils/marketCurrency';
+import { inferCurrencyFromExchange, isLikelyKrxTicker, resolveMarketCurrency } from '../utils/marketCurrency';
 import { buildTurtleHoldingsChartTarget } from '../utils/turtleHoldingsDetail';
 import type { TurtleHoldingsRow } from '../utils/turtleHoldingsView';
 
@@ -13,6 +13,10 @@ function check(name: string, actual: unknown, expected: unknown): void {
 
 check('KRX는 저장값이 USD여도 KRW', resolveMarketCurrency('KRX (코스피/코스닥)', undefined, Currency.USD), Currency.KRW);
 check('NASDAQ은 저장값이 KRW여도 USD', resolveMarketCurrency('NASDAQ', undefined, Currency.KRW), Currency.USD);
+check('KRX 6자리 숫자 티커 판정', isLikelyKrxTicker('309230'), true);
+check('KRX 신형 영문 혼합 티커 판정', isLikelyKrxTicker('0047A0'), true);
+check('미국 거래소로 잘못 저장된 KRX 티커는 KRW', resolveMarketCurrency('NASDAQ', undefined, Currency.USD, '309230'), Currency.KRW);
+check('SSE 6자리 티커는 CNY 유지', resolveMarketCurrency('SSE (상하이)', undefined, Currency.KRW, '600519'), Currency.CNY);
 check('TSE는 JPY', inferCurrencyFromExchange('TSE (도쿄)'), Currency.JPY);
 check('SSE는 CNY', inferCurrencyFromExchange('SSE (상하이)'), Currency.CNY);
 check('지원하지 않는 시장은 API 통화 우선', resolveMarketCurrency('HKEX (홍콩)', Currency.CNY, Currency.USD), Currency.CNY);

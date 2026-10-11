@@ -215,7 +215,7 @@ export const useMarketData = ({
           const priceData = batchPriceMap.get(asset.id);
           if (priceData && !priceData.isMocked) {
              const newCurrency = isBaseType(asset.categoryId, 'CRYPTOCURRENCY') ? asset.currency : (priceData.currency as Currency);
-             const newCurrentPrice = (asset.currency === Currency.KRW) ? priceData.priceKRW : priceData.priceOriginal;
+             const newCurrentPrice = (newCurrency === Currency.KRW) ? priceData.priceKRW : priceData.priceOriginal;
              const finalHighest = fixHighestPrice(asset, newCurrentPrice, priceData.highestPrice);
 
              return { ...asset, currentPrice: newCurrentPrice, priceOriginal: priceData.priceOriginal, previousClosePrice: priceData.previousClosePrice, currency: newCurrency, highestPrice: finalHighest, changeRate: priceData.changeRate, indicators: priceData.indicators };
@@ -242,7 +242,7 @@ export const useMarketData = ({
                 }
                 const d = wlPriceMap.get(item.id);
                 if (d && !d.isMocked) {
-                    const currency = resolveMarketCurrency(item.exchange, d.currency, item.currency);
+                    const currency = resolveMarketCurrency(item.exchange, d.currency, item.currency, item.ticker);
                     const newCurrent = currency === Currency.KRW ? d.priceKRW : d.priceOriginal;
                     const newHighest = Math.max(item.highestPrice || 0, d.highestPrice || 0, newCurrent);
                     const cr = d.changeRate;
@@ -315,7 +315,7 @@ export const useMarketData = ({
             const priceData = batchPriceMap.get(asset.id);
             if (priceData && !priceData.isMocked) {
                  const newCurrency = isBaseType(asset.categoryId, 'CRYPTOCURRENCY') ? asset.currency : (priceData.currency as Currency);
-                 const newCurrentPrice = (asset.currency === Currency.KRW) ? priceData.priceKRW : priceData.priceOriginal;
+                 const newCurrentPrice = (newCurrency === Currency.KRW) ? priceData.priceKRW : priceData.priceOriginal;
                  const finalHighest = fixHighestPrice(asset, newCurrentPrice, priceData.highestPrice);
                  return { ...asset, currentPrice: newCurrentPrice, priceOriginal: priceData.priceOriginal, previousClosePrice: priceData.previousClosePrice, currency: newCurrency, highestPrice: finalHighest, changeRate: priceData.changeRate, indicators: priceData.indicators };
             }
@@ -372,7 +372,7 @@ export const useMarketData = ({
         }
 
         const newCurrency = isBaseType(target.categoryId, 'CRYPTOCURRENCY') ? target.currency : (d.currency as Currency);
-        const newCurrentPrice = (target.currency === Currency.KRW) ? d.priceKRW : d.priceOriginal;
+        const newCurrentPrice = (newCurrency === Currency.KRW) ? d.priceKRW : d.priceOriginal;
         const finalHighest = fixHighestPrice(target, newCurrentPrice, d.highestPrice);
 
         const updated = assets.map(a => a.id === assetId ? { ...a, previousClosePrice: d.previousClosePrice, currentPrice: newCurrentPrice, currency: newCurrency, highestPrice: finalHighest, changeRate: d.changeRate } : a);
@@ -461,7 +461,7 @@ export const useMarketData = ({
             }
             const d = priceMap.get(item.id);
             if (d && !d.isMocked) {
-                const currency = resolveMarketCurrency(item.exchange, d.currency, item.currency);
+                const currency = resolveMarketCurrency(item.exchange, d.currency, item.currency, item.ticker);
                 const newCurrent = currency === Currency.KRW ? d.priceKRW : d.priceOriginal;
                 const histHigh = histHighMap.get(item.ticker.toUpperCase()) || 0;
                 const newHighest = Math.max(item.highestPrice || 0, d.highestPrice || 0, histHigh, newCurrent);

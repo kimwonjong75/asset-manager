@@ -65,7 +65,7 @@ const RowLine: React.FC<RowLineProps> = ({ row, text, target, expanded, onToggle
         <button
           type="button"
           onClick={onToggle}
-          className="focus-ring flex h-full w-full flex-col items-start rounded-md px-3 py-2 text-left hover:bg-surface-muted transition-colors"
+          className={`focus-ring flex w-full flex-col items-start rounded-md px-3 py-2 text-left hover:bg-surface-muted transition-colors ${expanded ? '' : 'h-full'}`}
           aria-expanded={expanded}
           aria-label={`${row.name} 차트 ${expanded ? '접기' : '펼치기'}`}
         >

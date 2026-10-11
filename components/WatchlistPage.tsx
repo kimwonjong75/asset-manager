@@ -346,7 +346,7 @@ const WatchlistPage: React.FC<WatchlistPageProps> = ({ watchlist, portfolioAsset
           </thead>
           <tbody>
             {filtered.length > 0 ? filtered.map(w => {
-              const displayCurrency = resolveMarketCurrency(w.exchange, undefined, w.currency);
+              const displayCurrency = resolveMarketCurrency(w.exchange, undefined, w.currency, w.ticker);
               const isNonKRW = displayCurrency !== Currency.KRW;
               const derivedExchangeRate = getExchangeRate(displayCurrency);
               const isExpanded = expandedItemId === w.id;

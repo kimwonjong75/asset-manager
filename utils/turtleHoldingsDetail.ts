@@ -36,7 +36,7 @@ export function buildTurtleHoldingsChartTarget(
   if (row.watchItemId) {
     const item = watchlist.find(candidate => candidate.id === row.watchItemId);
     if (!item) return null;
-    const currency = resolveMarketCurrency(item.exchange, undefined, item.currency);
+    const currency = resolveMarketCurrency(item.exchange, undefined, item.currency, item.ticker);
     return {
       key: `watch-${item.id}`,
       assetId: item.id,

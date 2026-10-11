@@ -69,7 +69,7 @@ const WatchlistMobileCard: React.FC<WatchlistMobileCardProps> = ({
     return () => window.clearTimeout(openTimer);
   }, [item.id, ui.focusedWatchItemEntry, ui.focusedWatchItemId]);
 
-  const displayCurrency = resolveMarketCurrency(item.exchange, undefined, item.currency);
+  const displayCurrency = resolveMarketCurrency(item.exchange, undefined, item.currency, item.ticker);
   const isNonKRW = displayCurrency !== Currency.KRW;
   const getExchangeRate = (): number => {
     if (displayCurrency === Currency.KRW) return 1;

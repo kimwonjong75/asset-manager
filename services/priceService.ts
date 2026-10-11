@@ -104,7 +104,7 @@ export async function fetchBatchAssetPrices(
             const apiCurrency = [Currency.KRW, Currency.USD, Currency.JPY, Currency.CNY].includes(currencyStr as Currency)
               ? (currencyStr as Currency)
               : undefined;
-            const currency = resolveMarketCurrency(matched.exchange, apiCurrency, matched.currency);
+            const currency = resolveMarketCurrency(matched.exchange, apiCurrency, matched.currency, matched.ticker);
 
             const priceKRW = typeof item.priceKRW === 'number'
               ? item.priceKRW
@@ -148,7 +148,7 @@ export async function fetchBatchAssetPrices(
             name: s.ticker,
             priceOriginal: 0,
             priceKRW: 0,
-            currency: resolveMarketCurrency(s.exchange, undefined, s.currency),
+            currency: resolveMarketCurrency(s.exchange, undefined, s.currency, s.ticker),
             previousClosePrice: 0,
             highestPrice: 0,
             isMocked: true,
