@@ -60,20 +60,20 @@ const RowLine: React.FC<RowLineProps> = ({ row, text, target, expanded, onToggle
     </>
   );
   return (
-    <li className="rounded-md border border-border-subtle bg-surface-elevated">
+    <li className={`min-w-0 rounded-md border border-border-subtle bg-surface-elevated ${expanded ? 'col-span-full' : ''}`}>
       {target ? (
         <button
           type="button"
           onClick={onToggle}
-          className="focus-ring w-full rounded-md px-3 py-2 text-left hover:bg-surface-muted transition-colors"
+          className="focus-ring flex h-full w-full flex-col items-start rounded-md px-3 py-2 text-left hover:bg-surface-muted transition-colors"
           aria-expanded={expanded}
           aria-label={`${row.name} 차트 ${expanded ? '접기' : '펼치기'}`}
         >
           {body}
-          <span className="mt-1 inline-block text-xs text-primary-light">차트 {expanded ? '접기' : '펼치기'} →</span>
+          <span className="mt-auto inline-block pt-1 text-xs text-primary-light">차트 {expanded ? '접기' : '펼치기'} →</span>
         </button>
       ) : (
-        <div className="px-3 py-2">{body}</div>
+        <div className="h-full px-3 py-2">{body}</div>
       )}
       {onOpenBuy && (
         <div className="px-3 pb-2">
@@ -122,7 +122,7 @@ const BucketSection: React.FC<BucketSectionProps> = ({ bucket, targetByRow, expa
     {bucket.rows.length === 0 ? (
       <p className="text-xs text-gray-500">해당 없음</p>
     ) : (
-      <ul className="space-y-1.5">
+      <ul className="grid grid-cols-1 gap-1.5 md:grid-cols-2 lg:grid-cols-3">
         {bucket.rows.map(r => {
           const identity = rowIdentity(r);
           const instanceKey = `${bucket.key}:${identity}`;
@@ -241,7 +241,7 @@ const TurtleHoldingsTodayCard: React.FC = () => {
             확인 필요 {unavailableCount}종목 {showAll ? '접기' : '펼치기'}
           </button>
           {showAll && (
-            <ul className="mt-2 space-y-1.5">
+            <ul className="mt-2 grid grid-cols-1 gap-1.5 md:grid-cols-2 lg:grid-cols-3">
               {model.rows.filter(r => r.status === 'unavailable').map(r => (
                 <RowLine
                   key={`na-${rowIdentity(r)}`}
