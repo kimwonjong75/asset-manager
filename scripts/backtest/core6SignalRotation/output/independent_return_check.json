@@ -1,0 +1,121 @@
+{
+  "generatedAtUtc": "2026-10-12T02:14:01.603Z",
+  "calculationPath": "standalone loop implementation; does not import primary metric functions",
+  "allPass": true,
+  "checks": [
+    {
+      "assetId": "069500",
+      "pass": true,
+      "differences": [],
+      "independent": {
+        "observations": 750,
+        "correlation": 1,
+        "beta": 1,
+        "trackingErrorAnnual": 0,
+        "directionMatch": 1
+      },
+      "primary": {
+        "observations": 750,
+        "correlation": 1,
+        "beta": 1,
+        "trackingErrorAnnual": 0,
+        "directionMatch": 1
+      }
+    },
+    {
+      "assetId": "379800",
+      "pass": true,
+      "differences": [],
+      "independent": {
+        "observations": 750,
+        "correlation": 0.6068025148995065,
+        "beta": 0.4959069967184061,
+        "trackingErrorAnnual": 0.15624057131841565,
+        "directionMatch": 0.6546666666666666
+      },
+      "primary": {
+        "observations": 750,
+        "correlation": 0.6068025148995064,
+        "beta": 0.49590699671840593,
+        "trackingErrorAnnual": 0.15624057131841568,
+        "directionMatch": 0.6546666666666666
+      }
+    },
+    {
+      "assetId": "283580",
+      "pass": true,
+      "differences": [],
+      "independent": {
+        "observations": 750,
+        "correlation": 0.1773545791696317,
+        "beta": 0.13803666609134965,
+        "trackingErrorAnnual": 0.28857957338320633,
+        "directionMatch": 0.5213333333333333
+      },
+      "primary": {
+        "observations": 750,
+        "correlation": 0.17735457916963154,
+        "beta": 0.13803666609134962,
+        "trackingErrorAnnual": 0.2885795733832062,
+        "directionMatch": 0.5213333333333333
+      }
+    },
+    {
+      "assetId": "385560",
+      "pass": true,
+      "differences": [],
+      "independent": {
+        "observations": 750,
+        "correlation": 1,
+        "beta": 1,
+        "trackingErrorAnnual": 0,
+        "directionMatch": 1
+      },
+      "primary": {
+        "observations": 750,
+        "correlation": 1,
+        "beta": 1,
+        "trackingErrorAnnual": 0,
+        "directionMatch": 1
+      }
+    },
+    {
+      "assetId": "464470",
+      "pass": true,
+      "differences": [],
+      "independent": {
+        "observations": 750,
+        "correlation": 0.5506465993294495,
+        "beta": 0.48745056824189825,
+        "trackingErrorAnnual": 0.15168983410980236,
+        "directionMatch": 0.6826666666666666
+      },
+      "primary": {
+        "observations": 750,
+        "correlation": 0.5506465993294484,
+        "beta": 0.4874505682418966,
+        "trackingErrorAnnual": 0.1516898341098023,
+        "directionMatch": 0.6826666666666666
+      }
+    },
+    {
+      "assetId": "411060",
+      "pass": true,
+      "differences": [],
+      "independent": {
+        "observations": 750,
+        "correlation": 0.9763019843865313,
+        "beta": 1.040821703262414,
+        "trackingErrorAnnual": 0.0553221807549705,
+        "directionMatch": 0.9253333333333333
+      },
+      "primary": {
+        "observations": 750,
+        "correlation": 0.9763019843865313,
+        "beta": 1.0408217032624145,
+        "trackingErrorAnnual": 0.055322180754970515,
+        "directionMatch": 0.9253333333333333
+      }
+    }
+  ]
+}

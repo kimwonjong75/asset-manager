@@ -1,0 +1,884 @@
+{
+  "schemaVersion": 1,
+  "generatedAtUtc": "2026-10-12T02:20:06.275Z",
+  "researchId": "core6-signal-rotation-v1",
+  "stage": "data-and-proxy-fidelity-only",
+  "strategyPerformanceComputed": false,
+  "preregistration": {
+    "checkedAtUtc": "2026-10-12T02:20:05.930Z",
+    "path": "docs/backtest/PREREG_코어6종_신호로테이션.md",
+    "freezeCommit": "35a9349c30e02835dbc24be0feef3f07ff8a6f36",
+    "gitBlob": "a4e8b4a619a69fdad129ef0c50368cf741f6adbf",
+    "sha256": "08ef85bc61305b1e6b24997bc0b0b681b13c40ebdfeb521d82a179a437710c8d",
+    "currentSha256": "08ef85bc61305b1e6b24997bc0b0b681b13c40ebdfeb521d82a179a437710c8d",
+    "currentGitBlob": "a4e8b4a619a69fdad129ef0c50368cf741f6adbf",
+    "freezeGitBlob": "a4e8b4a619a69fdad129ef0c50368cf741f6adbf",
+    "sha256Match": true,
+    "blobMatch": true,
+    "changedSinceFreeze": false
+  },
+  "config": {
+    "file": "config.json",
+    "sha256": "4ab9dbedb9aef3de87394124d7957d9153b60db741b14c483ee1b3ab96313285"
+  },
+  "collection": {
+    "rawChecksumsGeneratedAtUtc": "2026-10-12T02:10:42.352Z",
+    "rawFiles": [
+      {
+        "file": "data/raw/yahoo_069500.KS.json",
+        "bytes": 275394,
+        "sha256": "3cb03906b970b5ee2b32fcb638452eb7eb0c08f3cdb2252ced8dec94508dd604",
+        "source": "Yahoo Finance chart API",
+        "sourceUrl": "https://query1.finance.yahoo.com/v8/finance/chart/069500.KS?period1=1009843200&period2=1790812800&interval=1d&events=div%2Csplits&includeAdjustedClose=true",
+        "fetchedAtUtc": "2026-10-12T02:09:55.497Z",
+        "requestedPeriod": {
+          "start": "2002-01-01",
+          "end": "2026-09-30"
+        },
+        "observedPeriod": {
+          "first": "2007-01-29",
+          "last": "2026-10-01"
+        },
+        "symbol": "069500.KS",
+        "rows": 4278,
+        "columns": [
+          "date",
+          "timestampUtc",
+          "adjusted open",
+          "adjusted high",
+          "adjusted low",
+          "adjusted close",
+          "volume",
+          "raw close",
+          "adjustment factor"
+        ],
+        "adjustedPrice": true,
+        "adjustmentMethod": "adjclose/raw close factor applied to OHLC",
+        "currency": "KRW",
+        "exchange": "KSC",
+        "timezone": "Asia/Seoul",
+        "dividends": 56,
+        "splits": 0,
+        "quality": {
+          "duplicateDates": 0,
+          "nullOhlcRows": 0,
+          "nonPositivePriceRows": 0,
+          "impossibleOhlcRows": 4
+        }
+      },
+      {
+        "file": "data/raw/yahoo_379800.KS.json",
+        "bytes": 78912,
+        "sha256": "5f07ed7a917f5f4be18557add62231dc702180f6a7af0716f44fd1cb0bc082e6",
+        "source": "Yahoo Finance chart API",
+        "sourceUrl": "https://query1.finance.yahoo.com/v8/finance/chart/379800.KS?period1=1009843200&period2=1790812800&interval=1d&events=div%2Csplits&includeAdjustedClose=true",
+        "fetchedAtUtc": "2026-10-12T02:09:56.011Z",
+        "requestedPeriod": {
+          "start": "2002-01-01",
+          "end": "2026-09-30"
+        },
+        "observedPeriod": {
+          "first": "2021-04-09",
+          "last": "2026-10-01"
+        },
+        "symbol": "379800.KS",
+        "rows": 1319,
+        "columns": [
+          "date",
+          "timestampUtc",
+          "adjusted open",
+          "adjusted high",
+          "adjusted low",
+          "adjusted close",
+          "volume",
+          "raw close",
+          "adjustment factor"
+        ],
+        "adjustedPrice": true,
+        "adjustmentMethod": "adjclose/raw close factor applied to OHLC",
+        "currency": "KRW",
+        "exchange": "KSC",
+        "timezone": "Asia/Seoul",
+        "dividends": 6,
+        "splits": 0,
+        "quality": {
+          "duplicateDates": 0,
+          "nullOhlcRows": 0,
+          "nonPositivePriceRows": 0,
+          "impossibleOhlcRows": 0
+        }
+      },
+      {
+        "file": "data/raw/yahoo_283580.KS.json",
+        "bytes": 122105,
+        "sha256": "89d53d4dbb7e84d8a1a8f3a547dc6d1f852516b3a9980d72693b2673845bb544",
+        "source": "Yahoo Finance chart API",
+        "sourceUrl": "https://query1.finance.yahoo.com/v8/finance/chart/283580.KS?period1=1009843200&period2=1790812800&interval=1d&events=div%2Csplits&includeAdjustedClose=true",
+        "fetchedAtUtc": "2026-10-12T02:09:56.586Z",
+        "requestedPeriod": {
+          "start": "2002-01-01",
+          "end": "2026-09-30"
+        },
+        "observedPeriod": {
+          "first": "2017-12-13",
+          "last": "2026-10-01"
+        },
+        "symbol": "283580.KS",
+        "rows": 2127,
+        "columns": [
+          "date",
+          "timestampUtc",
+          "adjusted open",
+          "adjusted high",
+          "adjusted low",
+          "adjusted close",
+          "volume",
+          "raw close",
+          "adjustment factor"
+        ],
+        "adjustedPrice": true,
+        "adjustmentMethod": "adjclose/raw close factor applied to OHLC",
+        "currency": "KRW",
+        "exchange": "KSC",
+        "timezone": "Asia/Seoul",
+        "dividends": 7,
+        "splits": 0,
+        "quality": {
+          "duplicateDates": 0,
+          "nullOhlcRows": 0,
+          "nonPositivePriceRows": 0,
+          "impossibleOhlcRows": 0
+        }
+      },
+      {
+        "file": "data/raw/yahoo_385560.KS.json",
+        "bytes": 72907,
+        "sha256": "202d4491b6b503552ea5b6ca75434944723e0500d2c0c2ced95c19c35d550625",
+        "source": "Yahoo Finance chart API",
+        "sourceUrl": "https://query1.finance.yahoo.com/v8/finance/chart/385560.KS?period1=1009843200&period2=1790812800&interval=1d&events=div%2Csplits&includeAdjustedClose=true",
+        "fetchedAtUtc": "2026-10-12T02:09:57.033Z",
+        "requestedPeriod": {
+          "start": "2002-01-01",
+          "end": "2026-09-30"
+        },
+        "observedPeriod": {
+          "first": "2021-05-26",
+          "last": "2026-10-01"
+        },
+        "symbol": "385560.KS",
+        "rows": 1288,
+        "columns": [
+          "date",
+          "timestampUtc",
+          "adjusted open",
+          "adjusted high",
+          "adjusted low",
+          "adjusted close",
+          "volume",
+          "raw close",
+          "adjustment factor"
+        ],
+        "adjustedPrice": true,
+        "adjustmentMethod": "adjclose/raw close factor applied to OHLC",
+        "currency": "KRW",
+        "exchange": "KSC",
+        "timezone": "Asia/Seoul",
+        "dividends": 11,
+        "splits": 0,
+        "quality": {
+          "duplicateDates": 0,
+          "nullOhlcRows": 0,
+          "nonPositivePriceRows": 0,
+          "impossibleOhlcRows": 3
+        }
+      },
+      {
+        "file": "data/raw/yahoo_464470.KS.json",
+        "bytes": 43355,
+        "sha256": "011468b1981929e4240b6326826fd29799ed8c49337cbbf4c30c57d5c03c3907",
+        "source": "Yahoo Finance chart API",
+        "sourceUrl": "https://query1.finance.yahoo.com/v8/finance/chart/464470.KS?period1=1009843200&period2=1790812800&interval=1d&events=div%2Csplits&includeAdjustedClose=true",
+        "fetchedAtUtc": "2026-10-12T02:09:57.468Z",
+        "requestedPeriod": {
+          "start": "2002-01-01",
+          "end": "2026-09-30"
+        },
+        "observedPeriod": {
+          "first": "2023-08-22",
+          "last": "2026-10-01"
+        },
+        "symbol": "464470.KS",
+        "rows": 752,
+        "columns": [
+          "date",
+          "timestampUtc",
+          "adjusted open",
+          "adjusted high",
+          "adjusted low",
+          "adjusted close",
+          "volume",
+          "raw close",
+          "adjustment factor"
+        ],
+        "adjustedPrice": true,
+        "adjustmentMethod": "adjclose/raw close factor applied to OHLC",
+        "currency": "KRW",
+        "exchange": "KSC",
+        "timezone": "Asia/Seoul",
+        "dividends": 18,
+        "splits": 0,
+        "quality": {
+          "duplicateDates": 0,
+          "nullOhlcRows": 0,
+          "nonPositivePriceRows": 0,
+          "impossibleOhlcRows": 0
+        }
+      },
+      {
+        "file": "data/raw/yahoo_411060.KS.json",
+        "bytes": 66831,
+        "sha256": "91b0c25950c66331da1d7699624cc81eb3d1470420a34e248cf6f12f7919cfb3",
+        "source": "Yahoo Finance chart API",
+        "sourceUrl": "https://query1.finance.yahoo.com/v8/finance/chart/411060.KS?period1=1009843200&period2=1790812800&interval=1d&events=div%2Csplits&includeAdjustedClose=true",
+        "fetchedAtUtc": "2026-10-12T02:09:58.097Z",
+        "requestedPeriod": {
+          "start": "2002-01-01",
+          "end": "2026-09-30"
+        },
+        "observedPeriod": {
+          "first": "2021-12-15",
+          "last": "2026-10-01"
+        },
+        "symbol": "411060.KS",
+        "rows": 1149,
+        "columns": [
+          "date",
+          "timestampUtc",
+          "adjusted open",
+          "adjusted high",
+          "adjusted low",
+          "adjusted close",
+          "volume",
+          "raw close",
+          "adjustment factor"
+        ],
+        "adjustedPrice": true,
+        "adjustmentMethod": "adjclose/raw close factor applied to OHLC",
+        "currency": "KRW",
+        "exchange": "KSC",
+        "timezone": "Asia/Seoul",
+        "dividends": 1,
+        "splits": 0,
+        "quality": {
+          "duplicateDates": 0,
+          "nullOhlcRows": 0,
+          "nonPositivePriceRows": 0,
+          "impossibleOhlcRows": 0
+        }
+      },
+      {
+        "file": "data/raw/yahoo_SPY.json",
+        "bytes": 689112,
+        "sha256": "e3bef1f03c2d176bef716abb62e373e1ed9a7168eaba9713ef6319c1da0a6086",
+        "source": "Yahoo Finance chart API",
+        "sourceUrl": "https://query1.finance.yahoo.com/v8/finance/chart/SPY?period1=1009843200&period2=1790812800&interval=1d&events=div%2Csplits&includeAdjustedClose=true",
+        "fetchedAtUtc": "2026-10-12T02:09:58.909Z",
+        "requestedPeriod": {
+          "start": "2002-01-01",
+          "end": "2026-09-30"
+        },
+        "observedPeriod": {
+          "first": "2002-01-02",
+          "last": "2026-09-30"
+        },
+        "symbol": "SPY",
+        "rows": 6226,
+        "columns": [
+          "date",
+          "timestampUtc",
+          "adjusted open",
+          "adjusted high",
+          "adjusted low",
+          "adjusted close",
+          "volume",
+          "raw close",
+          "adjustment factor"
+        ],
+        "adjustedPrice": true,
+        "adjustmentMethod": "adjclose/raw close factor applied to OHLC",
+        "currency": "USD",
+        "exchange": "PCX",
+        "timezone": "America/New_York",
+        "dividends": 100,
+        "splits": 0,
+        "quality": {
+          "duplicateDates": 0,
+          "nullOhlcRows": 0,
+          "nonPositivePriceRows": 0,
+          "impossibleOhlcRows": 3
+        }
+      },
+      {
+        "file": "data/raw/yahoo_3188.HK.json",
+        "bytes": 360230,
+        "sha256": "dbac44195c59d699448e341f5d56d3668a8e4fe6e8ee4bd8cdc359c8143ade62",
+        "source": "Yahoo Finance chart API",
+        "sourceUrl": "https://query1.finance.yahoo.com/v8/finance/chart/3188.HK?period1=1009843200&period2=1790812800&interval=1d&events=div%2Csplits&includeAdjustedClose=true",
+        "fetchedAtUtc": "2026-10-12T02:09:59.459Z",
+        "requestedPeriod": {
+          "start": "2002-01-01",
+          "end": "2026-09-30"
+        },
+        "observedPeriod": {
+          "first": "2012-07-19",
+          "last": "2026-09-30"
+        },
+        "symbol": "3188.HK",
+        "rows": 3489,
+        "columns": [
+          "date",
+          "timestampUtc",
+          "adjusted open",
+          "adjusted high",
+          "adjusted low",
+          "adjusted close",
+          "volume",
+          "raw close",
+          "adjustment factor"
+        ],
+        "adjustedPrice": true,
+        "adjustmentMethod": "adjclose/raw close factor applied to OHLC",
+        "currency": "HKD",
+        "exchange": "HKG",
+        "timezone": "Asia/Hong_Kong",
+        "dividends": 12,
+        "splits": 0,
+        "quality": {
+          "duplicateDates": 0,
+          "nullOhlcRows": 0,
+          "nonPositivePriceRows": 0,
+          "impossibleOhlcRows": 9
+        }
+      },
+      {
+        "file": "data/raw/yahoo_TLT.json",
+        "bytes": 672473,
+        "sha256": "0d0d948d3dbf4e187b12353b86cd39204367a75decb0ded6c9bc68deb6ad99ec",
+        "source": "Yahoo Finance chart API",
+        "sourceUrl": "https://query1.finance.yahoo.com/v8/finance/chart/TLT?period1=1009843200&period2=1790812800&interval=1d&events=div%2Csplits&includeAdjustedClose=true",
+        "fetchedAtUtc": "2026-10-12T02:10:00.123Z",
+        "requestedPeriod": {
+          "start": "2002-01-01",
+          "end": "2026-09-30"
+        },
+        "observedPeriod": {
+          "first": "2002-07-30",
+          "last": "2026-09-30"
+        },
+        "symbol": "TLT",
+        "rows": 6082,
+        "columns": [
+          "date",
+          "timestampUtc",
+          "adjusted open",
+          "adjusted high",
+          "adjusted low",
+          "adjusted close",
+          "volume",
+          "raw close",
+          "adjustment factor"
+        ],
+        "adjustedPrice": true,
+        "adjustmentMethod": "adjclose/raw close factor applied to OHLC",
+        "currency": "USD",
+        "exchange": "NGM",
+        "timezone": "America/New_York",
+        "dividends": 288,
+        "splits": 0,
+        "quality": {
+          "duplicateDates": 0,
+          "nullOhlcRows": 0,
+          "nonPositivePriceRows": 0,
+          "impossibleOhlcRows": 16
+        }
+      },
+      {
+        "file": "data/raw/yahoo_KRW=X.json",
+        "bytes": 575445,
+        "sha256": "51ec309361b2d81ae3fba8f5391b9dd6aec9ee4725e918eceeaac83fa3e95fa8",
+        "source": "Yahoo Finance chart API",
+        "sourceUrl": "https://query1.finance.yahoo.com/v8/finance/chart/KRW%3DX?period1=1009843200&period2=1790812800&interval=1d&events=div%2Csplits&includeAdjustedClose=true",
+        "fetchedAtUtc": "2026-10-12T02:10:00.701Z",
+        "requestedPeriod": {
+          "start": "2002-01-01",
+          "end": "2026-09-30"
+        },
+        "observedPeriod": {
+          "first": "2003-12-01",
+          "last": "2026-10-01"
+        },
+        "symbol": "USDKRW=X",
+        "rows": 5923,
+        "columns": [
+          "date",
+          "timestampUtc",
+          "adjusted open",
+          "adjusted high",
+          "adjusted low",
+          "adjusted close",
+          "volume",
+          "raw close",
+          "adjustment factor"
+        ],
+        "adjustedPrice": true,
+        "adjustmentMethod": "adjclose/raw close factor applied to OHLC",
+        "currency": "KRW",
+        "exchange": "CCY",
+        "timezone": "Europe/London",
+        "dividends": 0,
+        "splits": 0,
+        "quality": {
+          "duplicateDates": 0,
+          "nullOhlcRows": 0,
+          "nonPositivePriceRows": 0,
+          "impossibleOhlcRows": 452
+        }
+      },
+      {
+        "file": "data/raw/yahoo_HKDKRW=X.json",
+        "bytes": 621750,
+        "sha256": "0239041d8f826e82b4b193d56b76c304de382b98896c5faf168cede90a10ec26",
+        "source": "Yahoo Finance chart API",
+        "sourceUrl": "https://query1.finance.yahoo.com/v8/finance/chart/HKDKRW%3DX?period1=1009843200&period2=1790812800&interval=1d&events=div%2Csplits&includeAdjustedClose=true",
+        "fetchedAtUtc": "2026-10-12T02:10:01.359Z",
+        "requestedPeriod": {
+          "start": "2002-01-01",
+          "end": "2026-09-30"
+        },
+        "observedPeriod": {
+          "first": "2003-12-01",
+          "last": "2026-10-01"
+        },
+        "symbol": "HKDKRW=X",
+        "rows": 5923,
+        "columns": [
+          "date",
+          "timestampUtc",
+          "adjusted open",
+          "adjusted high",
+          "adjusted low",
+          "adjusted close",
+          "volume",
+          "raw close",
+          "adjustment factor"
+        ],
+        "adjustedPrice": true,
+        "adjustmentMethod": "adjclose/raw close factor applied to OHLC",
+        "currency": "KRW",
+        "exchange": "CCY",
+        "timezone": "Europe/London",
+        "dividends": 0,
+        "splits": 0,
+        "quality": {
+          "duplicateDates": 0,
+          "nullOhlcRows": 0,
+          "nonPositivePriceRows": 0,
+          "impossibleOhlcRows": 423
+        }
+      },
+      {
+        "file": "data/raw/yahoo_HKD=X.json",
+        "bytes": 653396,
+        "sha256": "48992c71645210ba2650326094f445df7562072194dba9908a3e8364ef4cdc7f",
+        "source": "Yahoo Finance chart API",
+        "sourceUrl": "https://query1.finance.yahoo.com/v8/finance/chart/HKD%3DX?period1=1009843200&period2=1790812800&interval=1d&events=div%2Csplits&includeAdjustedClose=true",
+        "fetchedAtUtc": "2026-10-12T02:10:02.158Z",
+        "requestedPeriod": {
+          "start": "2002-01-01",
+          "end": "2026-09-30"
+        },
+        "observedPeriod": {
+          "first": "2002-01-02",
+          "last": "2026-10-01"
+        },
+        "symbol": "HKD=X",
+        "rows": 6265,
+        "columns": [
+          "date",
+          "timestampUtc",
+          "adjusted open",
+          "adjusted high",
+          "adjusted low",
+          "adjusted close",
+          "volume",
+          "raw close",
+          "adjustment factor"
+        ],
+        "adjustedPrice": true,
+        "adjustmentMethod": "adjclose/raw close factor applied to OHLC",
+        "currency": "HKD",
+        "exchange": "CCY",
+        "timezone": "Europe/London",
+        "dividends": 0,
+        "splits": 0,
+        "quality": {
+          "duplicateDates": 0,
+          "nullOhlcRows": 0,
+          "nonPositivePriceRows": 0,
+          "impossibleOhlcRows": 115
+        }
+      },
+      {
+        "file": "naver_krx_gold_close.json",
+        "bytes": 708740,
+        "sha256": "cdc32afed421ce856d95cd9c84096e14058c0f6937a6b81a0e1d7d15de245ce5",
+        "source": "Naver Finance KRX domestic gold history (KRX-sourced display)",
+        "sourceUrls": [
+          "https://api.stock.naver.com/marketindex/metals/M04020000/prices?page=1&pageSize=60",
+          "https://api.stock.naver.com/marketindex/metals/M04020000/prices?page=2&pageSize=60",
+          "https://api.stock.naver.com/marketindex/metals/M04020000/prices?page=3&pageSize=60",
+          "https://api.stock.naver.com/marketindex/metals/M04020000/prices?page=4&pageSize=60",
+          "https://api.stock.naver.com/marketindex/metals/M04020000/prices?page=5&pageSize=60",
+          "https://api.stock.naver.com/marketindex/metals/M04020000/prices?page=6&pageSize=60",
+          "https://api.stock.naver.com/marketindex/metals/M04020000/prices?page=7&pageSize=60",
+          "https://api.stock.naver.com/marketindex/metals/M04020000/prices?page=8&pageSize=60",
+          "https://api.stock.naver.com/marketindex/metals/M04020000/prices?page=9&pageSize=60",
+          "https://api.stock.naver.com/marketindex/metals/M04020000/prices?page=10&pageSize=60",
+          "https://api.stock.naver.com/marketindex/metals/M04020000/prices?page=11&pageSize=60",
+          "https://api.stock.naver.com/marketindex/metals/M04020000/prices?page=12&pageSize=60",
+          "https://api.stock.naver.com/marketindex/metals/M04020000/prices?page=13&pageSize=60",
+          "https://api.stock.naver.com/marketindex/metals/M04020000/prices?page=14&pageSize=60",
+          "https://api.stock.naver.com/marketindex/metals/M04020000/prices?page=15&pageSize=60",
+          "https://api.stock.naver.com/marketindex/metals/M04020000/prices?page=16&pageSize=60",
+          "https://api.stock.naver.com/marketindex/metals/M04020000/prices?page=17&pageSize=60",
+          "https://api.stock.naver.com/marketindex/metals/M04020000/prices?page=18&pageSize=60",
+          "https://api.stock.naver.com/marketindex/metals/M04020000/prices?page=19&pageSize=60",
+          "https://api.stock.naver.com/marketindex/metals/M04020000/prices?page=20&pageSize=60",
+          "https://api.stock.naver.com/marketindex/metals/M04020000/prices?page=21&pageSize=60",
+          "https://api.stock.naver.com/marketindex/metals/M04020000/prices?page=22&pageSize=60",
+          "https://api.stock.naver.com/marketindex/metals/M04020000/prices?page=23&pageSize=60",
+          "https://api.stock.naver.com/marketindex/metals/M04020000/prices?page=24&pageSize=60",
+          "https://api.stock.naver.com/marketindex/metals/M04020000/prices?page=25&pageSize=60",
+          "https://api.stock.naver.com/marketindex/metals/M04020000/prices?page=26&pageSize=60",
+          "https://api.stock.naver.com/marketindex/metals/M04020000/prices?page=27&pageSize=60",
+          "https://api.stock.naver.com/marketindex/metals/M04020000/prices?page=28&pageSize=60",
+          "https://api.stock.naver.com/marketindex/metals/M04020000/prices?page=29&pageSize=60",
+          "https://api.stock.naver.com/marketindex/metals/M04020000/prices?page=30&pageSize=60",
+          "https://api.stock.naver.com/marketindex/metals/M04020000/prices?page=31&pageSize=60",
+          "https://api.stock.naver.com/marketindex/metals/M04020000/prices?page=32&pageSize=60",
+          "https://api.stock.naver.com/marketindex/metals/M04020000/prices?page=33&pageSize=60",
+          "https://api.stock.naver.com/marketindex/metals/M04020000/prices?page=34&pageSize=60",
+          "https://api.stock.naver.com/marketindex/metals/M04020000/prices?page=35&pageSize=60",
+          "https://api.stock.naver.com/marketindex/metals/M04020000/prices?page=36&pageSize=60",
+          "https://api.stock.naver.com/marketindex/metals/M04020000/prices?page=37&pageSize=60",
+          "https://api.stock.naver.com/marketindex/metals/M04020000/prices?page=38&pageSize=60",
+          "https://api.stock.naver.com/marketindex/metals/M04020000/prices?page=39&pageSize=60",
+          "https://api.stock.naver.com/marketindex/metals/M04020000/prices?page=40&pageSize=60",
+          "https://api.stock.naver.com/marketindex/metals/M04020000/prices?page=41&pageSize=60",
+          "https://api.stock.naver.com/marketindex/metals/M04020000/prices?page=42&pageSize=60",
+          "https://api.stock.naver.com/marketindex/metals/M04020000/prices?page=43&pageSize=60",
+          "https://api.stock.naver.com/marketindex/metals/M04020000/prices?page=44&pageSize=60",
+          "https://api.stock.naver.com/marketindex/metals/M04020000/prices?page=45&pageSize=60",
+          "https://api.stock.naver.com/marketindex/metals/M04020000/prices?page=46&pageSize=60",
+          "https://api.stock.naver.com/marketindex/metals/M04020000/prices?page=47&pageSize=60",
+          "https://api.stock.naver.com/marketindex/metals/M04020000/prices?page=48&pageSize=60",
+          "https://api.stock.naver.com/marketindex/metals/M04020000/prices?page=49&pageSize=60",
+          "https://api.stock.naver.com/marketindex/metals/M04020000/prices?page=50&pageSize=60",
+          "https://api.stock.naver.com/marketindex/metals/M04020000/prices?page=51&pageSize=60",
+          "https://api.stock.naver.com/marketindex/metals/M04020000/prices?page=52&pageSize=60",
+          "https://api.stock.naver.com/marketindex/metals/M04020000/prices?page=53&pageSize=60"
+        ],
+        "fetchedAtUtc": "2026-10-12T02:10:42.216Z",
+        "observedPeriod": {
+          "first": "2014-03-24",
+          "last": "2026-10-12"
+        },
+        "rows": 3078,
+        "columns": [
+          "localTradedAt",
+          "closePrice",
+          "fluctuationsType",
+          "fluctuations",
+          "fluctuationsRatio",
+          "openPrice",
+          "highPrice",
+          "lowPrice"
+        ],
+        "adjustedPrice": false,
+        "currency": "KRW per gram",
+        "timezone": "Asia/Seoul",
+        "quality": {
+          "duplicateDates": 0,
+          "highLowUsable": false,
+          "note": "open/high/low are all reported as zero; close only"
+        }
+      },
+      {
+        "file": "goldnow_krx_gold_ohlc.html",
+        "bytes": 123843,
+        "sha256": "423401113da1a90cce265674f953782de4f38953991f68c7fc0f2af5ea06364b",
+        "source": "GoldNow secondary KRX gold history display",
+        "sourceUrl": "https://goldnow.infovista.kr/gold/history?source=krx&start_date=2023-08-22&end_date=2026-09-30",
+        "fetchedAtUtc": "2026-10-12T02:10:42.334Z",
+        "requestedPeriod": {
+          "start": "2023-08-22",
+          "end": "2026-09-30"
+        },
+        "observedUsableOhlcRowsInOverlap": 179,
+        "columns": [
+          "trade date",
+          "open",
+          "high",
+          "low",
+          "close"
+        ],
+        "adjustedPrice": false,
+        "currency": "KRW per gram",
+        "timezone": "Asia/Seoul",
+        "quality": {
+          "coverageComplete": false,
+          "commonKrxDates": 751,
+          "note": "usable OHLC covers only 179/751 common dates"
+        }
+      },
+      {
+        "file": "ecos_cd91.json",
+        "bytes": 430209,
+        "sha256": "e56e4e48a314d38a7d27b8f2671d0910d43c4bb5fe8ed301b3ee2f46c8aac479",
+        "source": "Bank of Korea ECOS",
+        "sourceUrls": [
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/1/10/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/11/20/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/21/30/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/31/40/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/41/50/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/51/60/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/61/70/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/71/80/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/81/90/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/91/100/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/101/110/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/111/120/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/121/130/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/131/140/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/141/150/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/151/160/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/161/170/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/171/180/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/181/190/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/191/200/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/201/210/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/211/220/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/221/230/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/231/240/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/241/250/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/251/260/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/261/270/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/271/280/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/281/290/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/291/300/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/301/310/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/311/320/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/321/330/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/331/340/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/341/350/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/351/360/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/361/370/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/371/380/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/381/390/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/391/400/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/401/410/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/411/420/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/421/430/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/431/440/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/441/450/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/451/460/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/461/470/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/471/480/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/481/490/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/491/500/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/501/510/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/511/520/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/521/530/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/531/540/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/541/550/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/551/560/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/561/570/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/571/580/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/581/590/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/591/600/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/601/610/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/611/620/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/621/630/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/631/640/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/641/650/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/651/660/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/661/670/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/671/680/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/681/690/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/691/700/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/701/710/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/711/720/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/721/730/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/731/740/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/741/750/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/751/760/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/761/770/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/771/780/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/781/790/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/791/800/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/801/810/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/811/820/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/821/830/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/831/840/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/841/850/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/851/860/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/861/870/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/871/880/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/881/890/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/891/900/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/901/910/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/911/920/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/921/930/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/931/940/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/941/950/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/951/960/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/961/970/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/971/980/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/981/990/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/991/1000/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/1001/1010/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/1011/1020/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/1021/1030/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/1031/1040/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/1041/1050/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/1051/1060/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/1061/1070/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/1071/1080/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/1081/1090/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/1091/1100/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/1101/1110/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/1111/1120/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/1121/1130/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/1131/1140/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/1141/1150/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/1151/1160/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/1161/1170/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/1171/1180/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/1181/1190/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/1191/1200/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/1201/1210/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/1211/1220/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/1221/1230/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/1231/1240/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/1241/1250/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/1251/1260/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/1261/1270/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/1271/1280/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/1281/1290/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/1291/1300/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/1301/1310/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/1311/1320/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/1321/1330/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/1331/1340/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/1341/1350/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/1351/1360/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/1361/1370/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/1371/1380/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/1381/1390/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/1391/1400/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/1401/1410/817Y002/D/20210101/20260930/010502000",
+          "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/1411/1420/817Y002/D/20210101/20260930/010502000"
+        ],
+        "fetchedAtUtc": "2026-10-12T02:10:35.288Z",
+        "requestedPeriod": {
+          "start": "2021-01-01",
+          "end": "2026-09-30"
+        },
+        "observedPeriod": {
+          "first": "20210104",
+          "last": "20260930"
+        },
+        "rows": 1412,
+        "statCode": "817Y002",
+        "itemCode": "010502000",
+        "columns": [
+          "TIME",
+          "DATA_VALUE",
+          "UNIT_NAME"
+        ],
+        "adjustedPrice": null,
+        "currency": null,
+        "unit": "annual percent",
+        "timezone": "publication date not encoded in daily response",
+        "quality": {
+          "duplicateDates": 0,
+          "nonNumericRows": 0
+        }
+      }
+    ]
+  },
+  "overlap": {
+    "count": 751,
+    "first": "2023-08-22",
+    "last": "2026-09-30"
+  },
+  "transformations": {
+    "adjustedOhlc": "Yahoo adjusted-close factor applied to raw OHLC; dividends/splits retained as event metadata.",
+    "foreignClose": "adjusted asset close multiplied by same-calendar-date daily FX close; aligned to each KRX day using latest foreign session strictly before the KRX date.",
+    "foreignHighLowMain": "asset high × FX high; asset low × FX low (outer H/L approximation).",
+    "foreignHighLowSensitivity": "asset H/L multiplied by last previously available FX close.",
+    "cashYield": "max(CD91 - 0.25 percentage points, 0), ACT/365; transformation range checked, no cash path simulated."
+  },
+  "checks": {
+    "foreignDailyFxObservationTimestampVerified": false,
+    "goldOhlcCoverageComplete": false,
+    "hkdKrwDirectVsCross": {
+      "observations": 5922,
+      "meanAbsoluteRelativeDifference": 0.00044416994502047074,
+      "maxAbsoluteRelativeDifference": 0.034560758847455464
+    },
+    "testResults": {
+      "recordedAtUtc": "2026-10-12T02:18:00Z",
+      "results": [
+        {
+          "command": "npx.cmd --yes tsx tests\\core6DataProxyParity.ts",
+          "exitCode": 0,
+          "result": "PASS"
+        },
+        {
+          "command": "npx.cmd --yes tsx scripts\\backtest\\core6SignalRotation\\independentCheck.ts",
+          "exitCode": 0,
+          "result": "Independent return-metric cross-check: PASS (tolerance 1e-12)"
+        },
+        {
+          "command": "npm.cmd run typecheck",
+          "exitCode": 0,
+          "result": "PASS"
+        },
+        {
+          "command": "npm.cmd run lint",
+          "exitCode": 0,
+          "result": "PASS (new violations: 0)"
+        },
+        {
+          "command": "npm.cmd test",
+          "exitCode": 0,
+          "result": "87/87 tests PASS; typecheck PASS; ESLint PASS; 4 backtest/manual scripts excluded by existing verify.mjs policy"
+        }
+      ],
+      "strategyPerformanceTestsExecuted": false
+    },
+    "appCodeIntegrity": {
+      "checkedAtUtc": "2026-10-12T02:20:06.206Z",
+      "head": "35a9349c30e02835dbc24be0feef3f07ff8a6f36",
+      "trackedDiff": [],
+      "statusLines": [
+        "?? scripts/backtest/core6SignalRotation/",
+        "?? tests/core6DataProxyParity.ts"
+      ],
+      "trackedAppFilesChanged": false,
+      "onlyResearchPathsPresent": true
+    }
+  }
+}

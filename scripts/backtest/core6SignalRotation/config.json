@@ -1,0 +1,49 @@
+{
+  "researchId": "core6-signal-rotation-v1",
+  "stage": "data-and-proxy-fidelity-only",
+  "preregistration": {
+    "path": "docs/backtest/PREREG_코어6종_신호로테이션.md",
+    "freezeCommit": "35a9349c30e02835dbc24be0feef3f07ff8a6f36",
+    "gitBlob": "a4e8b4a619a69fdad129ef0c50368cf741f6adbf",
+    "sha256": "08ef85bc61305b1e6b24997bc0b0b681b13c40ebdfeb521d82a179a437710c8d"
+  },
+  "period": {
+    "sourceStart": "2002-01-01",
+    "overlapStart": "2023-08-22",
+    "end": "2026-09-30",
+    "warmupCompletedBars": 55
+  },
+  "gates": {
+    "returnCorrelationMin": 0.9,
+    "betaMin": 0.8,
+    "betaMax": 1.2,
+    "trackingErrorAnnualMax": 0.1,
+    "directionMatchMin": 0.7,
+    "stateMatchMin": 0.75,
+    "eventMatchMin": 0.7,
+    "eventWindowKrxTradingDays": 2
+  },
+  "actual": [
+    { "assetId": "069500", "name": "KODEX 200", "symbol": "069500.KS" },
+    { "assetId": "379800", "name": "KODEX 미국S&P500", "symbol": "379800.KS" },
+    { "assetId": "283580", "name": "KODEX 차이나CSI300", "symbol": "283580.KS" },
+    { "assetId": "385560", "name": "RISE KIS 국고채30년 Enhanced", "symbol": "385560.KS" },
+    { "assetId": "464470", "name": "PLUS 미국채30년액티브", "symbol": "464470.KS" },
+    { "assetId": "411060", "name": "ACE KRX금현물", "symbol": "411060.KS" }
+  ],
+  "proxies": [
+    { "assetId": "069500", "kind": "identity", "symbol": "069500.KS", "currency": "KRW" },
+    { "assetId": "379800", "kind": "foreign", "symbol": "SPY", "currency": "USD", "fxSymbol": "KRW=X" },
+    { "assetId": "283580", "kind": "foreign", "symbol": "3188.HK", "currency": "HKD", "fxSymbol": "HKDKRW=X" },
+    { "assetId": "385560", "kind": "identity", "symbol": "385560.KS", "currency": "KRW" },
+    { "assetId": "464470", "kind": "foreign", "symbol": "TLT", "currency": "USD", "fxSymbol": "KRW=X" },
+    { "assetId": "411060", "kind": "krx-gold", "symbol": "M04020000", "currency": "KRW" }
+  ],
+  "cashYield": {
+    "source": "BOK ECOS",
+    "statCode": "817Y002",
+    "itemCode": "010502000",
+    "definition": "max(CD91 - 0.25 percentage points, 0), ACT/365"
+  },
+  "rules": ["D10/20", "D20/55", "D55/55", "MA20", "MA50", "ATR3/55"]
+}

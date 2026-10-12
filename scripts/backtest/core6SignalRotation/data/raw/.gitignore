@@ -1,0 +1,5 @@
+# Local source payloads are intentionally not committed.
+# Their hashes and provenance are preserved by checksums.json and DATA_MANIFEST.json.
+*
+!.gitignore
+!checksums.json

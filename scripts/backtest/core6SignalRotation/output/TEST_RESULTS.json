@@ -1,0 +1,31 @@
+{
+  "recordedAtUtc": "2026-10-12T02:18:00Z",
+  "results": [
+    {
+      "command": "npx.cmd --yes tsx tests\\core6DataProxyParity.ts",
+      "exitCode": 0,
+      "result": "PASS"
+    },
+    {
+      "command": "npx.cmd --yes tsx scripts\\backtest\\core6SignalRotation\\independentCheck.ts",
+      "exitCode": 0,
+      "result": "Independent return-metric cross-check: PASS (tolerance 1e-12)"
+    },
+    {
+      "command": "npm.cmd run typecheck",
+      "exitCode": 0,
+      "result": "PASS"
+    },
+    {
+      "command": "npm.cmd run lint",
+      "exitCode": 0,
+      "result": "PASS (new violations: 0)"
+    },
+    {
+      "command": "npm.cmd test",
+      "exitCode": 0,
+      "result": "87/87 tests PASS; typecheck PASS; ESLint PASS; 4 backtest/manual scripts excluded by existing verify.mjs policy"
+    }
+  ],
+  "strategyPerformanceTestsExecuted": false
+}

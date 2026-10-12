@@ -1,0 +1,85 @@
+{
+  "generatedAtUtc": "2026-10-12T02:10:42.352Z",
+  "files": [
+    {
+      "file": "yahoo_069500.KS.json",
+      "bytes": 275394,
+      "sha256": "3cb03906b970b5ee2b32fcb638452eb7eb0c08f3cdb2252ced8dec94508dd604"
+    },
+    {
+      "file": "yahoo_379800.KS.json",
+      "bytes": 78912,
+      "sha256": "5f07ed7a917f5f4be18557add62231dc702180f6a7af0716f44fd1cb0bc082e6"
+    },
+    {
+      "file": "yahoo_283580.KS.json",
+      "bytes": 122105,
+      "sha256": "89d53d4dbb7e84d8a1a8f3a547dc6d1f852516b3a9980d72693b2673845bb544"
+    },
+    {
+      "file": "yahoo_385560.KS.json",
+      "bytes": 72907,
+      "sha256": "202d4491b6b503552ea5b6ca75434944723e0500d2c0c2ced95c19c35d550625"
+    },
+    {
+      "file": "yahoo_464470.KS.json",
+      "bytes": 43355,
+      "sha256": "011468b1981929e4240b6326826fd29799ed8c49337cbbf4c30c57d5c03c3907"
+    },
+    {
+      "file": "yahoo_411060.KS.json",
+      "bytes": 66831,
+      "sha256": "91b0c25950c66331da1d7699624cc81eb3d1470420a34e248cf6f12f7919cfb3"
+    },
+    {
+      "file": "yahoo_SPY.json",
+      "bytes": 689112,
+      "sha256": "e3bef1f03c2d176bef716abb62e373e1ed9a7168eaba9713ef6319c1da0a6086"
+    },
+    {
+      "file": "yahoo_3188.HK.json",
+      "bytes": 360230,
+      "sha256": "dbac44195c59d699448e341f5d56d3668a8e4fe6e8ee4bd8cdc359c8143ade62"
+    },
+    {
+      "file": "yahoo_TLT.json",
+      "bytes": 672473,
+      "sha256": "0d0d948d3dbf4e187b12353b86cd39204367a75decb0ded6c9bc68deb6ad99ec"
+    },
+    {
+      "file": "yahoo_KRW=X.json",
+      "bytes": 575445,
+      "sha256": "51ec309361b2d81ae3fba8f5391b9dd6aec9ee4725e918eceeaac83fa3e95fa8"
+    },
+    {
+      "file": "yahoo_HKDKRW=X.json",
+      "bytes": 621750,
+      "sha256": "0239041d8f826e82b4b193d56b76c304de382b98896c5faf168cede90a10ec26"
+    },
+    {
+      "file": "yahoo_HKD=X.json",
+      "bytes": 653396,
+      "sha256": "48992c71645210ba2650326094f445df7562072194dba9908a3e8364ef4cdc7f"
+    },
+    {
+      "file": "ecos_cd91.json",
+      "bytes": 430209,
+      "sha256": "e56e4e48a314d38a7d27b8f2671d0910d43c4bb5fe8ed301b3ee2f46c8aac479"
+    },
+    {
+      "file": "naver_krx_gold_close.json",
+      "bytes": 708740,
+      "sha256": "cdc32afed421ce856d95cd9c84096e14058c0f6937a6b81a0e1d7d15de245ce5"
+    },
+    {
+      "file": "goldnow_krx_gold_ohlc.html",
+      "bytes": 123843,
+      "sha256": "423401113da1a90cce265674f953782de4f38953991f68c7fc0f2af5ea06364b"
+    },
+    {
+      "file": "goldnow_krx_gold_ohlc.meta.json",
+      "bytes": 289,
+      "sha256": "6471baed8dba521b6cf7610c13ed236f3260d29d1686b024bc4f407cf3ea3cb1"
+    }
+  ]
+}

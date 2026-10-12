@@ -1,0 +1,11 @@
+{
+  "checkedAtUtc": "2026-10-12T02:20:06.206Z",
+  "head": "35a9349c30e02835dbc24be0feef3f07ff8a6f36",
+  "trackedDiff": [],
+  "statusLines": [
+    "?? scripts/backtest/core6SignalRotation/",
+    "?? tests/core6DataProxyParity.ts"
+  ],
+  "trackedAppFilesChanged": false,
+  "onlyResearchPathsPresent": true
+}
