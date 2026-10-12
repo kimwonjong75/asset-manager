@@ -1,0 +1,4615 @@
+{
+  "schemaVersion": 1,
+  "label": "사후 탐색적 진단 — V1 판정 변경에 사용 금지",
+  "generatedAtUtc": "2026-10-12T03:08:47.695Z",
+  "strategyPerformanceComputed": false,
+  "sourcePeriod": {
+    "start": "2023-08-22",
+    "end": "2026-09-30",
+    "commonKrxDates": 751
+  },
+  "shiftDefinition": {
+    "foreignZero": "latest completed source session strictly before the KRX calendar date",
+    "domesticZero": "same KRX session",
+    "negative": "older completed source sessions",
+    "positive": "later source sessions; flagged and excluded whenever unavailable at the KRX close"
+  },
+  "results": [
+    {
+      "assetId": "069500",
+      "actualSymbol": "069500.KS",
+      "proxySymbol": "069500.KS",
+      "baselineDefinition": "same KRX session",
+      "bestEligibleDailyShift": 0,
+      "bestObservedDailyShift": 0,
+      "bestObservedUsesFutureData": false,
+      "lags": [
+        {
+          "shift": -2,
+          "futureDataUsed": false,
+          "futureLinks": 0,
+          "alignedLevels": 751,
+          "metrics": {
+            "daily": {
+              "observations": 750,
+              "correlation": -0.11853701073075684,
+              "beta": -0.11854205182810877,
+              "trackingErrorAnnual": 0.5724623169357212,
+              "directionMatch": 0.516,
+              "intervals95": {
+                "correlation": {
+                  "low": -0.1885271279197481,
+                  "high": -0.04734884602542371,
+                  "method": "Fisher z"
+                },
+                "beta": {
+                  "low": -0.18970451333859356,
+                  "high": -0.04737959031762398,
+                  "method": "OLS normal approximation"
+                },
+                "trackingErrorAnnual": {
+                  "low": 0.5434723934812228,
+                  "high": 0.6014522403902197,
+                  "method": "normal approximation for standard deviation"
+                },
+                "directionMatch": {
+                  "low": 0.48024340554863043,
+                  "high": 0.5515935214662757,
+                  "method": "Wilson score"
+                }
+              }
+            },
+            "weekly": {
+              "observations": 162,
+              "correlation": 0.520124004978609,
+              "beta": 0.4301308435915759,
+              "trackingErrorAnnual": 0.31603097433330224,
+              "directionMatch": 0.7222222222222222,
+              "intervals95": {
+                "correlation": {
+                  "low": 0.3978328318637574,
+                  "high": 0.624255574065967,
+                  "method": "Fisher z"
+                },
+                "beta": {
+                  "low": 0.32068638194982296,
+                  "high": 0.5395753052333289,
+                  "method": "OLS normal approximation"
+                },
+                "trackingErrorAnnual": {
+                  "low": 0.2815120077402999,
+                  "high": 0.3505499409263046,
+                  "method": "normal approximation for standard deviation"
+                },
+                "directionMatch": {
+                  "low": 0.6487104973606594,
+                  "high": 0.7854387148997144,
+                  "method": "Wilson score"
+                }
+              }
+            },
+            "monthly": {
+              "observations": 37,
+              "correlation": 0.9011031440171734,
+              "beta": 0.9059337592702053,
+              "trackingErrorAnnual": 0.18569227740335706,
+              "directionMatch": 0.918918918918919,
+              "intervals95": {
+                "correlation": {
+                  "low": 0.815059218023136,
+                  "high": 0.9482562618683386,
+                  "method": "Fisher z"
+                },
+                "beta": {
+                  "low": 0.7615101910906539,
+                  "high": 1.0503573274497566,
+                  "method": "OLS normal approximation"
+                },
+                "trackingErrorAnnual": {
+                  "low": 0.14279954967183386,
+                  "high": 0.22858500513488025,
+                  "method": "normal approximation for standard deviation"
+                },
+                "directionMatch": {
+                  "low": 0.7869900750149847,
+                  "high": 0.9720399336036787,
+                  "method": "Wilson score"
+                }
+              }
+            }
+          },
+          "signals": [
+            {
+              "rule": "D10/20",
+              "observations": 696,
+              "stateMatch": 0.9396551724137931,
+              "actualEvents": 21,
+              "proxyEvents": 21,
+              "matchedEvents": 21,
+              "eventMatch": 1
+            },
+            {
+              "rule": "D20/55",
+              "observations": 696,
+              "stateMatch": 0.9626436781609196,
+              "actualEvents": 13,
+              "proxyEvents": 13,
+              "matchedEvents": 13,
+              "eventMatch": 1
+            },
+            {
+              "rule": "D55/55",
+              "observations": 696,
+              "stateMatch": 0.985632183908046,
+              "actualEvents": 5,
+              "proxyEvents": 5,
+              "matchedEvents": 5,
+              "eventMatch": 1
+            },
+            {
+              "rule": "MA20",
+              "observations": 696,
+              "stateMatch": 0.8333333333333334,
+              "actualEvents": 82,
+              "proxyEvents": 82,
+              "matchedEvents": 82,
+              "eventMatch": 1
+            },
+            {
+              "rule": "MA50",
+              "observations": 696,
+              "stateMatch": 0.9281609195402298,
+              "actualEvents": 35,
+              "proxyEvents": 35,
+              "matchedEvents": 35,
+              "eventMatch": 1
+            },
+            {
+              "rule": "ATR3/55",
+              "observations": 696,
+              "stateMatch": 0.9396551724137931,
+              "actualEvents": 21,
+              "proxyEvents": 21,
+              "matchedEvents": 21,
+              "eventMatch": 1
+            }
+          ]
+        },
+        {
+          "shift": -1,
+          "futureDataUsed": false,
+          "futureLinks": 0,
+          "alignedLevels": 751,
+          "metrics": {
+            "daily": {
+              "observations": 750,
+              "correlation": -0.11465209941156666,
+              "beta": -0.11465634061989521,
+              "trackingErrorAnnual": 0.5714688935688957,
+              "directionMatch": 0.508,
+              "intervals95": {
+                "correlation": {
+                  "low": -0.18472585055227694,
+                  "high": -0.04341850601643695,
+                  "method": "Fisher z"
+                },
+                "beta": {
+                  "low": -0.18585109361464625,
+                  "high": -0.043461587625144196,
+                  "method": "OLS normal approximation"
+                },
+                "trackingErrorAnnual": {
+                  "low": 0.5425292778228877,
+                  "high": 0.6004085093149037,
+                  "method": "normal approximation for standard deviation"
+                },
+                "directionMatch": {
+                  "low": 0.47227053309257877,
+                  "high": 0.5436479304148742,
+                  "method": "Wilson score"
+                }
+              }
+            },
+            "weekly": {
+              "observations": 162,
+              "correlation": 0.6451017645367014,
+              "beta": 0.546253785182429,
+              "trackingErrorAnnual": 0.2687585162679649,
+              "directionMatch": 0.808641975308642,
+              "intervals95": {
+                "correlation": {
+                  "low": 0.5451294906443528,
+                  "high": 0.7269842937778807,
+                  "method": "Fisher z"
+                },
+                "beta": {
+                  "low": 0.44599772966254225,
+                  "high": 0.6465098407023157,
+                  "method": "OLS normal approximation"
+                },
+                "trackingErrorAnnual": {
+                  "low": 0.23940295621816265,
+                  "high": 0.2981140763177671,
+                  "method": "normal approximation for standard deviation"
+                },
+                "directionMatch": {
+                  "low": 0.7411969247195679,
+                  "high": 0.8617880923087292,
+                  "method": "Wilson score"
+                }
+              }
+            },
+            "monthly": {
+              "observations": 37,
+              "correlation": 0.9195357647424635,
+              "beta": 0.8900866335468999,
+              "trackingErrorAnnual": 0.17124854430020514,
+              "directionMatch": 0.918918918918919,
+              "intervals95": {
+                "correlation": {
+                  "low": 0.8482487792619313,
+                  "high": 0.9580941018237922,
+                  "method": "Fisher z"
+                },
+                "beta": {
+                  "low": 0.7640533499888146,
+                  "high": 1.016119917104985,
+                  "method": "OLS normal approximation"
+                },
+                "trackingErrorAnnual": {
+                  "low": 0.13169214869882515,
+                  "high": 0.21080493990158514,
+                  "method": "normal approximation for standard deviation"
+                },
+                "directionMatch": {
+                  "low": 0.7869900750149847,
+                  "high": 0.9720399336036787,
+                  "method": "Wilson score"
+                }
+              }
+            }
+          },
+          "signals": [
+            {
+              "rule": "D10/20",
+              "observations": 696,
+              "stateMatch": 0.9698275862068966,
+              "actualEvents": 21,
+              "proxyEvents": 21,
+              "matchedEvents": 21,
+              "eventMatch": 1
+            },
+            {
+              "rule": "D20/55",
+              "observations": 696,
+              "stateMatch": 0.9813218390804598,
+              "actualEvents": 13,
+              "proxyEvents": 13,
+              "matchedEvents": 13,
+              "eventMatch": 1
+            },
+            {
+              "rule": "D55/55",
+              "observations": 696,
+              "stateMatch": 0.992816091954023,
+              "actualEvents": 5,
+              "proxyEvents": 5,
+              "matchedEvents": 5,
+              "eventMatch": 1
+            },
+            {
+              "rule": "MA20",
+              "observations": 696,
+              "stateMatch": 0.882183908045977,
+              "actualEvents": 82,
+              "proxyEvents": 82,
+              "matchedEvents": 82,
+              "eventMatch": 1
+            },
+            {
+              "rule": "MA50",
+              "observations": 696,
+              "stateMatch": 0.9497126436781609,
+              "actualEvents": 35,
+              "proxyEvents": 35,
+              "matchedEvents": 35,
+              "eventMatch": 1
+            },
+            {
+              "rule": "ATR3/55",
+              "observations": 696,
+              "stateMatch": 0.9698275862068966,
+              "actualEvents": 21,
+              "proxyEvents": 21,
+              "matchedEvents": 21,
+              "eventMatch": 1
+            }
+          ]
+        },
+        {
+          "shift": 0,
+          "futureDataUsed": false,
+          "futureLinks": 0,
+          "alignedLevels": 751,
+          "metrics": {
+            "daily": {
+              "observations": 750,
+              "correlation": 1,
+              "beta": 1,
+              "trackingErrorAnnual": 0,
+              "directionMatch": 1,
+              "intervals95": {
+                "correlation": {
+                  "low": 1,
+                  "high": 1,
+                  "method": "exact boundary"
+                },
+                "beta": {
+                  "low": 1,
+                  "high": 1,
+                  "method": "OLS normal approximation"
+                },
+                "trackingErrorAnnual": {
+                  "low": 0,
+                  "high": 0,
+                  "method": "normal approximation for standard deviation"
+                },
+                "directionMatch": {
+                  "low": 0.9949039692158141,
+                  "high": 1,
+                  "method": "Wilson score"
+                }
+              }
+            },
+            "weekly": {
+              "observations": 162,
+              "correlation": 1,
+              "beta": 1,
+              "trackingErrorAnnual": 0,
+              "directionMatch": 1,
+              "intervals95": {
+                "correlation": {
+                  "low": 1,
+                  "high": 1,
+                  "method": "exact boundary"
+                },
+                "beta": {
+                  "low": 1,
+                  "high": 1,
+                  "method": "OLS normal approximation"
+                },
+                "trackingErrorAnnual": {
+                  "low": 0,
+                  "high": 0,
+                  "method": "normal approximation for standard deviation"
+                },
+                "directionMatch": {
+                  "low": 0.976835727585841,
+                  "high": 1,
+                  "method": "Wilson score"
+                }
+              }
+            },
+            "monthly": {
+              "observations": 37,
+              "correlation": 1,
+              "beta": 1,
+              "trackingErrorAnnual": 0,
+              "directionMatch": 1,
+              "intervals95": {
+                "correlation": {
+                  "low": 1,
+                  "high": 1,
+                  "method": "exact boundary"
+                },
+                "beta": {
+                  "low": 1,
+                  "high": 1,
+                  "method": "OLS normal approximation"
+                },
+                "trackingErrorAnnual": {
+                  "low": 0,
+                  "high": 0,
+                  "method": "normal approximation for standard deviation"
+                },
+                "directionMatch": {
+                  "low": 0.9059390425448564,
+                  "high": 1.0000000000000002,
+                  "method": "Wilson score"
+                }
+              }
+            }
+          },
+          "signals": [
+            {
+              "rule": "D10/20",
+              "observations": 696,
+              "stateMatch": 1,
+              "actualEvents": 21,
+              "proxyEvents": 21,
+              "matchedEvents": 21,
+              "eventMatch": 1
+            },
+            {
+              "rule": "D20/55",
+              "observations": 696,
+              "stateMatch": 1,
+              "actualEvents": 13,
+              "proxyEvents": 13,
+              "matchedEvents": 13,
+              "eventMatch": 1
+            },
+            {
+              "rule": "D55/55",
+              "observations": 696,
+              "stateMatch": 1,
+              "actualEvents": 5,
+              "proxyEvents": 5,
+              "matchedEvents": 5,
+              "eventMatch": 1
+            },
+            {
+              "rule": "MA20",
+              "observations": 696,
+              "stateMatch": 1,
+              "actualEvents": 82,
+              "proxyEvents": 82,
+              "matchedEvents": 82,
+              "eventMatch": 1
+            },
+            {
+              "rule": "MA50",
+              "observations": 696,
+              "stateMatch": 1,
+              "actualEvents": 35,
+              "proxyEvents": 35,
+              "matchedEvents": 35,
+              "eventMatch": 1
+            },
+            {
+              "rule": "ATR3/55",
+              "observations": 696,
+              "stateMatch": 1,
+              "actualEvents": 21,
+              "proxyEvents": 21,
+              "matchedEvents": 21,
+              "eventMatch": 1
+            }
+          ]
+        },
+        {
+          "shift": 1,
+          "futureDataUsed": true,
+          "futureLinks": 751,
+          "alignedLevels": 751,
+          "metrics": {
+            "daily": {
+              "observations": 750,
+              "correlation": -0.11481912900645364,
+              "beta": -0.11478736211132905,
+              "trackingErrorAnnual": 0.5716013668881251,
+              "directionMatch": 0.508,
+              "intervals95": {
+                "correlation": {
+                  "low": -0.18488932749745318,
+                  "high": -0.04358744344275861,
+                  "method": "Fisher z"
+                },
+                "beta": {
+                  "low": -0.18595840276774878,
+                  "high": -0.04361632145490932,
+                  "method": "OLS normal approximation"
+                },
+                "trackingErrorAnnual": {
+                  "low": 0.542655042593326,
+                  "high": 0.6005476911829243,
+                  "method": "normal approximation for standard deviation"
+                },
+                "directionMatch": {
+                  "low": 0.47227053309257877,
+                  "high": 0.5436479304148742,
+                  "method": "Wilson score"
+                }
+              }
+            },
+            "weekly": {
+              "observations": 162,
+              "correlation": 0.6460132715513444,
+              "beta": 0.5757948555110562,
+              "trackingErrorAnnual": 0.2590482218932338,
+              "directionMatch": 0.7345679012345679,
+              "intervals95": {
+                "correlation": {
+                  "low": 0.5462269384108681,
+                  "high": 0.7277203041113492,
+                  "method": "Fisher z"
+                },
+                "beta": {
+                  "low": 0.47037253379917465,
+                  "high": 0.6812171772229378,
+                  "method": "OLS normal approximation"
+                },
+                "trackingErrorAnnual": {
+                  "low": 0.2307532836000068,
+                  "high": 0.2873431601864608,
+                  "method": "normal approximation for standard deviation"
+                },
+                "directionMatch": {
+                  "low": 0.6617099404322806,
+                  "high": 0.7965586725092251,
+                  "method": "Wilson score"
+                }
+              }
+            },
+            "monthly": {
+              "observations": 37,
+              "correlation": 0.9336238209804343,
+              "beta": 1.0045137828611606,
+              "trackingErrorAnnual": 0.14998198092180245,
+              "directionMatch": 0.8918918918918919,
+              "intervals95": {
+                "correlation": {
+                  "low": 0.8739988071900762,
+                  "high": 0.965552335156094,
+                  "method": "Fisher z"
+                },
+                "beta": {
+                  "low": 0.876811652231287,
+                  "high": 1.1322159134910341,
+                  "method": "OLS normal approximation"
+                },
+                "trackingErrorAnnual": {
+                  "low": 0.1153379108383738,
+                  "high": 0.1846260510052311,
+                  "method": "normal approximation for standard deviation"
+                },
+                "directionMatch": {
+                  "low": 0.7529115358483284,
+                  "high": 0.9571487947949374,
+                  "method": "Wilson score"
+                }
+              }
+            }
+          },
+          "signals": [
+            {
+              "rule": "D10/20",
+              "observations": 696,
+              "stateMatch": 0.9698275862068966,
+              "actualEvents": 21,
+              "proxyEvents": 21,
+              "matchedEvents": 21,
+              "eventMatch": 1
+            },
+            {
+              "rule": "D20/55",
+              "observations": 696,
+              "stateMatch": 0.9813218390804598,
+              "actualEvents": 13,
+              "proxyEvents": 13,
+              "matchedEvents": 13,
+              "eventMatch": 1
+            },
+            {
+              "rule": "D55/55",
+              "observations": 696,
+              "stateMatch": 0.992816091954023,
+              "actualEvents": 5,
+              "proxyEvents": 5,
+              "matchedEvents": 5,
+              "eventMatch": 1
+            },
+            {
+              "rule": "MA20",
+              "observations": 696,
+              "stateMatch": 0.882183908045977,
+              "actualEvents": 82,
+              "proxyEvents": 82,
+              "matchedEvents": 82,
+              "eventMatch": 1
+            },
+            {
+              "rule": "MA50",
+              "observations": 696,
+              "stateMatch": 0.9511494252873564,
+              "actualEvents": 35,
+              "proxyEvents": 34,
+              "matchedEvents": 34,
+              "eventMatch": 0.9714285714285714
+            },
+            {
+              "rule": "ATR3/55",
+              "observations": 696,
+              "stateMatch": 0.9698275862068966,
+              "actualEvents": 21,
+              "proxyEvents": 21,
+              "matchedEvents": 21,
+              "eventMatch": 1
+            }
+          ]
+        },
+        {
+          "shift": 2,
+          "futureDataUsed": true,
+          "futureLinks": 750,
+          "alignedLevels": 750,
+          "metrics": {
+            "daily": {
+              "observations": 749,
+              "correlation": -0.11849447588119794,
+              "beta": -0.11847526220112128,
+              "trackingErrorAnnual": 0.572868827363398,
+              "directionMatch": 0.5166889185580774,
+              "intervals95": {
+                "correlation": {
+                  "low": -0.18853186135475003,
+                  "high": -0.04725786058522416,
+                  "method": "Fisher z"
+                },
+                "beta": {
+                  "low": -0.18967112959473204,
+                  "high": -0.04727939480751055,
+                  "method": "OLS normal approximation"
+                },
+                "trackingErrorAnnual": {
+                  "low": 0.5438389323394714,
+                  "high": 0.6018987223873244,
+                  "method": "normal approximation for standard deviation"
+                },
+                "directionMatch": {
+                  "low": 0.480906615859791,
+                  "high": 0.5523009008342918,
+                  "method": "Wilson score"
+                }
+              }
+            },
+            "weekly": {
+              "observations": 162,
+              "correlation": 0.3731037788809678,
+              "beta": 0.34385121702217225,
+              "trackingErrorAnnual": 0.3365860313221138,
+              "directionMatch": 0.6666666666666666,
+              "intervals95": {
+                "correlation": {
+                  "low": 0.23226838666796026,
+                  "high": 0.49861569181626064,
+                  "method": "Fisher z"
+                },
+                "beta": {
+                  "low": 0.21136017819244815,
+                  "high": 0.4763422558518964,
+                  "method": "OLS normal approximation"
+                },
+                "trackingErrorAnnual": {
+                  "low": 0.299821907187162,
+                  "high": 0.37335015545706557,
+                  "method": "normal approximation for standard deviation"
+                },
+                "directionMatch": {
+                  "low": 0.590955267824894,
+                  "high": 0.7346566413703862,
+                  "method": "Wilson score"
+                }
+              }
+            },
+            "monthly": {
+              "observations": 37,
+              "correlation": 0.7940053274757284,
+              "beta": 0.8675891370605538,
+              "trackingErrorAnnual": 0.25944658432909434,
+              "directionMatch": 0.8108108108108109,
+              "intervals95": {
+                "correlation": {
+                  "low": 0.6327809031342724,
+                  "high": 0.8892468995318618,
+                  "method": "Fisher z"
+                },
+                "beta": {
+                  "low": 0.6475233157510046,
+                  "high": 1.087654958370103,
+                  "method": "OLS normal approximation"
+                },
+                "trackingErrorAnnual": {
+                  "low": 0.19951748087839624,
+                  "high": 0.3193756877797924,
+                  "method": "normal approximation for standard deviation"
+                },
+                "directionMatch": {
+                  "low": 0.6579498842904441,
+                  "high": 0.9052014124266288,
+                  "method": "Wilson score"
+                }
+              }
+            }
+          },
+          "signals": [
+            {
+              "rule": "D10/20",
+              "observations": 695,
+              "stateMatch": 0.939568345323741,
+              "actualEvents": 21,
+              "proxyEvents": 21,
+              "matchedEvents": 21,
+              "eventMatch": 1
+            },
+            {
+              "rule": "D20/55",
+              "observations": 695,
+              "stateMatch": 0.962589928057554,
+              "actualEvents": 13,
+              "proxyEvents": 13,
+              "matchedEvents": 13,
+              "eventMatch": 1
+            },
+            {
+              "rule": "D55/55",
+              "observations": 695,
+              "stateMatch": 0.9856115107913669,
+              "actualEvents": 5,
+              "proxyEvents": 5,
+              "matchedEvents": 5,
+              "eventMatch": 1
+            },
+            {
+              "rule": "MA20",
+              "observations": 695,
+              "stateMatch": 0.8330935251798561,
+              "actualEvents": 82,
+              "proxyEvents": 82,
+              "matchedEvents": 69,
+              "eventMatch": 0.8414634146341463
+            },
+            {
+              "rule": "MA50",
+              "observations": 695,
+              "stateMatch": 0.9309352517985612,
+              "actualEvents": 35,
+              "proxyEvents": 34,
+              "matchedEvents": 26,
+              "eventMatch": 0.7428571428571429
+            },
+            {
+              "rule": "ATR3/55",
+              "observations": 695,
+              "stateMatch": 0.939568345323741,
+              "actualEvents": 21,
+              "proxyEvents": 21,
+              "matchedEvents": 21,
+              "eventMatch": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "assetId": "379800",
+      "actualSymbol": "379800.KS",
+      "proxySymbol": "SPY",
+      "baselineDefinition": "latest completed foreign session strictly before the KRX calendar date",
+      "bestEligibleDailyShift": 0,
+      "bestObservedDailyShift": 0,
+      "bestObservedUsesFutureData": false,
+      "lags": [
+        {
+          "shift": -2,
+          "futureDataUsed": false,
+          "futureLinks": 0,
+          "alignedLevels": 751,
+          "metrics": {
+            "daily": {
+              "observations": 750,
+              "correlation": -0.05833472221891406,
+              "beta": -0.04760723920150944,
+              "trackingErrorAnnual": 0.2525294894924602,
+              "directionMatch": 0.47733333333333333,
+              "intervals95": {
+                "correlation": {
+                  "low": -0.12938435961599448,
+                  "high": 0.013310836144623103,
+                  "method": "Fisher z"
+                },
+                "beta": {
+                  "low": -0.10599353673597701,
+                  "high": 0.010779058332958141,
+                  "method": "OLS normal approximation"
+                },
+                "trackingErrorAnnual": {
+                  "low": 0.23974120569838117,
+                  "high": 0.2653177732865392,
+                  "method": "normal approximation for standard deviation"
+                },
+                "directionMatch": {
+                  "low": 0.44179210751773246,
+                  "high": 0.5131055792111506,
+                  "method": "Wilson score"
+                }
+              }
+            },
+            "weekly": {
+              "observations": 162,
+              "correlation": 0.35022706564389067,
+              "beta": 0.3089614695240011,
+              "trackingErrorAnnual": 0.16664360345028345,
+              "directionMatch": 0.6604938271604939,
+              "intervals95": {
+                "correlation": {
+                  "low": 0.20721959010850244,
+                  "high": 0.47857989124495115,
+                  "method": "Fisher z"
+                },
+                "beta": {
+                  "low": 0.18092464045712123,
+                  "high": 0.436998298590881,
+                  "method": "OLS normal approximation"
+                },
+                "trackingErrorAnnual": {
+                  "low": 0.14844170095457704,
+                  "high": 0.18484550594598986,
+                  "method": "normal approximation for standard deviation"
+                },
+                "directionMatch": {
+                  "low": 0.5846081197243217,
+                  "high": 0.7289440891303928,
+                  "method": "Wilson score"
+                }
+              }
+            },
+            "monthly": {
+              "observations": 37,
+              "correlation": 0.8984051503387471,
+              "beta": 0.9364243208278873,
+              "trackingErrorAnnual": 0.05813665355756949,
+              "directionMatch": 0.8648648648648649,
+              "intervals95": {
+                "correlation": {
+                  "low": 0.8102481627760965,
+                  "high": 0.9468086550907515,
+                  "method": "Fisher z"
+                },
+                "beta": {
+                  "low": 0.7847706948385528,
+                  "high": 1.0880779468172217,
+                  "method": "OLS normal approximation"
+                },
+                "trackingErrorAnnual": {
+                  "low": 0.044707771715326354,
+                  "high": 0.07156553539981263,
+                  "method": "normal approximation for standard deviation"
+                },
+                "directionMatch": {
+                  "low": 0.7202227252929444,
+                  "high": 0.9408679273749238,
+                  "method": "Wilson score"
+                }
+              }
+            }
+          },
+          "signals": [
+            {
+              "rule": "D10/20",
+              "observations": 696,
+              "stateMatch": 0.8318965517241379,
+              "actualEvents": 26,
+              "proxyEvents": 22,
+              "matchedEvents": 12,
+              "eventMatch": 0.46153846153846156
+            },
+            {
+              "rule": "D20/55",
+              "observations": 696,
+              "stateMatch": 0.9324712643678161,
+              "actualEvents": 11,
+              "proxyEvents": 9,
+              "matchedEvents": 4,
+              "eventMatch": 0.36363636363636365
+            },
+            {
+              "rule": "D55/55",
+              "observations": 696,
+              "stateMatch": 0.9626436781609196,
+              "actualEvents": 7,
+              "proxyEvents": 7,
+              "matchedEvents": 1,
+              "eventMatch": 0.14285714285714285
+            },
+            {
+              "rule": "MA20",
+              "observations": 696,
+              "stateMatch": 0.8074712643678161,
+              "actualEvents": 73,
+              "proxyEvents": 89,
+              "matchedEvents": 46,
+              "eventMatch": 0.5168539325842697
+            },
+            {
+              "rule": "MA50",
+              "observations": 696,
+              "stateMatch": 0.9410919540229885,
+              "actualEvents": 21,
+              "proxyEvents": 28,
+              "matchedEvents": 11,
+              "eventMatch": 0.39285714285714285
+            },
+            {
+              "rule": "ATR3/55",
+              "observations": 696,
+              "stateMatch": 0.8477011494252874,
+              "actualEvents": 23,
+              "proxyEvents": 19,
+              "matchedEvents": 6,
+              "eventMatch": 0.2608695652173913
+            }
+          ]
+        },
+        {
+          "shift": -1,
+          "futureDataUsed": false,
+          "futureLinks": 0,
+          "alignedLevels": 751,
+          "metrics": {
+            "daily": {
+              "observations": 750,
+              "correlation": 0.0019881626016123814,
+              "beta": 0.0016303418913426728,
+              "trackingErrorAnnual": 0.24466578982361142,
+              "directionMatch": 0.4666666666666667,
+              "intervals95": {
+                "correlation": {
+                  "low": -0.06961171531034392,
+                  "high": 0.07356766143481205,
+                  "method": "Fisher z"
+                },
+                "beta": {
+                  "low": -0.05713634427243981,
+                  "high": 0.06039702805512516,
+                  "method": "OLS normal approximation"
+                },
+                "trackingErrorAnnual": {
+                  "low": 0.23227572971120522,
+                  "high": 0.2570558499360176,
+                  "method": "normal approximation for standard deviation"
+                },
+                "directionMatch": {
+                  "low": 0.43122229149720387,
+                  "high": 0.5024507772217418,
+                  "method": "Wilson score"
+                }
+              }
+            },
+            "weekly": {
+              "observations": 162,
+              "correlation": 0.5790040764760938,
+              "beta": 0.5286892298261375,
+              "trackingErrorAnnual": 0.13169622335266817,
+              "directionMatch": 0.6851851851851852,
+              "intervals95": {
+                "correlation": {
+                  "low": 0.4664512587432066,
+                  "high": 0.6731064287510624,
+                  "method": "Fisher z"
+                },
+                "beta": {
+                  "low": 0.4133318208583622,
+                  "high": 0.6440466387939129,
+                  "method": "OLS normal approximation"
+                },
+                "trackingErrorAnnual": {
+                  "low": 0.1173115019058999,
+                  "high": 0.14608094479943645,
+                  "method": "normal approximation for standard deviation"
+                },
+                "directionMatch": {
+                  "low": 0.6100782454939574,
+                  "high": 0.751712764723021,
+                  "method": "Wilson score"
+                }
+              }
+            },
+            "monthly": {
+              "observations": 37,
+              "correlation": 0.9373652344302124,
+              "beta": 0.9276982926630513,
+              "trackingErrorAnnual": 0.046669261814366425,
+              "directionMatch": 0.8648648648648649,
+              "intervals95": {
+                "correlation": {
+                  "low": 0.8808940719517961,
+                  "high": 0.9675242667131808,
+                  "method": "Fisher z"
+                },
+                "beta": {
+                  "low": 0.8134805839631601,
+                  "high": 1.0419160013629423,
+                  "method": "OLS normal approximation"
+                },
+                "trackingErrorAnnual": {
+                  "low": 0.03588921232374285,
+                  "high": 0.05744931130499,
+                  "method": "normal approximation for standard deviation"
+                },
+                "directionMatch": {
+                  "low": 0.7202227252929444,
+                  "high": 0.9408679273749238,
+                  "method": "Wilson score"
+                }
+              }
+            }
+          },
+          "signals": [
+            {
+              "rule": "D10/20",
+              "observations": 696,
+              "stateMatch": 0.8448275862068966,
+              "actualEvents": 26,
+              "proxyEvents": 23,
+              "matchedEvents": 14,
+              "eventMatch": 0.5384615384615384
+            },
+            {
+              "rule": "D20/55",
+              "observations": 696,
+              "stateMatch": 0.9454022988505747,
+              "actualEvents": 11,
+              "proxyEvents": 9,
+              "matchedEvents": 7,
+              "eventMatch": 0.6363636363636364
+            },
+            {
+              "rule": "D55/55",
+              "observations": 696,
+              "stateMatch": 0.9727011494252874,
+              "actualEvents": 7,
+              "proxyEvents": 7,
+              "matchedEvents": 4,
+              "eventMatch": 0.5714285714285714
+            },
+            {
+              "rule": "MA20",
+              "observations": 696,
+              "stateMatch": 0.8620689655172413,
+              "actualEvents": 73,
+              "proxyEvents": 88,
+              "matchedEvents": 57,
+              "eventMatch": 0.6477272727272727
+            },
+            {
+              "rule": "MA50",
+              "observations": 696,
+              "stateMatch": 0.9612068965517241,
+              "actualEvents": 21,
+              "proxyEvents": 26,
+              "matchedEvents": 15,
+              "eventMatch": 0.5769230769230769
+            },
+            {
+              "rule": "ATR3/55",
+              "observations": 696,
+              "stateMatch": 0.8577586206896551,
+              "actualEvents": 23,
+              "proxyEvents": 19,
+              "matchedEvents": 6,
+              "eventMatch": 0.2608695652173913
+            }
+          ]
+        },
+        {
+          "shift": 0,
+          "futureDataUsed": false,
+          "futureLinks": 0,
+          "alignedLevels": 751,
+          "metrics": {
+            "daily": {
+              "observations": 750,
+              "correlation": 0.6068025148995065,
+              "beta": 0.49590699671840593,
+              "trackingErrorAnnual": 0.15624057131841568,
+              "directionMatch": 0.6546666666666666,
+              "intervals95": {
+                "correlation": {
+                  "low": 0.559518576821283,
+                  "high": 0.6501493633563469,
+                  "method": "Fisher z"
+                },
+                "beta": {
+                  "low": 0.44935430972719853,
+                  "high": 0.5424596837096134,
+                  "method": "OLS normal approximation"
+                },
+                "trackingErrorAnnual": {
+                  "low": 0.1483284309573645,
+                  "high": 0.16415271167946685,
+                  "method": "normal approximation for standard deviation"
+                },
+                "directionMatch": {
+                  "low": 0.6199267086389313,
+                  "high": 0.6878302525051605,
+                  "method": "Wilson score"
+                }
+              }
+            },
+            "weekly": {
+              "observations": 162,
+              "correlation": 0.8540035869260173,
+              "beta": 0.7998989940585812,
+              "trackingErrorAnnual": 0.07675706909702117,
+              "directionMatch": 0.8209876543209876,
+              "intervals95": {
+                "correlation": {
+                  "low": 0.8059356690617363,
+                  "high": 0.8908848935890951,
+                  "method": "Fisher z"
+                },
+                "beta": {
+                  "low": 0.7243901340038469,
+                  "high": 0.8754078541133156,
+                  "method": "OLS normal approximation"
+                },
+                "trackingErrorAnnual": {
+                  "low": 0.06837316081231465,
+                  "high": 0.08514097738172768,
+                  "method": "normal approximation for standard deviation"
+                },
+                "directionMatch": {
+                  "low": 0.7547332684207776,
+                  "high": 0.8723711492886511,
+                  "method": "Wilson score"
+                }
+              }
+            },
+            "monthly": {
+              "observations": 37,
+              "correlation": 0.9621028254499756,
+              "beta": 0.9712906914910192,
+              "trackingErrorAnnual": 0.0359487802519246,
+              "directionMatch": 1,
+              "intervals95": {
+                "correlation": {
+                  "low": 0.9270956526970741,
+                  "high": 0.9804706230527557,
+                  "method": "Fisher z"
+                },
+                "beta": {
+                  "low": 0.8800866500271389,
+                  "high": 1.0624947329548995,
+                  "method": "OLS normal approximation"
+                },
+                "trackingErrorAnnual": {
+                  "low": 0.027645035663361094,
+                  "high": 0.044252524840488104,
+                  "method": "normal approximation for standard deviation"
+                },
+                "directionMatch": {
+                  "low": 0.9059390425448564,
+                  "high": 1.0000000000000002,
+                  "method": "Wilson score"
+                }
+              }
+            }
+          },
+          "signals": [
+            {
+              "rule": "D10/20",
+              "observations": 696,
+              "stateMatch": 0.8936781609195402,
+              "actualEvents": 26,
+              "proxyEvents": 21,
+              "matchedEvents": 16,
+              "eventMatch": 0.6153846153846154
+            },
+            {
+              "rule": "D20/55",
+              "observations": 696,
+              "stateMatch": 0.9554597701149425,
+              "actualEvents": 11,
+              "proxyEvents": 9,
+              "matchedEvents": 9,
+              "eventMatch": 0.8181818181818182
+            },
+            {
+              "rule": "D55/55",
+              "observations": 696,
+              "stateMatch": 0.9827586206896551,
+              "actualEvents": 7,
+              "proxyEvents": 7,
+              "matchedEvents": 6,
+              "eventMatch": 0.8571428571428571
+            },
+            {
+              "rule": "MA20",
+              "observations": 696,
+              "stateMatch": 0.9181034482758621,
+              "actualEvents": 73,
+              "proxyEvents": 91,
+              "matchedEvents": 62,
+              "eventMatch": 0.6813186813186813
+            },
+            {
+              "rule": "MA50",
+              "observations": 696,
+              "stateMatch": 0.9626436781609196,
+              "actualEvents": 21,
+              "proxyEvents": 30,
+              "matchedEvents": 15,
+              "eventMatch": 0.5
+            },
+            {
+              "rule": "ATR3/55",
+              "observations": 696,
+              "stateMatch": 0.8764367816091954,
+              "actualEvents": 23,
+              "proxyEvents": 17,
+              "matchedEvents": 10,
+              "eventMatch": 0.43478260869565216
+            }
+          ]
+        },
+        {
+          "shift": 1,
+          "futureDataUsed": true,
+          "futureLinks": 751,
+          "alignedLevels": 751,
+          "metrics": {
+            "daily": {
+              "observations": 750,
+              "correlation": 0.028898377808091125,
+              "beta": 0.02339834860390644,
+              "trackingErrorAnnual": 0.24326807246873294,
+              "directionMatch": 0.5186666666666667,
+              "intervals95": {
+                "correlation": {
+                  "low": -0.04278009701345757,
+                  "high": 0.10028088321003632,
+                  "method": "Fisher z"
+                },
+                "beta": {
+                  "low": -0.03460266670510913,
+                  "high": 0.081399363912922,
+                  "method": "OLS normal approximation"
+                },
+                "trackingErrorAnnual": {
+                  "low": 0.23094879381727224,
+                  "high": 0.25558735112019365,
+                  "method": "normal approximation for standard deviation"
+                },
+                "directionMatch": {
+                  "low": 0.4829030524059575,
+                  "high": 0.554240029111433,
+                  "method": "Wilson score"
+                }
+              }
+            },
+            "weekly": {
+              "observations": 162,
+              "correlation": 0.7551007046201386,
+              "beta": 0.6644046300889962,
+              "trackingErrorAnnual": 0.10351451713671171,
+              "directionMatch": 0.808641975308642,
+              "intervals95": {
+                "correlation": {
+                  "low": 0.6800887292041231,
+                  "high": 0.8144663897934243,
+                  "method": "Fisher z"
+                },
+                "beta": {
+                  "low": 0.5750188071501274,
+                  "high": 0.753790453027865,
+                  "method": "OLS normal approximation"
+                },
+                "trackingErrorAnnual": {
+                  "low": 0.09220798565994441,
+                  "high": 0.11482104861347901,
+                  "method": "normal approximation for standard deviation"
+                },
+                "directionMatch": {
+                  "low": 0.7411969247195679,
+                  "high": 0.8617880923087292,
+                  "method": "Wilson score"
+                }
+              }
+            },
+            "monthly": {
+              "observations": 37,
+              "correlation": 0.935643774221329,
+              "beta": 0.9930110033935002,
+              "trackingErrorAnnual": 0.04628652120210181,
+              "directionMatch": 0.9459459459459459,
+              "intervals95": {
+                "correlation": {
+                  "low": 0.8777185145820583,
+                  "high": 0.9666174177839818,
+                  "method": "Fisher z"
+                },
+                "beta": {
+                  "low": 0.868910489827655,
+                  "high": 1.1171115169593455,
+                  "method": "OLS normal approximation"
+                },
+                "trackingErrorAnnual": {
+                  "low": 0.035594880282385055,
+                  "high": 0.05697816212181857,
+                  "method": "normal approximation for standard deviation"
+                },
+                "directionMatch": {
+                  "low": 0.822950349364601,
+                  "high": 0.9850493372294601,
+                  "method": "Wilson score"
+                }
+              }
+            }
+          },
+          "signals": [
+            {
+              "rule": "D10/20",
+              "observations": 696,
+              "stateMatch": 0.8448275862068966,
+              "actualEvents": 26,
+              "proxyEvents": 19,
+              "matchedEvents": 12,
+              "eventMatch": 0.46153846153846156
+            },
+            {
+              "rule": "D20/55",
+              "observations": 696,
+              "stateMatch": 0.9425287356321839,
+              "actualEvents": 11,
+              "proxyEvents": 9,
+              "matchedEvents": 8,
+              "eventMatch": 0.7272727272727273
+            },
+            {
+              "rule": "D55/55",
+              "observations": 696,
+              "stateMatch": 0.9899425287356322,
+              "actualEvents": 7,
+              "proxyEvents": 7,
+              "matchedEvents": 6,
+              "eventMatch": 0.8571428571428571
+            },
+            {
+              "rule": "MA20",
+              "observations": 696,
+              "stateMatch": 0.8922413793103449,
+              "actualEvents": 73,
+              "proxyEvents": 89,
+              "matchedEvents": 59,
+              "eventMatch": 0.6629213483146067
+            },
+            {
+              "rule": "MA50",
+              "observations": 696,
+              "stateMatch": 0.9583333333333334,
+              "actualEvents": 21,
+              "proxyEvents": 27,
+              "matchedEvents": 14,
+              "eventMatch": 0.5185185185185185
+            },
+            {
+              "rule": "ATR3/55",
+              "observations": 696,
+              "stateMatch": 0.8864942528735632,
+              "actualEvents": 23,
+              "proxyEvents": 19,
+              "matchedEvents": 14,
+              "eventMatch": 0.6086956521739131
+            }
+          ]
+        },
+        {
+          "shift": 2,
+          "futureDataUsed": true,
+          "futureLinks": 750,
+          "alignedLevels": 750,
+          "metrics": {
+            "daily": {
+              "observations": 749,
+              "correlation": 0.33712036105713705,
+              "beta": 0.2786095041291461,
+              "trackingErrorAnnual": 0.1994964914678399,
+              "directionMatch": 0.5460614152202937,
+              "intervals95": {
+                "correlation": {
+                  "low": 0.2720528144301679,
+                  "high": 0.3991191847488838,
+                  "method": "Fisher z"
+                },
+                "beta": {
+                  "low": 0.22281270250215257,
+                  "high": 0.3344063057561396,
+                  "method": "OLS normal approximation"
+                },
+                "trackingErrorAnnual": {
+                  "low": 0.1893870878341887,
+                  "high": 0.2096058951014911,
+                  "method": "normal approximation for standard deviation"
+                },
+                "directionMatch": {
+                  "low": 0.5102605350667295,
+                  "high": 0.5813922110089389,
+                  "method": "Wilson score"
+                }
+              }
+            },
+            "weekly": {
+              "observations": 162,
+              "correlation": 0.6596624182867566,
+              "beta": 0.5953335825925563,
+              "trackingErrorAnnual": 0.11937742840383897,
+              "directionMatch": 0.7654320987654321,
+              "intervals95": {
+                "correlation": {
+                  "low": 0.5627014860430465,
+                  "high": 0.7387190567244757,
+                  "method": "Fisher z"
+                },
+                "beta": {
+                  "low": 0.49023434795097276,
+                  "high": 0.7004328172341399,
+                  "method": "OLS normal approximation"
+                },
+                "trackingErrorAnnual": {
+                  "low": 0.1063382461789832,
+                  "high": 0.13241661062869475,
+                  "method": "normal approximation for standard deviation"
+                },
+                "directionMatch": {
+                  "low": 0.6945004391061742,
+                  "high": 0.8240666755381612,
+                  "method": "Wilson score"
+                }
+              }
+            },
+            "monthly": {
+              "observations": 37,
+              "correlation": 0.9047530537200785,
+              "beta": 0.9572577000235887,
+              "trackingErrorAnnual": 0.05604877456458274,
+              "directionMatch": 0.972972972972973,
+              "intervals95": {
+                "correlation": {
+                  "low": 0.8215866669892532,
+                  "high": 0.9502115036575929,
+                  "method": "Fisher z"
+                },
+                "beta": {
+                  "low": 0.8079556642245851,
+                  "high": 1.1065597358225923,
+                  "method": "OLS normal approximation"
+                },
+                "trackingErrorAnnual": {
+                  "low": 0.043102168164457305,
+                  "high": 0.06899538096470817,
+                  "method": "normal approximation for standard deviation"
+                },
+                "directionMatch": {
+                  "low": 0.8617562156243666,
+                  "high": 0.9952131489450924,
+                  "method": "Wilson score"
+                }
+              }
+            }
+          },
+          "signals": [
+            {
+              "rule": "D10/20",
+              "observations": 695,
+              "stateMatch": 0.8402877697841726,
+              "actualEvents": 26,
+              "proxyEvents": 19,
+              "matchedEvents": 13,
+              "eventMatch": 0.5
+            },
+            {
+              "rule": "D20/55",
+              "observations": 695,
+              "stateMatch": 0.9496402877697842,
+              "actualEvents": 11,
+              "proxyEvents": 9,
+              "matchedEvents": 8,
+              "eventMatch": 0.7272727272727273
+            },
+            {
+              "rule": "D55/55",
+              "observations": 695,
+              "stateMatch": 0.9899280575539569,
+              "actualEvents": 7,
+              "proxyEvents": 7,
+              "matchedEvents": 7,
+              "eventMatch": 1
+            },
+            {
+              "rule": "MA20",
+              "observations": 695,
+              "stateMatch": 0.8633093525179856,
+              "actualEvents": 73,
+              "proxyEvents": 93,
+              "matchedEvents": 55,
+              "eventMatch": 0.5913978494623656
+            },
+            {
+              "rule": "MA50",
+              "observations": 695,
+              "stateMatch": 0.9525179856115108,
+              "actualEvents": 21,
+              "proxyEvents": 27,
+              "matchedEvents": 14,
+              "eventMatch": 0.5185185185185185
+            },
+            {
+              "rule": "ATR3/55",
+              "observations": 695,
+              "stateMatch": 0.8920863309352518,
+              "actualEvents": 23,
+              "proxyEvents": 17,
+              "matchedEvents": 11,
+              "eventMatch": 0.4782608695652174
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "assetId": "283580",
+      "actualSymbol": "283580.KS",
+      "proxySymbol": "3188.HK",
+      "baselineDefinition": "latest completed foreign session strictly before the KRX calendar date",
+      "bestEligibleDailyShift": 0,
+      "bestObservedDailyShift": 1,
+      "bestObservedUsesFutureData": true,
+      "lags": [
+        {
+          "shift": -2,
+          "futureDataUsed": false,
+          "futureLinks": 0,
+          "alignedLevels": 751,
+          "metrics": {
+            "daily": {
+              "observations": 750,
+              "correlation": 0.14310602121898006,
+              "beta": 0.11198235954893693,
+              "trackingErrorAnnual": 0.29329312364037446,
+              "directionMatch": 0.488,
+              "intervals95": {
+                "correlation": {
+                  "low": 0.0722563140568592,
+                  "high": 0.21251874597246836,
+                  "method": "Fisher z"
+                },
+                "beta": {
+                  "low": 0.05648097961469727,
+                  "high": 0.16748373948317657,
+                  "method": "OLS normal approximation"
+                },
+                "trackingErrorAnnual": {
+                  "low": 0.27844053867097823,
+                  "high": 0.3081457086097707,
+                  "method": "normal approximation for standard deviation"
+                },
+                "directionMatch": {
+                  "low": 0.4523781367005258,
+                  "high": 0.5237441680382947,
+                  "method": "Wilson score"
+                }
+              }
+            },
+            "weekly": {
+              "observations": 162,
+              "correlation": 0.42652340901471913,
+              "beta": 0.41212455628975053,
+              "trackingErrorAnnual": 0.21386564364414457,
+              "directionMatch": 0.6234567901234568,
+              "intervals95": {
+                "correlation": {
+                  "low": 0.2914966545140802,
+                  "high": 0.5448850230842396,
+                  "method": "Fisher z"
+                },
+                "beta": {
+                  "low": 0.27670574420907734,
+                  "high": 0.5475433683704237,
+                  "method": "OLS normal approximation"
+                },
+                "trackingErrorAnnual": {
+                  "low": 0.19050584157437245,
+                  "high": 0.23722544571391668,
+                  "method": "normal approximation for standard deviation"
+                },
+                "directionMatch": {
+                  "low": 0.546798721616758,
+                  "high": 0.6943952851945607,
+                  "method": "Wilson score"
+                }
+              }
+            },
+            "monthly": {
+              "observations": 37,
+              "correlation": 0.6747097622670394,
+              "beta": 0.6955265040291035,
+              "trackingErrorAnnual": 0.1569692523194028,
+              "directionMatch": 0.8378378378378378,
+              "intervals95": {
+                "correlation": {
+                  "low": 0.4488038688541136,
+                  "high": 0.819560017023261,
+                  "method": "Fisher z"
+                },
+                "beta": {
+                  "low": 0.44345483892330106,
+                  "high": 0.947598169134906,
+                  "method": "OLS normal approximation"
+                },
+                "trackingErrorAnnual": {
+                  "low": 0.12071120488681104,
+                  "high": 0.1932272997519946,
+                  "method": "normal approximation for standard deviation"
+                },
+                "directionMatch": {
+                  "low": 0.6886320070454415,
+                  "high": 0.923488967647029,
+                  "method": "Wilson score"
+                }
+              }
+            }
+          },
+          "signals": [
+            {
+              "rule": "D10/20",
+              "observations": 696,
+              "stateMatch": 0.8405172413793104,
+              "actualEvents": 18,
+              "proxyEvents": 14,
+              "matchedEvents": 4,
+              "eventMatch": 0.2222222222222222
+            },
+            {
+              "rule": "D20/55",
+              "observations": 696,
+              "stateMatch": 0.9022988505747126,
+              "actualEvents": 9,
+              "proxyEvents": 9,
+              "matchedEvents": 1,
+              "eventMatch": 0.1111111111111111
+            },
+            {
+              "rule": "D55/55",
+              "observations": 696,
+              "stateMatch": 0.9669540229885057,
+              "actualEvents": 7,
+              "proxyEvents": 7,
+              "matchedEvents": 2,
+              "eventMatch": 0.2857142857142857
+            },
+            {
+              "rule": "MA20",
+              "observations": 696,
+              "stateMatch": 0.8318965517241379,
+              "actualEvents": 62,
+              "proxyEvents": 76,
+              "matchedEvents": 21,
+              "eventMatch": 0.27631578947368424
+            },
+            {
+              "rule": "MA50",
+              "observations": 696,
+              "stateMatch": 0.9123563218390804,
+              "actualEvents": 26,
+              "proxyEvents": 44,
+              "matchedEvents": 9,
+              "eventMatch": 0.20454545454545456
+            },
+            {
+              "rule": "ATR3/55",
+              "observations": 696,
+              "stateMatch": 0.8477011494252874,
+              "actualEvents": 15,
+              "proxyEvents": 21,
+              "matchedEvents": 2,
+              "eventMatch": 0.09523809523809523
+            }
+          ]
+        },
+        {
+          "shift": -1,
+          "futureDataUsed": false,
+          "futureLinks": 0,
+          "alignedLevels": 751,
+          "metrics": {
+            "daily": {
+              "observations": 750,
+              "correlation": 0.08777050332744066,
+              "beta": 0.06882838054996007,
+              "trackingErrorAnnual": 0.30189518404520843,
+              "directionMatch": 0.464,
+              "intervals95": {
+                "correlation": {
+                  "low": 0.016282846490516457,
+                  "high": 0.15836538627445082,
+                  "method": "Fisher z"
+                },
+                "beta": {
+                  "low": 0.012846829213373406,
+                  "high": 0.12480993188654674,
+                  "method": "OLS normal approximation"
+                },
+                "trackingErrorAnnual": {
+                  "low": 0.28660698424963127,
+                  "high": 0.3171833838407856,
+                  "method": "normal approximation for standard deviation"
+                },
+                "directionMatch": {
+                  "low": 0.4285823771153324,
+                  "high": 0.499784537101129,
+                  "method": "Wilson score"
+                }
+              }
+            },
+            "weekly": {
+              "observations": 162,
+              "correlation": 0.6414472547280095,
+              "beta": 0.4848839931949154,
+              "trackingErrorAnnual": 0.20131809442013487,
+              "directionMatch": 0.6358024691358025,
+              "intervals95": {
+                "correlation": {
+                  "low": 0.5407329255807685,
+                  "high": 0.7240315130890778,
+                  "method": "Fisher z"
+                },
+                "beta": {
+                  "low": 0.3950247060869247,
+                  "high": 0.5747432803029061,
+                  "method": "OLS normal approximation"
+                },
+                "trackingErrorAnnual": {
+                  "low": 0.1793288176078992,
+                  "high": 0.22330737123237054,
+                  "method": "normal approximation for standard deviation"
+                },
+                "directionMatch": {
+                  "low": 0.5593507610389694,
+                  "high": 0.7059626464534814,
+                  "method": "Wilson score"
+                }
+              }
+            },
+            "monthly": {
+              "observations": 37,
+              "correlation": 0.8297704604382911,
+              "beta": 0.9447950697305634,
+              "trackingErrorAnnual": 0.1106121463188712,
+              "directionMatch": 0.8108108108108109,
+              "intervals95": {
+                "correlation": {
+                  "low": 0.6917280868655865,
+                  "high": 0.9093119392751068,
+                  "method": "Fisher z"
+                },
+                "beta": {
+                  "low": 0.7342633850252892,
+                  "high": 1.1553267544358377,
+                  "method": "OLS normal approximation"
+                },
+                "trackingErrorAnnual": {
+                  "low": 0.08506204406260487,
+                  "high": 0.13616224857513753,
+                  "method": "normal approximation for standard deviation"
+                },
+                "directionMatch": {
+                  "low": 0.6579498842904441,
+                  "high": 0.9052014124266288,
+                  "method": "Wilson score"
+                }
+              }
+            }
+          },
+          "signals": [
+            {
+              "rule": "D10/20",
+              "observations": 696,
+              "stateMatch": 0.8505747126436781,
+              "actualEvents": 18,
+              "proxyEvents": 14,
+              "matchedEvents": 9,
+              "eventMatch": 0.5
+            },
+            {
+              "rule": "D20/55",
+              "observations": 696,
+              "stateMatch": 0.9066091954022989,
+              "actualEvents": 9,
+              "proxyEvents": 9,
+              "matchedEvents": 4,
+              "eventMatch": 0.4444444444444444
+            },
+            {
+              "rule": "D55/55",
+              "observations": 696,
+              "stateMatch": 0.9741379310344828,
+              "actualEvents": 7,
+              "proxyEvents": 7,
+              "matchedEvents": 5,
+              "eventMatch": 0.7142857142857143
+            },
+            {
+              "rule": "MA20",
+              "observations": 696,
+              "stateMatch": 0.867816091954023,
+              "actualEvents": 62,
+              "proxyEvents": 74,
+              "matchedEvents": 39,
+              "eventMatch": 0.527027027027027
+            },
+            {
+              "rule": "MA50",
+              "observations": 696,
+              "stateMatch": 0.9267241379310345,
+              "actualEvents": 26,
+              "proxyEvents": 40,
+              "matchedEvents": 18,
+              "eventMatch": 0.45
+            },
+            {
+              "rule": "ATR3/55",
+              "observations": 696,
+              "stateMatch": 0.8620689655172413,
+              "actualEvents": 15,
+              "proxyEvents": 19,
+              "matchedEvents": 6,
+              "eventMatch": 0.3157894736842105
+            }
+          ]
+        },
+        {
+          "shift": 0,
+          "futureDataUsed": false,
+          "futureLinks": 0,
+          "alignedLevels": 751,
+          "metrics": {
+            "daily": {
+              "observations": 750,
+              "correlation": 0.17735457916963154,
+              "beta": 0.13803666609134962,
+              "trackingErrorAnnual": 0.28857957338320617,
+              "directionMatch": 0.5213333333333333,
+              "intervals95": {
+                "correlation": {
+                  "low": 0.10712475177807268,
+                  "high": 0.2458233766151776,
+                  "method": "Fisher z"
+                },
+                "beta": {
+                  "low": 0.0831436228194592,
+                  "high": 0.19292970936324005,
+                  "method": "OLS normal approximation"
+                },
+                "trackingErrorAnnual": {
+                  "low": 0.2739656861535768,
+                  "high": 0.30319346061283553,
+                  "method": "normal approximation for standard deviation"
+                },
+                "directionMatch": {
+                  "low": 0.48556371147581256,
+                  "high": 0.5568855245440621,
+                  "method": "Wilson score"
+                }
+              }
+            },
+            "weekly": {
+              "observations": 162,
+              "correlation": 0.7684792259290472,
+              "beta": 0.659708243271475,
+              "trackingErrorAnnual": 0.14767774297316993,
+              "directionMatch": 0.7530864197530864,
+              "intervals95": {
+                "correlation": {
+                  "low": 0.6968572777680938,
+                  "high": 0.8249253452839125,
+                  "method": "Fisher z"
+                },
+                "beta": {
+                  "low": 0.5745923182845317,
+                  "high": 0.7448241682584184,
+                  "method": "OLS normal approximation"
+                },
+                "trackingErrorAnnual": {
+                  "low": 0.13154741559948482,
+                  "high": 0.16380807034685504,
+                  "method": "normal approximation for standard deviation"
+                },
+                "directionMatch": {
+                  "low": 0.6813322587055198,
+                  "high": 0.8131154552576837,
+                  "method": "Wilson score"
+                }
+              }
+            },
+            "monthly": {
+              "observations": 37,
+              "correlation": 0.9408066032087179,
+              "beta": 1.010301119492124,
+              "trackingErrorAnnual": 0.06695084281470279,
+              "directionMatch": 0.8378378378378378,
+              "intervals95": {
+                "correlation": {
+                  "low": 0.8872576013902679,
+                  "high": 0.9693348229690111,
+                  "method": "Fisher z"
+                },
+                "beta": {
+                  "low": 0.8897141757108779,
+                  "high": 1.1308880632733702,
+                  "method": "OLS normal approximation"
+                },
+                "trackingErrorAnnual": {
+                  "low": 0.05148598712762867,
+                  "high": 0.08241569850177691,
+                  "method": "normal approximation for standard deviation"
+                },
+                "directionMatch": {
+                  "low": 0.6886320070454415,
+                  "high": 0.923488967647029,
+                  "method": "Wilson score"
+                }
+              }
+            }
+          },
+          "signals": [
+            {
+              "rule": "D10/20",
+              "observations": 696,
+              "stateMatch": 0.8563218390804598,
+              "actualEvents": 18,
+              "proxyEvents": 14,
+              "matchedEvents": 9,
+              "eventMatch": 0.5
+            },
+            {
+              "rule": "D20/55",
+              "observations": 696,
+              "stateMatch": 0.9137931034482759,
+              "actualEvents": 9,
+              "proxyEvents": 9,
+              "matchedEvents": 5,
+              "eventMatch": 0.5555555555555556
+            },
+            {
+              "rule": "D55/55",
+              "observations": 696,
+              "stateMatch": 0.9827586206896551,
+              "actualEvents": 7,
+              "proxyEvents": 7,
+              "matchedEvents": 6,
+              "eventMatch": 0.8571428571428571
+            },
+            {
+              "rule": "MA20",
+              "observations": 696,
+              "stateMatch": 0.9022988505747126,
+              "actualEvents": 62,
+              "proxyEvents": 68,
+              "matchedEvents": 45,
+              "eventMatch": 0.6617647058823529
+            },
+            {
+              "rule": "MA50",
+              "observations": 696,
+              "stateMatch": 0.9482758620689655,
+              "actualEvents": 26,
+              "proxyEvents": 40,
+              "matchedEvents": 20,
+              "eventMatch": 0.5
+            },
+            {
+              "rule": "ATR3/55",
+              "observations": 696,
+              "stateMatch": 0.8692528735632183,
+              "actualEvents": 15,
+              "proxyEvents": 21,
+              "matchedEvents": 8,
+              "eventMatch": 0.38095238095238093
+            }
+          ]
+        },
+        {
+          "shift": 1,
+          "futureDataUsed": true,
+          "futureLinks": 751,
+          "alignedLevels": 751,
+          "metrics": {
+            "daily": {
+              "observations": 750,
+              "correlation": 0.6401448460307844,
+              "beta": 0.5229656442107681,
+              "trackingErrorAnnual": 0.18795714963772212,
+              "directionMatch": 0.668,
+              "intervals95": {
+                "correlation": {
+                  "low": 0.5958620107176684,
+                  "high": 0.6805467531785752,
+                  "method": "Fisher z"
+                },
+                "beta": {
+                  "low": 0.4779871260007228,
+                  "high": 0.5679441624208134,
+                  "method": "OLS normal approximation"
+                },
+                "trackingErrorAnnual": {
+                  "low": 0.1784388578313898,
+                  "high": 0.19747544144405443,
+                  "method": "normal approximation for standard deviation"
+                },
+                "directionMatch": {
+                  "low": 0.6335148572204585,
+                  "high": 0.700772876436055,
+                  "method": "Wilson score"
+                }
+              }
+            },
+            "weekly": {
+              "observations": 162,
+              "correlation": 0.8403316044162714,
+              "beta": 0.6661049792052481,
+              "trackingErrorAnnual": 0.13468699235803175,
+              "directionMatch": 0.8024691358024691,
+              "intervals95": {
+                "correlation": {
+                  "low": 0.7882763651857541,
+                  "high": 0.8804439799328639,
+                  "method": "Fisher z"
+                },
+                "beta": {
+                  "low": 0.5995247040629722,
+                  "high": 0.7326852543475241,
+                  "method": "OLS normal approximation"
+                },
+                "trackingErrorAnnual": {
+                  "low": 0.11997559959177866,
+                  "high": 0.14939838512428483,
+                  "method": "normal approximation for standard deviation"
+                },
+                "directionMatch": {
+                  "low": 0.7344633497576664,
+                  "high": 0.8564619669300647,
+                  "method": "Wilson score"
+                }
+              }
+            },
+            "monthly": {
+              "observations": 37,
+              "correlation": 0.9747458331598512,
+              "beta": 0.9249332441031004,
+              "trackingErrorAnnual": 0.04677864028914948,
+              "directionMatch": 0.8648648648648649,
+              "intervals95": {
+                "correlation": {
+                  "low": 0.9511266195781855,
+                  "high": 0.9870264033494598,
+                  "method": "Fisher z"
+                },
+                "beta": {
+                  "low": 0.8547290308540058,
+                  "high": 0.995137457352195,
+                  "method": "OLS normal approximation"
+                },
+                "trackingErrorAnnual": {
+                  "low": 0.03597332565985582,
+                  "high": 0.057583954918443134,
+                  "method": "normal approximation for standard deviation"
+                },
+                "directionMatch": {
+                  "low": 0.7202227252929444,
+                  "high": 0.9408679273749238,
+                  "method": "Wilson score"
+                }
+              }
+            }
+          },
+          "signals": [
+            {
+              "rule": "D10/20",
+              "observations": 696,
+              "stateMatch": 0.8548850574712644,
+              "actualEvents": 18,
+              "proxyEvents": 14,
+              "matchedEvents": 8,
+              "eventMatch": 0.4444444444444444
+            },
+            {
+              "rule": "D20/55",
+              "observations": 696,
+              "stateMatch": 0.9195402298850575,
+              "actualEvents": 9,
+              "proxyEvents": 9,
+              "matchedEvents": 5,
+              "eventMatch": 0.5555555555555556
+            },
+            {
+              "rule": "D55/55",
+              "observations": 696,
+              "stateMatch": 0.9798850574712644,
+              "actualEvents": 7,
+              "proxyEvents": 7,
+              "matchedEvents": 5,
+              "eventMatch": 0.7142857142857143
+            },
+            {
+              "rule": "MA20",
+              "observations": 696,
+              "stateMatch": 0.9396551724137931,
+              "actualEvents": 62,
+              "proxyEvents": 68,
+              "matchedEvents": 48,
+              "eventMatch": 0.7058823529411765
+            },
+            {
+              "rule": "MA50",
+              "observations": 696,
+              "stateMatch": 0.9554597701149425,
+              "actualEvents": 26,
+              "proxyEvents": 44,
+              "matchedEvents": 20,
+              "eventMatch": 0.45454545454545453
+            },
+            {
+              "rule": "ATR3/55",
+              "observations": 696,
+              "stateMatch": 0.882183908045977,
+              "actualEvents": 15,
+              "proxyEvents": 21,
+              "matchedEvents": 9,
+              "eventMatch": 0.42857142857142855
+            }
+          ]
+        },
+        {
+          "shift": 2,
+          "futureDataUsed": true,
+          "futureLinks": 750,
+          "alignedLevels": 750,
+          "metrics": {
+            "daily": {
+              "observations": 749,
+              "correlation": 0.1824134741812645,
+              "beta": 0.14627897626912612,
+              "trackingErrorAnnual": 0.2824584270314626,
+              "directionMatch": 0.4939919893190921,
+              "intervals95": {
+                "correlation": {
+                  "low": 0.11224245213642971,
+                  "high": 0.25077420553824753,
+                  "method": "Fisher z"
+                },
+                "beta": {
+                  "low": 0.08973682662473836,
+                  "high": 0.20282112591351387,
+                  "method": "OLS normal approximation"
+                },
+                "trackingErrorAnnual": {
+                  "low": 0.26814496102723673,
+                  "high": 0.2967718930356885,
+                  "method": "normal approximation for standard deviation"
+                },
+                "directionMatch": {
+                  "low": 0.4583082702040824,
+                  "high": 0.5297370237860478,
+                  "method": "Wilson score"
+                }
+              }
+            },
+            "weekly": {
+              "observations": 162,
+              "correlation": 0.8417455034877537,
+              "beta": 0.5951788568654086,
+              "trackingErrorAnnual": 0.15440777095157338,
+              "directionMatch": 0.7469135802469136,
+              "intervals95": {
+                "correlation": {
+                  "low": 0.7900986494956956,
+                  "high": 0.8815255418757222,
+                  "method": "Fisher z"
+                },
+                "beta": {
+                  "low": 0.5360287398342297,
+                  "high": 0.6543289738965875,
+                  "method": "OLS normal approximation"
+                },
+                "trackingErrorAnnual": {
+                  "low": 0.13754234597726048,
+                  "high": 0.17127319592588627,
+                  "method": "normal approximation for standard deviation"
+                },
+                "directionMatch": {
+                  "low": 0.6747745723861668,
+                  "high": 0.8076134412364707,
+                  "method": "Wilson score"
+                }
+              }
+            },
+            "monthly": {
+              "observations": 37,
+              "correlation": 0.8819525412224826,
+              "beta": 0.622508242382471,
+              "trackingErrorAnnual": 0.14078427708903812,
+              "directionMatch": 0.8378378378378378,
+              "intervals95": {
+                "correlation": {
+                  "low": 0.7811648070268851,
+                  "high": 0.937938415234467,
+                  "method": "Fisher z"
+                },
+                "beta": {
+                  "low": 0.5122897175264229,
+                  "high": 0.7327267672385191,
+                  "method": "OLS normal approximation"
+                },
+                "trackingErrorAnnual": {
+                  "low": 0.1082647681977639,
+                  "high": 0.17330378598031235,
+                  "method": "normal approximation for standard deviation"
+                },
+                "directionMatch": {
+                  "low": 0.6886320070454415,
+                  "high": 0.923488967647029,
+                  "method": "Wilson score"
+                }
+              }
+            }
+          },
+          "signals": [
+            {
+              "rule": "D10/20",
+              "observations": 695,
+              "stateMatch": 0.8705035971223022,
+              "actualEvents": 18,
+              "proxyEvents": 16,
+              "matchedEvents": 8,
+              "eventMatch": 0.4444444444444444
+            },
+            {
+              "rule": "D20/55",
+              "observations": 695,
+              "stateMatch": 0.9151079136690647,
+              "actualEvents": 9,
+              "proxyEvents": 9,
+              "matchedEvents": 5,
+              "eventMatch": 0.5555555555555556
+            },
+            {
+              "rule": "D55/55",
+              "observations": 695,
+              "stateMatch": 0.9841726618705036,
+              "actualEvents": 7,
+              "proxyEvents": 7,
+              "matchedEvents": 6,
+              "eventMatch": 0.8571428571428571
+            },
+            {
+              "rule": "MA20",
+              "observations": 695,
+              "stateMatch": 0.9122302158273381,
+              "actualEvents": 62,
+              "proxyEvents": 66,
+              "matchedEvents": 48,
+              "eventMatch": 0.7272727272727273
+            },
+            {
+              "rule": "MA50",
+              "observations": 695,
+              "stateMatch": 0.9597122302158273,
+              "actualEvents": 26,
+              "proxyEvents": 40,
+              "matchedEvents": 22,
+              "eventMatch": 0.55
+            },
+            {
+              "rule": "ATR3/55",
+              "observations": 695,
+              "stateMatch": 0.8762589928057554,
+              "actualEvents": 15,
+              "proxyEvents": 21,
+              "matchedEvents": 10,
+              "eventMatch": 0.47619047619047616
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "assetId": "385560",
+      "actualSymbol": "385560.KS",
+      "proxySymbol": "385560.KS",
+      "baselineDefinition": "same KRX session",
+      "bestEligibleDailyShift": 0,
+      "bestObservedDailyShift": 0,
+      "bestObservedUsesFutureData": false,
+      "lags": [
+        {
+          "shift": -2,
+          "futureDataUsed": false,
+          "futureLinks": 0,
+          "alignedLevels": 751,
+          "metrics": {
+            "daily": {
+              "observations": 750,
+              "correlation": 0.01764805924287902,
+              "beta": 0.017684149679427934,
+              "trackingErrorAnnual": 0.20920270256170048,
+              "directionMatch": 0.49466666666666664,
+              "intervals95": {
+                "correlation": {
+                  "low": -0.054010148378879026,
+                  "high": 0.08912542594048925,
+                  "method": "Fisher z"
+                },
+                "beta": {
+                  "low": -0.05411591900096283,
+                  "high": 0.0894842183598187,
+                  "method": "OLS normal approximation"
+                },
+                "trackingErrorAnnual": {
+                  "low": 0.19860851993287446,
+                  "high": 0.2197968851905265,
+                  "method": "normal approximation for standard deviation"
+                },
+                "directionMatch": {
+                  "low": 0.45900262135248515,
+                  "high": 0.5303850696425462,
+                  "method": "Wilson score"
+                }
+              }
+            },
+            "weekly": {
+              "observations": 162,
+              "correlation": 0.6492965222887371,
+              "beta": 0.6783132482352023,
+              "trackingErrorAnnual": 0.12590285170526552,
+              "directionMatch": 0.7345679012345679,
+              "intervals95": {
+                "correlation": {
+                  "low": 0.5501827896236186,
+                  "high": 0.7303698565861354,
+                  "method": "Fisher z"
+                },
+                "beta": {
+                  "low": 0.5552005894532933,
+                  "high": 0.8014259070171114,
+                  "method": "OLS normal approximation"
+                },
+                "trackingErrorAnnual": {
+                  "low": 0.11215092013860131,
+                  "high": 0.13965478327192973,
+                  "method": "normal approximation for standard deviation"
+                },
+                "directionMatch": {
+                  "low": 0.6617099404322806,
+                  "high": 0.7965586725092251,
+                  "method": "Wilson score"
+                }
+              }
+            },
+            "monthly": {
+              "observations": 37,
+              "correlation": 0.9148765904484774,
+              "beta": 1.0089712925537626,
+              "trackingErrorAnnual": 0.06768337773890555,
+              "directionMatch": 0.7837837837837838,
+              "intervals95": {
+                "correlation": {
+                  "low": 0.8398063082866093,
+                  "high": 0.9556159722629486,
+                  "method": "Fisher z"
+                },
+                "beta": {
+                  "low": 0.8614572910136011,
+                  "high": 1.156485294093924,
+                  "method": "OLS normal approximation"
+                },
+                "trackingErrorAnnual": {
+                  "low": 0.052049315117127244,
+                  "high": 0.08331744036068386,
+                  "method": "normal approximation for standard deviation"
+                },
+                "directionMatch": {
+                  "low": 0.628045387261231,
+                  "high": 0.8861362314804442,
+                  "method": "Wilson score"
+                }
+              }
+            }
+          },
+          "signals": [
+            {
+              "rule": "D10/20",
+              "observations": 696,
+              "stateMatch": 0.9454022988505747,
+              "actualEvents": 19,
+              "proxyEvents": 19,
+              "matchedEvents": 19,
+              "eventMatch": 1
+            },
+            {
+              "rule": "D20/55",
+              "observations": 696,
+              "stateMatch": 0.9798850574712644,
+              "actualEvents": 7,
+              "proxyEvents": 7,
+              "matchedEvents": 7,
+              "eventMatch": 1
+            },
+            {
+              "rule": "D55/55",
+              "observations": 696,
+              "stateMatch": 0.985632183908046,
+              "actualEvents": 5,
+              "proxyEvents": 5,
+              "matchedEvents": 5,
+              "eventMatch": 1
+            },
+            {
+              "rule": "MA20",
+              "observations": 696,
+              "stateMatch": 0.8074712643678161,
+              "actualEvents": 96,
+              "proxyEvents": 95,
+              "matchedEvents": 95,
+              "eventMatch": 0.9895833333333334
+            },
+            {
+              "rule": "MA50",
+              "observations": 696,
+              "stateMatch": 0.9022988505747126,
+              "actualEvents": 42,
+              "proxyEvents": 41,
+              "matchedEvents": 41,
+              "eventMatch": 0.9761904761904762
+            },
+            {
+              "rule": "ATR3/55",
+              "observations": 696,
+              "stateMatch": 0.9741379310344828,
+              "actualEvents": 9,
+              "proxyEvents": 9,
+              "matchedEvents": 9,
+              "eventMatch": 1
+            }
+          ]
+        },
+        {
+          "shift": -1,
+          "futureDataUsed": false,
+          "futureLinks": 0,
+          "alignedLevels": 751,
+          "metrics": {
+            "daily": {
+              "observations": 750,
+              "correlation": -0.020010317452318186,
+              "beta": -0.020041599471588272,
+              "trackingErrorAnnual": 0.21322603552735186,
+              "directionMatch": 0.5306666666666666,
+              "intervals95": {
+                "correlation": {
+                  "low": -0.09146925417010937,
+                  "high": 0.05165364826533843,
+                  "method": "Fisher z"
+                },
+                "beta": {
+                  "low": -0.09180395846399995,
+                  "high": 0.0517207595208234,
+                  "method": "OLS normal approximation"
+                },
+                "trackingErrorAnnual": {
+                  "low": 0.2024281082829317,
+                  "high": 0.22402396277177203,
+                  "method": "normal approximation for standard deviation"
+                },
+                "directionMatch": {
+                  "low": 0.4948839995025795,
+                  "high": 0.5661367772759903,
+                  "method": "Wilson score"
+                }
+              }
+            },
+            "weekly": {
+              "observations": 162,
+              "correlation": 0.8204739621305439,
+              "beta": 0.8459553337310004,
+              "trackingErrorAnnual": 0.0906683124161374,
+              "directionMatch": 0.8024691358024691,
+              "intervals95": {
+                "correlation": {
+                  "low": 0.7627792225071441,
+                  "high": 0.8652096501376735,
+                  "method": "Fisher z"
+                },
+                "beta": {
+                  "low": 0.7546208730376887,
+                  "high": 0.9372897944243122,
+                  "method": "OLS normal approximation"
+                },
+                "trackingErrorAnnual": {
+                  "low": 0.08076492730036161,
+                  "high": 0.1005716975319132,
+                  "method": "normal approximation for standard deviation"
+                },
+                "directionMatch": {
+                  "low": 0.7344633497576664,
+                  "high": 0.8564619669300647,
+                  "method": "Wilson score"
+                }
+              }
+            },
+            "monthly": {
+              "observations": 37,
+              "correlation": 0.9555782272750577,
+              "beta": 0.9395706368326999,
+              "trackingErrorAnnual": 0.050463431646780826,
+              "directionMatch": 0.8918918918918919,
+              "intervals95": {
+                "correlation": {
+                  "low": 0.9148057092404548,
+                  "high": 0.9770713779398522,
+                  "method": "Fisher z"
+                },
+                "beta": {
+                  "low": 0.8435596842114097,
+                  "high": 1.0355815894539901,
+                  "method": "OLS normal approximation"
+                },
+                "trackingErrorAnnual": {
+                  "low": 0.03880697363844919,
+                  "high": 0.06211988965511246,
+                  "method": "normal approximation for standard deviation"
+                },
+                "directionMatch": {
+                  "low": 0.7529115358483284,
+                  "high": 0.9571487947949374,
+                  "method": "Wilson score"
+                }
+              }
+            }
+          },
+          "signals": [
+            {
+              "rule": "D10/20",
+              "observations": 696,
+              "stateMatch": 0.9727011494252874,
+              "actualEvents": 19,
+              "proxyEvents": 19,
+              "matchedEvents": 19,
+              "eventMatch": 1
+            },
+            {
+              "rule": "D20/55",
+              "observations": 696,
+              "stateMatch": 0.9899425287356322,
+              "actualEvents": 7,
+              "proxyEvents": 7,
+              "matchedEvents": 7,
+              "eventMatch": 1
+            },
+            {
+              "rule": "D55/55",
+              "observations": 696,
+              "stateMatch": 0.992816091954023,
+              "actualEvents": 5,
+              "proxyEvents": 5,
+              "matchedEvents": 5,
+              "eventMatch": 1
+            },
+            {
+              "rule": "MA20",
+              "observations": 696,
+              "stateMatch": 0.8620689655172413,
+              "actualEvents": 96,
+              "proxyEvents": 96,
+              "matchedEvents": 96,
+              "eventMatch": 1
+            },
+            {
+              "rule": "MA50",
+              "observations": 696,
+              "stateMatch": 0.9396551724137931,
+              "actualEvents": 42,
+              "proxyEvents": 42,
+              "matchedEvents": 42,
+              "eventMatch": 1
+            },
+            {
+              "rule": "ATR3/55",
+              "observations": 696,
+              "stateMatch": 0.9870689655172413,
+              "actualEvents": 9,
+              "proxyEvents": 9,
+              "matchedEvents": 9,
+              "eventMatch": 1
+            }
+          ]
+        },
+        {
+          "shift": 0,
+          "futureDataUsed": false,
+          "futureLinks": 0,
+          "alignedLevels": 751,
+          "metrics": {
+            "daily": {
+              "observations": 750,
+              "correlation": 1,
+              "beta": 1,
+              "trackingErrorAnnual": 0,
+              "directionMatch": 1,
+              "intervals95": {
+                "correlation": {
+                  "low": 1,
+                  "high": 1,
+                  "method": "exact boundary"
+                },
+                "beta": {
+                  "low": 1,
+                  "high": 1,
+                  "method": "OLS normal approximation"
+                },
+                "trackingErrorAnnual": {
+                  "low": 0,
+                  "high": 0,
+                  "method": "normal approximation for standard deviation"
+                },
+                "directionMatch": {
+                  "low": 0.9949039692158141,
+                  "high": 1,
+                  "method": "Wilson score"
+                }
+              }
+            },
+            "weekly": {
+              "observations": 162,
+              "correlation": 1,
+              "beta": 1,
+              "trackingErrorAnnual": 0,
+              "directionMatch": 1,
+              "intervals95": {
+                "correlation": {
+                  "low": 1,
+                  "high": 1,
+                  "method": "exact boundary"
+                },
+                "beta": {
+                  "low": 1,
+                  "high": 1,
+                  "method": "OLS normal approximation"
+                },
+                "trackingErrorAnnual": {
+                  "low": 0,
+                  "high": 0,
+                  "method": "normal approximation for standard deviation"
+                },
+                "directionMatch": {
+                  "low": 0.976835727585841,
+                  "high": 1,
+                  "method": "Wilson score"
+                }
+              }
+            },
+            "monthly": {
+              "observations": 37,
+              "correlation": 1,
+              "beta": 1,
+              "trackingErrorAnnual": 0,
+              "directionMatch": 1,
+              "intervals95": {
+                "correlation": {
+                  "low": 1,
+                  "high": 1,
+                  "method": "exact boundary"
+                },
+                "beta": {
+                  "low": 1,
+                  "high": 1,
+                  "method": "OLS normal approximation"
+                },
+                "trackingErrorAnnual": {
+                  "low": 0,
+                  "high": 0,
+                  "method": "normal approximation for standard deviation"
+                },
+                "directionMatch": {
+                  "low": 0.9059390425448564,
+                  "high": 1.0000000000000002,
+                  "method": "Wilson score"
+                }
+              }
+            }
+          },
+          "signals": [
+            {
+              "rule": "D10/20",
+              "observations": 696,
+              "stateMatch": 1,
+              "actualEvents": 19,
+              "proxyEvents": 19,
+              "matchedEvents": 19,
+              "eventMatch": 1
+            },
+            {
+              "rule": "D20/55",
+              "observations": 696,
+              "stateMatch": 1,
+              "actualEvents": 7,
+              "proxyEvents": 7,
+              "matchedEvents": 7,
+              "eventMatch": 1
+            },
+            {
+              "rule": "D55/55",
+              "observations": 696,
+              "stateMatch": 1,
+              "actualEvents": 5,
+              "proxyEvents": 5,
+              "matchedEvents": 5,
+              "eventMatch": 1
+            },
+            {
+              "rule": "MA20",
+              "observations": 696,
+              "stateMatch": 1,
+              "actualEvents": 96,
+              "proxyEvents": 96,
+              "matchedEvents": 96,
+              "eventMatch": 1
+            },
+            {
+              "rule": "MA50",
+              "observations": 696,
+              "stateMatch": 1,
+              "actualEvents": 42,
+              "proxyEvents": 42,
+              "matchedEvents": 42,
+              "eventMatch": 1
+            },
+            {
+              "rule": "ATR3/55",
+              "observations": 696,
+              "stateMatch": 1,
+              "actualEvents": 9,
+              "proxyEvents": 9,
+              "matchedEvents": 9,
+              "eventMatch": 1
+            }
+          ]
+        },
+        {
+          "shift": 1,
+          "futureDataUsed": true,
+          "futureLinks": 751,
+          "alignedLevels": 751,
+          "metrics": {
+            "daily": {
+              "observations": 750,
+              "correlation": -0.018961799181767852,
+              "beta": -0.018978337553332923,
+              "trackingErrorAnnual": 0.2131898924299605,
+              "directionMatch": 0.5306666666666666,
+              "intervals95": {
+                "correlation": {
+                  "low": -0.09042901399164291,
+                  "high": 0.05269970923910636,
+                  "method": "Fisher z"
+                },
+                "beta": {
+                  "low": -0.09069264474141431,
+                  "high": 0.05273596963474847,
+                  "method": "OLS normal approximation"
+                },
+                "trackingErrorAnnual": {
+                  "low": 0.2023937954992497,
+                  "high": 0.2239859893606713,
+                  "method": "normal approximation for standard deviation"
+                },
+                "directionMatch": {
+                  "low": 0.4948839995025795,
+                  "high": 0.5661367772759903,
+                  "method": "Wilson score"
+                }
+              }
+            },
+            "weekly": {
+              "observations": 162,
+              "correlation": 0.767589074472906,
+              "beta": 0.7618142173204426,
+              "trackingErrorAnnual": 0.1050177885993747,
+              "directionMatch": 0.7839506172839507,
+              "intervals95": {
+                "correlation": {
+                  "low": 0.6957391309798823,
+                  "high": 0.8242306479077087,
+                  "method": "Fisher z"
+                },
+                "beta": {
+                  "low": 0.663246365150137,
+                  "high": 0.8603820694907482,
+                  "method": "OLS normal approximation"
+                },
+                "trackingErrorAnnual": {
+                  "low": 0.09354705999759665,
+                  "high": 0.11648851720115276,
+                  "method": "normal approximation for standard deviation"
+                },
+                "directionMatch": {
+                  "low": 0.7143918100904871,
+                  "high": 0.8403544055755461,
+                  "method": "Wilson score"
+                }
+              }
+            },
+            "monthly": {
+              "observations": 37,
+              "correlation": 0.851789282985087,
+              "beta": 0.8559298322667168,
+              "trackingErrorAnnual": 0.09103701710756805,
+              "directionMatch": 0.8648648648648649,
+              "intervals95": {
+                "correlation": {
+                  "low": 0.7289574724811088,
+                  "high": 0.9214837286007888,
+                  "method": "Fisher z"
+                },
+                "beta": {
+                  "low": 0.6815229461088402,
+                  "high": 1.0303367184245933,
+                  "method": "OLS normal approximation"
+                },
+                "trackingErrorAnnual": {
+                  "low": 0.07000853900988739,
+                  "high": 0.11206549520524871,
+                  "method": "normal approximation for standard deviation"
+                },
+                "directionMatch": {
+                  "low": 0.7202227252929444,
+                  "high": 0.9408679273749238,
+                  "method": "Wilson score"
+                }
+              }
+            }
+          },
+          "signals": [
+            {
+              "rule": "D10/20",
+              "observations": 696,
+              "stateMatch": 0.9727011494252874,
+              "actualEvents": 19,
+              "proxyEvents": 19,
+              "matchedEvents": 19,
+              "eventMatch": 1
+            },
+            {
+              "rule": "D20/55",
+              "observations": 696,
+              "stateMatch": 0.9899425287356322,
+              "actualEvents": 7,
+              "proxyEvents": 7,
+              "matchedEvents": 7,
+              "eventMatch": 1
+            },
+            {
+              "rule": "D55/55",
+              "observations": 696,
+              "stateMatch": 0.992816091954023,
+              "actualEvents": 5,
+              "proxyEvents": 5,
+              "matchedEvents": 5,
+              "eventMatch": 1
+            },
+            {
+              "rule": "MA20",
+              "observations": 696,
+              "stateMatch": 0.8620689655172413,
+              "actualEvents": 96,
+              "proxyEvents": 96,
+              "matchedEvents": 96,
+              "eventMatch": 1
+            },
+            {
+              "rule": "MA50",
+              "observations": 696,
+              "stateMatch": 0.9396551724137931,
+              "actualEvents": 42,
+              "proxyEvents": 42,
+              "matchedEvents": 42,
+              "eventMatch": 1
+            },
+            {
+              "rule": "ATR3/55",
+              "observations": 696,
+              "stateMatch": 0.9870689655172413,
+              "actualEvents": 9,
+              "proxyEvents": 9,
+              "matchedEvents": 9,
+              "eventMatch": 1
+            }
+          ]
+        },
+        {
+          "shift": 2,
+          "futureDataUsed": true,
+          "futureLinks": 750,
+          "alignedLevels": 750,
+          "metrics": {
+            "daily": {
+              "observations": 749,
+              "correlation": 0.019157516929974177,
+              "beta": 0.01913571787208446,
+              "trackingErrorAnnual": 0.2090208434841228,
+              "directionMatch": 0.4953271028037383,
+              "intervals95": {
+                "correlation": {
+                  "low": -0.052552378214753614,
+                  "high": 0.09067085225067333,
+                  "method": "Fisher z"
+                },
+                "beta": {
+                  "low": -0.05248218533580351,
+                  "high": 0.09075362107997242,
+                  "method": "OLS normal approximation"
+                },
+                "trackingErrorAnnual": {
+                  "low": 0.1984287971825573,
+                  "high": 0.21961288978568833,
+                  "method": "normal approximation for standard deviation"
+                },
+                "directionMatch": {
+                  "low": 0.4596355573482595,
+                  "high": 0.5310663379773973,
+                  "method": "Wilson score"
+                }
+              }
+            },
+            "weekly": {
+              "observations": 162,
+              "correlation": 0.5461671398065877,
+              "beta": 0.5759985485821848,
+              "trackingErrorAnnual": 0.14257814529276788,
+              "directionMatch": 0.6851851851851852,
+              "intervals95": {
+                "correlation": {
+                  "low": 0.4280155113765021,
+                  "high": 0.6459636119638252,
+                  "method": "Fisher z"
+                },
+                "beta": {
+                  "low": 0.4391096936903891,
+                  "high": 0.7128874034739805,
+                  "method": "OLS normal approximation"
+                },
+                "trackingErrorAnnual": {
+                  "low": 0.1270048292763996,
+                  "high": 0.15815146130913615,
+                  "method": "normal approximation for standard deviation"
+                },
+                "directionMatch": {
+                  "low": 0.6100782454939574,
+                  "high": 0.751712764723021,
+                  "method": "Wilson score"
+                }
+              }
+            },
+            "monthly": {
+              "observations": 37,
+              "correlation": 0.8311705066623543,
+              "beta": 0.8284011877156968,
+              "trackingErrorAnnual": 0.09764345180659767,
+              "directionMatch": 0.8378378378378378,
+              "intervals95": {
+                "correlation": {
+                  "low": 0.6940736380109153,
+                  "high": 0.9100899446523482,
+                  "method": "Fisher z"
+                },
+                "beta": {
+                  "low": 0.6448060442860345,
+                  "high": 1.011996331145359,
+                  "method": "OLS normal approximation"
+                },
+                "trackingErrorAnnual": {
+                  "low": 0.0750889651490347,
+                  "high": 0.12019793846416064,
+                  "method": "normal approximation for standard deviation"
+                },
+                "directionMatch": {
+                  "low": 0.6886320070454415,
+                  "high": 0.923488967647029,
+                  "method": "Wilson score"
+                }
+              }
+            }
+          },
+          "signals": [
+            {
+              "rule": "D10/20",
+              "observations": 695,
+              "stateMatch": 0.9453237410071943,
+              "actualEvents": 19,
+              "proxyEvents": 19,
+              "matchedEvents": 19,
+              "eventMatch": 1
+            },
+            {
+              "rule": "D20/55",
+              "observations": 695,
+              "stateMatch": 0.9798561151079137,
+              "actualEvents": 7,
+              "proxyEvents": 7,
+              "matchedEvents": 7,
+              "eventMatch": 1
+            },
+            {
+              "rule": "D55/55",
+              "observations": 695,
+              "stateMatch": 0.9856115107913669,
+              "actualEvents": 5,
+              "proxyEvents": 5,
+              "matchedEvents": 5,
+              "eventMatch": 1
+            },
+            {
+              "rule": "MA20",
+              "observations": 695,
+              "stateMatch": 0.8071942446043165,
+              "actualEvents": 96,
+              "proxyEvents": 96,
+              "matchedEvents": 81,
+              "eventMatch": 0.84375
+            },
+            {
+              "rule": "MA50",
+              "observations": 695,
+              "stateMatch": 0.902158273381295,
+              "actualEvents": 42,
+              "proxyEvents": 42,
+              "matchedEvents": 38,
+              "eventMatch": 0.9047619047619048
+            },
+            {
+              "rule": "ATR3/55",
+              "observations": 695,
+              "stateMatch": 0.9741007194244604,
+              "actualEvents": 9,
+              "proxyEvents": 9,
+              "matchedEvents": 9,
+              "eventMatch": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "assetId": "464470",
+      "actualSymbol": "464470.KS",
+      "proxySymbol": "TLT",
+      "baselineDefinition": "latest completed foreign session strictly before the KRX calendar date",
+      "bestEligibleDailyShift": 0,
+      "bestObservedDailyShift": 0,
+      "bestObservedUsesFutureData": false,
+      "lags": [
+        {
+          "shift": -2,
+          "futureDataUsed": false,
+          "futureLinks": 0,
+          "alignedLevels": 751,
+          "metrics": {
+            "daily": {
+              "observations": 750,
+              "correlation": -0.0017334009611950358,
+              "beta": -0.0015619308231822767,
+              "trackingErrorAnnual": 0.22325137598424785,
+              "directionMatch": 0.49866666666666665,
+              "intervals95": {
+                "correlation": {
+                  "low": -0.07331427299324136,
+                  "high": 0.06986523880674825,
+                  "method": "Fisher z"
+                },
+                "beta": {
+                  "low": -0.06613737205165093,
+                  "high": 0.06301351040528638,
+                  "method": "OLS normal approximation"
+                },
+                "trackingErrorAnnual": {
+                  "low": 0.21194575793843765,
+                  "high": 0.23455699403005806,
+                  "method": "normal approximation for standard deviation"
+                },
+                "directionMatch": {
+                  "low": 0.46298034323370274,
+                  "high": 0.534366579515055,
+                  "method": "Wilson score"
+                }
+              }
+            },
+            "weekly": {
+              "observations": 162,
+              "correlation": 0.4487783888891416,
+              "beta": 0.42462315551296254,
+              "trackingErrorAnnual": 0.1432534652162186,
+              "directionMatch": 0.6358024691358025,
+              "intervals95": {
+                "correlation": {
+                  "low": 0.31648088717406514,
+                  "high": 0.563950767059111,
+                  "method": "Fisher z"
+                },
+                "beta": {
+                  "low": 0.293604868830861,
+                  "high": 0.5556414421950641,
+                  "method": "OLS normal approximation"
+                },
+                "trackingErrorAnnual": {
+                  "low": 0.12760638634819832,
+                  "high": 0.15890054408423887,
+                  "method": "normal approximation for standard deviation"
+                },
+                "directionMatch": {
+                  "low": 0.5593507610389694,
+                  "high": 0.7059626464534814,
+                  "method": "Wilson score"
+                }
+              }
+            },
+            "monthly": {
+              "observations": 37,
+              "correlation": 0.8890472818248276,
+              "beta": 0.9815372003897014,
+              "trackingErrorAnnual": 0.06777538574017536,
+              "directionMatch": 0.8918918918918919,
+              "intervals95": {
+                "correlation": {
+                  "low": 0.7936527985888241,
+                  "high": 0.941772469464839,
+                  "method": "Fisher z"
+                },
+                "beta": {
+                  "low": 0.8140836569352883,
+                  "high": 1.1489907438441145,
+                  "method": "OLS normal approximation"
+                },
+                "trackingErrorAnnual": {
+                  "low": 0.05212007035440076,
+                  "high": 0.08343070112594995,
+                  "method": "normal approximation for standard deviation"
+                },
+                "directionMatch": {
+                  "low": 0.7529115358483284,
+                  "high": 0.9571487947949374,
+                  "method": "Wilson score"
+                }
+              }
+            }
+          },
+          "signals": [
+            {
+              "rule": "D10/20",
+              "observations": 696,
+              "stateMatch": 0.8247126436781609,
+              "actualEvents": 22,
+              "proxyEvents": 30,
+              "matchedEvents": 13,
+              "eventMatch": 0.43333333333333335
+            },
+            {
+              "rule": "D20/55",
+              "observations": 696,
+              "stateMatch": 0.8433908045977011,
+              "actualEvents": 13,
+              "proxyEvents": 11,
+              "matchedEvents": 2,
+              "eventMatch": 0.15384615384615385
+            },
+            {
+              "rule": "D55/55",
+              "observations": 696,
+              "stateMatch": 0.8045977011494253,
+              "actualEvents": 7,
+              "proxyEvents": 9,
+              "matchedEvents": 2,
+              "eventMatch": 0.2222222222222222
+            },
+            {
+              "rule": "MA20",
+              "observations": 696,
+              "stateMatch": 0.7744252873563219,
+              "actualEvents": 93,
+              "proxyEvents": 105,
+              "matchedEvents": 52,
+              "eventMatch": 0.49523809523809526
+            },
+            {
+              "rule": "MA50",
+              "observations": 696,
+              "stateMatch": 0.8548850574712644,
+              "actualEvents": 56,
+              "proxyEvents": 68,
+              "matchedEvents": 23,
+              "eventMatch": 0.3382352941176471
+            },
+            {
+              "rule": "ATR3/55",
+              "observations": 696,
+              "stateMatch": 0.867816091954023,
+              "actualEvents": 17,
+              "proxyEvents": 19,
+              "matchedEvents": 5,
+              "eventMatch": 0.2631578947368421
+            }
+          ]
+        },
+        {
+          "shift": -1,
+          "futureDataUsed": false,
+          "futureLinks": 0,
+          "alignedLevels": 751,
+          "metrics": {
+            "daily": {
+              "observations": 750,
+              "correlation": 0.043542025835293874,
+              "beta": 0.03881479884194421,
+              "trackingErrorAnnual": 0.21948758990904055,
+              "directionMatch": 0.49066666666666664,
+              "intervals95": {
+                "correlation": {
+                  "low": -0.028135647729416985,
+                  "high": 0.11477422470154545,
+                  "method": "Fisher z"
+                },
+                "beta": {
+                  "low": -0.025008889621689324,
+                  "high": 0.10263848730557776,
+                  "method": "OLS normal approximation"
+                },
+                "trackingErrorAnnual": {
+                  "low": 0.208372572828554,
+                  "high": 0.2306026069895271,
+                  "method": "normal approximation for standard deviation"
+                },
+                "directionMatch": {
+                  "low": 0.45502717261986825,
+                  "high": 0.5264012866214365,
+                  "method": "Wilson score"
+                }
+              }
+            },
+            "weekly": {
+              "observations": 162,
+              "correlation": 0.6682267772652546,
+              "beta": 0.6003096669859477,
+              "trackingErrorAnnual": 0.11488184412381024,
+              "directionMatch": 0.7592592592592593,
+              "intervals95": {
+                "correlation": {
+                  "low": 0.5730781599527078,
+                  "high": 0.7455989559177498,
+                  "method": "Fisher z"
+                },
+                "beta": {
+                  "low": 0.49674878227075536,
+                  "high": 0.70387055170114,
+                  "method": "OLS normal approximation"
+                },
+                "trackingErrorAnnual": {
+                  "low": 0.1023336989686775,
+                  "high": 0.12742998927894297,
+                  "method": "normal approximation for standard deviation"
+                },
+                "directionMatch": {
+                  "low": 0.6879074006850818,
+                  "high": 0.8186000136186877,
+                  "method": "Wilson score"
+                }
+              }
+            },
+            "monthly": {
+              "observations": 37,
+              "correlation": 0.9378663632205916,
+              "beta": 0.9645556530886505,
+              "trackingErrorAnnual": 0.05158802446418296,
+              "directionMatch": 0.918918918918919,
+              "intervals95": {
+                "correlation": {
+                  "low": 0.8818194547130168,
+                  "high": 0.9677881108038431,
+                  "method": "Fisher z"
+                },
+                "beta": {
+                  "low": 0.8463240225016825,
+                  "high": 1.0827872836756185,
+                  "method": "OLS normal approximation"
+                },
+                "trackingErrorAnnual": {
+                  "low": 0.039671798768146804,
+                  "high": 0.06350425016021911,
+                  "method": "normal approximation for standard deviation"
+                },
+                "directionMatch": {
+                  "low": 0.7869900750149847,
+                  "high": 0.9720399336036787,
+                  "method": "Wilson score"
+                }
+              }
+            }
+          },
+          "signals": [
+            {
+              "rule": "D10/20",
+              "observations": 696,
+              "stateMatch": 0.8232758620689655,
+              "actualEvents": 22,
+              "proxyEvents": 26,
+              "matchedEvents": 14,
+              "eventMatch": 0.5384615384615384
+            },
+            {
+              "rule": "D20/55",
+              "observations": 696,
+              "stateMatch": 0.8448275862068966,
+              "actualEvents": 13,
+              "proxyEvents": 11,
+              "matchedEvents": 4,
+              "eventMatch": 0.3076923076923077
+            },
+            {
+              "rule": "D55/55",
+              "observations": 696,
+              "stateMatch": 0.8103448275862069,
+              "actualEvents": 7,
+              "proxyEvents": 9,
+              "matchedEvents": 3,
+              "eventMatch": 0.3333333333333333
+            },
+            {
+              "rule": "MA20",
+              "observations": 696,
+              "stateMatch": 0.8362068965517241,
+              "actualEvents": 93,
+              "proxyEvents": 107,
+              "matchedEvents": 65,
+              "eventMatch": 0.6074766355140186
+            },
+            {
+              "rule": "MA50",
+              "observations": 696,
+              "stateMatch": 0.882183908045977,
+              "actualEvents": 56,
+              "proxyEvents": 72,
+              "matchedEvents": 34,
+              "eventMatch": 0.4722222222222222
+            },
+            {
+              "rule": "ATR3/55",
+              "observations": 696,
+              "stateMatch": 0.875,
+              "actualEvents": 17,
+              "proxyEvents": 19,
+              "matchedEvents": 8,
+              "eventMatch": 0.42105263157894735
+            }
+          ]
+        },
+        {
+          "shift": 0,
+          "futureDataUsed": false,
+          "futureLinks": 0,
+          "alignedLevels": 751,
+          "metrics": {
+            "daily": {
+              "observations": 750,
+              "correlation": 0.5506465993294485,
+              "beta": 0.48745056824189664,
+              "trackingErrorAnnual": 0.15168983410980227,
+              "directionMatch": 0.6826666666666666,
+              "intervals95": {
+                "correlation": {
+                  "low": 0.4987164163012309,
+                  "high": 0.5986378039693079,
+                  "method": "Fisher z"
+                },
+                "beta": {
+                  "low": 0.43449479377765776,
+                  "high": 0.5404063427061355,
+                  "method": "OLS normal approximation"
+                },
+                "trackingErrorAnnual": {
+                  "low": 0.14400814651295296,
+                  "high": 0.1593715217066516,
+                  "method": "normal approximation for standard deviation"
+                },
+                "directionMatch": {
+                  "low": 0.648496742403141,
+                  "high": 0.7149748410170363,
+                  "method": "Wilson score"
+                }
+              }
+            },
+            "weekly": {
+              "observations": 162,
+              "correlation": 0.8511827435748136,
+              "beta": 0.7791033325630314,
+              "trackingErrorAnnual": 0.07656107105068438,
+              "directionMatch": 0.8271604938271605,
+              "intervals95": {
+                "correlation": {
+                  "low": 0.802285132439769,
+                  "high": 0.8887338800623025,
+                  "method": "Fisher z"
+                },
+                "beta": {
+                  "low": 0.7046610595948577,
+                  "high": 0.8535456055312052,
+                  "method": "OLS normal approximation"
+                },
+                "trackingErrorAnnual": {
+                  "low": 0.06819857095240031,
+                  "high": 0.08492357114896845,
+                  "method": "normal approximation for standard deviation"
+                },
+                "directionMatch": {
+                  "low": 0.7615377974199277,
+                  "high": 0.8776263206300671,
+                  "method": "Wilson score"
+                }
+              }
+            },
+            "monthly": {
+              "observations": 37,
+              "correlation": 0.9676928480358657,
+              "beta": 0.9989330615216105,
+              "trackingErrorAnnual": 0.03730127752437908,
+              "directionMatch": 0.918918918918919,
+              "intervals95": {
+                "correlation": {
+                  "low": 0.9376854127416971,
+                  "high": 0.9833742611402451,
+                  "method": "Fisher z"
+                },
+                "beta": {
+                  "low": 0.9127049458167027,
+                  "high": 1.0851611772265184,
+                  "method": "OLS normal approximation"
+                },
+                "trackingErrorAnnual": {
+                  "low": 0.028685122004805212,
+                  "high": 0.04591743304395295,
+                  "method": "normal approximation for standard deviation"
+                },
+                "directionMatch": {
+                  "low": 0.7869900750149847,
+                  "high": 0.9720399336036787,
+                  "method": "Wilson score"
+                }
+              }
+            }
+          },
+          "signals": [
+            {
+              "rule": "D10/20",
+              "observations": 696,
+              "stateMatch": 0.8448275862068966,
+              "actualEvents": 22,
+              "proxyEvents": 28,
+              "matchedEvents": 16,
+              "eventMatch": 0.5714285714285714
+            },
+            {
+              "rule": "D20/55",
+              "observations": 696,
+              "stateMatch": 0.8275862068965517,
+              "actualEvents": 13,
+              "proxyEvents": 13,
+              "matchedEvents": 6,
+              "eventMatch": 0.46153846153846156
+            },
+            {
+              "rule": "D55/55",
+              "observations": 696,
+              "stateMatch": 0.8017241379310345,
+              "actualEvents": 7,
+              "proxyEvents": 9,
+              "matchedEvents": 2,
+              "eventMatch": 0.2222222222222222
+            },
+            {
+              "rule": "MA20",
+              "observations": 696,
+              "stateMatch": 0.889367816091954,
+              "actualEvents": 93,
+              "proxyEvents": 105,
+              "matchedEvents": 75,
+              "eventMatch": 0.7142857142857143
+            },
+            {
+              "rule": "MA50",
+              "observations": 696,
+              "stateMatch": 0.9137931034482759,
+              "actualEvents": 56,
+              "proxyEvents": 70,
+              "matchedEvents": 38,
+              "eventMatch": 0.5428571428571428
+            },
+            {
+              "rule": "ATR3/55",
+              "observations": 696,
+              "stateMatch": 0.8692528735632183,
+              "actualEvents": 17,
+              "proxyEvents": 19,
+              "matchedEvents": 8,
+              "eventMatch": 0.42105263157894735
+            }
+          ]
+        },
+        {
+          "shift": 1,
+          "futureDataUsed": true,
+          "futureLinks": 751,
+          "alignedLevels": 751,
+          "metrics": {
+            "daily": {
+              "observations": 750,
+              "correlation": 0.14013144413040474,
+              "beta": 0.12579753330349175,
+              "trackingErrorAnnual": 0.20736720862166633,
+              "directionMatch": 0.5266666666666666,
+              "intervals95": {
+                "correlation": {
+                  "low": 0.06923605069479946,
+                  "high": 0.20961851981210583,
+                  "method": "Fisher z"
+                },
+                "beta": {
+                  "low": 0.06209814004460586,
+                  "high": 0.18949692656237765,
+                  "method": "OLS normal approximation"
+                },
+                "trackingErrorAnnual": {
+                  "low": 0.19686597679020915,
+                  "high": 0.2178684404531235,
+                  "method": "normal approximation for standard deviation"
+                },
+                "directionMatch": {
+                  "low": 0.49088806892312514,
+                  "high": 0.5621734761017182,
+                  "method": "Wilson score"
+                }
+              }
+            },
+            "weekly": {
+              "observations": 162,
+              "correlation": 0.7935305946868373,
+              "beta": 0.7304690567868077,
+              "trackingErrorAnnual": 0.0894978251982641,
+              "directionMatch": 0.7839506172839507,
+              "intervals95": {
+                "correlation": {
+                  "low": 0.7284685023890897,
+                  "high": 0.8444064062339908,
+                  "method": "Fisher z"
+                },
+                "beta": {
+                  "low": 0.6436697061565814,
+                  "high": 0.8172684074170341,
+                  "method": "OLS normal approximation"
+                },
+                "trackingErrorAnnual": {
+                  "low": 0.07972228833931358,
+                  "high": 0.09927336205721463,
+                  "method": "normal approximation for standard deviation"
+                },
+                "directionMatch": {
+                  "low": 0.7143918100904871,
+                  "high": 0.8403544055755461,
+                  "method": "Wilson score"
+                }
+              }
+            },
+            "monthly": {
+              "observations": 37,
+              "correlation": 0.9501572438460457,
+              "beta": 0.9356913554166922,
+              "trackingErrorAnnual": 0.04712503032379146,
+              "directionMatch": 0.8378378378378378,
+              "intervals95": {
+                "correlation": {
+                  "low": 0.9046516751260846,
+                  "high": 0.9742387457241508,
+                  "method": "Fisher z"
+                },
+                "beta": {
+                  "low": 0.8339740088089813,
+                  "high": 1.0374087020244032,
+                  "method": "OLS normal approximation"
+                },
+                "trackingErrorAnnual": {
+                  "low": 0.03623970367863708,
+                  "high": 0.05801035696894583,
+                  "method": "normal approximation for standard deviation"
+                },
+                "directionMatch": {
+                  "low": 0.6886320070454415,
+                  "high": 0.923488967647029,
+                  "method": "Wilson score"
+                }
+              }
+            }
+          },
+          "signals": [
+            {
+              "rule": "D10/20",
+              "observations": 696,
+              "stateMatch": 0.8620689655172413,
+              "actualEvents": 22,
+              "proxyEvents": 26,
+              "matchedEvents": 15,
+              "eventMatch": 0.5769230769230769
+            },
+            {
+              "rule": "D20/55",
+              "observations": 696,
+              "stateMatch": 0.8390804597701149,
+              "actualEvents": 13,
+              "proxyEvents": 11,
+              "matchedEvents": 6,
+              "eventMatch": 0.46153846153846156
+            },
+            {
+              "rule": "D55/55",
+              "observations": 696,
+              "stateMatch": 0.8017241379310345,
+              "actualEvents": 7,
+              "proxyEvents": 9,
+              "matchedEvents": 4,
+              "eventMatch": 0.4444444444444444
+            },
+            {
+              "rule": "MA20",
+              "observations": 696,
+              "stateMatch": 0.8635057471264368,
+              "actualEvents": 93,
+              "proxyEvents": 103,
+              "matchedEvents": 75,
+              "eventMatch": 0.7281553398058253
+            },
+            {
+              "rule": "MA50",
+              "observations": 696,
+              "stateMatch": 0.9109195402298851,
+              "actualEvents": 56,
+              "proxyEvents": 70,
+              "matchedEvents": 37,
+              "eventMatch": 0.5285714285714286
+            },
+            {
+              "rule": "ATR3/55",
+              "observations": 696,
+              "stateMatch": 0.8764367816091954,
+              "actualEvents": 17,
+              "proxyEvents": 21,
+              "matchedEvents": 8,
+              "eventMatch": 0.38095238095238093
+            }
+          ]
+        },
+        {
+          "shift": 2,
+          "futureDataUsed": true,
+          "futureLinks": 750,
+          "alignedLevels": 750,
+          "metrics": {
+            "daily": {
+              "observations": 749,
+              "correlation": 0.1835028393619152,
+              "beta": 0.16523488127044347,
+              "trackingErrorAnnual": 0.2018818812692226,
+              "directionMatch": 0.5246995994659546,
+              "intervals95": {
+                "correlation": {
+                  "low": 0.11335520463275772,
+                  "high": 0.25183011961033097,
+                  "method": "Fisher z"
+                },
+                "beta": {
+                  "low": 0.10175783554285996,
+                  "high": 0.228711926998027,
+                  "method": "OLS normal approximation"
+                },
+                "trackingErrorAnnual": {
+                  "low": 0.1916515989767622,
+                  "high": 0.212112163561683,
+                  "method": "normal approximation for standard deviation"
+                },
+                "directionMatch": {
+                  "low": 0.48890000379155607,
+                  "high": 0.5602471209156863,
+                  "method": "Wilson score"
+                }
+              }
+            },
+            "weekly": {
+              "observations": 162,
+              "correlation": 0.6768503174580257,
+              "beta": 0.6476669309751102,
+              "trackingErrorAnnual": 0.10885891929558232,
+              "directionMatch": 0.7345679012345679,
+              "intervals95": {
+                "correlation": {
+                  "low": 0.5835574572492288,
+                  "high": 0.752509771448107,
+                  "method": "Fisher z"
+                },
+                "beta": {
+                  "low": 0.5385218464030004,
+                  "high": 0.75681201554722,
+                  "method": "OLS normal approximation"
+                },
+                "trackingErrorAnnual": {
+                  "low": 0.09696863731786869,
+                  "high": 0.12074920127329596,
+                  "method": "normal approximation for standard deviation"
+                },
+                "directionMatch": {
+                  "low": 0.6617099404322806,
+                  "high": 0.7965586725092251,
+                  "method": "Wilson score"
+                }
+              }
+            },
+            "monthly": {
+              "observations": 37,
+              "correlation": 0.855554677175739,
+              "beta": 0.8999511027749079,
+              "trackingErrorAnnual": 0.07769576841530976,
+              "directionMatch": 0.7837837837837838,
+              "intervals95": {
+                "correlation": {
+                  "low": 0.7353975858312479,
+                  "high": 0.9235515860135867,
+                  "method": "Fisher z"
+                },
+                "beta": {
+                  "low": 0.7195322932762767,
+                  "high": 1.080369912273539,
+                  "method": "OLS normal approximation"
+                },
+                "trackingErrorAnnual": {
+                  "low": 0.05974896154142782,
+                  "high": 0.09564257528919169,
+                  "method": "normal approximation for standard deviation"
+                },
+                "directionMatch": {
+                  "low": 0.628045387261231,
+                  "high": 0.8861362314804442,
+                  "method": "Wilson score"
+                }
+              }
+            }
+          },
+          "signals": [
+            {
+              "rule": "D10/20",
+              "observations": 695,
+              "stateMatch": 0.8071942446043165,
+              "actualEvents": 22,
+              "proxyEvents": 28,
+              "matchedEvents": 15,
+              "eventMatch": 0.5357142857142857
+            },
+            {
+              "rule": "D20/55",
+              "observations": 695,
+              "stateMatch": 0.7323741007194244,
+              "actualEvents": 13,
+              "proxyEvents": 9,
+              "matchedEvents": 5,
+              "eventMatch": 0.38461538461538464
+            },
+            {
+              "rule": "D55/55",
+              "observations": 695,
+              "stateMatch": 0.7985611510791367,
+              "actualEvents": 7,
+              "proxyEvents": 9,
+              "matchedEvents": 4,
+              "eventMatch": 0.4444444444444444
+            },
+            {
+              "rule": "MA20",
+              "observations": 695,
+              "stateMatch": 0.8302158273381295,
+              "actualEvents": 93,
+              "proxyEvents": 103,
+              "matchedEvents": 66,
+              "eventMatch": 0.6407766990291263
+            },
+            {
+              "rule": "MA50",
+              "observations": 695,
+              "stateMatch": 0.8820143884892087,
+              "actualEvents": 56,
+              "proxyEvents": 69,
+              "matchedEvents": 33,
+              "eventMatch": 0.4782608695652174
+            },
+            {
+              "rule": "ATR3/55",
+              "observations": 695,
+              "stateMatch": 0.8446043165467626,
+              "actualEvents": 17,
+              "proxyEvents": 21,
+              "matchedEvents": 8,
+              "eventMatch": 0.38095238095238093
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "assetId": "411060",
+      "actualSymbol": "411060.KS",
+      "proxySymbol": "M04020000",
+      "baselineDefinition": "same KRX session",
+      "bestEligibleDailyShift": 0,
+      "bestObservedDailyShift": 0,
+      "bestObservedUsesFutureData": false,
+      "lags": [
+        {
+          "shift": -2,
+          "futureDataUsed": false,
+          "futureLinks": 0,
+          "alignedLevels": 751,
+          "metrics": {
+            "daily": {
+              "observations": 750,
+              "correlation": -0.05835979269154078,
+              "beta": -0.06211612265573972,
+              "trackingErrorAnnual": 0.3553105458764473,
+              "directionMatch": 0.488,
+              "intervals95": {
+                "correlation": {
+                  "low": -0.12940909452843397,
+                  "high": 0.013285684479160611,
+                  "method": "Fisher z"
+                },
+                "beta": {
+                  "low": -0.13826351475551374,
+                  "high": 0.01403126944403428,
+                  "method": "OLS normal approximation"
+                },
+                "trackingErrorAnnual": {
+                  "low": 0.3373173518743155,
+                  "high": 0.37330373987857907,
+                  "method": "normal approximation for standard deviation"
+                },
+                "directionMatch": {
+                  "low": 0.4523781367005258,
+                  "high": 0.5237441680382947,
+                  "method": "Wilson score"
+                }
+              }
+            },
+            "weekly": {
+              "observations": 162,
+              "correlation": 0.7108091099705311,
+              "beta": 0.6575494446456297,
+              "trackingErrorAnnual": 0.19654593565282474,
+              "directionMatch": 0.7160493827160493,
+              "intervals95": {
+                "correlation": {
+                  "low": 0.6251283850213795,
+                  "high": 0.7795629540968972,
+                  "method": "Fisher z"
+                },
+                "beta": {
+                  "low": 0.5567252895930965,
+                  "high": 0.7583735996981629,
+                  "method": "OLS normal approximation"
+                },
+                "trackingErrorAnnual": {
+                  "low": 0.17507790518175168,
+                  "high": 0.2180139661238978,
+                  "method": "normal approximation for standard deviation"
+                },
+                "directionMatch": {
+                  "low": 0.6422343797720161,
+                  "high": 0.7798551321477917,
+                  "method": "Wilson score"
+                }
+              }
+            },
+            "monthly": {
+              "observations": 37,
+              "correlation": 0.8919445343261901,
+              "beta": 0.9883212996804533,
+              "trackingErrorAnnual": 0.11755124881631437,
+              "directionMatch": 0.8648648648648649,
+              "intervals95": {
+                "correlation": {
+                  "low": 0.7987756952337679,
+                  "high": 0.9433342351395816,
+                  "method": "Fisher z"
+                },
+                "beta": {
+                  "low": 0.8223397078030474,
+                  "high": 1.1543028915578593,
+                  "method": "OLS normal approximation"
+                },
+                "trackingErrorAnnual": {
+                  "low": 0.09039829565915979,
+                  "high": 0.14470420197346895,
+                  "method": "normal approximation for standard deviation"
+                },
+                "directionMatch": {
+                  "low": 0.7202227252929444,
+                  "high": 0.9408679273749238,
+                  "method": "Wilson score"
+                }
+              }
+            }
+          },
+          "signals": [
+            {
+              "rule": "D10/20",
+              "observations": 0,
+              "stateMatch": null,
+              "actualEvents": 22,
+              "proxyEvents": 0,
+              "matchedEvents": 0,
+              "eventMatch": null
+            },
+            {
+              "rule": "D20/55",
+              "observations": 0,
+              "stateMatch": null,
+              "actualEvents": 5,
+              "proxyEvents": 0,
+              "matchedEvents": 0,
+              "eventMatch": null
+            },
+            {
+              "rule": "D55/55",
+              "observations": 0,
+              "stateMatch": null,
+              "actualEvents": 1,
+              "proxyEvents": 0,
+              "matchedEvents": 0,
+              "eventMatch": null
+            },
+            {
+              "rule": "MA20",
+              "observations": 696,
+              "stateMatch": 0.8132183908045977,
+              "actualEvents": 90,
+              "proxyEvents": 84,
+              "matchedEvents": 76,
+              "eventMatch": 0.8444444444444444
+            },
+            {
+              "rule": "MA50",
+              "observations": 696,
+              "stateMatch": 0.9281609195402298,
+              "actualEvents": 34,
+              "proxyEvents": 34,
+              "matchedEvents": 26,
+              "eventMatch": 0.7647058823529411
+            },
+            {
+              "rule": "ATR3/55",
+              "observations": 0,
+              "stateMatch": null,
+              "actualEvents": 19,
+              "proxyEvents": 0,
+              "matchedEvents": 0,
+              "eventMatch": null
+            }
+          ]
+        },
+        {
+          "shift": -1,
+          "futureDataUsed": false,
+          "futureLinks": 0,
+          "alignedLevels": 751,
+          "metrics": {
+            "daily": {
+              "observations": 750,
+              "correlation": 0.09108057043189208,
+              "beta": 0.09718782633899899,
+              "trackingErrorAnnual": 0.32893506690778734,
+              "directionMatch": 0.5346666666666666,
+              "intervals95": {
+                "correlation": {
+                  "low": 0.01961852222661215,
+                  "high": 0.16161672569932786,
+                  "method": "Fisher z"
+                },
+                "beta": {
+                  "low": 0.021035617613960875,
+                  "high": 0.1733400350640371,
+                  "method": "OLS normal approximation"
+                },
+                "trackingErrorAnnual": {
+                  "low": 0.3122775470518073,
+                  "high": 0.34559258676376736,
+                  "method": "normal approximation for standard deviation"
+                },
+                "directionMatch": {
+                  "low": 0.49888221566451013,
+                  "high": 0.5700977928677862,
+                  "method": "Wilson score"
+                }
+              }
+            },
+            "weekly": {
+              "observations": 162,
+              "correlation": 0.840931315515327,
+              "beta": 0.7221471765533461,
+              "trackingErrorAnnual": 0.15590462468467647,
+              "directionMatch": 0.808641975308642,
+              "intervals95": {
+                "correlation": {
+                  "low": 0.7890491830650369,
+                  "high": 0.8809027798569221,
+                  "method": "Fisher z"
+                },
+                "beta": {
+                  "low": 0.6501405592107821,
+                  "high": 0.7941537938959102,
+                  "method": "OLS normal approximation"
+                },
+                "trackingErrorAnnual": {
+                  "low": 0.13887570357168097,
+                  "high": 0.17293354579767198,
+                  "method": "normal approximation for standard deviation"
+                },
+                "directionMatch": {
+                  "low": 0.7411969247195679,
+                  "high": 0.8617880923087292,
+                  "method": "Wilson score"
+                }
+              }
+            },
+            "monthly": {
+              "observations": 37,
+              "correlation": 0.9373432719733911,
+              "beta": 0.8675843361324477,
+              "trackingErrorAnnual": 0.09789337458404279,
+              "directionMatch": 0.918918918918919,
+              "intervals95": {
+                "correlation": {
+                  "low": 0.8808535260243852,
+                  "high": 0.967512701985883,
+                  "method": "Fisher z"
+                },
+                "beta": {
+                  "low": 0.7607472017932854,
+                  "high": 0.97442147047161,
+                  "method": "OLS normal approximation"
+                },
+                "trackingErrorAnnual": {
+                  "low": 0.07528115871018304,
+                  "high": 0.12050559045790254,
+                  "method": "normal approximation for standard deviation"
+                },
+                "directionMatch": {
+                  "low": 0.7869900750149847,
+                  "high": 0.9720399336036787,
+                  "method": "Wilson score"
+                }
+              }
+            }
+          },
+          "signals": [
+            {
+              "rule": "D10/20",
+              "observations": 0,
+              "stateMatch": null,
+              "actualEvents": 22,
+              "proxyEvents": 0,
+              "matchedEvents": 0,
+              "eventMatch": null
+            },
+            {
+              "rule": "D20/55",
+              "observations": 0,
+              "stateMatch": null,
+              "actualEvents": 5,
+              "proxyEvents": 0,
+              "matchedEvents": 0,
+              "eventMatch": null
+            },
+            {
+              "rule": "D55/55",
+              "observations": 0,
+              "stateMatch": null,
+              "actualEvents": 1,
+              "proxyEvents": 0,
+              "matchedEvents": 0,
+              "eventMatch": null
+            },
+            {
+              "rule": "MA20",
+              "observations": 696,
+              "stateMatch": 0.867816091954023,
+              "actualEvents": 90,
+              "proxyEvents": 82,
+              "matchedEvents": 79,
+              "eventMatch": 0.8777777777777778
+            },
+            {
+              "rule": "MA50",
+              "observations": 696,
+              "stateMatch": 0.9482758620689655,
+              "actualEvents": 34,
+              "proxyEvents": 34,
+              "matchedEvents": 28,
+              "eventMatch": 0.8235294117647058
+            },
+            {
+              "rule": "ATR3/55",
+              "observations": 0,
+              "stateMatch": null,
+              "actualEvents": 19,
+              "proxyEvents": 0,
+              "matchedEvents": 0,
+              "eventMatch": null
+            }
+          ]
+        },
+        {
+          "shift": 0,
+          "futureDataUsed": false,
+          "futureLinks": 0,
+          "alignedLevels": 751,
+          "metrics": {
+            "daily": {
+              "observations": 750,
+              "correlation": 0.9763019843865312,
+              "beta": 1.0408217032624145,
+              "trackingErrorAnnual": 0.05532218075497051,
+              "directionMatch": 0.9253333333333333,
+              "intervals95": {
+                "correlation": {
+                  "low": 0.9726971546613303,
+                  "high": 0.9794358253087163,
+                  "method": "Fisher z"
+                },
+                "beta": {
+                  "low": 1.0242876213843408,
+                  "high": 1.0573557851404882,
+                  "method": "OLS normal approximation"
+                },
+                "trackingErrorAnnual": {
+                  "low": 0.052520623800082586,
+                  "high": 0.05812373770985843,
+                  "method": "normal approximation for standard deviation"
+                },
+                "directionMatch": {
+                  "low": 0.9042769147421569,
+                  "high": 0.9420547284040955,
+                  "method": "Wilson score"
+                }
+              }
+            },
+            "weekly": {
+              "observations": 162,
+              "correlation": 0.9943071829975327,
+              "beta": 1.0178097889174198,
+              "trackingErrorAnnual": 0.026696318617273288,
+              "directionMatch": 0.9814814814814815,
+              "intervals95": {
+                "correlation": {
+                  "low": 0.9922395206311122,
+                  "high": 0.9958251024451751,
+                  "method": "Fisher z"
+                },
+                "beta": {
+                  "low": 1.000909202846976,
+                  "high": 1.0347103749878637,
+                  "method": "OLS normal approximation"
+                },
+                "trackingErrorAnnual": {
+                  "low": 0.02378037237988356,
+                  "high": 0.029612264854663017,
+                  "method": "normal approximation for standard deviation"
+                },
+                "directionMatch": {
+                  "low": 0.94697414199384,
+                  "high": 0.9936824845703032,
+                  "method": "Wilson score"
+                }
+              }
+            },
+            "monthly": {
+              "observations": 37,
+              "correlation": 0.997602998823688,
+              "beta": 1.001645939954622,
+              "trackingErrorAnnual": 0.017990459757564362,
+              "directionMatch": 1,
+              "intervals95": {
+                "correlation": {
+                  "low": 0.9953104127491984,
+                  "high": 0.9987755022310298,
+                  "method": "Fisher z"
+                },
+                "beta": {
+                  "low": 0.9786279576186122,
+                  "high": 1.024663922290632,
+                  "method": "OLS normal approximation"
+                },
+                "trackingErrorAnnual": {
+                  "low": 0.013834875567760127,
+                  "high": 0.022146043947368597,
+                  "method": "normal approximation for standard deviation"
+                },
+                "directionMatch": {
+                  "low": 0.9059390425448564,
+                  "high": 1.0000000000000002,
+                  "method": "Wilson score"
+                }
+              }
+            }
+          },
+          "signals": [
+            {
+              "rule": "D10/20",
+              "observations": 0,
+              "stateMatch": null,
+              "actualEvents": 22,
+              "proxyEvents": 0,
+              "matchedEvents": 0,
+              "eventMatch": null
+            },
+            {
+              "rule": "D20/55",
+              "observations": 0,
+              "stateMatch": null,
+              "actualEvents": 5,
+              "proxyEvents": 0,
+              "matchedEvents": 0,
+              "eventMatch": null
+            },
+            {
+              "rule": "D55/55",
+              "observations": 0,
+              "stateMatch": null,
+              "actualEvents": 1,
+              "proxyEvents": 0,
+              "matchedEvents": 0,
+              "eventMatch": null
+            },
+            {
+              "rule": "MA20",
+              "observations": 696,
+              "stateMatch": 0.9741379310344828,
+              "actualEvents": 90,
+              "proxyEvents": 82,
+              "matchedEvents": 80,
+              "eventMatch": 0.8888888888888888
+            },
+            {
+              "rule": "MA50",
+              "observations": 696,
+              "stateMatch": 0.985632183908046,
+              "actualEvents": 34,
+              "proxyEvents": 34,
+              "matchedEvents": 28,
+              "eventMatch": 0.8235294117647058
+            },
+            {
+              "rule": "ATR3/55",
+              "observations": 0,
+              "stateMatch": null,
+              "actualEvents": 19,
+              "proxyEvents": 0,
+              "matchedEvents": 0,
+              "eventMatch": null
+            }
+          ]
+        },
+        {
+          "shift": 1,
+          "futureDataUsed": true,
+          "futureLinks": 751,
+          "alignedLevels": 751,
+          "metrics": {
+            "daily": {
+              "observations": 750,
+              "correlation": 0.12404797781770795,
+              "beta": 0.13241915757123968,
+              "trackingErrorAnnual": 0.32286839128476247,
+              "directionMatch": 0.528,
+              "intervals95": {
+                "correlation": {
+                  "low": 0.052928040192576055,
+                  "high": 0.19391586027691105,
+                  "method": "Fisher z"
+                },
+                "beta": {
+                  "low": 0.05650915813383442,
+                  "high": 0.20832915700864493,
+                  "method": "OLS normal approximation"
+                },
+                "trackingErrorAnnual": {
+                  "low": 0.30651809245754147,
+                  "high": 0.33921869011198347,
+                  "method": "normal approximation for standard deviation"
+                },
+                "directionMatch": {
+                  "low": 0.492219792032148,
+                  "high": 0.5634948302439375,
+                  "method": "Wilson score"
+                }
+              }
+            },
+            "weekly": {
+              "observations": 162,
+              "correlation": 0.6614868657810884,
+              "beta": 0.7254241382354291,
+              "trackingErrorAnnual": 0.1955062023811835,
+              "directionMatch": 0.7716049382716049,
+              "intervals95": {
+                "correlation": {
+                  "low": 0.5649094488963421,
+                  "high": 0.7401860494701263,
+                  "method": "Fisher z"
+                },
+                "beta": {
+                  "low": 0.5979849268689469,
+                  "high": 0.8528633496019112,
+                  "method": "OLS normal approximation"
+                },
+                "trackingErrorAnnual": {
+                  "low": 0.17415173836714878,
+                  "high": 0.2168606663952182,
+                  "method": "normal approximation for standard deviation"
+                },
+                "directionMatch": {
+                  "low": 0.7011118449399807,
+                  "high": 0.8295149700449205,
+                  "method": "Wilson score"
+                }
+              }
+            },
+            "monthly": {
+              "observations": 37,
+              "correlation": 0.8638194364076601,
+              "beta": 1.0534747974582193,
+              "trackingErrorAnnual": 0.13144070069334562,
+              "directionMatch": 0.8648648648648649,
+              "intervals95": {
+                "correlation": {
+                  "low": 0.7496096728977715,
+                  "high": 0.9280765553418826,
+                  "method": "Fisher z"
+                },
+                "beta": {
+                  "low": 0.8499193592102758,
+                  "high": 1.2570302357061627,
+                  "method": "OLS normal approximation"
+                },
+                "trackingErrorAnnual": {
+                  "low": 0.10107944783718145,
+                  "high": 0.1618019535495098,
+                  "method": "normal approximation for standard deviation"
+                },
+                "directionMatch": {
+                  "low": 0.7202227252929444,
+                  "high": 0.9408679273749238,
+                  "method": "Wilson score"
+                }
+              }
+            }
+          },
+          "signals": [
+            {
+              "rule": "D10/20",
+              "observations": 0,
+              "stateMatch": null,
+              "actualEvents": 22,
+              "proxyEvents": 0,
+              "matchedEvents": 0,
+              "eventMatch": null
+            },
+            {
+              "rule": "D20/55",
+              "observations": 0,
+              "stateMatch": null,
+              "actualEvents": 5,
+              "proxyEvents": 0,
+              "matchedEvents": 0,
+              "eventMatch": null
+            },
+            {
+              "rule": "D55/55",
+              "observations": 0,
+              "stateMatch": null,
+              "actualEvents": 1,
+              "proxyEvents": 0,
+              "matchedEvents": 0,
+              "eventMatch": null
+            },
+            {
+              "rule": "MA20",
+              "observations": 696,
+              "stateMatch": 0.8793103448275862,
+              "actualEvents": 90,
+              "proxyEvents": 82,
+              "matchedEvents": 80,
+              "eventMatch": 0.8888888888888888
+            },
+            {
+              "rule": "MA50",
+              "observations": 696,
+              "stateMatch": 0.9525862068965517,
+              "actualEvents": 34,
+              "proxyEvents": 33,
+              "matchedEvents": 27,
+              "eventMatch": 0.7941176470588235
+            },
+            {
+              "rule": "ATR3/55",
+              "observations": 0,
+              "stateMatch": null,
+              "actualEvents": 19,
+              "proxyEvents": 0,
+              "matchedEvents": 0,
+              "eventMatch": null
+            }
+          ]
+        },
+        {
+          "shift": 2,
+          "futureDataUsed": true,
+          "futureLinks": 751,
+          "alignedLevels": 751,
+          "metrics": {
+            "daily": {
+              "observations": 750,
+              "correlation": -0.04830033922312149,
+              "beta": -0.05144911269579962,
+              "trackingErrorAnnual": 0.3534920444711073,
+              "directionMatch": 0.48533333333333334,
+              "intervals95": {
+                "correlation": {
+                  "low": -0.11947717856811609,
+                  "high": 0.023370441455238214,
+                  "method": "Fisher z"
+                },
+                "beta": {
+                  "low": -0.12769664649853585,
+                  "high": 0.024798421106936627,
+                  "method": "OLS normal approximation"
+                },
+                "trackingErrorAnnual": {
+                  "low": 0.3355909407515725,
+                  "high": 0.3713931481906422,
+                  "method": "normal approximation for standard deviation"
+                },
+                "directionMatch": {
+                  "low": 0.4497301117578998,
+                  "high": 0.5210860384784364,
+                  "method": "Wilson score"
+                }
+              }
+            },
+            "weekly": {
+              "observations": 162,
+              "correlation": 0.47157023158336125,
+              "beta": 0.46323407052412685,
+              "trackingErrorAnnual": 0.25652207899805624,
+              "directionMatch": 0.6666666666666666,
+              "intervals95": {
+                "correlation": {
+                  "low": 0.34225948876674683,
+                  "high": 0.58335000470696,
+                  "method": "Fisher z"
+                },
+                "beta": {
+                  "low": 0.32900878808303075,
+                  "high": 0.597459352965223,
+                  "method": "OLS normal approximation"
+                },
+                "trackingErrorAnnual": {
+                  "low": 0.2285030625267068,
+                  "high": 0.2845410954694057,
+                  "method": "normal approximation for standard deviation"
+                },
+                "directionMatch": {
+                  "low": 0.590955267824894,
+                  "high": 0.7346566413703862,
+                  "method": "Wilson score"
+                }
+              }
+            },
+            "monthly": {
+              "observations": 37,
+              "correlation": 0.8682213983451553,
+              "beta": 1.1665478473194169,
+              "trackingErrorAnnual": 0.13292742667127083,
+              "directionMatch": 0.7837837837837838,
+              "intervals95": {
+                "correlation": {
+                  "low": 0.7572225202496029,
+                  "high": 0.9304789168221157,
+                  "method": "Fisher z"
+                },
+                "beta": {
+                  "low": 0.9456808948056377,
+                  "high": 1.387414799833196,
+                  "method": "OLS normal approximation"
+                },
+                "trackingErrorAnnual": {
+                  "low": 0.10222275763499267,
+                  "high": 0.163632095707549,
+                  "method": "normal approximation for standard deviation"
+                },
+                "directionMatch": {
+                  "low": 0.628045387261231,
+                  "high": 0.8861362314804442,
+                  "method": "Wilson score"
+                }
+              }
+            }
+          },
+          "signals": [
+            {
+              "rule": "D10/20",
+              "observations": 0,
+              "stateMatch": null,
+              "actualEvents": 22,
+              "proxyEvents": 0,
+              "matchedEvents": 0,
+              "eventMatch": null
+            },
+            {
+              "rule": "D20/55",
+              "observations": 0,
+              "stateMatch": null,
+              "actualEvents": 5,
+              "proxyEvents": 0,
+              "matchedEvents": 0,
+              "eventMatch": null
+            },
+            {
+              "rule": "D55/55",
+              "observations": 0,
+              "stateMatch": null,
+              "actualEvents": 1,
+              "proxyEvents": 0,
+              "matchedEvents": 0,
+              "eventMatch": null
+            },
+            {
+              "rule": "MA20",
+              "observations": 696,
+              "stateMatch": 0.8333333333333334,
+              "actualEvents": 90,
+              "proxyEvents": 80,
+              "matchedEvents": 68,
+              "eventMatch": 0.7555555555555555
+            },
+            {
+              "rule": "MA50",
+              "observations": 696,
+              "stateMatch": 0.9295977011494253,
+              "actualEvents": 34,
+              "proxyEvents": 32,
+              "matchedEvents": 26,
+              "eventMatch": 0.7647058823529411
+            },
+            {
+              "rule": "ATR3/55",
+              "observations": 0,
+              "stateMatch": null,
+              "actualEvents": 19,
+              "proxyEvents": 0,
+              "matchedEvents": 0,
+              "eventMatch": null
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
