@@ -1,0 +1,10 @@
+{
+  "files": {
+    "ACCESS_FINDINGS.json": "2f881fdfd8b5ee2811f79bb26d818182ed63a2dc820bd3cb69d729a4a475f3bb",
+    "kodex_sp500_distributions.xls": "99aba1fcb241e3da9626d3333a4e6cf334185cf914149e3256939ab648830c69",
+    "LOCAL_DATA_AUDIT.json": "2957fdc00bd405e9cbac943e1b517231ab96e77e57411e23bb61416040b66960",
+    "plus_464470_distributions.xlsx": "9faa3ee421dace2a5046a1a6c372252f0cf75262d23210c67688403258bcf173"
+  },
+  "unchangedStopReportSha256": "f8d89d9b88d24f76a6c3a3fe9d47d80ebe178eb06a5112d71d4b22520417d597",
+  "unchangedPreregSha256": "3c68a2ee100cfff0302c3f736eb67187c4af72fdaca9d998d0e95205238632f6"
+}

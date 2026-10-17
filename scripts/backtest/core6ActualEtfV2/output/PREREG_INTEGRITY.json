@@ -1,0 +1,13 @@
+{
+  "checkedAtUtc": "2026-10-12T04:41:45.652Z",
+  "commit": "b63ee2bc107146467d744e45d5e327d7f535bc37",
+  "head": "b63ee2bc107146467d744e45d5e327d7f535bc37",
+  "path": "docs/backtest/PREREG_코어6종_실제ETF_신호로테이션_V2.md",
+  "frozenDocumentSha256": "3c68a2ee100cfff0302c3f736eb67187c4af72fdaca9d998d0e95205238632f6",
+  "currentDocumentSha256": "3c68a2ee100cfff0302c3f736eb67187c4af72fdaca9d998d0e95205238632f6",
+  "documentByteMatch": true,
+  "configSha256": "d5ec75aa0551bed0f79dbcb8f7d754ff0ecd3da676c82e543248e0a3ba5e369e",
+  "expectedConfigSha256": "d5ec75aa0551bed0f79dbcb8f7d754ff0ecd3da676c82e543248e0a3ba5e369e",
+  "configMatch": true,
+  "configDefinition": "Section 20 before Section 21, LF, trimEnd, one terminal LF, UTF-8 without BOM"
+}

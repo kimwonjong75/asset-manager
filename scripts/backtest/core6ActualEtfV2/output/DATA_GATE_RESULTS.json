@@ -1,0 +1,53 @@
+{
+  "overall": "RESEARCH_STOPPED / INCONCLUSIVE",
+  "preregistration": "PASS",
+  "dataGate": "FAIL",
+  "stopRule": "Preregistration Section 18: required official KRX OHLC cannot be acquired",
+  "stopEvidence": {
+    "provider": "KRX",
+    "role": "official OHLC acquisition access probe; not a period dataset",
+    "url": "https://data.krx.co.kr/comm/bldAttendant/getJsonData.cmd",
+    "method": "POST",
+    "query": {
+      "bld": "dbms/MDC/STAT/standard/MDCSTAT04301",
+      "locale": "ko_KR",
+      "trdDd": "20260930",
+      "share": "1",
+      "money": "1",
+      "csvxls_isNo": "false"
+    },
+    "retrievedAtUtc": "2026-10-12T04:39:47.268Z",
+    "httpStatus": 400,
+    "contentType": "text/html; charset=utf-8",
+    "responseFile": "krx-access-response.txt",
+    "responseBytes": 6,
+    "responseSha256": "377b375adcc04b5ba5998c978372401a4c6327ccc218e17e383f72861085cb95",
+    "responseMeaning": "LOGOUT; no OHLC records obtained",
+    "availableAtUtc": null,
+    "sessionCloseUtc": null,
+    "normalizedSha256": null,
+    "rowCount": null,
+    "license": {
+      "termsUrl": "https://openapi.krx.co.kr/contents/OPP/INFO/OPPINFO002.jsp",
+      "accessGuideUrl": "https://openapi.krx.co.kr/contents/OPP/INFO/OPPINFO003.jsp",
+      "status": "No approved authenticated data access established; no market data redistribution"
+    },
+    "sandboxProbe": {
+      "error": "fetch failed",
+      "cause": "EACCES",
+      "meaning": "Retried with approved network access; not treated as source failure"
+    }
+  },
+  "ohlcQualityChecks": "NOT_RUN_NO_DATA",
+  "commonPeriodGate": "NOT_EVALUATED",
+  "availabilityGate": "NOT_PROVEN",
+  "invariantGate": "NOT_RUN_DATA_GATE_FAILED",
+  "development": "NOT_RUN",
+  "selection": "NOT_CREATED",
+  "validationEventGate": "NOT_RUN",
+  "validationPerformance": "NOT_RUN",
+  "performanceFilesCreated": false,
+  "interpretation": "Data access failure is not poor strategy performance",
+  "sensitivityAndConcentration": "NOT_RUN",
+  "commitCreated": false
+}

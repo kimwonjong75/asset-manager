@@ -1,0 +1,113 @@
+{
+  "researchId": "core6-actual-etf-signal-rotation-v2",
+  "period": [
+    "2023-08-22",
+    "2026-09-30"
+  ],
+  "status": "STOPPED_AT_OFFICIAL_OHLC_ACQUISITION",
+  "attempts": [
+    {
+      "provider": "KRX",
+      "role": "official OHLC acquisition access probe; not a period dataset",
+      "url": "https://data.krx.co.kr/comm/bldAttendant/getJsonData.cmd",
+      "method": "POST",
+      "query": {
+        "bld": "dbms/MDC/STAT/standard/MDCSTAT04301",
+        "locale": "ko_KR",
+        "trdDd": "20260930",
+        "share": "1",
+        "money": "1",
+        "csvxls_isNo": "false"
+      },
+      "retrievedAtUtc": "2026-10-12T04:39:47.268Z",
+      "httpStatus": 400,
+      "contentType": "text/html; charset=utf-8",
+      "responseFile": "krx-access-response.txt",
+      "responseBytes": 6,
+      "responseSha256": "377b375adcc04b5ba5998c978372401a4c6327ccc218e17e383f72861085cb95",
+      "responseMeaning": "LOGOUT; no OHLC records obtained",
+      "availableAtUtc": null,
+      "sessionCloseUtc": null,
+      "normalizedSha256": null,
+      "rowCount": null,
+      "license": {
+        "termsUrl": "https://openapi.krx.co.kr/contents/OPP/INFO/OPPINFO002.jsp",
+        "accessGuideUrl": "https://openapi.krx.co.kr/contents/OPP/INFO/OPPINFO003.jsp",
+        "status": "No approved authenticated data access established; no market data redistribution"
+      },
+      "sandboxProbe": {
+        "error": "fetch failed",
+        "cause": "EACCES",
+        "meaning": "Retried with approved network access; not treated as source failure"
+      }
+    }
+  ],
+  "requirements": [
+    {
+      "ticker": "069500",
+      "officialOhlc": "NOT_ACQUIRED",
+      "officialDistributionSplitLedger": "NOT_ATTEMPTED_AFTER_STOP",
+      "historicalAvailability": "NOT_PROVEN",
+      "firstSession": null,
+      "lastSession": null,
+      "rows": null
+    },
+    {
+      "ticker": "379800",
+      "officialOhlc": "NOT_ACQUIRED",
+      "officialDistributionSplitLedger": "NOT_ATTEMPTED_AFTER_STOP",
+      "historicalAvailability": "NOT_PROVEN",
+      "firstSession": null,
+      "lastSession": null,
+      "rows": null
+    },
+    {
+      "ticker": "283580",
+      "officialOhlc": "NOT_ACQUIRED",
+      "officialDistributionSplitLedger": "NOT_ATTEMPTED_AFTER_STOP",
+      "historicalAvailability": "NOT_PROVEN",
+      "firstSession": null,
+      "lastSession": null,
+      "rows": null
+    },
+    {
+      "ticker": "385560",
+      "officialOhlc": "NOT_ACQUIRED",
+      "officialDistributionSplitLedger": "NOT_ATTEMPTED_AFTER_STOP",
+      "historicalAvailability": "NOT_PROVEN",
+      "firstSession": null,
+      "lastSession": null,
+      "rows": null
+    },
+    {
+      "ticker": "464470",
+      "officialOhlc": "NOT_ACQUIRED",
+      "officialDistributionSplitLedger": "NOT_ATTEMPTED_AFTER_STOP",
+      "historicalAvailability": "NOT_PROVEN",
+      "firstSession": null,
+      "lastSession": null,
+      "rows": null
+    },
+    {
+      "ticker": "411060",
+      "officialOhlc": "NOT_ACQUIRED",
+      "officialDistributionSplitLedger": "NOT_ATTEMPTED_AFTER_STOP",
+      "historicalAvailability": "NOT_PROVEN",
+      "firstSession": null,
+      "lastSession": null,
+      "rows": null
+    }
+  ],
+  "cashRate": "NOT_ATTEMPTED_AFTER_STOP",
+  "calendarAndAuxiliary": "NOT_ATTEMPTED_AFTER_STOP",
+  "apiCredentialEnvironmentPresent": false,
+  "credentialCheckScope": "Environment variable names containing KRX only; no credential values read or saved",
+  "localDiscovery": "No official V2 manifest/config found by tracked-file discovery; existing proxy data not used",
+  "sourcePagesReviewed": [
+    "https://openapi.krx.co.kr/contents/OPP/INFO/OPPINFO003.jsp",
+    "https://openapi.krx.co.kr/contents/OPP/INFO/OPPINFO002.jsp",
+    "https://openapi.krx.co.kr/contents/OPP/INFO/service/OPPINFO004.cmd",
+    "https://openapi.krx.co.kr/contents/OPP/USES/service/OPPUSES003_S2.cmd?BO_ID=nrEpCLaZpoLCTzPUMxuF"
+  ],
+  "webPageProvenance": "Reviewed through web tool; raw webpage bytes not captured, so webpage SHA-256 is null rather than invented"
+}

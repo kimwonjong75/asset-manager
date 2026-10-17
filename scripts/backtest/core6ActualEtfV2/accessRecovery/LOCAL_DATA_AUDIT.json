@@ -1,0 +1,113 @@
+{
+  "scope": "raw-data quality only; no strategy calculation",
+  "rows": [
+    {
+      "ticker": "069500",
+      "path": "scripts/backtest/core6SignalRotation/data/raw/yahoo_069500.KS.json",
+      "sha256": "3cb03906b970b5ee2b32fcb638452eb7eb0c08f3cdb2252ced8dec94508dd604",
+      "sourceUrl": "https://query1.finance.yahoo.com/v8/finance/chart/069500.KS?period1=1009843200&period2=1790812800&interval=1d&events=div%2Csplits&includeAdjustedClose=true",
+      "fetchedAtUtc": "2026-10-12T02:09:55.497Z",
+      "rows": 755,
+      "first": "2023-08-22",
+      "last": "2026-09-30",
+      "invalidDates": [
+        "2024-01-18",
+        "2024-08-27",
+        "2024-10-30",
+        "2024-11-05"
+      ],
+      "duplicates": 0,
+      "impossible": 0
+    },
+    {
+      "ticker": "379800",
+      "path": "scripts/backtest/core6SignalRotation/data/raw/yahoo_379800.KS.json",
+      "sha256": "5f07ed7a917f5f4be18557add62231dc702180f6a7af0716f44fd1cb0bc082e6",
+      "sourceUrl": "https://query1.finance.yahoo.com/v8/finance/chart/379800.KS?period1=1009843200&period2=1790812800&interval=1d&events=div%2Csplits&includeAdjustedClose=true",
+      "fetchedAtUtc": "2026-10-12T02:09:56.011Z",
+      "rows": 755,
+      "first": "2023-08-22",
+      "last": "2026-09-30",
+      "invalidDates": [
+        "2024-01-18",
+        "2024-08-27",
+        "2024-10-30",
+        "2024-11-05"
+      ],
+      "duplicates": 0,
+      "impossible": 0
+    },
+    {
+      "ticker": "283580",
+      "path": "scripts/backtest/core6SignalRotation/data/raw/yahoo_283580.KS.json",
+      "sha256": "89d53d4dbb7e84d8a1a8f3a547dc6d1f852516b3a9980d72693b2673845bb544",
+      "sourceUrl": "https://query1.finance.yahoo.com/v8/finance/chart/283580.KS?period1=1009843200&period2=1790812800&interval=1d&events=div%2Csplits&includeAdjustedClose=true",
+      "fetchedAtUtc": "2026-10-12T02:09:56.586Z",
+      "rows": 755,
+      "first": "2023-08-22",
+      "last": "2026-09-30",
+      "invalidDates": [
+        "2024-01-18",
+        "2024-08-27",
+        "2024-10-30",
+        "2024-11-05"
+      ],
+      "duplicates": 0,
+      "impossible": 0
+    },
+    {
+      "ticker": "385560",
+      "path": "scripts/backtest/core6SignalRotation/data/raw/yahoo_385560.KS.json",
+      "sha256": "202d4491b6b503552ea5b6ca75434944723e0500d2c0c2ced95c19c35d550625",
+      "sourceUrl": "https://query1.finance.yahoo.com/v8/finance/chart/385560.KS?period1=1009843200&period2=1790812800&interval=1d&events=div%2Csplits&includeAdjustedClose=true",
+      "fetchedAtUtc": "2026-10-12T02:09:57.033Z",
+      "rows": 755,
+      "first": "2023-08-22",
+      "last": "2026-09-30",
+      "invalidDates": [
+        "2024-01-18",
+        "2024-08-27",
+        "2024-10-30",
+        "2024-11-05"
+      ],
+      "duplicates": 0,
+      "impossible": 0
+    },
+    {
+      "ticker": "464470",
+      "path": "scripts/backtest/core6SignalRotation/data/raw/yahoo_464470.KS.json",
+      "sha256": "011468b1981929e4240b6326826fd29799ed8c49337cbbf4c30c57d5c03c3907",
+      "sourceUrl": "https://query1.finance.yahoo.com/v8/finance/chart/464470.KS?period1=1009843200&period2=1790812800&interval=1d&events=div%2Csplits&includeAdjustedClose=true",
+      "fetchedAtUtc": "2026-10-12T02:09:57.468Z",
+      "rows": 755,
+      "first": "2023-08-22",
+      "last": "2026-09-30",
+      "invalidDates": [
+        "2024-01-18",
+        "2024-08-27",
+        "2024-10-30",
+        "2024-11-05"
+      ],
+      "duplicates": 0,
+      "impossible": 0
+    },
+    {
+      "ticker": "411060",
+      "path": "scripts/backtest/core6SignalRotation/data/raw/yahoo_411060.KS.json",
+      "sha256": "91b0c25950c66331da1d7699624cc81eb3d1470420a34e248cf6f12f7919cfb3",
+      "sourceUrl": "https://query1.finance.yahoo.com/v8/finance/chart/411060.KS?period1=1009843200&period2=1790812800&interval=1d&events=div%2Csplits&includeAdjustedClose=true",
+      "fetchedAtUtc": "2026-10-12T02:09:58.097Z",
+      "rows": 755,
+      "first": "2023-08-22",
+      "last": "2026-09-30",
+      "invalidDates": [
+        "2024-01-18",
+        "2024-08-27",
+        "2024-10-30",
+        "2024-11-05"
+      ],
+      "duplicates": 0,
+      "impossible": 0
+    }
+  ]
+}

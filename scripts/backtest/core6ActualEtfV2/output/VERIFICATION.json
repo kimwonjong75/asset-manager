@@ -1,0 +1,18 @@
+{
+  "checkedAtUtc": "2026-10-12T04:43:14.866Z",
+  "command": "npm test",
+  "processExitCode": 0,
+  "regressionSuitesPassed": 88,
+  "regressionSuitesTotal": 88,
+  "typecheck": "PASS",
+  "eslint": "PASS_NO_NEW_VIOLATIONS",
+  "excluded": 4,
+  "exclusions": "Existing data-dependent backtests and legacy manual script; see scripts/verify.mjs",
+  "researchInvariants": "NOT_RUN_DATA_GATE_FAILED",
+  "trackedDiffFromFreeze": [],
+  "appCodeAndConfigChanged": false,
+  "newCommit": false,
+  "head": "b63ee2bc107146467d744e45d5e327d7f535bc37",
+  "gitStatus": "?? scripts/backtest/core6ActualEtfV2/",
+  "executionScope": "Repository verification only; V2 strategy performance was neither produced nor opened"
+}

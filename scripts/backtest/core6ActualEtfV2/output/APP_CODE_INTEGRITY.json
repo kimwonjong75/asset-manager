@@ -1,0 +1,1577 @@
+{
+  "checkedAtUtc": "2026-10-12T04:41:45.966Z",
+  "baselineCommit": "b63ee2bc107146467d744e45d5e327d7f535bc37",
+  "initialGitStatus": "clean",
+  "trackedDiffFromFreeze": [],
+  "appCodeAndConfigChanged": false,
+  "unchangedTrackedFiles": [
+    {
+      "path": ".claude/launch.json",
+      "sha256": "e9bb6a865c0f98386a61780aa984bae1a5a843e4d5176b16e122644dc0fc17ec"
+    },
+    {
+      "path": ".claude/rules/data-integrity.md",
+      "sha256": "ccc0154ee869a0926538b3d62bca286980edeaf664cde949f12a9bf117f63022"
+    },
+    {
+      "path": ".claude/rules/execution-model.md",
+      "sha256": "559eda2a21cb6f45758ccc4775b862f0e430ff4bfb6367662fd73a9ba9f27c10"
+    },
+    {
+      "path": ".claude/rules/ui-constraints.md",
+      "sha256": "b0ab9f014d90e49cd33573e3d0f0cecb45d8412ec0b91614cad86aae17612861"
+    },
+    {
+      "path": ".claude/settings.json",
+      "sha256": "ef750f4acf889269437ec1bd5ca6a6c483cfd1ee01b8f0b656c3719380feb697"
+    },
+    {
+      "path": ".env.example",
+      "sha256": "053e727761dbc5ddc7c7ded3d795e609d8cbd73cde251fddfb4bdbb419e8f1ee"
+    },
+    {
+      "path": ".env.local.example",
+      "sha256": "f1fe37da39263f2e7f3b99168560432a371175b0ead38a8a24897a1b9ebcae74"
+    },
+    {
+      "path": ".github/workflows/ci.yml",
+      "sha256": "6fef78559a63eb873c758184bfb0217f84a20954bde5ffe2010bdff9bfe71bca"
+    },
+    {
+      "path": ".github/workflows/deploy.yml",
+      "sha256": "fb23ebeceaccb52dbbe8f6f1f8a8de510e78e9991e4387729e75711e90647492"
+    },
+    {
+      "path": ".gitignore",
+      "sha256": "d61a304abb3c52057608b7e770008f9670c648f4ae742ec70f7cabda1c7b59a4"
+    },
+    {
+      "path": ".trae/documents/Update README.md types directory structure.md",
+      "sha256": "3ce0ffec757dde40ea50b9fc9cad1b876e7b7c28e584c8086e912ffe9ccc360a"
+    },
+    {
+      "path": ".trae/documents/대시보드 기능 개선 및 버그 수정 계획.md",
+      "sha256": "8ed11ad2ce67dd0273066fedbe011ef80cf11a34dae4ca240b802ce2e5b0a935"
+    },
+    {
+      "path": ".trae/documents/목표 총 자산(targetTotalAmount) 저장 기능 구현.md",
+      "sha256": "7320a13a6ad8135edcf0b6b84856e0315620f7b8b04148b8c8c81b4a1eb44a74"
+    },
+    {
+      "path": "AGENTS.md",
+      "sha256": "ce97547df0e9557a76eeaa5ecc36a22a0090932af74361b132b4bf8b6af83013"
+    },
+    {
+      "path": "App.tsx",
+      "sha256": "f1ed1b04fee146cf17a1583c834bf4bf86ca24f21c61f8579e2378ed58e9d4ad"
+    },
+    {
+      "path": "CHANGELOG.md",
+      "sha256": "0ea39b58943d8562bccafc6266c8daf42a5fa61193923acd552e72bd21fca65f"
+    },
+    {
+      "path": "CLAUDE.md",
+      "sha256": "dd599cc39b97dfcca49619925267af17f48043c53046c966cc9c5418d252788d"
+    },
+    {
+      "path": "PLAN_90-10_EXECUTION.md",
+      "sha256": "5cd2a76d8b249ce973f8f1b7a39087a5561433191a2fa79ace607b0ffa3aabc4"
+    },
+    {
+      "path": "README.md",
+      "sha256": "40425512a41f209196b6e5f1701d70b2ce84e67215a6759a420d0d772c2e9194"
+    },
+    {
+      "path": "RULES.md",
+      "sha256": "ed0a6f678f173665b1116968a4bc91f1b993f65278d87c2cba340b21947b798a"
+    },
+    {
+      "path": "components/AddNewAssetModal.tsx",
+      "sha256": "68db8846b1f364496daeb4c0dc5ca44ed1fa1e180a6a60ce6099f0eb35b1a62d"
+    },
+    {
+      "path": "components/AiSettingsSection.tsx",
+      "sha256": "37cd31351dc937624c9b4b27d6afe60bd473c8572237099b1aee06399ff89724"
+    },
+    {
+      "path": "components/AlertDiagnosticsPanel.tsx",
+      "sha256": "ed9ced645f48a425513f736b1d63c5e2d88c8185f83526a7bf6c48160dd3bd89"
+    },
+    {
+      "path": "components/AlertSettingsPage.tsx",
+      "sha256": "d6d484a6d51b280cc06371a4e48bbcbcc2a77c24a5ae3047ff295ac4949a131a"
+    },
+    {
+      "path": "components/AssetTrendChart.tsx",
+      "sha256": "dafc882bd50a5a528b68421a1f29e0fff323c77d9e173ae3c02750fffe61b26e"
+    },
+    {
+      "path": "components/BackupSettingsSection.tsx",
+      "sha256": "5fa099adedb639e4ac8f70be64166f725eee89d1cc351e787866a98661c52e8b"
+    },
+    {
+      "path": "components/BulkUploadModal.tsx",
+      "sha256": "f4f67c968ee880d0de13554b159f995d54a2e8c7be68b74df98464df3e7989e2"
+    },
+    {
+      "path": "components/BuyMoreAssetModal.tsx",
+      "sha256": "b35697b5f1f2bdda0c446e3bc8ee511cb125f1ade1bff1ac272ad79b16721978"
+    },
+    {
+      "path": "components/CategorySettingsSection.tsx",
+      "sha256": "386259a82adc5de673022df8c7e5f288ee665c380481d91cbf6ab3d45a8d6e0c"
+    },
+    {
+      "path": "components/DisplaySettingsSection.tsx",
+      "sha256": "077eee1ee3f7abcf30e3ee24190b575ccd24c46ee0d4c05b68c0455044873eab"
+    },
+    {
+      "path": "components/EditAssetModal.tsx",
+      "sha256": "be8ca15d9c0180dff23e9a83e78690911d3035ee74599bc06b43088be14a66fd"
+    },
+    {
+      "path": "components/EditSellRecordModal.tsx",
+      "sha256": "2dcabc79c7c06bdfba7f624d1e7624bf24f256c872a82f2ea3b872592fb9abb3"
+    },
+    {
+      "path": "components/Header.tsx",
+      "sha256": "8d0bc9e7ea55525c56a974ba426b67bb625a5db6fbc16f96c36174fc9bf96d11"
+    },
+    {
+      "path": "components/MarketDistributionBanner.tsx",
+      "sha256": "29b2bc6dfce87bb7a1c9de78b9253d11a0aaa7d6c68894e7c4cbfa247ed4edea"
+    },
+    {
+      "path": "components/PortfolioAssistant.tsx",
+      "sha256": "71b4bad7a2d6da4c75c1a6e8bb3a4ab23124572efb368c853a9b6afb7d6bf6f1"
+    },
+    {
+      "path": "components/PortfolioTable.tsx",
+      "sha256": "a0941f8d31a6f087851f34b5e01458b1d205d248686c4e92b2640a97ffb77d1f"
+    },
+    {
+      "path": "components/SellAnalyticsPage.tsx",
+      "sha256": "7185fec33b9d8e5cd761e621fa888843cdb91051caea9d04c20f0e8bd116c3b5"
+    },
+    {
+      "path": "components/SellAssetModal.tsx",
+      "sha256": "5766a6f1c3ec40939024ec82a762971d9b61ed8d158f4a624c388d76f7a750c2"
+    },
+    {
+      "path": "components/SettingsPage.tsx",
+      "sha256": "344539f0ae862b7b8827ff73dd33fc55af0fc536e113f9ca13f305008eff7dbd"
+    },
+    {
+      "path": "components/StatCard.tsx",
+      "sha256": "34b5f3714d35c76273504184e6433413346c472cba7dcab418b3cde861f00460"
+    },
+    {
+      "path": "components/WatchlistAddModal.tsx",
+      "sha256": "99d68b2886fb4aff52271c01fe33aa1aec7ca07e2da6d96ca7f6b95a3d429166"
+    },
+    {
+      "path": "components/WatchlistEditModal.tsx",
+      "sha256": "8e47226eb44e54de4d0d2bb4f5debdb08bb19246868d82153152094f8be47f24"
+    },
+    {
+      "path": "components/WatchlistPage.tsx",
+      "sha256": "6341160304f0e3e67c39217df04b07874300cf8770e4b10dc462a34c067a0e24"
+    },
+    {
+      "path": "components/cleanup/CleanupExecuteModal.tsx",
+      "sha256": "5acd5dcd17a21c024e38aac64f6eeb419dc5d3006dc954f86d34a0e2545a2a3d"
+    },
+    {
+      "path": "components/cleanup/CleanupView.tsx",
+      "sha256": "a7e5e360508a43bba54b6bc31924bd72da485244755b6f79804afb7cb685ae5e"
+    },
+    {
+      "path": "components/cleanup/TurtleCleanupView.tsx",
+      "sha256": "bf4f2b6b3e549e2b59ec8994321440a6c1fb33e3448c55400f8e2bc1e6a8d18e"
+    },
+    {
+      "path": "components/common/ActionMenu.tsx",
+      "sha256": "d3e5b69d29ecb6bb24a7442ff7be8fa5d9731af886c1d8df15774cbca8835974"
+    },
+    {
+      "path": "components/common/AlertPopup.tsx",
+      "sha256": "05cd51157e9547cfebafe669c483cef5df7966f7d45a5bcf854fe813d72c48fa"
+    },
+    {
+      "path": "components/common/Badge.tsx",
+      "sha256": "de3b559f1b3114e066b40312aa21b8b709c9471187a0810a924e0d4adffe708d"
+    },
+    {
+      "path": "components/common/BottomTabBar.tsx",
+      "sha256": "c404984a45906a63b1baf967f6926ab2a60d27a79edd3b44dc14b02849722e13"
+    },
+    {
+      "path": "components/common/Button.tsx",
+      "sha256": "98107a919f2d886ca498855f89f36393fc514278c32cad978ec9d8683cf8ee95"
+    },
+    {
+      "path": "components/common/Card.tsx",
+      "sha256": "8c7e8dfb45c3b8621b521622e6c9bc982669457a0247cc1de5d776276df32e36"
+    },
+    {
+      "path": "components/common/ChartViewerModal.tsx",
+      "sha256": "dd00630045e19a3a321ed36c85a5444066467f428935bcd1832e50e679f0c692"
+    },
+    {
+      "path": "components/common/Combobox.tsx",
+      "sha256": "a83a3cbe390354b4b1abe5f01ca872490c9fa25ee435bc055605546323b742ec"
+    },
+    {
+      "path": "components/common/ConfirmDialog.tsx",
+      "sha256": "d566c6880ee24eb5394d61f99d8c5d91088832a40e93936adb4ee854cb5b20c1"
+    },
+    {
+      "path": "components/common/CrossDaysBadge.tsx",
+      "sha256": "8f8625bb64dc5eb7ea77333e121cbc720ed7e089c9095c00851f0cdb1cd3d51b"
+    },
+    {
+      "path": "components/common/ErrorBoundary.tsx",
+      "sha256": "bc0c23eb979cffe3ef17722908bb4a2d17d01ed2608634e4976a9e2e505f90be"
+    },
+    {
+      "path": "components/common/FieldError.tsx",
+      "sha256": "ae7bebc42fd4f1d38630dc2be82ef9228c0f15e093d60463abf9488d9d9beefd"
+    },
+    {
+      "path": "components/common/ManualDrawer.tsx",
+      "sha256": "60e99c411e4836298825ee457f41aa2d7966beef6b2dc288577f4d3c5937033c"
+    },
+    {
+      "path": "components/common/ManualHelpLink.tsx",
+      "sha256": "ab67fbc9161b2e31f5ef27cf5355aaa2a30698335a51bbcd86135a668a396998"
+    },
+    {
+      "path": "components/common/ManualMarkdown.tsx",
+      "sha256": "4c876805e7bac71df4a1808523f1cf50cab2e098f8f1b69f2d94f6514b7d4f73"
+    },
+    {
+      "path": "components/common/MemoEditPopup.tsx",
+      "sha256": "5a69f667d864dd7c198a9ed290065a1e1dcf4a2febef04ce68cdba87ceaffe11"
+    },
+    {
+      "path": "components/common/MemoTooltip.tsx",
+      "sha256": "e04e4047719705285e1125aa0622e7139707cce498850d32f4a216021e5a9674"
+    },
+    {
+      "path": "components/common/Modal.tsx",
+      "sha256": "59dcb636d2b19b0838ad482c7f863ba8466febe30a1c0886653bc64e95ddcc26"
+    },
+    {
+      "path": "components/common/PassMark.tsx",
+      "sha256": "1a8c550b8eb3cb4f51429e22bbb0723f7a5de4a45e0b3a94f6dc7b80a0b62750"
+    },
+    {
+      "path": "components/common/PeriodSelector.tsx",
+      "sha256": "f345e30366e1719d83a8ff0b4a3b668e267dd4e0ab79b3aeb993bfd4f3a0f42d"
+    },
+    {
+      "path": "components/common/Popover.tsx",
+      "sha256": "1a0896bf9e62ba651eec6cfb562cde34ea3abfc16c024d68f4913a6206995414"
+    },
+    {
+      "path": "components/common/PositionSizingCalculator.tsx",
+      "sha256": "c45dd94a24a2bd5a7f3ae3bcdfb2401ba720e47f9317a18845da3a97880dd1fa"
+    },
+    {
+      "path": "components/common/RowActionMenuButton.tsx",
+      "sha256": "ad0684728f7857034d3c9f06cba382f1280907798bc0175ded1e318ecd68613e"
+    },
+    {
+      "path": "components/common/ScopeChip.tsx",
+      "sha256": "7f8ab5bd9fe750f82fc1e2d10245eb0d8953dc782a3c83089d84992872548642"
+    },
+    {
+      "path": "components/common/SectionHeader.tsx",
+      "sha256": "874a797c89036a8d34931f2b342c5299770eff477427e17d65d8d1d155ab80a9"
+    },
+    {
+      "path": "components/common/Segmented.tsx",
+      "sha256": "9dff04f515048d04ecac43481ba79fcbf3b0817e7112677774a5b7a503e88dcb"
+    },
+    {
+      "path": "components/common/SortableTh.tsx",
+      "sha256": "c8caee589207aef9c1e4ec4cd46635ce61051b6f2798e62eab618d5b58252e84"
+    },
+    {
+      "path": "components/common/Toggle.tsx",
+      "sha256": "dd0e5b8a16cb1f7e1657493650857489480108ed17a84b45ebb47ef55615f545"
+    },
+    {
+      "path": "components/common/Tooltip.tsx",
+      "sha256": "8263a25927653b7c1261a21a1ae2adfc96c9fbb5b82355c4a260a22fcdb75df0"
+    },
+    {
+      "path": "components/common/UpdateStatusIndicator.tsx",
+      "sha256": "3be69032e6a5b4c21ec41198d137ebd3ae0a8c393cad50a5a6387bd86060dac3"
+    },
+    {
+      "path": "components/common/a11yKeys.ts",
+      "sha256": "9c8641f0c367b55d059b2740aa657c988a4017fcdfdcf82328505c3e4db129d7"
+    },
+    {
+      "path": "components/dashboard/AllocationChart.tsx",
+      "sha256": "041fcae5c5813f92d3793105dbbead244f642d87dd0dde551491bf3d2838f9e8"
+    },
+    {
+      "path": "components/dashboard/CategorySummaryTable.tsx",
+      "sha256": "a3072ddf77055c0e056037d0fb699e5fb26c581b8e15a79420ef5f9b753996d1"
+    },
+    {
+      "path": "components/dashboard/DashboardControls.tsx",
+      "sha256": "616733c84b7803ad21cd9138af875d07aca2328ba59f7f3b38529a655a6e1b26"
+    },
+    {
+      "path": "components/dashboard/GuruDiagnosticsPanel.tsx",
+      "sha256": "7368d5fa085eb6f333aea081c4836ee4c6d3f61b88e011a7cc41a8dd9c9e9f1f"
+    },
+    {
+      "path": "components/dashboard/GuruSignalCard.tsx",
+      "sha256": "477ff513f7753a9b2f9fb5763c8521559cfea8c07782bf0f7d1f08cdb6183f4d"
+    },
+    {
+      "path": "components/dashboard/HomeSnapshotCard.tsx",
+      "sha256": "288d371f56dbb2b5b3f712438a9cc27b574a486a9c72ea4e75a8d4c67c50f40e"
+    },
+    {
+      "path": "components/dashboard/MarketOverviewBar.tsx",
+      "sha256": "4ca09ea0119d69d5e8542654c08d6da0db288a2f4a34cf8ff858fa95f7667eeb"
+    },
+    {
+      "path": "components/dashboard/MarketOverviewCharts.tsx",
+      "sha256": "cb50dcfa12bd17fc556c2c5958c3062e3bfcbed671618324e42a9fc39764f871"
+    },
+    {
+      "path": "components/dashboard/ProfitLossChart.tsx",
+      "sha256": "900b73a4ed2272747174033000fd9a37e94f80341ffbc85aa62ad2e226a0930b"
+    },
+    {
+      "path": "components/dashboard/RebalanceExecuteModal.tsx",
+      "sha256": "735be9a00f198c4cb90cdc427fcc9afb91ffa95e46c1053a42d28d172cfe4c71"
+    },
+    {
+      "path": "components/dashboard/RebalancingTable.tsx",
+      "sha256": "97a79c5b005d0799165127b3f8dd505f96760dc86b71a3fc6438aadc01eda3cc"
+    },
+    {
+      "path": "components/dashboard/ReferenceIndicatorsSection.tsx",
+      "sha256": "a6da497ea0a3d2254440cea2e3ab84e71d8c6ed2ded62f1364a30f8986b2175b"
+    },
+    {
+      "path": "components/dashboard/RiskCalculatorCard.tsx",
+      "sha256": "385655232326a21a4a2415dab84edd8412489f5275e71739705105e8cca19949"
+    },
+    {
+      "path": "components/dashboard/RiskMatrixPanel.tsx",
+      "sha256": "0f9dca1afa8ee48a9c1cd256691cb17d336379675c89d7fdb05dc55fa5feb2f9"
+    },
+    {
+      "path": "components/dashboard/SoldAssetsStats.tsx",
+      "sha256": "4f080bf24a373aaddfee2cebb55e8f6606bbf32c535b723cbadcaf430e12fb5e"
+    },
+    {
+      "path": "components/dashboard/TodayTurtleCard.tsx",
+      "sha256": "88712fa44997ffb5f4ce9610bf66a27c91e309e6670c4bd0e739833cec0d47eb"
+    },
+    {
+      "path": "components/dashboard/TurtleHoldingsTodayCard.tsx",
+      "sha256": "4f82dd52ef36d4ef3f4827262b6593bf560fee94aee2b40f06cfd624b11ada2a"
+    },
+    {
+      "path": "components/execution/ExecutionView.tsx",
+      "sha256": "dec6c74c798fe53d38dc113b207e98abd52c431ad14be71a664aa2bcaed58686"
+    },
+    {
+      "path": "components/execution/TurtleExecuteModal.tsx",
+      "sha256": "22c1862f65993bfadcae61a7f408d8bb3f5378d77c04540f5fc249b95c008e26"
+    },
+    {
+      "path": "components/execution/TurtleHoldingsBuyModal.tsx",
+      "sha256": "0fbf9e641c9bd0e56d41ed4f54df89c70fcad62e1f6c8a499aa4f3eb85c45ca2"
+    },
+    {
+      "path": "components/execution/TurtleSettingsPanel.tsx",
+      "sha256": "fd0c541ddadf3acbdc9ba400b6df063f59072039fcd0facb7f3c2a718bfc3d8f"
+    },
+    {
+      "path": "components/execution/WhyNoOrderPanel.tsx",
+      "sha256": "17b756ac0b1f1037ceba9439c847e2e52c3527ed04c23ff1625115d48104aab0"
+    },
+    {
+      "path": "components/knowledge/KnowledgeInboxPanel.tsx",
+      "sha256": "6e4e2ec1744ac39cf73784e7d1d4d431ff64563f8016e556828f53c9984f7f7e"
+    },
+    {
+      "path": "components/layouts/AnalyticsView.tsx",
+      "sha256": "d1a6990f77085997ab5171bff1afa9d721c0926a4086f09040041616965b2c2e"
+    },
+    {
+      "path": "components/layouts/DashboardView.tsx",
+      "sha256": "706bf384e4df06babcbe7eac200520fb3edb914b96ff4b374e316d27b2371712"
+    },
+    {
+      "path": "components/layouts/InvestmentGuideView.tsx",
+      "sha256": "4dec95f6b083ff65743dc4ce816c914a84a356c95d0765253577b53a7b6a4c5f"
+    },
+    {
+      "path": "components/layouts/ManualView.tsx",
+      "sha256": "287f06f1a7987b8015eb9bc5e2bf6500166d815671f152eb10acc9e132f358f1"
+    },
+    {
+      "path": "components/layouts/PortfolioView.tsx",
+      "sha256": "c3d4edc244fc5157dcae98697543abd3461171eb6bb54df42e5539707c28b777"
+    },
+    {
+      "path": "components/layouts/SignalReplayView.tsx",
+      "sha256": "7da2d6885f7cda458599827cf80d802ac6fd77724d63d0cfe8d25a8521e5cd72"
+    },
+    {
+      "path": "components/layouts/WatchlistView.tsx",
+      "sha256": "e42936455cc46b7bc3ef8693c8f562d45975387ffb6f0dcd20dec9e9c51b5ffb"
+    },
+    {
+      "path": "components/portfolio-table/ColumnResizeHandle.tsx",
+      "sha256": "07f3f3d1c24bc899c0f561eac0db546a76d87cc4b9bfaa7a717e3c130558bf00"
+    },
+    {
+      "path": "components/portfolio-table/ColumnSettingsDropdown.tsx",
+      "sha256": "62ca6814a1a00d84f577b920faad4f8bfe493bb39ccee3a1c4c6ec611209de55"
+    },
+    {
+      "path": "components/portfolio-table/PortfolioMobileCard.tsx",
+      "sha256": "a98a85301c6c9d18f4d30f66d73ec92b4d092df3fd937007f2d955bfab84bde8"
+    },
+    {
+      "path": "components/portfolio-table/PortfolioTableRow.tsx",
+      "sha256": "dd347bddf1e97da6b9aa60355bc091c04a623f0e2381d6e1e9f70d6be8595a17"
+    },
+    {
+      "path": "components/portfolio-table/SmartFilterPanel.tsx",
+      "sha256": "c2d96b1b5b372e949af8ddba4c564e74f67e7f07de48e2e5133d4bc04d6336b8"
+    },
+    {
+      "path": "components/portfolio-table/TurtlePositionInfo.tsx",
+      "sha256": "87f1f76e788ef6e052a553cd30f220a5759d58ab7e24813296454a139979139c"
+    },
+    {
+      "path": "components/portfolio-table/TurtleRiskGauge.tsx",
+      "sha256": "e6627209291ea8b638240f1e11cf948f2e317b8d23a4f678ec7cd34ee1228d62"
+    },
+    {
+      "path": "components/portfolio-table/columnDefinitions.tsx",
+      "sha256": "ad416388a63fca203c2a402595b3d3369382767b88d14ec02427a31b0b8ea6a5"
+    },
+    {
+      "path": "components/portfolio-table/rowMenuItems.tsx",
+      "sha256": "e8d631128e08e04e22e647c950cee02ac7662c969dd623d327e13a0b75251609"
+    },
+    {
+      "path": "components/portfolio-table/usePortfolioData.ts",
+      "sha256": "4db8603ea6b18a753a9c41216d3d2137f0c23dbe15f11f973d54907c9ea472b5"
+    },
+    {
+      "path": "components/portfolio-table/utils.ts",
+      "sha256": "525cf92afabaf521bf7da8f28d1801387d10bb3398a5342d80d2bffbf2fdbf86"
+    },
+    {
+      "path": "components/replay/ReplayCasesPanel.tsx",
+      "sha256": "67ff6fad1d8e19e5a1530791a073a216502b1cde777540ec106ec66aad724bec"
+    },
+    {
+      "path": "components/replay/ReplayMissedPanel.tsx",
+      "sha256": "bf377d49a78cb9012877e5b8c8c44b1ce3803275a47788b5dc283f208bf25255"
+    },
+    {
+      "path": "components/replay/ReplayPerformancePanel.tsx",
+      "sha256": "0c65d5c637101eee6845027891630266f98c0cd9f3637b58e67c2a125750eea9"
+    },
+    {
+      "path": "components/replay/ReplaySandboxPanel.tsx",
+      "sha256": "bd484e0ce9da13c8b29353b948dc5905a1b82f17565d92e1b88bc41c782adc1f"
+    },
+    {
+      "path": "components/replay/ReplayVerdictPanel.tsx",
+      "sha256": "9a4dc84f8bbda7b6951dec1fde9632194879a7c0ce0f2bbce373208755b40e7c"
+    },
+    {
+      "path": "components/replay/ReplayWinRatePanel.tsx",
+      "sha256": "7b2deadab16ddf0360c65c97f4e8b7d05afd50f4650bf369d03986e91f0c7e7d"
+    },
+    {
+      "path": "components/replay/SignalReplayChart.tsx",
+      "sha256": "cf71cd292aa06539d11ab53d0d9d63b0543295a2a7b0dbda862e99f87388f267"
+    },
+    {
+      "path": "components/settings/KakaoNotifySection.tsx",
+      "sha256": "9eb9933108e7f984dbe89a43dddc7fbbfbd34118e52ec9e43727d8735469f1af"
+    },
+    {
+      "path": "components/settings/KakaoSetupWizard.tsx",
+      "sha256": "e6b0ead958e55f891d29c126fc6615d06e8f3d30ff9388d88a46ecf80638d0a4"
+    },
+    {
+      "path": "components/settings/TurtleHoldingsSettingsSection.tsx",
+      "sha256": "dc9910ea3e85d78628ff4526e1c07144bc46664693367b778379f3bdcaac1dd0"
+    },
+    {
+      "path": "components/settings/TurtleSettingsSection.tsx",
+      "sha256": "a5286ba42b0af9ef8be1ee55d4031386bfef6ce6226d4b43edfe1db61233e327"
+    },
+    {
+      "path": "components/stock-review/StockReviewAccordion.tsx",
+      "sha256": "0cc31dcefc3d981bd4fef05c1c74c429067edd4c47a1ff3f6e4debba47bec5d5"
+    },
+    {
+      "path": "components/stock-review/StockReviewPanel.tsx",
+      "sha256": "8e8ede9f7df5049f9718e39de8c1e410e57b3627238228da9bb4547c1536f724"
+    },
+    {
+      "path": "components/today/NeedsCheckSection.tsx",
+      "sha256": "08793caeb5b3f52fad72b4b0eb4d50810cecb3b25eb5cd0e55cfadd5c5b06be4"
+    },
+    {
+      "path": "components/today/PendingOrdersSection.tsx",
+      "sha256": "7be431a6c2104e10d7ec6e205ae12c1be9e791e42c0e0e1da619a2cefa01afdb"
+    },
+    {
+      "path": "components/today/PlanlessHoldingsSection.tsx",
+      "sha256": "5e79d2f52fd7532f47a876414bc7ac846bd332ceced6fc42b5c033d1f84e35bc"
+    },
+    {
+      "path": "components/today/PrepareSection.tsx",
+      "sha256": "18fdaa45a1f9a041b299cf1a732636e85ce10eb6e712f418140cf6724bc22248"
+    },
+    {
+      "path": "components/today/TierRowList.tsx",
+      "sha256": "c1d82947adc7079f5ab0fd65dace08d92f3887429dd72e1183a83bfb70b9cdeb"
+    },
+    {
+      "path": "components/today/TodayActionCenter.tsx",
+      "sha256": "ee51f25aa50c600f778fc9418f23b4de3aef2365ed87c137c5fce8ea0c956317"
+    },
+    {
+      "path": "components/today/TodaySection.tsx",
+      "sha256": "93f7f02fe9bc13467ad573d67b3f28b117f1039b214632e03f16d91f2b09a13d"
+    },
+    {
+      "path": "components/today/UrgentSection.tsx",
+      "sha256": "526d0d0992d96c9849606d29107d48deb40700d201516117f9b3319ced1f8daf"
+    },
+    {
+      "path": "components/today/WatchSection.tsx",
+      "sha256": "37752a183fdcc0aaa68c4880a877b7616d0b20e77d82cd8b6809abf716da0fb4"
+    },
+    {
+      "path": "components/trade-plan/KakaoStatusChip.tsx",
+      "sha256": "8e9af5b18a5c4512b2219e9930acfc0bb7a39f179b864cfec67ef277f7b935ec"
+    },
+    {
+      "path": "components/trade-plan/TradePlanBulkWizard.tsx",
+      "sha256": "63c5783152ad39f62b594f2a3b2e22f6684a02c4fce40896f27afb78e9747f7e"
+    },
+    {
+      "path": "components/trade-plan/TradePlanCard.tsx",
+      "sha256": "656450f82030243a3e5d485e52f954e8518681d79d7ff620502443d7329e8a8e"
+    },
+    {
+      "path": "components/trade-plan/TradePlanEditor.tsx",
+      "sha256": "25a5b2eb9a849a0ffd159e85b3fcb3988083dd2524f0e120b4309df891553ff3"
+    },
+    {
+      "path": "components/trade-plan/TradePlanIntro.tsx",
+      "sha256": "744240044200ceda43a9837af946a671df5fc873272acff41ebb8252a0707c5a"
+    },
+    {
+      "path": "components/trade-plan/TradePlanPlanner.tsx",
+      "sha256": "c52fd0c2d8ae5c430ae0b05a260d86cf672a63fdce4dcb262fd8cfd719f51473"
+    },
+    {
+      "path": "components/trade-plan/TradePlanSection.tsx",
+      "sha256": "fa675e1003ff04f8f6f47b3096223806ff797c3e24e4556efa377d20fa584803"
+    },
+    {
+      "path": "components/watchlist/BuyReadinessMarks.tsx",
+      "sha256": "85fc8ab47325fd6da7619cd42aa5c91e900be12e3deb1b4524adfe0597635a74"
+    },
+    {
+      "path": "components/watchlist/WatchlistMobileCard.tsx",
+      "sha256": "3f75e204f1d6bb7c8ef2b51c95c104fa5a224cacc99350c0df189b413fe3683b"
+    },
+    {
+      "path": "components/watchlist/watchlistRowMenu.tsx",
+      "sha256": "8912b4fbc3427f2477e81e24b3291b9a67d0a0b883668aa71e0b475a8ccbf7a5"
+    },
+    {
+      "path": "config/constants.ts",
+      "sha256": "239288c11b2eb6a0b4a1817a8bb914902b4a824a213e3a02cbdcd9eecf1bb328"
+    },
+    {
+      "path": "constants/alertRules.ts",
+      "sha256": "36c53cc588d0d1dd2faf496442a79b6579140f874aeba65ca0bf7a2e45bb52e0"
+    },
+    {
+      "path": "constants/api.ts",
+      "sha256": "b282d5ba5067563d8dc9ce7ed181074cfd7a613b8902c1d52938bb92f666b7cf"
+    },
+    {
+      "path": "constants/briefingDescriptions.ts",
+      "sha256": "c21dcbd23cacce5d29fb14d67b584dae2881d7dc87498f9a54ee1a0b593d8ad7"
+    },
+    {
+      "path": "constants/columnDescriptions.ts",
+      "sha256": "76364542d9067df741eee90673030a764991bb378624a4e485d60800cb302212"
+    },
+    {
+      "path": "constants/commodityProxyMap.ts",
+      "sha256": "cc4c643d8e7079b6d06de0b758c18a74b26b32d0f9bbf8bcf9e20992d1eed698"
+    },
+    {
+      "path": "constants/knowledgeBase.legacy.ts",
+      "sha256": "3515d6eae90f7e29f02022e6fbd0117363b692f0b19dc21de8cd85b94a78d85d"
+    },
+    {
+      "path": "constants/knowledgeBase.ts",
+      "sha256": "19f97040c8b25241ad46e1ad928ac2a7e3fc60f846bd7bfb57b794b1724e9e8f"
+    },
+    {
+      "path": "constants/manualToc.ts",
+      "sha256": "b1faffb542a9943a8767aee86e0a681ecf6323c27b44f276ab41720b3978bba4"
+    },
+    {
+      "path": "constants/moreMenuVisibility.ts",
+      "sha256": "3e1cd74efbbfb5e8586e61308a004727ce197bbe8e4ff1b916a23246ae1b778e"
+    },
+    {
+      "path": "constants/smartFilterChips.ts",
+      "sha256": "792049c235cb5da3fe578295470ffd5566aabe37a17974cf90fc11d641fe5c55"
+    },
+    {
+      "path": "constants/stateColorLadders.ts",
+      "sha256": "0ace7ee77ed78d8d58979fdbe03fc416efb4afb5b10fdb858b08f48e85cd11ff"
+    },
+    {
+      "path": "constants/tabMeta.ts",
+      "sha256": "7b0803a806d8696ab2faaa4d852668567cbcb85530ef6bd29dc4eb7b777dec63"
+    },
+    {
+      "path": "constants/ui.ts",
+      "sha256": "c03bdde56e7de6886f9cf519d64dd744bd32b6d517adbe37ca2bdc4cace279ee"
+    },
+    {
+      "path": "contexts/PortfolioContext.tsx",
+      "sha256": "53bc75e933c332925717910a557d135329025c00d089ee759df022857f984bee"
+    },
+    {
+      "path": "docs/GUIDE_기능정비_투자스타일_260726.md",
+      "sha256": "7afa60a4bc50479b65dad94e125602dce0f172ccc2f45acd8e81d2a4d996fa9b"
+    },
+    {
+      "path": "docs/PLAN_앱적용_신호정비_260726.md",
+      "sha256": "9488da5d647b155437598d9c95365836963b8ce479db446b1d331d120dccfd81"
+    },
+    {
+      "path": "docs/PLAN_터틀중심_앱재정비_260925.md",
+      "sha256": "1c4301f5712b62fddff1fd01866d76657b76e870b33b85fbd6d93f5a7919f48e"
+    },
+    {
+      "path": "docs/매매계획_설계.md",
+      "sha256": "658d36c6f82051e34e0b12d7d08cbc5e3bf400baa86101c23f4481b300e0d445"
+    },
+    {
+      "path": "docs/매수신호_규칙_정리 (1).md",
+      "sha256": "2a0d6dda5f8c0f43f8528dc8fdd28ed17a66f4cb0f75cb426ca919111b060608"
+    },
+    {
+      "path": "docs/매수신호_규칙_정리.md",
+      "sha256": "796f06523eb99c018432284ab0cbd40bf1ba202dd74b11d5dec4f268df4604ed"
+    },
+    {
+      "path": "docs/백테스트_계획_진입채널비교.md",
+      "sha256": "61944483f3d99baa7d755c9406177cb5cf074cebd3c11e2d6172026c1ab62808"
+    },
+    {
+      "path": "docs/사용설명서_구루신호엔진_신호리플레이.md",
+      "sha256": "63de81156b46c575aec864d738c78767afb3488af67f1ff9959935fd5d630848"
+    },
+    {
+      "path": "docs/운용설정_따라하기_매뉴얼.md",
+      "sha256": "2adcfe5c5dbbb8e258524785174b9fc31ee4f2fee8c3afdcba1a6dfb9cc486d7"
+    },
+    {
+      "path": "docs/초보자를_위한_터틀_매매계획_종목검토_가이드.html",
+      "sha256": "48dbfa66499280e3ed918902296d19c92035377bbeae55df14395817264fe8ee"
+    },
+    {
+      "path": "docs/카카오톡_알림_설정가이드.md",
+      "sha256": "7fb6e9d81b9d9f327e43c5a5f28989077bfd392f858ac89b116a4e8327c35ef0"
+    },
+    {
+      "path": "docs/카카오톡_일일발송_설계_플레이북.md",
+      "sha256": "8a430ef6f665dce6bca37ad5bc0a7d37282d5b765de35ac1157402d98d26ee2e"
+    },
+    {
+      "path": "docs/코덱스_터틀트레이딩_토론정리.md",
+      "sha256": "da0d039d2bc2e7efdba112eab1391cf7d0f2b2b80eeedcddd771aa8c8082c360"
+    },
+    {
+      "path": "docs/터틀_사용설명서.md",
+      "sha256": "17fae5c0233e75513c197c1e39f5aef3a6b86b39353d1345d907951324a1132e"
+    },
+    {
+      "path": "docs/터틀_사이징_불타기_기준_260925.md",
+      "sha256": "5dceae5a84b969a7e6f99c394dae34c1a989f827fd3246d016ca3f5151fd970f"
+    },
+    {
+      "path": "docs/터틀_심층조사_앱적용안_260925.md",
+      "sha256": "b5e98adffddadae37e7eed603381272a5753cc366e894c1e05ba901d1fa7c0c7"
+    },
+    {
+      "path": "docs/터틀_청산기준_최신조사_260925.md",
+      "sha256": "8019ed11600649ca2bb22a851f57d05c480569f3185251c0b84e590403947e00"
+    },
+    {
+      "path": "docs/터틀트레이딩_학습매뉴얼.md",
+      "sha256": "4b578965b8817a2d7c48d76712aa296c612603f57dd1252bfa207e1055a2c24e"
+    },
+    {
+      "path": "docs/투자운용_루틴_매뉴얼.md",
+      "sha256": "247979bd39e9c38c2bcbebce65a97afbf9d4613aeb580c4b1481e46c0900b0e7"
+    },
+    {
+      "path": "eslint-suppressions.json",
+      "sha256": "eb9ba6c86b89d90076588c64c4994da1dc2692b63ddb089e4327ebc502ec714f"
+    },
+    {
+      "path": "eslint.config.js",
+      "sha256": "b5c54d65e0168d346e89c4697e384bf3b8256d0603bef1d9964f307199b741cd"
+    },
+    {
+      "path": "hooks/turtleMarketSnapshot.ts",
+      "sha256": "9b0dd1adf5e40332741e4781ddffac0a5436b6daed4aa8ffbf590988d4e54515"
+    },
+    {
+      "path": "hooks/useActionQueue.ts",
+      "sha256": "1ce23eed188a916882683cf635c42a056bff4e6a667ad94ab6e4711dc17ba065"
+    },
+    {
+      "path": "hooks/useAlertDiagnostics.ts",
+      "sha256": "5b6a1b34ce4cd3be8b7650ea9b458ddcc78c42e27f54dce380fdc93fd10167b7"
+    },
+    {
+      "path": "hooks/useAssetActions.ts",
+      "sha256": "e1f7ddadcfd2ae14ca4c32894a60c89d53dca4b67732d4b096e6c192d338ac83"
+    },
+    {
+      "path": "hooks/useAutoAlert.ts",
+      "sha256": "2261060a02075d62138233c4b3c0da3fdbe3daae78c64eb7c55b097f2ab4e513"
+    },
+    {
+      "path": "hooks/useBackup.ts",
+      "sha256": "5bf273b22b69158812c0137c5f7c749a1ca4bd39492310289a1ada32288538a9"
+    },
+    {
+      "path": "hooks/useColumnResize.ts",
+      "sha256": "2f8280b2d6f44f21c92800a93a0c773608a5dec3762fff964d5cfb5b1b496b50"
+    },
+    {
+      "path": "hooks/useConfirm.ts",
+      "sha256": "d08d391a25b7bb291be12c5bd9d1db4f09b5e2cbe302e7bb74c0180a544d46ed"
+    },
+    {
+      "path": "hooks/useEnrichedIndicators.ts",
+      "sha256": "3adab2459a50dd57174865cc7422ce13093ae443ff14fd743f7833ac99873691"
+    },
+    {
+      "path": "hooks/useFontScale.ts",
+      "sha256": "33bce35c31e20ba0a3b89e27415405a2925c0c0e464d2338710153b1f15f6992"
+    },
+    {
+      "path": "hooks/useGlobalPeriodDays.ts",
+      "sha256": "a69021d237c2417cf0626e1d36c0ebe445ec8853f0f66fd65c5040ff1c41781b"
+    },
+    {
+      "path": "hooks/useGoogleDriveSync.ts",
+      "sha256": "151d6ac9af96abc374dad319026ace4c2ebf0039945449ed9935474822bc4516"
+    },
+    {
+      "path": "hooks/useGuruDiagnostics.ts",
+      "sha256": "4c2debfb7b480b7b1064fe5d87558ca79769ff30d7f9c7144c46e8b335d6bdb6"
+    },
+    {
+      "path": "hooks/useHistoricalPriceData.ts",
+      "sha256": "04e1bab50327a3bd203c0db8f476b9227d1296c10b299a5ba1c4c9e04e3c1509"
+    },
+    {
+      "path": "hooks/useKakaoNotify.ts",
+      "sha256": "81c60dc8d6ec401eaecd486b4e52ed03939af9e7da01c542b975a6c6c1c13986"
+    },
+    {
+      "path": "hooks/useKnowledgeInbox.ts",
+      "sha256": "54ad56a523c0338bb56b38e299b9d319055a818d33afe7a6521e0e8905095a62"
+    },
+    {
+      "path": "hooks/useMarketData.ts",
+      "sha256": "3080ac50b29558d35754fe99f1358d9f091e092c734897d06172354350545e6f"
+    },
+    {
+      "path": "hooks/useMarketDistributionDays.ts",
+      "sha256": "33b4b2e42b9ed848936bf0bff521e5bd007f8addbf901a296deab74330a02073"
+    },
+    {
+      "path": "hooks/useMarketOverview.ts",
+      "sha256": "9a131d74d58b07a0110a1490865660a9a18c017f5e18da56171e3acc8459fd52"
+    },
+    {
+      "path": "hooks/useMarketOverviewHistory.ts",
+      "sha256": "a0db8a28bbdbbd21730c2123f747c67659e3e84ca2f75034df139ea895570b0c"
+    },
+    {
+      "path": "hooks/usePortfolioCalculator.ts",
+      "sha256": "10f87d442cdb0a4854f6b96f7b85227235cb29810321fd92dc8e5fd4f393fc4f"
+    },
+    {
+      "path": "hooks/usePortfolioData.ts",
+      "sha256": "367d006cd3db50dccefa0b6f439b751bc6a73a95cbc4b9da6136dda416e87dbc"
+    },
+    {
+      "path": "hooks/usePortfolioExport.ts",
+      "sha256": "7c7d099868cbc1bc12cd7d354b062b0d6074d077c3373af8c9f7de7bb465a323"
+    },
+    {
+      "path": "hooks/usePortfolioHistory.ts",
+      "sha256": "457ae549d7bc2ecab942b826694b61bbecfadcf0452a9d0c9972c4f83a2e7c75"
+    },
+    {
+      "path": "hooks/usePortfolioStats.ts",
+      "sha256": "47e5373721a84a16348387a66248058b5ef723d8505475925a3c3dcf9e265197"
+    },
+    {
+      "path": "hooks/usePriceFreshnessRefresh.ts",
+      "sha256": "dae34ac0230cac941d470ca8b8ff4da93fb4cb5e72440a0cf30b857c90279e3f"
+    },
+    {
+      "path": "hooks/useRebalancing.ts",
+      "sha256": "4cec8239244d1782c9d7b1842a9730f00b7cc741522f64d84c7d4d0c1a091992"
+    },
+    {
+      "path": "hooks/useResolvedManual.ts",
+      "sha256": "5fddca26231051a67498547faf23c88da1a9a397dc3cd12886151d61b8a7ef4d"
+    },
+    {
+      "path": "hooks/useSignalReplay.ts",
+      "sha256": "94dce648b19f5ec9af9bd1b38d917df2d61d140ee342034b89e7db5e069d533b"
+    },
+    {
+      "path": "hooks/useStockReview.ts",
+      "sha256": "747b9cc0fa38194e6e0e7ec21802030e88d1d82908d9d900ff03b914a5792d3b"
+    },
+    {
+      "path": "hooks/useSymbolListPrefetch.ts",
+      "sha256": "90ba140d6c332fa5397eaf7c1132f2355c770d494b30039eb7785a46d122df78"
+    },
+    {
+      "path": "hooks/useTodayTurtle.ts",
+      "sha256": "608237a52fce9922e6fef3de870213f8f0a9b1ca8f1dc074cc0395303f621911"
+    },
+    {
+      "path": "hooks/useTradePlanPlanner.ts",
+      "sha256": "48362fa8016f07212e63982d41175298ddf30b792460f6d3a8ea54a0e8585bd0"
+    },
+    {
+      "path": "hooks/useTradePlanSignals.ts",
+      "sha256": "07a305e866218444725394319d371eb188fe396d3fdab9f01e835cfaa5e3115b"
+    },
+    {
+      "path": "hooks/useTurtleActionReview.ts",
+      "sha256": "a7ec50dd7d35f6e97a7e97898c082c52f6fb58f6969d1e9c208a49504e0d576c"
+    },
+    {
+      "path": "hooks/useTurtleHoldings.ts",
+      "sha256": "86dca45cc463c009fb6e615946c275dbc4f15f24a14118736e0526fb87f02b4b"
+    },
+    {
+      "path": "hooks/useWatchlistBuyReadiness.ts",
+      "sha256": "44d461ebeec3abab57a4c467995ed9c6bb63610153a8b0f89d5576a4f3482513"
+    },
+    {
+      "path": "index.css",
+      "sha256": "80cdb6c81566f4baffe77188e44f1761a08d7a7c4834b632880d7cd18fd40f3b"
+    },
+    {
+      "path": "index.html",
+      "sha256": "500653ecc31a20307d1bb033a6322c5156a21dfe6021ec80e6ac603c7040dc4e"
+    },
+    {
+      "path": "index.tsx",
+      "sha256": "754d1a7c82bb43ee16b3e86388ed4dfecc9a1a56b216be372052d4a98f02d2a2"
+    },
+    {
+      "path": "initialData.ts",
+      "sha256": "51c28f0b7608d7c36132853c0a4d39f8bb966813b7e7e3ca455a25903b859bc3"
+    },
+    {
+      "path": "package-lock.json",
+      "sha256": "c539189ab757db67d337b092155ae038baeb1fc4807a88a6253bd47f37e5967d"
+    },
+    {
+      "path": "package.json",
+      "sha256": "b2f389bb164fbe96d517b8e091d96d79b70c6e042b65eb4fb5940f3663e9a849"
+    },
+    {
+      "path": "postcss.config.js",
+      "sha256": "f28f8aa532c7254b0b389d3d3bd6486ea61e83d8d50a17c01ba72d7454baafdb"
+    },
+    {
+      "path": "public/apple-touch-icon.png",
+      "sha256": "15d193dfb4ca1e6ce8a2b72d8688fcc09051f5345381ea5e6819c4df2f4a0cab"
+    },
+    {
+      "path": "public/favicon-16x16.png",
+      "sha256": "0867488d000cab0638c03233e7aa4dffdea142529b27292010186829393b975d"
+    },
+    {
+      "path": "public/favicon-32x32.png",
+      "sha256": "f67d25b19387e2567c19cbdfc60db29d197662c1d30eb4eb3d8d574b9b980b65"
+    },
+    {
+      "path": "public/favicon.svg",
+      "sha256": "3354947daa705a2fa3fc1a732dc1ad21258032b48757ce6f5546c0a05a64a925"
+    },
+    {
+      "path": "public/icon-192x192.png",
+      "sha256": "2ce5d84affce5f9afe22450354b195c20a2019b8737ea95c5692db2469280ef6"
+    },
+    {
+      "path": "public/icon-512x512.png",
+      "sha256": "a063c0195d875961469c44db235ec4a620fea60858da04788ed2662631e74958"
+    },
+    {
+      "path": "public/metadata.json",
+      "sha256": "c2793b488c06c9d7f02430461d19eca5fe19b1a6d3c4d243d2ea94f390d7fe4b"
+    },
+    {
+      "path": "public/site.webmanifest",
+      "sha256": "56bfa58b45ed42451addb616033dcb13b66c4937c89c9df200a1cfdfd11a3195"
+    },
+    {
+      "path": "scripts/ingest/README.md",
+      "sha256": "dd262b9c24cd81efa34d0c2082707ccd9e7ad4d4e7afe865d31592e288a2c79f"
+    },
+    {
+      "path": "scripts/ingest/triage.workflow.js",
+      "sha256": "155a973bedb19b3b48f7c3aa2f661f45dff1b01999c2f8387f8b0b4d094b8ff1"
+    },
+    {
+      "path": "scripts/ingest/triage_commit.py",
+      "sha256": "2f792ccc264ed945027fc9e17514d0bcd7c629f9ac79f8c8ef0e41fd274ede19"
+    },
+    {
+      "path": "scripts/ingest/validate_inbox.py",
+      "sha256": "70f433853f886be697f1791f1e3a4407739c8ddd9252b0339b028c9ffb28f519"
+    },
+    {
+      "path": "scripts/lintDebt.mjs",
+      "sha256": "403ed6ed37458c4d3c6dfc197ed8f59b6e2f560b0439b21aa8f1c9d2bb90bcc4"
+    },
+    {
+      "path": "scripts/notify/build-gas.mjs",
+      "sha256": "eb3171fff65cbcf4021f7e3e59afcff3fc733205815d2ae62647d5beb3358a0d"
+    },
+    {
+      "path": "scripts/notify/gas/appsscript.json",
+      "sha256": "6dac4e31ec4e1443791be30be1f1c0c276aa93fb27844e0a930fa2a69ed27617"
+    },
+    {
+      "path": "scripts/notify/gas/entry.ts",
+      "sha256": "42aeaa3f22498e07eacca59b0f0724d72062ed7b26b5d954763505c62034e0b8"
+    },
+    {
+      "path": "scripts/notify/gas/gas-globals.d.ts",
+      "sha256": "a2c8ae4c938426d3cb23e2b66a2492a44aad61a981de7cd77185cb10c6a353f2"
+    },
+    {
+      "path": "scripts/verify.mjs",
+      "sha256": "7d4880592ec6d5653f49a355c441e561c8aa278e677fea1644fb698b6809027b"
+    },
+    {
+      "path": "services/geminiService.ts",
+      "sha256": "df4ace8325231b7dc65b2313a3096d3ab0a72ad04a7496487c061b5158a71655"
+    },
+    {
+      "path": "services/geminiSettings.ts",
+      "sha256": "0cfc7b1881e21f8497db882d0ca270d0b09b9e9e23f910ca87945194881381ad"
+    },
+    {
+      "path": "services/googleDriveService.ts",
+      "sha256": "f92fbb9a09606dedba12b7b130383e5fe127dd2f1356a31ea77d9f3ff24d479f"
+    },
+    {
+      "path": "services/historicalPriceService.ts",
+      "sha256": "bb34453a115b3058a79e449ae02a07bc156ad9813900aabdcff7b440b0db109f"
+    },
+    {
+      "path": "services/marketIndexService.ts",
+      "sha256": "ee3415f720bc097efe5e6f684f7772dc69fe62f8ca356b55894fd1e3f364634d"
+    },
+    {
+      "path": "services/marketOverviewService.ts",
+      "sha256": "41df68e101c81e17117d9f567f6f7ff326457cc1415b48a2a31befd3b477e7ca"
+    },
+    {
+      "path": "services/notifySyncService.ts",
+      "sha256": "604a9b256018f792274232c947fa0fa0fd170f92ddca1a6babaaaf200db3d997"
+    },
+    {
+      "path": "services/priceService.ts",
+      "sha256": "912c0a39ee7789c880e66d2e6fdf18097030b252deeb4d903ffc0765d9629820"
+    },
+    {
+      "path": "services/specialAssets.ts",
+      "sha256": "bd866310806ee93170ef8e87989258bfa128c9ead9cfe33990d3a737dde48442"
+    },
+    {
+      "path": "services/symbolListService.ts",
+      "sha256": "e6e915b717c88e6b1b77b44f4d1c19182ffb409a6d4db1ccdf9ab4980110d71a"
+    },
+    {
+      "path": "services/upbitService.ts",
+      "sha256": "c248df4d293ecec3b05adafa1323e88f59fa238c19905b540662da3bca774e8b"
+    },
+    {
+      "path": "tailwind.config.ts",
+      "sha256": "648a903d70a7adc8104efdbadc13a2ebf9845c3b32f10890078cfdc73630eac6"
+    },
+    {
+      "path": "tsconfig.json",
+      "sha256": "8ab0439b5f1eb194f429c85d0ae088e19e0b70d72f65f8735ceedd4ff2a039dd"
+    },
+    {
+      "path": "types/actionQueue.ts",
+      "sha256": "6dc1c5495fc0efb2ed6f4b26517f2269e99e373fe37ac9764a1855e922c91602"
+    },
+    {
+      "path": "types/alertDiagnostics.ts",
+      "sha256": "e052104774002dbf1a4a6d52ea58f4f6b90de8a0e4813a7270cad1393e149c95"
+    },
+    {
+      "path": "types/alertRules.ts",
+      "sha256": "9e95e5261ff57f4d4714eb377f9160dc14623291650cf9a787458348b734d32e"
+    },
+    {
+      "path": "types/alertSensitivity.ts",
+      "sha256": "3131b54fb435c9612e6d9a09f11409017cab7527986b664ee523233f0a219f63"
+    },
+    {
+      "path": "types/api.ts",
+      "sha256": "3614a1d7889ff0dfb9684a5fb6a2f876fc8c6b3fb2750dfe327108e1bfaa0a62"
+    },
+    {
+      "path": "types/assetActionResult.ts",
+      "sha256": "31b10b1129c5c36440c6e5ba4e789473f543aa87d07f16f41818a2c1fa332a14"
+    },
+    {
+      "path": "types/backtestConditionalChannel.ts",
+      "sha256": "72ed5da25408765e4dc9c659a6f0efd5a73764a402271196af045090a2788c21"
+    },
+    {
+      "path": "types/backup.ts",
+      "sha256": "b8fe4bf9d51b5f55970f67d8c736fdedd9974a50e23c337c8695c2d3ce9cb567"
+    },
+    {
+      "path": "types/bucket.ts",
+      "sha256": "6d16b485dbdae7cf4d3a9da9722336b36d630ab7a3618fd6c5955de14855b897"
+    },
+    {
+      "path": "types/category.ts",
+      "sha256": "763dc1e205cc70c9887187b54bef7fe315d4cd26fd8c7ac6e2f0b6c3dde53cf2"
+    },
+    {
+      "path": "types/cleanup.ts",
+      "sha256": "e942abad0e41d3c21ad3d3845648dbc5809d46744145745a4105930b4c1f5cff"
+    },
+    {
+      "path": "types/guruDiagnostics.ts",
+      "sha256": "bcd637588146dcc51181df882a01a5a019c9c44b8a2058fe742850aabb19aa05"
+    },
+    {
+      "path": "types/index.ts",
+      "sha256": "2c37321bcd5ea5177f96dac290b7c5e80b6b7c78c891373f8a9d6513c44cbba1"
+    },
+    {
+      "path": "types/knowledge.legacy.ts",
+      "sha256": "f4928cfe7744347ed922cd124b88e44f5e17b06f53ecafc40565b1a9f24d01ff"
+    },
+    {
+      "path": "types/knowledge.ts",
+      "sha256": "ca9c1eef7e4df1a15cbc683a674b4db546c3d25178b627ff7837dd7f7df6904e"
+    },
+    {
+      "path": "types/marketOverview.ts",
+      "sha256": "e4276b2bf0158c1cf18403d5d4c663469b48b55e089061942224f115cf7fb137"
+    },
+    {
+      "path": "types/owner.ts",
+      "sha256": "0a903c6e583c462e5618c50ed803fb2df82891a51c358198df5701a2c1ad6609"
+    },
+    {
+      "path": "types/portfolioSave.ts",
+      "sha256": "23a14e176046aa1793ca3ee4f6139f12fe9f8241a0a870b1fc13a4b95446bb2d"
+    },
+    {
+      "path": "types/satelliteTurtleVisibility.ts",
+      "sha256": "cdac6a10c944d9bd4aac4fc939567696c4c6356af9af72f57efa760dc7ffaa19"
+    },
+    {
+      "path": "types/signalReplay.ts",
+      "sha256": "f909b61f812d09303d7055ba225440667d13205532336be8fea99b4377e9d8d8"
+    },
+    {
+      "path": "types/smartFilter.ts",
+      "sha256": "10b2b9c63518f4db4a88048ca45a780e488583787c10a3b357ae233cdf8e4e93"
+    },
+    {
+      "path": "types/stockReview.ts",
+      "sha256": "14984f034a5aba5b5df051ff0f71f943f771fac2d70f10c28c5ae6cfa13bf45c"
+    },
+    {
+      "path": "types/store.ts",
+      "sha256": "7c7179d2129e91bb2a4362fbad0457683bb314257cea9f23a80d567d2d64d453"
+    },
+    {
+      "path": "types/todayTurtle.ts",
+      "sha256": "aa262d5aaa370c0558099feec8a1b51d96ba9a7e375dc3e151bc8d17a3821e17"
+    },
+    {
+      "path": "types/tradePlan.ts",
+      "sha256": "9963782bd2399997c197d4f44faf70676bf00466b6a2c6a2e106cdd0c3efb072"
+    },
+    {
+      "path": "types/turtle.ts",
+      "sha256": "d97f28bb6bc2891b4d0e55b9d1259db5f92f5f733cb0570e05b4777ab9193bf1"
+    },
+    {
+      "path": "types/turtleHoldings.ts",
+      "sha256": "b4f247bcfc1fec0d4b89b83cad0ec5af6c094c1544097ce2dd225e568222047f"
+    },
+    {
+      "path": "types/turtleHoldingsActions.ts",
+      "sha256": "c13d62806d7481cea68240d6ee6437bc73833f8c33456eaf718dc1fa3cbf470f"
+    },
+    {
+      "path": "types/turtleHoldingsDetail.ts",
+      "sha256": "feb462326594e36dba61a2ef00cc88721269f36cdfd8edd9bdc5a2a8a85c6e03"
+    },
+    {
+      "path": "types/turtleLock.ts",
+      "sha256": "d1d127534ab23b2bcbdd0af527a3a6b4498970ab77e9ecc0bf99d376ba6ad888"
+    },
+    {
+      "path": "types/ui.ts",
+      "sha256": "a0cdc4ef490f88754afd65e8789919133611c5916c9e0472f64f640123a985ae"
+    },
+    {
+      "path": "types/valuation.ts",
+      "sha256": "7d33a543837b3bbb06dacb6acf8ab0e55e85578cd8bf8cca319812b53fa223a1"
+    },
+    {
+      "path": "utils/actionMenuLayout.ts",
+      "sha256": "bac28d640d0195b370ed466cfae5e0f7ac2c2716eb934ea404d2c832ceb3385a"
+    },
+    {
+      "path": "utils/actionQueueCompaction.ts",
+      "sha256": "ac68eeb1621a35ad3ee98a8fa96d67b8f823a28ca311c7c5ef910c4080aa18da"
+    },
+    {
+      "path": "utils/actionQueueGenerator.ts",
+      "sha256": "b06051ad16593ac651df2c611e00fbc429d488d526eb92703fe2260bf0cfa465"
+    },
+    {
+      "path": "utils/alertChecker.ts",
+      "sha256": "26ffaa6d3b1d30173e5a157877dbf5f3bd5d3766dd9ae1d5861d421b96dac7de"
+    },
+    {
+      "path": "utils/alertDiagnostics.ts",
+      "sha256": "65d8145d374e6ef91cee8103e53abdd24322a9bcc383d121403e2ccb11f01d3e"
+    },
+    {
+      "path": "utils/alertSensitivity.ts",
+      "sha256": "3c97648a26faf15ed9165a7026b9a8dac720841853d1a4d9b5747ffc78231ea6"
+    },
+    {
+      "path": "utils/alertSettingsStorage.ts",
+      "sha256": "a55df4d6c1f0bcf3380258550556ebdfe6f574798ebf959bf61fbc030e1cb27d"
+    },
+    {
+      "path": "utils/allocationTargets.ts",
+      "sha256": "e9bab09fc0a1d5aebf7b077d264ee73b07c18b80654baebb1b11a2d73866803c"
+    },
+    {
+      "path": "utils/assetMutations.ts",
+      "sha256": "22c9a690c951e093c3839e53b5352bdd51f03562550eab1f85ead8d4f4957201"
+    },
+    {
+      "path": "utils/boundaryDistance.ts",
+      "sha256": "1d917687fe4d453056a8e8be1eb206f283d8a4cd5bbafd858ce8533cb40fbed0"
+    },
+    {
+      "path": "utils/bucketRebalancing.ts",
+      "sha256": "9bbb9a1177267419d856df652396ce4f565929a03583e42721318d61ebe56645"
+    },
+    {
+      "path": "utils/buildEnrichedIndicator.ts",
+      "sha256": "d0e2eadbf01c4a45907e05bff5d78478d81261f07b219ecf64985b5b30e20fb5"
+    },
+    {
+      "path": "utils/bulkAssetOps.ts",
+      "sha256": "cfccf5289eccc481bf22de73e53f9d0579b7d6e49ca4abd84830f7bb43267d62"
+    },
+    {
+      "path": "utils/chartFormat.ts",
+      "sha256": "3c729a83e0010ea50076d68b391a37b6f852261968996fff591d9acb4b2c5a18"
+    },
+    {
+      "path": "utils/cleanupPlan.ts",
+      "sha256": "1a35c6c43bea587c18708187bd78082a001d2064b77678777c046f56a8e78b93"
+    },
+    {
+      "path": "utils/climaxFlags.ts",
+      "sha256": "13f5b6a8fa2eb50998ffd6abf61aa19952356d9afa1629da35d6f9e5a7e62689"
+    },
+    {
+      "path": "utils/columnConfig.ts",
+      "sha256": "7df5b0d77477761d7511371b2276f061587fb7f683318b729d12ffad7a0a84c3"
+    },
+    {
+      "path": "utils/conditionDescribe.ts",
+      "sha256": "8a40e887eeafad9f17f344e5c4da4ecc6be8f4e75e036555190a94417a16db3b"
+    },
+    {
+      "path": "utils/conditionLeafId.ts",
+      "sha256": "3094d4c67d242e824f963484eb7c409c0a31149a7942131c4c7b8be577838f2e"
+    },
+    {
+      "path": "utils/deepLink.ts",
+      "sha256": "862788240d806ea024669371920f619278054a1866affe92bfaf365fd35e5fd5"
+    },
+    {
+      "path": "utils/directionTone.ts",
+      "sha256": "aaa1e605b3a67606e65aa572b752ccaf9341aa1ac9a0bb7556a35d92129d916d"
+    },
+    {
+      "path": "utils/displayPrefs.ts",
+      "sha256": "64752144c207665a37cc91eb955f67bfb16cdc678544c94faaa727240a333a8d"
+    },
+    {
+      "path": "utils/distributionTierState.ts",
+      "sha256": "688cc6bed619c8bafcf328646098a532ce3536abb10384a052289fea904f2152"
+    },
+    {
+      "path": "utils/donchianChannel.ts",
+      "sha256": "f01dc466a95d5d21532d84c202c6705137029b21ca39ad68084d28fc4ba9ad5e"
+    },
+    {
+      "path": "utils/exchangeRateCache.ts",
+      "sha256": "1f00da46df575f3d89320f835300f2c7a434e950b7cb8e9030cee4cd62ebd861"
+    },
+    {
+      "path": "utils/guruDiagnostics.ts",
+      "sha256": "41cb0fa21576f65e49e0d36defbe6d9622404cb12377b0a7a1d6d9153b4a3a6a"
+    },
+    {
+      "path": "utils/guruSignalEngine.ts",
+      "sha256": "850d0c52db93cb7e0b411f8d5771f069c3271a126d8e296c0056a94f9c3024ca"
+    },
+    {
+      "path": "utils/historyUtils.ts",
+      "sha256": "64f2210f480b4193e60b57549ff47a4c7cddd70ecfe6d45233050b21167ace31"
+    },
+    {
+      "path": "utils/holdingMarkets.ts",
+      "sha256": "8bf13d8b682e4b34884b75777e0ca42a8b49b78001fd61960dd08f52f13a9c8f"
+    },
+    {
+      "path": "utils/knowledgeIngest.ts",
+      "sha256": "ad3a57e25249d94233676253274c489f62e61bb21fdf107465397f9f00dbd6f1"
+    },
+    {
+      "path": "utils/knowledgeScoring.ts",
+      "sha256": "8c1c279b39424fddd2399807936c9f4df76f4c67b125208acc4dff5633d65786"
+    },
+    {
+      "path": "utils/listboxNavigation.ts",
+      "sha256": "2e9fc1c10f3a92046b6c50e8f8d25d2b848514e56793434acea2591bf369b472"
+    },
+    {
+      "path": "utils/localDate.ts",
+      "sha256": "652df278a5541a20d070357b38087024206273b3531120626d10e1857ba2fd7e"
+    },
+    {
+      "path": "utils/logger.ts",
+      "sha256": "ff0c3a792753363bbd923c17d04ebf495aef9b177a06e360a665f4ba0d761231"
+    },
+    {
+      "path": "utils/maCalculations.ts",
+      "sha256": "48312d77ac9bec967679b4f9fc3f07ed0c10b32f8017d819df9dc2477c632a07"
+    },
+    {
+      "path": "utils/manualTemplate.ts",
+      "sha256": "210fab069f5c94555da1cf420208e6fe6afd83811bbcad3b862fde0547c1584e"
+    },
+    {
+      "path": "utils/marketCurrency.ts",
+      "sha256": "4f73c777312482de9dd1cff02d31071677498db9bc3eba0cbaa2bcb4660aaabf"
+    },
+    {
+      "path": "utils/marketDistribution.ts",
+      "sha256": "48edc42ba0f2a8b8519e7fc97418ce90e1629d3890385df2063b2f258be8755a"
+    },
+    {
+      "path": "utils/marketHours.ts",
+      "sha256": "2d6a9a224d11b6c496dd1f96d0c1248b450a98f69238e3409839a85ca0f685ec"
+    },
+    {
+      "path": "utils/marketOverviewCalculations.ts",
+      "sha256": "f09c213f92452546eb3f025a6b3b63be581ba34c3ba4b500efd8601360480389"
+    },
+    {
+      "path": "utils/marketOverviewSeries.ts",
+      "sha256": "6f105983079f6599b44729ad735dc1d25b81d62abe59fdee321b1b7cef4b2b03"
+    },
+    {
+      "path": "utils/mergeAlertSettings.ts",
+      "sha256": "0e206c3aa3fa36a7ccb23abfafa6ca95d839ffd50f338ae117e4797d0df8841f"
+    },
+    {
+      "path": "utils/mergeKnowledgeBase.ts",
+      "sha256": "ca50e5b24cf8fc138f9bd5a7a20d658151a6bc6d104d7d36d124d3e5b7bd573f"
+    },
+    {
+      "path": "utils/migrateData.ts",
+      "sha256": "300e7a7de8d44f3dd8190a5f74d5470a4397a524781821aa06f4989bcd553071"
+    },
+    {
+      "path": "utils/migrateKnowledge.ts",
+      "sha256": "3aa28aa24f84bf8deafeeb6c3a829e1bf68fa6b184786e6bd7fbffee00f7948d"
+    },
+    {
+      "path": "utils/notifyManifest.ts",
+      "sha256": "f36d366dfc8f51987829cf68e4aa5e5bdb843a85671b556e5683dadc939f7c9d"
+    },
+    {
+      "path": "utils/parsePortfolioPayload.ts",
+      "sha256": "eb61044927b47b00b26b1b6981cfb775b4dcd0275771a22e430393a2bdfe183c"
+    },
+    {
+      "path": "utils/popoverLayout.ts",
+      "sha256": "f266bd98345c7ae296f9a8f8034f16c649b015bd5793c06e5ffadeb767f95870"
+    },
+    {
+      "path": "utils/portfolioCalculations.ts",
+      "sha256": "316a07150dc01484cc75e459f59048ae0fc33207429ec190cb1782c5d400339c"
+    },
+    {
+      "path": "utils/portfolioEmptyState.ts",
+      "sha256": "94a928a047d771a038b03268ba8e91466b04ef1e01c8238e931d024e1ed536b1"
+    },
+    {
+      "path": "utils/portfolioMetrics.ts",
+      "sha256": "1dd12e42ad541e325879bd077e9e4cac0f3e17d911cc0fe7b5b672476193cfe0"
+    },
+    {
+      "path": "utils/positionSizing.ts",
+      "sha256": "8106c108577f2e648f70d63d19f187e31c8b499849412c349cef790cb8200b00"
+    },
+    {
+      "path": "utils/priceFreshness.ts",
+      "sha256": "591d218ac37115e6c351b851d9d2695cbbf33c6e7502284021f32bafdabd601e"
+    },
+    {
+      "path": "utils/rebalanceActions.ts",
+      "sha256": "7512cf542931c624654d84962deddd108d591cb59a83c050580321f4bd0f8abd"
+    },
+    {
+      "path": "utils/rebalanceBands.ts",
+      "sha256": "96af1291182291deb45a07e09369fc3c157ddeec6d2ec3a136419344dbb08af5"
+    },
+    {
+      "path": "utils/replayCases.ts",
+      "sha256": "a529f0b925392ecfaaa13a15d5e4f26e7aac5ae77a4104117941fbc2ec89379f"
+    },
+    {
+      "path": "utils/replayEval.ts",
+      "sha256": "997d35c57edef392241d6e2aef25cc8f01df948faf601e22c7209713e165165e"
+    },
+    {
+      "path": "utils/replayExport.ts",
+      "sha256": "f4f8192ceb7bc30d7b408c0ebf870592cf4e6908a35a151a340805574401db82"
+    },
+    {
+      "path": "utils/replayPerformance.ts",
+      "sha256": "b601bdc42b6b8ab9901125023d8d622fc2753f8984db216346875660aeb3dc81"
+    },
+    {
+      "path": "utils/replayRecordsCompaction.ts",
+      "sha256": "a9e63e0c43fd30964e013dad46fcca13ff29422555636e5bc074b2cb386b6942"
+    },
+    {
+      "path": "utils/replayTooltip.ts",
+      "sha256": "3a40d43f4cc3944698ef76fab0b64fda81d9eccd5f526c8e15c6929c46c23104"
+    },
+    {
+      "path": "utils/replayVerdicts.ts",
+      "sha256": "4bc0737df214e5f65c924b1473922eda9089559ff46c96d3cf797f1c110b4b48"
+    },
+    {
+      "path": "utils/riskMatrix.ts",
+      "sha256": "401655e612cf51a3661c0dfe708aa666d78094f633f777a15d83a9cb16548447"
+    },
+    {
+      "path": "utils/ruleOverrides.ts",
+      "sha256": "a5975298c15634e593d60ce07df6585c732ca3ce38c38aed6a3d27b2e3b4d642"
+    },
+    {
+      "path": "utils/ruleSandbox.ts",
+      "sha256": "408a3ed05317c94c836baef8e6abb75c0a2022d4fb3fbf6649178eec5dd78378"
+    },
+    {
+      "path": "utils/safeStorage.ts",
+      "sha256": "3be9ac988edeb6c0132d59b6b36195360a019ceccb6454ec8a8fa0ea575b81aa"
+    },
+    {
+      "path": "utils/saveQueue.ts",
+      "sha256": "93767c6dc4fcd627bc6125b62a7147d81185f9ee117f5b49e70e5aa386c3b943"
+    },
+    {
+      "path": "utils/sellRecords.ts",
+      "sha256": "a2893911f80047c8ee7f7b8094a2f1d74fe9e78705ca8ecdd7094203ee0e0538"
+    },
+    {
+      "path": "utils/signalReplay.ts",
+      "sha256": "0ddbdb709befd64942b4c3686147a40f3c3e790567d86fc8914b71f1b36a8cb3"
+    },
+    {
+      "path": "utils/smartFilterLogic.ts",
+      "sha256": "a90cd4f05bfb50926d670627b24085fb809657324206e34afb84b76a0ab88153"
+    },
+    {
+      "path": "utils/smartFilterPresets.ts",
+      "sha256": "8b0269483bcbbda9a63a1c6520ea839cbc984610f0317824628730bee37d6437"
+    },
+    {
+      "path": "utils/soldPLBreakdown.ts",
+      "sha256": "4c18d9474dad2d783b0fcd3c5fb1faca086664da704f087b34a2476b61f4a66a"
+    },
+    {
+      "path": "utils/stockReview.ts",
+      "sha256": "936a8a1c945de95c9e797982f6adbf10a7ab89bbc6e39c5294b0197bea36bcbf"
+    },
+    {
+      "path": "utils/swingPointDetection.ts",
+      "sha256": "7f05da1b2219058800ce7ab0028789c3352bc37a058fbf5a6883556a2ee343dc"
+    },
+    {
+      "path": "utils/todayTurtle.ts",
+      "sha256": "fbf029ff60a5f759717d623b8331e26cc6a959a64d38ed45a1b16f04f0dc7640"
+    },
+    {
+      "path": "utils/todayTurtleCache.ts",
+      "sha256": "f9fc8d0c5a5fa063eedd5c8f5e721661290c66576c478570524db2de2b467841"
+    },
+    {
+      "path": "utils/todayViewModel.ts",
+      "sha256": "7aebdf457f2c1641c45fbde24964a7fb249d4db4f9f9fcb40bc7b545fb110762"
+    },
+    {
+      "path": "utils/tradePlan.ts",
+      "sha256": "e0295007cb20793612196dfada384c513db8b44568845f366fbe98253e7fdf7b"
+    },
+    {
+      "path": "utils/tradePlanLink.ts",
+      "sha256": "c226a4c3641bfaf8c39e35c7f82f999fb662f22edbce36a42e589af85ef866c8"
+    },
+    {
+      "path": "utils/tradePlanMarket.ts",
+      "sha256": "6e6a19c464a366bfa421283d535ba0d096a2b9eb65f8a0d6c66fcc62f5cc9b26"
+    },
+    {
+      "path": "utils/tradePlanTransfer.ts",
+      "sha256": "15adc6cfecad0047efdbc740891dc0cb665c987c4d05936c64bd2ff12b15f05b"
+    },
+    {
+      "path": "utils/turtleEngine.ts",
+      "sha256": "927fc86f83ce0e14d8e9bfef4f19650f9dc7b297fc50b4c082c6698612cdc8a7"
+    },
+    {
+      "path": "utils/turtleExecution.ts",
+      "sha256": "76a71c52c0a925c654bc0ff2f1ea455908c86757ab22fc13a68e9b372fc8ac14"
+    },
+    {
+      "path": "utils/turtleHoldings.ts",
+      "sha256": "367e43bbbe6dd5eae2ffa4d2ef2929ac7a297e5f7fe02db5c297fcd7bcabde54"
+    },
+    {
+      "path": "utils/turtleHoldingsDetail.ts",
+      "sha256": "7a7d56a4b8323d08e87a38a73e72c0dea5935045b2fdbbfeefec2fa6484c91fb"
+    },
+    {
+      "path": "utils/turtleHoldingsNotify.ts",
+      "sha256": "530d83c70ce51e4a2e34f467edeb3f39879f13fa7ef661032478f28f45adc8c2"
+    },
+    {
+      "path": "utils/turtleHoldingsState.ts",
+      "sha256": "a0b555fbd4ce2b1bc85265e5597f45c626a6916d19a9db28e80b8a929ca69883"
+    },
+    {
+      "path": "utils/turtleHoldingsView.ts",
+      "sha256": "a40737a9867f136096db265f12c2930b241633e878cce59f58127d2a350a9b42"
+    },
+    {
+      "path": "utils/turtleLifecycle.ts",
+      "sha256": "bd0eb96c5050e109fa3b71c129463ef8e3b6b46df5a0d35b2cfde318b241373e"
+    },
+    {
+      "path": "utils/turtleMarketData.ts",
+      "sha256": "d9a94f7e8e2407ce27251234252e23ff8f2bad8ab3c15c184df33247ccb7d7dd"
+    },
+    {
+      "path": "utils/turtlePositionView.ts",
+      "sha256": "9ab54761f065abddf953c443cf40f0fe81378f61fd12706d1db217fbe0632235"
+    },
+    {
+      "path": "utils/turtleReview.ts",
+      "sha256": "ab0f7d61f31dc4f78a0893f3cf245fef0c4741539d16980d93cfcd6160e60b72"
+    },
+    {
+      "path": "utils/turtleVerificationNotes.ts",
+      "sha256": "4d08075df3cfea2a957a55381f24527a470d2f9eecace0ff8a75805034cf81e1"
+    },
+    {
+      "path": "utils/watchlistEmptyState.ts",
+      "sha256": "ee21263d360dba6000dedfffab95c7a708a59b12f73b9c66245a5ab73278bd93"
+    },
+    {
+      "path": "utils/watchlistSort.ts",
+      "sha256": "f74c17e78a10cfed99aeb095aa3ef729ba4320c7bc1b62521e3c01f36b736c3a"
+    },
+    {
+      "path": "utils/winRateDiagnostics.ts",
+      "sha256": "1ca9f46bc97ba557ef55e59e6a98a0a1671d16ead0b1a9a1e4b11c61964433a9"
+    },
+    {
+      "path": "vite-env.d.ts",
+      "sha256": "d4593014b17c5ccc951df678ca05459e3e15cc650db22e56b3a630d905b74e15"
+    },
+    {
+      "path": "vite.config.ts",
+      "sha256": "397eb54bea485cb6bb66cd46b40ec7630f56a9b46cfde98018e36cc7008ebbbb"
+    },
+    {
+      "path": "wrangler.jsonc",
+      "sha256": "62250cd2b6bf909c0aa6ff940c6a3bf104955ec9b9520a886a3046e7fa5e693f"
+    }
+  ]
+}
