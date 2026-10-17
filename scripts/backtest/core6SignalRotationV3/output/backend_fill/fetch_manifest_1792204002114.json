@@ -1,0 +1,62 @@
+[
+  {
+    "symbol": "069500",
+    "file": "output/backend_fill/069500.json",
+    "sha256": "b87f2522f5076451441c2c9266b4904e46b20775eb9c14c85407c33c7d2fd2b4",
+    "bytes": 135619,
+    "fetchedAtUtc": "2026-10-17T02:26:40.217Z",
+    "startDate": "2021-12-15",
+    "endDate": "2026-10-01",
+    "requestUrl": "https://asset-manager-887842923289.asia-northeast3.run.app/history"
+  },
+  {
+    "symbol": "379800",
+    "file": "output/backend_fill/379800.json",
+    "sha256": "e82945e72b91b0f05c38ad0f5857e7a2a3ab2a41c084cd62225b1c800d1db5ec",
+    "bytes": 134446,
+    "fetchedAtUtc": "2026-10-17T02:26:40.678Z",
+    "startDate": "2021-12-15",
+    "endDate": "2026-10-01",
+    "requestUrl": "https://asset-manager-887842923289.asia-northeast3.run.app/history"
+  },
+  {
+    "symbol": "283580",
+    "file": "output/backend_fill/283580.json",
+    "sha256": "35ff93f9dcb689adea65e261cca695b446cec0db9a51fe2b130924cb20e982d4",
+    "bytes": 132349,
+    "fetchedAtUtc": "2026-10-17T02:26:41.095Z",
+    "startDate": "2021-12-15",
+    "endDate": "2026-10-01",
+    "requestUrl": "https://asset-manager-887842923289.asia-northeast3.run.app/history"
+  },
+  {
+    "symbol": "385560",
+    "file": "output/backend_fill/385560.json",
+    "sha256": "691e891fcb6d5927c91fce6e43c1abffb1fa48e492341033e9dbe4a457fb0f31",
+    "bytes": 132423,
+    "fetchedAtUtc": "2026-10-17T02:26:41.454Z",
+    "startDate": "2021-12-15",
+    "endDate": "2026-10-01",
+    "requestUrl": "https://asset-manager-887842923289.asia-northeast3.run.app/history"
+  },
+  {
+    "symbol": "464470",
+    "file": "output/backend_fill/464470.json",
+    "sha256": "b4630df1f09036bc97f6c9479da9103ce10f849e92ed87ef7b8846acc33331a1",
+    "bytes": 85120,
+    "fetchedAtUtc": "2026-10-17T02:26:41.762Z",
+    "startDate": "2021-12-15",
+    "endDate": "2026-10-01",
+    "requestUrl": "https://asset-manager-887842923289.asia-northeast3.run.app/history"
+  },
+  {
+    "symbol": "411060",
+    "file": "output/backend_fill/411060.json",
+    "sha256": "08f60d04361d73d94b83fab07202541a65150cfb4a6dc7890799dbfb7b06d633",
+    "bytes": 133576,
+    "fetchedAtUtc": "2026-10-17T02:26:42.113Z",
+    "startDate": "2021-12-15",
+    "endDate": "2026-10-01",
+    "requestUrl": "https://asset-manager-887842923289.asia-northeast3.run.app/history"
+  }
+]

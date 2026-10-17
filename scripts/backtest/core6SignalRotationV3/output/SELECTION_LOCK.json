@@ -1,0 +1,49 @@
+{
+  "schema": "core6-v3-selection-lock-v1",
+  "createdAtUtc": "2026-10-17T03:00:19.097Z",
+  "panel": "P",
+  "devEndDate": "2024-06-28",
+  "validationStart": "2024-07-01",
+  "ranking": [
+    "MA50",
+    "D55/55",
+    "D10/55"
+  ],
+  "selected": [
+    {
+      "rule": "MA50",
+      "pyramidInterval": "10pct",
+      "pyramidNote": "간격 10pct 봉인"
+    },
+    {
+      "rule": "D55/55",
+      "pyramidInterval": "10pct",
+      "pyramidNote": "간격 10pct 봉인"
+    }
+  ],
+  "devSummary": [
+    {
+      "rule": "MA50",
+      "medianMddReduction": 0.33393087662443,
+      "medianCalmarImprovement": 0.18581195528316813,
+      "medianTurnover": 45.086389359205064,
+      "cagrOkOffsets": 4,
+      "rankUnstable": true
+    },
+    {
+      "rule": "D55/55",
+      "medianMddReduction": 0.12254735365632444,
+      "medianCalmarImprovement": 0.13286511608822732,
+      "medianTurnover": 7.278129929524872,
+      "cagrOkOffsets": 4,
+      "rankUnstable": false
+    }
+  ],
+  "hashes": {
+    "panelSha256": "b7014e7a20c220cb2c2b2b99a1852337793b5fab1d0668d83775b7b0ca349467",
+    "devSignalCacheSha256": "1684eb7782cc812f2c53df93156312f9448c10734065487016428c337ce64844",
+    "codeSha256": "b4e8aac2641939b34f376a44c85fa2edb5e4a9c5b467d15cfbe52b3b8d311cd9",
+    "configSha256": "15ef22120333553cbe7cb5e6a26d62a1d53b2d1ac8de0a9ce16dece468a06c81",
+    "preregSha256": "7d6e587f447187cc6d95604b0c6b604124876b570a884d6898f89f8d4ea5942c"
+  }
+}

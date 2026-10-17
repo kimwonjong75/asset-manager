@@ -1,0 +1,1373 @@
+{
+  "schema": "core6-v3-data-manifest-v2",
+  "generatedAtUtc": "2026-10-17T02:36:02.458Z",
+  "note": "Yahoo 원자료는 재수집하지 않고 core6SignalRotation/data/raw 의 기존 파일을 그대로 읽었다(gitignore). 백엔드 원본은 output/backend_fill/ (Amendment 1). 해시로 동일성을 증명한다.",
+  "rawFiles": [
+    {
+      "file": "scripts/backtest/core6SignalRotation/data/raw/yahoo_069500.KS.json",
+      "sha256": "3cb03906b970b5ee2b32fcb638452eb7eb0c08f3cdb2252ced8dec94508dd604",
+      "bytes": 275394,
+      "rows": 4856,
+      "validRows": 4278,
+      "firstDate": "2007-01-29",
+      "lastDate": "2026-10-01",
+      "fetchedAtUtc": "2026-10-12T02:09:55.497Z",
+      "sourceUrl": "https://query1.finance.yahoo.com/v8/finance/chart/069500.KS?period1=1009843200&period2=1790812800&interval=1d&events=div%2Csplits&includeAdjustedClose=true",
+      "matchesV1Checksums": true
+    },
+    {
+      "file": "scripts/backtest/core6SignalRotation/data/raw/yahoo_379800.KS.json",
+      "sha256": "5f07ed7a917f5f4be18557add62231dc702180f6a7af0716f44fd1cb0bc082e6",
+      "bytes": 78912,
+      "rows": 1340,
+      "validRows": 1319,
+      "firstDate": "2021-04-09",
+      "lastDate": "2026-10-01",
+      "fetchedAtUtc": "2026-10-12T02:09:56.011Z",
+      "sourceUrl": "https://query1.finance.yahoo.com/v8/finance/chart/379800.KS?period1=1009843200&period2=1790812800&interval=1d&events=div%2Csplits&includeAdjustedClose=true",
+      "matchesV1Checksums": true
+    },
+    {
+      "file": "scripts/backtest/core6SignalRotation/data/raw/yahoo_283580.KS.json",
+      "sha256": "89d53d4dbb7e84d8a1a8f3a547dc6d1f852516b3a9980d72693b2673845bb544",
+      "bytes": 122105,
+      "rows": 2154,
+      "validRows": 2127,
+      "firstDate": "2017-12-13",
+      "lastDate": "2026-10-01",
+      "fetchedAtUtc": "2026-10-12T02:09:56.586Z",
+      "sourceUrl": "https://query1.finance.yahoo.com/v8/finance/chart/283580.KS?period1=1009843200&period2=1790812800&interval=1d&events=div%2Csplits&includeAdjustedClose=true",
+      "matchesV1Checksums": true
+    },
+    {
+      "file": "scripts/backtest/core6SignalRotation/data/raw/yahoo_385560.KS.json",
+      "sha256": "202d4491b6b503552ea5b6ca75434944723e0500d2c0c2ced95c19c35d550625",
+      "bytes": 72907,
+      "rows": 1309,
+      "validRows": 1288,
+      "firstDate": "2021-05-26",
+      "lastDate": "2026-10-01",
+      "fetchedAtUtc": "2026-10-12T02:09:57.033Z",
+      "sourceUrl": "https://query1.finance.yahoo.com/v8/finance/chart/385560.KS?period1=1009843200&period2=1790812800&interval=1d&events=div%2Csplits&includeAdjustedClose=true",
+      "matchesV1Checksums": true
+    },
+    {
+      "file": "scripts/backtest/core6SignalRotation/data/raw/yahoo_464470.KS.json",
+      "sha256": "011468b1981929e4240b6326826fd29799ed8c49337cbbf4c30c57d5c03c3907",
+      "bytes": 43355,
+      "rows": 756,
+      "validRows": 752,
+      "firstDate": "2023-08-22",
+      "lastDate": "2026-10-01",
+      "fetchedAtUtc": "2026-10-12T02:09:57.468Z",
+      "sourceUrl": "https://query1.finance.yahoo.com/v8/finance/chart/464470.KS?period1=1009843200&period2=1790812800&interval=1d&events=div%2Csplits&includeAdjustedClose=true",
+      "matchesV1Checksums": true
+    },
+    {
+      "file": "scripts/backtest/core6SignalRotation/data/raw/yahoo_411060.KS.json",
+      "sha256": "91b0c25950c66331da1d7699624cc81eb3d1470420a34e248cf6f12f7919cfb3",
+      "bytes": 66831,
+      "rows": 1170,
+      "validRows": 1149,
+      "firstDate": "2021-12-15",
+      "lastDate": "2026-10-01",
+      "fetchedAtUtc": "2026-10-12T02:09:58.097Z",
+      "sourceUrl": "https://query1.finance.yahoo.com/v8/finance/chart/411060.KS?period1=1009843200&period2=1790812800&interval=1d&events=div%2Csplits&includeAdjustedClose=true",
+      "matchesV1Checksums": true
+    },
+    {
+      "file": "scripts/backtest/core6SignalRotation/data/raw/yahoo_TLT.json",
+      "sha256": "0d0d948d3dbf4e187b12353b86cd39204367a75decb0ded6c9bc68deb6ad99ec",
+      "bytes": 672473,
+      "rows": 6082,
+      "validRows": 6082,
+      "firstDate": "2002-07-30",
+      "lastDate": "2026-09-30",
+      "fetchedAtUtc": "2026-10-12T02:10:00.123Z",
+      "sourceUrl": "https://query1.finance.yahoo.com/v8/finance/chart/TLT?period1=1009843200&period2=1790812800&interval=1d&events=div%2Csplits&includeAdjustedClose=true",
+      "matchesV1Checksums": true
+    },
+    {
+      "file": "scripts/backtest/core6SignalRotation/data/raw/yahoo_KRW=X.json",
+      "sha256": "51ec309361b2d81ae3fba8f5391b9dd6aec9ee4725e918eceeaac83fa3e95fa8",
+      "bytes": 575445,
+      "rows": 5959,
+      "validRows": 5923,
+      "firstDate": "2003-12-01",
+      "lastDate": "2026-10-01",
+      "fetchedAtUtc": "2026-10-12T02:10:00.701Z",
+      "sourceUrl": "https://query1.finance.yahoo.com/v8/finance/chart/KRW%3DX?period1=1009843200&period2=1790812800&interval=1d&events=div%2Csplits&includeAdjustedClose=true",
+      "matchesV1Checksums": true
+    },
+    {
+      "file": "scripts/backtest/core6SignalRotation/data/raw/ecos_cd91.json",
+      "sha256": "e56e4e48a314d38a7d27b8f2671d0910d43c4bb5fe8ed301b3ee2f46c8aac479",
+      "bytes": 430209,
+      "rows": 1412,
+      "validRows": null,
+      "firstDate": "2021-01-04",
+      "lastDate": "2026-09-30",
+      "fetchedAtUtc": "2026-10-12T02:10:35.288Z",
+      "sourceUrl": null,
+      "matchesV1Checksums": true
+    }
+  ],
+  "backendFill": {
+    "files": [
+      {
+        "symbol": "069500",
+        "file": "scripts/backtest/core6SignalRotationV3/output/backend_fill/069500.json",
+        "sha256": "b87f2522f5076451441c2c9266b4904e46b20775eb9c14c85407c33c7d2fd2b4",
+        "bytes": 135619,
+        "fetchedAtUtc": "2026-10-17T02:26:40.217Z"
+      },
+      {
+        "symbol": "379800",
+        "file": "scripts/backtest/core6SignalRotationV3/output/backend_fill/379800.json",
+        "sha256": "e82945e72b91b0f05c38ad0f5857e7a2a3ab2a41c084cd62225b1c800d1db5ec",
+        "bytes": 134446,
+        "fetchedAtUtc": "2026-10-17T02:26:40.678Z"
+      },
+      {
+        "symbol": "283580",
+        "file": "scripts/backtest/core6SignalRotationV3/output/backend_fill/283580.json",
+        "sha256": "35ff93f9dcb689adea65e261cca695b446cec0db9a51fe2b130924cb20e982d4",
+        "bytes": 132349,
+        "fetchedAtUtc": "2026-10-17T02:26:41.095Z"
+      },
+      {
+        "symbol": "385560",
+        "file": "scripts/backtest/core6SignalRotationV3/output/backend_fill/385560.json",
+        "sha256": "691e891fcb6d5927c91fce6e43c1abffb1fa48e492341033e9dbe4a457fb0f31",
+        "bytes": 132423,
+        "fetchedAtUtc": "2026-10-17T02:26:41.454Z"
+      },
+      {
+        "symbol": "464470",
+        "file": "scripts/backtest/core6SignalRotationV3/output/backend_fill/464470.json",
+        "sha256": "b4630df1f09036bc97f6c9479da9103ce10f849e92ed87ef7b8846acc33331a1",
+        "bytes": 85120,
+        "fetchedAtUtc": "2026-10-17T02:26:41.762Z"
+      },
+      {
+        "symbol": "411060",
+        "file": "scripts/backtest/core6SignalRotationV3/output/backend_fill/411060.json",
+        "sha256": "08f60d04361d73d94b83fab07202541a65150cfb4a6dc7890799dbfb7b06d633",
+        "bytes": 133576,
+        "fetchedAtUtc": "2026-10-17T02:26:42.113Z"
+      }
+    ],
+    "requestUrl": "https://asset-manager-887842923289.asia-northeast3.run.app/history",
+    "fillDates": [
+      "2022-02-14",
+      "2022-05-02",
+      "2023-05-18",
+      "2023-05-24",
+      "2023-07-03",
+      "2023-07-04",
+      "2023-07-05",
+      "2023-07-06",
+      "2023-07-11",
+      "2023-07-12",
+      "2023-07-13",
+      "2023-07-18",
+      "2023-07-25",
+      "2023-07-27",
+      "2023-07-31",
+      "2023-08-01",
+      "2023-08-02",
+      "2024-01-18",
+      "2024-08-27",
+      "2024-10-30",
+      "2024-11-05"
+    ],
+    "filledRows": [
+      {
+        "asset": "069500",
+        "date": "2022-02-14",
+        "open": 33578,
+        "high": 33726,
+        "low": 33220,
+        "close": 33461,
+        "source": "backend /history (adjusted OHLC, as returned)",
+        "backendFileSha256": "b87f2522f5076451441c2c9266b4904e46b20775eb9c14c85407c33c7d2fd2b4"
+      },
+      {
+        "asset": "069500",
+        "date": "2022-05-02",
+        "open": 32427,
+        "high": 32738,
+        "low": 32427,
+        "close": 32683,
+        "source": "backend /history (adjusted OHLC, as returned)",
+        "backendFileSha256": "b87f2522f5076451441c2c9266b4904e46b20775eb9c14c85407c33c7d2fd2b4"
+      },
+      {
+        "asset": "069500",
+        "date": "2023-05-18",
+        "open": 31063,
+        "high": 31192,
+        "low": 30979,
+        "close": 31174,
+        "source": "backend /history (adjusted OHLC, as returned)",
+        "backendFileSha256": "b87f2522f5076451441c2c9266b4904e46b20775eb9c14c85407c33c7d2fd2b4"
+      },
+      {
+        "asset": "069500",
+        "date": "2023-05-24",
+        "open": 31722,
+        "high": 31918,
+        "low": 31712,
+        "close": 31793,
+        "source": "backend /history (adjusted OHLC, as returned)",
+        "backendFileSha256": "b87f2522f5076451441c2c9266b4904e46b20775eb9c14c85407c33c7d2fd2b4"
+      },
+      {
+        "asset": "069500",
+        "date": "2023-07-03",
+        "open": 32177,
+        "high": 32586,
+        "low": 32177,
+        "close": 32561,
+        "source": "backend /history (adjusted OHLC, as returned)",
+        "backendFileSha256": "b87f2522f5076451441c2c9266b4904e46b20775eb9c14c85407c33c7d2fd2b4"
+      },
+      {
+        "asset": "069500",
+        "date": "2023-07-04",
+        "open": 32546,
+        "high": 32596,
+        "low": 32414,
+        "close": 32433,
+        "source": "backend /history (adjusted OHLC, as returned)",
+        "backendFileSha256": "b87f2522f5076451441c2c9266b4904e46b20775eb9c14c85407c33c7d2fd2b4"
+      },
+      {
+        "asset": "069500",
+        "date": "2023-07-05",
+        "open": 32381,
+        "high": 32504,
+        "low": 32127,
+        "close": 32127,
+        "source": "backend /history (adjusted OHLC, as returned)",
+        "backendFileSha256": "b87f2522f5076451441c2c9266b4904e46b20775eb9c14c85407c33c7d2fd2b4"
+      },
+      {
+        "asset": "069500",
+        "date": "2023-07-06",
+        "open": 32107,
+        "high": 32117,
+        "low": 31842,
+        "close": 31880,
+        "source": "backend /history (adjusted OHLC, as returned)",
+        "backendFileSha256": "b87f2522f5076451441c2c9266b4904e46b20775eb9c14c85407c33c7d2fd2b4"
+      },
+      {
+        "asset": "069500",
+        "date": "2023-07-11",
+        "open": 31602,
+        "high": 31952,
+        "low": 31570,
+        "close": 31952,
+        "source": "backend /history (adjusted OHLC, as returned)",
+        "backendFileSha256": "b87f2522f5076451441c2c9266b4904e46b20775eb9c14c85407c33c7d2fd2b4"
+      },
+      {
+        "asset": "069500",
+        "date": "2023-07-12",
+        "open": 31957,
+        "high": 32162,
+        "low": 31861,
+        "close": 32157,
+        "source": "backend /history (adjusted OHLC, as returned)",
+        "backendFileSha256": "b87f2522f5076451441c2c9266b4904e46b20775eb9c14c85407c33c7d2fd2b4"
+      },
+      {
+        "asset": "069500",
+        "date": "2023-07-13",
+        "open": 32399,
+        "high": 32528,
+        "low": 32376,
+        "close": 32414,
+        "source": "backend /history (adjusted OHLC, as returned)",
+        "backendFileSha256": "b87f2522f5076451441c2c9266b4904e46b20775eb9c14c85407c33c7d2fd2b4"
+      },
+      {
+        "asset": "069500",
+        "date": "2023-07-18",
+        "open": 32863,
+        "high": 32901,
+        "low": 32532,
+        "close": 32566,
+        "source": "backend /history (adjusted OHLC, as returned)",
+        "backendFileSha256": "b87f2522f5076451441c2c9266b4904e46b20775eb9c14c85407c33c7d2fd2b4"
+      },
+      {
+        "asset": "069500",
+        "date": "2023-07-25",
+        "open": 32741,
+        "high": 32816,
+        "low": 32519,
+        "close": 32731,
+        "source": "backend /history (adjusted OHLC, as returned)",
+        "backendFileSha256": "b87f2522f5076451441c2c9266b4904e46b20775eb9c14c85407c33c7d2fd2b4"
+      },
+      {
+        "asset": "069500",
+        "date": "2023-07-27",
+        "open": 32409,
+        "high": 32741,
+        "low": 32344,
+        "close": 32699,
+        "source": "backend /history (adjusted OHLC, as returned)",
+        "backendFileSha256": "b87f2522f5076451441c2c9266b4904e46b20775eb9c14c85407c33c7d2fd2b4"
+      },
+      {
+        "asset": "069500",
+        "date": "2023-07-31",
+        "open": 32817,
+        "high": 32925,
+        "low": 32704,
+        "close": 32770,
+        "source": "backend /history (adjusted OHLC, as returned)",
+        "backendFileSha256": "b87f2522f5076451441c2c9266b4904e46b20775eb9c14c85407c33c7d2fd2b4"
+      },
+      {
+        "asset": "069500",
+        "date": "2023-08-01",
+        "open": 32849,
+        "high": 33311,
+        "low": 32845,
+        "close": 33306,
+        "source": "backend /history (adjusted OHLC, as returned)",
+        "backendFileSha256": "b87f2522f5076451441c2c9266b4904e46b20775eb9c14c85407c33c7d2fd2b4"
+      },
+      {
+        "asset": "069500",
+        "date": "2023-08-02",
+        "open": 33091,
+        "high": 33128,
+        "low": 32542,
+        "close": 32586,
+        "source": "backend /history (adjusted OHLC, as returned)",
+        "backendFileSha256": "b87f2522f5076451441c2c9266b4904e46b20775eb9c14c85407c33c7d2fd2b4"
+      },
+      {
+        "asset": "069500",
+        "date": "2024-01-18",
+        "open": 31337,
+        "high": 31500,
+        "low": 31173,
+        "close": 31393,
+        "source": "backend /history (adjusted OHLC, as returned)",
+        "backendFileSha256": "b87f2522f5076451441c2c9266b4904e46b20775eb9c14c85407c33c7d2fd2b4"
+      },
+      {
+        "asset": "069500",
+        "date": "2024-08-27",
+        "open": 35481,
+        "high": 35496,
+        "low": 35245,
+        "close": 35334,
+        "source": "backend /history (adjusted OHLC, as returned)",
+        "backendFileSha256": "b87f2522f5076451441c2c9266b4904e46b20775eb9c14c85407c33c7d2fd2b4"
+      },
+      {
+        "asset": "069500",
+        "date": "2024-10-30",
+        "open": 33754,
+        "high": 33802,
+        "low": 33428,
+        "close": 33526,
+        "source": "backend /history (adjusted OHLC, as returned)",
+        "backendFileSha256": "b87f2522f5076451441c2c9266b4904e46b20775eb9c14c85407c33c7d2fd2b4"
+      },
+      {
+        "asset": "069500",
+        "date": "2024-11-05",
+        "open": 33088,
+        "high": 33340,
+        "low": 33031,
+        "close": 33211,
+        "source": "backend /history (adjusted OHLC, as returned)",
+        "backendFileSha256": "b87f2522f5076451441c2c9266b4904e46b20775eb9c14c85407c33c7d2fd2b4"
+      },
+      {
+        "asset": "379800",
+        "date": "2022-02-14",
+        "open": 11377,
+        "high": 11402,
+        "low": 11344,
+        "close": 11344,
+        "source": "backend /history (adjusted OHLC, as returned)",
+        "backendFileSha256": "e82945e72b91b0f05c38ad0f5857e7a2a3ab2a41c084cd62225b1c800d1db5ec"
+      },
+      {
+        "asset": "379800",
+        "date": "2022-05-02",
+        "open": 11515,
+        "high": 11515,
+        "low": 11233,
+        "close": 11320,
+        "source": "backend /history (adjusted OHLC, as returned)",
+        "backendFileSha256": "e82945e72b91b0f05c38ad0f5857e7a2a3ab2a41c084cd62225b1c800d1db5ec"
+      },
+      {
+        "asset": "379800",
+        "date": "2023-05-18",
+        "open": 12102,
+        "high": 12131,
+        "low": 12049,
+        "close": 12102,
+        "source": "backend /history (adjusted OHLC, as returned)",
+        "backendFileSha256": "e82945e72b91b0f05c38ad0f5857e7a2a3ab2a41c084cd62225b1c800d1db5ec"
+      },
+      {
+        "asset": "379800",
+        "date": "2023-05-24",
+        "open": 11931,
+        "high": 11966,
+        "low": 11898,
+        "close": 11913,
+        "source": "backend /history (adjusted OHLC, as returned)",
+        "backendFileSha256": "e82945e72b91b0f05c38ad0f5857e7a2a3ab2a41c084cd62225b1c800d1db5ec"
+      },
+      {
+        "asset": "379800",
+        "date": "2023-07-03",
+        "open": 12759,
+        "high": 12794,
+        "low": 12695,
+        "close": 12724,
+        "source": "backend /history (adjusted OHLC, as returned)",
+        "backendFileSha256": "e82945e72b91b0f05c38ad0f5857e7a2a3ab2a41c084cd62225b1c800d1db5ec"
+      },
+      {
+        "asset": "379800",
+        "date": "2023-07-04",
+        "open": 12724,
+        "high": 12729,
+        "low": 12647,
+        "close": 12671,
+        "source": "backend /history (adjusted OHLC, as returned)",
+        "backendFileSha256": "e82945e72b91b0f05c38ad0f5857e7a2a3ab2a41c084cd62225b1c800d1db5ec"
+      },
+      {
+        "asset": "379800",
+        "date": "2023-07-05",
+        "open": 12637,
+        "high": 12710,
+        "low": 12628,
+        "close": 12628,
+        "source": "backend /history (adjusted OHLC, as returned)",
+        "backendFileSha256": "e82945e72b91b0f05c38ad0f5857e7a2a3ab2a41c084cd62225b1c800d1db5ec"
+      },
+      {
+        "asset": "379800",
+        "date": "2023-07-06",
+        "open": 12657,
+        "high": 12690,
+        "low": 12598,
+        "close": 12608,
+        "source": "backend /history (adjusted OHLC, as returned)",
+        "backendFileSha256": "e82945e72b91b0f05c38ad0f5857e7a2a3ab2a41c084cd62225b1c800d1db5ec"
+      },
+      {
+        "asset": "379800",
+        "date": "2023-07-11",
+        "open": 12516,
+        "high": 12559,
+        "low": 12438,
+        "close": 12496,
+        "source": "backend /history (adjusted OHLC, as returned)",
+        "backendFileSha256": "e82945e72b91b0f05c38ad0f5857e7a2a3ab2a41c084cd62225b1c800d1db5ec"
+      },
+      {
+        "asset": "379800",
+        "date": "2023-07-12",
+        "open": 12539,
+        "high": 12569,
+        "low": 12501,
+        "close": 12520,
+        "source": "backend /history (adjusted OHLC, as returned)",
+        "backendFileSha256": "e82945e72b91b0f05c38ad0f5857e7a2a3ab2a41c084cd62225b1c800d1db5ec"
+      },
+      {
+        "asset": "379800",
+        "date": "2023-07-13",
+        "open": 12506,
+        "high": 12534,
+        "low": 12476,
+        "close": 12501,
+        "source": "backend /history (adjusted OHLC, as returned)",
+        "backendFileSha256": "e82945e72b91b0f05c38ad0f5857e7a2a3ab2a41c084cd62225b1c800d1db5ec"
+      },
+      {
+        "asset": "379800",
+        "date": "2023-07-18",
+        "open": 12491,
+        "high": 12511,
+        "low": 12424,
+        "close": 12463,
+        "source": "backend /history (adjusted OHLC, as returned)",
+        "backendFileSha256": "e82945e72b91b0f05c38ad0f5857e7a2a3ab2a41c084cd62225b1c800d1db5ec"
+      },
+      {
+        "asset": "379800",
+        "date": "2023-07-25",
+        "open": 12749,
+        "high": 12799,
+        "low": 12719,
+        "close": 12719,
+        "source": "backend /history (adjusted OHLC, as returned)",
+        "backendFileSha256": "e82945e72b91b0f05c38ad0f5857e7a2a3ab2a41c084cd62225b1c800d1db5ec"
+      },
+      {
+        "asset": "379800",
+        "date": "2023-07-27",
+        "open": 12724,
+        "high": 12803,
+        "low": 12666,
+        "close": 12794,
+        "source": "backend /history (adjusted OHLC, as returned)",
+        "backendFileSha256": "e82945e72b91b0f05c38ad0f5857e7a2a3ab2a41c084cd62225b1c800d1db5ec"
+      },
+      {
+        "asset": "379800",
+        "date": "2023-07-31",
+        "open": 12794,
+        "high": 12799,
+        "low": 12700,
+        "close": 12754,
+        "source": "backend /history (adjusted OHLC, as returned)",
+        "backendFileSha256": "e82945e72b91b0f05c38ad0f5857e7a2a3ab2a41c084cd62225b1c800d1db5ec"
+      },
+      {
+        "asset": "379800",
+        "date": "2023-08-01",
+        "open": 12813,
+        "high": 12889,
+        "low": 12799,
+        "close": 12879,
+        "source": "backend /history (adjusted OHLC, as returned)",
+        "backendFileSha256": "e82945e72b91b0f05c38ad0f5857e7a2a3ab2a41c084cd62225b1c800d1db5ec"
+      },
+      {
+        "asset": "379800",
+        "date": "2023-08-02",
+        "open": 12865,
+        "high": 12923,
+        "low": 12842,
+        "close": 12918,
+        "source": "backend /history (adjusted OHLC, as returned)",
+        "backendFileSha256": "e82945e72b91b0f05c38ad0f5857e7a2a3ab2a41c084cd62225b1c800d1db5ec"
+      },
+      {
+        "asset": "379800",
+        "date": "2024-01-18",
+        "open": 14033,
+        "high": 14033,
+        "low": 13955,
+        "close": 13960,
+        "source": "backend /history (adjusted OHLC, as returned)",
+        "backendFileSha256": "e82945e72b91b0f05c38ad0f5857e7a2a3ab2a41c084cd62225b1c800d1db5ec"
+      },
+      {
+        "asset": "379800",
+        "date": "2024-08-27",
+        "open": 16507,
+        "high": 16560,
+        "low": 16498,
+        "close": 16540,
+        "source": "backend /history (adjusted OHLC, as returned)",
+        "backendFileSha256": "e82945e72b91b0f05c38ad0f5857e7a2a3ab2a41c084cd62225b1c800d1db5ec"
+      },
+      {
+        "asset": "379800",
+        "date": "2024-10-30",
+        "open": 17951,
+        "high": 17975,
+        "low": 17911,
+        "close": 17921,
+        "source": "backend /history (adjusted OHLC, as returned)",
+        "backendFileSha256": "e82945e72b91b0f05c38ad0f5857e7a2a3ab2a41c084cd62225b1c800d1db5ec"
+      },
+      {
+        "asset": "379800",
+        "date": "2024-11-05",
+        "open": 17436,
+        "high": 17498,
+        "low": 17411,
+        "close": 17486,
+        "source": "backend /history (adjusted OHLC, as returned)",
+        "backendFileSha256": "e82945e72b91b0f05c38ad0f5857e7a2a3ab2a41c084cd62225b1c800d1db5ec"
+      },
+      {
+        "asset": "283580",
+        "date": "2022-02-14",
+        "open": 12921,
+        "high": 13006,
+        "low": 12740,
+        "close": 12776,
+        "source": "backend /history (adjusted OHLC, as returned)",
+        "backendFileSha256": "35ff93f9dcb689adea65e261cca695b446cec0db9a51fe2b130924cb20e982d4"
+      },
+      {
+        "asset": "283580",
+        "date": "2022-05-02",
+        "open": 11429,
+        "high": 11446,
+        "low": 11395,
+        "close": 11400,
+        "source": "backend /history (adjusted OHLC, as returned)",
+        "backendFileSha256": "35ff93f9dcb689adea65e261cca695b446cec0db9a51fe2b130924cb20e982d4"
+      },
+      {
+        "asset": "283580",
+        "date": "2023-05-18",
+        "open": 11480,
+        "high": 11516,
+        "low": 11414,
+        "close": 11429,
+        "source": "backend /history (adjusted OHLC, as returned)",
+        "backendFileSha256": "35ff93f9dcb689adea65e261cca695b446cec0db9a51fe2b130924cb20e982d4"
+      },
+      {
+        "asset": "283580",
+        "date": "2023-05-24",
+        "open": 11125,
+        "high": 11125,
+        "low": 10962,
+        "close": 10980,
+        "source": "backend /history (adjusted OHLC, as returned)",
+        "backendFileSha256": "35ff93f9dcb689adea65e261cca695b446cec0db9a51fe2b130924cb20e982d4"
+      },
+      {
+        "asset": "283580",
+        "date": "2023-07-03",
+        "open": 10751,
+        "high": 10793,
+        "low": 10668,
+        "close": 10729,
+        "source": "backend /history (adjusted OHLC, as returned)",
+        "backendFileSha256": "35ff93f9dcb689adea65e261cca695b446cec0db9a51fe2b130924cb20e982d4"
+      },
+      {
+        "asset": "283580",
+        "date": "2023-07-04",
+        "open": 10812,
+        "high": 10812,
+        "low": 10699,
+        "close": 10765,
+        "source": "backend /history (adjusted OHLC, as returned)",
+        "backendFileSha256": "35ff93f9dcb689adea65e261cca695b446cec0db9a51fe2b130924cb20e982d4"
+      },
+      {
+        "asset": "283580",
+        "date": "2023-07-05",
+        "open": 10704,
+        "high": 10812,
+        "low": 10653,
+        "close": 10673,
+        "source": "backend /history (adjusted OHLC, as returned)",
+        "backendFileSha256": "35ff93f9dcb689adea65e261cca695b446cec0db9a51fe2b130924cb20e982d4"
+      },
+      {
+        "asset": "283580",
+        "date": "2023-07-06",
+        "open": 10668,
+        "high": 10719,
+        "low": 10551,
+        "close": 10570,
+        "source": "backend /history (adjusted OHLC, as returned)",
+        "backendFileSha256": "35ff93f9dcb689adea65e261cca695b446cec0db9a51fe2b130924cb20e982d4"
+      },
+      {
+        "asset": "283580",
+        "date": "2023-07-11",
+        "open": 10575,
+        "high": 10658,
+        "low": 10541,
+        "close": 10639,
+        "source": "backend /history (adjusted OHLC, as returned)",
+        "backendFileSha256": "35ff93f9dcb689adea65e261cca695b446cec0db9a51fe2b130924cb20e982d4"
+      },
+      {
+        "asset": "283580",
+        "date": "2023-07-12",
+        "open": 10625,
+        "high": 10673,
+        "low": 10575,
+        "close": 10599,
+        "source": "backend /history (adjusted OHLC, as returned)",
+        "backendFileSha256": "35ff93f9dcb689adea65e261cca695b446cec0db9a51fe2b130924cb20e982d4"
+      },
+      {
+        "asset": "283580",
+        "date": "2023-07-13",
+        "open": 10599,
+        "high": 10634,
+        "low": 10482,
+        "close": 10625,
+        "source": "backend /history (adjusted OHLC, as returned)",
+        "backendFileSha256": "35ff93f9dcb689adea65e261cca695b446cec0db9a51fe2b130924cb20e982d4"
+      },
+      {
+        "asset": "283580",
+        "date": "2023-07-18",
+        "open": 10472,
+        "high": 10561,
+        "low": 10393,
+        "close": 10411,
+        "source": "backend /history (adjusted OHLC, as returned)",
+        "backendFileSha256": "35ff93f9dcb689adea65e261cca695b446cec0db9a51fe2b130924cb20e982d4"
+      },
+      {
+        "asset": "283580",
+        "date": "2023-07-25",
+        "open": 10415,
+        "high": 10765,
+        "low": 10415,
+        "close": 10733,
+        "source": "backend /history (adjusted OHLC, as returned)",
+        "backendFileSha256": "35ff93f9dcb689adea65e261cca695b446cec0db9a51fe2b130924cb20e982d4"
+      },
+      {
+        "asset": "283580",
+        "date": "2023-07-27",
+        "open": 10690,
+        "high": 10788,
+        "low": 10687,
+        "close": 10724,
+        "source": "backend /history (adjusted OHLC, as returned)",
+        "backendFileSha256": "35ff93f9dcb689adea65e261cca695b446cec0db9a51fe2b130924cb20e982d4"
+      },
+      {
+        "asset": "283580",
+        "date": "2023-07-31",
+        "open": 11022,
+        "high": 11147,
+        "low": 10962,
+        "close": 11035,
+        "source": "backend /history (adjusted OHLC, as returned)",
+        "backendFileSha256": "35ff93f9dcb689adea65e261cca695b446cec0db9a51fe2b130924cb20e982d4"
+      },
+      {
+        "asset": "283580",
+        "date": "2023-08-01",
+        "open": 11054,
+        "high": 11116,
+        "low": 10990,
+        "close": 11017,
+        "source": "backend /history (adjusted OHLC, as returned)",
+        "backendFileSha256": "35ff93f9dcb689adea65e261cca695b446cec0db9a51fe2b130924cb20e982d4"
+      },
+      {
+        "asset": "283580",
+        "date": "2023-08-02",
+        "open": 10954,
+        "high": 11121,
+        "low": 10949,
+        "close": 11049,
+        "source": "backend /history (adjusted OHLC, as returned)",
+        "backendFileSha256": "35ff93f9dcb689adea65e261cca695b446cec0db9a51fe2b130924cb20e982d4"
+      },
+      {
+        "asset": "283580",
+        "date": "2024-01-18",
+        "open": 9291,
+        "high": 9291,
+        "low": 9062,
+        "close": 9189,
+        "source": "backend /history (adjusted OHLC, as returned)",
+        "backendFileSha256": "35ff93f9dcb689adea65e261cca695b446cec0db9a51fe2b130924cb20e982d4"
+      },
+      {
+        "asset": "283580",
+        "date": "2024-08-27",
+        "open": 9584,
+        "high": 9650,
+        "low": 9556,
+        "close": 9570,
+        "source": "backend /history (adjusted OHLC, as returned)",
+        "backendFileSha256": "35ff93f9dcb689adea65e261cca695b446cec0db9a51fe2b130924cb20e982d4"
+      },
+      {
+        "asset": "283580",
+        "date": "2024-10-30",
+        "open": 11932,
+        "high": 12023,
+        "low": 11642,
+        "close": 11684,
+        "source": "backend /history (adjusted OHLC, as returned)",
+        "backendFileSha256": "35ff93f9dcb689adea65e261cca695b446cec0db9a51fe2b130924cb20e982d4"
+      },
+      {
+        "asset": "283580",
+        "date": "2024-11-05",
+        "open": 11857,
+        "high": 12239,
+        "low": 11857,
+        "close": 12191,
+        "source": "backend /history (adjusted OHLC, as returned)",
+        "backendFileSha256": "35ff93f9dcb689adea65e261cca695b446cec0db9a51fe2b130924cb20e982d4"
+      },
+      {
+        "asset": "385560",
+        "date": "2022-02-14",
+        "open": 74964,
+        "high": 75388,
+        "low": 74807,
+        "close": 75388,
+        "source": "backend /history (adjusted OHLC, as returned)",
+        "backendFileSha256": "691e891fcb6d5927c91fce6e43c1abffb1fa48e492341033e9dbe4a457fb0f31"
+      },
+      {
+        "asset": "385560",
+        "date": "2022-05-02",
+        "open": 66835,
+        "high": 66835,
+        "low": 62959,
+        "close": 63397,
+        "source": "backend /history (adjusted OHLC, as returned)",
+        "backendFileSha256": "691e891fcb6d5927c91fce6e43c1abffb1fa48e492341033e9dbe4a457fb0f31"
+      },
+      {
+        "asset": "385560",
+        "date": "2023-05-18",
+        "open": 62698,
+        "high": 62773,
+        "low": 62278,
+        "close": 62467,
+        "source": "backend /history (adjusted OHLC, as returned)",
+        "backendFileSha256": "691e891fcb6d5927c91fce6e43c1abffb1fa48e492341033e9dbe4a457fb0f31"
+      },
+      {
+        "asset": "385560",
+        "date": "2023-05-24",
+        "open": 60912,
+        "high": 61264,
+        "low": 60575,
+        "close": 60575,
+        "source": "backend /history (adjusted OHLC, as returned)",
+        "backendFileSha256": "691e891fcb6d5927c91fce6e43c1abffb1fa48e492341033e9dbe4a457fb0f31"
+      },
+      {
+        "asset": "385560",
+        "date": "2023-07-03",
+        "open": 58429,
+        "high": 59578,
+        "low": 58347,
+        "close": 59539,
+        "source": "backend /history (adjusted OHLC, as returned)",
+        "backendFileSha256": "691e891fcb6d5927c91fce6e43c1abffb1fa48e492341033e9dbe4a457fb0f31"
+      },
+      {
+        "asset": "385560",
+        "date": "2023-07-04",
+        "open": 59829,
+        "high": 59873,
+        "low": 59347,
+        "close": 59347,
+        "source": "backend /history (adjusted OHLC, as returned)",
+        "backendFileSha256": "691e891fcb6d5927c91fce6e43c1abffb1fa48e492341033e9dbe4a457fb0f31"
+      },
+      {
+        "asset": "385560",
+        "date": "2023-07-05",
+        "open": 59602,
+        "high": 59602,
+        "low": 59061,
+        "close": 59294,
+        "source": "backend /history (adjusted OHLC, as returned)",
+        "backendFileSha256": "691e891fcb6d5927c91fce6e43c1abffb1fa48e492341033e9dbe4a457fb0f31"
+      },
+      {
+        "asset": "385560",
+        "date": "2023-07-06",
+        "open": 58951,
+        "high": 58951,
+        "low": 58503,
+        "close": 58679,
+        "source": "backend /history (adjusted OHLC, as returned)",
+        "backendFileSha256": "691e891fcb6d5927c91fce6e43c1abffb1fa48e492341033e9dbe4a457fb0f31"
+      },
+      {
+        "asset": "385560",
+        "date": "2023-07-11",
+        "open": 57697,
+        "high": 58596,
+        "low": 57666,
+        "close": 58596,
+        "source": "backend /history (adjusted OHLC, as returned)",
+        "backendFileSha256": "691e891fcb6d5927c91fce6e43c1abffb1fa48e492341033e9dbe4a457fb0f31"
+      },
+      {
+        "asset": "385560",
+        "date": "2023-07-12",
+        "open": 58715,
+        "high": 59175,
+        "low": 58601,
+        "close": 59175,
+        "source": "backend /history (adjusted OHLC, as returned)",
+        "backendFileSha256": "691e891fcb6d5927c91fce6e43c1abffb1fa48e492341033e9dbe4a457fb0f31"
+      },
+      {
+        "asset": "385560",
+        "date": "2023-07-13",
+        "open": 59658,
+        "high": 60053,
+        "low": 59578,
+        "close": 59895,
+        "source": "backend /history (adjusted OHLC, as returned)",
+        "backendFileSha256": "691e891fcb6d5927c91fce6e43c1abffb1fa48e492341033e9dbe4a457fb0f31"
+      },
+      {
+        "asset": "385560",
+        "date": "2023-07-18",
+        "open": 59434,
+        "high": 59842,
+        "low": 59360,
+        "close": 59360,
+        "source": "backend /history (adjusted OHLC, as returned)",
+        "backendFileSha256": "691e891fcb6d5927c91fce6e43c1abffb1fa48e492341033e9dbe4a457fb0f31"
+      },
+      {
+        "asset": "385560",
+        "date": "2023-07-25",
+        "open": 59597,
+        "high": 59895,
+        "low": 59324,
+        "close": 59360,
+        "source": "backend /history (adjusted OHLC, as returned)",
+        "backendFileSha256": "691e891fcb6d5927c91fce6e43c1abffb1fa48e492341033e9dbe4a457fb0f31"
+      },
+      {
+        "asset": "385560",
+        "date": "2023-07-27",
+        "open": 59319,
+        "high": 59597,
+        "low": 59096,
+        "close": 59360,
+        "source": "backend /history (adjusted OHLC, as returned)",
+        "backendFileSha256": "691e891fcb6d5927c91fce6e43c1abffb1fa48e492341033e9dbe4a457fb0f31"
+      },
+      {
+        "asset": "385560",
+        "date": "2023-07-31",
+        "open": 58535,
+        "high": 58759,
+        "low": 58237,
+        "close": 58715,
+        "source": "backend /history (adjusted OHLC, as returned)",
+        "backendFileSha256": "691e891fcb6d5927c91fce6e43c1abffb1fa48e492341033e9dbe4a457fb0f31"
+      },
+      {
+        "asset": "385560",
+        "date": "2023-08-01",
+        "open": 58789,
+        "high": 59360,
+        "low": 58755,
+        "close": 59157,
+        "source": "backend /history (adjusted OHLC, as returned)",
+        "backendFileSha256": "691e891fcb6d5927c91fce6e43c1abffb1fa48e492341033e9dbe4a457fb0f31"
+      },
+      {
+        "asset": "385560",
+        "date": "2023-08-02",
+        "open": 58960,
+        "high": 58990,
+        "low": 58661,
+        "close": 58731,
+        "source": "backend /history (adjusted OHLC, as returned)",
+        "backendFileSha256": "691e891fcb6d5927c91fce6e43c1abffb1fa48e492341033e9dbe4a457fb0f31"
+      },
+      {
+        "asset": "385560",
+        "date": "2024-01-18",
+        "open": 65791,
+        "high": 66030,
+        "low": 65780,
+        "close": 66006,
+        "source": "backend /history (adjusted OHLC, as returned)",
+        "backendFileSha256": "691e891fcb6d5927c91fce6e43c1abffb1fa48e492341033e9dbe4a457fb0f31"
+      },
+      {
+        "asset": "385560",
+        "date": "2024-08-27",
+        "open": 72617,
+        "high": 72617,
+        "low": 71391,
+        "close": 71488,
+        "source": "backend /history (adjusted OHLC, as returned)",
+        "backendFileSha256": "691e891fcb6d5927c91fce6e43c1abffb1fa48e492341033e9dbe4a457fb0f31"
+      },
+      {
+        "asset": "385560",
+        "date": "2024-10-30",
+        "open": 71465,
+        "high": 71831,
+        "low": 71465,
+        "close": 71761,
+        "source": "backend /history (adjusted OHLC, as returned)",
+        "backendFileSha256": "691e891fcb6d5927c91fce6e43c1abffb1fa48e492341033e9dbe4a457fb0f31"
+      },
+      {
+        "asset": "385560",
+        "date": "2024-11-05",
+        "open": 72503,
+        "high": 72591,
+        "low": 72185,
+        "close": 72591,
+        "source": "backend /history (adjusted OHLC, as returned)",
+        "backendFileSha256": "691e891fcb6d5927c91fce6e43c1abffb1fa48e492341033e9dbe4a457fb0f31"
+      },
+      {
+        "asset": "411060",
+        "date": "2022-02-14",
+        "open": 10445,
+        "high": 10495,
+        "low": 10350,
+        "close": 10420,
+        "source": "backend /history (adjusted OHLC, as returned)",
+        "backendFileSha256": "08f60d04361d73d94b83fab07202541a65150cfb4a6dc7890799dbfb7b06d633"
+      },
+      {
+        "asset": "411060",
+        "date": "2022-05-02",
+        "open": 11190,
+        "high": 11190,
+        "low": 11075,
+        "close": 11140,
+        "source": "backend /history (adjusted OHLC, as returned)",
+        "backendFileSha256": "08f60d04361d73d94b83fab07202541a65150cfb4a6dc7890799dbfb7b06d633"
+      },
+      {
+        "asset": "411060",
+        "date": "2023-05-18",
+        "open": 12325,
+        "high": 12325,
+        "low": 12190,
+        "close": 12215,
+        "source": "backend /history (adjusted OHLC, as returned)",
+        "backendFileSha256": "08f60d04361d73d94b83fab07202541a65150cfb4a6dc7890799dbfb7b06d633"
+      },
+      {
+        "asset": "411060",
+        "date": "2023-05-24",
+        "open": 11950,
+        "high": 12025,
+        "low": 11935,
+        "close": 12010,
+        "source": "backend /history (adjusted OHLC, as returned)",
+        "backendFileSha256": "08f60d04361d73d94b83fab07202541a65150cfb4a6dc7890799dbfb7b06d633"
+      },
+      {
+        "asset": "411060",
+        "date": "2023-07-03",
+        "open": 11600,
+        "high": 11680,
+        "low": 11600,
+        "close": 11625,
+        "source": "backend /history (adjusted OHLC, as returned)",
+        "backendFileSha256": "08f60d04361d73d94b83fab07202541a65150cfb4a6dc7890799dbfb7b06d633"
+      },
+      {
+        "asset": "411060",
+        "date": "2023-07-04",
+        "open": 11630,
+        "high": 11640,
+        "low": 11560,
+        "close": 11595,
+        "source": "backend /history (adjusted OHLC, as returned)",
+        "backendFileSha256": "08f60d04361d73d94b83fab07202541a65150cfb4a6dc7890799dbfb7b06d633"
+      },
+      {
+        "asset": "411060",
+        "date": "2023-07-05",
+        "open": 11515,
+        "high": 11620,
+        "low": 11515,
+        "close": 11575,
+        "source": "backend /history (adjusted OHLC, as returned)",
+        "backendFileSha256": "08f60d04361d73d94b83fab07202541a65150cfb4a6dc7890799dbfb7b06d633"
+      },
+      {
+        "asset": "411060",
+        "date": "2023-07-06",
+        "open": 11530,
+        "high": 11600,
+        "low": 11530,
+        "close": 11575,
+        "source": "backend /history (adjusted OHLC, as returned)",
+        "backendFileSha256": "08f60d04361d73d94b83fab07202541a65150cfb4a6dc7890799dbfb7b06d633"
+      },
+      {
+        "asset": "411060",
+        "date": "2023-07-11",
+        "open": 11610,
+        "high": 11620,
+        "low": 11520,
+        "close": 11580,
+        "source": "backend /history (adjusted OHLC, as returned)",
+        "backendFileSha256": "08f60d04361d73d94b83fab07202541a65150cfb4a6dc7890799dbfb7b06d633"
+      },
+      {
+        "asset": "411060",
+        "date": "2023-07-12",
+        "open": 11580,
+        "high": 11595,
+        "low": 11530,
+        "close": 11575,
+        "source": "backend /history (adjusted OHLC, as returned)",
+        "backendFileSha256": "08f60d04361d73d94b83fab07202541a65150cfb4a6dc7890799dbfb7b06d633"
+      },
+      {
+        "asset": "411060",
+        "date": "2023-07-13",
+        "open": 11585,
+        "high": 11590,
+        "low": 11535,
+        "close": 11565,
+        "source": "backend /history (adjusted OHLC, as returned)",
+        "backendFileSha256": "08f60d04361d73d94b83fab07202541a65150cfb4a6dc7890799dbfb7b06d633"
+      },
+      {
+        "asset": "411060",
+        "date": "2023-07-18",
+        "open": 11410,
+        "high": 11455,
+        "low": 11380,
+        "close": 11445,
+        "source": "backend /history (adjusted OHLC, as returned)",
+        "backendFileSha256": "08f60d04361d73d94b83fab07202541a65150cfb4a6dc7890799dbfb7b06d633"
+      },
+      {
+        "asset": "411060",
+        "date": "2023-07-25",
+        "open": 11615,
+        "high": 11620,
+        "low": 11570,
+        "close": 11600,
+        "source": "backend /history (adjusted OHLC, as returned)",
+        "backendFileSha256": "08f60d04361d73d94b83fab07202541a65150cfb4a6dc7890799dbfb7b06d633"
+      },
+      {
+        "asset": "411060",
+        "date": "2023-07-27",
+        "open": 11590,
+        "high": 11645,
+        "low": 11555,
+        "close": 11630,
+        "source": "backend /history (adjusted OHLC, as returned)",
+        "backendFileSha256": "08f60d04361d73d94b83fab07202541a65150cfb4a6dc7890799dbfb7b06d633"
+      },
+      {
+        "asset": "411060",
+        "date": "2023-07-31",
+        "open": 11505,
+        "high": 11560,
+        "low": 11460,
+        "close": 11485,
+        "source": "backend /history (adjusted OHLC, as returned)",
+        "backendFileSha256": "08f60d04361d73d94b83fab07202541a65150cfb4a6dc7890799dbfb7b06d633"
+      },
+      {
+        "asset": "411060",
+        "date": "2023-08-01",
+        "open": 11490,
+        "high": 11605,
+        "low": 11490,
+        "close": 11575,
+        "source": "backend /history (adjusted OHLC, as returned)",
+        "backendFileSha256": "08f60d04361d73d94b83fab07202541a65150cfb4a6dc7890799dbfb7b06d633"
+      },
+      {
+        "asset": "411060",
+        "date": "2023-08-02",
+        "open": 11580,
+        "high": 11665,
+        "low": 11575,
+        "close": 11665,
+        "source": "backend /history (adjusted OHLC, as returned)",
+        "backendFileSha256": "08f60d04361d73d94b83fab07202541a65150cfb4a6dc7890799dbfb7b06d633"
+      },
+      {
+        "asset": "411060",
+        "date": "2024-01-18",
+        "open": 12475,
+        "high": 12475,
+        "low": 12375,
+        "close": 12385,
+        "source": "backend /history (adjusted OHLC, as returned)",
+        "backendFileSha256": "08f60d04361d73d94b83fab07202541a65150cfb4a6dc7890799dbfb7b06d633"
+      },
+      {
+        "asset": "411060",
+        "date": "2024-08-27",
+        "open": 15420,
+        "high": 15490,
+        "low": 15415,
+        "close": 15435,
+        "source": "backend /history (adjusted OHLC, as returned)",
+        "backendFileSha256": "08f60d04361d73d94b83fab07202541a65150cfb4a6dc7890799dbfb7b06d633"
+      },
+      {
+        "asset": "411060",
+        "date": "2024-10-30",
+        "open": 18690,
+        "high": 18690,
+        "low": 18385,
+        "close": 18435,
+        "source": "backend /history (adjusted OHLC, as returned)",
+        "backendFileSha256": "08f60d04361d73d94b83fab07202541a65150cfb4a6dc7890799dbfb7b06d633"
+      },
+      {
+        "asset": "411060",
+        "date": "2024-11-05",
+        "open": 17305,
+        "high": 17430,
+        "low": 17205,
+        "close": 17400,
+        "source": "backend /history (adjusted OHLC, as returned)",
+        "backendFileSha256": "08f60d04361d73d94b83fab07202541a65150cfb4a6dc7890799dbfb7b06d633"
+      }
+    ],
+    "notFilled": [
+      {
+        "asset": "464470",
+        "date": "2022-02-14",
+        "reason": "no-yahoo-row-or-not-listed"
+      },
+      {
+        "asset": "464470",
+        "date": "2022-05-02",
+        "reason": "no-yahoo-row-or-not-listed"
+      },
+      {
+        "asset": "464470",
+        "date": "2023-05-18",
+        "reason": "no-yahoo-row-or-not-listed"
+      },
+      {
+        "asset": "464470",
+        "date": "2023-05-24",
+        "reason": "no-yahoo-row-or-not-listed"
+      },
+      {
+        "asset": "464470",
+        "date": "2023-07-03",
+        "reason": "no-yahoo-row-or-not-listed"
+      },
+      {
+        "asset": "464470",
+        "date": "2023-07-04",
+        "reason": "no-yahoo-row-or-not-listed"
+      },
+      {
+        "asset": "464470",
+        "date": "2023-07-05",
+        "reason": "no-yahoo-row-or-not-listed"
+      },
+      {
+        "asset": "464470",
+        "date": "2023-07-06",
+        "reason": "no-yahoo-row-or-not-listed"
+      },
+      {
+        "asset": "464470",
+        "date": "2023-07-11",
+        "reason": "no-yahoo-row-or-not-listed"
+      },
+      {
+        "asset": "464470",
+        "date": "2023-07-12",
+        "reason": "no-yahoo-row-or-not-listed"
+      },
+      {
+        "asset": "464470",
+        "date": "2023-07-13",
+        "reason": "no-yahoo-row-or-not-listed"
+      },
+      {
+        "asset": "464470",
+        "date": "2023-07-18",
+        "reason": "no-yahoo-row-or-not-listed"
+      },
+      {
+        "asset": "464470",
+        "date": "2023-07-25",
+        "reason": "no-yahoo-row-or-not-listed"
+      },
+      {
+        "asset": "464470",
+        "date": "2023-07-27",
+        "reason": "no-yahoo-row-or-not-listed"
+      },
+      {
+        "asset": "464470",
+        "date": "2023-07-31",
+        "reason": "no-yahoo-row-or-not-listed"
+      },
+      {
+        "asset": "464470",
+        "date": "2023-08-01",
+        "reason": "no-yahoo-row-or-not-listed"
+      },
+      {
+        "asset": "464470",
+        "date": "2023-08-02",
+        "reason": "no-yahoo-row-or-not-listed"
+      },
+      {
+        "asset": "464470",
+        "date": "2024-01-18",
+        "reason": "unit-check-failed"
+      },
+      {
+        "asset": "464470",
+        "date": "2024-08-27",
+        "reason": "unit-check-failed"
+      },
+      {
+        "asset": "464470",
+        "date": "2024-10-30",
+        "reason": "unit-check-failed"
+      },
+      {
+        "asset": "464470",
+        "date": "2024-11-05",
+        "reason": "unit-check-failed"
+      }
+    ]
+  },
+  "adjustment": {
+    "method": "event-ledger",
+    "description": "분배락일 직전 원시 종가 기준 1 − 분배금/직전종가 의 누적곱을 이벤트일 이전 봉에 적용. 069500 2023-07-27처럼 직전일을 Yahoo가 비웠으면 백엔드 조정 종가에서 역산한 값을 쓴다(amendment.ts computeLedgerEvents)."
+  },
+  "panels": {
+    "panel_P": {
+      "file": "output/panel_P.json",
+      "sha256": "09d092636f4a6ad8e926552b796075f41ef5c0bef04d642ce7b2d6c8284f3552",
+      "sessions": 1169,
+      "firstDate": "2021-12-15",
+      "lastDate": "2026-09-30",
+      "preAmendmentSha256": "c3ae0ae645625516d954f663b9ec58559528c51fbcc9d43ef8d1529f87fe7037"
+    },
+    "panel_P5": {
+      "file": "output/panel_P5.json",
+      "sha256": "b13597ed2feab80d2ae563b4dc5ca26f9bf4e7f5b42e7f3dd9fed1e8a222c755",
+      "sessions": 1169,
+      "preAmendmentSha256": "96df0b3feb8d2446eacdb138b28304a7cfb9af3c2a671464a0c2039e5d8f0516"
+    }
+  },
+  "calendarRule": "yahoo-rows",
+  "halted": true,
+  "haltReasons": [
+    "A1-2 원장≠백엔드 — 069500 2022-10-27 분배 85원: 원장 0.2881% vs 백엔드 0.0005% (차이 -28.8bp)",
+    "A1-2 원장에 없는 백엔드 단계 — 069500 2022-07-27→2022-07-28: 백엔드 계수 0.2199% 변화, 원장 이벤트 없음",
+    "A1-2 어느 쪽과도 맞지 않는 구간 — 069500: 2021-12-15~2022-01-26, 2022-01-27~2022-04-27, 2022-04-28~2022-10-26",
+    "A1-1 단위 검증 실패 — 464470: 백엔드 대비 새 TR 비율 편차 최대 0.151% (허용 0.1%). 보충 4행 미적용.",
+    "A1-2 원장에 없는 백엔드 단계 — 464470 2025-03-27→2025-03-28: 백엔드 계수 0.2084% 변화, 원장 이벤트 없음"
+  ]
+}

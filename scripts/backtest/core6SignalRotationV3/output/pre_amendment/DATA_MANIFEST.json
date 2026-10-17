@@ -1,0 +1,130 @@
+{
+  "schema": "core6-v3-data-manifest-v1",
+  "generatedAtUtc": "2026-10-17T01:12:56.939Z",
+  "note": "원자료는 재수집하지 않고 core6SignalRotation/data/raw 의 기존 파일을 그대로 읽었다(gitignore). 해시로 동일성을 증명한다.",
+  "rawFiles": [
+    {
+      "file": "scripts/backtest/core6SignalRotation/data/raw/yahoo_069500.KS.json",
+      "sha256": "3cb03906b970b5ee2b32fcb638452eb7eb0c08f3cdb2252ced8dec94508dd604",
+      "bytes": 275394,
+      "rows": 4856,
+      "validRows": 4278,
+      "firstDate": "2007-01-29",
+      "lastDate": "2026-10-01",
+      "fetchedAtUtc": "2026-10-12T02:09:55.497Z",
+      "sourceUrl": "https://query1.finance.yahoo.com/v8/finance/chart/069500.KS?period1=1009843200&period2=1790812800&interval=1d&events=div%2Csplits&includeAdjustedClose=true",
+      "matchesV1Checksums": true
+    },
+    {
+      "file": "scripts/backtest/core6SignalRotation/data/raw/yahoo_379800.KS.json",
+      "sha256": "5f07ed7a917f5f4be18557add62231dc702180f6a7af0716f44fd1cb0bc082e6",
+      "bytes": 78912,
+      "rows": 1340,
+      "validRows": 1319,
+      "firstDate": "2021-04-09",
+      "lastDate": "2026-10-01",
+      "fetchedAtUtc": "2026-10-12T02:09:56.011Z",
+      "sourceUrl": "https://query1.finance.yahoo.com/v8/finance/chart/379800.KS?period1=1009843200&period2=1790812800&interval=1d&events=div%2Csplits&includeAdjustedClose=true",
+      "matchesV1Checksums": true
+    },
+    {
+      "file": "scripts/backtest/core6SignalRotation/data/raw/yahoo_283580.KS.json",
+      "sha256": "89d53d4dbb7e84d8a1a8f3a547dc6d1f852516b3a9980d72693b2673845bb544",
+      "bytes": 122105,
+      "rows": 2154,
+      "validRows": 2127,
+      "firstDate": "2017-12-13",
+      "lastDate": "2026-10-01",
+      "fetchedAtUtc": "2026-10-12T02:09:56.586Z",
+      "sourceUrl": "https://query1.finance.yahoo.com/v8/finance/chart/283580.KS?period1=1009843200&period2=1790812800&interval=1d&events=div%2Csplits&includeAdjustedClose=true",
+      "matchesV1Checksums": true
+    },
+    {
+      "file": "scripts/backtest/core6SignalRotation/data/raw/yahoo_385560.KS.json",
+      "sha256": "202d4491b6b503552ea5b6ca75434944723e0500d2c0c2ced95c19c35d550625",
+      "bytes": 72907,
+      "rows": 1309,
+      "validRows": 1288,
+      "firstDate": "2021-05-26",
+      "lastDate": "2026-10-01",
+      "fetchedAtUtc": "2026-10-12T02:09:57.033Z",
+      "sourceUrl": "https://query1.finance.yahoo.com/v8/finance/chart/385560.KS?period1=1009843200&period2=1790812800&interval=1d&events=div%2Csplits&includeAdjustedClose=true",
+      "matchesV1Checksums": true
+    },
+    {
+      "file": "scripts/backtest/core6SignalRotation/data/raw/yahoo_464470.KS.json",
+      "sha256": "011468b1981929e4240b6326826fd29799ed8c49337cbbf4c30c57d5c03c3907",
+      "bytes": 43355,
+      "rows": 756,
+      "validRows": 752,
+      "firstDate": "2023-08-22",
+      "lastDate": "2026-10-01",
+      "fetchedAtUtc": "2026-10-12T02:09:57.468Z",
+      "sourceUrl": "https://query1.finance.yahoo.com/v8/finance/chart/464470.KS?period1=1009843200&period2=1790812800&interval=1d&events=div%2Csplits&includeAdjustedClose=true",
+      "matchesV1Checksums": true
+    },
+    {
+      "file": "scripts/backtest/core6SignalRotation/data/raw/yahoo_411060.KS.json",
+      "sha256": "91b0c25950c66331da1d7699624cc81eb3d1470420a34e248cf6f12f7919cfb3",
+      "bytes": 66831,
+      "rows": 1170,
+      "validRows": 1149,
+      "firstDate": "2021-12-15",
+      "lastDate": "2026-10-01",
+      "fetchedAtUtc": "2026-10-12T02:09:58.097Z",
+      "sourceUrl": "https://query1.finance.yahoo.com/v8/finance/chart/411060.KS?period1=1009843200&period2=1790812800&interval=1d&events=div%2Csplits&includeAdjustedClose=true",
+      "matchesV1Checksums": true
+    },
+    {
+      "file": "scripts/backtest/core6SignalRotation/data/raw/yahoo_TLT.json",
+      "sha256": "0d0d948d3dbf4e187b12353b86cd39204367a75decb0ded6c9bc68deb6ad99ec",
+      "bytes": 672473,
+      "rows": 6082,
+      "validRows": 6082,
+      "firstDate": "2002-07-30",
+      "lastDate": "2026-09-30",
+      "fetchedAtUtc": "2026-10-12T02:10:00.123Z",
+      "sourceUrl": "https://query1.finance.yahoo.com/v8/finance/chart/TLT?period1=1009843200&period2=1790812800&interval=1d&events=div%2Csplits&includeAdjustedClose=true",
+      "matchesV1Checksums": true
+    },
+    {
+      "file": "scripts/backtest/core6SignalRotation/data/raw/yahoo_KRW=X.json",
+      "sha256": "51ec309361b2d81ae3fba8f5391b9dd6aec9ee4725e918eceeaac83fa3e95fa8",
+      "bytes": 575445,
+      "rows": 5959,
+      "validRows": 5923,
+      "firstDate": "2003-12-01",
+      "lastDate": "2026-10-01",
+      "fetchedAtUtc": "2026-10-12T02:10:00.701Z",
+      "sourceUrl": "https://query1.finance.yahoo.com/v8/finance/chart/KRW%3DX?period1=1009843200&period2=1790812800&interval=1d&events=div%2Csplits&includeAdjustedClose=true",
+      "matchesV1Checksums": true
+    },
+    {
+      "file": "scripts/backtest/core6SignalRotation/data/raw/ecos_cd91.json",
+      "sha256": "e56e4e48a314d38a7d27b8f2671d0910d43c4bb5fe8ed301b3ee2f46c8aac479",
+      "bytes": 430209,
+      "rows": 1412,
+      "validRows": null,
+      "firstDate": "2021-01-04",
+      "lastDate": "2026-09-30",
+      "fetchedAtUtc": "2026-10-12T02:10:35.288Z",
+      "sourceUrl": null,
+      "matchesV1Checksums": true
+    }
+  ],
+  "panels": {
+    "panel_P": {
+      "file": "output/panel_P.json",
+      "sha256": "c3ae0ae645625516d954f663b9ec58559528c51fbcc9d43ef8d1529f87fe7037",
+      "sessions": 1148,
+      "firstDate": "2021-12-15",
+      "lastDate": "2026-09-30"
+    },
+    "panel_P5": {
+      "file": "output/panel_P5.json",
+      "sha256": "96df0b3feb8d2446eacdb138b28304a7cfb9af3c2a671464a0c2039e5d8f0516",
+      "sessions": 1148
+    }
+  },
+  "calendarRule": "majority-valid"
+}
