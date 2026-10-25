@@ -7,10 +7,10 @@
 // 렌더 전용 — 탭 이동/메뉴 동작은 전부 props로 받은 콜백에 위임.
 
 import React, { useRef, useState } from 'react';
-import { House, Briefcase, Star, MoreHorizontal, type LucideIcon } from 'lucide-react';
+import { House, Briefcase, Star, ChartColumn, MoreHorizontal, type LucideIcon } from 'lucide-react';
 import ActionMenu, { type ActionMenuItem } from './ActionMenu';
 
-export type BottomTabId = 'dashboard' | 'portfolio' | 'watchlist';
+export type BottomTabId = 'dashboard' | 'portfolio' | 'watchlist' | 'analytics';
 
 interface TabDef {
   id: BottomTabId;
@@ -22,6 +22,7 @@ const TABS: TabDef[] = [
   { id: 'dashboard', label: '홈', icon: House },
   { id: 'portfolio', label: '보유자산', icon: Briefcase },
   { id: 'watchlist', label: '관심종목', icon: Star },
+  { id: 'analytics', label: '수익통계', icon: ChartColumn },
 ];
 
 export interface BottomTabBarProps {

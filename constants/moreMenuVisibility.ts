@@ -8,7 +8,6 @@
 // activeTab을 직접 바꿀 뿐 이 메뉴를 거치지 않는다).
 
 export type MoreMenuItemId =
-  | 'analytics'      // 수익 통계
   | 'cleanup'        // 터틀 정리(구 대청소)
   | 'tradePlanner'   // 매매 계획 세우기
   | 'assistant'      // AI 어시스턴트

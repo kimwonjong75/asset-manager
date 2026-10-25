@@ -24,7 +24,7 @@ const GOLDEN: Record<AppTab, [title: string, mobileTitle: boolean, showAccountVi
   dashboard: ['홈', false, false, false, false],
   portfolio: ['보유자산', true, true, true, false],
   watchlist: ['관심종목', true, false, true, false],
-  analytics: ['수익 통계', true, false, false, true],
+  analytics: ['수익 통계', true, false, false, false],
   // P3(터틀 재정비, 2026-09-26): cleanup 탭 화면이 TurtleCleanupView로 교체되며 라벨도 '터틀 정리'로.
   cleanup: ['터틀 정리', true, false, false, true],
   guide: ['투자 가이드', true, false, false, true],
@@ -44,7 +44,7 @@ for (const tab of EXPECTED_TABS) {
 
 // ③ 더보기 파생 목록 — 명시값
 check(
-  JSON.stringify([...MORE_MENU_TABS].sort()) === JSON.stringify(['analytics', 'cleanup', 'guide', 'manual', 'replay', 'settings']),
+  JSON.stringify([...MORE_MENU_TABS].sort()) === JSON.stringify(['cleanup', 'guide', 'manual', 'replay', 'settings']),
   `MORE_MENU_TABS = ${MORE_MENU_TABS.join(',')}`,
 );
 

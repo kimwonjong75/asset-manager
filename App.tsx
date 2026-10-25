@@ -69,7 +69,6 @@ const AppContent: React.FC = () => {
   // HIDDEN_MORE_MENU_ITEM_IDS 한 곳만 고치면 되돌아온다). 딥링크(`?tab=…`)는 이 배열을 거치지 않으므로
   // 숨겨도 깨지지 않는다. '대청소' 라벨은 화면이 TurtleCleanupView로 바뀌며 '터틀 정리'로 갱신.
   const ALL_MORE_MENU_ITEMS: (ActionMenuItem & { id: MoreMenuItemId })[] = useMemo(() => [
-    { id: 'analytics', label: '수익 통계', onClick: () => actions.setActiveTab('analytics') },
     { id: 'tradePlanner', label: '매매 계획 세우기', onClick: () => actions.openTradePlanPlanner() },
     { id: 'cleanup', label: '터틀 정리', onClick: () => actions.setActiveTab('cleanup') },
     { id: 'assistant', label: 'AI 어시스턴트', onClick: () => actions.openAssistant() },
@@ -272,6 +271,7 @@ const AppContent: React.FC = () => {
                     <TabButton tabId="dashboard" onClick={() => actions.setActiveTab('dashboard')}>홈</TabButton>
                     <TabButton tabId="portfolio" onClick={() => actions.setActiveTab('portfolio')}>보유자산</TabButton>
                     <TabButton tabId="watchlist" onClick={() => actions.setActiveTab('watchlist')}>관심종목</TabButton>
+                    <TabButton tabId="analytics" onClick={() => actions.setActiveTab('analytics')}>수익 통계</TabButton>
                     <button
                       ref={moreMenuRef}
                       type="button"

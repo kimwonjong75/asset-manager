@@ -368,6 +368,7 @@ const SellAnalyticsPage: React.FC<SellAnalyticsPageProps> = ({ assets, sellHisto
                   <th className="py-3 px-2 sm:px-3">종목명</th>
                   <th className="py-3 px-3 hidden sm:table-cell">티커</th>
                   <th className="py-3 px-3 text-right hidden sm:table-cell">수량</th>
+                  <th className="py-3 px-3 text-right hidden sm:table-cell">주당매도가</th>
                   <th className="py-3 px-3 text-right hidden sm:table-cell">매도금액</th>
                   <th className="py-3 px-3 text-right hidden sm:table-cell">매수금액</th>
                   <th className="py-3 px-2 sm:px-3 text-right">실현손익</th>
@@ -388,6 +389,9 @@ const SellAnalyticsPage: React.FC<SellAnalyticsPageProps> = ({ assets, sellHisto
                         <td className="py-3 px-2 sm:px-3 text-white font-medium text-xs sm:text-sm">{r.name}</td>
                         <td className="py-3 px-3 text-gray-400 hidden sm:table-cell">{r.ticker}</td>
                         <td className="py-3 px-3 text-right text-gray-300 hidden sm:table-cell">{r.sellQuantity.toLocaleString()}</td>
+                        <td className="py-3 px-3 text-right text-gray-300 hidden sm:table-cell">
+                          {r.sellQuantity > 0 ? formatKRW(sellTotal / r.sellQuantity) : '-'}
+                        </td>
                         <td className="py-3 px-3 text-right text-gray-300 hidden sm:table-cell">{formatKRW(sellTotal)}</td>
                         <td className="py-3 px-3 text-right text-gray-300 hidden sm:table-cell">{r.hasCostBasis ? formatKRW(r.purchaseKRW) : '-'}</td>
                         <td className={`py-3 px-2 sm:px-3 text-right font-semibold text-xs sm:text-sm ${isProfit ? 'text-up' : 'text-down'}`}>
