@@ -23,6 +23,15 @@ import { marketIdForExchange } from './holdingMarkets';
 
 export const NOTIFY_MANIFEST_VERSION = 1 as const;
 
+/**
+ * 카톡에 보낼 종목 이름 — 화면과 같은 규칙(`customName?.trim() || name`).
+ * `customName ?? name`은 빈 문자열 별칭("")을 그대로 보내 카톡에 이름이 빈칸으로 찍혔다
+ * (2026-10 실제 사례: KRX 금현물 "🔵 [팔 때]  — …"). 빈칸·공백뿐인 별칭은 원래 이름으로 대체한다.
+ */
+export function assetDisplayName(a: Pick<Asset, 'name' | 'customName'>): string {
+  return a.customName?.trim() || a.name;
+}
+
 export interface NotifyManifestItem {
   assetId: string;
   ticker: string;
@@ -155,7 +164,7 @@ function buildTurtleSection(input: BuildNotifyManifestInput): NotifyManifestTurt
       assetId: a.id,
       ticker: a.ticker,
       exchange: a.exchange,
-      name: a.customName ?? a.name,
+      name: assetDisplayName(a),
       currency: a.currency,
       isCrypto: marketIdForExchange(a.exchange) === 'CRYPTO',
       quantity: a.quantity,
@@ -171,7 +180,7 @@ function buildTurtleSection(input: BuildNotifyManifestInput): NotifyManifestTurt
       assetId: asset.id,
       ticker: p.ticker,
       exchange: asset.exchange,
-      name: asset.customName ?? asset.name,
+      name: assetDisplayName(asset),
       currency: asset.currency,
       isCrypto: marketIdForExchange(asset.exchange) === 'CRYPTO',
       units: p.units.map(u => ({ fillPrice: u.fillPrice, quantity: u.quantity, nAtFill: u.nAtFill })),
@@ -221,7 +230,7 @@ export function buildNotifyManifest(input: BuildNotifyManifestInput): NotifyMani
       assetId: a.id,
       ticker: a.ticker,
       exchange: a.exchange,
-      name: a.customName ?? a.name,
+      name: assetDisplayName(a),
       currency: a.currency,
       quantity: a.quantity,
       plan: a.tradePlan as TradePlan,

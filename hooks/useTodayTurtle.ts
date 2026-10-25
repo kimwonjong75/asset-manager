@@ -15,7 +15,7 @@
 // 모듈 캐시 (Stage D2 F1): 홈은 탭 전환마다 재마운트되므로 loadedKeyRef(마운트 단위)만으로는 재진입마다
 //   POST /history 를 다시 불렀다. 이제 모듈 Map 에 requestKey 별 결과를 30분 보관하고, 판정은 순수 함수
 //   utils/todayTurtleCache 에 위임한다.
-//   · fresh(키 일치 + 시장 현지 날짜 서명 일치 + TTL 이내) → 조회 없이 재사용. 렌더 중 엿보기로 첫 화면부터 표시.
+//   · fresh(키 일치 + 시장 현지 날짜·마감 확정 서명 일치 + TTL 이내) → 조회 없이 재사용. 렌더 중 엿보기로 첫 화면부터 표시.
 //   · 같은 키 조회가 진행 중이면(in-flight) 같은 Promise 를 기다린다 — 동시 마운트가 요청을 공유.
 //   · **완전 성공만 저장**(isCacheableResult) — 부분 실패·빈 결과는 저장하지 않아 다음 마운트에서 재시도된다.
 //   · 가격 새로고침 버튼은 이 캐시를 비우지 않는다(장중 가격은 원래 재조회 사유가 아님 — 날짜·서명·requestKey 가 담당).
@@ -33,7 +33,7 @@ import {
 } from '../services/historicalPriceService';
 import {
   buildWatchRow, buildPositionRow, buildLegacyRow, sortRows, summarizeRows,
-  todayInstrumentKey, buildTodayRequestKey, isStaleResponse, RawSeries,
+  todayInstrumentKey, buildTodayRequestKey, isStaleResponse, addIsoDays, RawSeries,
 } from '../utils/todayTurtle';
 import {
   marketDaySignature, evaluateCacheEntry, isCacheableResult, pruneCacheEntries, selectDisplayedResult,
@@ -319,7 +319,10 @@ export function useTodayTurtle(): TodayTurtleModel {
     const reqId = ++requestIdRef.current;
     // 대상 0 / fresh 캐시 / in-flight 공유 / 새 조회 — 모두 같은 비동기 커밋 경로로 모인다.
     // (effect 본문에서 동기 setState 하지 않음: 로딩·대상0·캐시 표시는 selectDisplayedResult 로 렌더에서 파생)
-    void acquireOutcome(requestKey, fetchTargets, asOfDate).then(outcome => {
+    // 조회 종료일 = asOfDate(UTC 오늘) + 1일. 백엔드 /history 의 end_date 는 미국 종목에서 **배타적**(실측: end=10-23 → 마지막 봉 10-22)이고
+    // UTC 날짜는 KST 오전에 아직 전날이라, asOfDate 그대로 보내면 막 확정된 미국 당일 봉이 도착하지 않는다.
+    // 아직 확정 전인 봉은 추출 단계(extractCompletedBars)가 걸러내므로 넉넉히 +1일을 요청해도 안전하다.
+    void acquireOutcome(requestKey, fetchTargets, addIsoDays(asOfDate, 1)).then(outcome => {
       // 오래된 응답이 새 요청 결과를 덮어쓰지 않게 가드 (순수 판정은 utils 로 분리 — 테스트 가능)
       if (isStaleResponse(reqId, requestIdRef.current)) return;
       // 대상 0 이면 raw=null 커밋 → 이전 raw map 을 남기지 않는다

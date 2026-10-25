@@ -174,6 +174,35 @@ export function evaluateWatchItemForNotify(
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// 마감 판정 진행 결정(closeCheck) — 세션 봉이 아직 없는 종목이 있을 때 재시도/포기를 가른다
+// ═══════════════════════════════════════════════════════════════════════════
+
+export type TurtleCloseProgress = 'done' | 'retry' | 'give-up';
+
+export interface TurtleCloseProgressInput {
+  /** 이번 실행에서 세션 봉이 아직 없어 평가하지 못한 종목 수(공급자 미갱신·휴장일·조회 실패 포함). */
+  pendingCount: number;
+  nowMs: number;
+  /** 해당 세션의 마감 확정 시각(`closeConfirmTime`)의 epoch ms — 정착 대기(settle)를 더하지 않은 값. */
+  confirmAtMs: number;
+  /** 마감 확정 시각으로부터 이 시간(시간)이 지나면 더는 기다리지 않는다. */
+  maxWaitHours: number;
+}
+
+/**
+ * closeCheck 터틀 판정의 다음 행동을 결정한다(순수).
+ *   · 대기 종목 0건             → 'done'    (그 세션 처리 완료 기록)
+ *   · 대기 있음, 컷오프 이전     → 'retry'   (기록하지 않음 — 다음 시간 트리거가 다시 시도, 이미 발송한 항목은 멱등키로 건너뜀)
+ *   · 대기 있음, 컷오프 이상     → 'give-up' (그 세션 처리 완료로 기록 — 휴장일은 알림 없이 종료)
+ * 컷오프 = `confirmAtMs + maxWaitHours·3_600_000` — **정확히 컷오프 시각이면 포기**(`>=`).
+ */
+export function decideTurtleCloseProgress(input: TurtleCloseProgressInput): TurtleCloseProgress {
+  if (input.pendingCount <= 0) return 'done';
+  const cutoffMs = input.confirmAtMs + input.maxWaitHours * 3_600_000;
+  return input.nowMs >= cutoffMs ? 'give-up' : 'retry';
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // 아침 요약(morningDigest) — 오늘 할 일 종목명 + 건수 한 줄 (계획서 §4.5 "아침 요약 1번")
 // ═══════════════════════════════════════════════════════════════════════════
 

@@ -19,8 +19,12 @@ export type TodayDataIssue =
   | 'stop-record-invalid' // 저장된 stopPrice 가 무효
   | 'position-link';      // 포지션↔자산 연결 실패
 
-/** 완료봉 판정에 쓴 시장 기준. */
-export type MarketTz = 'KR' | 'US' | 'CRYPTO' | 'UNKNOWN';
+/**
+ * 완료봉 판정에 쓴 시장 기준.
+ * `JP` = 도쿄 증권거래소(TSE, JST=UTC+9). KR/US/JP 는 "당일 봉이 마감 확정 + 정착 대기를 지난 뒤" 완료봉으로 본다
+ * (`utils/todayTurtle.isSessionBarConfirmed`). CRYPTO 는 UTC 날짜 이전 봉만, UNKNOWN 은 최신 행 1개를 보수적으로 제외.
+ */
+export type MarketTz = 'KR' | 'US' | 'JP' | 'CRYPTO' | 'UNKNOWN';
 
 export interface BarQuality {
   /** 유효 완료봉 수 (비정상 행 제외 후) */

@@ -48,13 +48,14 @@ import type {
   NotifyManifestTurtleWatch,
 } from '../../../utils/notifyManifest';
 import { resolveHoldingsSettings } from '../../../utils/turtleHoldings';
-import { resolveMarketTz, extractCompletedBars } from '../../../utils/todayTurtle';
+import { extractBarsThroughSession, SESSION_BAR_SETTLE_MIN } from '../../../utils/todayTurtle';
 import type { DailyBar, RawSeries } from '../../../utils/todayTurtle';
 import type { TurtleHoldingsSettings } from '../../../types/turtleHoldings';
 import {
   evaluateLegacyHoldingForNotify,
   evaluateReentryPositionForNotify,
   evaluateWatchItemForNotify,
+  decideTurtleCloseProgress,
   formatTurtleMorningDigest,
 } from '../../../utils/turtleHoldingsNotify';
 import type { TurtleNotifyCandidate } from '../../../utils/turtleHoldingsNotify';
@@ -75,6 +76,11 @@ const SENT_LOG_RETENTION_DAYS = 7;
 const MAIL_FAILURE_COOLDOWN_HOURS = 24;
 const HISTORY_LOOKBACK_DAYS = 80;
 const QUOTE_CHUNK_SIZE = 20;
+
+// closeCheck 터틀 판정 시작 지연(분)은 `SESSION_BAR_SETTLE_MIN`(utils/todayTurtle) — 마감 확정 시각 후 가격 공급자가 최종 일봉을
+// 게시할 때까지 기다린다. 앱 화면의 "당일 봉 확정" 판정(`isSessionBarConfirmed`)과 같은 상수라 두 경로가 어긋나지 않는다.
+/** 마감 확정 시각으로부터 이 시간(시간)이 지나도 세션 봉이 없으면 그 세션의 터틀 알림을 포기한다(휴장일 등). */
+const TURTLE_MAX_WAIT_HOURS = 12;
 
 const MARKET_IDS: MarketId[] = ['KR', 'US', 'CRYPTO'];
 
@@ -659,6 +665,19 @@ type TurtleItemKind = 'legacy' | 'reentry' | 'watch';
 type TurtleNotifyItem = NotifyManifestTurtleHolding | NotifyManifestTurtleReentryPosition | NotifyManifestTurtleWatch;
 
 /**
+ * 판정에 쓸 일봉의 범위 정책 — **날짜 경계는 호출부가 확정한 `sessionDate`로 명시**한다
+ * (예전엔 `extractCompletedBars`가 "시장 현지 오늘 이전" 봉만 남겨, 마감 확정 후에도 당일 확정 봉을 잘라
+ *  전일 종가를 "마감"이라고 발송했다 — 2026-10 실사용 카톡 대조로 확인).
+ *  · includeSession: true면 `sessionDate` 봉까지 포함(마감 확정 후), false면 그 이전 봉만(진행 중 세션 제외).
+ *  · requireSessionBar: true면 `sessionDate` 봉이 실제로 없는 종목은 **평가하지 않고 대기(pending)로 센다**
+ *    (공급자 미갱신·휴장일 — 마지막 봉을 오늘 것처럼 쓰지 않는다). false(아침 요약)면 가진 최신 봉으로 평가.
+ */
+interface TurtleBarsPolicy { includeSession: boolean; requireSessionBar: boolean }
+
+/** evaluateTurtleMarket 결과 — pending은 requireSessionBar 정책에서 세션 봉이 없어 평가를 건너뛴 종목 수. */
+interface TurtleMarketProgress { total: number; pending: number }
+
+/**
  * 한 시장(KR/US/CRYPTO)의 터틀 대상(원래 보유분·재매수분·감시 관심종목)을 전부 평가해
  * 신호가 난 것만 콜백으로 넘긴다. OHLCV는 이 함수 안에서 한 번만 배치 조회한다.
  */
@@ -666,41 +685,52 @@ function evaluateTurtleMarket(
   turtle: NotifyManifestTurtleSection,
   market: MarketId,
   sessionDate: string,
-  now: Date,
+  policy: TurtleBarsPolicy,
   onResult: (kind: TurtleItemKind, item: TurtleNotifyItem, candidate: TurtleNotifyCandidate) => void,
-): void {
+): TurtleMarketProgress {
   const settings = resolveHoldingsSettings(turtle.settings);
   const legacyItems = turtle.legacyHoldings.filter(it => classifyMarket(it.exchange) === market);
   const reentryItems = turtle.reentryPositions.filter(it => classifyMarket(it.exchange) === market);
   const watchItems = turtle.watchItems.filter(it => classifyMarket(it.exchange) === market);
   const tickers = [...legacyItems, ...reentryItems, ...watchItems].map(it => it.ticker);
-  if (tickers.length === 0) return;
+  if (tickers.length === 0) return { total: 0, pending: 0 };
 
   const lookbackDays = turtleOhlcvLookbackDays(settings);
   const startDate = addDaysStr(sessionDate, -lookbackDays);
-  const ohlcv = fetchOhlcvBatch(tickers, market, startDate, sessionDate);
-  const barsFor = (it: { ticker: string; exchange: string; isCrypto: boolean }): DailyBar[] =>
-    extractCompletedBars(ohlcv.get(it.ticker.toUpperCase()), resolveMarketTz(it.exchange, it.isCrypto), now).bars;
+  // 조회 끝 날짜는 sessionDate **다음 날**로 준다 — 백엔드 /history는 미국 종목에서 end_date를 제외형으로 처리한다
+  // (2026-10-25 실측: end=10-23 → SPY·DIS 마지막 봉 10-22, KR·JP·KRX금·업비트는 10-23 포함). sessionDate로 주면
+  // 미국은 세션 봉이 영영 안 와 전부 give-up된다. 범위 밖(다음 날) 봉은 extractBarsThroughSession이 잘라낸다.
+  const ohlcv = fetchOhlcvBatch(tickers, market, startDate, addDaysStr(sessionDate, 1));
+  let pending = 0;
 
-  for (const it of legacyItems) {
-    const c = evaluateLegacyHoldingForNotify(it, barsFor(it), settings);
-    if (c) onResult('legacy', it, c);
-  }
-  for (const it of reentryItems) {
-    const c = evaluateReentryPositionForNotify(it, barsFor(it), settings);
-    if (c) onResult('reentry', it, c);
-  }
-  for (const it of watchItems) {
-    const c = evaluateWatchItemForNotify(it, barsFor(it), settings);
-    if (c) onResult('watch', it, c);
-  }
+  /** 종목 하나의 일봉을 뽑아 평가한다. 세션 봉이 필요한데 없으면 평가하지 않고 pending으로 센다. */
+  const evaluateItem = <T extends TurtleNotifyItem>(
+    kind: TurtleItemKind,
+    it: T,
+    evaluate: (item: T, bars: DailyBar[]) => TurtleNotifyCandidate | null,
+  ): void => {
+    const r = extractBarsThroughSession(ohlcv.get(it.ticker.toUpperCase()), sessionDate, policy.includeSession);
+    if (policy.requireSessionBar && !r.sessionBarPresent) { pending++; return; }
+    const c = evaluate(it, r.bars);
+    if (c) onResult(kind, it, c);
+  };
+
+  for (const it of legacyItems) evaluateItem('legacy', it, (item, bars) => evaluateLegacyHoldingForNotify(item, bars, settings));
+  for (const it of reentryItems) evaluateItem('reentry', it, (item, bars) => evaluateReentryPositionForNotify(item, bars, settings));
+  for (const it of watchItems) evaluateItem('watch', it, (item, bars) => evaluateWatchItemForNotify(item, bars, settings));
+
+  return { total: tickers.length, pending };
 }
 
-/** closeCheck 전용 — 신호를 실제 발송 후보(NotifyCandidate)로 변환해 candidates에 쌓는다(멱등 가드 포함). */
+/**
+ * closeCheck 전용 — 신호를 실제 발송 후보(NotifyCandidate)로 변환해 candidates에 쌓는다(멱등 가드 포함).
+ * `sessionDate` 봉(마감 확정 봉)을 가진 종목만 평가하고, 없는 종목 수(pending)를 돌려준다 — 호출부가
+ * `decideTurtleCloseProgress`로 재시도/포기를 정한다.
+ */
 function dispatchTurtleForMarket(
-  turtle: NotifyManifestTurtleSection, market: MarketId, sessionDate: string, now: Date, candidates: NotifyCandidate[],
-): void {
-  evaluateTurtleMarket(turtle, market, sessionDate, now, (kind, item, c) => {
+  turtle: NotifyManifestTurtleSection, market: MarketId, sessionDate: string, candidates: NotifyCandidate[],
+): TurtleMarketProgress {
+  return evaluateTurtleMarket(turtle, market, sessionDate, { includeSession: true, requireSessionBar: true }, (kind, item, c) => {
     const idBase = kind === 'watch' ? (item as NotifyManifestTurtleWatch).watchItemId
       : (item as NotifyManifestTurtleHolding | NotifyManifestTurtleReentryPosition).assetId;
     const idempotencyKey = `turtle|${kind}|${idBase}|${c.signal}|${sessionDate}`;
@@ -710,7 +740,12 @@ function dispatchTurtleForMarket(
   });
 }
 
-/** morningDigest 전용 — 발송 없이 종목명만 신호 종류별로 모은다(멱등 무관, 매번 신선 재계산). */
+/**
+ * morningDigest 전용 — 발송 없이 종목명만 신호 종류별로 모은다(멱등 무관, 매번 신선 재계산).
+ * 시장별 **가장 최근 확정 세션**까지의 봉으로 평가한다: `now ≥ closeConfirmTime(market, sessionDate)`이면
+ * 그 세션 봉을 포함하고, 아니면(예: 코인은 항상 진행 중 세션) 그 이전 봉만 쓴다. 요약은 "지금 알려진 최신 상태"라
+ * 세션 봉 존재를 요구하지 않는다(휴장일에는 가진 최신 봉으로 평가).
+ */
 function collectTurtleMorningSummary(turtle: NotifyManifestTurtleSection, now: Date): {
   sellNames: string[]; reentryNames: string[]; pyramidNames: string[];
 } {
@@ -719,7 +754,8 @@ function collectTurtleMorningSummary(turtle: NotifyManifestTurtleSection, now: D
   const pyramidNames: string[] = [];
   for (const market of MARKET_IDS) {
     const sessionDate = lastSessionDate(market, now);
-    evaluateTurtleMarket(turtle, market, sessionDate, now, (_kind, item, c) => {
+    const confirmed = now.getTime() >= new Date(closeConfirmTime(market, sessionDate)).getTime();
+    evaluateTurtleMarket(turtle, market, sessionDate, { includeSession: confirmed, requireSessionBar: false }, (_kind, item, c) => {
       if (c.signal === 'reentry-pyramid') pyramidNames.push(item.name);
       else if (c.signal === 'watch-reentry') reentryNames.push(item.name);
       else sellNames.push(item.name);
@@ -919,6 +955,45 @@ function buildTradeMarketFromClose(sessionDate: string, entry: MaCacheEntry | un
   };
 }
 
+/**
+ * closeCheck의 터틀 파트(시장 하나) — TradePlan 파트와 **독립된 게이트**를 쓴다.
+ *  · 시작 조건: `now ≥ closeConfirmTime + SESSION_BAR_SETTLE_MIN`(공급자가 최종 일봉을 게시할 시간) 그리고
+ *    `TURTLE_DONE_<market> !== sessionDate`.
+ *  · `sessionDate` 봉이 있는 종목만 평가하고(없으면 pending, 평가·발송 안 함), `decideTurtleCloseProgress`로
+ *    done/give-up이면 `TURTLE_DONE_<market>=sessionDate`를 기록해 그 세션을 닫고, retry면 기록하지 않아
+ *    다음 시간 트리거가 다시 돈다(이미 발송한 항목은 멱등키 `hasSent`로 건너뜀). 휴장일은 봉이 끝내 없어
+ *    `TURTLE_MAX_WAIT_HOURS` 후 give-up → 알림 없이 종료.
+ * 반환: 이번 실행에서 이 파트가 돌았는가. 대기/포기/오류 건수는 `notes`에 덧붙여 LAST_RUN 메시지에 실린다.
+ */
+function runTurtleCloseForMarket(
+  turtle: NotifyManifestTurtleSection, market: MarketId, sessionDate: string, confirmMs: number, now: Date,
+  candidates: NotifyCandidate[], notes: string[],
+): boolean {
+  const doneKey = `TURTLE_DONE_${market}`;
+  if (now.getTime() < confirmMs + SESSION_BAR_SETTLE_MIN * 60_000) return false; // 아직 최종 봉 게시 전
+  if (getProp(doneKey) === sessionDate) return false; // 이미 이번 세션 닫음
+
+  try {
+    const { pending } = dispatchTurtleForMarket(turtle, market, sessionDate, candidates);
+    const progress = decideTurtleCloseProgress({
+      pendingCount: pending, nowMs: now.getTime(), confirmAtMs: confirmMs, maxWaitHours: TURTLE_MAX_WAIT_HOURS,
+    });
+    if (progress === 'retry') {
+      notes.push(`터틀 ${market} 봉 대기 ${pending}`);
+    } else {
+      setProp(doneKey, sessionDate);
+      if (progress === 'give-up') notes.push(`터틀 ${market} 봉 없어 포기 ${pending}`);
+    }
+  } catch (err) {
+    // 터틀 파트 실패가 같은 실행의 TradePlan 후보 발송을 막지 않게 격리한다(done 미기록 → 다음 시간 재시도).
+    const message = err instanceof Error ? err.message : String(err);
+    console.error(`[closeCheck 터틀 ${market}] 실패:`, message);
+    notes.push(`터틀 ${market} 오류`);
+    maybeSendFailureMail(`closeCheck 터틀 ${market}`, message);
+  }
+  return true;
+}
+
 function closeCheck(): void {
   const now = new Date();
   try {
@@ -927,37 +1002,41 @@ function closeCheck(): void {
 
     const maCache = loadMaCache();
     const candidates: NotifyCandidate[] = [];
+    const turtleNotes: string[] = [];
     let ranAny = false;
     let krRan = false;
 
     for (const market of MARKET_IDS) {
       const sessionDate = lastSessionDate(market, now);
-      const confirmAt = closeConfirmTime(market, sessionDate);
-      if (now.getTime() < new Date(confirmAt).getTime()) continue; // 아직 마감 확정 전
+      const confirmMs = new Date(closeConfirmTime(market, sessionDate)).getTime();
 
+      // ── 매매계획(TradePlan): 마감 확정 시점에 세션당 1회(`CLOSE_DONE_<market>`) — 동작 불변.
       const doneKey = `CLOSE_DONE_${market}`;
-      if (getProp(doneKey) === sessionDate) continue; // 이미 이번 세션 처리함
-
-      const items = manifest.items.filter(it => classifyMarket(it.exchange) === market);
-      if (items.length > 0) {
-        updateMaCache(maCache, items, market, now);
-        for (const item of items) {
-          const tradeMarket = buildTradeMarketFromClose(sessionDate, maCache[item.ticker.toUpperCase()]);
-          if (!tradeMarket) continue;
-          const ev = evaluateTradePlan(item.plan, tradeMarket);
-          if (ev.signal === 'exit-line-hit' || ev.action === 'arm-exit') {
-            const c = buildCandidate(item, ev, tradeMarket, now);
-            if (c) candidates.push(c);
+      if (now.getTime() >= confirmMs && getProp(doneKey) !== sessionDate) {
+        const items = manifest.items.filter(it => classifyMarket(it.exchange) === market);
+        if (items.length > 0) {
+          updateMaCache(maCache, items, market, now);
+          for (const item of items) {
+            const tradeMarket = buildTradeMarketFromClose(sessionDate, maCache[item.ticker.toUpperCase()]);
+            if (!tradeMarket) continue;
+            const ev = evaluateTradePlan(item.plan, tradeMarket);
+            if (ev.signal === 'exit-line-hit' || ev.action === 'arm-exit') {
+              const c = buildCandidate(item, ev, tradeMarket, now);
+              if (c) candidates.push(c);
+            }
           }
         }
+        setProp(doneKey, sessionDate);
+        ranAny = true;
+        if (market === 'KR') krRan = true;
       }
-      // P4 — "보유종목 터틀"(팔 때·손절 이탈·추가 매수·다시 살 때)도 같은 마감 확정 시점에 1회 판정한다.
-      if (manifest.turtle) {
-        dispatchTurtleForMarket(manifest.turtle, market, sessionDate, now, candidates);
+
+      // ── "보유종목 터틀": 별도 게이트(`TURTLE_DONE_<market>`) — 마감 확정 + 정착 대기 후, 세션 봉이 실제로 있는
+      //    종목만 판정하고 없으면 다음 시간에 재시도한다(아래 함수 주석). TradePlan 게이트와 독립이라
+      //    TradePlan이 먼저 끝났어도 터틀은 봉이 올 때까지 계속 돈다.
+      if (manifest.turtle && runTurtleCloseForMarket(manifest.turtle, market, sessionDate, confirmMs, now, candidates, turtleNotes)) {
+        ranAny = true;
       }
-      setProp(doneKey, sessionDate);
-      ranAny = true;
-      if (market === 'KR') krRan = true;
     }
 
     if (!ranAny) { recordLastRun('ok', 'closeCheck: 처리할 마감 없음'); return; }
@@ -966,7 +1045,7 @@ function closeCheck(): void {
     const sent = dispatchNotifications(candidates, now);
     if (krRan) maybeSendDailyDigest(manifest, maCache, now);
 
-    recordLastRun('ok', `closeCheck 완료 · 발송 ${sent}`);
+    recordLastRun('ok', `closeCheck 완료 · 발송 ${sent}${turtleNotes.length > 0 ? ` · ${turtleNotes.join(' · ')}` : ''}`);
   } catch (err) {
     handleFailure('closeCheck', err);
   }

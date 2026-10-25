@@ -7,30 +7,45 @@
 //
 // 신선도 규약:
 //   · requestKey(대상 집합 + UTC 날짜)가 다르면 'miss'.
-//   · **시장 현지 날짜 서명**이 다르면 'expired'. 완료봉 판정은 KR(Asia/Seoul)·US(America/New_York)·
-//     CRYPTO(UTC) 현지 날짜로 하는데, requestKey 의 UTC 날짜만으로는 **KST 자정 넘김**을 놓친다
-//     (예: 05:00Z=14:00 KST 장중에 받은 당일 진행 봉을 15:10Z=다음날 00:10 KST 에 완료봉으로 오인).
+//   · **시장 현지 날짜·확정 서명**이 다르면 'expired'. 완료봉 판정은 KR(Asia/Seoul)·US(America/New_York)·
+//     JP(Asia/Tokyo)·CRYPTO(UTC) 현지 날짜와 "당일 봉 마감 확정(closeConfirmTime+정착 20분)" 여부로 하는데,
+//     requestKey 의 UTC 날짜만으로는 **자정 넘김**과 **확정 시각 통과**를 놓친다
+//     (예: 05:00Z=14:00 KST 장중에 받은 당일 진행 봉을 15:10Z=다음날 00:10 KST 에 완료봉으로 오인 /
+//      15:50 KST 에 받은 캐시를 16:00 KST 확정 뒤에도 30분간 재사용해 확정된 당일 봉이 빠진 채 판정).
 //   · 시계 역행(now < fetchedAt)·비유한 값은 보수적으로 'expired'.
 //   · TTL(30분) 경과 시 'expired'.
 // 저장 규약 (RULES §8 캐시 오염): **완전 성공(실패 0 + 대상 1 이상)만 저장**. 부분 실패·빈 결과는 저장하지 않는다.
 
-import { todayInTz } from './todayTurtle';
+import { marketLocalDate, isSessionBarConfirmed } from './todayTurtle';
 
 /** 캐시 수명 — 30분. 가격 새로고침 버튼은 이 캐시를 비우지 않는다(날짜·서명·requestKey 가 신선도를 담당). */
 export const TODAY_TURTLE_CACHE_TTL_MS = 30 * 60 * 1000;
 /** 보관 최대 항목 수 (계정 뷰 전환 등으로 requestKey 가 몇 개 오갈 수 있다) */
 export const TODAY_TURTLE_CACHE_MAX_ENTRIES = 4;
 
+/** 시장 현지 오늘 날짜 + 그 세션 봉 확정 여부(`c`=확정/`o`=미확정) — 예: `2026-10-23:c`. */
+function sessionState(marketTz: 'KR' | 'US' | 'JP', now: Date): string {
+  const date = marketLocalDate(marketTz, now);
+  return `${date}:${isSessionBarConfirmed(marketTz, date, now) ? 'c' : 'o'}`;
+}
+
 /**
- * 시장 현지 날짜 서명 `"KR날짜|US날짜|UTC날짜"`.
- * 시간대는 utils/todayTurtle 의 완료봉 판정(TZ_OF: KR=Asia/Seoul, US=America/New_York, CRYPTO=UTC)과 **같아야 한다**.
- * 셋 중 하나라도 날짜가 바뀌면 완료봉 경계가 바뀐 것이므로 캐시를 재사용하지 않는다.
+ * 시장 현지 완료봉 경계 서명 `"KR날짜:c|US날짜:c|UTC날짜|JP날짜:c"` (`c`=그 날짜 세션 봉 확정, `o`=아직 미확정).
+ * 날짜와 확정 상태는 utils/todayTurtle 의 완료봉 판정(`extractCompletedBars`: KR=Asia/Seoul, US=America/New_York,
+ * JP=Asia/Tokyo, CRYPTO=UTC, 확정 = `closeConfirmTime + SESSION_BAR_SETTLE_MIN`)과 **같은 함수로 계산해야 한다** —
+ * 판정 규칙이 바뀌면 서명도 함께 바뀌어야 캐시가 틀린 경계를 재사용하지 않는다.
+ * 어느 한 값이라도 바뀌면 완료봉 경계가 바뀐 것이므로 캐시를 재사용하지 않는다:
+ *   · 현지 날짜 변경(자정 넘김) — 전날 진행 봉이 완료봉이 되는 경계.
+ *   · `o`→`c` 전환 — 마감 확정 + 정착 대기가 지나 당일 봉이 완료봉이 되는 경계(KR/JP 16:00 현지, US 17:00 ET).
+ *     이게 없으면 마감 직전(장중 부분 봉 포함)에 받은 캐시가 확정 후 최대 30분(TTL) 더 "신선"하게 재사용된다.
+ * 주말·휴장일에도 날짜/상태가 바뀌어 한 번씩 만료될 수 있다 — 불필요한 재조회일 뿐 틀린 판정은 만들지 않는다.
  */
 export function marketDaySignature(now: Date): string {
   return [
-    todayInTz('Asia/Seoul', now),
-    todayInTz('America/New_York', now),
-    todayInTz('UTC', now),
+    sessionState('KR', now),
+    sessionState('US', now),
+    marketLocalDate('CRYPTO', now),
+    sessionState('JP', now),
   ].join('|');
 }
 

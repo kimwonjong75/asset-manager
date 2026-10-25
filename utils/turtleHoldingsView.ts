@@ -146,6 +146,20 @@ export interface TurtleHoldingsRebuy {
   skipReason: HoldingsSkipReason | null;
 }
 
+/**
+ * "지금 재진입 기준선" 표시 전용 값(2026-10-25) — '팔 때'(status='sell') 행에서만 채운다.
+ * 팔기 전에 "팔고 나서 다시 사려면 어디를 넘어야 하는가"를 보여 주기 위한 참고 정보이며,
+ * 어떤 판정·알림·저장에도 쓰지 않는다(`reentryLine`은 감시 행 판정·재매수 계산기 전용으로 그대로 둔다).
+ */
+export interface TurtleHoldingsReentryBaseline {
+  /** 직전 entryLookback개 완료봉 high 최댓값(마지막 봉 제외) — `computeReentryLine`과 동일. */
+  line: number;
+  /** (line − 최근 확정 종가) / 최근 확정 종가 × 100. 0 이하면 이미 기준선 이상에서 마감했다는 뜻(드묾). */
+  gapPct: number;
+  /** 마지막 완료봉 날짜(YYYY-MM-DD) — "기준일" 표기용. */
+  asOfDate: string;
+}
+
 export interface TurtleHoldingsRow {
   kind: TurtleHoldingsRowKind;
   assetId?: string;
@@ -158,6 +172,8 @@ export interface TurtleHoldingsRow {
   lastClose: number | null;
   exitLine: number | null;
   reentryLine: number | null;
+  /** '팔 때' 행 전용 재진입 기준선 표시값(표시 전용). 그 외 행·계산 불가·범위 제외/확인 불가는 null. */
+  reentryBaseline: TurtleHoldingsReentryBaseline | null;
   /** (종가−청산선)/청산선×100 — 음수면 이미 청산선 아래. exitLine 없으면 null. */
   exitGapPct: number | null;
   n: number | null;
@@ -187,6 +203,41 @@ function dataIssueText(issue: TurtleHoldingsDataIssue): string {
   }
 }
 
+/**
+ * '팔 때' 행의 재진입 기준선 — 감시 행과 같은 `computeReentryLine`(직전 entryLookback개 완료봉 high 최댓값,
+ * 마지막 봉 제외)을 그대로 쓴다. 봉이 부족해 선을 못 구하거나 종가가 0 이하면 null(값을 지어내지 않음).
+ */
+function buildReentryBaseline(
+  bars: readonly DailyBar[], settings: TurtleHoldingsSettings, lastClose: number, asOfDate: string,
+): TurtleHoldingsReentryBaseline | null {
+  const line = computeReentryLine(bars, settings);
+  if (line == null || !Number.isFinite(line) || !(lastClose > 0)) return null;
+  return { line, gapPct: ((line - lastClose) / lastClose) * 100, asOfDate };
+}
+
+/** 'YYYY-MM-DD' → 'M월 D일'. 형식이 다르면 원문 그대로(표시 전용 방어). */
+function formatMonthDay(isoDate: string): string {
+  const m = /^\d{4}-(\d{2})-(\d{2})$/.exec(isoDate);
+  return m ? `${Number(m[1])}월 ${Number(m[2])}일` : isoDate;
+}
+
+/**
+ * '팔 때' 행 아래에 보여 줄 재진입 기준선 문장(표시 전용). 기준선이 없으면 null.
+ * 예: "현재 재진입 기준선 62,000원 — 최근 확정 종가 대비 +4.2% (기준일 10월 24일)".
+ * 격차가 0 이하(드묾)면 "+"를 억지로 붙이지 않는다. "팔면 ○○원에 다시 삽니다" 같은 단정 표현 금지.
+ */
+export function describeReentryBaseline(row: Pick<TurtleHoldingsRow, 'reentryBaseline' | 'currency'>): string | null {
+  const b = row.reentryBaseline;
+  if (!b) return null;
+  const gap = b.gapPct.toFixed(1);
+  const gapText = b.gapPct > 0 ? `+${gap}%` : `${gap === '-0.0' ? '0.0' : gap}%`;
+  return `현재 재진입 기준선 ${formatMoney(b.line, row.currency)} — 최근 확정 종가 대비 ${gapText} (기준일 ${formatMonthDay(b.asOfDate)})`;
+}
+
+/** 재진입 기준선을 보여 주는 화면(팔 때 칸·터틀 정리)에서 섹션당 한 번만 붙이는 안내 문구. */
+export const REENTRY_BASELINE_CAPTION =
+  '기준선은 매일 바뀌며(오래된 고점이 빠지면 내려갈 수도 있음), 실제로 다시 사는 가격은 아직 정해지지 않았습니다.';
+
 /** raw 시계열 → 완료봉 + 1차 데이터 이슈 판정 공통 로직(legacy/reentry/watch 공용). */
 function resolveCompletedBars(
   raw: RawSeries | undefined, exchange: string, isCrypto: boolean, now: Date, fetchFailed: boolean,
@@ -215,7 +266,7 @@ export function buildTurtleHoldingsLegacyRow(input: LegacyHoldingRowInput): Turt
   const base = {
     kind: 'legacy-holding' as const, assetId: asset.id, ticker: asset.ticker,
     name: asset.customName?.trim() || asset.name, currency: asset.currency,
-    reentryLine: null, unitsCount: null, maxUnits: null, rebuy: null, stopCheckText: null,
+    reentryLine: null, reentryBaseline: null, unitsCount: null, maxUnits: null, rebuy: null, stopCheckText: null,
   };
   if (!isInHoldingsScope(asset, settings)) {
     return {
@@ -247,7 +298,9 @@ export function buildTurtleHoldingsLegacyRow(input: LegacyHoldingRowInput): Turt
     : status === 'hold'
       ? `청산선 ${exitLine != null ? formatMoney(exitLine, asset.currency) : '—'} 위에서 마감했습니다(종가 ${formatMoney(lastClose, asset.currency)}). 규칙상 보유를 유지합니다.`
       : dataIssueText('insufficient-bars');
-  return { ...base, status, lastClose, exitLine, exitGapPct, n, volatilityLabel, reasonText, dataIssue, asOfDate };
+  // 표시 전용 — '팔 때'일 때만 "지금 재진입 기준선"을 붙인다(판정·알림·저장에는 쓰지 않음).
+  const reentryBaseline = status === 'sell' ? buildReentryBaseline(bars, settings, lastClose, asOfDate) : null;
+  return { ...base, status, lastClose, exitLine, exitGapPct, n, volatilityLabel, reasonText, dataIssue, asOfDate, reentryBaseline };
 }
 
 // ── 2. 재매수분(reentry-position) ───────────────────────────────────────────
@@ -272,7 +325,7 @@ export function buildTurtleHoldingsReentryRow(input: ReentryPositionRowInput): T
   const base = {
     kind: 'reentry-position' as const, assetId: asset.id, positionId: position.id,
     ticker: position.ticker, name: asset.customName?.trim() || asset.name, currency: asset.currency,
-    reentryLine: null, unitsCount, maxUnits, stopCheckText: null,
+    reentryLine: null, reentryBaseline: null, unitsCount, maxUnits, stopCheckText: null,
   };
   if (!isInHoldingsScope(asset, settings)) {
     return {
@@ -350,7 +403,10 @@ export function buildTurtleHoldingsReentryRow(input: ReentryPositionRowInput): T
     }
   }
 
-  return { ...base, status, lastClose, exitLine, exitGapPct, n, volatilityLabel, rebuy, reasonText, stopCheckText, dataIssue, asOfDate };
+  // 표시 전용 — 손절 이탈·청산선 이탈 둘 다 status='sell'이므로 '팔 때'일 때만 기준선을 붙인다.
+  const reentryBaseline = status === 'sell' ? buildReentryBaseline(bars, settings, lastClose, asOfDate) : null;
+
+  return { ...base, status, lastClose, exitLine, exitGapPct, n, volatilityLabel, rebuy, reasonText, stopCheckText, dataIssue, asOfDate, reentryBaseline };
 }
 
 // ── 3. 관심종목 감시(watch) ──────────────────────────────────────────────────
@@ -379,6 +435,7 @@ export function buildTurtleHoldingsWatchRow(input: WatchRowInput): TurtleHolding
     kind: 'watch' as const, watchItemId: watchItem.id, ticker: watchItem.ticker,
     name: watchItem.name, currency: watchItem.currency ?? Currency.KRW,
     exitLine: null, exitGapPct: null, unitsCount: null, maxUnits: null, stopCheckText: null,
+    reentryBaseline: null, // 감시 행은 reentryLine 자체가 재진입선 — 팔 때 행 전용 표시값은 쓰지 않는다
   };
   const watchKey = todayInstrumentKey(watchItem.ticker, watchItem.exchange, normalizeExchange);
   if (heldTickerKeys.has(watchKey)) {

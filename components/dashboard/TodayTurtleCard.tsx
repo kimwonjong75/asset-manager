@@ -90,7 +90,7 @@ function dataReason(row: TodayRow): string {
   return '판정에 필요한 자료가 부족합니다.';
 }
 
-const TZ_LABEL: Record<string, string> = { KR: '한국', US: '미국', CRYPTO: '코인', UNKNOWN: '기준 미상' };
+const TZ_LABEL: Record<string, string> = { KR: '한국', US: '미국', JP: '일본', CRYPTO: '코인', UNKNOWN: '기준 미상' };
 
 const Row: React.FC<{ row: TodayRow }> = ({ row }) => {
   const d = describe(row);

@@ -43,7 +43,7 @@ import {
   marketDaySignature, evaluateCacheEntry, isCacheableResult, pruneCacheEntries, selectDisplayedResult,
   TODAY_TURTLE_CACHE_TTL_MS, TODAY_TURTLE_CACHE_MAX_ENTRIES, KeyedTodayResult,
 } from '../utils/todayTurtleCache';
-import { todayInstrumentKey } from '../utils/todayTurtle';
+import { todayInstrumentKey, addIsoDays } from '../utils/todayTurtle';
 import { createLogger } from '../utils/logger';
 
 const log = createLogger('TurtleHoldings');
@@ -232,7 +232,10 @@ export function useTurtleHoldings(): TurtleHoldingsModel {
     if (loadedKeyRef.current === requestKey) return;
     loadedKeyRef.current = requestKey;
     const reqId = ++requestIdRef.current;
-    void acquireOutcome(requestKey, targets, asOfDate, lookbackDays).then(outcome => {
+    // 조회 종료일 = asOfDate(UTC 오늘) + 1일. 백엔드 /history 의 end_date 는 미국 종목에서 **배타적**(실측: end=10-23 → 마지막 봉 10-22)이고
+    // UTC 날짜는 KST 오전에 아직 전날이라, asOfDate 그대로 보내면 막 확정된 미국 당일 봉이 도착하지 않는다.
+    // 아직 확정 전인 봉은 추출 단계(extractCompletedBars)가 걸러내므로 넉넉히 +1일을 요청해도 안전하다.
+    void acquireOutcome(requestKey, targets, addIsoDays(asOfDate, 1), lookbackDays).then(outcome => {
       if (reqId !== requestIdRef.current) return; // 오래된 응답 폐기(useTodayTurtle의 isStaleResponse와 동일 규약)
       setLoaded({ requestKey, raw: outcome.raw, failedKeys: outcome.failedKeys });
     });

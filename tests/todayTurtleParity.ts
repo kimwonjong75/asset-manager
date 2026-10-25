@@ -6,10 +6,11 @@
 // 실행: npx tsx tests/todayTurtleParity.ts
 
 import {
-  isValidBar, resolveMarketTz, todayInTz, extractCompletedBars,
+  isValidBar, resolveMarketTz, todayInTz, extractCompletedBars, extractBarsThroughSession,
   entryBreakoutLine, exitChannelLine, buildWatchRow, buildPositionRow, buildLegacyRow,
   sortRows, summarizeRows, rowSortRank, todayInstrumentKey, isWaitingRow,
   isValidStopPrice, buildTodayRequestKey, isStaleResponse,
+  extractCompletedCloses, isSessionBarConfirmed, addIsoDays, marketLocalDate, SESSION_BAR_SETTLE_MIN,
   ENTRY_MIN_BARS, EXIT_MIN_BARS, RawSeries,
 } from '../utils/todayTurtle';
 import { readFileSync } from 'fs';
@@ -194,7 +195,18 @@ console.log('5. 진행 중 당일 봉 제외 — 시장별 날짜 기준');
   check('NASDAQ → US', resolveMarketTz(US_EX, false), 'US');
   check('NYSE → US', resolveMarketTz('NYSE', false), 'US');
   check('코인 → CRYPTO', resolveMarketTz(CRYPTO_EX, true), 'CRYPTO');
-  check('TSE → UNKNOWN (보수적)', resolveMarketTz('TSE (도쿄)', false), 'UNKNOWN');
+  check('TSE (도쿄) → JP (2026-10-25: 예전엔 UNKNOWN)', resolveMarketTz('TSE (도쿄)', false), 'JP');
+  check('도쿄 증권거래소 (TYO) → JP', resolveMarketTz('도쿄 증권거래소 (TYO)', false), 'JP');
+  check('도쿄증권거래소 → JP', resolveMarketTz('도쿄증권거래소', false), 'JP');
+  check('TYO (도쿄 증권거래소) → JP', resolveMarketTz('TYO (도쿄 증권거래소)', false), 'JP');
+  check('소문자 tse → JP (대소문자 무시)', resolveMarketTz('tse', false), 'JP');
+  check('소문자 tokyo → JP (대소문자 무시)', resolveMarketTz('tokyo stock exchange', false), 'JP');
+  check('코인 플래그가 우선 — 도쿄 문자열이어도 CRYPTO', resolveMarketTz('TSE (도쿄)', true), 'CRYPTO');
+  check('SSE (상하이) → UNKNOWN (과잉 매칭 없음)', resolveMarketTz('SSE (상하이)', false), 'UNKNOWN');
+  check('SZSE (선전) → UNKNOWN', resolveMarketTz('SZSE (선전)', false), 'UNKNOWN');
+  check('HKEX (홍콩) → UNKNOWN', resolveMarketTz('HKEX (홍콩)', false), 'UNKNOWN');
+  check('LSE → UNKNOWN', resolveMarketTz('LSE', false), 'UNKNOWN');
+  check('빈 문자열 → UNKNOWN', resolveMarketTz('', false), 'UNKNOWN');
 
   // 시간대별 "오늘"이 다르다 — 한국 로컬시간 하드코딩이 아님을 고정
   const t = new Date(Date.parse('2026-07-16T02:00:00Z')); // UTC 07-16 02:00 → KST 07-16 11:00, NY 07-15 22:00
@@ -850,6 +862,305 @@ console.log('24. [AMENDMENT-2] 종가·20일선 기준일 혼합 차단');
   const fullAbove = buildPositionRow({ ticker: 'A', name: 'A', raw: mkFull(95), exchange: US_EX, isCrypto: false, stopPrice: 50, now });
   check('D OHLC 완전 + 청산선 위 → 기다림', fullAbove.status, 'waiting');
   checkClose('기다림에도 20일선 표시', fullAbove.exitLine!, 90, 1e-9);
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+console.log('25. extractBarsThroughSession — 확정 세션까지의 봉(GAS closeCheck/아침 요약용)');
+// ════════════════════════════════════════════════════════════════════════════
+{
+  // iso(0)..iso(29) 30개 봉. 마지막 봉(iso(29) = 2026-01-30)만 구분 가능한 값: o104 h106 l103 c105.
+  const last: B = { o: 104, h: 106, l: 103, c: 105 };
+  const bars30: B[] = [];
+  for (let i = 0; i < 29; i++) bars30.push(flat());
+  bars30.push(last);
+  const raw30 = mkRaw(bars30);
+  const D = iso(29);       // 2026-01-30 — 세션 날짜
+  const Dm1 = iso(28);     // 2026-01-29 — 직전 거래일
+  check('픽스처 날짜 D', D, '2026-01-30');
+
+  // (1) 세션 봉 포함 — 마감 확정 후
+  const inc = extractBarsThroughSession(raw30, D, true);
+  check('포함: 봉 30개', inc.bars.length, 30);
+  check('포함: 마지막 봉 날짜 = D', inc.lastBarDate, D);
+  check('포함: 마지막 봉 종가 = 105 (D 봉)', inc.bars[inc.bars.length - 1].close, 105);
+  check('포함: sessionBarPresent=true', inc.sessionBarPresent, true);
+  check('포함: hasHighLow=true', inc.hasHighLow, true);
+  check('포함: droppedRows=0', inc.droppedRows, 0);
+
+  // (2) 세션 봉 제외 — 마감 전(진행 중 세션)
+  const exc = extractBarsThroughSession(raw30, D, false);
+  check('제외: 봉 29개', exc.bars.length, 29);
+  check('제외: 마지막 봉 날짜 = D-1', exc.lastBarDate, Dm1);
+  check('제외: 마지막 봉 종가 = 100 (D-1 봉)', exc.bars[exc.bars.length - 1].close, 100);
+  check('제외: includeSession=false 면 sessionBarPresent=false', exc.sessionBarPresent, false);
+
+  // (3) 휴장일 — sessionDate(iso(30)=2026-01-31)에 봉이 없다 → 마지막 봉은 이전 날짜, sessionBarPresent=false
+  const holiday = extractBarsThroughSession(raw30, iso(30), true);
+  check('휴장일: 봉 30개(가진 것 전부)', holiday.bars.length, 30);
+  check('휴장일: 마지막 봉 날짜 = 2026-01-30 (세션 아님)', holiday.lastBarDate, D);
+  check('휴장일: sessionBarPresent=false', holiday.sessionBarPresent, false);
+  const holidayExc = extractBarsThroughSession(raw30, iso(30), false);
+  check('휴장일(제외 모드): 봉 30개', holidayExc.bars.length, 30);
+  check('휴장일(제외 모드): sessionBarPresent=false', holidayExc.sessionBarPresent, false);
+
+  // (4) 과거 세션 — 더 최신 봉은 잘린다
+  const past = extractBarsThroughSession(raw30, iso(10), true);
+  check('과거 세션: 봉 11개 (iso(0)..iso(10))', past.bars.length, 11);
+  check('과거 세션: 마지막 봉 날짜 = iso(10)', past.lastBarDate, iso(10));
+  check('과거 세션: sessionBarPresent=true', past.sessionBarPresent, true);
+
+  // (5) 무효 행은 슬롯을 먹지 않고, 범위 안 무효만 droppedRows 로 센다
+  const mid: B[] = [];
+  for (let i = 0; i < 5; i++) mid.push(flat());
+  mid.push({ o: 100, h: 102, l: 0, c: 100 });          // iso(5): 0 → 무효
+  for (let i = 0; i < 5; i++) mid.push(flat());
+  const rawMid = mkRaw(mid);
+  const midR = extractBarsThroughSession(rawMid, iso(10), true);
+  check('무효 행: 봉 10개 (11행 중 1개 제외)', midR.bars.length, 10);
+  check('무효 행: droppedRows=1', midR.droppedRows, 1);
+  checkTrue('무효 행 날짜(iso(5))가 봉에 없음', !midR.bars.some(b => b.date === iso(5)));
+  check('무효 행이 있어도 마지막 봉 = 세션 봉', midR.sessionBarPresent, true);
+
+  // (6) 세션 봉 자체가 무효 → 봉 없음으로 취급(대기), 마지막 봉은 직전 유효 봉
+  const badLast: B[] = [];
+  for (let i = 0; i < 29; i++) badLast.push(flat());
+  badLast.push({ o: 100, h: 102, l: 0, c: 100 });      // iso(29)=D: l=0 → 무효
+  const badR = extractBarsThroughSession(mkRaw(badLast), D, true);
+  check('세션 봉 무효: 봉 29개', badR.bars.length, 29);
+  check('세션 봉 무효: droppedRows=1', badR.droppedRows, 1);
+  check('세션 봉 무효: 마지막 봉 = D-1', badR.lastBarDate, Dm1);
+  check('세션 봉 무효: sessionBarPresent=false', badR.sessionBarPresent, false);
+
+  // (7) 범위 밖(더 최신) 무효 행은 droppedRows 에 세지 않는다
+  const beyond = extractBarsThroughSession(mkRaw(badLast), Dm1, true);
+  check('범위 밖 무효 행: droppedRows=0', beyond.droppedRows, 0);
+  check('범위 밖 무효 행: 봉 29개', beyond.bars.length, 29);
+  check('범위 밖 무효 행: sessionBarPresent=true (D-1 기준)', beyond.sessionBarPresent, true);
+
+  // (8) high/low/open 미수신 → 종가 폴백 금지: 빈 결과
+  const closesOnly: RawSeries = { data: raw30.data };
+  const noHL = extractBarsThroughSession(closesOnly, D, true);
+  check('high/low 없음: hasHighLow=false', noHL.hasHighLow, false);
+  check('high/low 없음: 봉 0개', noHL.bars.length, 0);
+  check('high/low 없음: lastBarDate=null', noHL.lastBarDate, null);
+  check('high/low 없음: sessionBarPresent=false', noHL.sessionBarPresent, false);
+  check('high/low 없음: droppedRows=0', noHL.droppedRows, 0);
+  const noLow = extractBarsThroughSession({ data: raw30.data, open: raw30.open, high: raw30.high }, D, true);
+  check('low 만 없음도 hasHighLow=false', noLow.hasHighLow, false);
+  const undef = extractBarsThroughSession(undefined, D, true);
+  check('raw undefined: hasHighLow=false', undef.hasHighLow, false);
+  check('raw undefined: 봉 0개', undef.bars.length, 0);
+
+  // (9) extractCompletedBars(앱 화면 규칙)와의 관계. 2026-10-25 이전에는 이 함수가 "시장 현지 오늘" 봉을 자정까지 무조건 잘라
+  //   마감 확정 뒤에도 D 봉이 빠졌다(= 버그의 근원). 지금은 closeConfirmTime + 정착 20분(KR 16:00 KST · US 17:00 ET) 이후 D 봉을 포함한다.
+  //   확정 전(정착 대기 중)에는 여전히 제외 — GAS 는 그 구간에 아예 시작하지 않으므로(runTurtleCloseForMarket) 같은 경계다.
+  const krBefore = extractCompletedBars(raw30, 'KR', new Date(`${D}T06:46:00Z`));        // 15:46 KST — 정착 대기 중
+  check('KR 15:46 KST(정착 전): 마지막 봉 = D-1', krBefore.bars[krBefore.bars.length - 1].date, Dm1);
+  const krAfter = extractCompletedBars(raw30, 'KR', new Date(`${D}T07:00:00Z`));         // 16:00 KST — 정착 완료
+  check('KR 16:00 KST(정착 후): 마지막 봉 = D (예전엔 D-1 로 잘림)', krAfter.bars[krAfter.bars.length - 1].date, D);
+  const newKr = extractBarsThroughSession(raw30, D, true);
+  check('신규 함수: 마감 확정 후 마지막 봉 = D', newKr.lastBarDate, D);
+  //   US: 17:00 ET(= 22:00Z, 1월 EST) 에도 ET 날짜는 아직 D → 예전 함수는 D 봉을 잘랐다. 지금은 포함.
+  const usAfter = extractCompletedBars(raw30, 'US', new Date(`${D}T22:00:00Z`));
+  check('US 17:00 ET(정착 후): 마지막 봉 = D (예전엔 D-1 로 잘림)', usAfter.bars[usAfter.bars.length - 1].date, D);
+  const usBefore = extractCompletedBars(raw30, 'US', new Date(`${D}T21:59:00Z`));        // 16:59 EST
+  check('US 16:59 ET(정착 전): 마지막 봉 = D-1', usBefore.bars[usBefore.bars.length - 1].date, Dm1);
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+console.log('26. 당일 봉은 마감 확정 + 정착 20분 뒤부터 완료봉 — KR/US/JP (예전: 현지 자정까지 제외)');
+// ════════════════════════════════════════════════════════════════════════════
+{
+  /** lastDate 로 끝나는 n개 연속(달력) 일봉. 마지막 봉만 o104 h106 l103 c105, 나머지는 flat(종가 100). */
+  function mkRawEndingAt(lastDate: string, n = 30): RawSeries {
+    const data: Record<string, number> = {}, open: Record<string, number> = {},
+      high: Record<string, number> = {}, low: Record<string, number> = {};
+    for (let k = 0; k < n; k++) {
+      const d = addIsoDays(lastDate, -(n - 1 - k));
+      const b = k === n - 1 ? { o: 104, h: 106, l: 103, c: 105 } : { o: 100, h: 102, l: 98, c: 100 };
+      data[d] = b.c; open[d] = b.o; high[d] = b.h; low[d] = b.l;
+    }
+    return { data, open, high, low };
+  }
+  const at = (iso: string): Date => new Date(iso);
+  const lastOf = (r: { bars: { date: string }[] }): string => r.bars[r.bars.length - 1].date;
+
+  // ── 상수 · 유틸 ────────────────────────────────────────────────────────────
+  check('정착 대기 상수 = 20분 (GAS closeCheck 와 공유)', SESSION_BAR_SETTLE_MIN, 20);
+  check('addIsoDays +1 일반', addIsoDays('2026-10-23', 1), '2026-10-24');
+  check('addIsoDays +1 월말 이월', addIsoDays('2026-10-31', 1), '2026-11-01');
+  check('addIsoDays +1 연말 이월', addIsoDays('2026-12-31', 1), '2027-01-01');
+  check('addIsoDays +1 윤일(2028)', addIsoDays('2028-02-28', 1), '2028-02-29');
+  check('addIsoDays -1 3월 초 → 2월 말', addIsoDays('2026-03-01', -1), '2026-02-28');
+  check('addIsoDays 해석 불가 입력은 그대로', addIsoDays('garbage', 1), 'garbage');
+  check('marketLocalDate KR (UTC 15:00 = KST 다음날 00:00)', marketLocalDate('KR', at('2026-10-23T15:00:00Z')), '2026-10-24');
+  check('marketLocalDate JP (Asia/Tokyo)', marketLocalDate('JP', at('2026-10-23T15:00:00Z')), '2026-10-24');
+  check('marketLocalDate US (EDT, UTC 03:59 = 전날 23:59)', marketLocalDate('US', at('2026-10-24T03:59:00Z')), '2026-10-23');
+  check('marketLocalDate CRYPTO (UTC)', marketLocalDate('CRYPTO', at('2026-10-23T23:59:59Z')), '2026-10-23');
+
+  // ── isSessionBarConfirmed 직접 ─────────────────────────────────────────────
+  check('KR 15:59:59.999 KST → 미확정', isSessionBarConfirmed('KR', '2026-10-23', at('2026-10-23T06:59:59.999Z')), false);
+  check('KR 16:00:00.000 KST → 확정', isSessionBarConfirmed('KR', '2026-10-23', at('2026-10-23T07:00:00.000Z')), true);
+  check('JP 15:59:59.999 JST → 미확정', isSessionBarConfirmed('JP', '2026-10-23', at('2026-10-23T06:59:59.999Z')), false);
+  check('JP 16:00:00.000 JST → 확정', isSessionBarConfirmed('JP', '2026-10-23', at('2026-10-23T07:00:00.000Z')), true);
+  check('US EDT 16:59:59.999 → 미확정', isSessionBarConfirmed('US', '2026-10-23', at('2026-10-23T20:59:59.999Z')), false);
+  check('US EDT 17:00:00.000 → 확정', isSessionBarConfirmed('US', '2026-10-23', at('2026-10-23T21:00:00.000Z')), true);
+  check('US EST 16:59:59.999 → 미확정', isSessionBarConfirmed('US', '2026-11-20', at('2026-11-20T21:59:59.999Z')), false);
+  check('US EST 17:00:00.000 → 확정', isSessionBarConfirmed('US', '2026-11-20', at('2026-11-20T22:00:00.000Z')), true);
+  check('KR 오늘이 미래 날짜(내일 세션) → 미확정', isSessionBarConfirmed('KR', '2026-10-24', at('2026-10-23T08:00:00Z')), false);
+  check('CRYPTO 는 항상 false(먼 미래여도)', isSessionBarConfirmed('CRYPTO', '2026-10-23', at('2027-10-23T00:00:00Z')), false);
+  check('UNKNOWN 은 항상 false(먼 미래여도)', isSessionBarConfirmed('UNKNOWN', '2026-10-23', at('2027-10-23T00:00:00Z')), false);
+  check('now 가 NaN → 미확정(보수적)', isSessionBarConfirmed('KR', '2026-10-23', new Date(NaN)), false);
+  check('날짜 형식 밖 → 미확정(던지지 않음)', isSessionBarConfirmed('KR', '2026/10/23', at('2026-10-23T08:00:00Z')), false);
+
+  // ── extractCompletedBars: KR (D = 2026-10-23 금) ───────────────────────────
+  const D = '2026-10-23', Dm1 = '2026-10-22';
+  const raw = mkRawEndingAt(D);
+  check('픽스처: 30봉', Object.keys(raw.data!).length, 30);
+  check('픽스처: 마지막 날짜 = D', Object.keys(raw.data!).sort().pop(), D);
+  {
+    const r0 = extractCompletedBars(raw, 'KR', at('2026-10-23T00:00:00Z'));               // 09:00 KST 개장
+    check('KR 09:00 KST: D 제외 → 29봉', r0.bars.length, 29);
+    check('KR 09:00 KST: 마지막 = D-1', lastOf(r0), Dm1);
+    const r1 = extractCompletedBars(raw, 'KR', at('2026-10-23T06:59:59.999Z'));           // 15:59:59.999 KST
+    check('KR 15:59:59.999 KST: D 제외 → 29봉', r1.bars.length, 29);
+    check('KR 15:59:59.999 KST: 마지막 = D-1', lastOf(r1), Dm1);
+    const r2 = extractCompletedBars(raw, 'KR', at('2026-10-23T07:00:00.000Z'));           // 16:00:00 KST
+    check('KR 16:00:00 KST: D 포함 → 30봉', r2.bars.length, 30);
+    check('KR 16:00:00 KST: 마지막 = D', lastOf(r2), D);
+    check('KR 16:00:00 KST: 마지막 종가 105 (D 봉)', r2.bars[r2.bars.length - 1].close, 105);
+    check('KR: conservativeDrop=false', r2.conservativeDrop, false);
+    const r3 = extractCompletedBars(raw, 'KR', at('2026-10-23T14:59:00Z'));               // 23:59 KST — 자정 직전
+    check('KR 23:59 KST: D 포함', lastOf(r3), D);
+    const r4 = extractCompletedBars(raw, 'KR', at('2026-10-23T15:00:00Z'));               // 다음날 00:00 KST — D < 오늘
+    check('KR 자정 이후: D 포함(옛 규칙과 동일)', lastOf(r4), D);
+    const r5 = extractCompletedBars(raw, 'KR', at('2026-10-24T03:00:00Z'));               // 토요일
+    check('KR 토요일: 금요일 D 포함', lastOf(r5), D);
+  }
+
+  // ── extractCompletedBars: US — EDT / EST / DST 인접 ───────────────────────
+  {
+    const e0 = extractCompletedBars(raw, 'US', at('2026-10-23T13:30:00Z'));               // 09:30 EDT 개장
+    check('US EDT 09:30: D 제외', lastOf(e0), Dm1);
+    const e1 = extractCompletedBars(raw, 'US', at('2026-10-23T20:59:59.999Z'));           // 16:59:59.999 EDT
+    check('US EDT 16:59:59.999: D 제외 → 29봉', e1.bars.length, 29);
+    check('US EDT 16:59:59.999: 마지막 = D-1', lastOf(e1), Dm1);
+    const e2 = extractCompletedBars(raw, 'US', at('2026-10-23T21:00:00.000Z'));           // 17:00:00 EDT
+    check('US EDT 17:00:00: D 포함 → 30봉', e2.bars.length, 30);
+    check('US EDT 17:00:00: 마지막 = D', lastOf(e2), D);
+    check('US: conservativeDrop=false', e2.conservativeDrop, false);
+    const e3 = extractCompletedBars(raw, 'US', at('2026-10-24T04:00:00Z'));               // ET 자정(10-24 00:00 EDT)
+    check('US ET 자정 이후: D 포함(옛 규칙과 동일)', lastOf(e3), D);
+
+    const rawEst = mkRawEndingAt('2026-11-20');                                            // EST (DST 종료 11-01 이후)
+    const s1 = extractCompletedBars(rawEst, 'US', at('2026-11-20T21:59:59.999Z'));        // 16:59:59.999 EST
+    check('US EST 16:59:59.999: D 제외', lastOf(s1), '2026-11-19');
+    const s2 = extractCompletedBars(rawEst, 'US', at('2026-11-20T22:00:00.000Z'));        // 17:00:00 EST
+    check('US EST 17:00:00: D 포함', lastOf(s2), '2026-11-20');
+
+    const rawMar = mkRawEndingAt('2026-03-09');                                            // DST 시작(03-08) 다음 거래일 — EDT
+    check('US 03-09 EDT 16:59:59.999: D 제외', lastOf(extractCompletedBars(rawMar, 'US', at('2026-03-09T20:59:59.999Z'))), '2026-03-08');
+    check('US 03-09 EDT 17:00:00: D 포함', lastOf(extractCompletedBars(rawMar, 'US', at('2026-03-09T21:00:00.000Z'))), '2026-03-09');
+    const rawNov = mkRawEndingAt('2026-11-02');                                            // DST 종료(11-01) 다음 거래일 — EST
+    check('US 11-02 EST 16:59:59.999: D 제외', lastOf(extractCompletedBars(rawNov, 'US', at('2026-11-02T21:59:59.999Z'))), '2026-11-01');
+    check('US 11-02 EST 17:00:00: D 포함', lastOf(extractCompletedBars(rawNov, 'US', at('2026-11-02T22:00:00.000Z'))), '2026-11-02');
+  }
+
+  // ── extractCompletedBars: JP ───────────────────────────────────────────────
+  {
+    check('거래소 도쿄 증권거래소 (TYO) → JP', resolveMarketTz('도쿄 증권거래소 (TYO)', false), 'JP');
+    const j1 = extractCompletedBars(raw, 'JP', at('2026-10-23T06:59:59.999Z'));           // 15:59:59.999 JST
+    check('JP 15:59:59.999 JST: D 제외', lastOf(j1), Dm1);
+    const j2 = extractCompletedBars(raw, 'JP', at('2026-10-23T07:00:00.000Z'));           // 16:00:00 JST
+    check('JP 16:00:00 JST: D 포함 → 30봉', j2.bars.length, 30);
+    check('JP 16:00:00 JST: 마지막 = D', lastOf(j2), D);
+    check('JP: conservativeDrop=false (예전 UNKNOWN 은 true)', j2.conservativeDrop, false);
+    const sat = at('2026-10-24T03:00:00Z');                                                // 토요일 12:00 JST
+    const j3 = extractCompletedBars(raw, 'JP', sat);
+    check('JP 토요일: 금요일 D 포함 (UNKNOWN 이던 시절엔 잘림)', lastOf(j3), D);
+    check('JP 토요일: 30봉', j3.bars.length, 30);
+    const unkSat = extractCompletedBars(raw, 'UNKNOWN', sat);
+    check('대조: 같은 시각 UNKNOWN 은 최신 행 제외 → D-1', lastOf(unkSat), Dm1);
+  }
+
+  // ── CRYPTO / UNKNOWN 불변 ──────────────────────────────────────────────────
+  {
+    const c1 = extractCompletedBars(raw, 'CRYPTO', at('2026-10-23T12:00:00Z'));
+    check('CRYPTO 같은 UTC 날짜 정오: D 제외', lastOf(c1), Dm1);
+    const c2 = extractCompletedBars(raw, 'CRYPTO', at('2026-10-23T23:59:59.999Z'));
+    check('CRYPTO UTC 23:59:59.999: D 제외(확정 시각 규칙 적용 안 됨)', c2.bars.length, 29);
+    const c3 = extractCompletedBars(raw, 'CRYPTO', at('2026-10-24T00:00:00.000Z'));
+    check('CRYPTO UTC 자정: D 포함', c3.bars.length, 30);
+    check('CRYPTO: conservativeDrop=true 유지', c3.conservativeDrop, true);
+    const u1 = extractCompletedBars(raw, 'UNKNOWN', at('2026-10-23T12:00:00Z'));
+    check('UNKNOWN: 최신 행 1개 제외 → 29봉', u1.bars.length, 29);
+    const u2 = extractCompletedBars(raw, 'UNKNOWN', at('2026-10-28T12:00:00Z'));          // 5일 뒤여도 동일
+    check('UNKNOWN: 며칠 뒤에도 최신 행 제외', lastOf(u2), Dm1);
+    check('UNKNOWN: conservativeDrop=true 유지', u2.conservativeDrop, true);
+  }
+
+  // ── extractCompletedCloses 도 같은 규칙 ────────────────────────────────────
+  {
+    const lastDate = (r: { dates: string[] }): string => r.dates[r.dates.length - 1];
+    const lastCls = (r: { closes: number[] }): number => r.closes[r.closes.length - 1];
+    const k1 = extractCompletedCloses(raw, 'KR', at('2026-10-23T06:59:59.999Z'));
+    check('Closes KR 15:59:59.999: 마지막 날짜 = D-1', lastDate(k1), Dm1);
+    check('Closes KR 15:59:59.999: 마지막 종가 100', lastCls(k1), 100);
+    check('Closes KR 15:59:59.999: 29개', k1.dates.length, 29);
+    const k2 = extractCompletedCloses(raw, 'KR', at('2026-10-23T07:00:00.000Z'));
+    check('Closes KR 16:00:00: 마지막 날짜 = D', lastDate(k2), D);
+    check('Closes KR 16:00:00: 마지막 종가 105', lastCls(k2), 105);
+    check('Closes KR 16:00:00: 30개', k2.dates.length, 30);
+    check('Closes US EDT 16:59:59.999: D-1', lastDate(extractCompletedCloses(raw, 'US', at('2026-10-23T20:59:59.999Z'))), Dm1);
+    check('Closes US EDT 17:00:00: D', lastDate(extractCompletedCloses(raw, 'US', at('2026-10-23T21:00:00.000Z'))), D);
+    check('Closes US EST 16:59:59.999: D-1', lastDate(extractCompletedCloses(mkRawEndingAt('2026-11-20'), 'US', at('2026-11-20T21:59:59.999Z'))), '2026-11-19');
+    check('Closes US EST 17:00:00: D', lastDate(extractCompletedCloses(mkRawEndingAt('2026-11-20'), 'US', at('2026-11-20T22:00:00.000Z'))), '2026-11-20');
+    check('Closes JP 15:59:59.999: D-1', lastDate(extractCompletedCloses(raw, 'JP', at('2026-10-23T06:59:59.999Z'))), Dm1);
+    check('Closes JP 16:00:00: D', lastDate(extractCompletedCloses(raw, 'JP', at('2026-10-23T07:00:00.000Z'))), D);
+    check('Closes JP 토요일: 금요일 D', lastDate(extractCompletedCloses(raw, 'JP', at('2026-10-24T03:00:00Z'))), D);
+    check('Closes CRYPTO UTC 23:59:59.999: D-1', lastDate(extractCompletedCloses(raw, 'CRYPTO', at('2026-10-23T23:59:59.999Z'))), Dm1);
+    check('Closes CRYPTO UTC 자정: D', lastDate(extractCompletedCloses(raw, 'CRYPTO', at('2026-10-24T00:00:00.000Z'))), D);
+    check('Closes UNKNOWN: 최신 1개 제외 → D-1', lastDate(extractCompletedCloses(raw, 'UNKNOWN', at('2026-10-28T12:00:00Z'))), Dm1);
+  }
+
+  // ── 행 빌더 통합: 판정 기준일(asOfDate)이 확정 시각에 따라 넘어간다 ─────────
+  {
+    const JP_EX = '도쿄 증권거래소 (TYO)';
+    const jpBefore = buildLegacyRow({ ticker: '8002.T', name: '마루베니', raw, exchange: JP_EX, isCrypto: false, now: at('2026-10-23T06:59:59.999Z') });
+    check('Legacy JP 15:59: 기준일 D-1', jpBefore.quality.asOfDate, Dm1);
+    check('Legacy JP 15:59: 완료종가 100', jpBefore.completedClose, 100);
+    const jpAfter = buildLegacyRow({ ticker: '8002.T', name: '마루베니', raw, exchange: JP_EX, isCrypto: false, now: at('2026-10-23T07:00:00.000Z') });
+    check('Legacy JP 16:00: 기준일 D', jpAfter.quality.asOfDate, D);
+    check('Legacy JP 16:00: 완료종가 105', jpAfter.completedClose, 105);
+    check('Legacy JP: marketTz = JP', jpAfter.quality.marketTz, 'JP');
+    check('Legacy JP: 보수적 제외 표시 없음', jpAfter.quality.conservativeDrop, false);
+    const jpSat = buildLegacyRow({ ticker: '8002.T', name: '마루베니', raw, exchange: JP_EX, isCrypto: false, now: at('2026-10-24T03:00:00Z') });
+    check('Legacy JP 토요일: 기준일 = 금요일 D', jpSat.quality.asOfDate, D);
+
+    const posBefore = buildPositionRow({ ticker: 'A', name: 'A', raw, exchange: KR_EX, isCrypto: false, stopPrice: 50, now: at('2026-10-23T06:59:59.999Z') });
+    check('Position KR 15:59: 판정 기준일 D-1', posBefore.quality.asOfDate, Dm1);
+    check('Position KR 15:59: 완료종가 100', posBefore.completedClose, 100);
+    const posAfter = buildPositionRow({ ticker: 'A', name: 'A', raw, exchange: KR_EX, isCrypto: false, stopPrice: 50, now: at('2026-10-23T07:00:00.000Z') });
+    check('Position KR 16:00: 판정 기준일 D', posAfter.quality.asOfDate, D);
+    check('Position KR 16:00: 완료종가 105', posAfter.completedClose, 105);
+    const usBefore = buildLegacyRow({ ticker: 'SPY', name: 'SPY', raw, exchange: US_EX, isCrypto: false, now: at('2026-10-23T20:59:59.999Z') });
+    check('Legacy US EDT 16:59: 기준일 D-1', usBefore.quality.asOfDate, Dm1);
+    const usAfter = buildLegacyRow({ ticker: 'SPY', name: 'SPY', raw, exchange: US_EX, isCrypto: false, now: at('2026-10-23T21:00:00.000Z') });
+    check('Legacy US EDT 17:00: 기준일 D', usAfter.quality.asOfDate, D);
+  }
+
+  // ── 소스 가드: GAS 와 상수 공유 · 훅은 asOfDate+1 일로 조회 ────────────────
+  {
+    const entrySrc = readFileSync(new URL('../scripts/notify/gas/entry.ts', import.meta.url), 'utf-8');
+    checkTrue('GAS entry: SESSION_BAR_SETTLE_MIN 사용', entrySrc.includes('SESSION_BAR_SETTLE_MIN * 60_000'));
+    checkTrue('GAS entry: 로컬 정착 상수 TURTLE_CLOSE_SETTLE_MIN 없음(드리프트 방지)', !entrySrc.includes('TURTLE_CLOSE_SETTLE_MIN'));
+    checkTrue('GAS entry: utils/todayTurtle 에서 import', /SESSION_BAR_SETTLE_MIN[^;]*from '..\/..\/..\/utils\/todayTurtle'/.test(entrySrc));
+    for (const f of ['useTodayTurtle', 'useTurtleHoldings']) {
+      const src = readFileSync(new URL(`../hooks/${f}.ts`, import.meta.url), 'utf-8');
+      checkTrue(`hooks/${f}: 조회 종료일 = addIsoDays(asOfDate, 1)`, src.includes('addIsoDays(asOfDate, 1)'));
+      checkTrue(`hooks/${f}: asOfDate 를 종료일로 그대로 넘기지 않음`, !/acquireOutcome\(requestKey, \w+, asOfDate/.test(src));
+    }
+  }
 }
 
 console.log(`\n${fail === 0 ? '✓' : '✗'} ${pass} 통과 / ${fail} 실패`);

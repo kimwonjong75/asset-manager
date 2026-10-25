@@ -26,24 +26,48 @@ check('TTL = 30분(1,800,000ms)', TODAY_TURTLE_CACHE_TTL_MS, 1_800_000);
 check('최대 항목 4', TODAY_TURTLE_CACHE_MAX_ENTRIES, 4);
 
 // ── marketDaySignature ─────────────────────────────────────────────────────
-check('05:00Z = KST 14:00 / EDT 01:00 → 세 날짜 동일',
-  marketDaySignature(new Date('2026-09-15T05:00:00Z')), '2026-09-15|2026-09-15|2026-09-15');
-check('15:10Z = KST 다음날 00:10 → KR 날짜만 넘어감',
-  marketDaySignature(new Date('2026-09-15T15:10:00Z')), '2026-09-16|2026-09-15|2026-09-15');
-check('03:30Z = EDT 전날 23:30 → US 만 전날',
-  marketDaySignature(new Date('2026-09-16T03:30:00Z')), '2026-09-16|2026-09-15|2026-09-16');
-check('04:10Z = EDT 00:10 → US 날짜 넘어감',
-  marketDaySignature(new Date('2026-09-16T04:10:00Z')), '2026-09-16|2026-09-16|2026-09-16');
+// 형식: "<KR날짜>:<c|o>|<US날짜>:<c|o>|<UTC날짜>|<JP날짜>:<c|o>"  (c = 그 날짜 세션 봉 마감 확정+정착 20분 경과, o = 미확정)
+check('05:00Z = KST 14:00 / EDT 01:00 → 날짜 동일 · 전부 미확정',
+  marketDaySignature(new Date('2026-09-15T05:00:00Z')), '2026-09-15:o|2026-09-15:o|2026-09-15|2026-09-15:o');
+check('15:10Z = KST 다음날 00:10 → KR·JP 날짜만 넘어감(미확정)',
+  marketDaySignature(new Date('2026-09-15T15:10:00Z')), '2026-09-16:o|2026-09-15:o|2026-09-15|2026-09-16:o');
+check('03:30Z = EDT 전날 23:30 → US 만 전날 · 이미 확정(17:00 ET 지남)',
+  marketDaySignature(new Date('2026-09-16T03:30:00Z')), '2026-09-16:o|2026-09-15:c|2026-09-16|2026-09-16:o');
+check('04:10Z = EDT 00:10 → US 날짜 넘어감(미확정)',
+  marketDaySignature(new Date('2026-09-16T04:10:00Z')), '2026-09-16:o|2026-09-16:o|2026-09-16|2026-09-16:o');
 // DST 인접 (2026-11-01 06:00Z 에 EDT→EST)
 check('DST 종료 당일 05:30Z = EDT 01:30 → US 2026-11-01',
-  marketDaySignature(new Date('2026-11-01T05:30:00Z')), '2026-11-01|2026-11-01|2026-11-01');
+  marketDaySignature(new Date('2026-11-01T05:30:00Z')), '2026-11-01:o|2026-11-01:o|2026-11-01|2026-11-01:o');
 check('DST 종료 당일 04:30Z = EDT 00:30 (EST 고정이면 10-31 로 틀림)',
-  marketDaySignature(new Date('2026-11-01T04:30:00Z')), '2026-11-01|2026-11-01|2026-11-01');
-check('DST 종료 다음날 04:30Z = EST 23:30 전날 (EDT 고정이면 11-02 로 틀림)',
-  marketDaySignature(new Date('2026-11-02T04:30:00Z')), '2026-11-02|2026-11-01|2026-11-02');
+  marketDaySignature(new Date('2026-11-01T04:30:00Z')), '2026-11-01:o|2026-11-01:o|2026-11-01|2026-11-01:o');
+check('DST 종료 다음날 04:30Z = EST 23:30 전날 (EDT 고정이면 11-02 로 틀림) · 확정',
+  marketDaySignature(new Date('2026-11-02T04:30:00Z')), '2026-11-02:o|2026-11-01:c|2026-11-02|2026-11-02:o');
+
+// 확정 경계 — KR/JP: 15:40 KST 마감 확정 + 정착 20분 = 16:00 KST (= 07:00Z)
+check('KR/JP 15:59:59.999 KST → 미확정',
+  marketDaySignature(new Date('2026-10-23T06:59:59.999Z')), '2026-10-23:o|2026-10-23:o|2026-10-23|2026-10-23:o');
+check('KR/JP 16:00:00.000 KST → 확정(KR·JP 만 c)',
+  marketDaySignature(new Date('2026-10-23T07:00:00.000Z')), '2026-10-23:c|2026-10-23:o|2026-10-23|2026-10-23:c');
+// US EDT: 16:40 ET + 20분 = 17:00 EDT (= 21:00Z) — 이때 KST 는 이미 다음날 06:00
+check('US EDT 16:59:59.999 → 미확정(KR·JP 는 KST 다음날 05:59)',
+  marketDaySignature(new Date('2026-10-23T20:59:59.999Z')), '2026-10-24:o|2026-10-23:o|2026-10-23|2026-10-24:o');
+check('US EDT 17:00:00.000 → US 확정',
+  marketDaySignature(new Date('2026-10-23T21:00:00.000Z')), '2026-10-24:o|2026-10-23:c|2026-10-23|2026-10-24:o');
+// US EST: 17:00 EST = 22:00Z
+check('US EST 16:59:59.999 → 미확정',
+  marketDaySignature(new Date('2026-11-20T21:59:59.999Z')), '2026-11-21:o|2026-11-20:o|2026-11-20|2026-11-21:o');
+check('US EST 17:00:00.000 → US 확정',
+  marketDaySignature(new Date('2026-11-20T22:00:00.000Z')), '2026-11-21:o|2026-11-20:c|2026-11-20|2026-11-21:o');
+// 같은 날짜라도 확정 상태가 다르면 서명이 다르다(= 캐시 만료 사유)
+check('확정 경계 직전·직후 서명은 서로 다르다(KR)',
+  marketDaySignature(new Date('2026-10-23T06:59:59.999Z')) !== marketDaySignature(new Date('2026-10-23T07:00:00.000Z')), true);
+check('확정 경계 직전·직후 서명은 서로 다르다(US EDT)',
+  marketDaySignature(new Date('2026-10-23T20:59:59.999Z')) !== marketDaySignature(new Date('2026-10-23T21:00:00.000Z')), true);
+check('같은 구간(16:00 KST ~ 다음날 05:59 KST)의 두 시각은 서명이 같다 — 불필요한 만료 없음',
+  marketDaySignature(new Date('2026-10-23T07:00:00.000Z')), marketDaySignature(new Date('2026-10-23T14:59:59.999Z')));
 
 // ── evaluateCacheEntry ─────────────────────────────────────────────────────
-const SIG = '2026-09-15|2026-09-15|2026-09-15';
+const SIG = '2026-09-15:o|2026-09-15:o|2026-09-15|2026-09-15:o';
 const entry: TodayCacheEntryMeta = { requestKey: 'K1', fetchedAtMs: at('2026-09-15T10:00:00.000Z'), signature: SIG };
 check('TTL 1ms 전 → fresh',
   evaluateCacheEntry(entry, { requestKey: 'K1', nowMs: at('2026-09-15T10:29:59.999Z'), signature: SIG }, policy), 'fresh');
@@ -65,13 +89,13 @@ const kstEntry: TodayCacheEntryMeta = {
   requestKey: 'K1', fetchedAtMs: at('2026-09-15T14:50:00.000Z'),
   signature: marketDaySignature(new Date('2026-09-15T14:50:00.000Z')),
 };
-check('14:50Z 서명 = KST 23:50 → KR 아직 9/15', kstEntry.signature, '2026-09-15|2026-09-15|2026-09-15');
+check('14:50Z 서명 = KST 23:50 → KR 아직 9/15 · 이미 확정(16:00 KST 지남), US 는 10:50 EDT 미확정', kstEntry.signature, '2026-09-15:c|2026-09-15:o|2026-09-15|2026-09-15:c');
 check('TTL 20분 이내라도 KST 자정 넘기면 expired',
   evaluateCacheEntry(kstEntry, {
     requestKey: 'K1', nowMs: at('2026-09-15T15:10:00.000Z'), signature: marketDaySignature(new Date('2026-09-15T15:10:00.000Z')),
   }, policy), 'expired');
 check('같은 서명·TTL 이내면 fresh (대조군)',
-  evaluateCacheEntry(kstEntry, { requestKey: 'K1', nowMs: at('2026-09-15T14:59:59.000Z'), signature: SIG }, policy), 'fresh');
+  evaluateCacheEntry(kstEntry, { requestKey: 'K1', nowMs: at('2026-09-15T14:59:59.000Z'), signature: marketDaySignature(new Date('2026-09-15T14:59:59.000Z')) }, policy), 'fresh');
 // US 자정 넘김도 동일
 const usEntry: TodayCacheEntryMeta = {
   requestKey: 'K1', fetchedAtMs: at('2026-09-16T03:50:00.000Z'),
@@ -81,6 +105,33 @@ check('US 자정(04:00Z) 넘기면 TTL 이내라도 expired',
   evaluateCacheEntry(usEntry, {
     requestKey: 'K1', nowMs: at('2026-09-16T04:10:00.000Z'), signature: marketDaySignature(new Date('2026-09-16T04:10:00.000Z')),
   }, policy), 'expired');
+
+// 마감 확정(+정착 20분) 경계: 확정 전에 받은 캐시(장중 부분 봉 포함 가능)는 TTL 이내라도 확정 순간 만료돼야 한다.
+const sigAt = (iso: string): string => marketDaySignature(new Date(iso));
+const krPre: TodayCacheEntryMeta = {
+  requestKey: 'K1', fetchedAtMs: at('2026-10-23T06:50:00.000Z'), signature: sigAt('2026-10-23T06:50:00.000Z'), // 15:50 KST
+};
+check('15:50 KST 항목 · 15:59:59.999 KST → fresh(같은 미확정 구간)',
+  evaluateCacheEntry(krPre, { requestKey: 'K1', nowMs: at('2026-10-23T06:59:59.999Z'), signature: sigAt('2026-10-23T06:59:59.999Z') }, policy), 'fresh');
+check('15:50 KST 항목 · 16:00:00 KST(확정) → TTL(10분) 이내라도 expired',
+  evaluateCacheEntry(krPre, { requestKey: 'K1', nowMs: at('2026-10-23T07:00:00.000Z'), signature: sigAt('2026-10-23T07:00:00.000Z') }, policy), 'expired');
+const krPost: TodayCacheEntryMeta = {
+  requestKey: 'K1', fetchedAtMs: at('2026-10-23T07:05:00.000Z'), signature: sigAt('2026-10-23T07:05:00.000Z'), // 16:05 KST — 확정 뒤 조회
+};
+check('16:05 KST 항목 · 16:20 KST → fresh(확정 뒤 조회분은 TTL 안에서 재사용)',
+  evaluateCacheEntry(krPost, { requestKey: 'K1', nowMs: at('2026-10-23T07:20:00.000Z'), signature: sigAt('2026-10-23T07:20:00.000Z') }, policy), 'fresh');
+const usPre: TodayCacheEntryMeta = {
+  requestKey: 'K1', fetchedAtMs: at('2026-10-23T20:50:00.000Z'), signature: sigAt('2026-10-23T20:50:00.000Z'), // 16:50 EDT
+};
+check('16:50 EDT 항목 · 16:59:59.999 EDT → fresh',
+  evaluateCacheEntry(usPre, { requestKey: 'K1', nowMs: at('2026-10-23T20:59:59.999Z'), signature: sigAt('2026-10-23T20:59:59.999Z') }, policy), 'fresh');
+check('16:50 EDT 항목 · 17:00:00 EDT(확정) → expired',
+  evaluateCacheEntry(usPre, { requestKey: 'K1', nowMs: at('2026-10-23T21:00:00.000Z'), signature: sigAt('2026-10-23T21:00:00.000Z') }, policy), 'expired');
+const usPreEst: TodayCacheEntryMeta = {
+  requestKey: 'K1', fetchedAtMs: at('2026-11-20T21:50:00.000Z'), signature: sigAt('2026-11-20T21:50:00.000Z'), // 16:50 EST
+};
+check('16:50 EST 항목 · 17:00:00 EST(확정) → expired',
+  evaluateCacheEntry(usPreEst, { requestKey: 'K1', nowMs: at('2026-11-20T22:00:00.000Z'), signature: sigAt('2026-11-20T22:00:00.000Z') }, policy), 'expired');
 
 // ── isCacheableResult ──────────────────────────────────────────────────────
 check('실패 0 / 대상 5 → 저장', isCacheableResult({ failed: 0, total: 5 }), true);
@@ -156,6 +207,9 @@ const utilSrc = readFileSync(new URL('../utils/todayTurtleCache.ts', import.meta
 check('utils/todayTurtleCache: react import 없음(순수)', /from ['"]react['"]/.test(utilSrc), false);
 check('utils/todayTurtleCache: services import 없음', utilSrc.includes('/services/'), false);
 check('utils/todayTurtleCache: 모듈 Map 저장소 없음(상태는 훅 소유)', /new Map\s*</.test(utilSrc), false);
+check('utils/todayTurtleCache: 서명이 완료봉 판정 함수(isSessionBarConfirmed)를 그대로 사용', utilSrc.includes('isSessionBarConfirmed('), true);
+check('utils/todayTurtleCache: 시장 현지 날짜는 marketLocalDate 경유(시간대 이중 정의 없음)', utilSrc.includes('marketLocalDate('), true);
+check('utils/todayTurtleCache: 시간대 문자열 하드코딩 없음', /Asia\/(Seoul|Tokyo)|America\/New_York/.test(utilSrc.replace(/\/\/.*$|\/\*[\s\S]*?\*\//gm, '')), false);
 
 const hookSrc = readFileSync(new URL('../hooks/useTodayTurtle.ts', import.meta.url), 'utf-8');
 check('훅: 캐시 저장은 isCacheableResult 게이트 경유', hookSrc.includes('isCacheableResult('), true);

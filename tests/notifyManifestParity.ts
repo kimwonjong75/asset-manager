@@ -272,6 +272,21 @@ function mkAsset(o: Partial<Asset> = {}): Asset {
   ok('내용 동일 + 시각만 다름(터틀 포함) → 해시 동일', manifestHash(base) === manifestHash(sameAgain));
 }
 
+// ════════════════════════════════════════════════════════════════════════════
+// 4c. 이름 — 빈 별칭("")은 원래 이름으로 (2026-10 실제 사례: KRX 금현물 카톡 이름 빈칸)
+// ════════════════════════════════════════════════════════════════════════════
+{
+  const blankAlias = mkAsset({ id: 'g1', ticker: 'KRX-GOLD', name: 'KRX 금현물', customName: '', quantity: 709, tradePlan: mkPlan() });
+  const spaceAlias = mkAsset({ id: 'g2', ticker: 'SPACE', name: '공백별칭', customName: '   ', quantity: 1, tradePlan: mkPlan() });
+  const realAlias = mkAsset({ id: 'g3', ticker: 'GLD', name: 'SPDR Gold Trust', customName: '유선&원종_SPDR Gold Trust', quantity: 61, tradePlan: mkPlan() });
+  const m = buildNotifyManifest({
+    assets: [blankAlias, spaceAlias, realAlias], appUrl: 'https://a.test', now: '2026-10-25T00:00:00.000Z', pyramidAlerts: false,
+  });
+  check('터틀 보유 이름: 빈 별칭→원래 이름, 공백 별칭→원래 이름, 실제 별칭→별칭',
+    m.turtle!.legacyHoldings.map(h => h.name), ['KRX 금현물', '공백별칭', '유선&원종_SPDR Gold Trust']);
+  check('매매계획 항목 이름도 같은 규칙', m.items.map(i => i.name), ['KRX 금현물', '공백별칭', '유선&원종_SPDR Gold Trust']);
+}
+
 // ── 결과 ──
 if (fails.length) {
   console.error(`\n❌ notifyManifest parity 실패 (${fails.length})`);

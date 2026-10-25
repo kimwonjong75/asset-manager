@@ -28,6 +28,7 @@ const rowBase: Omit<TurtleHoldingsRow, 'kind' | 'ticker' | 'name' | 'currency' |
   lastClose: 70_000,
   exitLine: null,
   reentryLine: null,
+  reentryBaseline: null,
   exitGapPct: null,
   n: null,
   volatilityLabel: null,

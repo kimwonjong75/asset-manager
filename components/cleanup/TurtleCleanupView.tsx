@@ -13,7 +13,7 @@
 import React, { useMemo, useState } from 'react';
 import { usePortfolio } from '../../contexts/PortfolioContext';
 import { useTurtleHoldings } from '../../hooks/useTurtleHoldings';
-import { TurtleHoldingsRow } from '../../utils/turtleHoldingsView';
+import { TurtleHoldingsRow, describeReentryBaseline, REENTRY_BASELINE_CAPTION } from '../../utils/turtleHoldingsView';
 import { resolveHoldingsSettings } from '../../utils/turtleHoldings';
 import { consecutiveHoldCount } from '../../utils/turtleHoldingsState';
 import {
@@ -147,6 +147,9 @@ const TurtleCleanupView: React.FC = () => {
         <p className="text-xs sm:text-sm text-gray-400 mt-1">
           청산선({holdingsSettings.exitLookback}일 최저가) 이하로 마감한 종목입니다. 팔면 자동으로 <span className="text-gray-200">"다시 살 때" 감시 명단</span>에 등록됩니다.
         </p>
+        {candidates.some(c => c.row.reentryBaseline) && (
+          <p className="text-xs text-gray-500 mt-1">{REENTRY_BASELINE_CAPTION}</p>
+        )}
       </div>
 
       {holdings.isLoading && <p className="text-xs text-gray-500 mb-3">시세를 불러오는 중입니다…</p>}
@@ -188,18 +191,24 @@ const TurtleCleanupView: React.FC = () => {
                 </button>
               </div>
               <ul className="space-y-2 mb-2">
-                {smallCandidates.map(c => (
-                  <li key={c.asset.id} className="flex items-center gap-2 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2">
-                    <input
-                      type="checkbox" checked={selectedSmallIds.has(c.asset.id)} onChange={() => toggleSmall(c.asset.id)}
-                      className="accent-primary"
-                    />
-                    <span className="text-white text-sm font-medium truncate">{c.asset.customName?.trim() || c.asset.name}</span>
-                    <span className="text-xs text-gray-500">{c.asset.ticker}</span>
-                    <span className={`ml-auto text-xs ${c.asset.metrics.returnPercentage < 0 ? 'text-down' : 'text-up'}`}>{pct(c.asset.metrics.returnPercentage)}</span>
-                    <span className="text-xs text-gray-500">{formatKRW(c.asset.metrics.currentValueKRW)}</span>
-                  </li>
-                ))}
+                {smallCandidates.map(c => {
+                  const baselineText = describeReentryBaseline(c.row);
+                  return (
+                    <li key={c.asset.id} className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2">
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="checkbox" checked={selectedSmallIds.has(c.asset.id)} onChange={() => toggleSmall(c.asset.id)}
+                          className="accent-primary"
+                        />
+                        <span className="text-white text-sm font-medium truncate">{c.asset.customName?.trim() || c.asset.name}</span>
+                        <span className="text-xs text-gray-500">{c.asset.ticker}</span>
+                        <span className={`ml-auto text-xs ${c.asset.metrics.returnPercentage < 0 ? 'text-down' : 'text-up'}`}>{pct(c.asset.metrics.returnPercentage)}</span>
+                        <span className="text-xs text-gray-500">{formatKRW(c.asset.metrics.currentValueKRW)}</span>
+                      </div>
+                      {baselineText && <p className="text-xs text-gray-400 mt-1 pl-6">{baselineText}</p>}
+                    </li>
+                  );
+                })}
               </ul>
               <Button variant="primary" onClick={handleBulkSellSmall} disabled={selectedSmallIds.size === 0} loading={isBulkSelling}>
                 선택 {selectedSmallIds.size}건 [팔았음 기록]
@@ -227,6 +236,9 @@ const TurtleCleanupView: React.FC = () => {
                           <span>비중 {c.asset.metrics.allocation.toFixed(2)}%</span>
                         </div>
                         <p className="text-xs text-gray-500 mt-1">{c.row.reasonText}</p>
+                        {c.row.reentryBaseline && (
+                          <p className="text-xs text-gray-400 mt-1">{describeReentryBaseline(c.row)}</p>
+                        )}
                       </div>
                     </div>
                     <div className="flex flex-wrap gap-1.5 mt-2.5">

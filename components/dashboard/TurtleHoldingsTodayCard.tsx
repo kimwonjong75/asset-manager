@@ -9,7 +9,9 @@
 import React, { useMemo, useState } from 'react';
 import { useTurtleHoldings } from '../../hooks/useTurtleHoldings';
 import { usePortfolio } from '../../contexts/PortfolioContext';
-import { TurtleHoldingsRow, shouldPromptDrawdownReferenceRefresh } from '../../utils/turtleHoldingsView';
+import {
+  TurtleHoldingsRow, shouldPromptDrawdownReferenceRefresh, describeReentryBaseline, REENTRY_BASELINE_CAPTION,
+} from '../../utils/turtleHoldingsView';
 import { resolveHoldingsSettings } from '../../utils/turtleHoldings';
 import { formatKRW } from '../portfolio-table/utils';
 import Badge from '../common/Badge';
@@ -32,6 +34,11 @@ interface Bucket {
    * 행을 복제하지 않고 칸별로 다른 텍스트를 뽑아 쓴다.
    */
   textFor?: (row: TurtleHoldingsRow) => string;
+  /**
+   * true면 각 줄 판정 사유 아래에 "현재 재진입 기준선" 한 줄을 붙이고 칸 제목 아래에 안내 문구를 한 번 보여 준다
+   * ('팔 때' 칸 전용, 표시 전용 — 팔기 전에 다시 사려면 어디를 넘어야 하는지 보여 주기 위함).
+   */
+  showReentryBaseline?: boolean;
 }
 
 function rowIdentity(row: TurtleHoldingsRow): string {
@@ -41,6 +48,8 @@ function rowIdentity(row: TurtleHoldingsRow): string {
 interface RowLineProps {
   row: TurtleHoldingsRow;
   text: string;
+  /** 판정 사유 아래에 덧붙일 보조 한 줄(재진입 기준선 등). 없으면 생략. */
+  subText?: string | null;
   target: TurtleHoldingsChartTarget | null;
   expanded: boolean;
   onToggle: () => void;
@@ -49,7 +58,7 @@ interface RowLineProps {
   history: ReturnType<typeof usePortfolio>['data']['portfolioHistory'];
 }
 
-const RowLine: React.FC<RowLineProps> = ({ row, text, target, expanded, onToggle, onReview, onOpenBuy, history }) => {
+const RowLine: React.FC<RowLineProps> = ({ row, text, subText, target, expanded, onToggle, onReview, onOpenBuy, history }) => {
   const body = (
     <>
       <div className="flex flex-wrap items-center gap-2">
@@ -57,6 +66,7 @@ const RowLine: React.FC<RowLineProps> = ({ row, text, target, expanded, onToggle
         <span className="text-xs text-gray-500">{row.ticker}</span>
       </div>
       <p className="mt-1 text-xs text-gray-300 leading-relaxed">{text}</p>
+      {subText && <p className="mt-1 text-xs text-gray-400 leading-relaxed">{subText}</p>}
     </>
   );
   return (
@@ -119,6 +129,9 @@ const BucketSection: React.FC<BucketSectionProps> = ({ bucket, targetByRow, expa
     <h4 className="text-xs font-semibold text-gray-300 mb-1.5">
       {bucket.title} <span className="text-gray-500">{bucket.rows.length}</span>
     </h4>
+    {bucket.showReentryBaseline && bucket.rows.some(r => r.reentryBaseline) && (
+      <p className="text-xs text-gray-500 mb-1.5">{REENTRY_BASELINE_CAPTION}</p>
+    )}
     {bucket.rows.length === 0 ? (
       <p className="text-xs text-gray-500">해당 없음</p>
     ) : (
@@ -136,6 +149,7 @@ const BucketSection: React.FC<BucketSectionProps> = ({ bucket, targetByRow, expa
             onReview={onReview}
             onOpenBuy={bucket.clickable ? onOpenBuy : undefined}
             text={bucket.textFor ? bucket.textFor(r) : r.reasonText}
+            subText={bucket.showReentryBaseline ? describeReentryBaseline(r) : null}
             history={history}
           />
           );
@@ -162,7 +176,7 @@ const TurtleHoldingsTodayCard: React.FC = () => {
     const pyramid = model.rows.filter(r => r.status === 'pyramid');
     const stopCheck = model.rows.filter(r => r.kind === 'reentry-position' && (r.status === 'hold' || r.status === 'pyramid'));
     return [
-      { key: 'sell', title: '팔 때', rows: sell, clickable: false },
+      { key: 'sell', title: '팔 때', rows: sell, clickable: false, showReentryBaseline: true },
       { key: 'reentry', title: '다시 살 때', rows: reentry, clickable: true },
       { key: 'pyramid', title: '추가 매수', rows: pyramid, clickable: true },
       // 증권사 손절 예약주문 점검 용도 — '팔 때'·'추가 매수' 칸의 판정 사유 문구와 겹치지 않도록

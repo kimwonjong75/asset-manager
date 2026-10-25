@@ -21,6 +21,8 @@ import {
   sortTurtleHoldingsRows,
   turtleHoldingsRequiredTradingDays,
   turtleHoldingsLookbackCalendarDays,
+  describeReentryBaseline,
+  REENTRY_BASELINE_CAPTION,
   TurtleHoldingsRow,
 } from '../utils/turtleHoldingsView';
 
@@ -313,7 +315,7 @@ console.log('6. summarizeTurtleHoldingsRows · sortTurtleHoldingsRows');
 {
   const mk = (over: Partial<TurtleHoldingsRow>): TurtleHoldingsRow => ({
     kind: 'legacy-holding', ticker: 'X', name: 'X', currency: Currency.KRW, status: 'hold',
-    lastClose: null, exitLine: null, reentryLine: null, exitGapPct: null, n: null, volatilityLabel: null,
+    lastClose: null, exitLine: null, reentryLine: null, reentryBaseline: null, exitGapPct: null, n: null, volatilityLabel: null,
     unitsCount: null, maxUnits: null, rebuy: null, reasonText: '', stopCheckText: null, dataIssue: null, asOfDate: null,
     ...over,
   });
@@ -344,6 +346,151 @@ console.log('7. 조회 기간 산정');
   const settings = H({ entryLookback: 55, exitLookback: 20, maPeriod: 50 });
   check('7 필요 거래일=max(56,21,50,21)=56', turtleHoldingsRequiredTradingDays(settings), 56);
   check('7 달력일=ceil(56×2.4)+30=165', turtleHoldingsLookbackCalendarDays(settings), Math.ceil(56 * 2.4) + 30);
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+console.log('8. reentryBaseline — \'팔 때\' 행 재진입 기준선(표시 전용, 2026-10-25)');
+// ════════════════════════════════════════════════════════════════════════════
+{
+  // 8-a. 원래 보유분 '팔 때' + 진입창 55일 — 창 경계를 손계산 절대값으로 고정한다.
+  //   70봉(index 0..69), 마지막 봉(69)은 제외, 직전 55개 = index 14..68.
+  //   index 13(창 밖, high 150)은 무시, index 14(창 안 가장 오래된 봉, high 120)는 포함, index 69(마지막 봉, high 200)는 제외
+  //   → 기준선 = 120. 마지막 종가 98 → 격차 = (120−98)/98×100 = 22.4489795918…%, 기준일 = iso(69) = 2026-03-11.
+  const settings55 = H({ entryLookback: 55 });
+  const asset = mkAsset({ id: 'bl-leg', priceOriginal: 100 });
+  const bars55: B[] = Array.from({ length: 70 }, () => ({ o: 100, h: 101, l: 99, c: 100 }));
+  bars55[13] = { o: 100, h: 150, l: 99, c: 100 };
+  bars55[14] = { o: 100, h: 120, l: 99, c: 100 };
+  bars55[69] = { o: 98, h: 200, l: 97, c: 98 };
+  const rowSell55 = buildTurtleHoldingsLegacyRow({
+    asset, raw: mkRaw(bars55), isCrypto: false, fetchFailed: false, now: nowAfter(bars55), settings: settings55,
+  });
+  check('8-a 상태=팔 때', rowSell55.status, 'sell');
+  check('8-a 기준일 = 마지막 완료봉 2026-03-11', rowSell55.asOfDate, '2026-03-11');
+  check('8-a 기준선 = 직전 55봉 high 최댓값 120(마지막 봉 200·창 밖 150 제외)', rowSell55.reentryBaseline?.line, 120);
+  checkClose('8-a 격차 = (120−98)/98×100 = 22.448979591836736', rowSell55.reentryBaseline?.gapPct ?? null, 22.448979591836736, 1e-9);
+  check('8-a asOfDate = 2026-03-11', rowSell55.reentryBaseline?.asOfDate, '2026-03-11');
+  check('8-a reentryLine 필드는 팔 때 행에서 그대로 null(의미 불변)', rowSell55.reentryLine, null);
+  check('8-a 표시 문장(원화)', describeReentryBaseline(rowSell55),
+    '현재 재진입 기준선 120원 — 최근 확정 종가 대비 +22.4% (기준일 3월 11일)');
+
+  // 8-b. 진입창 20일(H 기본) — 평평한 20봉(high 101) + 팔 때 봉(종가 98): 기준선 101, 격차 3/98×100.
+  const settings20 = H();
+  const barsSell20: B[] = [...flatWindow(), { o: 98, h: 99, l: 97, c: 98 }];
+  const rowSell20 = buildTurtleHoldingsLegacyRow({
+    asset: mkAsset({ id: 'bl-leg20', priceOriginal: 100 }), raw: mkRaw(barsSell20), isCrypto: false, fetchFailed: false,
+    now: nowAfter(barsSell20), settings: settings20,
+  });
+  check('8-b 상태=팔 때', rowSell20.status, 'sell');
+  check('8-b 기준선=101', rowSell20.reentryBaseline?.line, 101);
+  checkClose('8-b 격차 = 3/98×100 = 3.061224489795918', rowSell20.reentryBaseline?.gapPct ?? null, 3.061224489795918, 1e-9);
+  check('8-b 기준일 = iso(20) = 2026-01-21', rowSell20.reentryBaseline?.asOfDate, '2026-01-21');
+  check('8-b 표시 문장', describeReentryBaseline(rowSell20),
+    '현재 재진입 기준선 101원 — 최근 확정 종가 대비 +3.1% (기준일 1월 21일)');
+
+  // 8-c. 보유 유지 → null
+  const barsHold20: B[] = [...flatWindow(), { o: 100, h: 101, l: 99, c: 100 }];
+  const rowHold20 = buildTurtleHoldingsLegacyRow({
+    asset: mkAsset({ id: 'bl-hold', priceOriginal: 100 }), raw: mkRaw(barsHold20), isCrypto: false, fetchFailed: false,
+    now: nowAfter(barsHold20), settings: settings20,
+  });
+  check('8-c 보유 유지 행 → reentryBaseline null', { s: rowHold20.status, b: rowHold20.reentryBaseline }, { s: 'hold', b: null });
+  check('8-c 보유 유지 행 → 표시 문장 null', describeReentryBaseline(rowHold20), null);
+
+  // 8-d. 범위 제외 → null (가족 계정)
+  const rowOut = buildTurtleHoldingsLegacyRow({
+    asset: mkAsset({ id: 'bl-out', owner: 'YUSEON', priceOriginal: 100 }), raw: mkRaw(barsSell20), isCrypto: false,
+    fetchFailed: false, now: nowAfter(barsSell20), settings: settings20,
+  });
+  check('8-d 범위 제외 행 → reentryBaseline null', { s: rowOut.status, b: rowOut.reentryBaseline }, { s: 'out-of-scope', b: null });
+
+  // 8-e. 확인 불가(시세 없음 / 조회 실패) → null
+  const rowNoData = buildTurtleHoldingsLegacyRow({
+    asset: mkAsset({ id: 'bl-nodata', priceOriginal: 100 }), raw: undefined, isCrypto: false, fetchFailed: false,
+    now: new Date(), settings: settings20,
+  });
+  check('8-e 시세 없음 → reentryBaseline null', { s: rowNoData.status, b: rowNoData.reentryBaseline }, { s: 'unavailable', b: null });
+  const rowFetchFail = buildTurtleHoldingsLegacyRow({
+    asset: mkAsset({ id: 'bl-ff', priceOriginal: 100 }), raw: mkRaw(barsSell20), isCrypto: false, fetchFailed: true,
+    now: nowAfter(barsSell20), settings: settings20,
+  });
+  check('8-e 조회 실패 → reentryBaseline null', { s: rowFetchFail.status, b: rowFetchFail.reentryBaseline }, { s: 'unavailable', b: null });
+
+  // 8-f. 봉 부족 — 21봉이면 청산선(20일)은 구해져 '팔 때'지만 55일 기준선은 못 구한다 → null(값을 지어내지 않음).
+  const rowShort = buildTurtleHoldingsLegacyRow({
+    asset: mkAsset({ id: 'bl-short', priceOriginal: 100 }), raw: mkRaw(barsSell20), isCrypto: false, fetchFailed: false,
+    now: nowAfter(barsSell20), settings: settings55,
+  });
+  check('8-f 봉 부족(21봉 < 56) → 팔 때지만 reentryBaseline null', { s: rowShort.status, b: rowShort.reentryBaseline }, { s: 'sell', b: null });
+  check('8-f 봉 부족 → 표시 문장 null', describeReentryBaseline(rowShort), null);
+
+  // 8-g. 재매수분 — 손절 이탈과 청산선 이탈 둘 다 status='sell' → 기준선이 붙는다. 보유 유지·불타기는 null.
+  const rs = H({ stopMultipleN: 2, pyramidSpacing: 'halfN', maxUnitsPerPosition: 4, minOrderKRW: 0 });
+  const posAsset = mkAsset({ id: 'bl-p1', priceOriginal: 100 });
+  const position: TurtlePosition = {
+    id: 'tp-bl', ticker: '005930', name: '삼성전자', assetId: 'bl-p1',
+    units: [{ fillDate: iso(0), fillPrice: 100, quantity: 10, nAtFill: 2 }],
+    stopPrice: 90, entryDonchianHigh: 101, status: 'open', openedAt: iso(0), origin: 'holdings-reentry',
+  };
+  const reentryRowOf = (bars: B[]): TurtleHoldingsRow => buildTurtleHoldingsReentryRow({
+    position, asset: posAsset, raw: mkRaw(bars), isCrypto: false, fetchFailed: false,
+    now: nowAfter(bars), settings: rs, fxRate: 1, effectiveManagedEquityKRW: 100_000_000,
+  });
+  const stopRow = reentryRowOf([...flatWindow(), { o: 90, h: 91, l: 88, c: 89 }]); // 종가 89 ≤ 손절 90
+  check('8-g 손절 이탈 행 상태=팔 때', stopRow.status, 'sell');
+  check('8-g 손절 이탈 행 기준선=101', stopRow.reentryBaseline?.line, 101);
+  checkClose('8-g 손절 이탈 행 격차 = 12/89×100 = 13.48314606741573', stopRow.reentryBaseline?.gapPct ?? null, 13.48314606741573, 1e-9);
+  check('8-g 손절 이탈 행 기준일', stopRow.reentryBaseline?.asOfDate, '2026-01-21');
+  const exitRow = reentryRowOf([...flatWindow(), { o: 98, h: 99, l: 97, c: 98 }]); // 종가 98 ≤ 청산선 99
+  check('8-g 청산선 이탈 행 상태=팔 때', exitRow.status, 'sell');
+  check('8-g 청산선 이탈 행 기준선=101', exitRow.reentryBaseline?.line, 101);
+  checkClose('8-g 청산선 이탈 행 격차 = 3/98×100 = 3.061224489795918', exitRow.reentryBaseline?.gapPct ?? null, 3.061224489795918, 1e-9);
+  const holdRow = reentryRowOf([...flatWindow(), { o: 100, h: 101, l: 99, c: 100 }]);
+  check('8-g 재매수분 보유 유지 → null', { s: holdRow.status, b: holdRow.reentryBaseline }, { s: 'hold', b: null });
+  const pyrRow = reentryRowOf([...flatWindow(), { o: 105, h: 106, l: 104, c: 105 }]);
+  check('8-g 재매수분 추가 매수 → null', { s: pyrRow.status, b: pyrRow.reentryBaseline }, { s: 'pyramid', b: null });
+  const outPosRow = buildTurtleHoldingsReentryRow({
+    position, asset: mkAsset({ id: 'bl-p1', owner: 'YUSEON' }), raw: undefined, isCrypto: false, fetchFailed: false,
+    now: new Date(), settings: rs, fxRate: 1, effectiveManagedEquityKRW: 100_000_000,
+  });
+  check('8-g 재매수분 범위 제외 → null', { s: outPosRow.status, b: outPosRow.reentryBaseline }, { s: 'out-of-scope', b: null });
+
+  // 8-h. 감시 행 — 기존 reentryLine 동작 그대로, reentryBaseline은 항상 null
+  const watch: WatchlistItem = { id: 'bl-w1', ticker: 'AAA', exchange: KR_EX, name: '테스트종목', categoryId: 1, currency: Currency.KRW };
+  const ws = H({ riskPerUnitPct: 1, positionCapPct: 10, maxUnitsPerPosition: 4, minOrderKRW: 50_000, stopMultipleN: 2 });
+  const watchBars: B[] = [...flatWindow(), { o: 100, h: 101, l: 99, c: 100 }];
+  const watchRow = buildTurtleHoldingsWatchRow({
+    watchItem: watch, raw: mkRaw(watchBars), isCrypto: false, fetchFailed: false, now: nowAfter(watchBars),
+    settings: ws, fxRate: 1, effectiveManagedEquityKRW: 100_000_000, heldTickerKeys: new Set<string>(),
+  });
+  check('8-h 감시 행 reentryLine=101 유지', watchRow.reentryLine, 101);
+  check('8-h 감시 행 reentryBaseline=null', watchRow.reentryBaseline, null);
+  const reentryBars: B[] = [...flatWindow(), { o: 102, h: 103, l: 101, c: 102 }];
+  const reentryWatchRow = buildTurtleHoldingsWatchRow({
+    watchItem: watch, raw: mkRaw(reentryBars), isCrypto: false, fetchFailed: false, now: nowAfter(reentryBars),
+    settings: ws, fxRate: 1, effectiveManagedEquityKRW: 100_000_000, heldTickerKeys: new Set<string>(),
+  });
+  check('8-h 다시 살 때 행 reentryLine=101 유지, reentryBaseline=null', { s: reentryWatchRow.status, l: reentryWatchRow.reentryLine, b: reentryWatchRow.reentryBaseline }, { s: 'reentry', l: 101, b: null });
+
+  // 8-i. 문구 규약 — 격차 부호·통화·단정 표현 금지·안내 문구 원문
+  const synth = (gapPct: number, line: number, currency: Currency): Pick<TurtleHoldingsRow, 'reentryBaseline' | 'currency'> => ({
+    currency, reentryBaseline: { line, gapPct, asOfDate: '2026-10-24' },
+  });
+  check('8-i 격차 양수 → + 부호', describeReentryBaseline(synth(4.24, 62_000, Currency.KRW)),
+    '현재 재진입 기준선 62,000원 — 최근 확정 종가 대비 +4.2% (기준일 10월 24일)');
+  check('8-i 격차 음수 → 부호 억지로 안 붙임', describeReentryBaseline(synth(-2.34, 62_000, Currency.KRW)),
+    '현재 재진입 기준선 62,000원 — 최근 확정 종가 대비 -2.3% (기준일 10월 24일)');
+  check('8-i 격차 0 → 0.0%(+ 없음)', describeReentryBaseline(synth(0, 62_000, Currency.KRW)),
+    '현재 재진입 기준선 62,000원 — 최근 확정 종가 대비 0.0% (기준일 10월 24일)');
+  check('8-i 격차 -0.04 → -0.0% 대신 0.0%', describeReentryBaseline(synth(-0.04, 62_000, Currency.KRW)),
+    '현재 재진입 기준선 62,000원 — 최근 확정 종가 대비 0.0% (기준일 10월 24일)');
+  check('8-i USD 통화 표기', describeReentryBaseline(synth(1.26, 62.5, Currency.USD)),
+    '현재 재진입 기준선 $62.50 — 최근 확정 종가 대비 +1.3% (기준일 10월 24일)');
+  check('8-i 기준선 없음 → null', describeReentryBaseline({ currency: Currency.KRW, reentryBaseline: null }), null);
+  check('8-i 안내 문구 원문', REENTRY_BASELINE_CAPTION,
+    '기준선은 매일 바뀌며(오래된 고점이 빠지면 내려갈 수도 있음), 실제로 다시 사는 가격은 아직 정해지지 않았습니다.');
+  const allText = [describeReentryBaseline(rowSell55) ?? '', REENTRY_BASELINE_CAPTION].join(' ');
+  check('8-i 단정 표현 없음("삽니다"·"팔면")', /삽니다|팔면/.test(allText), false);
 }
 
 // ── 결과 ──
