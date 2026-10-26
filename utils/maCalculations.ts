@@ -334,7 +334,7 @@ export function getRequiredHistoryDaysForOHLCV(): number {
  * ATR(Average True Range) — Wilder's smoothing
  * True Range = max(high-low, |high-prevClose|, |low-prevClose|)
  * 입력 3개 배열은 동일 길이/날짜 오름차순. 어느 한 값이라도 null/undefined면 해당 인덱스 ATR도 null.
- * 반환 배열의 처음 period개는 null (워밍업)
+ * 초기 ATR은 연속 유효 TR period개가 처음 모인 구간의 단순평균(그 이전 인덱스는 null). 이후 null 구간은 직전 값 유지.
  */
 export function calculateATR(
   highs: (number | null)[],
@@ -357,18 +357,30 @@ export function calculateATR(
     tr[i] = Math.max(h - l, Math.abs(h - pc), Math.abs(l - pc));
   }
 
-  // 초기 ATR = 첫 period일 TR 단순평균 (인덱스 1..period)
-  let sum = 0;
-  let validCount = 0;
-  for (let i = 1; i <= period; i++) {
-    if (typeof tr[i] === 'number') { sum += tr[i] as number; validCount++; }
+  // 초기 ATR = "연속된 유효 TR period개가 처음 모이는 구간"의 단순평균.
+  // 무결측이면 구간=인덱스 1..period (기존과 비트 동일). 구간 안에 null이 끼면 연속이 끊긴 것으로
+  // 보고 다시 센다 — 예전엔 첫 구간 null 하나로 전부 null이 되어 이후 정상 데이터도 영원히 null이었다.
+  let seedEnd = -1;
+  let runStart = -1;
+  let runLen = 0;
+  for (let i = 1; i < n; i++) {
+    if (typeof tr[i] === 'number') {
+      if (runLen === 0) runStart = i;
+      runLen++;
+      if (runLen === period) { seedEnd = i; break; }
+    } else {
+      runLen = 0;
+    }
   }
-  if (validCount < period) return result; // 데이터 부족
+  if (seedEnd < 0) return result; // 데이터 부족
+
+  let sum = 0;
+  for (let i = runStart; i <= seedEnd; i++) sum += tr[i] as number;
   let atr = sum / period;
-  result[period] = atr;
+  result[seedEnd] = atr;
 
   // Wilder's smoothing
-  for (let i = period + 1; i < n; i++) {
+  for (let i = seedEnd + 1; i < n; i++) {
     const t = tr[i];
     if (typeof t !== 'number') {
       result[i] = result[i - 1]; // null 구간은 직전 값 유지

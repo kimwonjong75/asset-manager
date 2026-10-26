@@ -31,6 +31,7 @@ import {
   computeTotalOpenRisk,
   applyDrawdownScaling,
 } from '../utils/turtleEngine';
+import { calculateATR } from '../utils/maCalculations';
 
 let pass = 0;
 const fails: string[] = [];
@@ -292,6 +293,41 @@ const capSet = S({ satelliteBudgetKRW: 5_000_000, riskPerUnitPct: 5, stopMultipl
 const nvdaCap = computeUnitSize(capSet, 5, 109, { fxRate: 1400 });
 check('NVDA 25% 상한(KRW) 적용', nvdaCap.units, Math.floor(1_250_000 / (109 * 1400))); // 8
 check('NVDA capped 플래그', nvdaCap.capped, true);
+
+// ── calculateATR 워밍업 (공용 함수 결함 수정 2026-10-26) ──
+{
+  const period = 3;
+  const H = [10, 12, 13, 14, 16, 15, 17, 18];
+  const L = [8, 9, 10, 11, 12, 13, 14, 15];
+  const C = [9, 11, 12, 13, 14, 14, 16, 17];
+  // 무결측: TR[1..7] = 3,3,3,4,2,3,3 → seed(i=3)=3, i4=(2*3+4)/3=10/3, i5=(2*10/3+2)/3=26/9
+  const clean = calculateATR(H, L, C, period);
+  check('ATR 무결측: 앞 period개 null', clean.slice(0, 3), [null, null, null]);
+  check('ATR 무결측: seed=3 (인덱스 period)', clean[3], 3);
+  checkClose('ATR 무결측: i4 = 10/3', clean[4] as number, 10 / 3);
+  checkClose('ATR 무결측: i5 = 26/9', clean[5] as number, 26 / 9);
+
+  // 첫 구간에 null 1개(인덱스 1의 high → TR[1]=null). 연속 유효 TR [2]=3,[3]=3,[4]=4 → seed=10/3 @ i4
+  // (수정 전에는 validCount<period 로 전부 null)
+  const H2 = H.slice(); H2[1] = null as unknown as number;
+  const gap = calculateATR(H2 as (number | null)[], L, C, period);
+  check('ATR 첫 구간 null: 시드 전 전부 null', gap.slice(0, 4), [null, null, null, null]);
+  checkClose('ATR 첫 구간 null: 시드=연속 3개 평균(10/3)', gap[4] as number, 10 / 3);
+  checkClose('ATR 첫 구간 null: 시드 후 Wilder i5 = 26/9', gap[5] as number, 26 / 9);
+  checkClose('ATR 첫 구간 null: i6 = (2*26/9+3)/3 = 79/27', gap[6] as number, 79 / 27);
+
+  // 시드 이후 null → 직전 값 유지
+  const H3 = H.slice(); H3[6] = null as unknown as number;
+  const late = calculateATR(H3 as (number | null)[], L, C, period);
+  check('ATR 시드 후 null 구간: 직전 값 유지', late[6], late[5]);
+  checkClose('ATR 시드 후 null: 정상 시드(인덱스 3)', late[3] as number, 3);
+
+  // 전부 부족: 연속 유효 TR이 period개 못 모임
+  const Hs = [10, null, 13, null, 16, null];
+  const none = calculateATR(Hs as (number | null)[], [8, 9, 10, 11, 12, 13], [9, 11, 12, 13, 14, 14], 3);
+  check('ATR 연속 period개 없음 → 전부 null', none, [null, null, null, null, null, null]);
+  check('ATR 길이 부족 → 전부 null', calculateATR([1, 2], [1, 2], [1, 2], 3), [null, null]);
+}
 
 // ── 결과 ──
 if (fails.length) {

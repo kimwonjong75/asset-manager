@@ -18,6 +18,7 @@
 import { KAKAO_EMOJI, clip } from './tradePlan';
 import type { DailyBar } from './todayTurtle';
 import type { TurtleHoldingsSettings } from '../types/turtleHoldings';
+import { lastSessionDate, type MarketId } from './marketHours';
 import {
   computeExitLine,
   computeReentryLine,
@@ -171,6 +172,37 @@ export function evaluateWatchItemForNotify(
     `앱에서 재매수 계산기를 확인하고 [샀음 기록]하세요.`,
   );
   return { signal: 'watch-reentry', text, summary: `${name} 다시 살 때` };
+}
+
+/**
+ * "새 신호"만 통과시킨다(상태 저장 없는 순수 판정) — 세션 봉 D(`bars` 마지막)에서 신호이고,
+ * 직전 봉 D−1까지의 봉으로 같은 평가를 다시 돌렸을 때 **같은 signal이 아니었을 때만** 후보를 돌려준다.
+ * 이미 신호 상태가 이어지는 종목(D−1도 같은 신호)은 null → closeCheck 개별 알림에서 빠지고 아침 요약에만 남는다.
+ * 청산선 위로 회복했다가(D−1 신호 아님) 다시 이탈하면 새 신호다. 봉이 1개뿐이면 D−1이 없으므로 새 신호로 본다.
+ * `evaluate`는 `evaluate…ForNotify`를 종목·설정에 묶은 클로저(예: `b => evaluateLegacyHoldingForNotify(item, b, S)`).
+ */
+export function evaluateNewSignalForNotify(
+  evaluate: (bars: DailyBar[]) => TurtleNotifyCandidate | null,
+  bars: DailyBar[],
+): TurtleNotifyCandidate | null {
+  const today = evaluate(bars);
+  if (today === null || bars.length < 2) return today;
+  const prev = evaluate(bars.slice(0, -1));
+  return prev !== null && prev.signal === today.signal ? null : today;
+}
+
+/**
+ * closeCheck 터틀 파트가 쓸 "직전 완료 세션" 날짜.
+ *   · KR/US/JP류: `lastSessionDate` 그대로(마감 확정 시각이 지나면 그 세션이 곧 완료 세션).
+ *   · CRYPTO: `lastSessionDate`가 항상 진행 중 세션(09:00 KST 경계)이라 `closeConfirmTime`(다음날 09:00)이 영원히 미래다 →
+ *     진행 중 세션 날짜 −1일을 쓴다. 그 확정 시각 = (진행 중 세션 날짜) 09:00 KST = 오늘 09:00 KST.
+ * TradePlan 경로·`lastSessionDate` 자체는 건드리지 않는다.
+ */
+export function turtleCloseSessionDate(market: MarketId, now: string | Date): string {
+  const d = lastSessionDate(market, now);
+  if (market !== 'CRYPTO') return d;
+  const [y, m, day] = d.split('-').map(Number);
+  return new Date(Date.UTC(y, m - 1, day - 1, 12)).toISOString().slice(0, 10);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

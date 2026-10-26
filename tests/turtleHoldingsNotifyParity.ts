@@ -31,6 +31,8 @@ import {
   evaluateWatchItemForNotify,
   decideTurtleCloseProgress,
   formatTurtleMorningDigest,
+  evaluateNewSignalForNotify,
+  turtleCloseSessionDate,
   TurtleLegacyHoldingLike,
   TurtleReentryPositionLike,
   TurtleWatchItemLike,
@@ -504,6 +506,83 @@ console.log('11. [데이터 지연 시 재시도] 봉이 늦으면 retry(TURTLE_
   check('B 봉 도착 후 sessionBarPresent=true', extractBarsThroughSession(rawBArrived, SESSION_D, true).sessionBarPresent, true);
   check('지연 중 + 컷오프 전 → retry', decideTurtleCloseProgress({ pendingCount: 1, nowMs: confirmMs + 126 * 60_000, confirmAtMs: confirmMs, maxWaitHours: 12 }), 'retry');
   check('도착 후 대기 0 → done', decideTurtleCloseProgress({ pendingCount: 0, nowMs: confirmMs + 126 * 60_000, confirmAtMs: confirmMs, maxWaitHours: 12 }), 'done');
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+console.log('12. [코인 closeCheck 진입] turtleCloseSessionDate — CRYPTO 는 직전 완료 세션(진행 중 세션 −1일, 확정=오늘 09:00 KST)');
+// ════════════════════════════════════════════════════════════════════════════
+{
+  // 2026-09-07 08:59 KST = 2026-09-06T23:59Z → 진행 중 세션 09-06 → 완료 세션 09-05 (확정 09-06 00:00Z, 이미 지난 시각)
+  check('08:59 KST → 직전 완료 세션 09-05', turtleCloseSessionDate('CRYPTO', '2026-09-06T23:59:00.000Z'), '2026-09-05');
+  // 09:00 KST = 2026-09-07T00:00Z → 진행 중 세션 09-07 → 완료 세션 09-06, 확정 = 09-07T00:00Z = 지금
+  check('09:00 KST → 직전 완료 세션 09-06', turtleCloseSessionDate('CRYPTO', '2026-09-07T00:00:00.000Z'), '2026-09-06');
+  check('09:00 KST 완료 세션의 확정 시각 = 바로 그 09:00 KST', closeConfirmTime('CRYPTO', '2026-09-06'), '2026-09-07T00:00:00.000Z');
+  check('09:00 KST 에 now ≥ 확정 (마감 처리 진입 가능)',
+    Date.parse('2026-09-07T00:00:00.000Z') >= Date.parse(closeConfirmTime('CRYPTO', turtleCloseSessionDate('CRYPTO', '2026-09-07T00:00:00.000Z'))), true);
+  check('월초 롤오버: 2026-10-01 09:00 KST → 09-30', turtleCloseSessionDate('CRYPTO', '2026-10-01T00:00:00.000Z'), '2026-09-30');
+  check('연초 롤오버: 2027-01-01 09:00 KST → 2026-12-31', turtleCloseSessionDate('CRYPTO', '2027-01-01T00:00:00.000Z'), '2026-12-31');
+  // 기존 lastSessionDate 는 불변(항상 진행 중 세션)
+  check('lastSessionDate(CRYPTO) 불변: 09:00 KST → 09-07', lastSessionDate('CRYPTO', '2026-09-07T00:00:00.000Z'), '2026-09-07');
+  // KR/US 는 lastSessionDate 그대로
+  check('KR 불변', turtleCloseSessionDate('KR', '2026-09-07T01:00:00.000Z'), '2026-09-07');
+  check('US 불변', turtleCloseSessionDate('US', '2026-09-07T14:00:00.000Z'), '2026-09-07');
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+console.log('13. [새 신호만 개별 발송] evaluateNewSignalForNotify — 같은 신호가 이어지면 미발송, 새로 생기거나 회복 뒤 재이탈이면 발송');
+// ════════════════════════════════════════════════════════════════════════════
+{
+  const evalLegacy = (b: DailyBar[]) => evaluateLegacyHoldingForNotify(OTTOGI, b, S);
+
+  // (a) D−1 신호 + D 신호 → 미발송
+  const cont = evaluateNewSignalForNotify(evalLegacy, mkBars([...FLAT20, DM1_BELOW, D_SELL]));
+  ok('팔 때: D−1 도 이탈, D 도 이탈 → null(미발송)', cont === null);
+  ok('  (전제) D 단독 평가는 신호', evalLegacy(mkBars([...FLAT20, DM1_BELOW, D_SELL])) !== null);
+  ok('  (전제) D−1 단독 평가도 신호', evalLegacy(mkBars([...FLAT20, DM1_BELOW])) !== null);
+
+  // (b) D−1 신호 아님 + D 신호 → 발송
+  const fresh = evaluateNewSignalForNotify(evalLegacy, mkBars([...FLAT20, D_SELL]));
+  check('팔 때: D−1 정상, D 이탈 → 발송 signal', fresh?.signal, 'legacy-sell');
+  check('팔 때: 문구 불변', fresh?.summary, '오뚜기 팔 때');
+
+  // (c) 청산선 위로 회복한 뒤 재이탈 → 발송
+  const REC: B = { o: 104, h: 106, l: 101, c: 105 };
+  const again = evaluateNewSignalForNotify(evalLegacy, mkBars([...FLAT20, DM1_BELOW, REC, D_SELL]));
+  check('팔 때: 이탈→회복→재이탈 → 발송 signal', again?.signal, 'legacy-sell');
+
+  // (d) D 에서 신호 아님 → null
+  ok('D 에 신호 없음 → null', evaluateNewSignalForNotify(evalLegacy, mkBars([...FLAT20, REC])) === null);
+
+  // (e) 재매수분 손절: 이틀 연속 손절선 아래 → 미발송, 첫날 → 발송
+  const pos: TurtleReentryPositionLike = {
+    ticker: 'AAPL', name: 'AAPL', currency: Currency.USD, quantity: 10,
+    units: [{ fillPrice: 160, quantity: 10, nAtFill: 5 }], stopPrice: 150.5, openedAt: iso(0),
+  };
+  const evalPos = (b: DailyBar[]) => evaluateReentryPositionForNotify(pos, b, S);
+  const stop2 = mkBars([{ o: 149, h: 151, l: 147, c: 148.25 }, { o: 148, h: 149, l: 146, c: 147 }]);
+  ok('손절: 이틀 연속 이탈 → null', evaluateNewSignalForNotify(evalPos, stop2) === null);
+  const stop1 = mkBars([{ o: 152, h: 154, l: 151, c: 153 }, { o: 149, h: 151, l: 147, c: 148.25 }]);
+  check('손절: 첫 이탈 → 발송 signal', evaluateNewSignalForNotify(evalPos, stop1)?.signal, 'reentry-stop');
+
+  // (f) 다시 살 때(감시): 이틀 연속 돌파 → 미발송, 첫 돌파 → 발송
+  const watch: TurtleWatchItemLike = { ticker: 'HYUNDAI', name: '현대차', currency: Currency.KRW };
+  const evalWatch = (b: DailyBar[]) => evaluateWatchItemForNotify(watch, b, S);
+  const prior = Array.from({ length: 55 }, () => ({ o: 59_000, h: 60_000, l: 58_500, c: 59_500 }));
+  const up1 = { o: 60_100, h: 60_500, l: 60_000, c: 60_400 };
+  const up2 = { o: 60_400, h: 60_900, l: 60_300, c: 60_800 };
+  ok('다시 살 때: 이틀 연속 돌파 → null', evaluateNewSignalForNotify(evalWatch, mkBars([...prior, up1, up2])) === null);
+  check('다시 살 때: 첫 돌파 → 발송 signal', evaluateNewSignalForNotify(evalWatch, mkBars([...prior, up1]))?.signal, 'watch-reentry');
+
+  // (g) 추가 매수: D−1 에도 트리거 도달 → 미발송, D 에 처음 도달 → 발송 (N=1000, 트리거=마지막 매수가+4,000)
+  const flat = Array.from({ length: 21 }, () => ({ o: 60_000, h: 61_000, l: 60_000, c: 60_500 }));
+  const pyr: TurtleReentryPositionLike = {
+    ticker: 'SAMSUNG', name: '삼성전자', currency: Currency.KRW, quantity: 50,
+    units: [{ fillPrice: 56_500, quantity: 50, nAtFill: 1_000 }], stopPrice: 55_000, openedAt: iso(0),
+  };
+  const evalPyr = (b: DailyBar[]) => evaluateReentryPositionForNotify(pyr, b, S);
+  ok('추가 매수: D−1 도 도달 → null', evaluateNewSignalForNotify(evalPyr, mkBars([...flat, { o: 60_000, h: 61_000, l: 60_000, c: 60_500 }])) === null);
+  const lowFirst = [...flat.slice(0, 20), { o: 60_000, h: 61_000, l: 60_000, c: 60_000 }, { o: 60_000, h: 61_000, l: 60_000, c: 60_500 }];
+  check('추가 매수: D 에 처음 도달 → 발송 signal', evaluateNewSignalForNotify(evalPyr, mkBars(lowFirst))?.signal, 'reentry-pyramid');
 }
 
 // ── 결과 ──
