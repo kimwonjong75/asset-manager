@@ -32,7 +32,7 @@ const CHANNEL_OPTIONS: { value: NotifyChannel; label: string }[] = [
 
 const KakaoNotifySection: React.FC = () => {
   const {
-    settings, manifest, needsSync, opStatus, lastError, gasStatus, telegramConnect,
+    settings, manifest, needsSync, opStatus, lastError, gasStatus, telegramConnect, channelError,
     setGasUrl, setSecret, setAutoSync, setPyramidAlerts, setChannel, connectTelegram,
     syncNow, testConnection, refreshStatus,
   } = useKakaoNotify();
@@ -82,6 +82,12 @@ const KakaoNotifySection: React.FC = () => {
             onChange={(c) => { void setChannel(c); }}
             size="md"
           />
+          {opStatus === 'syncing' && <p className="text-xs text-gray-400">GAS에 동기화하는 중...</p>}
+          {channelError && (
+            <p className="flex items-start gap-1 text-xs text-danger" role="alert">
+              <CircleAlert className="h-3.5 w-3.5 shrink-0 mt-0.5" aria-hidden="true" />{channelError}
+            </p>
+          )}
           {usesTelegram && (
             <div className="border-t border-gray-800 pt-3 space-y-2">
               <p className="text-xs text-gray-300 font-semibold">텔레그램 연결 (1회)</p>
@@ -101,9 +107,14 @@ const KakaoNotifySection: React.FC = () => {
                   {opStatus === 'connecting' ? '연결 중...' : '텔레그램 연결'}
                 </button>
                 {telegramConnect?.ok && (
-                  <span className="text-xs text-ok">연결됨{telegramConnect.chatName ? ` · ${telegramConnect.chatName}` : ''}</span>
+                  <span className="text-xs text-ok">연결됨{telegramConnect.chatName ? ` · ${telegramConnect.chatName}` : ''} — 텔레그램에 확인 메시지가 왔는지 보세요</span>
                 )}
               </div>
+              {telegramConnect && !telegramConnect.ok && telegramConnect.error && (
+                <p className="flex items-start gap-1 text-xs text-danger" role="alert">
+                  <CircleAlert className="h-3.5 w-3.5 shrink-0 mt-0.5" aria-hidden="true" />{telegramConnect.error}
+                </p>
+              )}
             </div>
           )}
         </div>

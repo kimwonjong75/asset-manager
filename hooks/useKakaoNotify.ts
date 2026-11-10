@@ -86,6 +86,8 @@ export type KakaoNotifyOpStatus = 'idle' | 'syncing' | 'testing' | 'checking' | 
 export interface TelegramConnectState {
   ok: boolean;
   chatName?: string;
+  /** 실패 사유 — [텔레그램 연결] 버튼 바로 아래에 보여 준다(멀리 있는 공용 오류 줄에만 띄우면 "반응 없음"으로 보인다). */
+  error?: string;
 }
 
 export interface UseKakaoNotifyResult {
@@ -99,6 +101,8 @@ export interface UseKakaoNotifyResult {
   gasStatus: GasStatusResponse | null;
   /** 마지막 [텔레그램 연결] 결과 — 성공 시 연결된 대화 이름. */
   telegramConnect: TelegramConnectState | null;
+  /** 발송 채널 변경 동기화 실패/구버전 GAS 안내 — 채널 선택 버튼 바로 아래에 보여 준다. */
+  channelError: string | null;
   setGasUrl: (url: string) => void;
   setSecret: (secret: string) => void;
   setAutoSync: (on: boolean) => void;
@@ -118,6 +122,7 @@ export function useKakaoNotify(): UseKakaoNotifyResult {
   const [lastError, setLastError] = useState<string | null>(null);
   const [gasStatus, setGasStatus] = useState<GasStatusResponse | null>(null);
   const [telegramConnect, setTelegramConnect] = useState<TelegramConnectState | null>(null);
+  const [channelError, setChannelError] = useState<string | null>(null);
 
   const update = useCallback((patch: Partial<KakaoNotifySettings>) => {
     setSettings(prev => {
@@ -207,14 +212,14 @@ export function useKakaoNotify(): UseKakaoNotifyResult {
     // 자동 동기화 opt-in과 무관하게 새 채널이 실린 매니페스트를 바로 보낸다.
     const next: NotifyManifest = { ...manifest, channel };
     setOpStatus('syncing');
-    setLastError(null);
+    setChannelError(null);
     try {
       const res = await syncManifest(settings.gasUrl, settings.secret, next);
       if (res.ok) {
         update({ lastSyncAt: res.receivedAt ?? new Date().toISOString(), lastSyncHash: manifestHash(next) });
-        if (channel !== 'kakao' && res.channel === undefined) setLastError(OLD_GAS_MESSAGE);
+        if (channel !== 'kakao' && res.channel === undefined) setChannelError(OLD_GAS_MESSAGE);
       } else {
-        setLastError(res.error ?? '채널 변경 동기화에 실패했습니다.');
+        setChannelError(res.error ?? '채널 변경 동기화에 실패했습니다.');
       }
     } finally {
       setOpStatus('idle');
@@ -227,15 +232,17 @@ export function useKakaoNotify(): UseKakaoNotifyResult {
       return;
     }
     setOpStatus('connecting');
-    setLastError(null);
+    setTelegramConnect(null);
     try {
       const res = await connectGasTelegram(settings.gasUrl, settings.secret);
       if (res.ok) {
         setTelegramConnect({ ok: true, chatName: res.chatName });
         await refreshStatus();
       } else {
-        setTelegramConnect({ ok: false, chatName: res.chatName });
-        setLastError(res.error && res.error.includes('알 수 없는 action') ? OLD_GAS_MESSAGE : (res.error ?? '텔레그램 연결에 실패했습니다.'));
+        const error = res.error && res.error.includes('알 수 없는 action')
+          ? OLD_GAS_MESSAGE
+          : (res.error ?? '텔레그램 연결에 실패했습니다.');
+        setTelegramConnect({ ok: false, chatName: res.chatName, error });
       }
     } finally {
       setOpStatus('idle');
@@ -257,6 +264,7 @@ export function useKakaoNotify(): UseKakaoNotifyResult {
     lastError,
     gasStatus,
     telegramConnect,
+    channelError,
     setGasUrl: (url: string) => update({ gasUrl: url }),
     setSecret: (secret: string) => update({ secret }),
     setAutoSync: (on: boolean) => update({ autoSync: on }),
