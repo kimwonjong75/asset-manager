@@ -3,8 +3,10 @@
 
 // AssetCategory import removed — category param is now optional string
 
+import { waitForPriceRefreshPriority } from '../utils/fetchPriority';
 import { CLOUD_RUN_BASE_URL } from '../constants/api';
 import { createLogger } from '../utils/logger';
+import { recordLoadRequest, loadTimingNow } from '../utils/loadTiming';
 
 const log = createLogger('HistoricalPrice');
 const API_BASE_URL = CLOUD_RUN_BASE_URL;
@@ -61,16 +63,25 @@ export interface HistoricalPriceResult {
   market?: string;
 }
 
+/** skipPriorityWait: 시세 갱신 "안에서" 부르는 호출은 true (자기 자신을 기다리는 교착 방지 — utils/fetchPriority) */
+export interface HistoryFetchOptions {
+  skipPriorityWait?: boolean;
+}
+
 /**
  * 주식/ETF/금 등의 과거 종가 조회 (FinanceDataReader 사용)
  */
 export async function fetchStockHistoricalPrices(
   tickers: string[],
   startDate: string,
-  endDate: string
+  endDate: string,
+  opts?: HistoryFetchOptions
 ): Promise<Record<string, HistoricalPriceResult>> {
   if (tickers.length === 0) return {};
+  if (!opts?.skipPriorityWait) await waitForPriceRefreshPriority();
 
+  const t0 = loadTimingNow();
+  let ok = false;
   try {
     const response = await fetch(`${API_BASE_URL}/history`, {
       method: 'POST',
@@ -88,10 +99,14 @@ export async function fetchStockHistoricalPrices(
     }
 
     const data = await parseJsonSafe(response);
-    return sanitizeResult(data as Record<string, any>);
+    const sanitized = sanitizeResult(data as Record<string, any>);
+    ok = true;
+    return sanitized;
   } catch (error) {
     log.error('Stock fetch error:', error);
     return {};
+  } finally {
+    recordLoadRequest('history', { tickers: tickers.length, ms: loadTimingNow() - t0, ok });
   }
 }
 
@@ -101,10 +116,14 @@ export async function fetchStockHistoricalPrices(
 export async function fetchCryptoHistoricalPrices(
   symbols: string[],
   startDate: string,
-  endDate: string
+  endDate: string,
+  opts?: HistoryFetchOptions
 ): Promise<Record<string, HistoricalPriceResult>> {
   if (symbols.length === 0) return {};
+  if (!opts?.skipPriorityWait) await waitForPriceRefreshPriority();
 
+  const t0 = loadTimingNow();
+  let ok = false;
   try {
     const response = await fetch(`${API_BASE_URL}/upbit/history`, {
       method: 'POST',
@@ -122,10 +141,14 @@ export async function fetchCryptoHistoricalPrices(
     }
 
     const data = await parseJsonSafe(response);
-    return sanitizeResult(data as Record<string, any>);
+    const sanitized = sanitizeResult(data as Record<string, any>);
+    ok = true;
+    return sanitized;
   } catch (error) {
     log.error('Crypto fetch error:', error);
     return {};
+  } finally {
+    recordLoadRequest('upbit-history', { tickers: symbols.length, ms: loadTimingNow() - t0, ok });
   }
 }
 

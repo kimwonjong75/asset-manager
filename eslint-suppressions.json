@@ -203,11 +203,6 @@
       "count": 1
     }
   },
-  "hooks/useEnrichedIndicators.ts": {
-    "react-hooks/set-state-in-effect": {
-      "count": 1
-    }
-  },
   "hooks/useGoogleDriveSync.ts": {
     "react-hooks/refs": {
       "count": 1

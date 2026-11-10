@@ -59,7 +59,7 @@ async function patchMissingPrevClose(
     const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10);
 
     try {
-        const histData = await fetchStockHistoricalPrices(missingTickers, weekAgo, today);
+        const histData = await fetchStockHistoricalPrices(missingTickers, weekAgo, today, { skipPriorityWait: true });
 
         for (const [ticker, result] of Object.entries(histData)) {
             if (!result?.data) continue;
@@ -157,18 +157,29 @@ export const useMarketData = ({
         const wlUpbitSymbols = wlUpbit.map(item => item.ticker);
 
         // 환율 + 포트폴리오 + 관심종목 모든 fetch를 병렬 실행
+        // 보유+관심종목 일반 시세는 하나의 배치로 합쳐 요청한다(같은 티커 중복 조회 제거).
+        // 자산/관심종목 id 충돌 가능성에 대비해 a:/w: 접두어로 네임스페이스를 나눈 뒤 결과를 다시 분리한다.
+        const combinedToFetch = [
+            ...assetsToFetch.map(a => ({ ...a, id: `a:${a.id}` })),
+            ...wlToFetch.map(w => ({ ...w, id: `w:${w.id}` })),
+        ];
         const [
             usdRate, jpyRate,
-            batchPriceMap, upbitPriceMap,
-            wlPriceMap, wlUpbitPriceMap,
+            combinedPriceMap, upbitPriceMap,
+            wlUpbitPriceMap,
         ] = await Promise.all([
             fetchExchangeRate().catch(() => 1450),
             fetchExchangeRateJPY().catch(() => 9.5),
-            assetsToFetch.length > 0 ? fetchBatchAssetPricesNew(assetsToFetch) : Promise.resolve(new Map()),
+            combinedToFetch.length > 0 ? fetchBatchAssetPricesNew(combinedToFetch) : Promise.resolve(new Map<string, AssetDataResult>()),
             upbitSymbols.length > 0 ? fetchUpbitPricesBatch(upbitSymbols) : Promise.resolve(new Map()),
-            wlToFetch.length > 0 ? fetchBatchAssetPricesNew(wlToFetch) : Promise.resolve(new Map()),
             wlUpbitSymbols.length > 0 ? fetchUpbitPricesBatch(wlUpbitSymbols) : Promise.resolve(new Map()),
         ]);
+        const batchPriceMap = new Map<string, AssetDataResult>();
+        const wlPriceMap = new Map<string, AssetDataResult>();
+        combinedPriceMap.forEach((v, k) => {
+            if (k.startsWith('a:')) batchPriceMap.set(k.slice(2), v);
+            else if (k.startsWith('w:')) wlPriceMap.set(k.slice(2), v);
+        });
 
         const newRates = {
             USD: usdRate > 1000 ? usdRate : (exchangeRates.USD || 1450),
@@ -356,7 +367,7 @@ export const useMarketData = ({
             const todayStr = new Date().toISOString().slice(0, 10);
             const weekAgoStr = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10);
             try {
-                const hist = await fetchStockHistoricalPrices([target.ticker.toUpperCase()], weekAgoStr, todayStr);
+                const hist = await fetchStockHistoricalPrices([target.ticker.toUpperCase()], weekAgoStr, todayStr, { skipPriorityWait: true });
                 const tickerHist = hist[target.ticker.toUpperCase()];
                 if (tickerHist?.data) {
                     const dates = Object.keys(tickerHist.data).sort();
@@ -407,8 +418,8 @@ export const useMarketData = ({
         const [priceMap, upbitPriceMap, stockHistory, cryptoHistory] = await Promise.all([
             itemsToFetch.length > 0 ? fetchBatchAssetPricesNew(itemsToFetch) : Promise.resolve(new Map()),
             upbitSymbols.length > 0 ? fetchUpbitPricesBatch(upbitSymbols) : Promise.resolve(new Map()),
-            generalTickers.length > 0 ? fetchStockHistoricalPrices(generalTickers, startDate, endDate) : Promise.resolve({}),
-            cryptoSymbols.length > 0 ? fetchCryptoHistoricalPrices(cryptoSymbols, startDate, endDate) : Promise.resolve({}),
+            generalTickers.length > 0 ? fetchStockHistoricalPrices(generalTickers, startDate, endDate, { skipPriorityWait: true }) : Promise.resolve({}),
+            cryptoSymbols.length > 0 ? fetchCryptoHistoricalPrices(cryptoSymbols, startDate, endDate, { skipPriorityWait: true }) : Promise.resolve({}),
         ]);
 
         // 히스토리에서 52주 최고가 계산

@@ -4,6 +4,9 @@ import ReactDOM from 'react-dom/client';
 import App from './App';
 import ErrorBoundary from './components/common/ErrorBoundary';
 import './index.css';
+import { markLoadStage } from './utils/loadTiming';
+
+markLoadStage('app-mount');
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {

@@ -13,7 +13,8 @@ import { useAssetActions } from '../hooks/useAssetActions';
 import { usePortfolioStats } from '../hooks/usePortfolioStats';
 import { usePortfolioHistory } from '../hooks/usePortfolioHistory';
 import { usePortfolioExport } from '../hooks/usePortfolioExport';
-import { useEnrichedIndicators, invalidateEnrichedCache } from '../hooks/useEnrichedIndicators';
+import { useEnrichedIndicators, requestEnrichedRefreshAfterPriceRefresh } from '../hooks/useEnrichedIndicators';
+import { markLoadStage } from '../utils/loadTiming';
 import { useAutoAlert } from '../hooks/useAutoAlert';
 import { useTurtleActionReview } from '../hooks/useTurtleActionReview';
 import { usePortfolioCalculator } from '../hooks/usePortfolioCalculator';
@@ -53,6 +54,7 @@ import { fxRateToKRWFor } from '../utils/tradePlanMarket';
 import { transferWatchPlanToAsset, findWatchItemForAsset } from '../utils/tradePlanTransfer';
 import type { TradePlan, PlanDecision, PlanFill, PyramidFillResult, SellOutcome } from '../types/tradePlan';
 import { PYRAMID_FILL_ERROR_LABELS } from '../types/tradePlan';
+import { beginPriceRefreshPriority, endPriceRefreshPriority } from '../utils/fetchPriority';
 import { resolveHoldingsSettings } from '../utils/turtleHoldings';
 import type { TurtleHoldingsSettings } from '../types/turtleHoldings';
 import { recordTurtleExit, recordTurtleReentry, recordTurtlePyramid, recordTurtleHold as recordTurtleHoldPure } from '../utils/turtleHoldingsState';
@@ -189,13 +191,23 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   // setState"로 오탐한다(react-hooks v7 컴파일러 분석은 await 이후 위치를 구분하지 않음) —
   // `.then()` 콜백으로 감싸면 정적 분석 범위 밖이라 오탐이 사라진다.
   const runPriceRefresh = useCallback((isAutoUpdate: boolean): Promise<void> => {
+    const startedAt = Date.now();
+    markLoadStage('price-refresh-start');
+    beginPriceRefreshPriority();
     return handleRefreshAllPrices(isAutoUpdate).then(ok => {
+      endPriceRefreshPriority();
+      markLoadStage('price-refresh-end');
       if (!ok) return; // 실패한 갱신은 기준시각으로 기록하지 않는다(오래된 값을 신선한 것처럼 표시 금지)
       const iso = new Date().toISOString();
       try { localStorage.setItem(LAST_PRICE_REFRESH_AT_KEY, iso); } catch { /* ignore */ }
       setPriceDataAsOf(iso);
-      invalidateEnrichedCache();
-      setEnrichedRefreshVersion(v => v + 1);
+      // enriched(/history 기반)는 이번 갱신 시작 시점 근처에 이미 조회됐으면 재조회 불필요 — 정책: utils/enrichedRefreshPolicy
+      if (requestEnrichedRefreshAfterPriceRefresh(startedAt)) {
+        setEnrichedRefreshVersion(v => v + 1);
+      }
+    }, err => {
+      endPriceRefreshPriority(); // 실패 경로에서도 게이트 해제 후 기존 의미(거부 전파) 유지
+      throw err;
     });
   }, [handleRefreshAllPrices]);
 

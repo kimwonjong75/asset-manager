@@ -18,6 +18,8 @@ import { getRequiredHistoryDaysForOHLCV } from '../utils/maCalculations';
 import { VOLUME_PROXY_MAP } from '../constants/commodityProxyMap';
 import type { DistributionDayMeta as SharedDistributionDayMeta } from '../utils/marketDistribution';
 import { buildEnrichedIndicator } from '../utils/buildEnrichedIndicator';
+import { shouldRefetchEnrichedAfterPriceRefresh, ENRICHED_REFRESH_TOLERANCE_MS } from '../utils/enrichedRefreshPolicy';
+import { markLoadStage } from '../utils/loadTiming';
 
 /** 디스트리뷰션 판정 메타 — 정의는 utils/marketDistribution으로 이동 (지수와 종목 공용) */
 export type DistributionDayMeta = SharedDistributionDayMeta;
@@ -106,9 +108,22 @@ interface CacheEntry {
   data: Map<string, EnrichedIndicatorData>;
   fetchedAt: number;
   tickerKey: string;
+  /** 이 조회가 요청한 `ticker|exchange` 집합 — 부분집합 재사용 판정용(히스토리가 없어 맵에 빠진 종목도 "요청됨"으로 센다) */
+  requested: Set<string>;
+}
+
+interface InFlightEntry {
+  tickerKey: string;
+  requested: Set<string>;
+  startedAt: number;
+  promise: Promise<Map<string, EnrichedIndicatorData> | null>;
 }
 
 let cache: CacheEntry | null = null;
+/** 진행 중인 조회(single-flight) — 같은/상위 집합 요청은 새 요청 대신 이 promise에 붙는다. */
+let inFlight: InFlightEntry | null = null;
+/** 가장 최근 조회(진행 중이거나 캐시를 만든 것)의 시작 시각(ms). 조회한 적 없으면 null. */
+let lastFetchStartedAt: number | null = null;
 
 /**
  * 모듈 캐시 강제 무효화(P4) — 수동/자동 시세 갱신 직후 호출해 다음 조회가 10분 TTL을 무시하고
@@ -118,6 +133,31 @@ let cache: CacheEntry | null = null;
  */
 export function invalidateEnrichedCache(): void {
   cache = null;
+}
+
+/**
+ * 시세 갱신 직후 호출: 정책(`shouldRefetchEnrichedAfterPriceRefresh`)상 재조회가 필요하면 캐시와 진행 중 조회를
+ * 폐기하고 true를 돌려준다. true일 때만 호출부가 `forceRefreshVersion`을 올려야 한다(false면 아무것도 건드리지 않는다).
+ */
+export function requestEnrichedRefreshAfterPriceRefresh(priceRefreshStartedAt: number): boolean {
+  // 직전 조회가 실패/빈 결과로 끝나 캐시도 진행 중 조회도 없으면, 시각과 무관하게 재조회한다
+  // (과거엔 갱신 후 무조건 재조회가 사실상의 재시도 역할을 했다 — 그 복구 경로를 유지).
+  const nothingUsable = !cache && !inFlight;
+  const refetch = nothingUsable || shouldRefetchEnrichedAfterPriceRefresh({
+    lastEnrichedFetchStartedAt: lastFetchStartedAt,
+    priceRefreshStartedAt,
+    toleranceMs: ENRICHED_REFRESH_TOLERANCE_MS,
+  });
+  if (refetch) {
+    cache = null;
+    inFlight = null; // 오래된 조회가 끝나도 캐시를 덮어쓰지 않도록 분리(결과는 기존 구독자에게만 전달)
+  }
+  return refetch;
+}
+
+function isSuperset(superset: Set<string>, needed: Set<string>): boolean {
+  for (const k of needed) if (!superset.has(k)) return false;
+  return true;
 }
 
 function buildTickerKey(items: TickerItem[]): string {
@@ -144,6 +184,125 @@ function alignSeries(
   });
 }
 
+/** 실제 /history 조회 + 지표 계산 (모듈 레벨 — 컴포넌트 생명주기와 무관하게 끝까지 돌아 캐시를 채운다). */
+async function fetchAndComputeEnriched(allTickerItems: TickerItem[]): Promise<Map<string, EnrichedIndicatorData>> {
+    const days = getRequiredHistoryDaysForOHLCV(); // 52주 + MA200 워밍업 ≈ 440일
+    const endDate = new Date().toISOString().split('T')[0];
+    const startD = new Date();
+    startD.setDate(startD.getDate() - days);
+    const startDate = startD.toISOString().split('T')[0];
+
+    // stock/crypto 분류
+    const stockTickers: { item: TickerItem; apiTicker: string }[] = [];
+    const cryptoTickers: { item: TickerItem; apiTicker: string }[] = [];
+
+    for (const item of allTickerItems) {
+      const apiTicker = convertTickerForAPI(item.ticker, item.exchange, getCategoryName(item.categoryId, DEFAULT_CATEGORIES));
+      if (isCryptoExchange(item.exchange)) {
+        cryptoTickers.push({ item, apiTicker });
+      } else {
+        stockTickers.push({ item, apiTicker });
+      }
+    }
+
+    // 거래량 프록시 ticker도 stock 배치에 dedup 추가 (가격은 무시, volume만 사용)
+    const stockApiTickers = new Set(stockTickers.map(t => t.apiTicker));
+    const proxyTickersNeeded = new Set<string>();
+    for (const { item } of stockTickers) {
+      const proxy = VOLUME_PROXY_MAP[item.ticker];
+      if (proxy && !stockApiTickers.has(proxy)) {
+        proxyTickersNeeded.add(proxy);
+      }
+    }
+    const stockTickersForFetch = [...stockTickers.map(t => t.apiTicker), ...proxyTickersNeeded];
+
+    // 배치 조회 (stock + crypto 병렬)
+    const [stockResults, cryptoResults] = await Promise.all([
+      stockTickersForFetch.length > 0
+        ? fetchStockHistoricalPrices(stockTickersForFetch, startDate, endDate)
+        : Promise.resolve({}),
+      cryptoTickers.length > 0
+        ? fetchCryptoHistoricalPrices(
+            cryptoTickers.map(t => t.apiTicker),
+            startDate,
+            endDate
+          )
+        : Promise.resolve({}),
+    ]);
+
+    const result = new Map<string, EnrichedIndicatorData>();
+
+    // 각 종목별 지표 계산
+    const allItems = [
+      ...stockTickers.map(t => ({ ...t, results: stockResults })),
+      ...cryptoTickers.map(t => ({ ...t, results: cryptoResults })),
+    ];
+
+    for (const { item, apiTicker, results } of allItems) {
+      const entry = getResultEntry(results, apiTicker);
+      const priceData = entry?.data;
+
+      if (!priceData || Object.keys(priceData).length === 0) {
+        continue;
+      }
+
+      // 거래량 프록시 적용: 본 자산의 거래량 시계열을 프록시 ticker의 것으로 대체
+      const proxyTicker = VOLUME_PROXY_MAP[item.ticker];
+      const proxyEntry = proxyTicker ? getResultEntry(stockResults, proxyTicker) : undefined;
+      const effectiveVolumeSeries = proxyEntry?.volume ?? entry.volume;
+
+      // 날짜 오름차순 정렬 (close 기준)
+      const sortedDates = Object.keys(priceData).sort();
+      const closes = sortedDates.map(d => priceData[d]);
+
+      // OHLCV 시계열 정렬 (없으면 null로 채움)
+      const opens = alignSeries(sortedDates, entry.open);
+      const highs = alignSeries(sortedDates, entry.high);
+      const lows = alignSeries(sortedDates, entry.low);
+      const volumes = alignSeries(sortedDates, effectiveVolumeSeries);
+
+      // 단일 종목 enrichment — 백테스트와 동일 알고리즘 사용
+      const enriched = buildEnrichedIndicator({
+        sortedDates, closes, opens, highs, lows, volumes,
+      });
+      result.set(item.ticker, enriched);
+  }
+
+  return result;
+}
+
+function startEnrichedFetch(items: TickerItem[], tickerKey: string): InFlightEntry {
+  const startedAt = Date.now();
+  lastFetchStartedAt = startedAt;
+  markLoadStage('enriched-start');
+  const entry: InFlightEntry = {
+    tickerKey,
+    requested: new Set(items.map(i => `${i.ticker}|${i.exchange}`)),
+    startedAt,
+    promise: Promise.resolve(null),
+  };
+  entry.promise = fetchAndComputeEnriched(items)
+    .then(result => {
+      if (inFlight === entry) {
+        // 빈 결과는 캐시하지 않는다(/history 실패는 {}로 삼켜져 빈 맵이 된다 — 캐시하면 10분간 지표가 비어 보인다)
+        if (result.size > 0) {
+          cache = { data: result, fetchedAt: Date.now(), tickerKey, requested: entry.requested };
+        }
+        inFlight = null;
+      }
+      markLoadStage('enriched-end');
+      return result;
+    })
+    .catch((err: unknown) => {
+      log.error('fetch error:', err);
+      if (inFlight === entry) inFlight = null;
+      markLoadStage('enriched-end');
+      return null;
+    });
+  inFlight = entry;
+  return entry;
+}
+
 export function useEnrichedIndicators(
   assets: Asset[],
   watchlistItems?: WatchlistItem[],
@@ -159,7 +318,6 @@ export function useEnrichedIndicators(
 } {
   const [enrichedMap, setEnrichedMap] = useState<Map<string, EnrichedIndicatorData>>(new Map());
   const [isLoading, setIsLoading] = useState(false);
-  const abortRef = useRef(false);
 
   // 포트폴리오 + 관심종목 ticker 통합 (중복 제거)
   const allTickerItems: TickerItem[] = useMemo(() => {
@@ -181,133 +339,50 @@ export function useEnrichedIndicators(
 
   const tickerKey = useMemo(() => buildTickerKey(allTickerItems), [allTickerItems]);
 
+  // 최신 항목 목록을 ref로 들고 있다가 effect에서 읽는다 — assets 배열 identity만 바뀌고 티커 집합이 같으면
+  // effect가 재실행되지 않게 하기 위함(deps는 tickerKey/forceRefreshVersion). 선언 순서상 아래 effect보다 먼저 실행된다.
+  const itemsRef = useRef<TickerItem[]>(allTickerItems);
   useEffect(() => {
-    if (allTickerItems.length === 0) {
+    itemsRef.current = allTickerItems;
+  }, [allTickerItems]);
+
+  useEffect(() => {
+    const items = itemsRef.current;
+    if (items.length === 0) {
       setEnrichedMap(new Map());
       return;
     }
 
-    // 캐시 확인
+    const needed = new Set(items.map(i => `${i.ticker}|${i.exchange}`));
+
+    // 캐시 확인 — 같은 티커 집합이거나, 캐시가 요청 종목을 모두 포함(상위 집합)하면 재사용
     const now = Date.now();
-    if (cache && cache.tickerKey === tickerKey && (now - cache.fetchedAt) < CACHE_TTL_MS) {
+    if (cache && (now - cache.fetchedAt) < CACHE_TTL_MS
+        && (cache.tickerKey === tickerKey || isSuperset(cache.requested, needed))) {
       setEnrichedMap(cache.data);
+      setIsLoading(false);
+      markLoadStage('enriched-start');
+      markLoadStage('enriched-end');
       return;
     }
 
-    abortRef.current = false;
+    // single-flight: 같은/상위 집합의 조회가 이미 진행 중이면 붙는다
+    const entry = (inFlight && (inFlight.tickerKey === tickerKey || isSuperset(inFlight.requested, needed)))
+      ? inFlight
+      : startEnrichedFetch(items, tickerKey);
+
+    let cancelled = false; // 이 effect 실행 전용 — 정리 후 setState 방지(공유 promise 자체는 계속 진행)
     setIsLoading(true);
-
-    const fetchAndCompute = async () => {
-      try {
-        const days = getRequiredHistoryDaysForOHLCV(); // 52주 + MA200 워밍업 ≈ 440일
-        const endDate = new Date().toISOString().split('T')[0];
-        const startD = new Date();
-        startD.setDate(startD.getDate() - days);
-        const startDate = startD.toISOString().split('T')[0];
-
-        // stock/crypto 분류
-        const stockTickers: { item: TickerItem; apiTicker: string }[] = [];
-        const cryptoTickers: { item: TickerItem; apiTicker: string }[] = [];
-
-        for (const item of allTickerItems) {
-          const apiTicker = convertTickerForAPI(item.ticker, item.exchange, getCategoryName(item.categoryId, DEFAULT_CATEGORIES));
-          if (isCryptoExchange(item.exchange)) {
-            cryptoTickers.push({ item, apiTicker });
-          } else {
-            stockTickers.push({ item, apiTicker });
-          }
-        }
-
-        // 거래량 프록시 ticker도 stock 배치에 dedup 추가 (가격은 무시, volume만 사용)
-        const stockApiTickers = new Set(stockTickers.map(t => t.apiTicker));
-        const proxyTickersNeeded = new Set<string>();
-        for (const { item } of stockTickers) {
-          const proxy = VOLUME_PROXY_MAP[item.ticker];
-          if (proxy && !stockApiTickers.has(proxy)) {
-            proxyTickersNeeded.add(proxy);
-          }
-        }
-        const stockTickersForFetch = [...stockTickers.map(t => t.apiTicker), ...proxyTickersNeeded];
-
-        // 배치 조회 (stock + crypto 병렬)
-        const [stockResults, cryptoResults] = await Promise.all([
-          stockTickersForFetch.length > 0
-            ? fetchStockHistoricalPrices(stockTickersForFetch, startDate, endDate)
-            : Promise.resolve({}),
-          cryptoTickers.length > 0
-            ? fetchCryptoHistoricalPrices(
-                cryptoTickers.map(t => t.apiTicker),
-                startDate,
-                endDate
-              )
-            : Promise.resolve({}),
-        ]);
-
-        if (abortRef.current) return;
-
-        const result = new Map<string, EnrichedIndicatorData>();
-
-        // 각 종목별 지표 계산
-        const allItems = [
-          ...stockTickers.map(t => ({ ...t, results: stockResults })),
-          ...cryptoTickers.map(t => ({ ...t, results: cryptoResults })),
-        ];
-
-        for (const { item, apiTicker, results } of allItems) {
-          const entry = getResultEntry(results, apiTicker);
-          const priceData = entry?.data;
-
-          if (!priceData || Object.keys(priceData).length === 0) {
-            continue;
-          }
-
-          // 거래량 프록시 적용: 본 자산의 거래량 시계열을 프록시 ticker의 것으로 대체
-          const proxyTicker = VOLUME_PROXY_MAP[item.ticker];
-          const proxyEntry = proxyTicker ? getResultEntry(stockResults, proxyTicker) : undefined;
-          const effectiveVolumeSeries = proxyEntry?.volume ?? entry.volume;
-
-          // 날짜 오름차순 정렬 (close 기준)
-          const sortedDates = Object.keys(priceData).sort();
-          const closes = sortedDates.map(d => priceData[d]);
-
-          // OHLCV 시계열 정렬 (없으면 null로 채움)
-          const opens = alignSeries(sortedDates, entry.open);
-          const highs = alignSeries(sortedDates, entry.high);
-          const lows = alignSeries(sortedDates, entry.low);
-          const volumes = alignSeries(sortedDates, effectiveVolumeSeries);
-
-          // 단일 종목 enrichment — 백테스트와 동일 알고리즘 사용
-          const enriched = buildEnrichedIndicator({
-            sortedDates, closes, opens, highs, lows, volumes,
-          });
-          result.set(item.ticker, enriched);
-        }
-
-        if (abortRef.current) return;
-
-        cache = {
-          data: result,
-          fetchedAt: Date.now(),
-          tickerKey,
-        };
-
-        setEnrichedMap(result);
-      } catch (err) {
-        if (abortRef.current) return;
-        log.error('fetch error:', err);
-      } finally {
-        if (!abortRef.current) {
-          setIsLoading(false);
-        }
-      }
-    };
-
-    fetchAndCompute();
+    entry.promise.then(result => {
+      if (cancelled) return;
+      if (result) setEnrichedMap(result);
+      setIsLoading(false);
+    });
 
     return () => {
-      abortRef.current = true;
+      cancelled = true;
     };
-  }, [allTickerItems, tickerKey, forceRefreshVersion]);
+  }, [tickerKey, forceRefreshVersion]);
 
   return { enrichedMap, isLoading };
 }

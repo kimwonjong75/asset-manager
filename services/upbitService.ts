@@ -2,6 +2,7 @@
 
 import { CLOUD_RUN_BASE_URL } from '../constants/api';
 import { createLogger } from '../utils/logger';
+import { recordLoadRequest, loadTimingNow } from '../utils/loadTiming';
 
 const log = createLogger('Upbit');
 const UPBIT_PROXY_URL = `${CLOUD_RUN_BASE_URL}/upbit`;
@@ -55,6 +56,8 @@ export const fetchUpbitPricesBatch = async (symbols: string[]): Promise<Map<stri
 
   log.debug('Cloud Run 프록시 호출:', validSymbols);
 
+  const t0 = loadTimingNow();
+  let timingOk = false;
   try {
     const res = await fetch(UPBIT_PROXY_URL, {
       method: 'POST',
@@ -104,11 +107,14 @@ export const fetchUpbitPricesBatch = async (symbols: string[]): Promise<Map<stri
     });
 
     log.info(`조회 성공: ${resultMap.size}개 코인`);
+    timingOk = true;
     return resultMap;
 
   } catch (error) {
     log.error('프록시 호출 에러:', error);
     return resultMap;
+  } finally {
+    recordLoadRequest('upbit', { tickers: validSymbols.length, ms: loadTimingNow() - t0, ok: timingOk });
   }
 };
 

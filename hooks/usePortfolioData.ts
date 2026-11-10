@@ -20,6 +20,8 @@ import { mergeSaveSnapshot, type PortfolioSaveSnapshot, type PortfolioSavePatch 
 import { shouldRefreshPrices, LAST_PRICE_REFRESH_AT_KEY } from '../utils/priceFreshness';
 import { classifyHoldingMarkets } from '../utils/holdingMarkets';
 import { localDateString } from '../utils/localDate';
+import { markLoadStage } from '../utils/loadTiming';
+import { beginPriceRefreshPriority } from '../utils/fetchPriority';
 import { sanitizeWatchlistTurtleFields } from '../utils/turtleHoldingsState';
 import { SUCCESS_MESSAGE_TTL_MS, PROGRESS_MESSAGE_MAX_MS } from '../constants/ui';
 
@@ -172,8 +174,10 @@ export const usePortfolioData = () => {
 
         // 비동기로 백필 수행 (교정된 데이터 기반)
         const rates = data.exchangeRates || { USD: 1450, JPY: 9.5 };
+        markLoadStage('backfill-start');
         backfillWithRealPrices(repairedHistory, driveAssets, rates)
           .then(backfilledHistory => {
+            markLoadStage('backfill-end');
             // P5a: 영속 전 최근 365개로 캡 (usePortfolioHistory의 365 캡은 effect 재실행 시에만
             // 적용돼, 백필 결과가 캡 없이 저장되면 과도한 길이가 남을 수 있음)
             const cappedHistory = backfilledHistory.slice(-365);
@@ -281,9 +285,12 @@ export const usePortfolioData = () => {
   const loadFromGoogleDrive = useCallback(async () => {
     setSuccessMessage('자동으로 데이터를 불러오는 중...');
     try {
+      markLoadStage('drive-load-start');
       const loaded = await hookLoadFromGoogleDrive();
+      markLoadStage('drive-load-end');
       if (loaded) {
         const applied = applyLoadedData(loaded, { source: 'drive' });
+        markLoadStage('data-applied');
 
         // P4: 신선도 게이트 — "오늘 날짜가 바뀌었는가"가 아니라 "보유 시장이 개장 중인데
         // 30분 넘게 안 받았는가 / 보유 시장이 마감됐는데 그 확정 종가를 아직 못 받았는가"로 판단.
@@ -293,11 +300,14 @@ export const usePortfolioData = () => {
           const holdings = classifyHoldingMarkets(applied.assets, applied.watchlist);
           const decision = shouldRefreshPrices({ lastRefreshAt, now: new Date().toISOString(), holdings });
           if (decision.refresh) {
+            // 시세 갱신 우선 게이트: 효과가 돌기 전에 켜서, 다음 렌더에 시작하는 히스토리 훅이 시세 뒤에 오도록 한다.
+            beginPriceRefreshPriority();
             setShouldAutoUpdate(true);
           } else {
             // 저장된 시세가 아직 신선하면 갱신 없이도 "오늘 시세 준비됨"으로 본다 — 팝업 게이트·터틀 검토·
             // 일일 백업이 이 플래그/날짜를 보므로, 여기서 세우지 않으면 갱신이 필요 없는 날엔 전부 침묵한다.
             try { localStorage.setItem('lastAutoUpdateDate', localDateString()); } catch { /* ignore */ }
+            markLoadStage('price-refresh-skipped');
             setHasAutoUpdated(true);
           }
         }
@@ -368,6 +378,7 @@ export const usePortfolioData = () => {
     // isSignedIn이 true로 변경되었을 때만 로드하도록 의존성 관리
     // loadFromGoogleDrive를 의존성에서 제거하여 무한 루프 방지
     if (isSignedIn) {
+      markLoadStage('signed-in');
       setHasAutoUpdated(false);
       loadFromGoogleDrive();
     } else {

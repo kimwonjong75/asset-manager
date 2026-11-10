@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>S&P500 하락 분할매수 × 이평선 백테스트</title>
+<style>
+:root{--bg:#f7f8fa;--card:#fff;--ink:#111827;--mute:#6b7280;--line:#e5e7eb;--accent:#2563eb;--good:#047857;--bad:#b91c1c;--hi:#ecfdf5}
+@media (prefers-color-scheme:dark){:root{--bg:#0f1115;--card:#171a21;--ink:#e5e7eb;--mute:#9ca3af;--line:#2a2f3a;--accent:#60a5fa;--good:#34d399;--bad:#f87171;--hi:#12261f}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 system-ui,-apple-system,"Segoe UI","Malgun Gothic",sans-serif}
+header{padding:16px 20px;border-bottom:1px solid var(--line);background:var(--card)}
+header h1{margin:0;font-size:18px}
+.muted{color:var(--mute);font-size:12px}
+.wrap{display:grid;grid-template-columns:320px minmax(0,1fr);gap:16px;padding:16px 20px;max-width:1700px;margin:0 auto}
+@media (max-width:980px){.wrap{grid-template-columns:1fr}}
+aside{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px 12px;align-self:start;position:sticky;top:8px;max-height:calc(100vh - 16px);overflow:auto}
+@media (max-width:980px){aside{position:static;max-height:none}}
+details{border-bottom:1px solid var(--line);padding:6px 0}
+details:last-of-type{border:none}
+summary{cursor:pointer;font-weight:600;padding:4px 0}
+.f{display:grid;grid-template-columns:1fr 110px;gap:2px 8px;align-items:center;margin:6px 0}
+.f small{grid-column:1 / -1;color:var(--mute);font-size:11px}
+.f.chk{display:flex;gap:6px;align-items:flex-start;font-size:12px}
+input[type=number],select{width:100%;padding:4px 6px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink);font:inherit}
+.f select{grid-column:1 / -1}
+button{border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:6px;padding:4px 10px;cursor:pointer;font:inherit}
+button.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:8px 0}
+.tr{display:flex;gap:4px;align-items:center;margin:4px 0;font-size:12px}
+.tr input{width:64px}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.chip{display:flex;gap:4px;align-items:center;font-size:12px;border:1px solid var(--c);border-radius:999px;padding:2px 8px}
+main section{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:14px;overflow-x:auto}
+main h2{font-size:15px;margin:0 0 8px}
+table{border-collapse:collapse;width:100%;font-size:12.5px;font-variant-numeric:tabular-nums}
+th,td{padding:4px 8px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+thead th{background:var(--card)}
+tbody th{text-align:left;font-weight:500}
+thead th[style] i,.lg i{display:inline-block;width:10px;height:10px;border-radius:2px;background:var(--c);margin-right:5px}
+td.best{background:var(--hi);color:var(--good);font-weight:600}
+tr.base th,tr.base td{color:var(--mute);font-style:italic}
+td.buy{color:var(--good)}td.sell{color:var(--bad)}
+.lg{margin-right:12px;font-size:12px}
+.warnline{color:var(--bad);font-size:12px;margin-top:6px}
+.seg{display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap}
+.chart .grid{stroke:var(--line);stroke-width:1}.chart .ax{fill:var(--mute);font-size:10px}.chart .zero{stroke:var(--mute);stroke-width:1}.chart .vline{stroke:var(--accent);stroke-width:1;stroke-dasharray:4 3}
+.guide h3{font-size:13.5px;margin:12px 0 4px}
+.guide p,.guide li{font-size:13px;line-height:1.65}
+.guide ol,.guide ul{margin:4px 0;padding-left:20px}
+.guide summary{font-size:14px}
+table.mini{width:auto;margin:6px 0}
+table.mini th,table.mini td{text-align:left;padding:3px 10px;white-space:normal}
+table.mini th{font-weight:700;width:28px}
+.chart .cross{stroke:var(--mute);stroke-width:1;stroke-dasharray:2 2;pointer-events:none}
+.ctip{position:absolute;z-index:5;pointer-events:none;padding:6px 8px;border-radius:6px;background:var(--card);border:1px solid var(--line);box-shadow:0 4px 14px rgba(0,0,0,.25);font-size:12px;line-height:1.5;white-space:nowrap}
+.ctip[hidden]{display:none}
+.ctip .td{font-weight:700;margin-bottom:2px}
+.ctip i{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:5px}
+.empty{padding:10px 12px;border:1px dashed var(--bad);border-radius:8px;font-size:13px}.empty ul{margin:6px 0 0;padding-left:18px}.empty li{margin:4px 0}
+.note{font-size:12.5px;color:var(--mute)}
+.hlp{display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;margin-left:4px;border-radius:50%;border:1px solid var(--mute);color:var(--mute);font-size:10px;line-height:1;cursor:help;vertical-align:middle;user-select:none;font-style:normal;font-weight:400}
+.hlp:hover,.hlp:focus{color:var(--accent);border-color:var(--accent);outline:none}
+#hpop{position:fixed;z-index:50;max-width:min(340px,calc(100vw - 24px));padding:10px 12px;border-radius:8px;background:var(--card);color:var(--ink);border:1px solid var(--accent);box-shadow:0 6px 24px rgba(0,0,0,.25);font-size:12.5px;line-height:1.55;font-weight:400;font-style:normal;text-align:left;white-space:normal}
+#hpop[hidden]{display:none}
+.note li{margin:3px 0}
+</style>
+</head>
+<body>
+<header>
+  <h1>S&P500 전고점 대비 하락 분할매수 × 이평선 백테스트</h1>
+  <div class="muted" id="dataInfo"></div>
+</header>
+<div class="wrap">
+  <aside id="controls"></aside>
+  <main>
+    <section class="guide">
+      <details open>
+        <summary><b>처음 보시나요? 이 페이지 사용법 (1분)</b></summary>
+        <h3>① 이 페이지는 뭔가요?</h3>
+        <p>"과거에 S&amp;P500(미국 대표 500개 기업 지수)에 이런저런 방법으로 투자했다면 지금쯤 어떻게 됐을까?"를 컴퓨터로 직접 해본 결과입니다. 미래를 맞히는 것이 아니라 <b>과거 실험 기록</b>입니다.</p>
+        <h3>② 어떻게 만들었나요?</h3>
+        <ol>
+          <li>1950년부터 지금까지 S&amp;P500의 하루하루 가격을 받았습니다.</li>
+          <li><b>1965년 1월, 1966년 1월, … 2014년 1월</b>처럼 시작하는 해를 바꿔 가며, 매번 "원금 100"을 들고 10년 투자합니다. 시작한 해가 운 좋은 해인지 나쁜 해인지에 결과가 너무 좌우되지 않게 <b>50번을 반복</b>합니다.</li>
+          <li>같은 50번을 아래 <b>6가지 방법</b>으로 각각 해보고, 결과를 모아 표로 만들었습니다. 규칙은 모두 "오늘 종가로 판단 → 내일 종가에 체결"로 같아서 미래를 미리 보고 사지 않습니다.</li>
+        </ol>
+        <table class="mini">
+          <tr><th>A</th><td>그냥 사서 들고 가기 (비교 기준)</td></tr>
+          <tr><th>B</th><td>12개월에 나눠서 사기</td></tr>
+          <tr><th>C</th><td>현금으로 기다렸다가 최고점보다 15·20·25·30% 떨어질 때마다 나눠 사기</td></tr>
+          <tr><th>D</th><td>가격이 평균선(50일) 위면 보유, 아래면 팔고 현금</td></tr>
+          <tr><th>E</th><td>C처럼 떨어질 때 사되, 평균선 아래로 내려가면 팔기</td></tr>
+          <tr><th>F</th><td>C처럼 하되, 평균선 위로 올라온 걸 확인한 뒤에 사기</td></tr>
+        </table>
+        <h3>③ 어떻게 확인하나요? (이 순서로)</h3>
+        <ol>
+          <li><b>맨 위 요약 표</b>에서 세 줄만 봅니다: <b>연복리</b>(1년에 평균 몇 % 벌었나, 클수록 좋음) · <b>계좌 최대낙폭</b>(가장 아팠을 때 계좌가 얼마나 줄었나, 0에 가까울수록 좋음) · <b>A를 이긴 비율</b>(그냥 들고 가기보다 나았던 경우의 비율).</li>
+          <li>"수익은 높은데 낙폭도 크다 / 낙폭은 작은데 수익도 작다"를 확인합니다. <b>두 가지를 다 가진 방법이 있는지</b>가 핵심입니다.</li>
+          <li><b>아래 그림</b>으로 특정 해에만 좋았던 건 아닌지 봅니다. 그림을 클릭하면 그 해의 계좌 곡선과 사고판 날짜가 나옵니다.</li>
+          <li><b>왼쪽 메뉴</b>의 값을 바꿔 보세요(예: 50일선 → 200일선, 배당 포함, 쉬는 돈 이자 주기). 표와 그림이 바로 다시 계산됩니다.</li>
+          <li>모르는 이름은 옆의 <b>ⓘ</b>를 누르면 쉬운 설명이 나옵니다.</li>
+        </ol>
+        <h3>④ 결과를 읽을 때 주의</h3>
+        <ul>
+          <li>과거에 그랬다는 것이지 앞으로도 그렇다는 보장이 아닙니다.</li>
+          <li>배당을 뺀 "가격지수" 기준은 쉬는 방법에 유리하게 나옵니다. 성과 기준을 "총수익지수"로 바꿔서도 꼭 확인하세요.</li>
+          <li>시작 해를 촘촘하게(매월) 잡으면 비슷한 경우가 반복돼 "많이 이겼다"가 부풀려집니다.</li>
+        </ul>
+      </details>
+    </section>
+    <section>
+      <h2>요약 (모든 사례의 집계) <span class="hlp" data-h="sec_summary" tabindex="0" role="button" aria-label="설명 보기">ⓘ</span></h2>
+      <div id="warn"></div>
+      <div id="summary"></div>
+    </section>
+    <section>
+      <h2>시작 시점별 결과 <span class="hlp" data-h="sec_chart" tabindex="0" role="button" aria-label="설명 보기">ⓘ</span> <span class="muted">— 차트를 클릭하면 그 시작일의 상세로 이동</span></h2>
+      <div class="seg">
+        <button data-metric="cagr">연복리(CAGR)</button><button data-metric="final">최종 가치</button><button data-metric="mdd">계좌 MDD</button><button data-metric="excess">A 대비 차이</button>
+      </div>
+      <div id="metricHelp" class="muted"></div><div id="chartMain"></div><div id="legend"></div>
+    </section>
+    <section>
+      <h2>한 시작일 상세 — 계좌 곡선과 거래 내역 <span class="hlp" data-h="sec_detail" tabindex="0" role="button" aria-label="설명 보기">ⓘ</span></h2>
+      <div class="row"><select id="detailSel" style="width:auto"></select><span class="hlp" data-h="detailSel" tabindex="0" role="button" aria-label="설명 보기">ⓘ</span><select id="detailStrat" style="width:auto"></select><span class="hlp" data-h="detailStrat" tabindex="0" role="button" aria-label="설명 보기">ⓘ</span></div>
+      <div id="chartDetail"></div>
+      <div id="events"></div>
+    </section>
+    <section>
+      <h2>파라미터 격자 — 개발구간에서 고른 조합이 검증구간에서도 통하나? <span class="hlp" data-h="sec_grid" tabindex="0" role="button" aria-label="설명 보기">ⓘ</span></h2>
+      <div class="row"><select id="gridFam" style="width:auto"><option value="all">전체</option><option value="E">E 하락분할+이평선 매도</option><option value="F">F 하락분할+이평선 확인</option><option value="C">C 하락분할</option><option value="D">D 이평선만</option></select><span class="hlp" data-h="gridFam" tabindex="0" role="button" aria-label="설명 보기">ⓘ</span><span class="muted">고정: 보유 10년·월별 시작·T-bill 이자·비용 0. Calmar = CAGR 중앙값 ÷ |MDD 중앙값|. 시작 범위를 둘로 나눠 앞쪽에서 고르고 뒤쪽에서 확인.</span></div>
+      <div id="grid"></div>
+    </section>
+    <section>
+      <h2>읽는 법·주의 <span class="hlp" data-h="sec_notes" tabindex="0" role="button" aria-label="설명 보기">ⓘ</span></h2>
+      <ul class="note">
+        <li>모든 전략은 종가로 신호를 확정하고 <b>다음 거래일 종가</b>에 체결합니다. 전고점은 1950년부터의 종가 최고값이며 시작일로 리셋하지 않습니다.</li>
+        <li>가격지수 기준은 배당이 빠져 있어 <b>오래 주식을 들고 있는 전략에 불리</b>하고, 현금 대기·매도 전략에 상대적으로 유리하게 보입니다. 결론은 총수익 기준(1988~)도 같이 확인하세요.</li>
+        <li>시작일이 겹치는 사례는 독립 표본이 아닙니다. "A를 이긴 비율"은 미래 승률이 아닙니다. 월별 시작은 더 심하게 겹칩니다.</li>
+        <li>격자 표는 개발구간 상위 조합이 검증구간에서 얼마나 무너지는지 보는 용도입니다. 개발구간 1등이 검증구간에서도 A를 이기지 못하면 그 조합은 과적합으로 봅니다.</li>
+        <li>세금·환율·레버리지는 반영하지 않았습니다. 원화 투자자는 환율 효과가 따로 붙습니다.</li>
+      </ul>
+    </section>
+  </main>
+</div>
+<div id="hpop" hidden role="tooltip"></div>
+<script>window.__SPX_DATA__ = /*__DATA__*/null;</script>
+<script>/*__BUNDLE__*/</script>
+</body>
+</html>

@@ -4,11 +4,11 @@ import { AssetDataResult, PriceAPIResponse, PriceItem } from '../types/api';
 import { CLOUD_RUN_BASE_URL } from '../constants/api';
 import { createLogger } from '../utils/logger';
 import { resolveMarketCurrency } from '../utils/marketCurrency';
+import { recordLoadRequest, loadTimingNow } from '../utils/loadTiming';
 
 const log = createLogger('priceService');
 const STOCK_API_URL = CLOUD_RUN_BASE_URL;
 const CHUNK_SIZE = 20;
-const CHUNK_DELAY_MS = 500;
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 function toNumber(v: unknown, fallback = 0): number {
@@ -17,8 +17,13 @@ function toNumber(v: unknown, fallback = 0): number {
 }
 
 // 배치 조회 함수
+// 동시 요청 수 — 서버는 병렬도와 무관하게 초당 6~8종목 처리라 2면 충분(요청 수 감소가 핵심).
+export const PRICE_CHUNK_CONCURRENCY = 2;
+const CHUNK_RETRY_DELAY_MS = 1000;
+
 export async function fetchBatchAssetPrices(
   assets: { ticker: string; exchange: string; id: string; category?: AssetCategory; categoryId?: number; currency?: Currency }[],
+  opts?: { retryDelayMs?: number },
 ): Promise<Map<string, AssetDataResult>> {
   const resultMap = new Map<string, AssetDataResult>();
   if (assets.length === 0) return resultMap;
@@ -26,15 +31,24 @@ export async function fetchBatchAssetPrices(
   // 로깅: 요청 대상 확인
   log.debug(`Fetching prices for ${assets.length} assets...`);
 
-  for (let i = 0; i < assets.length; i += CHUNK_SIZE) {
-    const chunk = assets.slice(i, i + CHUNK_SIZE);
-    
-    // 중복 티커 제거하여 API 요청 최적화
-    const uniqueRequests = Array.from(new Set(chunk.map(a => {
-        const reqTicker = String(a.ticker).toUpperCase();
-        return JSON.stringify({ ticker: reqTicker, exchange: normalizeExchange(a.exchange) });
-    }))).map(s => JSON.parse(s));
+  // 전역 중복 티커 제거 (대문자 기준, 첫 등장 exchange 우선) — 같은 티커를 여러 자산/관심종목이 가져도 1회만 요청
+  const uniqueByTicker = new Map<string, { ticker: string; exchange: string }>();
+  for (const a of assets) {
+    const reqTicker = String(a.ticker).toUpperCase();
+    if (!uniqueByTicker.has(reqTicker)) {
+      uniqueByTicker.set(reqTicker, { ticker: reqTicker, exchange: normalizeExchange(a.exchange) });
+    }
+  }
+  const allRequests = Array.from(uniqueByTicker.values());
+  const chunks: { ticker: string; exchange: string }[][] = [];
+  for (let i = 0; i < allRequests.length; i += CHUNK_SIZE) chunks.push(allRequests.slice(i, i + CHUNK_SIZE));
 
+  const retryDelayMs = opts?.retryDelayMs ?? CHUNK_RETRY_DELAY_MS;
+
+  // 청크 1회 시도 — 실패 시 throw
+  const attemptChunk = async (uniqueRequests: { ticker: string; exchange: string }[]): Promise<void> => {
+    const t0 = loadTimingNow();
+    let ok = false;
     try {
       const response = await fetch(STOCK_API_URL, {
         method: 'POST',
@@ -133,12 +147,35 @@ export async function fetchBatchAssetPrices(
             resultMap.set(matched.id, result);
         });
       });
-
-    } catch (e) {
-      log.error('Batch fetch failed:', e);
+      ok = true;
+    } finally {
+      recordLoadRequest('price', { tickers: uniqueRequests.length, ms: loadTimingNow() - t0, ok });
     }
-    if (i + CHUNK_SIZE < assets.length) await sleep(CHUNK_DELAY_MS);
-  }
+  };
+
+  const runChunk = async (uniqueRequests: { ticker: string; exchange: string }[]): Promise<void> => {
+    try {
+      await attemptChunk(uniqueRequests);
+    } catch (e) {
+      log.warn('Batch chunk failed, retrying once:', e);
+      await sleep(retryDelayMs);
+      try {
+        await attemptChunk(uniqueRequests);
+      } catch (e2) {
+        log.error('Batch fetch failed:', e2);
+      }
+    }
+  };
+
+  // 제한된 동시성으로 청크 실행
+  let cursor = 0;
+  const workers = Array.from({ length: Math.min(PRICE_CHUNK_CONCURRENCY, chunks.length) }, async () => {
+    while (cursor < chunks.length) {
+      const idx = cursor++;
+      await runChunk(chunks[idx]);
+    }
+  });
+  await Promise.all(workers);
 
   // 데이터가 없는 자산들 처리 (Mock)
   assets.forEach(s => {
@@ -207,6 +244,8 @@ export async function fetchCurrentExchangeRate(from: Currency, to: Currency): Pr
     const cached = getCachedExchangeRate(cacheKey);
     if (cached !== null) return cached;
 
+    const fxT0 = loadTimingNow();
+    let fxOk = false;
     try {
         const response = await fetch(`${STOCK_API_URL}/exchange-rate`, {
             method: 'POST',
@@ -220,8 +259,11 @@ export async function fetchCurrentExchangeRate(from: Currency, to: Currency): Pr
         const rate = data.rate || DEFAULT_EXCHANGE_RATES[`${from}-${to}`] || 1;
         setCachedExchangeRate(cacheKey, rate);
         log.debug(`Fetched: ${from}→${to} = ${rate}`);
+        fxOk = true;
+        recordLoadRequest('fx', { tickers: 1, ms: loadTimingNow() - fxT0, ok: true });
         return rate;
     } catch (e) {
+        if (!fxOk) recordLoadRequest('fx', { tickers: 1, ms: loadTimingNow() - fxT0, ok: false });
         log.error('fetchCurrentExchangeRate failed:', e);
         return DEFAULT_EXCHANGE_RATES[`${from}-${to}`] || 1;
     }
