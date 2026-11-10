@@ -1,5 +1,5 @@
 // components/trade-plan/KakaoStatusChip.tsx
-// 카카오톡 알림 상태 칩 — "마지막 동기화 HH:MM · 동기화 필요 N건". 렌더 전용, 계산은 hooks/useKakaoNotify.
+// 알림(카카오톡/텔레그램) 상태 칩 — "마지막 동기화 HH:MM · 동기화 필요 N건". 렌더 전용, 계산은 hooks/useKakaoNotify.
 // 홈 '오늘의 브리핑'(components/today/TodayActionCenter) 헤더에 마운트되는 카톡 알림 상태칩 — 계획서 §6.1
 // "오늘 화면 상태칩"(P5 작성, P3에서 TodayView에 마운트 → 2026-09-14 홈 통합으로 이동).
 // import해서 <KakaoStatusChip /> 한 줄만 놓으면 된다.
@@ -12,6 +12,13 @@ import React from 'react';
 import { Bell } from 'lucide-react';
 import { usePortfolio } from '../../contexts/PortfolioContext';
 import { useKakaoNotify } from '../../hooks/useKakaoNotify';
+import type { NotifyChannel } from '../../types/notifyChannel';
+
+const CHIP_LABELS: Record<NotifyChannel, string> = {
+  kakao: '카톡 알림',
+  telegram: '텔레그램 알림',
+  both: '카톡·텔레그램 알림',
+};
 
 function formatTime(iso: string | null): string {
   if (!iso) return '없음';
@@ -34,10 +41,10 @@ const KakaoStatusChip: React.FC<KakaoStatusChipProps> = ({ className = '' }) => 
         type="button"
         onClick={() => actions.setActiveTab('settings')}
         className={`inline-flex items-center gap-1.5 text-xs px-2 py-1 rounded-full bg-warning-soft border border-warning/40 text-warning hover:border-warning/60 transition-colors ${className}`}
-        title="설정 탭에서 카카오톡 알림을 켤 수 있습니다"
+        title="설정 탭에서 알림(카카오톡·텔레그램)을 켤 수 있습니다"
       >
         <Bell className="h-3.5 w-3.5" aria-hidden="true" />
-        카톡 알림 미설정 · 설정에서 켜기
+        알림 미설정 · 설정에서 켜기
       </button>
     );
   }
@@ -45,9 +52,9 @@ const KakaoStatusChip: React.FC<KakaoStatusChipProps> = ({ className = '' }) => 
   return (
     <span
       className={`inline-flex items-center gap-1.5 text-xs px-2 py-1 rounded-full bg-surface-muted border border-border-subtle ${className}`}
-      title="카카오톡 알림 동기화 상태"
+      title="알림 동기화 상태"
     >
-      <span className="text-gray-400">카톡 알림</span>
+      <span className="text-gray-400">{CHIP_LABELS[settings.channel]}</span>
       <span className="text-gray-300">마지막 동기화 {formatTime(settings.lastSyncAt)}</span>
       {needsSync && (
         <span className="text-warning">· 동기화 필요 {manifest.items.length}건</span>

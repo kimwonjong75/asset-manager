@@ -121,6 +121,9 @@ const KakaoSetupWizard: React.FC<{ className?: string }> = ({ className = '' }) 
         <h3 className="text-sm font-bold text-white">1회 설정 가이드</h3>
         <span className="text-xs text-gray-400">{doneCount}/5 완료</span>
       </div>
+      <p className="text-xs text-gray-400">
+        텔레그램만 쓰신다면 <b>①(카카오 개발자 앱)</b>과 <b>④(카카오 동의)</b>는 건너뛰고, 아래 <b>[발송 채널]</b>에서 텔레그램 연결을 하세요.
+      </p>
       <p className="text-xs text-gray-500">
         모든 단계는 되돌릴 수 있습니다 — 잘못 눌렀거나 재배포했다면 해당 단계만 다시 하면 됩니다.
         상세 설명은{' '}

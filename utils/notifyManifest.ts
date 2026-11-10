@@ -16,6 +16,7 @@ import { isBaseType } from '../types/category';
 import type { TradePlan } from '../types/tradePlan';
 import type { TurtlePosition } from '../types/turtle';
 import type { TurtleHoldingsSettings } from '../types/turtleHoldings';
+import type { NotifyChannel } from '../types/notifyChannel';
 import { isEligibleForBulkPlan } from './tradePlan';
 import { resolveHoldingsSettings, isInHoldingsScope } from './turtleHoldings';
 import { todayInstrumentKey } from './todayTurtle';
@@ -120,6 +121,11 @@ export interface NotifyManifest {
    * 접근해야 한다(사용자가 재동기화하면 항상 채워진다).
    */
   turtle?: NotifyManifestTurtleSection;
+  /**
+   * 발송 채널(카카오톡/텔레그램/둘 다). optional인 이유: 이 필드 도입 이전에 GAS Drive에 캐시된 옛 JSON에는 없다 —
+   * GAS는 `normalizeNotifyChannel`로 읽어 없으면 'kakao'로 본다.
+   */
+  channel?: NotifyChannel;
 }
 
 export interface BuildNotifyManifestInput {
@@ -136,6 +142,8 @@ export interface BuildNotifyManifestInput {
   turtlePositions?: TurtlePosition[];
   /** P4 — 저장된 원본 설정(부분/손상 허용, `resolveHoldingsSettings`가 병합·가드). 미지정=전부 기본값. */
   turtleHoldingsSettings?: Partial<TurtleHoldingsSettings> | null;
+  /** 발송 채널 — 미지정='kakao'(기존 동작). */
+  channel?: NotifyChannel;
 }
 
 /**
@@ -246,6 +254,7 @@ export function buildNotifyManifest(input: BuildNotifyManifestInput): NotifyMani
     planlessCount,
     items,
     turtle,
+    channel: input.channel ?? 'kakao',
   };
 }
 
@@ -270,7 +279,7 @@ function stableStringify(value: unknown): string {
  * 성립시키려면 시각 필드를 빼야 한다. 최종 보고서에 명시.)
  */
 export function manifestHash(manifest: NotifyManifest): string {
-  const stable = {
+  const stable: Record<string, unknown> = {
     appUrl: manifest.appUrl,
     pyramidAlerts: manifest.pyramidAlerts,
     planlessCount: manifest.planlessCount,
@@ -278,6 +287,9 @@ export function manifestHash(manifest: NotifyManifest): string {
     // P4 — turtle 섹션에는 시각 필드가 없으므로 그대로 포함해도 무방(needsSync가 실제 내용 변화만 잡는다).
     turtle: manifest.turtle ?? null,
   };
+  // 채널은 'kakao'가 아닐 때만 해시에 넣는다 — 기존 사용자의 저장된 lastSyncHash가 그대로 유효하도록(채널 도입으로
+  // "동기화 필요"가 갑자기 뜨지 않게).
+  if (manifest.channel !== undefined && manifest.channel !== 'kakao') stable.channel = manifest.channel;
   const s = stableStringify(stable);
   let h = 0x811c9dc5; // FNV-1a 32bit offset basis
   for (let i = 0; i < s.length; i++) {

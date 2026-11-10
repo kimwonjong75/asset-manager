@@ -27,7 +27,7 @@ const ENTRY = path.join(GAS_DIR, 'entry.ts');
 const GLOBAL_NAME = 'TradePlanNotify';
 
 // entry.ts가 export하는 핸들러 — GAS 최상위 함수로 노출해야 트리거·웹앱이 호출할 수 있다.
-const HANDLERS = ['doGet', 'doPost', 'hourlyCheck', 'closeCheck', 'morningDigest', 'installTriggers', 'sendTestMessage'];
+const HANDLERS = ['doGet', 'doPost', 'hourlyCheck', 'closeCheck', 'morningDigest', 'installTriggers', 'sendTestMessage', 'telegramConnect'];
 
 // 번들에 남아 있으면 안 되는 브라우저/Node 전용 전역 — GAS V8 런타임에는 없다.
 const FORBIDDEN_PATTERNS = [

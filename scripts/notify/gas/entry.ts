@@ -61,6 +61,21 @@ import {
   turtleCloseSessionDate,
 } from '../../../utils/turtleHoldingsNotify';
 import type { TurtleNotifyCandidate } from '../../../utils/turtleHoldingsNotify';
+import {
+  normalizeNotifyChannel,
+  channelTargets,
+  pickTelegramChat,
+  buildTelegramSendBody,
+  buildTelegramPlainBody,
+  redactSecret,
+  NOTIFY_CHANNEL_LABELS,
+} from '../../../utils/notifyChannel';
+import type {
+  NotifyChannel,
+  NotifyChannelTarget,
+  TelegramGetUpdatesResponse,
+  TelegramSendBody,
+} from '../../../types/notifyChannel';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // 상수
@@ -69,6 +84,8 @@ import type { TurtleNotifyCandidate } from '../../../utils/turtleHoldingsNotify'
 const KAKAO_AUTHORIZE_URL = 'https://kauth.kakao.com/oauth/authorize';
 const KAKAO_TOKEN_URL = 'https://kauth.kakao.com/oauth/token';
 const KAKAO_SEND_URL = 'https://kapi.kakao.com/v2/api/talk/memo/default/send';
+const TELEGRAM_API_BASE = 'https://api.telegram.org/bot';
+const TELEGRAM_TEST_TEXT = '[테스트] 텔레그램 알림 연결 확인 메시지입니다.';
 
 const MANIFEST_FILE_NAME = 'trade-plan-manifest.json';
 const MA_CACHE_FILE_NAME = 'trade-plan-ma-cache.json';
@@ -577,6 +594,140 @@ function sendKakaoMessage(text: string, linkUrl: string): boolean {
   }
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// 텔레그램 발송 / 채널 라우팅 — 알림 내용·시각·상한·멱등은 그대로, 발송 출구만 고른다
+// ═══════════════════════════════════════════════════════════════════════════
+
+/** 이번 실행(GAS 실행마다 새 런타임)에서 채널별 발송 실패 횟수 — LAST_RUN 메시지에 덧붙인다. */
+const sendFailures: Record<NotifyChannelTarget, number> = { kakao: 0, telegram: 0 };
+
+function failureNote(): string {
+  const parts: string[] = [];
+  if (sendFailures.kakao > 0) parts.push(`카톡 실패 ${sendFailures.kakao}`);
+  if (sendFailures.telegram > 0) parts.push(`텔레그램 실패 ${sendFailures.telegram}`);
+  return parts.length > 0 ? ` · ${parts.join(' · ')}` : '';
+}
+
+function storedChannel(): NotifyChannel {
+  return normalizeNotifyChannel(getProp('NOTIFY_CHANNEL'));
+}
+
+function errText(e: unknown, token: string | null): string {
+  return redactSecret(e instanceof Error ? e.message : String(e), token);
+}
+
+function postTelegram(token: string, body: TelegramSendBody): GasHttpResponse {
+  return UrlFetchApp.fetch(`${TELEGRAM_API_BASE}${token}/sendMessage`, {
+    method: 'post',
+    contentType: 'application/json',
+    payload: JSON.stringify(body),
+    muteHttpExceptions: true,
+  });
+}
+
+function sendTelegramMessage(text: string, linkUrl: string): boolean {
+  const token = getProp('TELEGRAM_BOT_TOKEN');
+  const chatId = getProp('TELEGRAM_CHAT_ID');
+  if (!token || !chatId) {
+    console.error('TELEGRAM_BOT_TOKEN 또는 TELEGRAM_CHAT_ID 미설정 — 텔레그램 발송 취소');
+    return false;
+  }
+  try {
+    const body = buildTelegramSendBody(chatId, text, linkUrl);
+    let res = postTelegram(token, body);
+    // 버튼 URL을 텔레그램이 거부하면(400) 버튼 없이 링크를 본문에 붙여 한 번만 다시 보낸다.
+    if (res.getResponseCode() === 400 && body.reply_markup) {
+      console.error('텔레그램 400 — 버튼 없이 재시도:', redactSecret(res.getContentText(), token));
+      res = postTelegram(token, buildTelegramPlainBody(chatId, text, linkUrl));
+    }
+    if (res.getResponseCode() !== 200) {
+      console.error('텔레그램 발송 실패:', res.getResponseCode(), redactSecret(res.getContentText(), token));
+      return false;
+    }
+    return true;
+  } catch (e) {
+    console.error('텔레그램 발송 예외:', errText(e, token));
+    return false;
+  }
+}
+
+function sendToTarget(target: NotifyChannelTarget, text: string, linkUrl: string): boolean {
+  const ok = target === 'telegram' ? sendTelegramMessage(text, linkUrl) : sendKakaoMessage(text, linkUrl);
+  if (!ok) sendFailures[target]++;
+  return ok;
+}
+
+/**
+ * 저장된 발송 채널(NOTIFY_CHANNEL)로 메시지를 보낸다. 여러 채널이면 **하나라도 성공하면 true** —
+ * 호출부가 멱등 기록을 남기므로, 실패한 쪽 때문에 성공한 쪽에 중복 발송되는 일이 없다.
+ */
+function sendNotification(text: string, linkUrl: string): boolean {
+  let any = false;
+  for (const target of channelTargets(storedChannel())) {
+    if (sendToTarget(target, text, linkUrl)) any = true;
+  }
+  return any;
+}
+
+interface TelegramConnectResult { ok: boolean; chatName?: string; error?: string }
+
+/**
+ * 봇에게 온 최근 메시지(getUpdates)에서 내 채팅 id를 찾아 TELEGRAM_CHAT_ID로 저장하고 확인 메시지를 보낸다.
+ * 토큰은 API URL에 들어가므로 모든 오류 문자열을 redactSecret으로 가린다.
+ */
+function connectTelegram(): TelegramConnectResult {
+  const token = getProp('TELEGRAM_BOT_TOKEN');
+  if (!token) {
+    return { ok: false, error: '스크립트 속성 TELEGRAM_BOT_TOKEN이 없습니다 — Apps Script 프로젝트 설정에서 봇 토큰을 먼저 추가하세요' };
+  }
+  try {
+    const res = UrlFetchApp.fetch(`${TELEGRAM_API_BASE}${token}/getUpdates`, { method: 'get', muteHttpExceptions: true });
+    const code = res.getResponseCode();
+    if (code === 401) {
+      return { ok: false, error: '봇 토큰이 올바르지 않습니다 — 스크립트 속성 TELEGRAM_BOT_TOKEN 값을 다시 확인하세요' };
+    }
+    if (code === 409) {
+      return { ok: false, error: '이 봇에 웹훅이 설정되어 있어 메시지를 조회할 수 없습니다 — 새 봇을 만들어 토큰을 교체하세요' };
+    }
+    if (code !== 200) {
+      return { ok: false, error: redactSecret(`텔레그램 응답 오류 ${code}: ${res.getContentText().slice(0, 200)}`, token) };
+    }
+    const data = JSON.parse(res.getContentText()) as TelegramGetUpdatesResponse;
+    if (!data.ok) {
+      return { ok: false, error: redactSecret(`텔레그램 오류: ${data.description ?? '알 수 없음'}`, token) };
+    }
+    const pick = pickTelegramChat(data.result ?? []);
+    if (pick.kind === 'none') {
+      return { ok: false, error: '봇에게 온 메시지가 없습니다 — 텔레그램 봇 대화방에서 [시작]을 누르고 아무 메시지나 보낸 뒤 다시 시도하세요(최근 24시간 메시지만 조회됩니다)' };
+    }
+    if (pick.kind === 'ambiguous') {
+      return {
+        ok: false,
+        error: `봇에게 메시지를 보낸 사람이 여러 명입니다(${pick.names.join(', ')}) — 모르는 사람이 있다면 새 봇을 만들어 토큰을 교체하거나, 내 채팅 id를 스크립트 속성 TELEGRAM_CHAT_ID에 직접 입력하세요`,
+      };
+    }
+    setProp('TELEGRAM_CHAT_ID', pick.chatId);
+    if (getProp('TELEGRAM_CHAT_ID') !== pick.chatId) {
+      return { ok: false, error: '채팅 id 저장 확인에 실패했습니다. 다시 시도하세요.' };
+    }
+    if (!sendTelegramMessage(TELEGRAM_TEST_TEXT, '')) {
+      return { ok: false, chatName: pick.name, error: '채팅 id는 저장했지만 확인 메시지 발송에 실패했습니다 — 실행 로그를 확인하세요' };
+    }
+    return { ok: true, chatName: pick.name };
+  } catch (e) {
+    return { ok: false, error: `텔레그램 연결 예외: ${errText(e, token)}` };
+  }
+}
+
+/** Apps Script 편집기에서 직접 실행하는 진입점(함수 선택 → telegramConnect → 실행). 결과는 실행 로그에 한 줄로 남는다. */
+function telegramConnect(): void {
+  const r = connectTelegram();
+  recordLastRun(r.ok ? 'ok' : 'error', r.ok ? `텔레그램 연결됨(${r.chatName ?? ''})` : `텔레그램 연결 실패: ${r.error ?? ''}`);
+  console.log(r.ok
+    ? `[텔레그램 연결 성공] ${r.chatName ?? ''} — 텔레그램에 확인 메시지가 왔는지 보세요.`
+    : `[텔레그램 연결 실패] ${r.error ?? ''}`);
+}
+
 function buildDeepLink(assetId: string | null): string {
   const base = getProp('APP_URL') || APP_PUBLIC_URL;
   const url = base.endsWith('/') ? base : `${base}/`;
@@ -804,7 +955,7 @@ function dispatchNotifications(candidates: NotifyCandidate[], now: Date): number
   let sent = 0;
 
   for (const c of toSendNow) {
-    if (sendKakaoMessage(c.text, c.linkUrl)) {
+    if (sendNotification(c.text, c.linkUrl)) {
       markSent(c.idempotencyKey, now);
       count++;
       sent++;
@@ -812,7 +963,7 @@ function dispatchNotifications(candidates: NotifyCandidate[], now: Date): number
   }
 
   if (overflow.length > 0) {
-    if (sendKakaoMessage(formatOverflowBundle(overflow), buildDeepLink(null))) {
+    if (sendNotification(formatOverflowBundle(overflow), buildDeepLink(null))) {
       for (const c of overflow) markSent(c.idempotencyKey, now);
       count++;
       sent++;
@@ -890,7 +1041,7 @@ function hourlyCheck(): void {
 
     if (cacheDirty) saveMaCache(maCache);
     const sent = dispatchNotifications(candidates, now);
-    recordLastRun('ok', `hourlyCheck 완료 · 대상 ${openItems.length} · 발송 ${sent}`);
+    recordLastRun('ok', `hourlyCheck 완료 · 대상 ${openItems.length} · 발송 ${sent}${failureNote()}`);
   } catch (err) {
     handleFailure('hourlyCheck', err);
   }
@@ -944,7 +1095,7 @@ function maybeSendDailyDigest(manifest: NotifyManifest, maCache: MaCache, now: D
     planless: manifest.planlessCount,
   });
   // 생존 신호(무신호도 발송) — 일 상한 디스패치를 거치지 않고 직접 보낸다(하루 1회로 자체 제한됨).
-  if (sendKakaoMessage(text, buildDeepLink(null))) {
+  if (sendNotification(text, buildDeepLink(null))) {
     setProp('LAST_DIGEST_DATE', todayKst);
   }
 }
@@ -1054,7 +1205,7 @@ function closeCheck(): void {
     const sent = dispatchNotifications(candidates, now);
     if (krRan) maybeSendDailyDigest(manifest, maCache, now);
 
-    recordLastRun('ok', `closeCheck 완료 · 발송 ${sent}${turtleNotes.length > 0 ? ` · ${turtleNotes.join(' · ')}` : ''}`);
+    recordLastRun('ok', `closeCheck 완료 · 발송 ${sent}${turtleNotes.length > 0 ? ` · ${turtleNotes.join(' · ')}` : ''}${failureNote()}`);
   } catch (err) {
     handleFailure('closeCheck', err);
   }
@@ -1100,22 +1251,22 @@ function morningDigest(): void {
     // **두 통으로 나눠 보낸다**(계획서 §4.5 "200자 초과 시 분할").
     let sentAny = false;
     if (pending.length > 0) {
-      if (sendKakaoMessage(formatPendingBundle(pending), buildDeepLink(null))) {
+      if (sendNotification(formatPendingBundle(pending), buildDeepLink(null))) {
         clearPending();
         sentAny = true;
       }
     }
     if (turtleText) {
-      if (sendKakaoMessage(turtleText, buildDeepLink(null))) {
+      if (sendNotification(turtleText, buildDeepLink(null))) {
         setProp('LAST_TURTLE_DIGEST_DATE', kstDateStr(now));
         sentAny = true;
       }
     }
 
     if (sentAny) {
-      recordLastRun('ok', `morningDigest: 보류 ${pending.length}건 · 터틀 요약 ${turtleText ? '포함' : '없음'}`);
+      recordLastRun('ok', `morningDigest: 보류 ${pending.length}건 · 터틀 요약 ${turtleText ? '포함' : '없음'}${failureNote()}`);
     } else {
-      recordLastRun('error', 'morningDigest: 발송 실패(보류/터틀 요약 유지, 다음 실행에서 재시도)');
+      recordLastRun('error', `morningDigest: 발송 실패(보류/터틀 요약 유지, 다음 실행에서 재시도)${failureNote()}`);
     }
   } catch (err) {
     handleFailure('morningDigest', err);
@@ -1138,8 +1289,11 @@ function installTriggers(): void {
 }
 
 function sendTestMessage(): void {
-  const ok = sendKakaoMessage('[테스트] 매매계획 알림 스크립트 실행 확인 메시지입니다.', buildDeepLink(null));
-  recordLastRun(ok ? 'ok' : 'error', ok ? '수동 테스트 발송 성공' : '수동 테스트 발송 실패(카카오 연결·토큰 확인)');
+  const ok = sendNotification('[테스트] 매매계획 알림 스크립트 실행 확인 메시지입니다.', buildDeepLink(null));
+  recordLastRun(
+    ok ? 'ok' : 'error',
+    ok ? `수동 테스트 발송 성공${failureNote()}` : `수동 테스트 발송 실패(발송 채널 연결·토큰 확인)${failureNote()}`,
+  );
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1189,8 +1343,11 @@ function handleKakaoAuthCode(code: string): GasHtmlOutput {
 function statusPage(): GasHtmlOutput {
   const lastRun = getJsonProp<LastRun | null>('LAST_RUN_JSON', null);
   const connected = !!getProp('KAKAO_REFRESH_TOKEN');
+  const tgConnected = !!getProp('TELEGRAM_BOT_TOKEN') && !!getProp('TELEGRAM_CHAT_ID');
   const body = `
+    <p>발송 채널: ${escapeHtml(NOTIFY_CHANNEL_LABELS[storedChannel()])}</p>
     <p>카카오 연결: ${connected ? '연결됨' : '미연결'}</p>
+    <p>텔레그램 연결: ${tgConnected ? '연결됨' : '미연결'}</p>
     <p>마지막 실행: ${lastRun ? `${escapeHtml(lastRun.at)} — ${escapeHtml(lastRun.status)}: ${escapeHtml(lastRun.message)}` : '없음'}</p>
     <p>카카오 연결이 필요하면 <code>?action=kakao-auth</code>를 여세요.</p>
   `;
@@ -1235,6 +1392,8 @@ function buildStatusResponse(): unknown {
     lastRun,
     dailyCount: getDailyCount(new Date()),
     kakaoConnected: !!getProp('KAKAO_REFRESH_TOKEN'),
+    channel: storedChannel(),
+    telegramConnected: !!getProp('TELEGRAM_BOT_TOKEN') && !!getProp('TELEGRAM_CHAT_ID'),
     manifestItemCount: manifest ? manifest.items.length : 0,
     manifestUpdatedAt: manifest ? manifest.updatedAt : null,
   };
@@ -1244,7 +1403,7 @@ function doPost(e: GasDoPostEvent): GasTextOutput {
   try {
     const raw = e && e.postData ? e.postData.contents : '';
     const body = raw
-      ? (JSON.parse(raw) as { action?: string; secret?: string; manifest?: NotifyManifest })
+      ? (JSON.parse(raw) as { action?: string; secret?: string; manifest?: NotifyManifest; channel?: unknown })
       : {};
     const secret = getProp('SHARED_SECRET');
     if (!secret || !constantTimeEqual(body.secret ?? '', secret)) {
@@ -1253,11 +1412,26 @@ function doPost(e: GasDoPostEvent): GasTextOutput {
     if (body.action === 'sync') {
       if (!body.manifest) return jsonOutput({ ok: false, error: 'manifest 없음' });
       saveManifest(body.manifest);
-      return jsonOutput({ ok: true, receivedAt: new Date().toISOString(), itemCount: body.manifest.items.length });
+      if (body.manifest.channel !== undefined) setProp('NOTIFY_CHANNEL', normalizeNotifyChannel(body.manifest.channel));
+      return jsonOutput({
+        ok: true, receivedAt: new Date().toISOString(), itemCount: body.manifest.items.length, channel: storedChannel(),
+      });
     }
     if (body.action === 'test') {
-      const ok = sendKakaoMessage('[테스트] 매매계획 알림 연결 확인 메시지입니다.', buildDeepLink(null));
-      return jsonOutput({ ok });
+      const channel: NotifyChannel = body.channel === 'kakao' || body.channel === 'telegram' || body.channel === 'both'
+        ? body.channel : storedChannel();
+      const results: Partial<Record<NotifyChannelTarget, boolean>> = {};
+      for (const target of channelTargets(channel)) {
+        results[target] = sendToTarget(target, '[테스트] 매매계획 알림 연결 확인 메시지입니다.', buildDeepLink(null));
+      }
+      const failed = (Object.keys(results) as NotifyChannelTarget[]).filter(t => !results[t]);
+      const ok = failed.length === 0;
+      return jsonOutput(ok
+        ? { ok, results }
+        : { ok, results, error: `${failed.map(t => (t === 'telegram' ? '텔레그램' : '카카오톡')).join('·')} 발송 실패` });
+    }
+    if (body.action === 'telegram-connect') {
+      return jsonOutput(connectTelegram());
     }
     if (body.action === 'status') {
       return jsonOutput(buildStatusResponse());
@@ -1273,4 +1447,4 @@ function doPost(e: GasDoPostEvent): GasTextOutput {
 // 내보내기 — build-gas.mjs가 이 export들을 전역 `TradePlanNotify` 객체로 묶는다
 // ═══════════════════════════════════════════════════════════════════════════
 
-export { doGet, doPost, hourlyCheck, closeCheck, morningDigest, installTriggers, sendTestMessage };
+export { doGet, doPost, hourlyCheck, closeCheck, morningDigest, installTriggers, sendTestMessage, telegramConnect };

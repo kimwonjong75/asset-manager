@@ -287,6 +287,26 @@ function mkAsset(o: Partial<Asset> = {}): Asset {
   check('매매계획 항목 이름도 같은 규칙', m.items.map(i => i.name), ['KRX 금현물', '공백별칭', '유선&원종_SPDR Gold Trust']);
 }
 
+// ════════════════════════════════════════════════════════════════════════════
+// 4d. 발송 채널 — 기본 'kakao' · 해시는 kakao일 때 도입 이전과 동일(골든) · 그 외 채널은 해시 변경
+// ════════════════════════════════════════════════════════════════════════════
+{
+  const base = { assets: [] as Asset[], appUrl: 'https://a.test', now: '2026-11-10T00:00:00.000Z', pyramidAlerts: false };
+  check('채널 미지정 → manifest.channel === kakao', buildNotifyManifest(base).channel, 'kakao');
+  check('채널 telegram 전달', buildNotifyManifest({ ...base, channel: 'telegram' }).channel, 'telegram');
+  check('채널 both 전달', buildNotifyManifest({ ...base, channel: 'both' }).channel, 'both');
+
+  // 채널 도입 이전 코드에서 같은 입력으로 측정한 절대값(1ffec6ff) — kakao는 이 값이 변하면 안 된다.
+  const legacy: NotifyManifest = {
+    version: 1, asOf: 'x', updatedAt: 'x', appUrl: 'https://a.test', pyramidAlerts: false, planlessCount: 2, items: [],
+  };
+  check('해시 골든: channel 필드 없는 매니페스트', manifestHash(legacy), '1ffec6ff');
+  check('해시 골든: channel=kakao도 동일', manifestHash({ ...legacy, channel: 'kakao' }), '1ffec6ff');
+  ok('channel=telegram → 해시 변경', manifestHash({ ...legacy, channel: 'telegram' }) !== '1ffec6ff');
+  ok('channel=both → 해시 변경', manifestHash({ ...legacy, channel: 'both' }) !== '1ffec6ff');
+  ok('telegram ≠ both 해시', manifestHash({ ...legacy, channel: 'telegram' }) !== manifestHash({ ...legacy, channel: 'both' }));
+}
+
 // ── 결과 ──
 if (fails.length) {
   console.error(`\n❌ notifyManifest parity 실패 (${fails.length})`);

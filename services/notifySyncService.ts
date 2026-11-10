@@ -14,23 +14,35 @@
 
 import { createLogger } from '../utils/logger';
 import type { NotifyManifest } from '../utils/notifyManifest';
+import type { NotifyChannel, NotifyChannelTarget } from '../types/notifyChannel';
 
 const log = createLogger('notifySyncService');
 
 export interface GasSyncRequest { action: 'sync'; secret: string; manifest: NotifyManifest }
-export interface GasTestRequest { action: 'test'; secret: string }
+export interface GasTestRequest { action: 'test'; secret: string; channel?: NotifyChannel }
 export interface GasStatusRequest { action: 'status'; secret: string }
-export type GasRequestBody = GasSyncRequest | GasTestRequest | GasStatusRequest;
+export interface GasTelegramConnectRequest { action: 'telegram-connect'; secret: string }
+export type GasRequestBody = GasSyncRequest | GasTestRequest | GasStatusRequest | GasTelegramConnectRequest;
 
 export interface GasSyncResponse {
   ok: boolean;
   receivedAt?: string;
   itemCount?: number;
+  /** GAS가 저장한 발송 채널 — 구버전 GAS는 이 필드가 없다(텔레그램을 모른다는 신호). */
+  channel?: NotifyChannel;
   error?: string;
 }
 
 export interface GasTestResponse {
   ok: boolean;
+  /** 채널별 발송 성공 여부. */
+  results?: Partial<Record<NotifyChannelTarget, boolean>>;
+  error?: string;
+}
+
+export interface GasTelegramConnectResponse {
+  ok: boolean;
+  chatName?: string;
   error?: string;
 }
 
@@ -45,6 +57,8 @@ export interface GasStatusResponse {
   lastRun?: GasLastRun | null;
   dailyCount?: number;
   kakaoConnected?: boolean;
+  channel?: NotifyChannel;
+  telegramConnected?: boolean;
   manifestItemCount?: number;
   manifestUpdatedAt?: string | null;
   error?: string;
@@ -86,9 +100,9 @@ export async function syncManifest(
   }
 }
 
-export async function testConnection(gasUrl: string, secret: string): Promise<GasTestResponse> {
+export async function testConnection(gasUrl: string, secret: string, channel?: NotifyChannel): Promise<GasTestResponse> {
   try {
-    return await postToGas<GasTestResponse>(gasUrl, { action: 'test', secret });
+    return await postToGas<GasTestResponse>(gasUrl, { action: 'test', secret, channel });
   } catch (e) {
     log.error('연결 테스트 실패:', e);
     return { ok: false, error: e instanceof Error ? e.message : '연결 테스트에 실패했습니다.' };
@@ -101,5 +115,14 @@ export async function fetchStatus(gasUrl: string, secret: string): Promise<GasSt
   } catch (e) {
     log.error('상태 조회 실패:', e);
     return { ok: false, error: e instanceof Error ? e.message : '상태 조회에 실패했습니다.' };
+  }
+}
+
+export async function connectTelegram(gasUrl: string, secret: string): Promise<GasTelegramConnectResponse> {
+  try {
+    return await postToGas<GasTelegramConnectResponse>(gasUrl, { action: 'telegram-connect', secret });
+  } catch (e) {
+    log.error('텔레그램 연결 실패:', e);
+    return { ok: false, error: e instanceof Error ? e.message : '텔레그램 연결 요청에 실패했습니다.' };
   }
 }

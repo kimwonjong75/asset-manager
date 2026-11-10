@@ -1,5 +1,5 @@
 // components/settings/KakaoNotifySection.tsx
-// 카카오톡 알림 설정 섹션 — 렌더 전용(RULES.md §2). 데이터/네트워크는 전부 hooks/useKakaoNotify.
+// 알림(카카오톡·텔레그램) 설정 섹션 — 렌더 전용(RULES.md §2). 데이터/네트워크는 전부 hooks/useKakaoNotify.
 // components/AiSettingsSection.tsx와 동일한 BYOK류 카드 스타일(다크 테마, localStorage 전용 고지).
 
 import React, { useState } from 'react';
@@ -7,6 +7,9 @@ import { useKakaoNotify } from '../../hooks/useKakaoNotify';
 import KakaoSetupWizard from './KakaoSetupWizard';
 import Toggle from '../common/Toggle';
 import Badge from '../common/Badge';
+import Segmented from '../common/Segmented';
+import { channelTargets, NOTIFY_CHANNEL_LABELS } from '../../utils/notifyChannel';
+import type { NotifyChannel } from '../../types/notifyChannel';
 import ManualHelpLink from '../common/ManualHelpLink';
 import { CircleAlert, Lock, TriangleAlert } from 'lucide-react';
 
@@ -21,15 +24,24 @@ function formatDateTime(iso: string | null): string {
   return `${mm}-${dd} ${hh}:${mi}`;
 }
 
+const CHANNEL_OPTIONS: { value: NotifyChannel; label: string }[] = [
+  { value: 'kakao', label: '카카오톡' },
+  { value: 'telegram', label: '텔레그램' },
+  { value: 'both', label: '둘 다' },
+];
+
 const KakaoNotifySection: React.FC = () => {
   const {
-    settings, manifest, needsSync, opStatus, lastError, gasStatus,
-    setGasUrl, setSecret, setAutoSync, setPyramidAlerts,
+    settings, manifest, needsSync, opStatus, lastError, gasStatus, telegramConnect,
+    setGasUrl, setSecret, setAutoSync, setPyramidAlerts, setChannel, connectTelegram,
     syncNow, testConnection, refreshStatus,
   } = useKakaoNotify();
 
   const [showSecret, setShowSecret] = useState(false);
   const busy = opStatus !== 'idle';
+  const targets = channelTargets(settings.channel);
+  const usesKakao = targets.includes('kakao');
+  const usesTelegram = targets.includes('telegram');
   const turtleHoldingCount = (manifest.turtle?.legacyHoldings.length ?? 0) + (manifest.turtle?.reentryPositions.length ?? 0);
   const turtleWatchCount = manifest.turtle?.watchItems.length ?? 0;
 
@@ -37,11 +49,11 @@ const KakaoNotifySection: React.FC = () => {
     <div className="bg-gray-800 rounded-lg">
       <div className="px-6 py-5 border-b border-gray-700">
         <div className="flex items-center gap-2">
-          <h2 className="text-xl font-bold text-white">카카오톡 알림</h2>
+          <h2 className="text-xl font-bold text-white">알림 (카카오톡·텔레그램)</h2>
           <ManualHelpLink anchor="kakao" />
         </div>
         <p className="text-gray-400 text-sm mt-1">
-          매매 계획의 손절선·익절선·불타기선은 개장 중 매시간, 추세선 이탈은 마감 확정 종가로 1회 카카오톡("나에게 보내기")으로 알려드립니다.
+          매매 계획의 손절선·익절선·불타기선은 개장 중 매시간, 추세선 이탈은 마감 확정 종가로 1회 카카오톡("나에게 보내기") 또는 텔레그램으로 알려드립니다.
         </p>
         <p className="text-gray-400 text-xs mt-1">
           터틀 알림 포함 — 보유 {turtleHoldingCount}종목 · 감시 {turtleWatchCount}종목의 팔 때·다시 살 때·추가 매수·손절 이탈을 마감 후 1회 + 아침 요약으로 알려드립니다.
@@ -52,8 +64,48 @@ const KakaoNotifySection: React.FC = () => {
         {/* 고지 */}
         <div className="bg-warning-soft border border-warning/30 rounded-lg p-3">
           <p className="text-xs text-gray-200 leading-relaxed">
-            <TriangleAlert className="inline h-3.5 w-3.5 mr-1 align-[-2px] text-warning" aria-hidden="true" />카톡은 알려줄 뿐 대신 팔아주지 않습니다 — 손절은 증권사 예약주문이 먼저입니다.
+            <TriangleAlert className="inline h-3.5 w-3.5 mr-1 align-[-2px] text-warning" aria-hidden="true" />알림은 알려줄 뿐 대신 팔아주지 않습니다 — 손절은 증권사 예약주문이 먼저입니다.
           </p>
+        </div>
+
+        {/* 발송 채널 */}
+        <div className="bg-gray-900 rounded-lg p-4 space-y-3">
+          <div>
+            <span className="text-white font-medium text-sm">발송 채널</span>
+            <p className="text-gray-500 text-xs mt-0.5">
+              알림을 어디로 받을지 고릅니다. 알림 내용·시각·하루 상한은 그대로이고 받는 곳만 바뀝니다. <b>둘 다</b>는 전환 기간에 카카오톡과 텔레그램 두 곳 모두 받는 설정입니다.
+            </p>
+          </div>
+          <Segmented
+            options={CHANNEL_OPTIONS}
+            value={settings.channel}
+            onChange={(c) => { void setChannel(c); }}
+            size="md"
+          />
+          {usesTelegram && (
+            <div className="border-t border-gray-800 pt-3 space-y-2">
+              <p className="text-xs text-gray-300 font-semibold">텔레그램 연결 (1회)</p>
+              <ol className="text-xs text-gray-400 leading-relaxed space-y-0.5 list-none">
+                <li>① 텔레그램에서 <b>@BotFather</b>에게 <code className="bg-gray-800 px-1 rounded">/newbot</code>을 보내 봇을 만들고 봇 토큰을 받습니다.</li>
+                <li>② Apps Script 프로젝트 설정 → 스크립트 속성에 <code className="bg-gray-800 px-1 rounded">TELEGRAM_BOT_TOKEN</code>을 추가합니다.</li>
+                <li>③ 만든 봇 대화방에서 <b>[시작]</b>을 누르고 아무 메시지나 보냅니다.</li>
+                <li>④ 아래 <b>[텔레그램 연결]</b>을 누릅니다.</li>
+              </ol>
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => { void connectTelegram(); }}
+                  disabled={busy || !settings.gasUrl || !settings.secret}
+                  className="text-sm px-3 py-2 rounded bg-primary text-white hover:opacity-90 transition disabled:opacity-40"
+                >
+                  {opStatus === 'connecting' ? '연결 중...' : '텔레그램 연결'}
+                </button>
+                {telegramConnect?.ok && (
+                  <span className="text-xs text-ok">연결됨{telegramConnect.chatName ? ` · ${telegramConnect.chatName}` : ''}</span>
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* 1회 설정 가이드 */}
@@ -137,7 +189,13 @@ const KakaoNotifySection: React.FC = () => {
 
           {gasStatus && gasStatus.ok && (
             <div className="text-xs text-gray-400 border-t border-gray-800 pt-2 space-y-0.5">
-              <div>카카오 연결: <span className={gasStatus.kakaoConnected ? 'text-ok' : 'text-danger'}>{gasStatus.kakaoConnected ? '연결됨' : '미연결'}</span></div>
+              <div>발송 채널: <span className="text-gray-300">{NOTIFY_CHANNEL_LABELS[gasStatus.channel ?? 'kakao']}</span></div>
+              {usesKakao && (
+                <div>카카오 연결: <span className={gasStatus.kakaoConnected ? 'text-ok' : 'text-danger'}>{gasStatus.kakaoConnected ? '연결됨' : '미연결'}</span></div>
+              )}
+              {usesTelegram && (
+                <div>텔레그램 연결: <span className={gasStatus.telegramConnected ? 'text-ok' : 'text-danger'}>{gasStatus.telegramConnected ? '연결됨' : '미연결'}</span></div>
+              )}
               {typeof gasStatus.dailyCount === 'number' && <div>오늘 발송: <span className="text-gray-300">{gasStatus.dailyCount}건</span></div>}
               {gasStatus.lastRun && (
                 <div>
@@ -163,7 +221,7 @@ const KakaoNotifySection: React.FC = () => {
           <div className="flex items-center justify-between border-t border-gray-800 pt-3">
             <div>
               <span className="text-white font-medium text-sm">불타기 알림</span>
-              <p className="text-gray-500 text-xs mt-0.5">기본 꺼짐 — 불타기는 검증되지 않은 기능입니다(RULES D4). 켜면 불타기선 도달 시에도 카톡이 옵니다.</p>
+              <p className="text-gray-500 text-xs mt-0.5">기본 꺼짐 — 불타기는 검증되지 않은 기능입니다(RULES D4). 켜면 불타기선 도달 시에도 알림이 옵니다.</p>
             </div>
             <Toggle checked={settings.pyramidAlerts} onChange={setPyramidAlerts} />
           </div>
