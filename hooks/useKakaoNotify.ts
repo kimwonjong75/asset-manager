@@ -103,6 +103,8 @@ export interface UseKakaoNotifyResult {
   telegramConnect: TelegramConnectState | null;
   /** 발송 채널 변경 동기화 실패/구버전 GAS 안내 — 채널 선택 버튼 바로 아래에 보여 준다. */
   channelError: string | null;
+  /** 마지막 상태 조회에서 GAS가 쓰는 발송 채널이 앱 설정과 다르면 true(→ needsSync도 true). */
+  gasChannelMismatch: boolean;
   setGasUrl: (url: string) => void;
   setSecret: (secret: string) => void;
   setAutoSync: (on: boolean) => void;
@@ -147,7 +149,27 @@ export function useKakaoNotify(): UseKakaoNotifyResult {
   );
 
   const currentHash = useMemo(() => manifestHash(manifest), [manifest]);
-  const needsSync = currentHash !== settings.lastSyncHash;
+  /**
+   * GAS가 실제로 쓰는 발송 채널(마지막 상태 조회 기준)이 앱 설정과 다른가. 2026-11-10 실사용: 구버전 GAS에
+   * '둘 다'를 동기화한 뒤 GAS를 갱신했는데, 해시는 이미 '동기화됨'으로 기록돼 아무것도 다시 보내지 않았고
+   * GAS는 계속 카카오톡으로만 보냈다 — 해시만 믿지 말고 GAS가 알려 준 채널과도 대조한다.
+   */
+  const gasChannelMismatch = !!gasStatus?.ok && gasStatus.channel !== undefined && gasStatus.channel !== settings.channel;
+  const needsSync = currentHash !== settings.lastSyncHash || gasChannelMismatch;
+
+  /**
+   * sync 응답을 반영한다. 채널이 'kakao'가 아닌데 응답에 `channel`이 없으면(구버전 GAS — 채널을 저장하지 못함)
+   * **lastSyncHash를 기록하지 않는다** — 기록하면 GAS를 갱신한 뒤에도 "동기화됨"으로 보여 채널이 영영 안 간다.
+   * 반환값: GAS가 채널까지 받아들였는가.
+   */
+  const applySyncResult = useCallback((res: { receivedAt?: string; channel?: NotifyChannel }, sent: NotifyManifest): boolean => {
+    const accepted = sent.channel === 'kakao' || res.channel !== undefined;
+    const lastSyncAt = res.receivedAt ?? new Date().toISOString();
+    update(accepted ? { lastSyncAt, lastSyncHash: manifestHash(sent) } : { lastSyncAt });
+    const gasChannel = res.channel;
+    if (gasChannel !== undefined) setGasStatus(prev => (prev ? { ...prev, channel: gasChannel } : prev));
+    return accepted;
+  }, [update]);
 
   const syncNow = useCallback(async () => {
     if (!settings.gasUrl || !settings.secret) {
@@ -156,18 +178,18 @@ export function useKakaoNotify(): UseKakaoNotifyResult {
     }
     setOpStatus('syncing');
     setLastError(null);
+    setChannelError(null);
     try {
       const res = await syncManifest(settings.gasUrl, settings.secret, manifest);
       if (res.ok) {
-        update({ lastSyncAt: res.receivedAt ?? new Date().toISOString(), lastSyncHash: currentHash });
-        if (manifest.channel !== 'kakao' && res.channel === undefined) setLastError(OLD_GAS_MESSAGE);
+        if (!applySyncResult(res, manifest)) setLastError(OLD_GAS_MESSAGE);
       } else {
         setLastError(res.error ?? '동기화에 실패했습니다.');
       }
     } finally {
       setOpStatus('idle');
     }
-  }, [settings.gasUrl, settings.secret, manifest, currentHash, update]);
+  }, [settings.gasUrl, settings.secret, manifest, applySyncResult]);
 
   const testConnection = useCallback(async () => {
     if (!settings.gasUrl || !settings.secret) {
@@ -216,15 +238,14 @@ export function useKakaoNotify(): UseKakaoNotifyResult {
     try {
       const res = await syncManifest(settings.gasUrl, settings.secret, next);
       if (res.ok) {
-        update({ lastSyncAt: res.receivedAt ?? new Date().toISOString(), lastSyncHash: manifestHash(next) });
-        if (channel !== 'kakao' && res.channel === undefined) setChannelError(OLD_GAS_MESSAGE);
+        if (!applySyncResult(res, next)) setChannelError(OLD_GAS_MESSAGE);
       } else {
         setChannelError(res.error ?? '채널 변경 동기화에 실패했습니다.');
       }
     } finally {
       setOpStatus('idle');
     }
-  }, [settings.gasUrl, settings.secret, manifest, update]);
+  }, [settings.gasUrl, settings.secret, manifest, update, applySyncResult]);
 
   const connectTelegram = useCallback(async () => {
     if (!settings.gasUrl || !settings.secret) {
@@ -237,6 +258,14 @@ export function useKakaoNotify(): UseKakaoNotifyResult {
       const res = await connectGasTelegram(settings.gasUrl, settings.secret);
       if (res.ok) {
         setTelegramConnect({ ok: true, chatName: res.chatName });
+        // 연결만으로는 GAS의 발송 채널이 바뀌지 않는다 — 현재 설정(채널 포함)을 바로 동기화해 둔다
+        // (2026-11-10 실사용: 연결·테스트 메시지는 됐는데 GAS 채널이 카카오톡이라 이후 알림이 텔레그램으로 안 갔다).
+        const syncRes = await syncManifest(settings.gasUrl, settings.secret, manifest);
+        if (syncRes.ok) {
+          if (!applySyncResult(syncRes, manifest)) setChannelError(OLD_GAS_MESSAGE);
+        } else {
+          setChannelError(syncRes.error ?? '발송 채널 동기화에 실패했습니다 — [지금 동기화]를 눌러 주세요.');
+        }
         await refreshStatus();
       } else {
         const error = res.error && res.error.includes('알 수 없는 action')
@@ -247,7 +276,7 @@ export function useKakaoNotify(): UseKakaoNotifyResult {
     } finally {
       setOpStatus('idle');
     }
-  }, [settings.gasUrl, settings.secret, refreshStatus]);
+  }, [settings.gasUrl, settings.secret, manifest, applySyncResult, refreshStatus]);
 
   // opt-in 자동 동기화: 명시적으로 켠 사용자에 한해, 5초 디바운스 후 조용히 동기화한다.
   useEffect(() => {
@@ -265,6 +294,7 @@ export function useKakaoNotify(): UseKakaoNotifyResult {
     gasStatus,
     telegramConnect,
     channelError,
+    gasChannelMismatch,
     setGasUrl: (url: string) => update({ gasUrl: url }),
     setSecret: (secret: string) => update({ secret }),
     setAutoSync: (on: boolean) => update({ autoSync: on }),

@@ -13,6 +13,7 @@ import { Bell } from 'lucide-react';
 import { usePortfolio } from '../../contexts/PortfolioContext';
 import { useKakaoNotify } from '../../hooks/useKakaoNotify';
 import type { NotifyChannel } from '../../types/notifyChannel';
+import { openSettingsTab } from '../settings/settingsTabStore';
 
 const CHIP_LABELS: Record<NotifyChannel, string> = {
   kakao: '카톡 알림',
@@ -39,7 +40,7 @@ const KakaoStatusChip: React.FC<KakaoStatusChipProps> = ({ className = '' }) => 
     return (
       <button
         type="button"
-        onClick={() => actions.setActiveTab('settings')}
+        onClick={() => openSettingsTab(actions.setActiveTab, 'alerts')}
         className={`inline-flex items-center gap-1.5 text-xs px-2 py-1 rounded-full bg-warning-soft border border-warning/40 text-warning hover:border-warning/60 transition-colors ${className}`}
         title="설정 탭에서 알림(카카오톡·텔레그램)을 켤 수 있습니다"
       >

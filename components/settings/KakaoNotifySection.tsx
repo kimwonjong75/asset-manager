@@ -2,7 +2,7 @@
 // 알림(카카오톡·텔레그램) 설정 섹션 — 렌더 전용(RULES.md §2). 데이터/네트워크는 전부 hooks/useKakaoNotify.
 // components/AiSettingsSection.tsx와 동일한 BYOK류 카드 스타일(다크 테마, localStorage 전용 고지).
 
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useKakaoNotify } from '../../hooks/useKakaoNotify';
 import KakaoSetupWizard from './KakaoSetupWizard';
 import Toggle from '../common/Toggle';
@@ -32,12 +32,21 @@ const CHANNEL_OPTIONS: { value: NotifyChannel; label: string }[] = [
 
 const KakaoNotifySection: React.FC = () => {
   const {
-    settings, manifest, needsSync, opStatus, lastError, gasStatus, telegramConnect, channelError,
+    settings, manifest, needsSync, opStatus, lastError, gasStatus, telegramConnect, channelError, gasChannelMismatch,
     setGasUrl, setSecret, setAutoSync, setPyramidAlerts, setChannel, connectTelegram,
     syncNow, testConnection, refreshStatus,
   } = useKakaoNotify();
 
   const [showSecret, setShowSecret] = useState(false);
+
+  // 설정 화면을 열면 GAS 상태를 한 번 읽어 온다(읽기 전용) — GAS가 실제로 쓰는 발송 채널이 설정과 다르면
+  // 바로 경고를 띄우기 위함(2026-11-10 실사용: '둘 다'로 골랐는데 GAS는 카카오톡으로만 보내고 있었다).
+  const statusLoadedRef = useRef(false);
+  useEffect(() => {
+    if (statusLoadedRef.current || !settings.gasUrl || !settings.secret) return;
+    statusLoadedRef.current = true;
+    void refreshStatus();
+  }, [settings.gasUrl, settings.secret, refreshStatus]);
   const busy = opStatus !== 'idle';
   const targets = channelTargets(settings.channel);
   const usesKakao = targets.includes('kakao');
@@ -83,6 +92,22 @@ const KakaoNotifySection: React.FC = () => {
             size="md"
           />
           {opStatus === 'syncing' && <p className="text-xs text-gray-400">GAS에 동기화하는 중...</p>}
+          {gasChannelMismatch && gasStatus?.channel && opStatus !== 'syncing' && (
+            <div className="flex flex-wrap items-center gap-2 bg-warning-soft border border-warning/30 rounded p-2" role="alert">
+              <p className="flex items-start gap-1 text-xs text-gray-200">
+                <TriangleAlert className="h-3.5 w-3.5 shrink-0 mt-0.5 text-warning" aria-hidden="true" />
+                GAS는 지금 <b>{NOTIFY_CHANNEL_LABELS[gasStatus.channel]}</b>(으)로만 보내고 있습니다 — 설정한 <b>{NOTIFY_CHANNEL_LABELS[settings.channel]}</b>(으)로 바꾸려면 동기화하세요.
+              </p>
+              <button
+                type="button"
+                onClick={() => { void syncNow(); }}
+                disabled={busy}
+                className="text-xs px-2.5 py-1 rounded bg-primary text-white hover:opacity-90 transition disabled:opacity-40"
+              >
+                지금 동기화
+              </button>
+            </div>
+          )}
           {channelError && (
             <p className="flex items-start gap-1 text-xs text-danger" role="alert">
               <CircleAlert className="h-3.5 w-3.5 shrink-0 mt-0.5" aria-hidden="true" />{channelError}

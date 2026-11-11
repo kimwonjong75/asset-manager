@@ -1,4 +1,5 @@
 import React, { Fragment, useState, useRef, useEffect, useMemo, useCallback } from 'react';
+import { openSettingsTab } from './settings/settingsTabStore';
 import type { Asset } from '../types';
 import { PortfolioTableProps, ColumnKey } from '../types/ui';
 import { COLUMN_DEFINITIONS, toSortableDirection } from './portfolio-table/columnDefinitions';
@@ -441,7 +442,7 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
     { type: 'section', label: '알림 규칙 · 매수' },
     ...ruleItems('buy'),
     { type: 'separator' },
-    { label: '알림 설정', icon: <Settings />, onClick: () => actions.setActiveTab('settings') },
+    { label: '알림 설정', icon: <Settings />, onClick: () => openSettingsTab(actions.setActiveTab, 'alerts') },
     { label: '브리핑 다시 보기', icon: <Bell />, onClick: () => actions.showBriefingPopup() },
     ...(appliedFilterCount > 0 ? [{ label: '필터 초기화', icon: <RotateCcw />, onClick: handleClearAllFilters }] : []),
   ];

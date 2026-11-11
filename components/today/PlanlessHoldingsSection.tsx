@@ -9,6 +9,7 @@ import SectionHeader from '../common/SectionHeader';
 import { usePortfolio } from '../../contexts/PortfolioContext';
 import Button from '../common/Button';
 import type { Asset } from '../../types';
+import { openSettingsTab } from '../settings/settingsTabStore';
 
 export interface PlanlessHoldingsSectionProps {
   planless: Asset[];
@@ -38,7 +39,7 @@ const PlanlessHoldingsSection: React.FC<PlanlessHoldingsSectionProps> = ({ planl
         </p>
         <button
           type="button"
-          onClick={() => actions.setActiveTab('settings')}
+          onClick={() => openSettingsTab(actions.setActiveTab, 'alerts')}
           className="inline-flex items-center gap-0.5 text-xs text-info hover:opacity-80 transition-opacity underline underline-offset-2 mt-1"
         >
           설정에서 카카오톡 알림 켜기
