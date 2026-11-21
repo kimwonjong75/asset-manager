@@ -155,6 +155,7 @@ export interface WatchlistItem {
   highestPrice?: number;
   changeRate?: number;
   yesterdayChange?: number;   // 어제대비 변동률 (%), hooks에서 사전 계산
+  quoteDate?: string; // 서버가 제공한 시세 거래일
   indicators?: Indicators;
   /** 터틀 진입 후보 — true면 실행 큐 생성기가 55일 돌파 매수를 감시 (90/10 Phase 2). 미지정=false */
   isTurtleCandidate?: boolean;
@@ -220,6 +221,7 @@ export interface Asset {
   excludedFromCleanup?: boolean;
   sellTransactions?: SellTransaction[];
   changeRate?: number;
+  quoteDate?: string; // 서버가 제공한 시세 거래일
   indicators?: Indicators;
   /** 매매 계획(손절선·익절선·추세선·불타기선). **미지정=계획 없음** — 기본값 강제 주입 금지 */
   tradePlan?: TradePlan;

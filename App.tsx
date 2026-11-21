@@ -16,10 +16,12 @@ import AlertPopup from './components/common/AlertPopup';
 import UpdateStatusIndicator from './components/common/UpdateStatusIndicator';
 import BottomTabBar from './components/common/BottomTabBar';
 import SettingsPage from './components/SettingsPage';
+import { TurtleSettingsDraftProvider } from './contexts/TurtleSettingsDraftContext';
 
 // Hooks
 import { PortfolioProvider, usePortfolio } from './contexts/PortfolioContext';
 import { useSymbolListPrefetch } from './hooks/useSymbolListPrefetch';
+import { csvExportScope } from './utils/portfolioCsv';
 import { OWNER_FILTER_OPTIONS, OWNER_FILTER_LABELS } from './types/owner';
 import { parseDeepLink } from './utils/deepLink';
 
@@ -403,7 +405,7 @@ const AppContent: React.FC = () => {
                           { label: '일괄 등록 (CSV)', onClick: actions.openBulkUpload },
                           { label: '가져오기 (JSON)', onClick: actions.importJsonPrompt },
                           { label: '내보내기 (JSON)', onClick: () => actions.exportJson() },
-                          { label: 'CSV로 내보내기', onClick: actions.exportCsv },
+                          { label: `CSV로 내보내기 (${csvExportScope(data.assets)})`, onClick: actions.exportCsv },
                           { label: '로그아웃', onClick: actions.signOut, colorClass: 'text-danger' },
                         ]}
                         onClose={() => setShowAccountMenu(false)}
@@ -414,6 +416,7 @@ const AppContent: React.FC = () => {
               </div>
             </div>
 
+            <TurtleSettingsDraftProvider key={status.userEmail ?? undefined}>
             <main ref={mainCallbackRef} className="flex-1 overflow-y-auto min-h-0">
               {/* P6: 모바일은 하단 탭바(BottomTabBar, fixed)에 가려지지 않도록 바닥 여백 확보 */}
               <div className="pt-2 sm:pt-4 pb-20 md:pb-4">
@@ -430,6 +433,7 @@ const AppContent: React.FC = () => {
                 {ui.activeTab === 'manual' && <ManualView />}
               </div>
             </main>
+            </TurtleSettingsDraftProvider>
 
             {/* P6: 모바일 하단 탭바 — md 미만에서만(컴포넌트 내부에서 md:hidden) */}
             <BottomTabBar

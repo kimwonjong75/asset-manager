@@ -1,7 +1,7 @@
 // hooks/useHistoricalPriceData.ts
 // 차트용 과거 시세 데이터 fetching hook (종가 기반)
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { createLogger } from '../utils/logger';
 
 const log = createLogger('HistoricalPriceData');
@@ -32,6 +32,7 @@ interface UseHistoricalPriceDataResult {
   historicalLows: HistoricalPriceData | null;
   isLoading: boolean;
   error: string | null;
+  refresh: () => void;
 }
 
 interface CacheEntry {
@@ -66,7 +67,11 @@ export function useHistoricalPriceData({
   const [historicalLows, setHistoricalLows] = useState<HistoricalPriceData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const abortRef = useRef(false);
+  const [revision, setRevision] = useState(0);
+  const refresh = useCallback(() => {
+    cache.delete(getCacheKey(ticker, exchange));
+    setRevision(value => value + 1);
+  }, [ticker, exchange]);
 
   useEffect(() => {
     // 차트가 접혀있거나 ticker가 없으면 fetch하지 않음
@@ -83,6 +88,7 @@ export function useHistoricalPriceData({
     // 캐시 확인: TTL 유효 + 이전 요청이 현재 일수를 커버하면 재사용
     const cached = cache.get(cacheKey);
     if (cached && (now - cached.fetchedAt) < CACHE_TTL_MS && cached.totalDays >= totalDays) {
+      setIsLoading(false);
       setHistoricalPrices(cached.data);
       setHistoricalVolumes(cached.volume);
       setHistoricalOpens(cached.open);
@@ -92,13 +98,18 @@ export function useHistoricalPriceData({
       return;
     }
 
-    abortRef.current = false;
+    let cancelled = false;
+    setHistoricalPrices(null);
+    setHistoricalVolumes(null);
+    setHistoricalOpens(null);
+    setHistoricalHighs(null);
+    setHistoricalLows(null);
     setIsLoading(true);
     setError(null);
 
     const fetchData = async () => {
       try {
-        const endDate = new Date().toISOString().split('T')[0];
+        const endDate = new Date(Date.now() + 86_400_000).toISOString().split('T')[0];
         const startD = new Date();
         startD.setDate(startD.getDate() - totalDays);
         const startDate = startD.toISOString().split('T')[0];
@@ -130,7 +141,7 @@ export function useHistoricalPriceData({
           lowData = entry?.low;
         }
 
-        if (abortRef.current) return;
+        if (cancelled) return;
 
         if (priceData && Object.keys(priceData).length > 0) {
           cache.set(cacheKey, {
@@ -152,11 +163,11 @@ export function useHistoricalPriceData({
           setError('과거 시세 데이터가 없습니다.');
         }
       } catch (err) {
-        if (abortRef.current) return;
+        if (cancelled) return;
         log.error('fetch error:', err);
         setError('과거 시세 조회 실패');
       } finally {
-        if (!abortRef.current) {
+        if (!cancelled) {
           setIsLoading(false);
         }
       }
@@ -165,9 +176,9 @@ export function useHistoricalPriceData({
     fetchData();
 
     return () => {
-      abortRef.current = true;
+      cancelled = true;
     };
-  }, [ticker, exchange, category, isExpanded]);
+  }, [ticker, exchange, category, isExpanded, revision]);
 
-  return { historicalPrices, historicalVolumes, historicalOpens, historicalHighs, historicalLows, isLoading, error };
+  return { historicalPrices, historicalVolumes, historicalOpens, historicalHighs, historicalLows, isLoading, error, refresh };
 }

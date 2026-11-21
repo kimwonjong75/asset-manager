@@ -107,6 +107,11 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
 
   // Context에서 가져오기
   const { derived, ui, actions, data } = usePortfolio();
+  const [selectionOwner, setSelectionOwner] = useState(ui.accountView);
+  if (selectionOwner !== ui.accountView) {
+    setSelectionOwner(ui.accountView);
+    setSelectedIds(new Set());
+  }
   const { enrichedMap, isEnrichedLoading } = derived;
   const { confirm, notify, confirmRequest } = useConfirm();
 
@@ -647,8 +652,8 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
       <div className="hidden md:block">
         <table className="w-full text-sm" style={{ tableLayout: 'fixed' }}>
           <colgroup>
-            <col />
-            <col style={getColWidth('name') ? { width: `${getColWidth('name')}px` } : undefined} />
+            <col style={{ width: 40 }} />
+            <col style={{ width: getColWidth('name') ?? '19%' }} />
             {visibleColumns.filter(c => c.visible).map(c => {
               const w = getColWidth(c.key);
               return <col key={c.key} style={w ? { width: `${w}px` } : undefined} />;
@@ -657,7 +662,7 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
           </colgroup>
           <thead className="bg-gray-700 text-gray-300 uppercase text-xs">
             <tr>
-              <th scope="col" className="px-4 py-3 text-center sticky top-0 bg-gray-700 z-20">
+              <th scope="col" className="px-1 py-3 text-center sticky top-0 bg-gray-700 z-20">
                 <input
                   type="checkbox"
                   aria-label="보이는 자산 전체 선택"

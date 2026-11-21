@@ -141,6 +141,7 @@ export async function fetchBatchAssetPrices(
               highestPrice: highestPrice, // [수정됨] API 값 사용
               isMocked: !(priceOrig > 0),
               changeRate: changeRate,
+              quoteDate: typeof item.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(item.date) ? item.date : undefined,
               indicators: item.indicators, // 퀀트 지표 전달
             };
             

@@ -14,7 +14,6 @@ import React, { useMemo, useState } from 'react';
 import { usePortfolio } from '../../contexts/PortfolioContext';
 import { useTurtleHoldings } from '../../hooks/useTurtleHoldings';
 import { TurtleHoldingsRow, describeReentryBaseline, REENTRY_BASELINE_CAPTION } from '../../utils/turtleHoldingsView';
-import { resolveHoldingsSettings } from '../../utils/turtleHoldings';
 import { consecutiveHoldCount } from '../../utils/turtleHoldingsState';
 import {
   realizedForeignGainYTD, plannedForeignGainKRW, estimateForeignCapGainsTax,
@@ -43,7 +42,6 @@ interface CandidateRow {
 const TurtleCleanupView: React.FC = () => {
   const { data, derived, actions } = usePortfolio();
   const holdings = useTurtleHoldings();
-  const holdingsSettings = useMemo(() => resolveHoldingsSettings(data.turtleSettings.holdings), [data.turtleSettings.holdings]);
   const [selectedSmallIds, setSelectedSmallIds] = useState<Set<string>>(new Set());
   const [holdDrafts, setHoldDrafts] = useState<Record<string, string>>({});
   const [openHoldFor, setOpenHoldFor] = useState<string | null>(null);
@@ -145,7 +143,7 @@ const TurtleCleanupView: React.FC = () => {
           <ManualHelpLink anchor="cleanup" />
         </div>
         <p className="text-xs sm:text-sm text-gray-400 mt-1">
-          청산선({holdingsSettings.exitLookback}일 최저가) 이하로 마감한 종목입니다. 팔면 자동으로 <span className="text-gray-200">"다시 살 때" 감시 명단</span>에 등록됩니다.
+          설정한 매도 기준에 닿은 종목입니다. 증권사에서 체결한 뒤 이곳에 기록하세요.
         </p>
         {candidates.some(c => c.row.reentryBaseline) && (
           <p className="text-xs text-gray-500 mt-1">{REENTRY_BASELINE_CAPTION}</p>
@@ -178,7 +176,7 @@ const TurtleCleanupView: React.FC = () => {
 
       {candidates.length === 0 ? (
         <div className="text-center text-gray-500 bg-gray-800/50 border border-gray-700 rounded-lg py-12 px-4 text-sm">
-          {holdings.isLoading ? '확인 중입니다…' : '지금 청산선 아래에 있는 종목이 없습니다.'}
+          {holdings.isLoading ? '확인 중입니다…' : '현재 매도 기준 도달로 확인된 종목이 없습니다.'}
         </div>
       ) : (
         <>
@@ -205,6 +203,7 @@ const TurtleCleanupView: React.FC = () => {
                         <span className={`ml-auto text-xs ${c.asset.metrics.returnPercentage < 0 ? 'text-down' : 'text-up'}`}>{pct(c.asset.metrics.returnPercentage)}</span>
                         <span className="text-xs text-gray-500">{formatKRW(c.asset.metrics.currentValueKRW)}</span>
                       </div>
+                      <p className="text-xs text-gray-500 mt-1 pl-6">{c.row.reasonText}</p>
                       {baselineText && <p className="text-xs text-gray-400 mt-1 pl-6">{baselineText}</p>}
                     </li>
                   );

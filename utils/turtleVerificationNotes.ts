@@ -61,14 +61,14 @@ export function turtleFieldBadge(
 /**
  * 도치안 청산 일수 경고 — 10일 미만은 `resolveHoldingsSettings`가 저장 자체를 10일로 잘라내므로
  * ("저장 차단") 이 문구는 사용자가 그보다 짧게 **입력하려는 시도**에 즉시 보여줄 경고다.
- * 10~19일은 저장은 허용하되 "아직 검증되지 않음" 주의만 준다(1차 검증은 10일까지만 확인).
+ * 11~19일은 저장은 허용하되 "아직 검증되지 않음" 주의만 준다(1차 검증은 10일까지만 확인).
  */
 export function describeExitLookbackWarning(days: number): string | null {
   if (days < 10) {
     return '10일 미만은 저장할 수 없습니다 — 1차 검증에서 10일 청산이 20일·55일보다 매매·수익·방어 전부 열세였습니다.';
   }
-  if (days < 20) {
-    return '10~19일은 아직 이 종목군으로 따로 검증되지 않았습니다.';
+  if (days > 10 && days < 20) {
+    return '11~19일은 아직 이 종목군으로 따로 검증되지 않았습니다.';
   }
   return null;
 }
@@ -103,14 +103,15 @@ export const TURTLE_VERIFICATION_NOTES: Record<TurtleVerificationKey, string> = 
     '검증: 10일 최저는 매매가 20일 대비 약 2배 늘고, 수익·방어 양쪽 다 열세였습니다' +
     '(1차 검증, 최종가치비율 0.816 vs 20일 0.906, 최대 하락폭 34.6% vs 28.0%).',
   'exit-donchian-20':
-    '검증: 원조 기본값(2차 검증 기준 최종가치비율 0.713, 최대 하락폭 20.2%).',
+    '20일 최저가 청산 실험: 원조 기본값(2차 검증 기준 최종가치비율 0.713, 최대 하락폭 20.2%).',
   'exit-donchian-55':
-    '검증: 매매가 줄고 최종가치가 다소 개선되지만(0.869 vs 20일 0.713), 방어는 20일보다 약간 열세합니다' +
+    '55일 최저가 청산 실험: 매매가 줄고 최종가치가 다소 개선되지만(0.869 vs 20일 0.713), 방어는 20일보다 약간 열세합니다' +
     '(최대 하락폭 26.9% vs 20.2%, 2차 검증).',
   'exit-ma-50':
-    '검증: 최대 하락폭 약 19%, 20일 최저 대비 수익·방어 우세(2차 검증, 최종가치비율 0.850 vs 0.713).',
+    '50일 이동평균 청산 실험: 최대 하락폭 약 19%, 20일 최저 대비 수익·방어 우세(2차 검증, 최종가치비율 0.850 vs 0.713). ' +
+    '별도 코어 6종 MA50 실험은 50일선 재돌파로 재매수했고, 앱은 설정한 기간의 최고가 돌파로 재매수합니다.',
   'exit-atr-trail':
-    '검증: 매매 빈도가 가장 많고 최종가치가 가장 낮았습니다(2차 검증, 최종가치비율 0.618) — ' +
+    'ATR 추적선 3N 청산 실험: 매매 빈도가 가장 많고 최종가치가 가장 낮았습니다(2차 검증, 최종가치비율 0.618) — ' +
     '최대 하락폭 자체는 17.8%로 가장 낮지만, 그만큼 자주 팔고 다시 사서 수익이 깎였습니다.',
   'pyramid-2r':
     '검증: 강의식 2R 기본값 — ½N보다 최대 하락폭이 작습니다(약 15% vs 20%, 2차 검증 후속 "불타기 방식 비교"). ' +
@@ -147,13 +148,23 @@ export function getTurtleVerificationNote(key: TurtleVerificationKey): string {
   return TURTLE_VERIFICATION_NOTES[key];
 }
 
-/** 현재 청산 설정에 맞는 검증 키 — donchian은 일수별로 갈린다(10/20/55 외 값은 가장 가까운 근거만 표기). */
-export function resolveExitVerificationKey(exitMethod: HoldingsExitMethod, exitLookback: number): TurtleVerificationKey {
-  if (exitMethod === 'ma') return 'exit-ma-50';
-  if (exitMethod === 'atrTrail') return 'exit-atr-trail';
-  if (exitLookback <= 10) return 'exit-donchian-10';
-  if (exitLookback >= 55) return 'exit-donchian-55';
-  return 'exit-donchian-20';
+/** 보유종목에 적용되는 매도선과 재진입선을 동일한 규약으로 표시한다. */
+export function describeHoldingsRule(settings: TurtleHoldingsSettings): string {
+  const exit = settings.exitMethod === 'ma' ? `${settings.maPeriod}일 이동평균`
+    : settings.exitMethod === 'atrTrail' ? `ATR 추적선 ${settings.atrTrailMultiple}N`
+    : `직전 ${settings.exitLookback}일 최저가`;
+  return `매도 ${exit} · 재매수 직전 ${settings.entryLookback}일 최고가 돌파`;
+}
+
+export function resolveExitVerificationKey(
+  exitMethod: HoldingsExitMethod, exitLookback: number, maPeriod: number, atrTrailMultiple: number,
+): TurtleVerificationKey | null {
+  if (exitMethod === 'ma') return maPeriod === 50 ? 'exit-ma-50' : null;
+  if (exitMethod === 'atrTrail') return atrTrailMultiple === 3 ? 'exit-atr-trail' : null;
+  if (exitLookback === 10) return 'exit-donchian-10';
+  if (exitLookback === 20) return 'exit-donchian-20';
+  if (exitLookback === 55) return 'exit-donchian-55';
+  return null;
 }
 
 export function resolvePyramidVerificationKey(mode: PyramidSpacingMode): TurtleVerificationKey {
@@ -183,10 +194,11 @@ export function resolveCoreExclVerificationKey(excludedCategoryIds: readonly num
 /** 화면이 각 필드마다 반복 호출하기보다, 현재 설정 전체에서 한 번에 뽑아 쓰기 위한 편의 함수. */
 export function collectTurtleVerificationNotes(settings: Pick<
   TurtleHoldingsSettings,
-  'exitMethod' | 'exitLookback' | 'pyramidSpacing' | 'positionCapPct' | 'maxTotalRiskPct' | 'drawdownScalingEnabled' | 'excludedCategoryIds'
+  'exitMethod' | 'exitLookback' | 'maPeriod' | 'atrTrailMultiple' | 'pyramidSpacing' | 'positionCapPct' | 'maxTotalRiskPct' | 'drawdownScalingEnabled' | 'excludedCategoryIds'
 >): Record<'exit' | 'pyramid' | 'cap' | 'totalRisk' | 'drawdown' | 'coreExcl', string> {
+  const exitKey = resolveExitVerificationKey(settings.exitMethod, settings.exitLookback, settings.maPeriod, settings.atrTrailMultiple);
   return {
-    exit: getTurtleVerificationNote(resolveExitVerificationKey(settings.exitMethod, settings.exitLookback)),
+    exit: exitKey ? getTurtleVerificationNote(exitKey) : '이 청산 조건으로 확인된 검증 성적이 없습니다.',
     pyramid: getTurtleVerificationNote(resolvePyramidVerificationKey(settings.pyramidSpacing)),
     cap: getTurtleVerificationNote(resolveCapVerificationKey(settings.positionCapPct)),
     totalRisk: getTurtleVerificationNote(resolveTotalRiskVerificationKey(settings.maxTotalRiskPct)),

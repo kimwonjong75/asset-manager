@@ -12,6 +12,7 @@ import { TurtlePosition } from '../types/turtle';
 import { TurtleHoldingsSettings, DEFAULT_TURTLE_HOLDINGS_SETTINGS } from '../types/turtleHoldings';
 import { RawSeries, todayInstrumentKey } from '../utils/todayTurtle';
 import {
+  describeHoldingsCoverage,
   computeManagedEquity,
   resolveEffectiveManagedEquity,
   buildTurtleHoldingsLegacyRow,
@@ -137,6 +138,8 @@ console.log('3. buildTurtleHoldingsLegacyRow — 원래 보유분(청산선만, 
 
   // 3-c. 보유 유지(평평한 20봉 + 오늘도 평평, N=2.0)
   const barsHold: B[] = [...flatWindow(), { o: 100, h: 101, l: 99, c: 100 }];
+  const trailRow = buildTurtleHoldingsLegacyRow({ asset, raw: mkRaw(barsHold), isCrypto: false, fetchFailed: false, now: nowAfter(barsHold), settings: { ...settings, exitMethod: 'atrTrail' } });
+  check('기존 보유분 ATR 추적 시작점 누락', trailRow.dataIssue, 'missing-trail-start');
   const rowHold = buildTurtleHoldingsLegacyRow({ asset, raw: mkRaw(barsHold), isCrypto: false, fetchFailed: false, now: nowAfter(barsHold), settings });
   check('3-c 상태=보유 유지', rowHold.status, 'hold');
   check('3-c 청산선=99', rowHold.exitLine, 99);
@@ -330,6 +333,14 @@ console.log('6. summarizeTurtleHoldingsRows · sortTurtleHoldingsRows');
     mk({ ticker: 'OUT1', status: 'out-of-scope' }),
   ];
   const s = summarizeTurtleHoldingsRows(rows);
+  const coverage = describeHoldingsCoverage(rows, s);
+  check('혼합 판정 완료·실패·제외', [coverage.checked, coverage.unavailable.length, coverage.excluded.length], [6, 1, 1]);
+  check('중복 액션 포함 보유·관심 구분', [coverage.holdingCount, coverage.watchCount], [5, 2]);
+  const headlineFor = (items: TurtleHoldingsRow[]) => describeHoldingsCoverage(items, summarizeTurtleHoldingsRows(items)).headline;
+  check('전부 실패', headlineFor([mk({ status: 'unavailable' })]), '현재 판정 가능한 종목 없음');
+  check('전부 제외', headlineFor([mk({ status: 'out-of-scope' })]), '현재 터틀 적용 대상 없음');
+  check('일부 실패·신호 없음', headlineFor([mk({}), mk({ status: 'unavailable' })]), '확인한 종목에서 터틀 매매 신호 없음');
+  check('완료·신호 없음', headlineFor([mk({})]), '오늘 터틀 매매 신호 없음');
   check('6 팔 때 1건', s.sellCount, 1);
   check('6 다시 살 때 1건', s.reentryCount, 1);
   check('6 추가 매수 1건', s.pyramidCount, 1);

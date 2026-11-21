@@ -3,20 +3,22 @@
 // "터틀 오늘 할 일" — 홈 맨 위 카드 (계획서 PLAN_터틀중심_앱재정비_260925 §4.1, 2026-09-26 승인 P2).
 //
 // 네 칸: 팔 때 · 다시 살 때 · 추가 매수 · 손절선 확인. 각 줄에 "왜" 한 줄 + 대기 자금 + 계좌 축소 배지.
-// 0건이면 "오늘 할 일 없음 — 규칙상 보유 유지"(빈 화면 금지). 렌더 전용 — 계산은 utils/turtleHoldingsView,
+// 적용 범위와 검사 결과를 구분한다. 렌더 전용 — 계산은 utils/turtleHoldingsView,
 // 데이터는 hooks/useTurtleHoldings(자체 호출, 저장 없음 — 읽기 전용 보장).
 
 import React, { useMemo, useState } from 'react';
 import { useTurtleHoldings } from '../../hooks/useTurtleHoldings';
 import { usePortfolio } from '../../contexts/PortfolioContext';
 import {
-  TurtleHoldingsRow, shouldPromptDrawdownReferenceRefresh, describeReentryBaseline, REENTRY_BASELINE_CAPTION,
+  describeHoldingsCoverage, TurtleHoldingsRow, shouldPromptDrawdownReferenceRefresh, describeReentryBaseline, REENTRY_BASELINE_CAPTION,
 } from '../../utils/turtleHoldingsView';
+import { describeHoldingsRule } from '../../utils/turtleVerificationNotes';
 import { resolveHoldingsSettings } from '../../utils/turtleHoldings';
 import { formatKRW } from '../portfolio-table/utils';
 import Badge from '../common/Badge';
 import ManualHelpLink from '../common/ManualHelpLink';
 import Button from '../common/Button';
+import { openSettingsTab } from '../settings/settingsTabStore';
 import AssetTrendChart from '../AssetTrendChart';
 import { buildTurtleHoldingsChartTarget } from '../../utils/turtleHoldingsDetail';
 import type { TurtleHoldingsChartTarget } from '../../types/turtleHoldingsDetail';
@@ -34,10 +36,7 @@ interface Bucket {
    * 행을 복제하지 않고 칸별로 다른 텍스트를 뽑아 쓴다.
    */
   textFor?: (row: TurtleHoldingsRow) => string;
-  /**
-   * true면 각 줄 판정 사유 아래에 "현재 재진입 기준선" 한 줄을 붙이고 칸 제목 아래에 안내 문구를 한 번 보여 준다
-   * ('팔 때' 칸 전용, 표시 전용 — 팔기 전에 다시 사려면 어디를 넘어야 하는지 보여 주기 위함).
-   */
+  /** 팔 때 카드의 펼친 상세에서 현재 재진입 기준선을 보여 준다. */
   showReentryBaseline?: boolean;
 }
 
@@ -66,7 +65,7 @@ const RowLine: React.FC<RowLineProps> = ({ row, text, subText, target, expanded,
         <span className="text-xs text-gray-500">{row.ticker}</span>
       </div>
       <p className="mt-1 text-xs text-gray-300 leading-relaxed">{text}</p>
-      {subText && <p className="mt-1 text-xs text-gray-400 leading-relaxed">{subText}</p>}
+      {expanded && subText && <p className="mt-1 text-xs text-gray-400 leading-relaxed">{subText} · {REENTRY_BASELINE_CAPTION}</p>}
     </>
   );
   return (
@@ -75,7 +74,7 @@ const RowLine: React.FC<RowLineProps> = ({ row, text, subText, target, expanded,
         <button
           type="button"
           onClick={onToggle}
-          className={`focus-ring flex w-full flex-col items-start rounded-md px-3 py-2 text-left hover:bg-surface-muted transition-colors ${expanded ? '' : 'h-full'}`}
+          className="focus-ring flex w-full flex-col items-start rounded-md px-3 py-2 text-left hover:bg-surface-muted transition-colors"
           aria-expanded={expanded}
           aria-label={`${row.name} 차트 ${expanded ? '접기' : '펼치기'}`}
         >
@@ -83,7 +82,7 @@ const RowLine: React.FC<RowLineProps> = ({ row, text, subText, target, expanded,
           <span className="mt-auto inline-block pt-1 text-xs text-primary-light">차트 {expanded ? '접기' : '펼치기'} →</span>
         </button>
       ) : (
-        <div className="h-full px-3 py-2">{body}</div>
+        <div className="px-3 py-2">{body}</div>
       )}
       {onOpenBuy && (
         <div className="px-3 pb-2">
@@ -124,40 +123,43 @@ interface BucketSectionProps {
   history: ReturnType<typeof usePortfolio>['data']['portfolioHistory'];
 }
 
-const BucketSection: React.FC<BucketSectionProps> = ({ bucket, targetByRow, expandedKey, onToggle, onReview, onOpenBuy, history }) => (
-  <div>
-    <h4 className="text-xs font-semibold text-gray-300 mb-1.5">
-      {bucket.title} <span className="text-gray-500">{bucket.rows.length}</span>
-    </h4>
-    {bucket.showReentryBaseline && bucket.rows.some(r => r.reentryBaseline) && (
-      <p className="text-xs text-gray-500 mb-1.5">{REENTRY_BASELINE_CAPTION}</p>
-    )}
-    {bucket.rows.length === 0 ? (
-      <p className="text-xs text-gray-500">해당 없음</p>
-    ) : (
-      <ul className="grid grid-cols-1 gap-1.5 md:grid-cols-2 lg:grid-cols-3">
+const BucketSection: React.FC<BucketSectionProps> = ({ bucket, targetByRow, expandedKey, onToggle, onReview, onOpenBuy, history }) => {
+  const [showRemaining, setShowRemaining] = useState(false);
+  if (!bucket.rows.length) return null;
+  return (
+    <div>
+      <h4 className="text-xs font-semibold text-gray-300 mb-1.5">
+        {bucket.title} <span className="text-gray-500">{bucket.rows.length}</span>
+      </h4>
+      <ul className={`grid grid-cols-1 gap-1.5 md:grid-cols-2 lg:grid-cols-3 ${showRemaining ? '' : 'max-md:[&>li:nth-child(n+3)]:hidden'}`}>
         {bucket.rows.map(r => {
           const identity = rowIdentity(r);
           const instanceKey = `${bucket.key}:${identity}`;
           return (
-          <RowLine
-            key={instanceKey}
-            row={r}
-            target={targetByRow.get(identity) ?? null}
-            expanded={expandedKey === instanceKey}
-            onToggle={() => onToggle(instanceKey)}
-            onReview={onReview}
-            onOpenBuy={bucket.clickable ? onOpenBuy : undefined}
-            text={bucket.textFor ? bucket.textFor(r) : r.reasonText}
-            subText={bucket.showReentryBaseline ? describeReentryBaseline(r) : null}
-            history={history}
-          />
+            <RowLine
+              key={instanceKey}
+              row={r}
+              target={targetByRow.get(identity) ?? null}
+              expanded={expandedKey === instanceKey}
+              onToggle={() => onToggle(instanceKey)}
+              onReview={onReview}
+              onOpenBuy={bucket.clickable ? onOpenBuy : undefined}
+              text={bucket.textFor ? bucket.textFor(r) : r.reasonText}
+              subText={bucket.showReentryBaseline ? describeReentryBaseline(r) : null}
+              history={history}
+            />
           );
         })}
       </ul>
-    )}
-  </div>
-);
+      {bucket.rows.length > 2 && (
+        <button type="button" aria-expanded={showRemaining} onClick={() => setShowRemaining(v => !v)}
+          className="focus-ring min-h-9 text-xs text-primary-light md:hidden">
+          {showRemaining ? '접기' : `나머지 ${bucket.rows.length - 2}개 보기`}
+        </button>
+      )}
+    </div>
+  );
+};
 
 const TurtleHoldingsTodayCard: React.FC = () => {
   const model = useTurtleHoldings();
@@ -185,8 +187,8 @@ const TurtleHoldingsTodayCard: React.FC = () => {
     ];
   }, [model.rows]);
 
-  const totalActionable = model.summary.sellCount + model.summary.reentryCount + model.summary.pyramidCount;
-  const unavailableCount = model.rows.filter(r => r.status === 'unavailable').length;
+  const coverage = describeHoldingsCoverage(model.rows, model.summary);
+  const unavailableCount = coverage.unavailable.length;
   const targetByRow = useMemo(() => {
     const targets = new Map<string, TurtleHoldingsChartTarget | null>();
     for (const row of model.rows) {
@@ -221,12 +223,31 @@ const TurtleHoldingsTodayCard: React.FC = () => {
       )}
 
       {model.isLoading && <p className="mt-3 text-xs text-gray-500">시세를 불러오는 중입니다…</p>}
-      {model.partialFailure && !model.isLoading && (
-        <p className="mt-2 text-xs text-warning">일부 종목의 시세를 불러오지 못했습니다. 해당 종목은 &laquo;확인 불가&raquo;로 표시됩니다.</p>
-      )}
-
-      {!model.isLoading && totalActionable === 0 && (
-        <p className="mt-3 text-sm text-gray-300">오늘 할 일 없음 — 규칙상 보유 유지</p>
+      {!model.isLoading && (
+        <div className="mt-3 space-y-2">
+          <p className="text-sm font-semibold text-white">{coverage.headline}</p>
+          <p className="text-xs text-gray-300">
+            {holdingsSettings.excludeFamilyOwner ? '본인 계정 기준' : '전체 계정 기준'} · {coverage.checked}종목 확인 완료
+            {unavailableCount > 0 && ` · 확인 필요 ${unavailableCount}개`}
+            {model.summary.stopCheckCount > 0 && ` · 손절 주문 확인 ${model.summary.stopCheckCount}건`}
+          </p>
+          {model.summary.sellCount > 0 && <Button variant="secondary" onClick={() => actions.setActiveTab('cleanup')}>매도 대상 확인</Button>}
+          <details className="text-xs text-gray-400">
+            <summary className="cursor-pointer py-1 text-primary-light">적용 범위와 규칙 보기</summary>
+            <p className="mt-1">대상 보유 {coverage.holdingCount}개 · 관심 감시 {coverage.watchCount}개</p>
+            <p>{describeHoldingsRule(holdingsSettings)}</p>
+            {coverage.checked > 0 && (
+              <ul className="my-2 space-y-1">
+                {coverage.completed.map(row => (
+                  <li key={rowIdentity(row)}>{row.name} ({row.kind === 'watch' ? '관심' : '보유'}) · {row.reasonText}</li>
+                ))}
+              </ul>
+            )}
+            {coverage.excluded.length > 0 && <ul className="my-2 space-y-1">{coverage.excluded.map(r => <li key={rowIdentity(r)}>{r.name} ({r.kind === 'watch' ? '관심' : '보유'}) · {r.reasonText}</li>)}</ul>}
+            <p>PC 보유자산 → 보기 → 컬럼 설정 → 터틀 상태</p>
+            <Button variant="secondary" onClick={() => openSettingsTab(actions.setActiveTab, 'turtle')}>적용 범위 설정</Button>
+          </details>
+        </div>
       )}
 
       <div className="mt-3 space-y-3">
@@ -244,7 +265,7 @@ const TurtleHoldingsTodayCard: React.FC = () => {
         ))}
       </div>
 
-      {unavailableCount > 0 && (
+      {!model.isLoading && unavailableCount > 0 && (
         <div className="mt-3">
           <button
             type="button"
@@ -256,7 +277,7 @@ const TurtleHoldingsTodayCard: React.FC = () => {
           </button>
           {showAll && (
             <ul className="mt-2 grid grid-cols-1 gap-1.5 md:grid-cols-2 lg:grid-cols-3">
-              {model.rows.filter(r => r.status === 'unavailable').map(r => (
+              {coverage.unavailable.map(r => (
                 <RowLine
                   key={`na-${rowIdentity(r)}`}
                   row={r}

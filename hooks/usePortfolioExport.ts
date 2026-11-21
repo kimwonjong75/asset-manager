@@ -1,9 +1,8 @@
 import { useCallback } from 'react';
 import { Asset, ExchangeRates, PortfolioSnapshot, SellRecord, WatchlistItem, AllocationTargets } from '../types';
-import { getCategoryName, DEFAULT_CATEGORIES } from '../types/category';
 import type { PortfolioSavePatch } from '../types/portfolioSave';
 import type { PLBasis } from '../types/valuation';
-import { computeAssetMetrics } from '../utils/portfolioMetrics';
+import { buildPortfolioCsv } from '../utils/portfolioCsv';
 
 interface UsePortfolioExportProps {
   assets: Asset[];
@@ -160,31 +159,7 @@ export const usePortfolioExport = ({
       return;
     }
     try {
-      const header = [
-        '종목명', '티커', '거래소', '자산구분', '보유수량',
-        '매수단가(자국통화)', '매수환율', '총매수금액(원화)',
-        '현재단가(원화)', '현재평가금액(원화)', '총손익(원화)', '수익률(%)'
-      ];
-      const rows = assets.map(asset => {
-        // 계산은 화면 표와 동일한 단일 모듈 (열 구성·순서는 그대로 — docs/backtest/PROMPT_1_데이터정리.md가 참조).
-        // '매수환율'은 원본 데이터라 수익률 기준과 무관하게 계속 내보낸다(원화 기준 재계산·세무 참고용).
-        const { metrics } = computeAssetMetrics(asset, exchangeRates, 0, { plBasis });
-        return [
-          (asset.customName?.trim() || asset.name),
-          asset.ticker,
-          asset.exchange,
-          getCategoryName(asset.categoryId, DEFAULT_CATEGORIES),
-          asset.quantity,
-          asset.purchasePrice,
-          asset.purchaseExchangeRate ?? '',
-          Math.round(metrics.purchaseValueKRW),
-          Math.round(metrics.currentPriceKRW),
-          Math.round(metrics.currentValueKRW),
-          Math.round(metrics.profitLossKRW),
-          metrics.returnPercentage.toFixed(2),
-        ].join(',');
-      });
-      const content = [header.join(','), ...rows].join('\n');
+      const content = buildPortfolioCsv(assets, exchangeRates, plBasis);
       const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');

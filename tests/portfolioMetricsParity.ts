@@ -18,6 +18,7 @@
 // 수동 실행: npm run test:metrics. 통과 시 exit 0.
 // ---------------------------------------------------------------------------
 
+import { buildPortfolioCsv, csvExportScope } from '../utils/portfolioCsv';
 import { Asset, AssetSnapshot, Currency, ExchangeRates, SellRecord } from '../types';
 import {
   MAX_REASONABLE_EXCHANGE_RATES,
@@ -443,6 +444,16 @@ const legacySell = {
 }
 
 // ════════════════════════════════════════════════════════════════════════════
+{
+  const family: Asset = { ...XLE, id: 'family', owner: 'YUSEON', customName: '원자재, "은"', quoteDate: '2026-11-20' };
+  const [header, legacyRow, familyRow] = buildPortfolioCsv([XLE, family], RATES, 'krw').split('\n');
+  check('CSV 기존 열과 추가 열 순서', header.split(',').slice(10), ['총손익(원화)', '수익률(%)', '소유 계정', '시세 기준일']);
+  check('CSV 레거시 계정·거래일', legacyRow.split(',').slice(-2), ['원종', '미확인']);
+  check('CSV 가족 계정·거래일', familyRow.split(',').slice(-2), ['유선', '2026-11-20']);
+  check('CSV 구분자가 있는 종목명 보존', familyRow.startsWith('"원자재, ""은"""'), true);
+  check('CSV 다운로드 전 계정별 출력 건수', csvExportScope([XLE, family]), '전체 계정 · 원종 1건 · 유선 1건');
+}
+
 console.log(`\n[portfolioMetricsParity] ${pass} passed, ${fails.length} failed`);
 if (fails.length > 0) {
   fails.forEach(f => console.error(f));

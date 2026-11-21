@@ -37,7 +37,7 @@ import {
   computePyramidTriggerPrice,
   computeCommonStopPrice,
   evaluateLegacyHoldingsStatus,
-  isInHoldingsScope,
+  isInHoldingsScope, holdingsExclusionReason,
   classifyVolatility,
   describeExitLineExplanation,
   describeReentryLineExplanation,
@@ -134,7 +134,7 @@ export type TurtleHoldingsStatus =
   | 'unavailable'   // 확인 불가
   | 'out-of-scope'; // 범위 제외
 
-export type TurtleHoldingsDataIssue = 'fetch-failed' | 'no-high-low' | 'no-completed-bar' | 'insufficient-bars' | 'no-fx';
+export type TurtleHoldingsDataIssue = 'fetch-failed' | 'no-high-low' | 'no-completed-bar' | 'insufficient-bars' | 'no-fx' | 'missing-trail-start';
 
 export interface TurtleHoldingsRebuy {
   qty: number;
@@ -198,6 +198,7 @@ function dataIssueText(issue: TurtleHoldingsDataIssue): string {
     case 'fetch-failed': return '시세를 불러오지 못했습니다. 잠시 후 다시 확인해 주세요.';
     case 'no-high-low': return '고가·저가 자료를 받지 못해 계산하지 않았습니다.';
     case 'no-completed-bar': return '완료된 일봉이 아직 없습니다.';
+    case 'missing-trail-start': return '기존 보유분의 ATR 추적 시작점을 확인할 수 없습니다.';
     case 'insufficient-bars': return '판정에 필요한 일봉이 부족합니다.';
     case 'no-fx': return '환율 정보가 없어 계산을 보류합니다.';
   }
@@ -268,10 +269,11 @@ export function buildTurtleHoldingsLegacyRow(input: LegacyHoldingRowInput): Turt
     name: asset.customName?.trim() || asset.name, currency: asset.currency,
     reentryLine: null, reentryBaseline: null, unitsCount: null, maxUnits: null, rebuy: null, stopCheckText: null,
   };
-  if (!isInHoldingsScope(asset, settings)) {
+  const exclusion = holdingsExclusionReason(asset, settings);
+  if (exclusion) {
     return {
       ...base, status: 'out-of-scope', lastClose: null, exitLine: null, exitGapPct: null,
-      n: null, volatilityLabel: null, reasonText: '터틀 적용 범위에서 제외된 자산입니다.',
+      n: null, volatilityLabel: null, reasonText: exclusion,
       dataIssue: null, asOfDate: null,
     };
   }
@@ -292,12 +294,13 @@ export function buildTurtleHoldingsLegacyRow(input: LegacyHoldingRowInput): Turt
   const status: TurtleHoldingsStatus =
     legacyStatus === 'sell-check' ? 'sell' : legacyStatus === 'hold' ? 'hold' : 'unavailable';
   const exitGapPct = exitLine != null ? ((lastClose - exitLine) / exitLine) * 100 : null;
-  const dataIssue: TurtleHoldingsDataIssue | null = status === 'unavailable' ? 'insufficient-bars' : null;
+  const dataIssue: TurtleHoldingsDataIssue | null = status !== 'unavailable' ? null
+    : settings.exitMethod === 'atrTrail' ? 'missing-trail-start' : 'insufficient-bars';
   const reasonText = status === 'sell' && exitLine != null
     ? describeExitLineExplanation({ exitLookback: settings.exitLookback, exitMethod: settings.exitMethod, maPeriod: settings.maPeriod, atrTrailMultiple: settings.atrTrailMultiple, exitLine, lastClose, currency: asset.currency })
     : status === 'hold'
       ? `청산선 ${exitLine != null ? formatMoney(exitLine, asset.currency) : '—'} 위에서 마감했습니다(종가 ${formatMoney(lastClose, asset.currency)}). 규칙상 보유를 유지합니다.`
-      : dataIssueText('insufficient-bars');
+      : dataIssueText(dataIssue ?? 'insufficient-bars');
   // 표시 전용 — '팔 때'일 때만 "지금 재진입 기준선"을 붙인다(판정·알림·저장에는 쓰지 않음).
   const reentryBaseline = status === 'sell' ? buildReentryBaseline(bars, settings, lastClose, asOfDate) : null;
   return { ...base, status, lastClose, exitLine, exitGapPct, n, volatilityLabel, reasonText, dataIssue, asOfDate, reentryBaseline };
@@ -327,10 +330,11 @@ export function buildTurtleHoldingsReentryRow(input: ReentryPositionRowInput): T
     ticker: position.ticker, name: asset.customName?.trim() || asset.name, currency: asset.currency,
     reentryLine: null, reentryBaseline: null, unitsCount, maxUnits, stopCheckText: null,
   };
-  if (!isInHoldingsScope(asset, settings)) {
+  const exclusion = holdingsExclusionReason(asset, settings);
+  if (exclusion) {
     return {
       ...base, status: 'out-of-scope', lastClose: null, exitLine: null, exitGapPct: null,
-      n: null, volatilityLabel: null, rebuy: null, reasonText: '터틀 적용 범위에서 제외된 자산입니다.',
+      n: null, volatilityLabel: null, rebuy: null, reasonText: exclusion,
       dataIssue: null, asOfDate: null,
     };
   }
@@ -446,10 +450,11 @@ export function buildTurtleHoldingsWatchRow(input: WatchRowInput): TurtleHolding
       dataIssue: null, asOfDate: null,
     };
   }
-  if (!isInHoldingsScope(scopeAsset, settings)) {
+  const exclusion = holdingsExclusionReason(scopeAsset, settings);
+  if (exclusion) {
     return {
       ...base, status: 'out-of-scope', lastClose: null, reentryLine: null, n: null,
-      volatilityLabel: null, rebuy: null, reasonText: '터틀 적용 범위에서 제외된 관심종목입니다.',
+      volatilityLabel: null, rebuy: null, reasonText: exclusion,
       dataIssue: null, asOfDate: null,
     };
   }
@@ -505,6 +510,26 @@ export interface TurtleHoldingsCounts {
   reentryCount: number;   // 다시 살 때
   pyramidCount: number;   // 추가 매수
   stopCheckCount: number; // 손절선 확인(재매수분 오픈 포지션 — 보유/불타기 상태)
+}
+
+/** 보유·관심 행별 검사 범위. 한 행이 여러 행동에 속해도 한 번만 센다. */
+export function describeHoldingsCoverage(rows: readonly TurtleHoldingsRow[], counts: TurtleHoldingsCounts) {
+  const excluded = rows.filter(row => row.status === 'out-of-scope');
+  const unavailable = rows.filter(row => row.status === 'unavailable');
+  const inScope = rows.length - excluded.length;
+  const completed = rows.filter(row => row.status !== 'out-of-scope' && row.status !== 'unavailable');
+  const checked = completed.length;
+  const watchCount = rows.filter(row => row.kind === 'watch' && row.status !== 'out-of-scope').length;
+  const signals = [
+    counts.sellCount && `터틀 매도 기준에 닿은 종목 ${counts.sellCount}개`,
+    counts.reentryCount && `재매수 기준 도달 ${counts.reentryCount}개`,
+    counts.pyramidCount && `추가 매수 기준 도달 ${counts.pyramidCount}개`,
+  ].filter(Boolean);
+  let headline = signals.join(' · ');
+  if (!inScope) headline = '현재 터틀 적용 대상 없음';
+  else if (!checked) headline = '현재 판정 가능한 종목 없음';
+  else if (!headline) headline = unavailable.length ? '확인한 종목에서 터틀 매매 신호 없음' : '오늘 터틀 매매 신호 없음';
+  return { completed, excluded, unavailable, checked, holdingCount: inScope - watchCount, watchCount, headline };
 }
 
 export function summarizeTurtleHoldingsRows(rows: readonly TurtleHoldingsRow[]): TurtleHoldingsCounts {

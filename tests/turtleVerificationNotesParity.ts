@@ -7,7 +7,7 @@
 
 import {
   exitMethodBadge, pyramidSpacingBadge, turtleFieldBadge, describeExitLookbackWarning,
-  resolveExitVerificationKey, resolvePyramidVerificationKey, resolveCapVerificationKey,
+  describeHoldingsRule, resolveExitVerificationKey, resolvePyramidVerificationKey, resolveCapVerificationKey,
   resolveTotalRiskVerificationKey, resolveDrawdownVerificationKey, resolveCoreExclVerificationKey,
   getTurtleVerificationNote, collectTurtleVerificationNotes, TURTLE_VERIFICATION_NOTES,
 } from '../utils/turtleVerificationNotes';
@@ -70,14 +70,14 @@ function check(name: string, actual: unknown, expected: unknown): void {
 // 3. 검증 키 판정 + 문구 존재성(모든 키가 표에 실제 문구를 갖는지)
 // ════════════════════════════════════════════════════════════════════════════
 {
-  check('exit key: donchian 20', resolveExitVerificationKey('donchian', 20), 'exit-donchian-20');
-  check('exit key: donchian 10', resolveExitVerificationKey('donchian', 10), 'exit-donchian-10');
-  check('exit key: donchian 9(≤10 취급)', resolveExitVerificationKey('donchian', 9), 'exit-donchian-10');
-  check('exit key: donchian 55', resolveExitVerificationKey('donchian', 55), 'exit-donchian-55');
-  check('exit key: donchian 60(≥55 취급)', resolveExitVerificationKey('donchian', 60), 'exit-donchian-55');
-  check('exit key: donchian 35(중간값 → 20일 근거로 폴백)', resolveExitVerificationKey('donchian', 35), 'exit-donchian-20');
-  check('exit key: ma', resolveExitVerificationKey('ma', 50), 'exit-ma-50');
-  check('exit key: atrTrail', resolveExitVerificationKey('atrTrail', 20), 'exit-atr-trail');
+  check('exit key: donchian 20', resolveExitVerificationKey('donchian', 20, 50, 3), 'exit-donchian-20');
+  check('exit key: donchian 10', resolveExitVerificationKey('donchian', 10, 50, 3), 'exit-donchian-10');
+  check('exit key: donchian 9(미검증)', resolveExitVerificationKey('donchian', 9, 50, 3), null);
+  check('exit key: donchian 55', resolveExitVerificationKey('donchian', 55, 50, 3), 'exit-donchian-55');
+  check('exit key: donchian 60(미검증)', resolveExitVerificationKey('donchian', 60, 50, 3), null);
+  check('exit key: donchian 35(미검증)', resolveExitVerificationKey('donchian', 35, 50, 3), null);
+  check('exit key: ma', resolveExitVerificationKey('ma', 50, 50, 3), 'exit-ma-50');
+  check('exit key: atrTrail', resolveExitVerificationKey('atrTrail', 20, 50, 3), 'exit-atr-trail');
 
   check('pyramid key: 2R', resolvePyramidVerificationKey('2R'), 'pyramid-2r');
   check('pyramid key: halfN', resolvePyramidVerificationKey('halfN'), 'pyramid-half-n');
@@ -102,6 +102,10 @@ function check(name: string, actual: unknown, expected: unknown): void {
     check(`문구 존재: ${key}`, typeof getTurtleVerificationNote(key) === 'string' && getTurtleVerificationNote(key).length > 0, true);
   }
 
+  const ma100 = { ...DEFAULT_TURTLE_HOLDINGS_SETTINGS, exitMethod: 'ma' as const, maPeriod: 100, entryLookback: 55 };
+  check('MA100 조건 검증 없음', collectTurtleVerificationNotes(ma100).exit.includes('확인된 검증 성적이 없습니다'), true);
+  check('선택한 규칙 표시', describeHoldingsRule(ma100), '매도 100일 이동평균 · 재매수 직전 55일 최고가 돌파');
+  check('ATR 4N 별도 검증 없음', resolveExitVerificationKey('atrTrail', 20, 50, 4), null);
   const notes = collectTurtleVerificationNotes(DEFAULT_TURTLE_HOLDINGS_SETTINGS);
   check('collect: 기본값 청산 문구 = donchian 20일 문구', notes.exit, TURTLE_VERIFICATION_NOTES['exit-donchian-20']);
   check('collect: 기본값 불타기 문구 = 2R 문구', notes.pyramid, TURTLE_VERIFICATION_NOTES['pyramid-2r']);

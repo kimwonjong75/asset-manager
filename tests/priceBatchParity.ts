@@ -63,12 +63,13 @@ check('동시성 상수 = 2', PRICE_CHUNK_CONCURRENCY, 2);
   reset();
   const base = mk(20);
   const dup = Array.from({ length: 10 }, (_, i) => ({ ticker: `t${i}`, exchange: 'NASDAQ', id: `dup${i}` })); // 소문자 → 대문자 동일
-  itemFor = t => ({ ticker: t, price: 1000 + Number(t.slice(1)), prev_close: 1000, currency: 'USD' });
+  itemFor = t => ({ ticker: t, date: '2026-11-16', price: 1000 + Number(t.slice(1)), prev_close: 1000, currency: 'USD' });
   const map = await fetchBatchAssetPrices([...base, ...dup], { retryDelayMs: 0 });
   check('(b) 요청 1건', calls.length, 1);
   check('(b) 요청 티커 20개(대문자)', calls[0].tickers.length, 20);
   check('(b) 대문자 정규화', calls[0].tickers[3], 'T3');
   check('(b) 결과 30건', map.size, 30);
+  check('(b) 시세 거래일', map.get('Tid3')?.quoteDate, '2026-11-16');
   check('(b) 원본 id 가격', map.get('Tid3')?.priceOriginal, 1003);
   check('(b) 중복 id 도 같은 가격', map.get('dup3')?.priceOriginal, 1003);
   check('(b) 모두 정상', [...map.values()].every(v => !v.isMocked), true);

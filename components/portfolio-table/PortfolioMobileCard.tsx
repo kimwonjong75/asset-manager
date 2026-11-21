@@ -14,7 +14,7 @@ import ChartViewerModal from '../common/ChartViewerModal';
 import TurtlePositionInfo from './TurtlePositionInfo';
 import type { TurtlePositionView } from '../../utils/turtlePositionView';
 import type { TurtleHoldingsRow } from '../../utils/turtleHoldingsView';
-import { PriceIndicators, TURTLE_HOLDINGS_STATUS_META } from './columnDefinitions';
+import { PriceIndicators, TurtleStatusDetails } from './columnDefinitions';
 import { PIN_STAR, YUSEON_ACCOUNT_BADGE } from '../../constants/stateColorLadders';
 import { usePortfolio } from '../../contexts/PortfolioContext';
 
@@ -185,6 +185,9 @@ const PortfolioMobileCard: React.FC<PortfolioMobileCardProps> = ({
             rsi={asset.indicators?.rsi}
             rsiStatus={asset.indicators?.rsi_status}
             volumeRatio={asset.indicators?.volume_ratio}
+              volume={asset.indicators?.volume}
+              averageVolume={asset.indicators?.volume_avg20}
+              quoteDate={asset.quoteDate}
             className="justify-start"
           />
 
@@ -195,19 +198,6 @@ const PortfolioMobileCard: React.FC<PortfolioMobileCardProps> = ({
             <span className={getChangeColor(yesterdayChange)}>전일 {yesterdayChange >= 0 ? '+' : ''}{yesterdayChange.toFixed(1)}%</span>
           </div>
 
-          {/* "보유종목 터틀"(P2) 상태 — 범위 밖 자산은 표시하지 않는다(노이즈 방지) */}
-          {turtleHoldingsRow && turtleHoldingsRow.status !== 'out-of-scope' && (
-            <div className="flex items-center gap-3 mt-1 text-xs">
-              <span className={TURTLE_HOLDINGS_STATUS_META[turtleHoldingsRow.status].className}>
-                터틀 {TURTLE_HOLDINGS_STATUS_META[turtleHoldingsRow.status].label}
-              </span>
-              {typeof turtleHoldingsRow.exitGapPct === 'number' && (
-                <span className={turtleHoldingsRow.exitGapPct < 0 ? 'text-down' : 'text-gray-400'}>
-                  청산선까지 {turtleHoldingsRow.exitGapPct.toFixed(1)}%
-                </span>
-              )}
-            </div>
-          )}
         </div>
 
         {/* Right: menu button — PortfolioTableRow 와 같은 항목·순서(rowMenuItems) */}
@@ -228,6 +218,17 @@ const PortfolioMobileCard: React.FC<PortfolioMobileCardProps> = ({
           })}
         />
       </div>
+
+      {turtleHoldingsRow && (
+        <div className="px-4 pb-2 text-xs">
+          <TurtleStatusDetails status={turtleHoldingsRow.status} reasonText={turtleHoldingsRow.reasonText} />
+          {typeof turtleHoldingsRow.exitGapPct === 'number' && (
+            <span className={turtleHoldingsRow.exitGapPct < 0 ? 'text-down' : 'text-gray-400'}>
+              청산선까지 {turtleHoldingsRow.exitGapPct.toFixed(1)}%
+            </span>
+          )}
+        </div>
+      )}
 
       {/* 터틀 오픈 포지션 스트립 (읽기 전용) — 전폭, flex-wrap으로 모바일 넘침 방지 */}
       {turtle && (

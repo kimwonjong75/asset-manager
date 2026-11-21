@@ -374,10 +374,14 @@ export interface ScopeCheckAsset {
 
 /** 이 자산이 "보유종목 터틀"의 적용 범위 안인가 — 가족 계정·개별 제외·카테고리 제외 판정. */
 export function isInHoldingsScope(asset: ScopeCheckAsset, settings: TurtleHoldingsSettings): boolean {
-  if (settings.excludeFamilyOwner && getAssetOwner(asset) === 'YUSEON') return false;
-  if (settings.excludedAssetIds.includes(asset.id)) return false;
-  if (settings.excludedCategoryIds.includes(asset.categoryId)) return false;
-  return true;
+  return holdingsExclusionReason(asset, settings) === null;
+}
+
+export function holdingsExclusionReason(asset: ScopeCheckAsset, settings: TurtleHoldingsSettings): string | null {
+  if (settings.excludeFamilyOwner && getAssetOwner(asset) === 'YUSEON') return '가족 계정 보유분이라 제외됩니다.';
+  if (settings.excludedAssetIds.includes(asset.id)) return '터틀 설정에서 개별 제외한 종목입니다.';
+  if (settings.excludedCategoryIds.includes(asset.categoryId)) return '터틀 설정에서 제외한 자산군입니다.';
+  return null;
 }
 
 // ── 10. 변동성 라벨 + 쉬운 말 설명 ───────────────────────────────────────────

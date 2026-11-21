@@ -8,6 +8,7 @@ export interface AssetDataResult {
   previousClosePrice: number; // Renamed from pricePreviousClose
   highestPrice?: number;
   isMocked: boolean;
+  quoteDate?: string;
   changeRate?: number;
   indicators?: Indicators;
 }

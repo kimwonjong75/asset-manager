@@ -41,7 +41,7 @@ export interface TodayHeadline {
 /** 헤드라인에 이름을 나열할 최대 종목 수 (넘으면 "외 N"). */
 const HEADLINE_MAX_NAMES = 3;
 
-const EMPTY_HEADLINE_TEXT = '오늘은 할 일이 없습니다. 기다리는 것도 계획입니다.';
+const EMPTY_HEADLINE_TEXT = '등록된 매매 계획 없음';
 
 /**
  * 홈 '오늘의 브리핑' 최상단 한 줄 요약. 긴급+오늘 실행 등급 행만 대상 —
@@ -62,7 +62,7 @@ export function buildTodayHeadline(rows: TradePlanSignalRow[], summary: TradePla
   const names = shown.map(r => `${r.asset.name} ${ACTION_SHORT_LABEL[r.evaluation.action]}`);
   const remaining = actionable.length - shown.length;
   const namesText = remaining > 0 ? `${names.join(' · ')} 외 ${remaining}` : names.join(' · ');
-  return { count, text: `오늘 할 일 ${count}건 — ${namesText}` };
+  return { count, text: `매매 계획 실행 ${count}건 — ${namesText}` };
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

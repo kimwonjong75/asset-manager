@@ -24,6 +24,16 @@ export const TURTLE_HOLDINGS_STATUS_META: Record<TurtleHoldingsStatus, { label: 
   'out-of-scope': { label: '범위 제외', className: 'text-gray-500' },
 };
 
+export const TurtleStatusDetails: React.FC<Pick<TurtleHoldingsRow, 'status' | 'reasonText'>> = ({ status, reasonText }) => {
+  const meta = TURTLE_HOLDINGS_STATUS_META[status];
+  return (
+    <details data-no-chart-toggle>
+      <summary className={`focus-ring cursor-pointer rounded ${meta.className}`}>터틀 {meta.label}</summary>
+      <p className="mt-1 text-left text-xs text-gray-300">{reasonText}</p>
+    </details>
+  );
+};
+
 const RSIIndicator = ({ rsi, status }: { rsi?: number, status?: string }) => {
   if (typeof rsi !== 'number') return null;
   let colorClass = 'text-gray-400';
@@ -56,14 +66,24 @@ export const PriceIndicators: React.FC<{
   rsi?: number;
   rsiStatus?: string;
   volumeRatio?: number;
+  volume?: number;
+  averageVolume?: number;
+  quoteDate?: string;
   className?: string;
-}> = ({ rsi, rsiStatus, volumeRatio, className = '' }) => {
+}> = ({ rsi, rsiStatus, volumeRatio, volume, averageVolume, quoteDate, className = '' }) => {
   if (typeof rsi !== 'number' && typeof volumeRatio !== 'number') return null;
   return (
-    <div className={`mt-1 flex flex-wrap justify-end gap-x-2 gap-y-0.5 text-xs ${className}`}>
+    <details data-no-chart-toggle onClick={event => event.stopPropagation()} onKeyDown={event => event.stopPropagation()}>
+      <summary aria-label="RSI·거래량 계산 정보" className={`cursor-pointer mt-1 flex flex-wrap justify-end gap-x-2 gap-y-0.5 text-xs ${className}`}>
       <RSIIndicator rsi={rsi} status={rsiStatus} />
       <VolumeIndicator ratio={volumeRatio} />
-    </div>
+      </summary>
+      <div className="text-xs text-gray-400">
+        시세 기준일 {quoteDate ?? '미확인'}
+        {typeof rsi === 'number' && <p>RSI는 시세 서버 제공값입니다. 서버 산식 미확인 · 앱 자체 RSI는 Wilder 방식입니다.</p>}
+        {typeof volumeRatio === 'number' && <p>거래량 {volume?.toLocaleString('ko-KR') ?? '미확인'} · 20일 평균 {averageVolume?.toLocaleString('ko-KR') ?? '미확인'} · {volumeRatio.toFixed(2)}배</p>}
+      </div>
+    </details>
   );
 };
 
@@ -230,6 +250,9 @@ export const COLUMN_DEFINITIONS: Record<ColumnKey, ColumnDefinition> = {
                 rsi={asset.indicators?.rsi}
                 rsiStatus={asset.indicators?.rsi_status}
                 volumeRatio={asset.indicators?.volume_ratio}
+              volume={asset.indicators?.volume}
+              averageVolume={asset.indicators?.volume_avg20}
+              quoteDate={asset.quoteDate}
               />
             </div>
           </Tooltip>
@@ -393,12 +416,11 @@ export const COLUMN_DEFINITIONS: Record<ColumnKey, ColumnDefinition> = {
     align: 'center',
     renderHeader: (ctx) => staticHeader(ctx, 'turtleStatus', '터틀 상태', 'center', COLUMN_DESCRIPTIONS.turtleStatus),
     renderCell: ({ turtleHoldingsRow, getTdStyle }) => {
-      const meta = turtleHoldingsRow ? TURTLE_HOLDINGS_STATUS_META[turtleHoldingsRow.status] : null;
       return (
         <td className="px-4 py-4 text-center overflow-hidden" style={getTdStyle?.('turtleStatus')}>
-          <Tooltip content={COLUMN_DESCRIPTIONS.turtleStatus} position="top" wrap>
-            <span className={meta?.className ?? 'text-gray-500'}>{meta?.label ?? '—'}</span>
-          </Tooltip>
+          {turtleHoldingsRow
+            ? <TurtleStatusDetails status={turtleHoldingsRow.status} reasonText={turtleHoldingsRow.reasonText} />
+            : <span className="text-gray-500">—</span>}
         </td>
       );
     },

@@ -134,7 +134,9 @@ const AssetTrendChart: React.FC<AssetTrendChartProps> = ({
 
   const isCash = categoryId ? isBaseType(categoryId, 'CASH') : false;
 
-  const { ui, actions } = usePortfolio();
+  const { ui, actions, data } = usePortfolio();
+  const quoteDate = data.assets.find(asset => asset.id === assetId)?.quoteDate
+    ?? data.watchlist.find(item => item.id === assetId)?.quoteDate;
   const maConfigs = ui.chartMAConfigs;
   const enabledConfigs = maConfigs.filter(c => c.enabled);
   const enabledPeriods = enabledConfigs.map(c => c.period);
@@ -152,6 +154,7 @@ const AssetTrendChart: React.FC<AssetTrendChartProps> = ({
     historicalLows,
     isLoading: maLoading,
     error: maError,
+    refresh,
   } = useHistoricalPriceData({
     ticker: ticker || '',
     exchange: exchange || '',
@@ -162,6 +165,10 @@ const AssetTrendChart: React.FC<AssetTrendChartProps> = ({
   });
 
   const useHistoricalData = hasMASupport && !!historicalPrices && Object.keys(historicalPrices).length > 0;
+
+  const lastBarDate = useMemo(() => historicalPrices
+    ? Object.keys(historicalPrices).reduce((last, date) => date > last ? date : last, '')
+    : '', [historicalPrices]);
 
   const handleToggleMA = useCallback((id: string) => {
     actions.setChartMAConfigs(maConfigs.map(c => (c.id === id ? { ...c, enabled: !c.enabled } : c)));
@@ -192,16 +199,12 @@ const AssetTrendChart: React.FC<AssetTrendChartProps> = ({
           value: applyKRW ? historicalPrices[date] * exchangeRate : historicalPrices[date],
         }));
 
-      // 오늘 현재가 오버레이
-      if (currentPrice > 0) {
-        const todayISO = new Date().toISOString().split('T')[0];
-        const displayCurrentPrice = applyKRW ? currentPrice * exchangeRate : currentPrice;
-        const last = points[points.length - 1];
-        if (last && last.time === todayISO) {
-          last.value = displayCurrentPrice;
-        } else {
-          points.push({ time: todayISO, value: displayCurrentPrice });
-        }
+      // 실제 시세 거래일이 마지막 종가와 같거나 더 최근일 때만 표시한다.
+      const last = points[points.length - 1];
+      if (currentPrice > 0 && quoteDate && last && quoteDate >= last.time) {
+        const value = applyKRW ? currentPrice * exchangeRate : currentPrice;
+        if (last.time === quoteDate) last.value = value;
+        else points.push({ time: quoteDate, value });
       }
 
       return points;
@@ -249,7 +252,7 @@ const AssetTrendChart: React.FC<AssetTrendChartProps> = ({
     }
 
     return points;
-  }, [useHistoricalData, historicalPrices, history, assetId, currentQuantity, currentPrice, currency, exchangeRate, showInKRW, applyKRW]);
+  }, [useHistoricalData, historicalPrices, history, assetId, currentQuantity, currentPrice, currency, exchangeRate, showInKRW, applyKRW, quoteDate]);
 
   // 캔들(OHLC) 데이터 — open/high/low 모두 수신된 경우에만 생성 (미수신 시 빈 배열 → 라인 폴백)
   const candleData = useMemo<CandlePoint[]>(() => {
@@ -265,21 +268,8 @@ const AssetTrendChart: React.FC<AssetTrendChartProps> = ({
       if (o === undefined || h === undefined || l === undefined || c === undefined) continue;
       points.push({ time: toChartTime(date), open: o * mul, high: h * mul, low: l * mul, close: c * mul });
     }
-    // 오늘 현재가 오버레이 — 오늘 봉의 close만 갱신 (high/low가 포함하도록 확장)
-    if (currentPrice > 0 && points.length > 0) {
-      const todayISO = new Date().toISOString().split('T')[0];
-      const dispPrice = applyKRW ? currentPrice * exchangeRate : currentPrice;
-      const last = points[points.length - 1];
-      if (last.time === todayISO) {
-        last.close = dispPrice;
-        last.high = Math.max(last.high, dispPrice);
-        last.low = Math.min(last.low, dispPrice);
-      } else {
-        points.push({ time: todayISO, open: dispPrice, high: dispPrice, low: dispPrice, close: dispPrice });
-      }
-    }
     return points;
-  }, [useHistoricalData, historicalPrices, historicalOpens, historicalHighs, historicalLows, currentPrice, applyKRW, exchangeRate]);
+  }, [useHistoricalData, historicalPrices, historicalOpens, historicalHighs, historicalLows, applyKRW, exchangeRate]);
 
   const canShowCandle = candleData.length > 0;
   const effectiveChartType: ChartType = chartType === 'candle' && canShowCandle ? 'candle' : 'line';
@@ -666,6 +656,15 @@ const AssetTrendChart: React.FC<AssetTrendChartProps> = ({
         </div>
       </div>
 
+      {hasMASupport && (
+        <div className="flex flex-wrap items-center gap-2 px-3 pb-1 text-xs text-gray-400">
+          <span>표 시세 기준일 {quoteDate ?? '미확인'} · 차트 마지막 봉 {lastBarDate || '미확인'}</span>
+          {quoteDate && lastBarDate && quoteDate !== lastBarDate && <span className="text-warning">거래일 다름</span>}
+          <button type="button" disabled={maLoading} onClick={refresh} className="focus-ring rounded px-2 py-1 text-primary-light">
+            {maLoading ? '차트 조회 중' : '차트 다시 조회'}
+          </button>
+        </div>
+      )}
       {/* MA 토글 칩 + 범례 */}
       {hasMAToggle && (
         <div className="flex items-center gap-1.5 px-3 pb-1 flex-wrap">

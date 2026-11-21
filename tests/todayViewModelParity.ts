@@ -98,20 +98,20 @@ function makeRow(
   checkTrue('waiting row는 tier none', waitingRow.evaluation.tier === 'none');
 
   const emptySummary = summarizeTradePlanSignals([]);
-  check('0건 → 빈 상태 문구', buildTodayHeadline([], emptySummary), { count: 0, text: '오늘은 할 일이 없습니다. 기다리는 것도 계획입니다.' });
+  check('0건 → 빈 상태 문구', buildTodayHeadline([], emptySummary), { count: 0, text: '등록된 매매 계획 없음' });
 
   const oneRow = [urgentRow];
   const oneSummary = summarizeTradePlanSignals(oneRow);
-  check('1건(긴급) → count 1 + 종목명 + 행동', buildTodayHeadline(oneRow, oneSummary), { count: 1, text: '오늘 할 일 1건 — 풍산 전량 매도' });
+  check('1건(긴급) → count 1 + 종목명 + 행동', buildTodayHeadline(oneRow, oneSummary), { count: 1, text: '매매 계획 실행 1건 — 풍산 전량 매도' });
 
   const twoRows = [urgentRow, todayRow];
   const twoSummary = summarizeTradePlanSignals(twoRows);
-  check('2건(긴급+오늘) → 둘 다 나열', buildTodayHeadline(twoRows, twoSummary), { count: 2, text: '오늘 할 일 2건 — 풍산 전량 매도 · NAVER 절반 매도' });
+  check('2건(긴급+오늘) → 둘 다 나열', buildTodayHeadline(twoRows, twoSummary), { count: 2, text: '매매 계획 실행 2건 — 풍산 전량 매도 · NAVER 절반 매도' });
 
   // prepare/waiting은 헤드라인 이름 목록에서 제외되지만 count에는 영향 없음(count는 urgent+today 합)
   const mixedRows = [urgentRow, todayRow, prepareRow, waitingRow];
   const mixedSummary = summarizeTradePlanSignals(mixedRows);
-  check('준비/대기 행은 헤드라인에서 제외', buildTodayHeadline(mixedRows, mixedSummary), { count: 2, text: '오늘 할 일 2건 — 풍산 전량 매도 · NAVER 절반 매도' });
+  check('준비/대기 행은 헤드라인에서 제외', buildTodayHeadline(mixedRows, mixedSummary), { count: 2, text: '매매 계획 실행 2건 — 풍산 전량 매도 · NAVER 절반 매도' });
 
   // 계획은 있으나 긴급+오늘 0건 → "계획 있는 종목 N개" 문구(계획 0건 빈 상태 문구와 구분)
   const quietRows = [prepareRow, waitingRow];
@@ -129,7 +129,7 @@ function makeRow(
   check(
     '4건 초과 → 상위 3개 + 외 N',
     buildTodayHeadline(fourPlus, fourSummary),
-    { count: 4, text: '오늘 할 일 4건 — 풍산 전량 매도 · NAVER 절반 매도 · 카카오 전량 매도 외 1' }
+    { count: 4, text: '매매 계획 실행 4건 — 풍산 전량 매도 · NAVER 절반 매도 · 카카오 전량 매도 외 1' }
   );
 }
 

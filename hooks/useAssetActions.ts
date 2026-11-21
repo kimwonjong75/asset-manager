@@ -83,6 +83,8 @@ export const useAssetActions = ({
           name: assetName, // [수정] 우선순위: 전달받은 name > API name > ticker
           currentPrice,
           priceOriginal: d.priceOriginal,
+          quoteDate: d.quoteDate,
+          indicators: d.indicators,
           highestPrice: currentPrice,
           purchaseExchangeRate,
           currency: d.currency || newAssetData.currency,
@@ -180,6 +182,8 @@ export const useAssetActions = ({
               name: shouldUpdateName ? d.name : finalAsset.name,
               currentPrice: newCurrentPrice,
               priceOriginal: d.priceOriginal,
+              quoteDate: d.quoteDate,
+              indicators: d.indicators,
               currency: d.currency || finalAsset.currency,
               highestPrice: Math.max(finalAsset.highestPrice, newCurrentPrice),
             };
@@ -565,6 +569,8 @@ export const useAssetActions = ({
                                       name: d.name,
                                       currentPrice,
                                       priceOriginal: d.priceOriginal,
+                                      quoteDate: d.quoteDate,
+                                      indicators: d.indicators,
                                       currency: d.currency || form.currency,
                                       highestPrice: currentPrice,
                                       purchaseExchangeRate,

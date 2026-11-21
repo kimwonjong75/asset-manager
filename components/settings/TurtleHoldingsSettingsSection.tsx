@@ -6,12 +6,13 @@
 // 한 줄(utils/turtleVerificationNotes, 골든 고정 문구 — 계산·재작성 없음). 입력 가드는
 // resolveHoldingsSettings(utils/turtleHoldings)와 범위가 같다(그 함수가 최종 안전망).
 //
-// 저장: 로컬 draft state → [저장] 버튼 → actions.saveTurtleHoldingsSettings(단일 커밋 + 성공 메시지,
+// 저장: 로그인 세션의 편집 필드 → [저장] 버튼 → actions.saveTurtleHoldingsSettings(단일 커밋 + 성공 메시지,
 // UpdateStatusIndicator 관례). 키 입력마다 저장하지 않는다("보이지 않는 쓰기 금지").
 // 렌더 전용 + 얇은 draft 상태만 — 계산은 전부 utils/turtleHoldings·utils/turtleVerificationNotes.
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { usePortfolio } from '../../contexts/PortfolioContext';
+import { useTurtleSettingsDraft } from '../../contexts/TurtleSettingsDraftContext';
 import { useTurtleHoldings } from '../../hooks/useTurtleHoldings';
 import { resolveHoldingsSettings } from '../../utils/turtleHoldings';
 import { shouldPromptDrawdownReferenceRefresh } from '../../utils/turtleHoldingsView';
@@ -20,7 +21,7 @@ import {
 } from '../../types/turtleHoldings';
 import {
   exitMethodBadge, pyramidSpacingBadge, turtleFieldBadge, describeExitLookbackWarning,
-  collectTurtleVerificationNotes, TurtleFieldBadge,
+  collectTurtleVerificationNotes, describeHoldingsRule, TurtleFieldBadge,
 } from '../../utils/turtleVerificationNotes';
 import { formatKRW } from '../portfolio-table/utils';
 import Badge from '../common/Badge';
@@ -56,37 +57,27 @@ const TurtleHoldingsSettingsSection: React.FC = () => {
   const model = useTurtleHoldings(); // 읽기 전용 — [지금 자산으로 기준 정하기] 버튼용 현재 관리자산만 참조.
   const saved = useMemo(() => resolveHoldingsSettings(data.turtleSettings.holdings), [data.turtleSettings.holdings]);
 
-  const [draft, setDraft] = useState<TurtleHoldingsSettings>(saved);
-  // 외부에서 저장본이 바뀌면(Drive 로드·이 섹션의 저장 자체) draft를 동기화한다. 렌더 중 상태 조정
-  // 패턴(React 권장 — "Adjusting state when a prop changes")으로 처리해 effect의 cascading render를
-  // 피한다(react-hooks/set-state-in-effect). `saved`는 useMemo로 안정된 참조이므로 자기 저장 직후에만
-  // 바뀐다 — 사용자가 타이핑 중인 값을 덮어쓸 위험은 낮다.
-  const [syncedSaved, setSyncedSaved] = useState<TurtleHoldingsSettings>(saved);
-  if (saved !== syncedSaved) {
-    setSyncedSaved(saved);
-    setDraft(saved);
-  }
-  const [justSaved, setJustSaved] = useState(false);
+  const [edits, setEdits] = useTurtleSettingsDraft();
+  const draft = useMemo(() => ({ ...saved, ...edits }), [saved, edits]);
 
   const dirty = JSON.stringify(draft) !== JSON.stringify(saved);
   const notes = useMemo(() => collectTurtleVerificationNotes(draft), [draft]);
   const exitWarning = draft.exitMethod === 'donchian' ? describeExitLookbackWarning(draft.exitLookback) : null;
 
-  const patch = (p: Partial<TurtleHoldingsSettings>) => { setDraft(prev => ({ ...prev, ...p })); setJustSaved(false); };
+  const patch = (changes: Partial<TurtleHoldingsSettings>) => setEdits(prev => ({ ...prev, ...changes }));
 
   const handleSave = () => {
-    actions.saveTurtleHoldingsSettings(draft);
-    setJustSaved(true);
+    actions.saveTurtleHoldingsSettings(resolveHoldingsSettings(draft));
+    setEdits({});
   };
 
   const handleResetToDefault = () => {
     // 계좌 축소 기준 자산(사용자의 개인 계좌 스냅샷)은 "규칙 되돌리기"의 대상이 아니므로 보존한다.
-    setDraft({
+    setEdits({
       ...DEFAULT_TURTLE_HOLDINGS_SETTINGS,
       drawdownReferenceKRW: draft.drawdownReferenceKRW,
       drawdownReferenceSetAt: draft.drawdownReferenceSetAt,
     });
-    setJustSaved(false);
   };
 
   const setReferenceToNow = () => {
@@ -112,17 +103,23 @@ const TurtleHoldingsSettingsSection: React.FC = () => {
   };
 
   return (
-    <div className="bg-gray-800 rounded-lg">
+    <div className={`bg-gray-800 rounded-lg ${dirty ? 'pb-16 md:pb-0' : ''}`}>
       <div className="px-6 py-5 border-b border-gray-700">
         <div className="flex items-center gap-2">
           <h2 className="text-xl font-bold text-white">터틀 규칙</h2>
           <ManualHelpLink anchor="settings" />
         </div>
-        <p className="text-gray-400 text-sm mt-1 leading-relaxed">
-          보유종목 터틀이 매일 계산하는 선(청산·재진입·손절·불타기)의 기준값입니다. 값을 바꾸면 과거 검증 성적을
-          함께 보여줍니다 — 투자자문이 아니며, 과거 데이터 기준입니다.
-        </p>
+        <p className="text-gray-200 text-sm mt-2">적용 중인 규칙 · {describeHoldingsRule(saved)}</p>
       </div>
+      {dirty && (
+        <div className="hide-when-modal fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-30 flex items-center justify-between gap-3 border-y border-gray-600 bg-gray-800 px-6 py-2 md:sticky md:top-12">
+          <span className="text-sm text-gray-200">변경사항 있음</span>
+          <div className="flex items-center gap-2">
+            <button type="button" className="focus-ring rounded px-3 py-2 text-sm" onClick={() => setEdits({})}>취소</button>
+            <button type="button" className="focus-ring rounded bg-primary px-4 py-2 text-sm font-medium text-white" onClick={handleSave}>저장</button>
+          </div>
+        </div>
+      )}
 
       <div className="px-6 py-4">
         {/* 진입(재진입) */}
@@ -341,16 +338,9 @@ const TurtleHoldingsSettingsSection: React.FC = () => {
 
       <div className="px-6 py-4 border-t border-gray-700 flex items-center gap-2 flex-wrap">
         <button
-          type="button" onClick={handleSave} disabled={!dirty}
-          className="text-xs font-medium text-white bg-primary hover:bg-primary-dark px-4 py-2 rounded-md transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-        >저장</button>
-        <button
           type="button" onClick={handleResetToDefault}
           className="text-xs text-gray-200 bg-gray-700 hover:bg-gray-600 px-3 py-2 rounded-md transition-colors"
         >원조 기본값으로 되돌리기</button>
-        {justSaved && !dirty && (
-          <span className="inline-flex items-center gap-1 text-xs text-ok"><Check className="h-3.5 w-3.5" aria-hidden="true" />저장됨</span>
-        )}
       </div>
     </div>
   );

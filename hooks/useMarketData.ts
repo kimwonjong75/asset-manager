@@ -229,7 +229,7 @@ export const useMarketData = ({
              const newCurrentPrice = (newCurrency === Currency.KRW) ? priceData.priceKRW : priceData.priceOriginal;
              const finalHighest = fixHighestPrice(asset, newCurrentPrice, priceData.highestPrice);
 
-             return { ...asset, currentPrice: newCurrentPrice, priceOriginal: priceData.priceOriginal, previousClosePrice: priceData.previousClosePrice, currency: newCurrency, highestPrice: finalHighest, changeRate: priceData.changeRate, indicators: priceData.indicators };
+             return { ...asset, currentPrice: newCurrentPrice, priceOriginal: priceData.priceOriginal, previousClosePrice: priceData.previousClosePrice, currency: newCurrency, highestPrice: finalHighest, changeRate: priceData.changeRate, quoteDate: priceData.quoteDate, indicators: priceData.indicators };
           }
           failedTickers.push(asset.ticker); failedIds.push(asset.id); return asset;
         });
@@ -257,7 +257,7 @@ export const useMarketData = ({
                     const newCurrent = currency === Currency.KRW ? d.priceKRW : d.priceOriginal;
                     const newHighest = Math.max(item.highestPrice || 0, d.highestPrice || 0, newCurrent);
                     const cr = d.changeRate;
-                    return { ...item, currentPrice: newCurrent, priceOriginal: d.priceOriginal, currency, previousClosePrice: d.previousClosePrice, changeRate: cr, indicators: d.indicators, highestPrice: newHighest, yesterdayChange: cr != null ? cr * 100 : (d.previousClosePrice > 0 ? ((newCurrent - d.previousClosePrice) / d.previousClosePrice) * 100 : 0) };
+                    return { ...item, currentPrice: newCurrent, priceOriginal: d.priceOriginal, currency, previousClosePrice: d.previousClosePrice, changeRate: cr, quoteDate: d.quoteDate, indicators: d.indicators, highestPrice: newHighest, yesterdayChange: cr != null ? cr * 100 : (d.previousClosePrice > 0 ? ((newCurrent - d.previousClosePrice) / d.previousClosePrice) * 100 : 0) };
                 }
                 return item;
             });
@@ -328,7 +328,7 @@ export const useMarketData = ({
                  const newCurrency = isBaseType(asset.categoryId, 'CRYPTOCURRENCY') ? asset.currency : (priceData.currency as Currency);
                  const newCurrentPrice = (newCurrency === Currency.KRW) ? priceData.priceKRW : priceData.priceOriginal;
                  const finalHighest = fixHighestPrice(asset, newCurrentPrice, priceData.highestPrice);
-                 return { ...asset, currentPrice: newCurrentPrice, priceOriginal: priceData.priceOriginal, previousClosePrice: priceData.previousClosePrice, currency: newCurrency, highestPrice: finalHighest, changeRate: priceData.changeRate, indicators: priceData.indicators };
+                 return { ...asset, currentPrice: newCurrentPrice, priceOriginal: priceData.priceOriginal, previousClosePrice: priceData.previousClosePrice, currency: newCurrency, highestPrice: finalHighest, changeRate: priceData.changeRate, quoteDate: priceData.quoteDate, indicators: priceData.indicators };
             }
             return asset;
         });
@@ -486,7 +486,7 @@ export const useMarketData = ({
                         cr = (d.priceOriginal - histPrev) / histPrev;
                     }
                 }
-                return { ...item, currentPrice: newCurrent, priceOriginal: d.priceOriginal, currency, previousClosePrice: prevClose, changeRate: cr, indicators: d.indicators, highestPrice: newHighest, yesterdayChange: cr != null ? cr * 100 : (prevClose > 0 ? ((newCurrent - prevClose) / prevClose) * 100 : 0) };
+                return { ...item, currentPrice: newCurrent, priceOriginal: d.priceOriginal, currency, previousClosePrice: prevClose, changeRate: cr, quoteDate: d.quoteDate, indicators: d.indicators, highestPrice: newHighest, yesterdayChange: cr != null ? cr * 100 : (prevClose > 0 ? ((newCurrent - prevClose) / prevClose) * 100 : 0) };
             }
             return item;
         });

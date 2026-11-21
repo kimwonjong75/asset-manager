@@ -149,7 +149,7 @@ const PortfolioTableRow: React.FC<PortfolioTableRowProps> = ({
         onClick={handleRowClick}
         className={`cursor-pointer border-b border-gray-700 transition-colors duration-200 hover:bg-gray-700/50 ${isFocused ? 'ring-2 ring-inset ring-blue-500 bg-blue-900/20' : ''}`}
       >
-        <td className="px-4 py-4 text-center">
+        <td className="px-1 py-4 text-center">
           <input
             type="checkbox"
             aria-label={`${displayName} 선택`}
