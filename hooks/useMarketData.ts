@@ -382,11 +382,12 @@ export const useMarketData = ({
             } catch (e) { log.warn('전일종가 보완 실패:', e); }
         }
 
+        if (d.isMocked || !(d.priceOriginal > 0)) throw new Error('유효한 종목 시세 없음');
         const newCurrency = isBaseType(target.categoryId, 'CRYPTOCURRENCY') ? target.currency : (d.currency as Currency);
         const newCurrentPrice = (newCurrency === Currency.KRW) ? d.priceKRW : d.priceOriginal;
         const finalHighest = fixHighestPrice(target, newCurrentPrice, d.highestPrice);
 
-        const updated = assets.map(a => a.id === assetId ? { ...a, previousClosePrice: d.previousClosePrice, currentPrice: newCurrentPrice, currency: newCurrency, highestPrice: finalHighest, changeRate: d.changeRate } : a);
+        const updated = assets.map(a => a.id === assetId ? { ...a, previousClosePrice: d.previousClosePrice, currentPrice: newCurrentPrice, priceOriginal: d.priceOriginal, currency: newCurrency, highestPrice: finalHighest, changeRate: d.changeRate, quoteDate: d.quoteDate, indicators: d.indicators } : a);
         setAssets(updated);
         saveNow({ assets: updated });
         setSuccessMessage('업데이트 완료');

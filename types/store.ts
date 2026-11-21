@@ -189,7 +189,7 @@ export interface DerivedState {
   marketOverview: MarketOverviewSnapshot | null;
   marketOverviewStatus: MarketOverviewStatus;
   marketOverviewError: string | null;
-  /** 마지막 시세 갱신 완료 시각(ISO) — localStorage 'asset-manager-last-price-refresh-at' 미러(P4) */
+  /** 마지막 시세 갱신 완료 시각(ISO) — localStorage 'asset-manager-last-price-refresh-at-v2' 미러(P4) */
   priceDataAsOf: string | null;
   /** priceDataAsOf 한국어 표시 라벨 — `utils/priceFreshness.describeFreshness` 결과 (예: '09-03 14:20 (장중)') */
   priceFreshnessLabel: string;

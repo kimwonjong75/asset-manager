@@ -1,13 +1,13 @@
 // utils/priceFreshness.ts
 // 시세 신선도 게이트 — 순수 함수(부수효과 없음). `usePortfolioData`/`usePriceFreshnessRefresh`가
-// localStorage 'asset-manager-last-price-refresh-at'(ISO)와 조합해 사용한다(RULES.md §8).
+// localStorage 'asset-manager-last-price-refresh-at-v2'(ISO)와 조합해 사용한다(RULES.md §8).
 //
 // 판정 우선순위: never(기록 없음) → market-open-stale(보유 시장 개장 중 30분 경과) →
 // closed-since-refresh(보유 시장 마감 확정 시각이 마지막 갱신 이후 지남) → fresh.
 import { isMarketOpen, lastSessionDate, closeConfirmTime, toKstParts, type MarketId } from './marketHours';
 
 /** 마지막 시세 갱신 완료 시각(ISO) localStorage 키 — 자동/수동 갱신 경로 공용(RULES.md §8). */
-export const LAST_PRICE_REFRESH_AT_KEY = 'asset-manager-last-price-refresh-at';
+export const LAST_PRICE_REFRESH_AT_KEY = 'asset-manager-last-price-refresh-at-v2';
 
 export interface PriceFreshnessHoldings {
   hasKR: boolean;
