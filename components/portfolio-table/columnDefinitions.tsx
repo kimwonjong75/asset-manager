@@ -1,4 +1,5 @@
 import React from 'react';
+import { marketIdForExchange } from '../../utils/holdingMarkets';
 import { Currency } from '../../types';
 import { isBaseType } from '../../types/category';
 import { ColumnKey, COLUMN_LABELS, EnrichedAsset, SortKey, SortDirection } from '../../types/ui';
@@ -59,6 +60,23 @@ const VolumeIndicator = ({ ratio }: { ratio?: number }) => {
       <span className="text-gray-500">VOL:</span>{' '}
       <span className={colorClass}>{ratio.toFixed(1)}x{label && ` ${label}`}</span>
     </span>
+  );
+};
+
+const tradeTimeKst = new Intl.DateTimeFormat('sv-SE', {
+  timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit',
+  hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23',
+});
+
+export const UpbitTradeTime: React.FC<Pick<EnrichedAsset, 'quoteTradeAt' | 'exchange'>> = ({ quoteTradeAt, exchange }) => {
+  if (marketIdForExchange(exchange) !== 'CRYPTO') return null;
+  const instant = quoteTradeAt ? Date.parse(quoteTradeAt) : NaN;
+  return (
+    <div className="mt-1 whitespace-normal text-xs text-gray-400">
+      업비트 체결 {Number.isFinite(instant)
+        ? <time dateTime={quoteTradeAt}>{tradeTimeKst.format(instant)} KST</time>
+        : '시각 미확인'}
+    </div>
   );
 };
 
@@ -246,6 +264,7 @@ export const COLUMN_DEFINITIONS: Record<ColumnKey, ColumnDefinition> = {
             <div className="text-right">
               <div className="font-semibold text-white">{formatOriginalCurrency(asset.currentPrice, asset.currency)}</div>
               {isNonKRW && <div className="text-xs text-gray-500">≈ {formatKRW(asset.metrics.currentPriceKRW)}</div>}
+              <UpbitTradeTime quoteTradeAt={asset.quoteTradeAt} exchange={asset.exchange} />
               <PriceIndicators
                 rsi={asset.indicators?.rsi}
                 rsiStatus={asset.indicators?.rsi_status}

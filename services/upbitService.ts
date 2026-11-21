@@ -1,5 +1,7 @@
 // services/upbitService.ts
 
+import type { UpbitTicker, UpbitTickerResponse } from '../types/api';
+export type { UpbitTicker } from '../types/api';
 import { CLOUD_RUN_BASE_URL } from '../constants/api';
 import { createLogger } from '../utils/logger';
 import { recordLoadRequest, loadTimingNow } from '../utils/loadTiming';
@@ -7,17 +9,7 @@ import { recordLoadRequest, loadTimingNow } from '../utils/loadTiming';
 const log = createLogger('Upbit');
 const UPBIT_PROXY_URL = `${CLOUD_RUN_BASE_URL}/upbit`;
 
-export interface UpbitTicker {
-  market: string;
-  trade_price: number;
-  prev_closing_price: number;
-  signed_change_price: number;
-  signed_change_rate: number;
-  high_price?: number; // 당일 고가
-  low_price?: number;  // 당일 저가
-  highest_52_week_price?: number; // [추가] 52주 신고가
-}
-type UpbitTickerResponse = Partial<UpbitTicker> & { error?: unknown };
+const TRADE_TIME_MARKETS = new Set(['KRW-BTC', 'KRW-ETH', 'KRW-SOL']);
 
 // 심볼 변환 (BTC -> KRW-BTC)
 export const toUpbitPair = (symbol: string): string => {
@@ -29,93 +21,74 @@ export const toUpbitPair = (symbol: string): string => {
   return `KRW-${s.replace(/USDT$/, '')}`;
 };
 
-// 유효한 마켓 코드인지 확인
-const isValidMarket = (market: string): boolean => {
-  if (!market || market === 'KRW-' || market === 'BTC-' || market === 'USDT-') {
-    return false;
-  }
-  const match = market.match(/^(KRW|BTC|USDT)-(.+)$/);
-  return match !== null && match[2].length > 0;
+// 체결 가격과 시각을 같은 스냅샷에서 읽는다. timestamp(호가 조회 시각)는 사용하지 않는다.
+const toTicker = (data: UpbitTickerResponse, market: string): UpbitTicker | undefined => {
+  if (!data || data.error || typeof data.trade_price !== 'number' || !Number.isFinite(data.trade_price) || data.trade_price <= 0) return;
+  const ms = data.trade_timestamp;
+  const date = typeof ms === 'number' && Number.isSafeInteger(ms) && ms >= 1_000_000_000_000 ? new Date(ms) : undefined;
+  return {
+    market: data.market || market,
+    trade_price: data.trade_price,
+    quoteTradeAt: date && Number.isFinite(date.getTime()) ? date.toISOString() : undefined,
+    prev_closing_price: data.prev_closing_price || 0,
+    signed_change_price: data.signed_change_price || 0,
+    signed_change_rate: data.signed_change_rate || 0,
+    high_price: data.high_price,
+    low_price: data.low_price,
+    highest_52_week_price: data.highest_52_week_price,
+  };
 };
 
-// 배치 조회 (Cloud Run 프록시 사용)
 export const fetchUpbitPricesBatch = async (symbols: string[]): Promise<Map<string, UpbitTicker>> => {
-  const resultMap = new Map<string, UpbitTicker>();
-  
-  if (symbols.length === 0) return resultMap;
-
-  // 유효한 심볼만 필터링
-  const validSymbols = symbols
-    .map(s => (s || '').trim().toUpperCase())
-    .filter(s => s.length > 0);
-
-  if (validSymbols.length === 0) {
-    log.warn('유효한 심볼이 없습니다');
-    return resultMap;
-  }
-
-  log.debug('Cloud Run 프록시 호출:', validSymbols);
-
-  const t0 = loadTimingNow();
-  let timingOk = false;
+  const quotes = new Map<string, UpbitTicker>();
+  const requested = [...new Set(symbols.map(s => (s || '').trim().toUpperCase()).filter(Boolean))];
+  if (!requested.length) return quotes;
+  const markets = [...new Set(requested.map(toUpbitPair).filter(market => TRADE_TIME_MARKETS.has(market)))];
+  const start = loadTimingNow();
   try {
-    const res = await fetch(UPBIT_PROXY_URL, {
-      method: 'POST',
-      headers: { 
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'
-      },
-      body: JSON.stringify({ symbols: validSymbols })
-    });
-
-    if (!res.ok) {
-      const errorText = await res.text().catch(() => '');
-      log.error(`프록시 응답 에러: ${res.status}`, errorText);
-      return resultMap;
+    if (markets.length) {
+      try {
+        const response = await fetch(`https://api.upbit.com/v1/ticker?markets=${markets.join(',')}`);
+        if (!response.ok) throw new Error(`Upbit HTTP ${response.status}`);
+        const rows: UpbitTickerResponse[] = await response.json();
+        for (const row of rows) {
+          if (!row.market || !markets.includes(row.market)) continue;
+          const quote = toTicker(row, row.market);
+          if (quote?.quoteTradeAt) {
+            quotes.set(row.market, quote);
+            quotes.set(row.market.slice(4), quote);
+          }
+        }
+      } catch (error) {
+        log.warn('업비트 체결 조회 실패, 프록시로 재조회:', error);
+      }
     }
 
-    // 응답 형태를 진입점에서 한 번만 선언한다 — forEach 콜백 인자에 타입을 다는 방식은
-    // `Object.entries` 가 주는 `[string, unknown]` 과 맞지 않아 strict 에서 막힌다.
-    const data = (await res.json()) as Record<string, UpbitTickerResponse>;
-    log.debug('프록시 응답:', data);
-
-    // 응답 데이터를 Map으로 변환
-    Object.entries(data).forEach(([market, tickerData]) => {
-          if (tickerData && typeof tickerData === 'object' && !tickerData.error) {
-            const ticker: UpbitTicker = {
-              market: tickerData.market || market,
-              trade_price: tickerData.trade_price || 0,
-              prev_closing_price: tickerData.prev_closing_price || 0,
-              signed_change_price: tickerData.signed_change_price || 0,
-              signed_change_rate: tickerData.signed_change_rate || 0,
-              high_price: tickerData.high_price,
-              low_price: tickerData.low_price,
-              highest_52_week_price: tickerData.highest_52_week_price, // [추가] 매핑
-            };
-        
-        // 마켓 코드로 매핑 (KRW-BTC)
-        resultMap.set(market, ticker);
-        
-        // 심볼로도 매핑 (BTC)
-        if (market.startsWith('KRW-')) {
-          resultMap.set(market.replace('KRW-', ''), ticker);
-        }
-        if (market.startsWith('BTC-')) {
-          resultMap.set(market.replace('BTC-', ''), ticker);
+    const remaining = requested.filter(symbol => !quotes.has(symbol));
+    if (remaining.length) {
+      const response = await fetch(UPBIT_PROXY_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify({ symbols: remaining }),
+      });
+      if (!response.ok) throw new Error(`Upbit proxy HTTP ${response.status}`);
+      const data: Record<string, UpbitTickerResponse> = await response.json();
+      for (const [market, row] of Object.entries(data)) {
+        const quote = toTicker(row, market);
+        if (!quote) continue;
+        quotes.set(market, quote);
+        if (market.startsWith('KRW-') || market.startsWith('BTC-')) {
+          const symbol = market.slice(4);
+          if (!quotes.has(symbol)) quotes.set(symbol, quote);
         }
       }
-    });
-
-    log.info(`조회 성공: ${resultMap.size}개 코인`);
-    timingOk = true;
-    return resultMap;
-
+    }
   } catch (error) {
-    log.error('프록시 호출 에러:', error);
-    return resultMap;
+    log.error('업비트 프록시 조회 실패:', error);
   } finally {
-    recordLoadRequest('upbit', { tickers: validSymbols.length, ms: loadTimingNow() - t0, ok: timingOk });
+    recordLoadRequest('upbit', { tickers: requested.length, ms: loadTimingNow() - start, ok: requested.every(s => quotes.has(s)) });
   }
+  return quotes;
 };
 
 // 단일 코인 조회

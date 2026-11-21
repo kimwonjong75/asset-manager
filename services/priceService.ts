@@ -1,3 +1,5 @@
+import { fetchUpbitPrice, toUpbitPair } from './upbitService';
+import { isCryptoExchange } from './historicalPriceService';
 import { AssetCategory, Currency, normalizeExchange } from '../types';
 import { isBaseType } from '../types/category';
 import { AssetDataResult, PriceAPIResponse, PriceItem } from '../types/api';
@@ -199,6 +201,16 @@ export async function fetchBatchAssetPrices(
 
 // 단일 조회 함수 (배치 함수 재사용)
 export async function fetchAssetData(asset: { ticker: string; exchange: string; category?: AssetCategory; categoryId?: number; currency?: Currency }): Promise<AssetDataResult> {
+    if (isCryptoExchange(asset.exchange) && toUpbitPair(asset.ticker).startsWith('KRW-')) {
+      const quote = await fetchUpbitPrice(asset.ticker);
+      if (quote && quote.market.startsWith('KRW-')) {
+        return {
+          name: asset.ticker, priceOriginal: quote.trade_price, priceKRW: quote.trade_price, currency: Currency.KRW,
+          previousClosePrice: quote.prev_closing_price, highestPrice: quote.highest_52_week_price,
+          quoteTradeAt: quote.quoteTradeAt, changeRate: quote.signed_change_rate, isMocked: false,
+        };
+      }
+    }
     const map = await fetchBatchAssetPrices([{ ...asset, id: 'temp-id' }]);
     return map.get('temp-id') as AssetDataResult;
 }

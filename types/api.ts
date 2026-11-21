@@ -9,9 +9,23 @@ export interface AssetDataResult {
   highestPrice?: number;
   isMocked: boolean;
   quoteDate?: string;
+  quoteTradeAt?: string;
   changeRate?: number;
   indicators?: Indicators;
 }
+
+export interface UpbitTicker {
+  market: string;
+  quoteTradeAt?: string;
+  trade_price: number;
+  prev_closing_price: number;
+  signed_change_price: number;
+  signed_change_rate: number;
+  high_price?: number; // 당일 고가
+  low_price?: number;  // 당일 저가
+  highest_52_week_price?: number; // [추가] 52주 신고가
+}
+export type UpbitTickerResponse = Partial<Omit<UpbitTicker, 'quoteTradeAt'>> & { trade_timestamp?: number; error?: unknown };
 
 export interface PriceItem {
   ticker?: string;

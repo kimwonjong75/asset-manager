@@ -14,7 +14,7 @@ import ChartViewerModal from '../common/ChartViewerModal';
 import TurtlePositionInfo from './TurtlePositionInfo';
 import type { TurtlePositionView } from '../../utils/turtlePositionView';
 import type { TurtleHoldingsRow } from '../../utils/turtleHoldingsView';
-import { PriceIndicators, TurtleStatusDetails } from './columnDefinitions';
+import { PriceIndicators, TurtleStatusDetails, UpbitTradeTime } from './columnDefinitions';
 import { PIN_STAR, YUSEON_ACCOUNT_BADGE } from '../../constants/stateColorLadders';
 import { usePortfolio } from '../../contexts/PortfolioContext';
 
@@ -181,6 +181,7 @@ const PortfolioMobileCard: React.FC<PortfolioMobileCardProps> = ({
               {returnPercentage >= 0 ? '+' : ''}{returnPercentage.toFixed(2)}%
             </span>
           </div>
+          <UpbitTradeTime quoteTradeAt={asset.quoteTradeAt} exchange={asset.exchange} />
           <PriceIndicators
             rsi={asset.indicators?.rsi}
             rsiStatus={asset.indicators?.rsi_status}

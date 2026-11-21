@@ -166,13 +166,11 @@ export const useMarketData = ({
         const [
             usdRate, jpyRate,
             combinedPriceMap, upbitPriceMap,
-            wlUpbitPriceMap,
         ] = await Promise.all([
             fetchExchangeRate().catch(() => 1450),
             fetchExchangeRateJPY().catch(() => 9.5),
             combinedToFetch.length > 0 ? fetchBatchAssetPricesNew(combinedToFetch) : Promise.resolve(new Map<string, AssetDataResult>()),
-            upbitSymbols.length > 0 ? fetchUpbitPricesBatch(upbitSymbols) : Promise.resolve(new Map()),
-            wlUpbitSymbols.length > 0 ? fetchUpbitPricesBatch(wlUpbitSymbols) : Promise.resolve(new Map()),
+            fetchUpbitPricesBatch([...upbitSymbols, ...wlUpbitSymbols]),
         ]);
         const batchPriceMap = new Map<string, AssetDataResult>();
         const wlPriceMap = new Map<string, AssetDataResult>();
@@ -218,7 +216,7 @@ export const useMarketData = ({
               const newCurrent = upbitData.trade_price;
               const apiHigh = upbitData.highest_52_week_price || newCurrent;
               const newHighest = Math.max(asset.highestPrice, apiHigh, newCurrent);
-              return { ...asset, previousClosePrice: upbitData.prev_closing_price, currentPrice: newCurrent, priceOriginal: newCurrent, currency: Currency.KRW, highestPrice: newHighest, changeRate: upbitData.signed_change_rate };
+              return { ...asset, previousClosePrice: upbitData.prev_closing_price, currentPrice: newCurrent, priceOriginal: newCurrent, currency: Currency.KRW, highestPrice: newHighest, changeRate: upbitData.signed_change_rate, quoteTradeAt: upbitData.quoteTradeAt };
             }
             failedTickers.push(asset.ticker); failedIds.push(asset.id); return asset;
           }
@@ -242,12 +240,12 @@ export const useMarketData = ({
         if (watchlist.length > 0) {
             updatedWatchlist = watchlist.map(item => {
                 if (shouldUseUpbitAPI(item.exchange)) {
-                    const data = wlUpbitPriceMap.get(item.ticker.toUpperCase()) || wlUpbitPriceMap.get(`KRW-${item.ticker.toUpperCase()}`);
+                    const data = upbitPriceMap.get(item.ticker.toUpperCase()) || upbitPriceMap.get(`KRW-${item.ticker.toUpperCase()}`);
                     if (data) {
                         const apiHigh = data.highest_52_week_price || data.trade_price;
                         const newHighest = Math.max(item.highestPrice || 0, apiHigh, data.trade_price);
                         const cr = data.signed_change_rate;
-                        return { ...item, currentPrice: data.trade_price, priceOriginal: data.trade_price, currency: Currency.KRW, previousClosePrice: data.prev_closing_price, changeRate: cr, highestPrice: newHighest, yesterdayChange: cr != null ? cr * 100 : (data.prev_closing_price > 0 ? ((data.trade_price - data.prev_closing_price) / data.prev_closing_price) * 100 : 0) };
+                        return { ...item, currentPrice: data.trade_price, priceOriginal: data.trade_price, quoteTradeAt: data.quoteTradeAt, currency: Currency.KRW, previousClosePrice: data.prev_closing_price, changeRate: cr, highestPrice: newHighest, yesterdayChange: cr != null ? cr * 100 : (data.prev_closing_price > 0 ? ((data.trade_price - data.prev_closing_price) / data.prev_closing_price) * 100 : 0) };
                     }
                     return item;
                 }
@@ -318,7 +316,7 @@ export const useMarketData = ({
                     const newCurrent = upbitData.trade_price;
                     const apiHigh = upbitData.highest_52_week_price || newCurrent;
                     const newHighest = Math.max(asset.highestPrice, apiHigh, newCurrent);
-                    return { ...asset, previousClosePrice: upbitData.prev_closing_price, currentPrice: newCurrent, priceOriginal: newCurrent, currency: Currency.KRW, highestPrice: newHighest, changeRate: upbitData.signed_change_rate };
+                    return { ...asset, previousClosePrice: upbitData.prev_closing_price, currentPrice: newCurrent, priceOriginal: newCurrent, currency: Currency.KRW, highestPrice: newHighest, changeRate: upbitData.signed_change_rate, quoteTradeAt: upbitData.quoteTradeAt };
                 }
                 return asset;
             }
@@ -354,7 +352,7 @@ export const useMarketData = ({
         if (upbitData) {
              const newCurrent = upbitData.trade_price;
              const newHighest = Math.max(target.highestPrice, upbitData.highest_52_week_price || 0, newCurrent);
-             const updated = assets.map(a => a.id === assetId ? { ...a, previousClosePrice: upbitData.prev_closing_price, currentPrice: newCurrent, priceOriginal: newCurrent, currency: Currency.KRW, highestPrice: newHighest, changeRate: upbitData.signed_change_rate } : a);
+             const updated = assets.map(a => a.id === assetId ? { ...a, previousClosePrice: upbitData.prev_closing_price, currentPrice: newCurrent, priceOriginal: newCurrent, currency: Currency.KRW, highestPrice: newHighest, changeRate: upbitData.signed_change_rate, quoteTradeAt: upbitData.quoteTradeAt } : a);
              setAssets(updated);
              saveNow({ assets: updated });
              setSuccessMessage('업데이트 완료');
@@ -467,7 +465,7 @@ export const useMarketData = ({
                     const histHigh = histHighMap.get(item.ticker.toUpperCase()) || 0;
                     const newHighest = Math.max(item.highestPrice || 0, apiHigh, histHigh, data.trade_price);
                     const cr = data.signed_change_rate;
-                    return { ...item, currentPrice: data.trade_price, priceOriginal: data.trade_price, currency: Currency.KRW, previousClosePrice: data.prev_closing_price, changeRate: cr, highestPrice: newHighest, yesterdayChange: cr != null ? cr * 100 : (data.prev_closing_price > 0 ? ((data.trade_price - data.prev_closing_price) / data.prev_closing_price) * 100 : 0) };
+                    return { ...item, currentPrice: data.trade_price, priceOriginal: data.trade_price, quoteTradeAt: data.quoteTradeAt, currency: Currency.KRW, previousClosePrice: data.prev_closing_price, changeRate: cr, highestPrice: newHighest, yesterdayChange: cr != null ? cr * 100 : (data.prev_closing_price > 0 ? ((data.trade_price - data.prev_closing_price) / data.prev_closing_price) * 100 : 0) };
                 }
                 return item;
             }
