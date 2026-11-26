@@ -57,6 +57,7 @@ const BASE: PortfolioSaveSnapshot = {
   assets: A1,
   portfolioHistory: [],
   sellHistory: [],
+  buyHistory: [],
   watchlist: [],
   exchangeRates: { USD: 1450, JPY: 9.5 },
   allocationTargets: { weights: {} },
@@ -101,7 +102,7 @@ check('명시적 undefined 는 base 유지',
 // 키 집합 동일성 — 도메인이 추가되면 이 테스트가 먼저 깨져 반영을 강제한다
 check('스냅샷 키 = PORTFOLIO_SAVE_DOMAINS',
   Object.keys(mergeSaveSnapshot(BASE, {})).sort(), [...PORTFOLIO_SAVE_DOMAINS].sort());
-check('도메인 13개', PORTFOLIO_SAVE_DOMAINS.length, 13);
+check('도메인 14개', PORTFOLIO_SAVE_DOMAINS.length, 14);
 
 // 수익률 기준(valuationSettings) 도메인 — 병합 규약이 다른 도메인과 동일해야 한다.
 // 이 도메인이 patch 에서 빠졌을 때 base 값이 살아남지 않으면, 설정을 바꾼 직후 다른 도메인을
@@ -183,6 +184,7 @@ function makeQueue() {
   const patches: PortfolioSavePatch[] = [
     { assets: A2 }, { portfolioHistory: [{ date: '2026-01-01' } as never] },
     { sellHistory: [{ id: 's1' } as never] }, { watchlist: [mkWatch('w1')] },
+    { buyHistory: [{ id: 'buy1' } as never] },
     { exchangeRates: { USD: 1400, JPY: 9 } }, { allocationTargets: { weights: { '1': 50 } } },
     { sellAlertDropRate: 7 }, { categoryStore: DEFAULT_CATEGORY_STORE },
     { knowledgeBase: { rules: [] } as never }, { actionQueue: Q2 },
@@ -190,7 +192,8 @@ function makeQueue() {
     { valuationSettings: { plBasis: 'krw' } },
   ];
   for (const p of patches) ref.current = mergeSaveSnapshot(ref.current, p);
-  check('(d) 13개 연속 변경 후 자산 보존', ref.current.assets.length, 2);
+  check('(d) 연속 저장 후 매수 원장 보존', ref.current.buyHistory.map(t => t.id), ['buy1']);
+  check('(d) 연속 변경 후 자산 보존', ref.current.assets.length, 2);
   check('(d) 13개 연속 변경 후 환율 반영', ref.current.exchangeRates, { USD: 1400, JPY: 9 });
   check('(d) 13개 연속 변경 후 큐 반영', ref.current.actionQueue.length, 1);
   check('(d) 13개 연속 변경 후 기준율 반영', ref.current.sellAlertDropRate, 7);

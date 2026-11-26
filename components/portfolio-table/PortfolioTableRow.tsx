@@ -14,9 +14,12 @@ import TurtlePositionInfo from './TurtlePositionInfo';
 import { buildAssetRowMenuItems } from './rowMenuItems';
 import type { TurtlePositionView } from '../../utils/turtlePositionView';
 import type { TurtleHoldingsRow } from '../../utils/turtleHoldingsView';
-import { PIN_STAR, YUSEON_ACCOUNT_BADGE } from '../../constants/stateColorLadders';
+import { PIN_STAR } from '../../constants/stateColorLadders';
+import OwnerPositionBadge from './OwnerPositionBadge';
+import HoldingTradeButtons from './HoldingTradeButtons';
 
 interface PortfolioTableRowProps {
+  showTradeButtons?: boolean;
   asset: EnrichedAsset;
   history: PortfolioSnapshot[];
   selectedIds: Set<string>;
@@ -46,6 +49,7 @@ interface PortfolioTableRowProps {
 type ExpandEntry = 'plan' | 'review' | null;
 
 const PortfolioTableRow: React.FC<PortfolioTableRowProps> = ({
+  showTradeButtons,
   asset,
   history,
   selectedIds,
@@ -191,15 +195,14 @@ const PortfolioTableRow: React.FC<PortfolioTableRowProps> = ({
                  <StickyNote className="h-4 w-4" aria-hidden="true" />
                </button>
              </div>
-            <div className="flex items-center gap-1.5">
+            <div className="flex flex-wrap items-center gap-1.5">
               <span className="text-xs text-gray-500 break-all">{asset.ticker} | {asset.exchange}</span>
               {asset.bucket === 'SATELLITE' && (
                 <span className="text-xs font-bold px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 whitespace-nowrap" title="투더문(위성) 종목">투더문</span>
               )}
-              {asset.owner === 'YUSEON' && (
-                <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${YUSEON_ACCOUNT_BADGE} whitespace-nowrap`} title="유선(가족) 계정 자산 — 리밸런싱·터틀 대상에서 제외">유선</span>
-              )}
+              <OwnerPositionBadge asset={asset} />
             </div>
+            {showTradeButtons && <HoldingTradeButtons asset={asset} onBuy={onBuy} onSell={onSell} />}
           </div>
         </td>
         {visibleColumns.filter(c => c.visible).map(c => {

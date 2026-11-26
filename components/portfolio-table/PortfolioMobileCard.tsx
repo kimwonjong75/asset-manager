@@ -15,11 +15,14 @@ import TurtlePositionInfo from './TurtlePositionInfo';
 import type { TurtlePositionView } from '../../utils/turtlePositionView';
 import type { TurtleHoldingsRow } from '../../utils/turtleHoldingsView';
 import { PriceIndicators, TurtleStatusDetails, UpbitTradeTime } from './columnDefinitions';
-import { PIN_STAR, YUSEON_ACCOUNT_BADGE } from '../../constants/stateColorLadders';
+import { PIN_STAR } from '../../constants/stateColorLadders';
+import OwnerPositionBadge from './OwnerPositionBadge';
+import HoldingTradeButtons from './HoldingTradeButtons';
 import { usePortfolio } from '../../contexts/PortfolioContext';
 
 
 interface PortfolioMobileCardProps {
+  showTradeButtons?: boolean;
   asset: EnrichedAsset;
   history: PortfolioSnapshot[];
   onEdit: (asset: Asset) => void;
@@ -44,6 +47,7 @@ interface PortfolioMobileCardProps {
 
 
 const PortfolioMobileCard: React.FC<PortfolioMobileCardProps> = ({
+  showTradeButtons,
   asset,
   history,
   onEdit,
@@ -160,14 +164,12 @@ const PortfolioMobileCard: React.FC<PortfolioMobileCardProps> = ({
               <StickyNote className="h-4 w-4" aria-hidden="true" />
             </button>
           </div>
-          <div className="flex items-center gap-1.5 mt-0.5">
+          <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
             <span className="text-xs text-gray-500">{asset.ticker} | {asset.exchange}</span>
             {asset.bucket === 'SATELLITE' && (
               <span className="text-xs font-bold px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 whitespace-nowrap" title="투더문(위성) 종목">투더문</span>
             )}
-            {asset.owner === 'YUSEON' && (
-              <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${YUSEON_ACCOUNT_BADGE} whitespace-nowrap`} title="유선(가족) 계정 자산 — 리밸런싱·터틀 대상에서 제외">유선</span>
-            )}
+            <OwnerPositionBadge asset={asset} />
             <CrossDaysBadge crossDays={gcCrossDays} />
             <CrossDaysBadge crossDays={dcCrossDays} />
           </div>
@@ -220,6 +222,7 @@ const PortfolioMobileCard: React.FC<PortfolioMobileCardProps> = ({
         />
       </div>
 
+      {showTradeButtons && <div className="px-4 pb-1"><HoldingTradeButtons asset={asset} onBuy={onBuy} onSell={onSell} /></div>}
       {turtleHoldingsRow && (
         <div className="px-4 pb-2 text-xs">
           <TurtleStatusDetails status={turtleHoldingsRow.status} reasonText={turtleHoldingsRow.reasonText} />

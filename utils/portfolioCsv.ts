@@ -1,13 +1,18 @@
 import type { Asset, ExchangeRates } from '../types';
 import type { PLBasis } from '../types/valuation';
 import { getCategoryName, DEFAULT_CATEGORIES } from '../types/category';
-import { getAssetOwner, getOwnerLabel, OWNER_LABELS } from '../types/owner';
+import { getAssetOwner, getOwnerLabel, hasUnresolvedOwners, OWNER_LABELS } from '../types/owner';
 import { computeAssetMetrics } from './portfolioMetrics';
 
 export function csvExportScope(assets: readonly Asset[]): string {
   const counts = { WONJONG: 0, YUSEON: 0 };
-  for (const asset of assets) counts[getAssetOwner(asset)]++;
-  return `전체 계정 · ${OWNER_LABELS.WONJONG} ${counts.WONJONG}건 · ${OWNER_LABELS.YUSEON} ${counts.YUSEON}건`;
+  let unresolved = 0;
+  for (const asset of assets) {
+    if (hasUnresolvedOwners(asset)) unresolved++;
+    else counts[getAssetOwner(asset)]++;
+  }
+  const pending = unresolved ? ` · 분할 확인 필요 ${unresolved}건` : '';
+  return `전체 계정 · ${OWNER_LABELS.WONJONG} ${counts.WONJONG}건 · ${OWNER_LABELS.YUSEON} ${counts.YUSEON}건${pending}`;
 }
 
 function escapeCell(value: string | number): string {
@@ -38,7 +43,7 @@ export function buildPortfolioCsv(assets: readonly Asset[], exchangeRates: Excha
       Math.round(metrics.currentValueKRW),
       Math.round(metrics.profitLossKRW),
       metrics.returnPercentage.toFixed(2),
-      getOwnerLabel(asset.owner),
+      hasUnresolvedOwners(asset) ? '분할 확인 필요' : getOwnerLabel(asset.owner),
       asset.quoteDate || '미확인',
     ].map(escapeCell).join(',');
   });

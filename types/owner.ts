@@ -8,6 +8,38 @@
 
 export type OwnerId = 'WONJONG' | 'YUSEON';
 
+export interface OwnerAllocation {
+  sourceId: string;
+  date: string;
+}
+
+export interface OwnerMarkedHolding {
+  owner?: OwnerId;
+  ownerAllocation?: OwnerAllocation;
+  name?: string;
+  customName?: string;
+  memo?: string;
+}
+
+const jointLabel = /(?:원종\s*(?:[&＆+·,/ㆍ와과및_\s-]+)\s*유선|유선\s*(?:[&＆+·,/ㆍ와과및_\s-]+)\s*원종)/;
+
+/** 명시된 공동 표기만 점검한다. 확인 완료한 분할 잔고는 원본 메모를 그대로 보관할 수 있다. */
+export function hasUnresolvedOwners(asset: OwnerMarkedHolding): boolean {
+  return !asset.ownerAllocation && [asset.customName, asset.name, asset.memo].some(text => !!text && jointLabel.test(text));
+}
+
+export function withoutJointLabel(name: string): string {
+  const label = jointLabel.exec(name);
+  if (!label) return name.trim();
+  let left = name.slice(0, label.index).trimEnd();
+  let right = name.slice(label.index + label[0].length).trimStart();
+  if ((left.endsWith('(') && right.startsWith(')')) || (left.endsWith('[') && right.startsWith(']'))) {
+    left = left.slice(0, -1);
+    right = right.slice(1);
+  }
+  return [left.replace(/[\s_&·:-]+$/, ''), right.replace(/^[\s_&·:-]+/, '')].filter(Boolean).join(' ');
+}
+
 export const DEFAULT_OWNER: OwnerId = 'WONJONG';
 
 export const ALL_OWNERS: OwnerId[] = ['WONJONG', 'YUSEON'];
@@ -52,16 +84,16 @@ export function inferOwnerFromText(...texts: (string | undefined)[]): OwnerId {
 }
 
 /** 화면 계정 필터 매칭 — 'ALL'(통합)은 전부 통과 */
-export function matchesOwnerFilter(asset: { owner?: OwnerId }, filter: OwnerFilter): boolean {
-  return filter === 'ALL' || getAssetOwner(asset) === filter;
+export function matchesOwnerFilter(asset: OwnerMarkedHolding, filter: OwnerFilter): boolean {
+  return filter === 'ALL' || (!hasUnresolvedOwners(asset) && getAssetOwner(asset) === filter);
 }
 
 /**
  * 전략(리밸런싱·터틀·대청소) 대상 여부 — 유선 자산은 화면 필터와 무관하게 **상시 제외**.
  * (터틀 적용 여부가 사용자 본인 의사가 아닌 자산을 실행 큐/주문 생성에서 보호)
  */
-export function isStrategyManaged(asset: { owner?: OwnerId }): boolean {
-  return getAssetOwner(asset) !== 'YUSEON';
+export function isStrategyManaged(asset: OwnerMarkedHolding): boolean {
+  return !hasUnresolvedOwners(asset) && getAssetOwner(asset) !== 'YUSEON';
 }
 
 /** 전략 대상 자산만 추출 (isStrategyManaged 필터) */

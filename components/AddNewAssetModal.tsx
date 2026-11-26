@@ -22,7 +22,7 @@ import { transferWatchPlanToAsset, findWatchItemForAsset } from '../utils/tradeP
 import { DEFAULT_TRADE_PLAN_TEMPLATE, type TradePlan } from '../types/tradePlan';
 
 const AddNewAssetModal: React.FC = () => {
-  const { modal, actions, status, data, derived } = usePortfolio();
+  const { modal, actions, status, data, derived, ui } = usePortfolio();
   const categories = data.categoryStore.categories;
   const isOpen = modal.addAssetOpen;
   const onClose = actions.closeAddAsset;
@@ -97,6 +97,7 @@ const AddNewAssetModal: React.FC = () => {
   const [prevIsOpen, setPrevIsOpen] = useState(isOpen);
   if (isOpen !== prevIsOpen) {
     setPrevIsOpen(isOpen);
+    if (isOpen && ui.accountView !== 'ALL' && !modal.addAssetPrefill?.plan) setOwner(ui.accountView);
     if (isOpen && modal.addAssetPrefill) {
       const p = modal.addAssetPrefill;
       setTicker(p.ticker);
@@ -411,7 +412,7 @@ const AddNewAssetModal: React.FC = () => {
             disabled={!!duplicateError}
             title="입력한 정보로 새 자산을 포트폴리오에 추가합니다."
           >
-            자산 추가
+            {OWNER_LABELS[owner]} 자산 추가
           </Button>
         </>
       }

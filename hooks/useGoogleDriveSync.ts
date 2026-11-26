@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { googleDriveService, GoogleUser, DriveConflictError } from '../services/googleDriveService';
 import { createSaveQueue, type SaveQueue, type SaveQueueState } from '../utils/saveQueue';
-import { Asset, PortfolioSnapshot, SellRecord, WatchlistItem, ExchangeRates, AllocationTargets } from '../types';
+import { Asset, BuyRecord, PortfolioSnapshot, SellRecord, WatchlistItem, ExchangeRates, AllocationTargets } from '../types';
 import type { CategoryStore } from '../types/category';
 import type { KnowledgeBase } from '../types/knowledge';
 import type { ActionItem } from '../types/actionQueue';
@@ -30,6 +30,7 @@ interface LoadedData {
   assets: Asset[];
   portfolioHistory: PortfolioSnapshot[];
   sellHistory: SellRecord[];
+  buyHistory: BuyRecord[];
   watchlist: WatchlistItem[];
   exchangeRates?: ExchangeRates;
   allocationTargets?: AllocationTargets;
@@ -88,22 +89,20 @@ export function useGoogleDriveSync(options: UseGoogleDriveSyncOptions = {}) {
     }
   }, []);
 
-  // 렌더 간 안정적인 큐 인스턴스 (ref 지연 초기화). save 함수는 안정적인 runSave를 직접 전달.
   const saveQueueRef = useRef<SaveQueue | null>(null);
-  if (saveQueueRef.current === null) {
-    saveQueueRef.current = createSaveQueue({
+  // StrictMode는 첫 마운트에서 setup → cleanup → setup을 실행한다. 각 setup이 살아 있는 큐를 소유한다.
+  useEffect(() => {
+    const queue = createSaveQueue({
       debounceMs: 2000,
       save: runSave,
       onStateChange: handleQueueState,
     });
-  }
-
-  // 언마운트 시 디바운스 타이머 정리
-  useEffect(() => {
+    saveQueueRef.current = queue;
     return () => {
-      saveQueueRef.current?.dispose();
+      queue.dispose();
+      saveQueueRef.current = null;
     };
-  }, []);
+  }, [runSave, handleQueueState]);
 
   useEffect(() => {
     const init = async () => {
@@ -175,6 +174,7 @@ export function useGoogleDriveSync(options: UseGoogleDriveSyncOptions = {}) {
         assets: [],
         portfolioHistory: [],
         sellHistory: [],
+        buyHistory: [],
         watchlist: [],
       };
     }
@@ -182,6 +182,7 @@ export function useGoogleDriveSync(options: UseGoogleDriveSyncOptions = {}) {
     const assets = Array.isArray(data.assets) ? data.assets as Asset[] : [];
     const portfolioHistory = Array.isArray(data.portfolioHistory) ? data.portfolioHistory as PortfolioSnapshot[] : [];
     const sellHistory = Array.isArray(data.sellHistory) ? data.sellHistory as SellRecord[] : [];
+    const buyHistory = Array.isArray(data.buyHistory) ? data.buyHistory as BuyRecord[] : [];
     const watchlist = Array.isArray(data.watchlist) ? data.watchlist as WatchlistItem[] : [];
     const exchangeRates = data.exchangeRates as ExchangeRates | undefined;
     const allocationTargets = data.allocationTargets as AllocationTargets | undefined;
@@ -223,7 +224,7 @@ export function useGoogleDriveSync(options: UseGoogleDriveSyncOptions = {}) {
     applyRestoredAlertSettings(data.alertSettings);
 
     optionsRef.current.onSuccessMessage?.('Google Drive에서 포트폴리오를 불러왔습니다.');
-    return { assets, portfolioHistory, sellHistory, watchlist, exchangeRates, allocationTargets, sellAlertDropRate, categoryStore, knowledgeBase, actionQueue, turtlePositions, turtleSettings, valuationSettings };
+    return { assets, portfolioHistory, sellHistory, buyHistory, watchlist, exchangeRates, allocationTargets, sellAlertDropRate, categoryStore, knowledgeBase, actionQueue, turtlePositions, turtleSettings, valuationSettings };
   }, []);
 
   /**

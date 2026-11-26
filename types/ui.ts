@@ -6,8 +6,8 @@ export interface PortfolioTableProps {
   onRefreshSelected?: (ids: string[]) => void | Promise<void>;
   onRefreshOne?: (id: string) => void | Promise<void>;
   onEdit: (asset: Asset) => void;
-  onSell?: (asset: Asset) => void;
-  onBuy?: (asset: Asset) => void;
+  onSell?: (asset: Asset, pickOwner?: boolean) => void;
+  onBuy?: (asset: Asset, pickOwner?: boolean) => void;
   isLoading: boolean;
   sellAlertDropRate: number;
   onSellAlertDropRateChange?: (value: number) => void;

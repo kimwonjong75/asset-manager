@@ -168,7 +168,7 @@ export function useActionQueue() {
   /**
    * 터틀 주문 실행 (Phase 2b-4b-2d) — TurtleExecuteModal이 실제 체결값(fill)으로 호출.
    * 기존 머니 액션(addAsset/confirmBuyMore/confirmSell) 그대로 호출 → **저장 성공(res.ok) 시에만**
-   * resolveTurtleUpdate로 positions/queue 계산 후 **단일 commitPortfolioPatch**(assets/sellHistory는 머니 액션 반환 재사용).
+   * resolveTurtleUpdate로 positions/queue를 계산해 커밋한다. 이미 저장된 잔고·거래 원장은 다시 쓰지 않는다.
    * 실패/취소({ok:false})면 커밋 없음 → action pending·position 무변경. 가격/N/stop 원통화(D6).
    */
   const executeTurtleAction = useCallback(async (action: ActionItem, fill: TurtleFill): Promise<{ ok: boolean; reason?: string }> => {
@@ -192,7 +192,7 @@ export function useActionQueue() {
         const fxRate = action.ruleSnapshot.fxRate ?? turtleFxRate(currency, exchangeRates);
         const upd = resolveTurtleUpdate({ action, fill, settings, turtlePositions, actionQueue, today, assetId: res.asset.id, fxRate, newPositionId: `tp-${Date.now().toString(36)}` });
         if (!upd) return { ok: false, reason: 'resolve-failed' };
-        commitPortfolioPatch({ assets: res.nextAssets, turtlePositions: upd.turtlePositions, actionQueue: upd.actionQueue });
+        commitPortfolioPatch({ turtlePositions: upd.turtlePositions, actionQueue: upd.actionQueue });
         return { ok: true };
       }
 
@@ -205,7 +205,7 @@ export function useActionQueue() {
         const fxRate = action.ruleSnapshot.fxRate ?? turtleFxRate(asset?.currency, exchangeRates);
         const upd = resolveTurtleUpdate({ action, fill, settings, turtlePositions, actionQueue, today, fxRate });
         if (!upd) return { ok: false, reason: 'resolve-failed' };
-        commitPortfolioPatch({ assets: res.nextAssets, turtlePositions: upd.turtlePositions, actionQueue: upd.actionQueue });
+        commitPortfolioPatch({ turtlePositions: upd.turtlePositions, actionQueue: upd.actionQueue });
         return { ok: true };
       }
 
@@ -217,7 +217,7 @@ export function useActionQueue() {
         if (!res.ok) return res;
         const upd = resolveTurtleUpdate({ action, fill, settings, turtlePositions, actionQueue, today, sellRecordId: res.sellRecordId });
         if (!upd) return { ok: false, reason: 'resolve-failed' };
-        commitPortfolioPatch({ assets: res.nextAssets, sellHistory: res.nextSellHistory, turtlePositions: upd.turtlePositions, actionQueue: upd.actionQueue });
+        commitPortfolioPatch({ turtlePositions: upd.turtlePositions, actionQueue: upd.actionQueue });
         return { ok: true };
       }
 
@@ -247,7 +247,7 @@ export function useActionQueue() {
       const res = await confirmSell(asset.id, fill.fillDate, fill.fillPrice, sellQty, asset.currency);
       if (!res.ok) return res;
       const queue = completeQueueItem(actionQueue, action.id, { resolvedDate: today, linkedSellRecordId: res.sellRecordId });
-      commitPortfolioPatch({ assets: res.nextAssets, sellHistory: res.nextSellHistory, actionQueue: queue });
+      commitPortfolioPatch({ actionQueue: queue });
       return { ok: true };
     } catch (e) {
       log.error('대청소 청산 실행 실패:', e);
@@ -348,7 +348,7 @@ export function useActionQueue() {
         const res = await confirmSell(asset.id, fill.fillDate, fill.fillPrice, fill.quantity, asset.currency);
         if (!res.ok) return res;
         const queue = completeQueueItem(actionQueue, action.id, { resolvedDate: today, linkedSellRecordId: res.sellRecordId });
-        commitPortfolioPatch({ assets: res.nextAssets, sellHistory: res.nextSellHistory, actionQueue: queue });
+        commitPortfolioPatch({ actionQueue: queue });
         return { ok: true };
       }
 
@@ -360,7 +360,7 @@ export function useActionQueue() {
         const res = await confirmBuyMore(asset.id, fill.fillDate, fill.fillPrice, fill.quantity);
         if (!res.ok) return res;
         const queue = completeQueueItem(actionQueue, action.id, { resolvedDate: today });
-        commitPortfolioPatch({ assets: res.nextAssets, actionQueue: queue });
+        commitPortfolioPatch({ actionQueue: queue });
         return { ok: true };
       }
 
@@ -384,7 +384,7 @@ export function useActionQueue() {
       const res = await addAsset(form as unknown as Parameters<typeof addAsset>[0]);
       if (!res.ok) return res;
       const queue = completeQueueItem(actionQueue, action.id, { resolvedDate: today });
-      commitPortfolioPatch({ assets: res.nextAssets, actionQueue: queue });
+      commitPortfolioPatch({ actionQueue: queue });
       return { ok: true };
     } catch (e) {
       log.error('리밸런싱 실행 실패:', e);

@@ -7,7 +7,11 @@
 // 순수: side effect·id 생성·환율 fetch 없음. id·환율은 호출부가 주입(핸들러=Date.now/fetch, 터틀 훅=주입).
 // 통화/환율 계산식은 기존 핸들러와 1:1 동일해야 함(회귀 테스트 tests/assetMutationsParity.ts가 고정).
 
-import { Asset, SellRecord, SellTransaction, Currency } from '../types';
+import { Asset, BuyRecord, SellRecord, SellTransaction, Currency } from '../types';
+import { getAssetOwner } from '../types/owner';
+import { getOwnerQuantityUnit } from './ownerQuantity';
+import { mergeSellRecords } from './sellRecords';
+import { formatOwnerQuantity } from './ownerQuantity';
 
 export interface SellMutationInput {
   asset: Asset;
@@ -40,6 +44,8 @@ export function buildSellMutation(input: SellMutationInput): SellMutationResult 
 
   const sellTransaction: SellTransaction = {
     id: transactionId,
+    owner: getAssetOwner(asset),
+    quantityUnit: getOwnerQuantityUnit(asset),
     sellDate,
     sellPrice: sellPrice * sellExchangeRate,
     sellPriceOriginal,
@@ -69,7 +75,9 @@ export function buildSellMutation(input: SellMutationInput): SellMutationResult 
         ? { ...a, quantity: newQuantity, sellTransactions: [...(a.sellTransactions || []), sellTransaction] }
         : a);
 
-  const nextSellHistory = [...sellHistory, sellRecord];
+  // 구버전의 부분 매도가 자산 안에만 남아 있을 수 있다. 마지막 잔고를 닫기 전에 같은 ID는 한 번만 보존한다.
+  const previousSells = assetClosed ? mergeSellRecords(sellHistory, [asset]) : sellHistory;
+  const nextSellHistory = [...previousSells, sellRecord];
 
   return { sellRecord, sellTransaction, nextAssets, nextSellHistory, assetClosed };
 }
@@ -81,6 +89,20 @@ export interface BuyMoreMutationInput {
   buyPrice: number;
   buyQuantity: number;
   buyDate: string;
+}
+
+/** 체결 당시의 보유자·통화·가격을 보관한다. 잔고 표시용 평단은 사용하지 않는다. */
+export function buildBuyRecord(asset: Asset, fill: Pick<BuyRecord, 'id' | 'buyDate' | 'buyPrice' | 'buyQuantity' | 'buyExchangeRate'>): BuyRecord {
+  return {
+    ...fill,
+    assetId: asset.id,
+    ticker: asset.ticker,
+    name: asset.customName?.trim() || asset.name,
+    exchange: asset.exchange,
+    owner: getAssetOwner(asset),
+    quantityUnit: getOwnerQuantityUnit(asset),
+    currency: asset.currency,
+  };
 }
 
 export interface BuyMoreMutationResult {
@@ -104,7 +126,7 @@ export function buildBuyMoreMutation(input: BuyMoreMutationInput): BuyMoreMutati
 
   const d = new Date(buyDate);
   const dateStr = `${String(d.getFullYear()).slice(2)}.${d.getMonth() + 1}.${d.getDate()}`;
-  const buyMemo = `(${dateStr} ${buyQuantity}주 ${buyPrice.toLocaleString()}${asset.currency !== Currency.KRW ? asset.currency : '원'} 추가매수)`;
+  const buyMemo = `(${dateStr} ${formatOwnerQuantity(asset, buyQuantity)} ${buyPrice.toLocaleString()}${asset.currency !== Currency.KRW ? asset.currency : '원'} 추가매수)`;
   const newMemo = asset.memo ? `${asset.memo}\n${buyMemo}` : buyMemo;
 
   const updatedAsset: Asset = {

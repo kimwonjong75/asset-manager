@@ -5,7 +5,8 @@
 // 수동 실행: npm run test:assetmut (tsx). 통과 시 exit 0.
 
 import { Asset, Currency, SellRecord } from '../types';
-import { buildSellMutation, buildBuyMoreMutation } from '../utils/assetMutations';
+import { buildSellMutation, buildBuyMoreMutation, buildBuyRecord } from '../utils/assetMutations';
+import { applyMarketQuotes } from '../utils/applyMarketQuotes';
 
 let pass = 0;
 const fails: string[] = [];
@@ -83,6 +84,32 @@ function mkAsset(p: Partial<Asset> & { id: string; currency: Currency; quantity:
 }
 
 // ── 결과 ──
+{
+  const mine = mkAsset({ id: 'w', owner: 'WONJONG', quantity: 64, currency: Currency.USD, purchasePrice: 100 });
+  const family = mkAsset({ id: 'y', owner: 'YUSEON', quantity: 8, currency: Currency.USD, purchasePrice: 90,
+    sellTransactions: [{ id: 'legacy', sellPrice: 100, sellQuantity: 1, sellDate: '2025-01-01' }] });
+  const buy = buildBuyRecord(family, { id: 'buy-y', buyPrice: 120, buyQuantity: 2, buyDate: '2026-11-27', buyExchangeRate: 1300 });
+  check('매수 체결가·통화·환율·보유자 고정', [buy.assetId, buy.owner, buy.buyPrice, buy.currency, buy.buyExchangeRate], ['y', 'YUSEON', 120, 'USD', 1300]);
+  const input = { asset: family, assets: [mine, family], sellHistory: [], sellExchangeRate: 1400,
+    sellPrice: 150, sellDate: '2026-11-27', settlementCurrency: Currency.USD, transactionId: 'sell-y' };
+  const partial = buildSellMutation({ ...input, sellQuantity: 3 });
+  check('유선 3주 부분 매도 후 양쪽 잔고', partial.nextAssets.map(a => a.quantity), [64, 5]);
+  check('매도 원장·인라인 보유자 일치', [partial.sellRecord.owner, partial.sellTransaction.owner], ['YUSEON', 'YUSEON']);
+  const closed = buildSellMutation({ ...input, sellQuantity: 8 });
+  check('전량 매도 후 원종 보존', closed.nextAssets, [mine]);
+  check('전량 매도 후 옛 인라인 매도 미분류·새 매도 보유자 보존', closed.nextSellHistory.map(r => [r.id, r.owner]), [['legacy', undefined], ['sell-y', 'YUSEON']]);
+}
+{
+  const old = mkAsset({ id: 'joint', quantity: 72, currency: Currency.USD, purchasePrice: 100 });
+  const quote = (a: Asset) => ({ ...a, currentPrice: 110 });
+  const parts = [{ ...old, id: 'w', quantity: 64 }, { ...old, id: 'y', quantity: 8 }];
+  check('시세 조회 도중 분리한 두 잔고 보존', applyMarketQuotes(parts, [old], quote), parts);
+  check('전량 매도 행 부활 방지', applyMarketQuotes([], [old], quote), []);
+  const changed = [{ ...old, quantity: 69, purchasePrice: 103, memo: '매도 반영' }];
+  check('늦게 도착한 시세는 거래 후 잔고에 가격만 반영', applyMarketQuotes(changed, [old], quote), changed.map(quote));
+  const renamed = [{ ...old, ticker: 'OTHER' }];
+  check('다른 티커로 변경된 행에 이전 시세 적용 방지', applyMarketQuotes(renamed, [old], quote), renamed);
+}
 if (fails.length) {
   console.error(`\n❌ assetMutations parity 실패 (${fails.length})`);
   fails.forEach(f => console.error('  ' + f));

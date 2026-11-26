@@ -40,6 +40,7 @@ function checkTrue(name: string, cond: boolean): void {
       { date: '2025-01-02', totalValue: 1_010_000 },
     ],
     sellHistory: [{ id: 's1', ticker: 'AAPL', categoryId: 2, quantity: 3, sellPrice: 200, sellDate: '2025-02-01' }],
+    buyHistory: [{ id: 'b1', assetId: 'closed', ticker: 'QQQ', exchange: 'NASDAQ', name: 'QQQ', owner: 'YUSEON', currency: 'USD', buyDate: '2026-11-26', buyPrice: 65, buyQuantity: 3, buyExchangeRate: 1300 }],
     watchlist: [{ id: 'w1', ticker: 'TSLA', categoryId: 2, name: '테슬라' }],
     exchangeRates: { USD: 1400, JPY: 9 },
     allocationTargets: { weights: { '1': 40, '2': 60 }, bucketWeights: { CORE: 90, SATELLITE: 10 }, targetTotalAmount: 953_000_000 },
@@ -54,6 +55,7 @@ function checkTrue(name: string, cond: boolean): void {
     lastUpdateDate: '2026-07-01',
   };
   const p = parsePortfolioPayload(JSON.stringify(fullPayload));
+  check('전량 매도된 자산의 매수 원장도 독립 복원', p.buyHistory, fullPayload.buyHistory);
 
   check('assets 개수', p.assets.length, 1);
   check('assets[0].ticker 보존', p.assets[0].ticker, 'VOO');
@@ -135,6 +137,7 @@ function checkTrue(name: string, cond: boolean): void {
   check('오염: 비배열 assets → []', p.assets, []);
   check('오염: 비배열 portfolioHistory → []', p.portfolioHistory, []);
   check('오염: null sellHistory → []', p.sellHistory, []);
+  check('기존 백업에 매수 이력이 없으면 []', p.buyHistory, []);
   check('오염: 객체 watchlist → []', p.watchlist, []);
 
   let threw = false;

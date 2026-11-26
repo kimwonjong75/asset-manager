@@ -44,14 +44,6 @@
       "count": 1
     }
   },
-  "components/BuyMoreAssetModal.tsx": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 1
-    },
-    "react-hooks/set-state-in-effect": {
-      "count": 1
-    }
-  },
   "components/DisplaySettingsSection.tsx": {
     "react-hooks/set-state-in-effect": {
       "count": 2
@@ -85,14 +77,6 @@
   },
   "components/SellAnalyticsPage.tsx": {
     "react-hooks/exhaustive-deps": {
-      "count": 1
-    }
-  },
-  "components/SellAssetModal.tsx": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 2
-    },
-    "react-hooks/set-state-in-effect": {
       "count": 1
     }
   },
@@ -203,11 +187,6 @@
       "count": 1
     }
   },
-  "hooks/useGoogleDriveSync.ts": {
-    "react-hooks/refs": {
-      "count": 1
-    }
-  },
   "hooks/useHistoricalPriceData.ts": {
     "@typescript-eslint/no-unused-vars": {
       "count": 2
@@ -219,9 +198,6 @@
   "hooks/useMarketData.ts": {
     "@typescript-eslint/no-unused-vars": {
       "count": 5
-    },
-    "react-hooks/exhaustive-deps": {
-      "count": 1
     }
   },
   "hooks/useMarketDistributionDays.ts": {

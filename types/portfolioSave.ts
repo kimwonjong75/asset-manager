@@ -15,7 +15,7 @@
 // ---------------------------------------------------------------------------
 
 import type {
-  Asset, PortfolioSnapshot, SellRecord, WatchlistItem, ExchangeRates, AllocationTargets,
+  Asset, BuyRecord, PortfolioSnapshot, SellRecord, WatchlistItem, ExchangeRates, AllocationTargets,
 } from './index';
 import type { CategoryStore } from './category';
 import type { KnowledgeBase } from './knowledge';
@@ -35,6 +35,7 @@ export interface PortfolioSaveSnapshot {
   assets: Asset[];
   portfolioHistory: PortfolioSnapshot[];
   sellHistory: SellRecord[];
+  buyHistory: BuyRecord[];
   watchlist: WatchlistItem[];
   exchangeRates: ExchangeRates;
   allocationTargets: AllocationTargets;
@@ -53,7 +54,7 @@ export type PortfolioSavePatch = Partial<PortfolioSaveSnapshot>;
 
 /** 스냅샷의 도메인 키 — 병합 함수와 테스트가 공유하는 단일 목록 */
 export const PORTFOLIO_SAVE_DOMAINS = [
-  'assets', 'portfolioHistory', 'sellHistory', 'watchlist', 'exchangeRates',
+  'assets', 'portfolioHistory', 'sellHistory', 'buyHistory', 'watchlist', 'exchangeRates',
   'allocationTargets', 'sellAlertDropRate', 'categoryStore', 'knowledgeBase',
   'actionQueue', 'turtlePositions', 'turtleSettings', 'valuationSettings',
 ] as const satisfies readonly (keyof PortfolioSaveSnapshot)[];

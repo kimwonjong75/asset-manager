@@ -8,7 +8,7 @@
 // 잘못된 JSON은 JSON.parse가 throw → 호출측에서 try-catch로 처리.
 // (tableLayout localStorage 반영 + CustomEvent dispatch는 부수효과라 훅에 남는다.)
 
-import { Asset, PortfolioSnapshot, SellRecord, WatchlistItem, ExchangeRates, AllocationTargets } from '../types';
+import { Asset, BuyRecord, PortfolioSnapshot, SellRecord, WatchlistItem, ExchangeRates, AllocationTargets } from '../types';
 import type { CategoryStore } from '../types/category';
 import type { KnowledgeBase } from '../types/knowledge';
 import type { ActionItem } from '../types/actionQueue';
@@ -29,6 +29,7 @@ export interface ParsedPortfolioPayload {
   assets: Asset[];
   portfolioHistory: PortfolioSnapshot[];
   sellHistory: SellRecord[];
+  buyHistory: BuyRecord[];
   watchlist: WatchlistItem[];
   exchangeRates?: ExchangeRates;
   allocationTargets?: AllocationTargets;
@@ -64,6 +65,7 @@ export function parsePortfolioPayload(json: string): ParsedPortfolioPayload {
   const assets = Array.isArray(data.assets) ? (data.assets as Asset[]) : [];
   const portfolioHistory = Array.isArray(data.portfolioHistory) ? (data.portfolioHistory as PortfolioSnapshot[]) : [];
   const sellHistory = Array.isArray(data.sellHistory) ? (data.sellHistory as SellRecord[]) : [];
+  const buyHistory = Array.isArray(data.buyHistory) ? (data.buyHistory as BuyRecord[]) : [];
   const watchlist = Array.isArray(data.watchlist) ? (data.watchlist as WatchlistItem[]) : [];
 
   // 옵셔널 객체/스칼라 도메인 — 없거나 형이 안 맞으면 undefined
@@ -99,6 +101,7 @@ export function parsePortfolioPayload(json: string): ParsedPortfolioPayload {
     assets,
     portfolioHistory,
     sellHistory,
+    buyHistory,
     watchlist,
     exchangeRates,
     allocationTargets,

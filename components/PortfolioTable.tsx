@@ -1,12 +1,14 @@
 import React, { Fragment, useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { openSettingsTab } from './settings/settingsTabStore';
 import type { Asset } from '../types';
-import { PortfolioTableProps, ColumnKey } from '../types/ui';
+import { PortfolioTableProps, ColumnKey, type EnrichedAsset } from '../types/ui';
 import { COLUMN_DEFINITIONS, toSortableDirection } from './portfolio-table/columnDefinitions';
 import ColumnSettingsDropdown from './portfolio-table/ColumnSettingsDropdown';
 import { usePortfolioData } from './portfolio-table/usePortfolioData';
 import PortfolioTableRow from './portfolio-table/PortfolioTableRow';
 import PortfolioMobileCard from './portfolio-table/PortfolioMobileCard';
+import PortfolioOwnerGroupRow from './portfolio-table/PortfolioOwnerGroupRow';
+import OwnerTradeHistory from './portfolio-table/OwnerTradeHistory';
 import ColumnResizeHandle from './portfolio-table/ColumnResizeHandle';
 import MemoEditPopup from './common/MemoEditPopup';
 import SortableTh from './common/SortableTh';
@@ -25,7 +27,9 @@ import TurtleRiskGauge from './portfolio-table/TurtleRiskGauge';
 import ActionMenu, { type ActionMenuEntry, type ActionMenuItem } from './common/ActionMenu';
 import { applyBulkAssetPatch, buildTurtleCandidateRegistration, type BulkAssetPatch } from '../utils/bulkAssetOps';
 import { BUCKET_LABELS } from '../types/bucket';
-import { OWNER_LABELS, OWNER_FILTER_LABELS } from '../types/owner';
+import { getAssetOwner, OWNER_LABELS, OWNER_FILTER_LABELS } from '../types/owner';
+import { hasUnresolvedOwners, sameOwnerInstrument } from '../utils/ownerHoldings';
+import { buildPortfolioOwnerGroups, sharedPortfolioHoldingIds } from '../utils/portfolioOwnerGroups';
 import { useConfirm } from '../hooks/useConfirm';
 import ConfirmDialog from './common/ConfirmDialog';
 import Button from './common/Button';
@@ -88,6 +92,7 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
   // 빠른 보기 '계획 없는 투더문' 축 (세션 필터) — 판정은 utils/tradePlan.isEligibleForBulkPlan
   const [planlessOnly, setPlanlessOnly] = useState(false);
   const [showPinnedOnly, setShowPinnedOnly] = useState(false);
+  const [showSharedOnly, setShowSharedOnly] = useState(false);
   const [memoEditAsset, setMemoEditAsset] = useState<Asset | null>(null);
   const [bulkMenuOpen, setBulkMenuOpen] = useState(false);
   const bulkMenuRef = useRef<HTMLButtonElement>(null);
@@ -111,7 +116,9 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
   if (selectionOwner !== ui.accountView) {
     setSelectionOwner(ui.accountView);
     setSelectedIds(new Set());
+    setShowSharedOnly(false);
   }
+  if (ui.focusedAssetId && showSharedOnly) setShowSharedOnly(false);
   const { enrichedMap, isEnrichedLoading } = derived;
   const { confirm, notify, confirmRequest } = useConfirm();
 
@@ -253,7 +260,7 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
   );
 
   // 스마트 필터 + 핀 필터 + 계획 없는 투더문 + 소액 숨김 적용
-  const filteredAssets = useMemo(() => {
+  const matchingAssets = useMemo(() => {
     let result = enrichedAndSortedAssets;
     if (showPinnedOnly) {
       result = result.filter(a => a.pinned);
@@ -270,6 +277,15 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
     }
     return result;
   }, [enrichedAndSortedAssets, smartFilter, enrichedMap, showPinnedOnly, planlessOnly, lowValueActive, ui.lowValueThreshold]);
+
+  const sharedOnlyActive = showSharedOnly && ui.accountView === 'ALL';
+  const filteredAssets = useMemo(() => {
+    if (!sharedOnlyActive) return matchingAssets;
+    const sharedIds = sharedPortfolioHoldingIds(data.assets);
+    return matchingAssets.filter(a => sharedIds.has(a.id));
+  }, [matchingAssets, sharedOnlyActive, data.assets]);
+  const ownerGroups = useMemo(() => buildPortfolioOwnerGroups(filteredAssets, ui.accountView, sortConfig),
+    [filteredAssets, ui.accountView, sortConfig]);
 
   const handleToggleFilter = (key: SmartFilterKey, deactivateKey?: SmartFilterKey) => {
     setSmartFilter(prev => {
@@ -291,6 +307,7 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
   /** 빈 상태 '필터 해제' — 세션 필터만(저장 설정인 소액 숨김·계정 뷰는 건드리지 않음) */
   const handleClearSessionFilters = () => {
     handleClearAllFilters();
+    setShowSharedOnly(false);
     setShowPinnedOnly(false);
     setShowFailedOnly(false);
     onSearchChange?.('');
@@ -333,6 +350,15 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
   // 패치 대상은 화면 필터와 무관하게 원본 data.assets 기준 (선택 업데이트와 동일 규약: selectedIds 그대로 사용)
   const handleBulkPatch = async (patch: BulkAssetPatch, label: string) => {
     const { assets: nextAssets, changedCount } = applyBulkAssetPatch(data.assets, selectedIds, patch);
+    if (patch.owner && data.assets.some(a => selectedIds.has(a.id) && hasUnresolvedOwners(a))) {
+      await notify('공동 표기 자산은 분할 확인 후 보유자를 지정하세요.');
+      return;
+    }
+    if (patch.owner && nextAssets.some((a, i) => a !== data.assets[i] && nextAssets.some(b =>
+      a.id !== b.id && getAssetOwner(a) === getAssetOwner(b) && sameOwnerInstrument(a, b)))) {
+      await notify('변경할 보유자에게 같은 종목이 이미 있습니다. 보유분을 확인하세요.');
+      return;
+    }
     if (changedCount === 0) {
       await notify('선택한 자산이 이미 모두 해당 값입니다.');
       return;
@@ -398,7 +424,12 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
       case 'showAllFailed': setShowFailedOnly(false); break;
     }
   };
-  const emptyContent = emptyState && (
+  const emptyContent = sharedOnlyActive && filteredAssets.length === 0 ? (
+    <div role="status" className="px-4 py-8 text-center text-sm text-gray-300">
+      현재 조건에 두 사람이 함께 보유한 종목이 없습니다.
+      <Button variant="ghost" onClick={() => setShowSharedOnly(false)}>함께 보유만 해제</Button>
+    </div>
+  ) : emptyState && (
     <div className="flex flex-col items-center gap-3 px-4 py-8 text-center" role="status">
       <p className="text-sm text-gray-400">{emptyState.message}</p>
       {emptyState.actions.length > 0 && (
@@ -453,6 +484,33 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
   ];
 
   const thClasses = "relative px-4 py-3 sticky top-0 bg-gray-700 z-10 whitespace-nowrap";
+
+  const renderHolding = (asset: EnrichedAsset, mobile: boolean, groupDetail: boolean) => {
+    const crosses = enrichedMap.get(asset.ticker)?.maCrossDays;
+    const gc = badgePairs.gcEnabled ? crosses?.[badgePairs.gcShort]?.[badgePairs.gcLong] : null;
+    const dc = badgePairs.dcEnabled ? crosses?.[badgePairs.dcShort]?.[badgePairs.dcLong] : null;
+    const canTrade = !hasUnresolvedOwners(asset);
+    const pickOwner = ui.accountView === 'ALL' && !groupDetail;
+    const props = {
+      asset, history, onEdit, onRefreshOne, exchangeRates, onSelect: handleSelect, showTradeButtons: groupDetail,
+      onBuy: canTrade && onBuy ? (holding: Asset) => onBuy(holding, pickOwner) : undefined,
+      onSell: canTrade && onSell ? (holding: Asset) => onSell(holding, pickOwner) : undefined,
+      onTogglePin: actions.togglePinAsset, onMemoEdit: setMemoEditAsset,
+      gcCrossDays: gc != null && gc >= 0 ? gc : null,
+      dcCrossDays: dc != null && dc < 0 ? dc : null,
+      turtle: turtleViews.get(asset.id), turtleHoldingsRow: turtleHoldingsRowsByAssetId.get(asset.id),
+    };
+    return mobile
+      ? <PortfolioMobileCard key={asset.id} {...props} selected={selectedIds.has(asset.id)} />
+      : <PortfolioTableRow key={asset.id} {...props} selectedIds={selectedIds} visibleColumns={visibleColumns} getTdStyle={getThStyle} />;
+  };
+  const renderHoldings = (mobile: boolean) => ownerGroups.map(group =>
+    group.holdings.length === 1
+      ? renderHolding(group.holdings[0], mobile, false)
+      : <PortfolioOwnerGroupRow key={group.key} group={group} mobile={mobile} visibleColumns={visibleColumns} onBuy={onBuy} onSell={onSell}>
+          {group.holdings.map(a => renderHolding(a, mobile, true))}
+        </PortfolioOwnerGroupRow>,
+  );
 
   return (
     <div className="bg-gray-800 rounded-lg border border-border-subtle">
@@ -587,6 +645,13 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
         )}
 
         {/* 빠른 보기 프리셋 — 패널 접힘과 무관하게 항상 노출. 활성 칩 재클릭 = 해제 */}
+        <div className="mt-2 flex flex-wrap items-center justify-end gap-2">
+          {ui.accountView === 'ALL' && <label className="mr-auto inline-flex min-h-10 cursor-pointer items-center gap-2 text-sm text-gray-200">
+            <input type="checkbox" checked={sharedOnlyActive} onChange={e => { setSelectedIds(new Set()); setShowSharedOnly(e.target.checked); }} />
+            함께 보유만
+          </label>}
+          <OwnerTradeHistory />
+        </div>
         <div className="mt-2 flex flex-wrap items-center gap-1.5" role="group" aria-label="빠른 보기">
           {TABLE_PRESETS.map(p => {
             const active = activeTablePreset === p.id;
@@ -711,37 +776,7 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
             </tr>
           </thead>
           <tbody>
-            {filteredAssets.length > 0 ? filteredAssets.map(asset => {
-              const enriched = enrichedMap.get(asset.ticker);
-              const gcRaw = badgePairs.gcEnabled
-                ? enriched?.maCrossDays?.[badgePairs.gcShort]?.[badgePairs.gcLong]
-                : null;
-              const dcRaw = badgePairs.dcEnabled
-                ? enriched?.maCrossDays?.[badgePairs.dcShort]?.[badgePairs.dcLong]
-                : null;
-              return (
-              <PortfolioTableRow
-                key={asset.id}
-                asset={asset}
-                history={history}
-                selectedIds={selectedIds}
-                onSelect={handleSelect}
-                visibleColumns={visibleColumns}
-                onEdit={onEdit}
-                onSell={onSell}
-                onBuy={onBuy}
-                onRefreshOne={onRefreshOne}
-                exchangeRates={exchangeRates}
-                onTogglePin={actions.togglePinAsset}
-                onMemoEdit={(asset) => setMemoEditAsset(asset)}
-                gcCrossDays={gcRaw != null && gcRaw >= 0 ? gcRaw : null}
-                dcCrossDays={dcRaw != null && dcRaw < 0 ? dcRaw : null}
-                getTdStyle={getThStyle}
-                turtle={turtleViews.get(asset.id)}
-                turtleHoldingsRow={turtleHoldingsRowsByAssetId.get(asset.id)}
-              />
-              );
-            }) : (
+            {ownerGroups.length > 0 ? renderHoldings(false) : (
               <tr><td colSpan={totalColSpan}>{emptyContent}</td></tr>
             )}
           </tbody>
@@ -750,35 +785,7 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
 
       {/* 모바일: 카드 뷰 */}
       <div className="block md:hidden">
-        {filteredAssets.length > 0 ? filteredAssets.map(asset => {
-          const enriched = enrichedMap.get(asset.ticker);
-          const gcRaw = badgePairs.gcEnabled
-            ? enriched?.maCrossDays?.[badgePairs.gcShort]?.[badgePairs.gcLong]
-            : null;
-          const dcRaw = badgePairs.dcEnabled
-            ? enriched?.maCrossDays?.[badgePairs.dcShort]?.[badgePairs.dcLong]
-            : null;
-          return (
-          <PortfolioMobileCard
-            key={asset.id}
-            asset={asset}
-            history={history}
-            selected={selectedIds.has(asset.id)}
-            onSelect={handleSelect}
-            onEdit={onEdit}
-            onSell={onSell}
-            onBuy={onBuy}
-            onRefreshOne={onRefreshOne}
-            exchangeRates={exchangeRates}
-            onTogglePin={actions.togglePinAsset}
-            onMemoEdit={(asset) => setMemoEditAsset(asset)}
-            gcCrossDays={gcRaw != null && gcRaw >= 0 ? gcRaw : null}
-            dcCrossDays={dcRaw != null && dcRaw < 0 ? dcRaw : null}
-            turtle={turtleViews.get(asset.id)}
-            turtleHoldingsRow={turtleHoldingsRowsByAssetId.get(asset.id)}
-          />
-          );
-        }) : emptyContent}
+        {ownerGroups.length > 0 ? renderHoldings(true) : emptyContent}
       </div>
 
       {/* 메모 편집 팝업 */}

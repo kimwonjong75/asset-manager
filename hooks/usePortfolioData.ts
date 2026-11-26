@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { Asset, PortfolioSnapshot, SellRecord, WatchlistItem, ExchangeRates, AllocationTargets } from '../types';
+import { Asset, BuyRecord, PortfolioSnapshot, SellRecord, WatchlistItem, ExchangeRates, AllocationTargets } from '../types';
 import { useGoogleDriveSync } from './useGoogleDriveSync';
 import { runMigrationIfNeeded, migrateCategorySystem } from '../utils/migrateData';
 import { CategoryStore, DEFAULT_CATEGORY_STORE, CategoryBaseType } from '../types/category';
@@ -33,6 +33,7 @@ interface AppliedResult {
   assets: Asset[];
   portfolioHistory: PortfolioSnapshot[];
   sellHistory: SellRecord[];
+  buyHistory: BuyRecord[];
   watchlist: WatchlistItem[];
   exchangeRates: ExchangeRates;
   allocationTargets: AllocationTargets;
@@ -76,6 +77,7 @@ export const usePortfolioData = () => {
   const [assets, setAssets] = useState<Asset[]>([]);
   const [portfolioHistory, setPortfolioHistory] = useState<PortfolioSnapshot[]>([]);
   const [sellHistory, setSellHistory] = useState<SellRecord[]>([]);
+  const [buyHistory, setBuyHistory] = useState<BuyRecord[]>([]);
   const [watchlist, setWatchlist] = useState<WatchlistItem[]>([]);
   const [exchangeRates, setExchangeRates] = useState<ExchangeRates>({ USD: 1450, JPY: 9.5 });
   const [allocationTargets, setAllocationTargets] = useState<AllocationTargets>({ weights: {} });
@@ -91,6 +93,7 @@ export const usePortfolioData = () => {
   const [hasAutoUpdated, setHasAutoUpdated] = useState<boolean>(false);
   const [shouldAutoUpdate, setShouldAutoUpdate] = useState<boolean>(false);
   const [lastUpdateDate, setLastUpdateDate] = useState<string | null>(null);
+  const loadGeneration = useRef(0);
 
   const { isSignedIn, googleUser, isInitializing, needsReAuth, handleSignIn, handleSignOut: hookSignOut, loadFromGoogleDrive: hookLoadFromGoogleDrive, autoSave: hookAutoSave } = useGoogleDriveSync({ onError: setError, onSuccessMessage: setSuccessMessage });
 
@@ -108,7 +111,7 @@ export const usePortfolioData = () => {
   //    이 ref 를 캡처하므로, 선언이 그보다 뒤로 가면 React Compiler 가 "hook 인자로 넘어간 값을
   //    수정" 위반으로 판정한다(react-hooks/immutability).
   const snapshotRef = useRef<PortfolioSaveSnapshot>({
-    assets, portfolioHistory, sellHistory, watchlist, exchangeRates,
+    assets, portfolioHistory, sellHistory, buyHistory, watchlist, exchangeRates,
     allocationTargets, sellAlertDropRate, categoryStore, knowledgeBase,
     actionQueue, turtlePositions, turtleSettings, valuationSettings,
   });
@@ -117,11 +120,11 @@ export const usePortfolioData = () => {
   // (렌더 중 ref 쓰기는 금지이므로 effect 에서 동기화한다)
   useEffect(() => {
     snapshotRef.current = {
-      assets, portfolioHistory, sellHistory, watchlist, exchangeRates,
+      assets, portfolioHistory, sellHistory, buyHistory, watchlist, exchangeRates,
       allocationTargets, sellAlertDropRate, categoryStore, knowledgeBase,
       actionQueue, turtlePositions, turtleSettings, valuationSettings,
     };
-  }, [assets, portfolioHistory, sellHistory, watchlist, exchangeRates,
+  }, [assets, portfolioHistory, sellHistory, buyHistory, watchlist, exchangeRates,
       allocationTargets, sellAlertDropRate, categoryStore, knowledgeBase,
       actionQueue, turtlePositions, turtleSettings, valuationSettings]);
 
@@ -134,6 +137,7 @@ export const usePortfolioData = () => {
     loaded: ParsedPortfolioPayload,
     opts: { source: 'drive' | 'restore' }
   ): AppliedResult => {
+    const generation = ++loadGeneration.current;
     const data1 = runMigrationIfNeeded(loaded);
     const data = migrateCategorySystem(data1);
     const driveAssets = Array.isArray(data.assets) ? data.assets.map(mapToNewAssetStructure) : [];
@@ -180,32 +184,21 @@ export const usePortfolioData = () => {
             markLoadStage('backfill-end');
             // P5a: 영속 전 최근 365개로 캡 (usePortfolioHistory의 365 캡은 effect 재실행 시에만
             // 적용돼, 백필 결과가 캡 없이 저장되면 과도한 길이가 남을 수 있음)
-            const cappedHistory = backfilledHistory.slice(-365);
+            if (generation !== loadGeneration.current) return;
+            const original = new Map(filledHistory.map(row => [row.date, row]));
+            const historyByDate = new Map(backfilledHistory.map(row => [row.date, row]));
+            // 백필 요청 이후 기록된 당일 잔고나 스냅샷 변경을 보존한다.
+            for (const row of snapshotRef.current.portfolioHistory) {
+              if (original.get(row.date) !== row) historyByDate.set(row.date, row);
+            }
+            const cappedHistory = Array.from(historyByDate.values()).sort((a, b) => a.date.localeCompare(b.date)).slice(-365);
             // 백필+캡된 히스토리로 업데이트
             setPortfolioHistory(cappedHistory);
 
             // 자동 저장 트리거 (백필된 데이터 저장)
             if (isSignedIn) {
-              const watchlistData = sanitizeWatchlistTurtleFields(Array.isArray(data.watchlist) ? data.watchlist : []);
-              const sellData = Array.isArray(data.sellHistory) ? data.sellHistory : [];
-              const allocData = loaded.allocationTargets && 'weights' in loaded.allocationTargets
-                ? loaded.allocationTargets
-                : { weights: loaded.allocationTargets || {} };
-              hookAutoSave({
-                assets: driveAssets,
-                portfolioHistory: cappedHistory,
-                sellHistory: sellData,
-                watchlist: watchlistData,
-                exchangeRates: rates,
-                allocationTargets: allocData as AllocationTargets,
-                sellAlertDropRate: loaded.sellAlertDropRate ?? 15,
-                categoryStore: loadedCategoryStore,
-                knowledgeBase: mergedKnowledgeBase,
-                actionQueue: resolvedActionQueue,
-                turtlePositions: resolvedTurtlePositions,
-                turtleSettings: resolvedTurtleSettings,
-                valuationSettings: resolvedValuationSettings,
-              });
+              snapshotRef.current = mergeSaveSnapshot(snapshotRef.current, { portfolioHistory: cappedHistory });
+              hookAutoSave(snapshotRef.current);
               log.info('백필 완료, 자동 저장됨');
             }
           })
@@ -217,6 +210,8 @@ export const usePortfolioData = () => {
       setPortfolioHistory([]);
     }
 
+    const resolvedBuy = Array.isArray(data.buyHistory) ? data.buyHistory : [];
+    setBuyHistory(resolvedBuy);
     const resolvedSell = Array.isArray(data.sellHistory) ? data.sellHistory : [];
     setSellHistory(resolvedSell);
 
@@ -264,10 +259,11 @@ export const usePortfolioData = () => {
     const savedLastUpdate = loaded.lastUpdateDate || null;
     setLastUpdateDate(savedLastUpdate);
 
-    return {
+    const applied: AppliedResult = {
       assets: driveAssets,
       portfolioHistory: resolvedHistory,
       sellHistory: resolvedSell,
+      buyHistory: resolvedBuy,
       watchlist: resolvedWatchlist,
       exchangeRates: resolvedRates,
       allocationTargets: resolvedAlloc,
@@ -280,6 +276,8 @@ export const usePortfolioData = () => {
       valuationSettings: resolvedValuationSettings,
       lastUpdateDate: savedLastUpdate,
     };
+    snapshotRef.current = mergeSaveSnapshot(snapshotRef.current, applied);
+    return applied;
   }, [isSignedIn, hookAutoSave]);
 
   const loadFromGoogleDrive = useCallback(async () => {
@@ -317,6 +315,7 @@ export const usePortfolioData = () => {
         setAssets([]);
         setPortfolioHistory([]);
         setSellHistory([]);
+        setBuyHistory([]);
         setWatchlist([]);
         setAllocationTargets({ weights: {} });
         setSuccessMessage('Google Drive에 저장된 포트폴리오가 없습니다. 자산을 추가해주세요.');
@@ -362,7 +361,7 @@ export const usePortfolioData = () => {
 
     // 복원된 전 도메인을 명시적으로 1회 저장 (현재 상태 기본값 절대 사용 안 함).
     // 백필 블록이 뒤늦게 더 완전한 히스토리로 다시 저장할 수 있으나 동일 복원 데이터라 무해.
-    // AppliedResult 는 PortfolioSaveSnapshot 의 13개 도메인을 모두 포함하므로 그대로 넘긴다
+    // AppliedResult 는 PortfolioSaveSnapshot 의 모든 도메인을 포함하므로 그대로 넘긴다
     // (lastUpdateDate 는 저장 측이 자체 생성). 스냅샷 ref 도 복원값으로 맞춰 이후 저장이
     // 복원 직전의 옛 상태를 되살리지 않게 한다.
     if (isSignedIn) {
@@ -385,6 +384,7 @@ export const usePortfolioData = () => {
       setAssets([]);
       setPortfolioHistory([]);
       setSellHistory([]);
+      setBuyHistory([]);
       setWatchlist([]); // watchlist 초기화 추가
       setAllocationTargets({ weights: {} });
       setHasAutoUpdated(false);
@@ -410,6 +410,7 @@ export const usePortfolioData = () => {
     if (patch.assets !== undefined) setAssets(patch.assets);
     if (patch.portfolioHistory !== undefined) setPortfolioHistory(patch.portfolioHistory);
     if (patch.sellHistory !== undefined) setSellHistory(patch.sellHistory);
+    if (patch.buyHistory !== undefined) setBuyHistory(patch.buyHistory);
     if (patch.watchlist !== undefined) setWatchlist(patch.watchlist);
     if (patch.exchangeRates !== undefined) setExchangeRates(patch.exchangeRates);
     if (patch.allocationTargets !== undefined) setAllocationTargets(patch.allocationTargets);
@@ -448,10 +449,12 @@ export const usePortfolioData = () => {
   const commitPortfolioPatch = commitPortfolio;
 
   const handleSignOut = useCallback(() => {
+    ++loadGeneration.current;
     hookSignOut();
     setAssets([]);
     setPortfolioHistory([]);
     setSellHistory([]);
+    setBuyHistory([]);
     setWatchlist([]);
     setAllocationTargets({ weights: {} });
     setSellAlertDropRate(15);
@@ -489,6 +492,7 @@ export const usePortfolioData = () => {
     assets, setAssets,
     portfolioHistory, setPortfolioHistory,
     sellHistory, setSellHistory,
+    buyHistory, setBuyHistory,
     watchlist, setWatchlist,
     exchangeRates, setExchangeRates,
     allocationTargets, setAllocationTargets,

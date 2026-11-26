@@ -1,14 +1,16 @@
 // components/BuyMoreAssetModal.tsx
 // 보유 종목 추가매수 모달
 
-import React, { useState, useEffect, useRef, useId } from 'react';
-import { Asset, Currency, CURRENCY_SYMBOLS } from '../types';
+import React, { useState, useRef, useId } from 'react';
+import { Currency, CURRENCY_SYMBOLS } from '../types';
+import type { OwnerTradeTarget } from '../types/ownerTrade';
+import { useRecordOwnerBuy } from '../hooks/useOwnerTrade';
+import { localDateString } from '../utils/localDate';
+import { formatOwnerQuantity } from '../utils/ownerQuantity';
+import OwnerTradeDialog, { OwnerTradeBalance } from './OwnerTradeDialog';
 import { isBaseType } from '../types/category';
-import { formatQuantity } from './portfolio-table/utils';
 import { usePortfolio } from '../contexts/PortfolioContext';
 import PositionSizingCalculator from './common/PositionSizingCalculator';
-import Modal from './common/Modal';
-import Button from './common/Button';
 import FieldError from './common/FieldError';
 import { ChevronDown, ChevronUp, Shield, TriangleAlert } from 'lucide-react';
 import TradePlanEditor, { type TradePlanEditorHandle } from './trade-plan/TradePlanEditor';
@@ -18,65 +20,46 @@ import { pyramidPrecheck } from '../utils/tradePlanLink';
 import { DEFAULT_TRADE_PLAN_TEMPLATE, type TradePlan } from '../types/tradePlan';
 
 const BuyMoreAssetModal: React.FC = () => {
-  const { modal, actions, status, data, derived } = usePortfolio();
-  const asset = modal.buyingAsset;
-  const isOpen = !!modal.buyingAsset;
-  const onClose = actions.closeBuyModal;
-  const isLoading = status.isLoading;
+  const { modal } = usePortfolio();
+  const source = modal.buyingAsset;
+  return source && <OwnerTradeDialog key={source.id} source={source} side="buy">
+    {target => <BuyForm {...target} />}
+  </OwnerTradeDialog>;
+};
 
-  const [buyDate, setBuyDate] = useState<string>(new Date().toISOString().slice(0, 10));
-  const [buyPrice, setBuyPrice] = useState<string>('');
+function BuyForm(target: OwnerTradeTarget) {
+  const { actions, data, derived } = usePortfolio();
+  const { position, source } = target;
+  const asset = position ?? source;
+  const nativeQuote = asset.priceOriginal || (asset.currency === Currency.KRW ? asset.currentPrice : 0);
+  const existingQuantity = position?.quantity ?? 0;
+  const existingCost = position?.purchasePrice ?? 0;
+  const record = useRecordOwnerBuy(target);
+  const [buyDate, setBuyDate] = useState(() => localDateString());
+  const [buyPrice, setBuyPrice] = useState(() => nativeQuote > 0 ? String(nativeQuote) : '');
   const [buyQuantity, setBuyQuantity] = useState<string>('');
 
   // 매매 계획으로 저장(P2a) — 활성 계획이 **없는** 종목에서만 제안. 활성 계획이 있으면 불타기 경로(P2b).
-  const [saveTradePlanOnBuy, setSaveTradePlanOnBuy] = useState(true);
+  const [saveTradePlanOnBuy, setSaveTradePlanOnBuy] = useState(!!position);
   const [showTradePlanDetail, setShowTradePlanDetail] = useState(false);
   const tradePlanEditorRef = useRef<TradePlanEditorHandle>(null);
 
   // 이 추가매수를 불타기 체결로 기록할지 (P2b)
-  const [pyramidChecked, setPyramidChecked] = useState(false);
+  const activePlan = position?.tradePlan?.status === 'active' ? position.tradePlan : null;
+  const pyramidStep = activePlan?.pyramid.enabled ? nextPyramidStep(activePlan) : null;
+  const [pyramidChecked, setPyramidChecked] = useState(() => {
+    const signal = derived.tradePlanRows.find(row => row.asset.id === position?.id)?.evaluation.signal;
+    return !!pyramidStep && (signal === 'pyramid-hit' || signal === 'near-pyramid');
+  });
   // 제출 시도 후에만 인라인 검증 문구 노출(브라우저 alert 대체 — RULES.md §7)
   const [submitAttempted, setSubmitAttempted] = useState(false);
   // 폼 오류 문구 id — 조기 return 앞에서 호출(훅 순서 고정). 오류 필드의 aria-describedby 대상.
   const formErrorId = useId();
 
-  // 최신 평가 행은 ref로 미러링한다(usePriceFreshnessRefresh와 동일 접근) — derived.tradePlanRows는
-  // 배경 시세 갱신마다 참조가 바뀌므로 아래 리셋 effect의 의존성에 넣으면 모달이 열린 채 재발화해
-  // 사용자가 입력한 값을 지운다.
-  // ⚠ 렌더 중 ref 대입은 금지(react-hooks/refs) — effect에서, 리셋 effect보다 **먼저** 선언한다.
-  const tradePlanRowsRef = useRef(derived.tradePlanRows);
-  useEffect(() => { tradePlanRowsRef.current = derived.tradePlanRows; }, [derived.tradePlanRows]);
-
-  useEffect(() => {
-    if (asset && isOpen) {
-      setBuyDate(new Date().toISOString().slice(0, 10));
-      setBuyPrice(asset.currentPrice.toString());
-      setBuyQuantity('');
-      setSaveTradePlanOnBuy(true);
-      setShowTradePlanDetail(false);
-      // 다시 열 때 이전 제출 시도의 인라인 오류가 남지 않게 (Sell/EditSellRecord 모달과 동일)
-      setSubmitAttempted(false);
-      // 불타기 신호(도달·근접)에서 열었을 때만 체크박스를 기본 ON으로 제안한다.
-      const activePlan = asset.tradePlan && asset.tradePlan.status === 'active' ? asset.tradePlan : null;
-      const step = activePlan && activePlan.pyramid.enabled ? nextPyramidStep(activePlan) : null;
-      if (step) {
-        const row = tradePlanRowsRef.current.find(r => r.asset.id === asset.id);
-        const sig = row?.evaluation.signal;
-        setPyramidChecked(sig === 'pyramid-hit' || sig === 'near-pyramid');
-      } else {
-        setPyramidChecked(false);
-      }
-    }
-  }, [asset, isOpen]);
-
-  if (!isOpen || !asset) return null;
-
-  const activePlan = asset.tradePlan && asset.tradePlan.status === 'active' ? asset.tradePlan : null;
   const hasActivePlan = activePlan !== null;
 
   // 불타기 사전 검사(P2b) — 입력값이 갖춰졌을 때만. 커밋 전에 4중 검사를 미리 돌려
   // "체크는 되는데 눌러보면 안 되는" 상황을 없앤다(가드 순서는 applyPyramidFill과 동일).
-  const pyramidStep = activePlan && activePlan.pyramid.enabled ? nextPyramidStep(activePlan) : null;
   const fx = fxRateToKRWFor(asset.currency, data.exchangeRates);
   const precheck = activePlan && pyramidStep && buyPrice !== '' && buyQuantity !== ''
     ? pyramidPrecheck(
@@ -115,7 +98,7 @@ const BuyMoreAssetModal: React.FC = () => {
     const quantity = parseFloat(buyQuantity);
     const price = parseFloat(buyPrice);
 
-    const result = await actions.confirmBuyMore(asset.id, buyDate, price, quantity);
+    const result = await record(buyDate, price, quantity);
 
     // 불타기 체결 기록(P2b) — 이미 활성 계획이 있고, 남은 단계가 있고, 사전 검사를 통과했을 때만.
     // 매수 자체는 이미 확정됐다 — 계획 반영이 실패해도 롤백하지 않는다(액션이 사유를 표면화).
@@ -171,26 +154,12 @@ const BuyMoreAssetModal: React.FC = () => {
   const estimatedTotal = parseFloat(buyPrice || '0') * parseFloat(buyQuantity || '0');
 
   // 매수 후 예상 평균단가
-  const newQuantity = asset.quantity + (parseFloat(buyQuantity || '0') || 0);
+  const newQuantity = existingQuantity + (parseFloat(buyQuantity || '0') || 0);
   const newAvgPrice = newQuantity > 0
-    ? (asset.quantity * asset.purchasePrice + (parseFloat(buyQuantity || '0') || 0) * (parseFloat(buyPrice || '0') || 0)) / newQuantity
+    ? (existingQuantity * existingCost + (parseFloat(buyQuantity || '0') || 0) * (parseFloat(buyPrice || '0') || 0)) / newQuantity
     : 0;
 
   return (
-    <Modal
-      open={isOpen}
-      onClose={onClose}
-      title={`추가매수: ${asset.customName?.trim() || asset.name}`}
-      size="md"
-      footer={
-        <>
-          <Button variant="secondary" onClick={onClose}>취소</Button>
-          <Button type="submit" form="buy-more-asset-form" variant="primary" loading={isLoading}>
-            추가매수 확인
-          </Button>
-        </>
-      }
-    >
         <form id="buy-more-asset-form" onSubmit={handleSubmit} className="space-y-4">
           {/* 보유 정보 */}
           <div className="bg-gray-700 p-4 rounded-md">
@@ -199,19 +168,19 @@ const BuyMoreAssetModal: React.FC = () => {
               <div>
                 <div className="text-gray-400">보유 수량</div>
                 <div className="text-white font-semibold">
-                  {formatQuantity(asset.quantity, isBaseType(asset.categoryId, 'CRYPTOCURRENCY'))}
+                  {formatOwnerQuantity(asset, existingQuantity, data.categoryStore.categories)}
                 </div>
               </div>
               <div>
                 <div className="text-gray-400">매수평균가</div>
                 <div className="text-white font-semibold">
-                  {formatCurrency(asset.purchasePrice, asset.currency)}
+                  {position ? formatCurrency(existingCost, asset.currency) : '—'}
                 </div>
               </div>
               <div>
                 <div className="text-gray-400">현재가</div>
                 <div className="text-white font-semibold">
-                  {formatCurrency(asset.currentPrice, asset.currency)}
+                  {nativeQuote > 0 ? formatCurrency(nativeQuote, asset.currency) : '—'}
                 </div>
               </div>
             </div>
@@ -277,7 +246,7 @@ const BuyMoreAssetModal: React.FC = () => {
               onChange={(e) => setBuyQuantity(e.target.value)}
               className={inputClasses}
               required
-              min="1"
+              min="0"
               step="any"
               placeholder="추가 매수할 수량을 입력하세요"
               aria-invalid={quantityInvalid || undefined}
@@ -331,7 +300,7 @@ const BuyMoreAssetModal: React.FC = () => {
                   : '불타기 단계를 모두 사용했습니다 — 추가매수는 계획에 반영되지 않고 기록만 됩니다.'}
               </p>
             )
-          ) : (
+          ) : position && (
             <div className="bg-gray-700/40 p-3 rounded-md space-y-2">
               <label className="flex items-center gap-2 text-sm text-gray-200 cursor-pointer">
                 <input
@@ -380,19 +349,13 @@ const BuyMoreAssetModal: React.FC = () => {
                   {formatCurrency(newAvgPrice, asset.currency)}
                 </span>
               </div>
-              <div className="flex justify-between items-center">
-                <span className="text-gray-400">변경 후 총 수량</span>
-                <span className="text-sm font-semibold text-white">
-                  {newQuantity.toLocaleString()}
-                </span>
-              </div>
             </div>
           )}
 
+          <OwnerTradeBalance target={target} change={Number(buyQuantity)} />
           {errorShown && <FieldError id={formErrorId}>{formError}</FieldError>}
         </form>
-    </Modal>
   );
-};
+}
 
 export default BuyMoreAssetModal;

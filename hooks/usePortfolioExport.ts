@@ -1,13 +1,15 @@
 import { useCallback } from 'react';
-import { Asset, ExchangeRates, PortfolioSnapshot, SellRecord, WatchlistItem, AllocationTargets } from '../types';
+import { Asset, BuyRecord, ExchangeRates, PortfolioSnapshot, SellRecord, WatchlistItem, AllocationTargets } from '../types';
 import type { PortfolioSavePatch } from '../types/portfolioSave';
 import type { PLBasis } from '../types/valuation';
 import { buildPortfolioCsv } from '../utils/portfolioCsv';
+import { inferOwnerFromText } from '../types/owner';
 
 interface UsePortfolioExportProps {
   assets: Asset[];
   portfolioHistory: PortfolioSnapshot[];
   sellHistory: SellRecord[];
+  buyHistory: BuyRecord[];
   watchlist: WatchlistItem[];
   exchangeRates: ExchangeRates;
   allocationTargets: AllocationTargets;
@@ -21,6 +23,7 @@ interface UsePortfolioExportProps {
   setAssets: React.Dispatch<React.SetStateAction<Asset[]>>;
   setPortfolioHistory: React.Dispatch<React.SetStateAction<PortfolioSnapshot[]>>;
   setSellHistory: React.Dispatch<React.SetStateAction<SellRecord[]>>;
+  setBuyHistory: React.Dispatch<React.SetStateAction<BuyRecord[]>>;
   setWatchlist: React.Dispatch<React.SetStateAction<WatchlistItem[]>>;
   setExchangeRates: React.Dispatch<React.SetStateAction<ExchangeRates>>;
   setAllocationTargets: React.Dispatch<React.SetStateAction<AllocationTargets>>;
@@ -30,6 +33,7 @@ export const usePortfolioExport = ({
   assets,
   portfolioHistory,
   sellHistory,
+  buyHistory,
   watchlist,
   exchangeRates,
   allocationTargets,
@@ -41,6 +45,7 @@ export const usePortfolioExport = ({
   setAssets,
   setPortfolioHistory,
   setSellHistory,
+  setBuyHistory,
   setWatchlist,
   setExchangeRates,
   setAllocationTargets,
@@ -62,6 +67,7 @@ export const usePortfolioExport = ({
       assets,
       portfolioHistory,
       sellHistory,
+      buyHistory,
       exchangeRates,
       watchlist,
       allocationTargets,
@@ -83,7 +89,7 @@ export const usePortfolioExport = ({
       setError('파일 내보내기에 실패했습니다.');
       setTimeout(() => setError(null), 3000);
     }
-  }, [assets, portfolioHistory, sellHistory, watchlist, exchangeRates, allocationTargets, isSignedIn, setError, setSuccessMessage]);
+  }, [assets, portfolioHistory, sellHistory, buyHistory, watchlist, exchangeRates, allocationTargets, isSignedIn, setError, setSuccessMessage]);
 
   const importJsonPrompt = useCallback(() => {
     if (!isSignedIn) {
@@ -105,6 +111,7 @@ export const usePortfolioExport = ({
           let loadedAssets: Asset[] = [];
           let loadedHistory: PortfolioSnapshot[] = [];
           let loadedSellHistory: SellRecord[] = [];
+          let loadedBuyHistory: BuyRecord[] = [];
           let loadedWatchlist: WatchlistItem[] = [];
           let loadedRates: ExchangeRates | undefined = undefined;
           let loadedTargets: AllocationTargets = { weights: {} };
@@ -115,6 +122,7 @@ export const usePortfolioExport = ({
             loadedAssets = Array.isArray(loadedData.assets) ? loadedData.assets : [];
             loadedHistory = Array.isArray(loadedData.portfolioHistory) ? loadedData.portfolioHistory : [];
             loadedSellHistory = Array.isArray(loadedData.sellHistory) ? loadedData.sellHistory : [];
+            loadedBuyHistory = Array.isArray(loadedData.buyHistory) ? loadedData.buyHistory : [];
             loadedWatchlist = Array.isArray(loadedData.watchlist) ? loadedData.watchlist : [];
             loadedRates = loadedData.exchangeRates;
             
@@ -129,9 +137,12 @@ export const usePortfolioExport = ({
               }
             }
           }
-          setAssets(loadedAssets);
+          setAssets(loadedAssets.map(a => a.owner !== undefined ? a : {
+            ...a, owner: a.owner ?? inferOwnerFromText(a.customName, a.name, a.memo),
+          }));
           setPortfolioHistory(loadedHistory);
           setSellHistory(loadedSellHistory);
+          setBuyHistory(loadedBuyHistory);
           setWatchlist(loadedWatchlist);
           if (loadedRates) setExchangeRates(loadedRates);
           setAllocationTargets(loadedTargets);
@@ -145,7 +156,7 @@ export const usePortfolioExport = ({
       reader.readAsText(file);
     };
     input.click();
-  }, [isSignedIn, setError, setSuccessMessage, setAssets, setPortfolioHistory, setSellHistory, setWatchlist, setExchangeRates, setAllocationTargets]);
+  }, [isSignedIn, setError, setSuccessMessage, setAssets, setPortfolioHistory, setSellHistory, setBuyHistory, setWatchlist, setExchangeRates, setAllocationTargets]);
 
   const exportCsv = useCallback(async () => {
     if (!isSignedIn) {

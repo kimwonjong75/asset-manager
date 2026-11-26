@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { Asset, AssetCategory, BulkUploadResult, Currency, ExchangeRates, NewAssetForm, SellRecord, WatchlistItem, normalizeExchange } from '../types';
 import type { PortfolioSaveSnapshot } from '../types/portfolioSave';
 import { isBaseType, DEFAULT_CATEGORIES, getCategoryIdByName } from '../types/category';
@@ -7,15 +7,26 @@ import { createLogger } from '../utils/logger';
 import type { AddAssetResult, SellResult, BuyMoreResult } from '../types/assetActionResult';
 import type { PortfolioPatch } from '../types/store';
 import type { TradePlan } from '../types/tradePlan';
-import { buildSellMutation, buildBuyMoreMutation } from '../utils/assetMutations';
+import { buildSellMutation, buildBuyMoreMutation, buildBuyRecord } from '../utils/assetMutations';
+import { ALL_OWNERS, DEFAULT_OWNER, getAssetOwner, OWNER_LABELS } from '../types/owner';
+import { hasUnresolvedOwners, sameOwnerInstrument } from '../utils/ownerHoldings';
+import { formatOwnerQuantity } from '../utils/ownerQuantity';
 // 환율 이상치 상한은 utils/portfolioMetrics 가 단일 정의처 (구 로컬 복사본 제거 — 값 동일)
 import { MAX_REASONABLE_EXCHANGE_RATES } from '../utils/portfolioMetrics';
 
 const log = createLogger('AssetActions');
 
+function isPositive(value: number): boolean {
+  return Number.isFinite(value) && value > 0;
+}
+
+function conflictsWithHolding(existing: Asset, candidate: Asset): boolean {
+  return sameOwnerInstrument(existing, candidate) &&
+    (hasUnresolvedOwners(existing) || getAssetOwner(existing) === getAssetOwner(candidate));
+}
+
 interface UseAssetActionsProps {
   assets: Asset[];
-  sellHistory: SellRecord[];
   exchangeRates: ExchangeRates;
   isSignedIn: boolean;
   /** 최신 스냅샷 읽기 — setState 업데이터 밖에서 next 상태를 계산하기 위한 창구 */
@@ -27,7 +38,6 @@ interface UseAssetActionsProps {
 
 export const useAssetActions = ({
   assets,
-  sellHistory,
   exchangeRates,
   isSignedIn,
   getSnapshot,
@@ -39,9 +49,10 @@ export const useAssetActions = ({
   const [editingAsset, setEditingAsset] = useState<Asset | null>(null);
   const [sellingAsset, setSellingAsset] = useState<Asset | null>(null);
   const [buyingAsset, setBuyingAsset] = useState<Asset | null>(null);
+  const activeTrades = useRef(new Set<string>());
 
   // 자산 추가 - [수정] name 파라미터 추가
-  const handleAddAsset = useCallback(async (newAssetData: NewAssetForm & { name?: string }): Promise<AddAssetResult> => {
+  const handleAddAsset = useCallback(async (newAssetData: NewAssetForm & { name?: string }, sourceAssetId?: string): Promise<AddAssetResult> => {
     if (!isSignedIn) {
       setError('Google Drive 로그인 후 자산을 추가할 수 있습니다.');
       setTimeout(() => setError(null), 3000);
@@ -50,8 +61,28 @@ export const useAssetActions = ({
     setIsLoading(true);
     setError(null);
     try {
+      if (!isPositive(newAssetData.quantity) || !isPositive(newAssetData.purchasePrice) || !newAssetData.purchaseDate) {
+        setError('매수일과 0보다 큰 수량·단가를 입력해 주세요.');
+        return { ok: false, reason: 'invalid-fill' };
+      }
       let newAsset: Omit<Asset, 'id'>;
-      if (isBaseType(newAssetData.categoryId, 'CASH')) {
+      if (sourceAssetId) {
+        // 상대 보유자의 첫 매수. RP 같은 수동 관리 자산도 같은 상품으로 남도록 원래 식별자·시세만 공유한다.
+        const source = getSnapshot().assets.find(a => a.id === sourceAssetId);
+        if (!source || hasUnresolvedOwners(source) || getAssetOwner(source) === getAssetOwner(newAssetData)) {
+          setError('기존 종목과 거래할 보유자를 다시 확인해 주세요.');
+          return { ok: false, reason: 'holding-changed' };
+        }
+        const purchaseExchangeRate = source.currency === Currency.KRW ? 1 :
+          await fetchHistoricalExchangeRate(newAssetData.purchaseDate, source.currency, Currency.KRW);
+        newAsset = {
+          ...newAssetData, ticker: source.ticker, exchange: source.exchange, categoryId: source.categoryId,
+          name: source.name, currency: source.currency, purchaseExchangeRate,
+          currentPrice: source.currentPrice, priceOriginal: source.priceOriginal, highestPrice: source.highestPrice,
+          previousClosePrice: source.previousClosePrice, changeRate: source.changeRate, indicators: source.indicators,
+          quoteTradeAt: source.quoteTradeAt, quoteDate: source.quoteDate,
+        };
+      } else if (isBaseType(newAssetData.categoryId, 'CASH')) {
         const [purchaseExchangeRate, currentExchangeRate] = await Promise.all([
           fetchHistoricalExchangeRate(newAssetData.purchaseDate, newAssetData.currency, Currency.KRW),
           (newAssetData.currency === Currency.USD 
@@ -93,14 +124,28 @@ export const useAssetActions = ({
       }
       
       const finalNewAsset: Asset = {
-        id: new Date().getTime().toString(),
+        id: crypto.randomUUID(),
         ...newAsset,
+        owner: getAssetOwner(newAssetData),
         bucket: newAssetData.bucket ?? 'CORE', // 전략 버킷 (미지정=코어)
       };
 
       // 원자 커밋 — assets set + 단일 autosave (미지정 도메인은 현재 상태로 저장)
-      const nextAssets = [...assets, finalNewAsset];
-      commitPortfolioPatch({ assets: nextAssets });
+      const snapshot = getSnapshot();
+      if (sourceAssetId && !snapshot.assets.some(a => a.id === sourceAssetId && !hasUnresolvedOwners(a) && sameOwnerInstrument(a, finalNewAsset))) {
+        setError('거래 도중 원래 종목이 변경됐습니다. 잔고를 확인해 주세요.');
+        return { ok: false, reason: 'holding-changed' };
+      }
+      if (hasUnresolvedOwners(finalNewAsset) || snapshot.assets.some(a => conflictsWithHolding(a, finalNewAsset))) {
+        setError('같은 종목의 보유자와 기존 잔고를 확인해 주세요. 이미 보유 중이면 추가매수를 이용해 주세요.');
+        return { ok: false, reason: 'conflicting-holding' };
+      }
+      const nextAssets = [...snapshot.assets, finalNewAsset];
+      const buyRecord = buildBuyRecord(finalNewAsset, {
+        id: crypto.randomUUID(), buyDate: finalNewAsset.purchaseDate, buyPrice: finalNewAsset.purchasePrice,
+        buyQuantity: finalNewAsset.quantity, buyExchangeRate: finalNewAsset.purchaseExchangeRate ?? 1,
+      });
+      commitPortfolioPatch({ assets: nextAssets, buyHistory: [...snapshot.buyHistory, buyRecord] });
       setSuccessMessage(`${finalNewAsset.name} 자산이 추가되었습니다.`);
       return { ok: true, assetId: finalNewAsset.id, asset: finalNewAsset, nextAssets };
     } catch (e) {
@@ -111,8 +156,7 @@ export const useAssetActions = ({
     } finally {
       setIsLoading(false);
     }
-    // assets·commitPortfolioPatch 누락 시 stale 클로저로 옛 자산 목록을 저장할 수 있어 명시.
-  }, [isSignedIn, assets, commitPortfolioPatch, setError, setSuccessMessage]);
+  }, [isSignedIn, getSnapshot, commitPortfolioPatch, setError, setSuccessMessage]);
 
   // 자산 삭제
   const handleDeleteAsset = useCallback((assetId: string) => {
@@ -197,7 +241,17 @@ export const useAssetActions = ({
           }
       }
       
-      commitPortfolioPatch({ assets: getSnapshot().assets.map(a => (a.id === finalAsset.id ? finalAsset : a)) });
+      const latest = getSnapshot().assets;
+      const live = latest.find(a => a.id === finalAsset.id);
+      if (!live || live.quantity !== originalAsset.quantity || getAssetOwner(live) !== getAssetOwner(originalAsset)) {
+        setError('편집 중 보유자 또는 수량이 변경됐습니다. 최신 잔고에서 다시 수정해 주세요.');
+        return;
+      }
+      if (latest.some(a => a.id !== finalAsset.id && conflictsWithHolding(a, finalAsset))) {
+        setError('같은 보유자의 동일 종목 잔고가 이미 있습니다. 보유자를 확인해 주세요.');
+        return;
+      }
+      commitPortfolioPatch({ assets: latest.map(a => (a.id === finalAsset.id ? finalAsset : a)) });
       setSuccessMessage(`${finalAsset.name} 자산이 수정되었습니다.`);
     } catch (e) {
       log.error(e);
@@ -223,13 +277,21 @@ export const useAssetActions = ({
       return { ok: false, reason: 'not-signed-in' };
     }
 
-    const asset = assets.find(a => a.id === assetId);
+    const asset = getSnapshot().assets.find(a => a.id === assetId);
     if (!asset) {
       setError('해당 자산을 찾을 수 없습니다.');
       setTimeout(() => setError(null), 3000);
       return { ok: false, reason: 'asset-not-found' };
     }
 
+    if (hasUnresolvedOwners(asset) || activeTrades.current.has(assetId)) {
+      setError('보유자별 수량을 먼저 확정하거나 진행 중인 거래가 끝난 후 기록해 주세요.');
+      return { ok: false, reason: 'holding-unavailable' };
+    }
+    if (!isPositive(sellQuantity) || !isPositive(sellPrice) || !sellDate) {
+      setError('매도일과 0보다 큰 수량·단가를 입력해 주세요.');
+      return { ok: false, reason: 'invalid-fill' };
+    }
     if (sellQuantity > asset.quantity) {
       setError('매도 수량이 보유 수량을 초과합니다.');
       setTimeout(() => setError(null), 3000);
@@ -240,6 +302,7 @@ export const useAssetActions = ({
     setError(null);
 
     try {
+      activeTrades.current.add(assetId);
       const finalSettlementCurrency = settlementCurrency || asset.currency;
       let sellExchangeRate = 1;
 
@@ -253,15 +316,21 @@ export const useAssetActions = ({
       }
 
       // 다음상태 계산은 공용 순수 helper에 위임(터틀 실행과 동일 로직 공유), 원자 커밋으로 저장
+      const snapshot = getSnapshot();
+      const live = snapshot.assets.find(a => a.id === assetId);
+      if (!live || hasUnresolvedOwners(live) || live.currency !== asset.currency || getAssetOwner(live) !== getAssetOwner(asset) || sellQuantity > live.quantity) {
+        setError('보유자 또는 매도 가능 수량이 변경됐습니다. 잔고를 확인해 주세요.');
+        return { ok: false, reason: 'holding-changed' };
+      }
       const mut = buildSellMutation({
-        asset, assets, sellHistory,
+        asset: live, assets: snapshot.assets, sellHistory: snapshot.sellHistory,
         sellExchangeRate, sellPrice, sellQuantity, sellDate,
         settlementCurrency: finalSettlementCurrency,
-        transactionId: `${Date.now()}`,
+        transactionId: crypto.randomUUID(),
       });
       commitPortfolioPatch({ assets: mut.nextAssets, sellHistory: mut.nextSellHistory });
 
-      setSuccessMessage(`${asset.name} ${sellQuantity}주 매도가 기록되었습니다.`);
+      setSuccessMessage(`${OWNER_LABELS[getAssetOwner(live)]} · ${live.name} ${formatOwnerQuantity(live, sellQuantity)} 매도가 기록되었습니다.`);
       return {
         ok: true,
         sellRecordId: mut.sellRecord.id,
@@ -277,10 +346,11 @@ export const useAssetActions = ({
       setTimeout(() => setError(null), 3000);
       return { ok: false, reason: 'sell-failed' };
     } finally {
+      activeTrades.current.delete(assetId);
       setIsLoading(false);
       setSellingAsset(null);
     }
-  }, [isSignedIn, assets, commitPortfolioPatch, sellHistory, exchangeRates, setError, setSuccessMessage]);
+  }, [isSignedIn, getSnapshot, commitPortfolioPatch, exchangeRates, setError, setSuccessMessage]);
 
   // 매도 기록 편집 — sellDate / sellPriceSettlement / sellQuantity 변경. KRW 값 재계산.
   // 날짜가 바뀌면 환율 재조회, 가격/수량만 바뀌면 기존 sellExchangeRate 재사용.
@@ -295,7 +365,7 @@ export const useAssetActions = ({
       return;
     }
 
-    const record = sellHistory.find(r => r.id === recordId);
+    const record = getSnapshot().sellHistory.find(r => r.id === recordId);
     if (!record) {
       setError('해당 매도 기록을 찾을 수 없습니다.');
       setTimeout(() => setError(null), 3000);
@@ -351,12 +421,20 @@ export const useAssetActions = ({
         settlementCurrency,
       };
 
+      const snapshot = getSnapshot();
+      if (snapshot.sellHistory.find(r => r.id === recordId) !== record) {
+        setError('매도 기록이 변경됐습니다. 최신 기록을 다시 확인해 주세요.');
+        return;
+      }
       const quantityDelta = newSellQuantity - record.sellQuantity;
-      const newSellHistory = sellHistory.map(r => (r.id === recordId ? updatedRecord : r));
+      const newSellHistory = snapshot.sellHistory.map(r => (r.id === recordId ? updatedRecord : r));
 
       // 업데이터 밖에서 계산한다 — 예전에는 여기서 throw 까지 해서 업데이터가 순수하지 않았다.
-      const updatedAssets = getSnapshot().assets.map(a => {
+      const updatedAssets = snapshot.assets.map(a => {
         if (a.id !== record.assetId) return a;
+        if (quantityDelta && (hasUnresolvedOwners(a) || (record.owner && record.owner !== getAssetOwner(a)))) {
+          throw new Error('이 매도 기록의 수량을 변경하려면 당시 보유자의 잔고를 먼저 확인해 주세요.');
+        }
         const newInline = (a.sellTransactions || []).map(t => {
           if (t.id !== recordId) return t;
           return {
@@ -388,7 +466,7 @@ export const useAssetActions = ({
     } finally {
       setIsLoading(false);
     }
-  }, [isSignedIn, sellHistory, exchangeRates, getSnapshot, commitPortfolioPatch, setError, setSuccessMessage]);
+  }, [isSignedIn, exchangeRates, getSnapshot, commitPortfolioPatch, setError, setSuccessMessage]);
 
   // 매도 기록 삭제 — sellHistory + asset.sellTransactions 양쪽에서 제거. 보유수량 복구는 하지 않음.
   const handleDeleteSellRecord = useCallback((recordId: string) => {
@@ -398,15 +476,16 @@ export const useAssetActions = ({
       return;
     }
 
-    const record = sellHistory.find(r => r.id === recordId);
+    const snapshot = getSnapshot();
+    const record = snapshot.sellHistory.find(r => r.id === recordId);
     if (!record) {
       setError('해당 매도 기록을 찾을 수 없습니다.');
       setTimeout(() => setError(null), 3000);
       return;
     }
 
-    const newSellHistory = sellHistory.filter(r => r.id !== recordId);
-    const updatedAssets = getSnapshot().assets.map(a => {
+    const newSellHistory = snapshot.sellHistory.filter(r => r.id !== recordId);
+    const updatedAssets = snapshot.assets.map(a => {
       if (a.id !== record.assetId) return a;
       return {
         ...a,
@@ -416,7 +495,7 @@ export const useAssetActions = ({
     commitPortfolioPatch({ assets: updatedAssets, sellHistory: newSellHistory });
 
     setSuccessMessage('매도 기록이 삭제되었습니다.');
-  }, [isSignedIn, sellHistory, getSnapshot, commitPortfolioPatch, setError, setSuccessMessage]);
+  }, [isSignedIn, getSnapshot, commitPortfolioPatch, setError, setSuccessMessage]);
 
   // 추가매수 확정
   const handleConfirmBuyMore = useCallback(async (
@@ -431,13 +510,22 @@ export const useAssetActions = ({
       return { ok: false, reason: 'not-signed-in' };
     }
 
-    const asset = assets.find(a => a.id === assetId);
+    const asset = getSnapshot().assets.find(a => a.id === assetId);
     if (!asset) {
       setError('해당 자산을 찾을 수 없습니다.');
       setTimeout(() => setError(null), 3000);
       return { ok: false, reason: 'asset-not-found' };
     }
 
+    if (hasUnresolvedOwners(asset) || activeTrades.current.has(assetId)) {
+      setError('보유자별 수량을 먼저 확정하거나 진행 중인 거래가 끝난 후 기록해 주세요.');
+      return { ok: false, reason: 'holding-unavailable' };
+    }
+    if (!isPositive(buyQuantity) || !isPositive(buyPrice) || !buyDate) {
+      setError('매수일과 0보다 큰 수량·단가를 입력해 주세요.');
+      return { ok: false, reason: 'invalid-fill' };
+    }
+    activeTrades.current.add(assetId);
     setIsLoading(true);
     setError(null);
 
@@ -449,10 +537,17 @@ export const useAssetActions = ({
       }
 
       // 다음상태 계산은 공용 순수 helper에 위임(가중평균 단가·환율·메모), 원자 커밋으로 저장
-      const mut = buildBuyMoreMutation({ asset, assets, buyExchangeRate, buyPrice, buyQuantity, buyDate });
-      commitPortfolioPatch({ assets: mut.nextAssets });
+      const snapshot = getSnapshot();
+      const live = snapshot.assets.find(a => a.id === assetId);
+      if (!live || hasUnresolvedOwners(live) || live.currency !== asset.currency || getAssetOwner(live) !== getAssetOwner(asset)) {
+        setError('거래 대상 잔고가 변경됐습니다. 보유자를 다시 확인해 주세요.');
+        return { ok: false, reason: 'holding-changed' };
+      }
+      const mut = buildBuyMoreMutation({ asset: live, assets: snapshot.assets, buyExchangeRate, buyPrice, buyQuantity, buyDate });
+      const buyRecord = buildBuyRecord(live, { id: crypto.randomUUID(), buyExchangeRate, buyPrice, buyQuantity, buyDate });
+      commitPortfolioPatch({ assets: mut.nextAssets, buyHistory: [...snapshot.buyHistory, buyRecord] });
 
-      setSuccessMessage(`${asset.customName?.trim() || asset.name} ${buyQuantity}주 추가매수가 기록되었습니다.`);
+      setSuccessMessage(`${OWNER_LABELS[getAssetOwner(live)]} · ${live.customName?.trim() || live.name} ${formatOwnerQuantity(live, buyQuantity)} 추가매수가 기록되었습니다.`);
       return { ok: true, assetId, updatedAsset: mut.updatedAsset, nextAssets: mut.nextAssets };
     } catch (e) {
       log.error(e);
@@ -460,10 +555,11 @@ export const useAssetActions = ({
       setTimeout(() => setError(null), 3000);
       return { ok: false, reason: 'buy-more-failed' };
     } finally {
+      activeTrades.current.delete(assetId);
       setIsLoading(false);
       setBuyingAsset(null);
     }
-  }, [isSignedIn, assets, commitPortfolioPatch, setError, setSuccessMessage]);
+  }, [isSignedIn, getSnapshot, commitPortfolioPatch, setError, setSuccessMessage]);
 
   // CSV 파일 업로드
   const handleCsvFileUpload = useCallback((file: File): Promise<BulkUploadResult> => {
@@ -492,6 +588,7 @@ export const useAssetActions = ({
                 const dateIdx = headers.findIndex(h => h === 'purchasedate' || h === '매수일');
                 const categoryIdx = headers.findIndex(h => h === 'category' || h === '카테고리');
                 const currencyIdx = headers.findIndex(h => h === 'currency' || h === '통화');
+                const ownerIdx = headers.findIndex(h => ['owner', '보유자', '소유 계정', '계정'].includes(h));
                 const sellAlertRateIdx = headers.findIndex(h => h === 'sellalertdroprate' || h === '매도알림하락률');
                 const hasSellAlertRate = sellAlertRateIdx !== -1;
 
@@ -513,6 +610,10 @@ export const useAssetActions = ({
                     const dateStr = cols[dateIdx];
                     const categoryStr = cols[categoryIdx];
                     const currencyStr = cols[currencyIdx];
+                    const ownerText = ownerIdx >= 0 ? cols[ownerIdx] : '';
+                    const owner = ownerText
+                      ? ALL_OWNERS.find(key => key === ownerText.toUpperCase() || OWNER_LABELS[key] === ownerText)
+                      : DEFAULT_OWNER;
                     const sellAlertDropRateStr = hasSellAlertRate ? cols[sellAlertRateIdx] : undefined;
 
                     if (!ticker || !exchange || !quantityStr || !priceStr || !dateStr || !categoryStr || !currencyStr) {
@@ -527,9 +628,14 @@ export const useAssetActions = ({
                     if (!Object.values(Currency).includes(currencyStr as Currency)) {
                         return { error: `유효하지 않은 통화: ${currencyStr}`, ticker };
                     }
+                    if (!owner) return { error: '보유자는 원종 또는 유선으로 입력해 주세요.', ticker };
+                    if (!isPositive(Number(quantityStr)) || !isPositive(Number(priceStr))) {
+                      return { error: '수량·단가는 0보다 큰 숫자여야 합니다.', ticker };
+                    }
                     
                     const catId = getCategoryIdByName(categoryStr, DEFAULT_CATEGORIES) ?? 4; // fallback: 기타해외주식
                     const form: NewAssetForm & { sellAlertDropRate?: number } = {
+                        owner,
                         ticker,
                         exchange,
                         quantity: parseFloat(quantityStr),
@@ -581,7 +687,7 @@ export const useAssetActions = ({
                               }
                             
                             const finalNewAsset: Asset = {
-                                id: `${new Date().getTime()}-${form.ticker}`,
+                                id: crypto.randomUUID(),
                                 ...newAsset
                             };
 
@@ -598,8 +704,16 @@ export const useAssetActions = ({
                         await new Promise(resolve => setTimeout(resolve, 300));
                     }
                     
-                    commitPortfolioPatch({ assets: [...getSnapshot().assets, ...newAssets] });
-                    successCount = newAssets.length;
+                    const nextAssets = [...getSnapshot().assets];
+                    for (const candidate of newAssets) {
+                      if (nextAssets.some(a => conflictsWithHolding(a, candidate))) {
+                        errors.push({ ticker: candidate.ticker, reason: '동일 보유자 또는 미분리 공동 잔고가 이미 있습니다.' });
+                      } else {
+                        nextAssets.push(candidate);
+                        successCount++;
+                      }
+                    }
+                    if (successCount) commitPortfolioPatch({ assets: nextAssets });
                 }
                 
                 failedCount = errors.length;

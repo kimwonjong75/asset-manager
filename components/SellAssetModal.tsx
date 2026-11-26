@@ -1,17 +1,18 @@
 // components/SellAssetModal.tsx
 // 수정된 버전: 매도 통화를 자산 통화로 고정
 
-import React, { useState, useEffect, useRef, useId } from 'react';
-import { Asset, Currency, CURRENCY_SYMBOLS, SellTransaction } from '../types';
-import { isBaseType } from '../types/category';
-import { formatQuantity } from './portfolio-table/utils';
+import React, { useState, useId } from 'react';
+import { Currency, CURRENCY_SYMBOLS } from '../types';
+import type { OwnerTradeTarget } from '../types/ownerTrade';
+import type { Asset } from '../types';
+import { localDateString } from '../utils/localDate';
+import { formatOwnerQuantity } from '../utils/ownerQuantity';
+import OwnerTradeDialog, { OwnerTradeBalance } from './OwnerTradeDialog';
 import { usePortfolio } from '../contexts/PortfolioContext';
 import { defaultSellOutcome, sellPrefillFor } from '../utils/tradePlanLink';
 import type { SellOutcome } from '../types/tradePlan';
 import { resolveHoldingsSettings, isInHoldingsScope } from '../utils/turtleHoldings';
 import Segmented from './common/Segmented';
-import Modal from './common/Modal';
-import Button from './common/Button';
 import FieldError from './common/FieldError';
 import ManualHelpLink from './common/ManualHelpLink';
 
@@ -24,60 +25,41 @@ const SELL_OUTCOME_OPTIONS: { value: SellOutcome; label: string; hint: string }[
 ];
 
 const SellAssetModal: React.FC = () => {
-  const { data, modal, actions, status, derived } = usePortfolio();
-  const asset = modal.sellingAsset;
-  const isOpen = !!modal.sellingAsset;
+  const { modal } = usePortfolio();
+  const source = modal.sellingAsset;
+  return source && <OwnerTradeDialog key={source.id} source={source} side="sell">
+    {target => target.position && <SellForm {...target} position={target.position} />}
+  </OwnerTradeDialog>;
+};
+
+function SellForm(target: OwnerTradeTarget & { position: Asset }) {
+  const { data, modal, actions, derived } = usePortfolio();
+  const asset = target.position;
+  const nativeQuote = asset.priceOriginal || (asset.currency === Currency.KRW ? asset.currentPrice : 0);
   const onClose = actions.closeSellModal;
-  const isLoading = status.isLoading;
-  const [sellDate, setSellDate] = useState<string>(new Date().toISOString().slice(0, 10));
-  const [sellPrice, setSellPrice] = useState<string>('');
-  const [sellQuantity, setSellQuantity] = useState<string>('');
-  const [sellOutcome, setSellOutcome] = useState<SellOutcome>('none');
+  const activePlan = asset.tradePlan?.status === 'active' ? asset.tradePlan : null;
+  const [initial] = useState(() => {
+    const row = derived.tradePlanRows.find(r => r.asset.id === asset.id);
+    const outcome = activePlan ? modal.sellPrefill?.outcome ?? defaultSellOutcome(row?.evaluation ?? null) : 'none';
+    const planDefaults = activePlan ? sellPrefillFor(activePlan, asset, outcome) : null;
+    return {
+      outcome,
+      price: modal.sellPrefill?.price ?? planDefaults?.priceOriginal ?? nativeQuote,
+      quantity: modal.sellPrefill?.quantity ?? planDefaults?.quantity ?? asset.quantity,
+    };
+  });
+  const [sellDate, setSellDate] = useState(() => localDateString());
+  const [sellPrice, setSellPrice] = useState(initial.price > 0 ? String(initial.price) : '');
+  const [sellQuantity, setSellQuantity] = useState(String(initial.quantity));
+  const [sellOutcome, setSellOutcome] = useState<SellOutcome>(initial.outcome);
   // "보유종목 터틀" 감시 명단 추가(계획서 §4.2) — 범위 내 자산만 체크박스 노출, 기본 켬(사용자 동작 동반).
   const holdingsSettings = resolveHoldingsSettings(data.turtleSettings.holdings);
-  const inHoldingsScope = !!asset && isInHoldingsScope(asset, holdingsSettings);
+  const inHoldingsScope = isInHoldingsScope(asset, holdingsSettings);
   const [addToTurtleWatch, setAddToTurtleWatch] = useState(true);
   // 제출 시도 후에만 인라인 검증 문구 노출(브라우저 alert 대체 — RULES.md §7)
   const [submitAttempted, setSubmitAttempted] = useState(false);
   // 폼 오류 문구 id — 조기 return 앞에서 호출(훅 순서 고정). 오류 필드의 aria-describedby 대상.
   const formErrorId = useId();
-
-  // 최신 평가 행은 ref로 미러링한다(usePriceFreshnessRefresh와 동일 접근) —
-  // derived.tradePlanRows는 배경 시세 갱신마다 참조가 바뀌므로 아래 리셋 effect의 의존성에 넣으면
-  // 모달이 열린 채 재발화해 **사용자가 입력한 값을 지운다**. ref는 반응형 의존성이 아니라서
-  // effect가 실제로 실행되는 순간의 최신값만 읽게 된다.
-  // ⚠ 렌더 중 ref 대입은 금지(react-hooks/refs) — 반드시 effect에서, 그리고 아래 리셋 effect보다
-  //   **먼저** 선언해 같은 커밋에서 미러가 먼저 갱신되게 한다.
-  const tradePlanRowsRef = useRef(derived.tradePlanRows);
-  useEffect(() => { tradePlanRowsRef.current = derived.tradePlanRows; }, [derived.tradePlanRows]);
-
-  useEffect(() => {
-    if (asset && isOpen) {
-      setSubmitAttempted(false);
-      setSellDate(new Date().toISOString().slice(0, 10));
-      setAddToTurtleWatch(true);
-      const activePlan = asset.tradePlan && asset.tradePlan.status === 'active' ? asset.tradePlan : null;
-      if (activePlan) {
-        // 계획 카드에서 열었으면 그쪽 프리필이 우선, 아니면 현재 신호로 기본 효과를 고른다.
-        const row = tradePlanRowsRef.current.find(r => r.asset.id === asset.id);
-        const outcome = modal.sellPrefill?.outcome ?? defaultSellOutcome(row?.evaluation ?? null);
-        const prefill = sellPrefillFor(activePlan, asset, outcome);
-        setSellOutcome(outcome);
-        setSellQuantity(String(modal.sellPrefill?.quantity ?? prefill.quantity));
-        setSellPrice(String(modal.sellPrefill?.price ?? prefill.priceOriginal));
-      } else {
-        setSellOutcome('none');
-        // 현재가를 자산 통화 기준으로 표시
-        setSellPrice(asset.currentPrice.toString());
-        setSellQuantity(asset.quantity.toString());
-      }
-    }
-  }, [asset, isOpen, modal.sellPrefill]);
-
-  if (!isOpen || !asset) return null;
-
-  const isCrypto = isBaseType(asset.categoryId, 'CRYPTOCURRENCY');
-  const activePlan = asset.tradePlan && asset.tradePlan.status === 'active' ? asset.tradePlan : null;
 
   /** 효과를 바꾸면 수량·가격도 그 효과의 기본값으로 다시 채운다(사용자는 이후 자유 수정). */
   const handleOutcomeChange = (outcome: SellOutcome) => {
@@ -101,7 +83,7 @@ const SellAssetModal: React.FC = () => {
       : priceNotPositive
         ? '매도가는 0보다 커야 합니다.'
         : null;
-  const errorShown = submitAttempted && formError !== null;
+  const errorShown = (submitAttempted || quantityOutOfRange) && formError !== null;
   const dateInvalid = errorShown && missingFields && !sellDate;
   const priceInvalid = errorShown && ((missingFields && !sellPrice) || priceNotPositive);
   const quantityInvalid = errorShown && ((missingFields && !sellQuantity) || quantityOutOfRange);
@@ -166,21 +148,6 @@ const SellAssetModal: React.FC = () => {
   const estimatedTotal = parseFloat(sellPrice || '0') * parseFloat(sellQuantity || '0');
 
   return (
-    <Modal
-      open={isOpen}
-      onClose={onClose}
-      title={`매도: ${asset.customName?.trim() || asset.name}`}
-      size="md"
-      footer={
-        <>
-          <Button variant="secondary" onClick={onClose}>취소</Button>
-          {/* 매도 제출도 primary + 명시 라벨(파랑 채움 버튼 금지 — RULES.md §8 색 규약) */}
-          <Button type="submit" form="sell-asset-form" variant="primary" loading={isLoading}>
-            매도
-          </Button>
-        </>
-      }
-    >
         <form id="sell-asset-form" onSubmit={handleSubmit} className="space-y-4">
           {/* 보유 정보 */}
           <div className="bg-gray-700 p-4 rounded-md">
@@ -189,19 +156,19 @@ const SellAssetModal: React.FC = () => {
               <div>
                 <div className="text-gray-400">보유 수량</div>
                 <div className="text-white font-semibold">
-                  {formatQuantity(asset.quantity, isCrypto)}
+                  {formatOwnerQuantity(asset, asset.quantity, data.categoryStore.categories)}
                 </div>
               </div>
               <div>
                 <div className="text-gray-400">현재가</div>
                 <div className="text-white font-semibold">
-                  {formatCurrency(asset.currentPrice, asset.currency)}
+                  {nativeQuote > 0 ? formatCurrency(nativeQuote, asset.currency) : '—'}
                 </div>
               </div>
               <div>
                 <div className="text-gray-400">평가금액</div>
                 <div className="text-white font-semibold">
-                  {formatCurrency(asset.currentPrice * asset.quantity, asset.currency)}
+                  {nativeQuote > 0 ? formatCurrency(nativeQuote * asset.quantity, asset.currency) : '—'}
                 </div>
               </div>
             </div>
@@ -287,7 +254,7 @@ const SellAssetModal: React.FC = () => {
               onChange={(e) => setSellQuantity(e.target.value)}
               className={inputClasses}
               required
-              min={isCrypto ? "0.00000001" : "1"}
+              min="0"
               max={asset.quantity}
               step="any"
               placeholder="매도할 수량을 입력하세요"
@@ -303,11 +270,12 @@ const SellAssetModal: React.FC = () => {
                 전량 매도
               </button>
               <span className="text-xs text-gray-500">
-                최대: {formatQuantity(asset.quantity, isCrypto)}
+                최대 {formatOwnerQuantity(asset, asset.quantity, data.categoryStore.categories)}
               </span>
             </div>
           </div>
 
+          <OwnerTradeBalance target={target} change={-Number(sellQuantity)} />
           {/* 예상 매도금액 */}
           {estimatedTotal > 0 && (
             <div className="bg-gray-900 p-4 rounded-md">
@@ -347,8 +315,7 @@ const SellAssetModal: React.FC = () => {
 
           {errorShown && <FieldError id={formErrorId}>{formError}</FieldError>}
         </form>
-    </Modal>
   );
-};
+}
 
 export default SellAssetModal;

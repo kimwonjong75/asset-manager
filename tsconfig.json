@@ -1,4 +1,6 @@
 {
+  // tmp 안에서 별도 package.json으로 관리하는 분석 보고서 앱은 자체 빌드를 사용한다.
+  "exclude": ["node_modules", "dist", "dist-ssr", "tmp/**/report-app"],
   "compilerOptions": {
     // 자산 계산에서 "값이 아직 없음(undefined)"이 조용히 NaN/0으로 흐르는 것을 컴파일러가 막는다.
     // 켜는 과정에서 실제로 드러난 것: Currency 에는 CNY 가 있는데 ExchangeRates 에는 없어

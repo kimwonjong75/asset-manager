@@ -1,4 +1,4 @@
-import { Asset, PortfolioSnapshot, SellRecord, WatchlistItem, ExchangeRates, Currency, BulkUploadResult, AllocationTargets, NewAssetForm } from './index';
+import { Asset, BuyRecord, PortfolioSnapshot, SellRecord, WatchlistItem, ExchangeRates, Currency, BulkUploadResult, AllocationTargets, NewAssetForm } from './index';
 import type { AlertSettings, AlertResult, AlertDataGap } from './alertRules';
 import type { EnrichedIndicatorData } from '../hooks/useEnrichedIndicators';
 import type { RiskMatrixRow } from '../utils/riskMatrix';
@@ -16,6 +16,7 @@ import type { TurtlePosition, TurtleSettings } from './turtle';
 import type { TurtleHoldingsSettings } from './turtleHoldings';
 import type { ValuationSettings } from './valuation';
 import type { OwnerFilter } from './owner';
+import type { OwnerSplitInput } from './ownerTransactions';
 import type { AddAssetResult, SellResult, BuyMoreResult } from './assetActionResult';
 import type { CleanupDecision } from './cleanup';
 import type { PortfolioSavePatch } from './portfolioSave';
@@ -37,6 +38,7 @@ export interface PortfolioData {
   assets: Asset[];
   portfolioHistory: PortfolioHistory;
   sellHistory: SellRecord[];
+  buyHistory: BuyRecord[];
   watchlist: WatchlistItem[];
   exchangeRates: ExchangeRates;
   allocationTargets: AllocationTargets;
@@ -52,7 +54,7 @@ export interface PortfolioData {
 
 /**
  * **`PortfolioSavePatch`의 별칭**(5-A). 예전에는 5개 도메인만 담는 별도 인터페이스였으나,
- * 저장 경로가 하나로 합쳐지면서 13개 도메인 전부를 patch 로 넘길 수 있게 됐다.
+ * 저장 경로가 하나로 합쳐지면서 모든 도메인을 patch 로 넘길 수 있게 됐다.
  * 새 코드는 `types/portfolioSave`의 이름을 쓰고, 이 별칭은 기존 호출부 호환용으로만 유지한다.
  */
 export type PortfolioPatch = PortfolioSavePatch;
@@ -112,6 +114,8 @@ export interface ModalState {
   editingAsset: Asset | null;
   sellingAsset: Asset | null;
   buyingAsset: Asset | null;
+  /** 통합 종목 행에서 두 보유자 중 거래할 사람을 고른다. 개인 행·전략 진입은 해당 자산에 고정한다. */
+  pickTradeOwner?: boolean;
   bulkUploadOpen: boolean;
   addAssetOpen: boolean;
   assistantOpen: boolean;
@@ -220,7 +224,7 @@ export interface PortfolioActions {
   refreshWatchlistPrices: () => Promise<void>;
 
   // 자산
-  addAsset: (asset: NewAssetForm & { name?: string }) => Promise<AddAssetResult>;
+  addAsset: (asset: NewAssetForm & { name?: string }, sourceAssetId?: string) => Promise<AddAssetResult>;
   updateAsset: (asset: Asset) => Promise<void>;
   togglePinAsset: (id: string) => void;
   deleteAsset: (id: string) => void;
@@ -241,6 +245,7 @@ export interface PortfolioActions {
   // 메시지
   clearError: () => void;
   clearSuccessMessage: () => void;
+  splitOwnerBalance: (input: OwnerSplitInput) => string | null;
 
   // 파일 업로드
   uploadCsv: (file: File) => Promise<BulkUploadResult>;
@@ -280,9 +285,9 @@ export interface PortfolioActions {
   updateAllocationTargets: (targets: AllocationTargets) => void;
   openEditModal: (asset: Asset) => void;
   closeEditModal: () => void;
-  openSellModal: (asset: Asset) => void;
+  openSellModal: (asset: Asset, pickOwner?: boolean) => void;
   closeSellModal: () => void;
-  openBuyModal: (asset: Asset) => void;
+  openBuyModal: (asset: Asset, pickOwner?: boolean) => void;
   closeBuyModal: () => void;
   openBulkUpload: () => void;
   closeBulkUpload: () => void;

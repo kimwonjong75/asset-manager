@@ -44,6 +44,7 @@ import { buildCleanupCommit } from '../utils/cleanupPlan';
 import type { CleanupDecision } from '../types/cleanup';
 import { compactResolvedActions, ACTION_QUEUE_RETENTION_DAYS } from '../utils/actionQueueCompaction';
 import { localDateString } from '../utils/localDate';
+import { splitOwnerHolding } from '../utils/ownerTransactions';
 import { describeFreshness, LAST_PRICE_REFRESH_AT_KEY } from '../utils/priceFreshness';
 import { usePriceFreshnessRefresh } from '../hooks/usePriceFreshnessRefresh';
 import { resolveTabAlias } from '../utils/deepLink';
@@ -114,6 +115,7 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     assets, setAssets,
     portfolioHistory, setPortfolioHistory,
     sellHistory, setSellHistory,
+    buyHistory, setBuyHistory,
     watchlist, setWatchlist,
     exchangeRates, setExchangeRates,
     allocationTargets, setAllocationTargets,
@@ -151,12 +153,8 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     handleRefreshOnePrice,
     handleRefreshWatchlistPrices,
   } = useMarketData({
-    assets, setAssets,
-    watchlist, setWatchlist,
-    exchangeRates, setExchangeRates,
-    portfolioHistory, sellHistory,
+    getSnapshot,
     commitPortfolio,
-    saveNow,
     setError,
     setSuccessMessage,
   });
@@ -262,7 +260,6 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   } = useAssetActions({
     // setter 를 넘기지 않는다 — 상태 변경은 전부 commitPortfolioPatch 한 경로로만 일어난다.
     assets,
-    sellHistory,
     exchangeRates,
     isSignedIn,
     getSnapshot,
@@ -325,6 +322,7 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   // 매도 모달 프리필 (P2b) — 계획 카드 [매도 기록] 경유로 열 때만 채운다.
   // sellingAsset과 항상 같이 세팅/해제된다(모달이 열린 채로 단독 변경되지 않음).
   const [sellPrefill, setSellPrefill] = useState<{ quantity?: number; price?: number; outcome?: SellOutcome } | null>(null);
+  const [pickTradeOwner, setPickTradeOwner] = useState(false);
 
   // "새 매수 계획" 독립 화면(TradePlanPlanner, P2c) — 열림 여부 + 진입 프리필(관심종목 행 메뉴 등)
   const [plannerOpen, setPlannerOpen] = useState<boolean>(false);
@@ -670,6 +668,7 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     assets,
     portfolioHistory,
     sellHistory,
+    buyHistory,
     watchlist,
     exchangeRates,
     allocationTargets,
@@ -681,6 +680,7 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     setAssets,
     setPortfolioHistory,
     setSellHistory,
+    setBuyHistory,
     setWatchlist,
     setExchangeRates,
     setAllocationTargets,
@@ -728,6 +728,7 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       assets,
       portfolioHistory,
       sellHistory,
+      buyHistory,
       watchlist,
       exchangeRates,
       allocationTargets,
@@ -774,6 +775,7 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       editingAsset,
       sellingAsset,
       buyingAsset,
+      pickTradeOwner,
       bulkUploadOpen: isBulkUploadModalOpen,
       addAssetOpen: isAddAssetModalOpen,
       assistantOpen: isAssistantOpen,
@@ -870,6 +872,15 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       showBriefingPopup: handleShowBriefingPopup,
       clearError: () => setError(null),
       clearSuccessMessage: () => setSuccessMessage(null),
+      splitOwnerBalance: input => {
+        if (!isSignedIn) return 'Google Drive 로그인 후 잔고를 분할할 수 있습니다.';
+        const ids = { WONJONG: crypto.randomUUID(), YUSEON: crypto.randomUUID() };
+        const split = splitOwnerHolding(getSnapshot(), input, ids, localDateString());
+        if (!split.ok) return split.error;
+        commitPortfolio({ assets: split.assets, sellHistory: split.sellHistory });
+        setSuccessMessage('보유자별 시작 잔고를 저장했습니다.');
+        return null;
+      },
       setActiveTab: handleTabChange,
       setFocusedAssetId: handleSetFocusedAssetId,
       setFocusedWatchItemId: handleSetFocusedWatchItemId,
@@ -897,9 +908,9 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       },
       openEditModal: (asset: Asset) => setEditingAsset(asset),
       closeEditModal: () => setEditingAsset(null),
-      openSellModal: (asset: Asset) => setSellingAsset(asset),
+      openSellModal: (asset, pickOwner = false) => { setPickTradeOwner(pickOwner); setSellPrefill(null); setSellingAsset(asset); },
       closeSellModal: () => { setSellingAsset(null); setSellPrefill(null); },
-      openBuyModal: (asset: Asset) => setBuyingAsset(asset),
+      openBuyModal: (asset, pickOwner = false) => { setPickTradeOwner(pickOwner); setBuyingAsset(asset); },
       closeBuyModal: () => setBuyingAsset(null),
       openBulkUpload: () => setIsBulkUploadModalOpen(true),
       closeBulkUpload: () => setIsBulkUploadModalOpen(false),
@@ -1081,7 +1092,7 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           });
           if (!reentryResult.ok) return { ok: false, reason: reentryResult.reason };
 
-          commitPortfolio({ assets: addResult.nextAssets, turtlePositions: [...getSnapshot().turtlePositions, reentryResult.position] });
+          commitPortfolio({ turtlePositions: [...getSnapshot().turtlePositions, reentryResult.position] });
           setSuccessMessage(`${input.name} 재매수를 기록했습니다.`);
           return { ok: true, assetId: addResult.assetId, positionId: reentryResult.position.id };
         }
@@ -1101,7 +1112,6 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         if (!pyramidResult.ok) return { ok: false, reason: pyramidResult.reason };
 
         commitPortfolio({
-          assets: buyResult.nextAssets,
           turtlePositions: snap.turtlePositions.map(p => (p.id === position.id ? pyramidResult.position : p)),
         });
         setSuccessMessage(`${position.name} 추가 매수(불타기)를 기록했습니다.`);
@@ -1210,6 +1220,7 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         const asset = getSnapshot().assets.find(a => a.id === assetId);
         if (!asset || !asset.tradePlan || asset.tradePlan.status !== 'active') return;
         const prefill = sellPrefillFor(asset.tradePlan, asset, outcome);
+        setPickTradeOwner(false);
         setSellingAsset(asset);
         setSellPrefill({ quantity: prefill.quantity, price: prefill.priceOriginal, outcome });
       },

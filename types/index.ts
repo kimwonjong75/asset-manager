@@ -170,12 +170,31 @@ export interface WatchlistItem {
   turtleWatch?: TurtleHoldingsWatchEntry;
 }
 
+/** 매수 당시의 체결 정보. 현재 자산이 없어져도 독립적으로 보관한다. */
+export interface BuyRecord {
+  id: string;
+  assetId: string;
+  ticker: string;
+  exchange: string;
+  name: string;
+  owner: OwnerId;
+  buyDate: string;
+  buyQuantity: number;
+  quantityUnit?: string;
+  buyPrice: number;
+  currency: Currency;
+  buyExchangeRate: number;
+}
+
 export interface SellTransaction {
   id: string;
+  /** 거래 당시 보유자. 기록이 없는 이전 매도는 미분류. */
+  owner?: OwnerId;
   sellDate: string;
   sellPrice: number;
   sellPriceOriginal?: number;
   sellQuantity: number;
+  quantityUnit?: string;
   sellExchangeRate?: number;
   settlementCurrency?: Currency;
   sellPriceSettlement?: number;
@@ -216,6 +235,8 @@ export interface Asset {
   bucket?: BucketId;
   /** 계정(소유자) 축 (원종=본인/유선=가족). 미지정=원종. 유선은 리밸런싱·터틀·대청소 상시 제외. bucket과 직교. */
   owner?: OwnerId;
+  /** 공동 표기에서 확인한 시작 잔고. 거래 이력은 원래 자산 ID로 보존한다. */
+  ownerAllocation?: import('./owner').OwnerAllocation;
   /** 대청소 분류 확정 태그 (Phase 3). **미지정=미검토**(≠'keep'). 기본값 강제 주입 금지 */
   cleanupTag?: CleanupTag;
   /** 가족('유선') 등 의사결정 밖 자산 — 대청소 후보에서 제외. **미지정=false로 해석**(false를 저장하지 않음) */
