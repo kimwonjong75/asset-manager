@@ -1,0 +1,325 @@
+<div id="am-owner-preview" lang="ko">
+<style>
+#am-owner-preview{color-scheme:light dark;--paper:light-dark(#fff,#1b1c20);--base:light-dark(#f6f7fa,#141518);--ink:light-dark(#20232d,#f0f1f5);--sub:light-dark(#596171,#a7acba);--line:light-dark(#dee1e8,#363941);--accent:light-dark(#5143b3,#b9adff);--action:light-dark(#5546bc,#6653c9);--select:light-dark(#f0edfc,#302c40);--won:light-dark(#574bad,#c0afff);--wonbg:light-dark(#efeafb,#393045);--yu:light-dark(#765019,#e6c089);--yubg:light-dark(#f7efdf,#3c3327);--bad:light-dark(#9d265a,#ff9dbd);color:var(--ink);font:14px/1.52 "Noto Sans KR","Malgun Gothic",sans-serif;font-variant-numeric:tabular-nums;word-break:keep-all}
+#am-owner-preview *{box-sizing:border-box}
+#am-owner-preview [hidden]{display:none!important}
+#am-owner-preview .am-app{container-type:inline-size;max-width:1100px;margin:auto;border:1px solid var(--line);border-radius:16px;background:var(--base);overflow:clip}
+#am-owner-preview .am-app.phone{max-width:395px}
+#am-owner-preview :is(h1,h2,h3,p){margin:0;color:inherit}
+#am-owner-preview h1{font-size:clamp(23px,3.4cqw,31px);font-weight:750;letter-spacing:-.06em}
+#am-owner-preview h2{font-size:18px;font-weight:700;letter-spacing:-.045em}
+#am-owner-preview button,#am-owner-preview input{font:inherit;color:inherit}
+#am-owner-preview button{cursor:pointer;background:none;border:0}
+#am-owner-preview button:focus-visible,#am-owner-preview summary:focus-visible,#am-owner-preview input:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+#am-owner-preview button:disabled{opacity:.5;cursor:default}
+#am-owner-preview .am-chrome{display:flex;align-items:center;gap:9px;background:var(--paper);padding:11px 20px;border-bottom:1px solid var(--line)}
+#am-owner-preview .am-brand{font:700 15px/1.2 system-ui,sans-serif;letter-spacing:-.035em}
+#am-owner-preview .am-logomark{height:24px;width:24px;border-radius:7px;display:flex;align-items:flex-end;justify-content:center;gap:2px;padding:6px 4px;background:var(--action)}
+#am-owner-preview .am-logomark i{width:3px;background:#fff;border-radius:1px}
+#am-owner-preview .am-logomark i:nth-child(1){height:4px}#am-owner-preview .am-logomark i:nth-child(2){height:8px}#am-owner-preview .am-logomark i:nth-child(3){height:12px}
+#am-owner-preview .am-proto{margin-left:auto;color:var(--sub);font-size:12px}
+#am-owner-preview .am-main{padding:18px clamp(10px,2.6cqw,26px) 16px}
+#am-owner-preview .am-titlebar,#am-owner-preview .am-toolbar,#am-owner-preview .am-panelhead,#am-owner-preview .am-between{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}
+#am-owner-preview .am-titlebar{margin-bottom:14px}
+#am-owner-preview .am-link{font-size:13px;color:var(--accent);font-weight:650;padding:6px}
+#am-owner-preview .am-grid{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(278px,1fr);gap:14px;align-items:start}
+#am-owner-preview .am-panel{background:var(--paper);border:1px solid var(--line);border-radius:13px;min-width:0}
+#am-owner-preview .am-toolbar{padding:14px 14px 10px;gap:6px}
+#am-owner-preview .am-seg{display:inline-flex;border-radius:9px;background:var(--base);padding:3px;border:1px solid var(--line);gap:2px}
+#am-owner-preview .am-seg button{border-radius:6px;padding:5px 12px;color:var(--sub);font-weight:650;font-size:13px}
+#am-owner-preview .am-seg button[aria-pressed=true]{background:var(--paper);color:var(--ink);box-shadow:0 1px 3px #0002}
+#am-owner-preview .am-check{display:inline-flex;align-items:center;gap:5px;cursor:pointer;font-size:12px;color:var(--sub)}
+#am-owner-preview .am-check input{accent-color:var(--action);width:15px;height:15px}
+#am-owner-preview .am-colhead,#am-owner-preview .am-asset{display:grid;grid-template-columns:minmax(94px,1.12fr) minmax(113px,1fr) 62px 9px;align-items:center;gap:8px;padding:10px 14px;width:100%}
+#am-owner-preview .am-colhead{color:var(--sub);font-size:11px;border-bottom:1px solid var(--line)}
+#am-owner-preview .am-colhead :nth-child(3),#am-owner-preview .am-total{text-align:right}
+#am-owner-preview .am-asset{position:relative;min-height:65px;text-align:left;border-bottom:1px solid var(--line);border-radius:0}
+#am-owner-preview .am-asset:last-child{border-bottom:0;border-radius:0 0 12px 12px}
+#am-owner-preview .am-asset[data-picked=true]{background:var(--select);box-shadow:inset 3px 0 var(--accent)}
+#am-owner-preview .am-asset:hover{background:var(--base)}
+#am-owner-preview .am-stock{display:grid;gap:2px;min-width:0}
+#am-owner-preview .am-stock strong{font-size:14px;font-weight:680;letter-spacing:-.035em;overflow-wrap:anywhere;line-height:1.35}
+#am-owner-preview small,#am-owner-preview .am-muted{color:var(--sub);font-size:12px}
+#am-owner-preview .am-stock small{font:500 11px/1.5 system-ui,sans-serif;letter-spacing:.02em;color:var(--sub)}
+#am-owner-preview .am-chips{display:flex;gap:4px;flex-wrap:wrap}
+#am-owner-preview .am-chip{display:inline-flex;align-items:center;gap:4px;border-radius:5px;padding:2px 5px;font-size:11px;font-weight:600;white-space:nowrap}
+#am-owner-preview .am-chip.w{color:var(--won);background:var(--wonbg)}#am-owner-preview .am-chip.y{color:var(--yu);background:var(--yubg)}
+#am-owner-preview .am-total{font-size:15px;font-weight:720;white-space:nowrap}
+#am-owner-preview .am-chevron{font:19px/1 system-ui;color:var(--sub)}
+#am-owner-preview .am-source{margin-top:10px;color:var(--sub);font-size:11px}
+#am-owner-preview .am-editor{padding:15px;display:grid;gap:12px}
+#am-owner-preview .am-panelhead{align-items:flex-start}
+#am-owner-preview .am-eyebrow{font-size:12px;color:var(--accent);font-weight:700;margin-bottom:2px}
+#am-owner-preview .am-back{display:none}
+#am-owner-preview .am-mode{display:flex}
+#am-owner-preview .am-mode button{flex:1}
+#am-owner-preview .am-field{display:grid;gap:5px;margin:0;min-width:0}
+#am-owner-preview .am-label{font-size:12px;font-weight:650;color:var(--sub)}
+#am-owner-preview .am-owners{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+#am-owner-preview .am-owners button{text-align:left;border:1px solid var(--line);border-radius:8px;padding:7px 9px;display:grid;gap:2px;background:var(--paper);min-width:0}
+#am-owner-preview .am-owners button[aria-pressed=true]{border-color:var(--accent);background:var(--select)}
+#am-owner-preview .am-name{display:flex;align-items:center;gap:5px;font-weight:650}
+#am-owner-preview .am-name:before{content:"";width:8px;height:8px;border-radius:50%;background:var(--won)}
+#am-owner-preview .am-name.y:before{background:var(--yu)}
+#am-owner-preview .am-inputrow{display:flex;align-items:center;gap:5px;border:1px solid var(--line);border-radius:8px;padding:2px 8px;background:var(--paper)}
+#am-owner-preview .am-inputrow input{width:100%;min-width:0;border:0;background:none;padding:6px 0;font-weight:650}
+#am-owner-preview .am-inputrow button{background:var(--base);padding:3px 7px;border-radius:5px;font-size:12px;white-space:nowrap}
+#am-owner-preview .am-receipt{background:var(--base);border-radius:8px;padding:8px 10px;display:grid;gap:3px}
+#am-owner-preview .am-receipt span{color:var(--sub);font-size:12px}
+#am-owner-preview .am-receipt strong{font-size:13px}
+#am-owner-preview .am-confirm{padding:10px 8px;border-radius:8px;font-weight:700;color:white;background:var(--action)}
+#am-owner-preview .am-more summary{font-size:12px;color:var(--sub);cursor:pointer}
+#am-owner-preview .am-fields{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:7px}
+#am-owner-preview .am-fields input{width:100%;min-width:0;border:1px solid var(--line);border-radius:6px;padding:5px;background:var(--paper);font-size:13px}
+#am-owner-preview .am-error{color:var(--bad);font-size:12px}
+#am-owner-preview .am-status{color:var(--accent);font-size:13px;font-weight:600;margin-top:8px}
+#am-owner-preview .am-history{padding:15px}
+#am-owner-preview .am-logrow{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;border-bottom:1px solid var(--line);padding:12px 0}
+#am-owner-preview .am-logrow:last-child{border-bottom:0}
+#am-owner-preview .am-hint{padding:14px;color:var(--sub)}
+@container(max-width:760px){
+ #am-owner-preview .am-grid{display:block}
+ #am-owner-preview .am-app[data-screen=list] .am-editor,#am-owner-preview .am-app[data-screen=edit] .am-listarea{display:none}
+ #am-owner-preview .am-back{display:inline-block}
+ #am-owner-preview .am-colhead,#am-owner-preview .am-asset{grid-template-columns:minmax(0,1.15fr) minmax(106px,1fr) 56px 8px}
+}
+@container(max-width:475px){
+ #am-owner-preview .am-chrome{padding:10px 14px}
+ #am-owner-preview .am-toolbar{padding:10px;gap:4px}
+ #am-owner-preview .am-seg button{padding:6px 10px}
+ #am-owner-preview .am-colhead{display:none}
+ #am-owner-preview .am-asset{grid-template-columns:minmax(0,1fr) auto 10px;grid-template-areas:"stock total arrow" "chips chips arrow";gap:4px 7px;padding:11px 12px}
+ #am-owner-preview .am-stock{grid-area:stock;display:flex;align-items:baseline;flex-wrap:wrap;gap:2px 6px}
+ #am-owner-preview .am-total{grid-area:total}#am-owner-preview .am-chips{grid-area:chips}#am-owner-preview .am-chevron{grid-area:arrow}
+ #am-owner-preview .am-titlebar{gap:3px}#am-owner-preview .am-chip{font-size:12px}
+}
+@media(pointer:coarse){#am-owner-preview .am-app :is(button,summary,.am-check){min-height:44px}#am-owner-preview .am-app input:not([type=checkbox]){font-size:16px}}
+</style>
+<div class="am-app" data-screen="list">
+  <div class="am-chrome"><span class="am-logomark" aria-hidden="true"><i></i><i></i><i></i></span><span class="am-brand">Asset Manager</span><span class="am-proto">인터랙티브 목업</span></div>
+  <div class="am-main">
+    <div class="am-titlebar"><h1 id="am-heading">보유자산</h1><button type="button" class="am-link" id="am-viewlog">거래내역 보기</button></div>
+    <div class="am-grid" id="am-body">
+      <section class="am-listarea" aria-label="보유 종목">
+        <div class="am-panel">
+          <div class="am-toolbar"><div class="am-seg" id="am-filters" role="group" aria-label="보유자 필터"><button type="button" data-filter="all">통합</button><button type="button" data-filter="w">원종</button><button type="button" data-filter="y">유선</button></div><label class="am-check"><input id="am-joint" type="checkbox">함께 보유만</label></div>
+          <div class="am-colhead" aria-hidden="true"><span>종목</span><span>보유자별 수량</span><span id="am-qtyhead">합계</span></div>
+          <div id="am-rows"></div>
+        </div>
+        <p class="am-source">명세서 발췌 · 원종 2026.11.26 · 유선 2026.11.25</p>
+      </section>
+      <section class="am-panel am-editor" id="am-editor" aria-label="모의 거래 입력">
+        <div class="am-panelhead"><div><div class="am-eyebrow">모의 거래</div><h2 id="am-symbol"></h2></div><button class="am-back am-link" id="am-back" type="button">목록으로</button></div>
+        <div class="am-mode am-seg" role="group" aria-label="거래 유형"><button type="button" data-side="buy">매수</button><button type="button" data-side="sell">매도</button></div>
+        <div class="am-field"><span class="am-label" id="am-ownerlabel">거래할 보유자</span><div class="am-owners" id="am-owners" role="group" aria-labelledby="am-ownerlabel"></div></div>
+        <label class="am-label" for="am-qty" id="am-qtylabel">매도 수량</label>
+        <div class="am-inputrow" style="margin-top:-8px"><input id="am-qty" type="number" min="1" step="1" inputmode="numeric"><span class="am-muted">주</span><button id="am-max" type="button">전량</button></div>
+        <details class="am-more" id="am-details"><summary id="am-terms">모의 체결 정보</summary><div class="am-fields"><label class="am-field"><span class="am-label">거래일</span><input type="date" id="am-day" value="2026-11-27"></label><label class="am-field"><span class="am-label" id="am-unitlabel">예시 체결가</span><input type="number" id="am-price" min="0" step="any" inputmode="decimal"></label></div></details>
+        <div class="am-receipt" aria-live="polite"><div class="am-between"><span id="am-actor">보유자 잔고</span><strong id="am-delta"></strong></div><div class="am-between"><span>두 사람 합계</span><strong id="am-sum"></strong></div></div>
+        <div class="am-error" id="am-error" role="alert" hidden></div>
+        <button type="button" class="am-confirm" id="am-apply"></button>
+      </section>
+    </div>
+    <section class="am-history am-panel" id="am-history" aria-label="모의 거래내역" hidden>
+      <div class="am-seg" role="group" aria-label="거래내역 보유자"><button type="button" data-logfilter="all">통합</button><button type="button" data-logfilter="w">원종</button><button type="button" data-logfilter="y">유선</button></div>
+      <div id="am-records"></div>
+    </section>
+    <p class="am-status" id="am-status" role="status" hidden></p>
+  </div>
+</div>
+</div>
+<script>
+(() => {
+  const root = document.getElementById('am-owner-preview');
+  const get = id => root.querySelector('#am-' + id);
+  const app = root.querySelector('.am-app');
+  const names = { w: '원종', y: '유선' };
+  const people = Object.keys(names);
+  const stocks = [
+    { code: 'QQQ', name: 'QQQ 인베스코 ETF', w: 64, y: 8, unit:'USD', price:600 },
+    { code: 'BMNR', name: '비트마인 이머전 테크놀로지스', w:594, y:14, unit:'USD', price:15 },
+    { code: 'VTV', name: '미국 대형 가치주 뱅가드 ETF', w:50, y:52, unit:'USD', price:180 },
+    { code: '035420', name: 'NAVER', w:19, y:0, unit:'KRW', price:160000 },
+    { code: 'AVGO', name: '브로드컴', w:0, y:2, unit:'USD', price:300 }
+  ];
+  const shares = n => n.toLocaleString('ko-KR') + '주';
+  const formatPrice = (n,unit) => n.toLocaleString('ko-KR',{maximumFractionDigits:4}) + ' ' + unit;
+  const init = () => stocks.map(x => ({ w:x.w,y:x.y }));
+  let balances = init(), log = [], filter = 'all', shared = false, index = 0, side = 'sell', owner = 'y', showLog = false;
+  let announcement = '', logFilter='all';
+  const phone = { on: false };
+  const qty = get('qty'), price = get('price'), day = get('day');
+  qty.value = '3';
+  price.value = String(stocks[0].price);
+
+  function eligible(i) {
+    const b = balances[i];
+    if (filter !== 'all') return b[filter] > 0;
+    return shared ? b.w > 0 && b.y > 0 : b.w + b.y > 0;
+  }
+  function suggested(i) {
+    if (filter !== 'all') return filter;
+    const b = balances[i];
+    if ((b.w > 0) !== (b.y > 0)) return b.w ? 'w' : 'y';
+    return '';
+  }
+  function pick(i, open) {
+    index = i;
+    owner = suggested(i);
+    qty.value = '';
+    price.value = String(stocks[i].price);
+    get('details').open = false;
+    if (open) app.dataset.screen = 'edit';
+    announcement = '';
+  }
+  function filterChanged() {
+    const next = eligible(index) ? index : stocks.findIndex((_,i)=>eligible(i));
+    if (next >= 0) pick(next,false);
+    app.dataset.screen = 'list';
+    announcement = '';
+    draw();
+    save();
+  }
+  function renderList() {
+    root.querySelectorAll('[data-filter]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.filter===filter)));
+    get('joint').checked = shared && filter==='all';
+    get('joint').parentElement.hidden = filter !== 'all';
+    get('qtyhead').textContent = filter==='all' ? '합계' : '보유 수량';
+    const rows = get('rows');
+    rows.replaceChildren();
+    stocks.forEach((stock,i) => {
+      if (!eligible(i)) return;
+      const b = balances[i];
+      const total = filter==='all' ? b.w+b.y : b[filter];
+      const chips = people.filter(p => b[p]>0 && (filter==='all' || filter===p)).map(p =>
+        '<span class="am-chip '+p+'">'+names[p]+' '+shares(b[p])+'</span>').join('');
+      const btn = document.createElement('button');
+      btn.type='button'; btn.className='am-asset'; btn.dataset.i=String(i); btn.dataset.picked=String(i===index);
+      btn.setAttribute('aria-controls','am-editor');
+      btn.setAttribute('aria-label',stock.name+' 거래 열기, '+people.filter(p=>b[p]>0 && (filter==='all'||p===filter)).map(p=>names[p]+' '+shares(b[p])).join(', '));
+      btn.innerHTML='<span class="am-stock"><strong>'+stock.name+'</strong><small>'+stock.code+'</small></span><span class="am-chips">'+chips+'</span><span class="am-total">'+shares(total)+'</span><span class="am-chevron" aria-hidden="true">›</span>';
+      rows.append(btn);
+    });
+    if (!rows.childElementCount) rows.innerHTML='<p class="am-hint">이 조건의 보유 종목이 없습니다.</p>';
+  }
+  function problem() {
+    const q=Number(qty.value), cost=Number(price.value), b=balances[index];
+    if (!people.includes(owner)) return '거래할 보유자를 선택하세요.';
+    if (!qty.value) return '거래 수량을 입력하세요.';
+    if (!Number.isSafeInteger(q) || q<=0) return '1주 이상의 정수로 입력하세요.';
+    if (side==='sell' && q>b[owner]) return names[owner]+'의 매도 가능 수량은 '+shares(b[owner])+'입니다.';
+    if (side==='buy' && !Number.isSafeInteger(b.w+b.y+q)) return '거래 수량을 확인하세요.';
+    if (!day.value || !day.validity.valid || !Number.isFinite(cost) || cost<=0) return '모의 체결 정보의 날짜와 단가를 확인하세요.';
+    return '';
+  }
+  function renderAmounts() {
+    const s=stocks[index], b=balances[index], q=Number(qty.value), sum=b.w+b.y, action=side==='sell'?'매도':'매수', warning=problem();
+    const diff=side==='sell'?-q:q;
+    get('qtylabel').textContent=action+' 수량';
+    get('unitlabel').textContent='예시 체결가 ('+s.unit+')';
+    get('terms').textContent='모의 체결 정보 · '+formatPrice(Number(price.value)||0,s.unit);
+    get('actor').textContent=(names[owner]||'보유자')+' 잔고';
+    get('delta').textContent=owner ? shares(b[owner])+(warning?'':' → '+shares(b[owner]+diff)) : '—';
+    get('sum').textContent=shares(sum)+(warning?'':' → '+shares(sum+diff));
+    get('apply').textContent=(warning ? action : names[owner]+' '+shares(q)+' '+action)+' 모의 기록';
+    get('apply').disabled=!!warning;
+    const showError=!!warning && !!owner && !!qty.value;
+    get('error').hidden=!showError;
+    get('error').textContent=showError?warning:'';
+    get('max').hidden=side==='buy';
+    get('max').disabled=!owner || b[owner]===0;
+  }
+  function renderEditor() {
+    get('symbol').textContent=stocks[index].name;
+    root.querySelectorAll('[data-side]').forEach(el=>el.setAttribute('aria-pressed',String(el.dataset.side===side)));
+    const group=get('owners');
+    group.replaceChildren();
+    people.forEach(p=>{
+      const b=document.createElement('button');
+      b.type='button'; b.dataset.owner=p; b.disabled=(filter!=='all' && filter!==p) || (side==='sell' && !balances[index][p]);
+      b.setAttribute('aria-pressed',String(owner===p));
+      b.innerHTML='<span class="am-name '+p+'">'+names[p]+'</span><small>'+(balances[index][p] ? '보유 '+shares(balances[index][p]) : '보유 0주')+'</small>';
+      group.append(b);
+    });
+    renderAmounts();
+  }
+  function renderHistory() {
+    const holder=get('records');
+    root.querySelectorAll('[data-logfilter]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.logfilter===logFilter)));
+    holder.replaceChildren();
+    const visible=log.filter(t=>logFilter==='all'||t.p===logFilter);
+    if (!visible.length) { holder.innerHTML='<p class="am-hint">아직 기록한 모의 거래가 없습니다.</p>';return; }
+    visible.reverse().forEach(t=>{
+      const row=document.createElement('div'), desc=document.createElement('div'), head=document.createElement('strong'), meta=document.createElement('div'), amount=document.createElement('strong');
+      row.className='am-logrow';meta.className='am-muted';
+      head.textContent=stocks[t.i].name;
+      meta.textContent=t.date+' · '+names[t.p]+' · '+formatPrice(t.price,stocks[t.i].unit);
+      amount.textContent=(t.side==='sell'?'매도 ':'매수 ')+shares(t.q);
+      desc.append(head,meta);row.append(desc,amount);holder.append(row);
+    });
+  }
+  function draw() {
+    get('heading').textContent=showLog?'거래내역':'보유자산';
+    get('viewlog').textContent=showLog?'보유자산 보기':'거래내역 보기'+(log.length?' ('+log.length+')':'');
+    get('body').hidden=showLog;
+    get('history').hidden=!showLog;
+    get('editor').hidden=!eligible(index);
+    get('status').hidden=!announcement;
+    get('status').textContent=announcement;
+    renderList();renderEditor();renderHistory();
+  }
+  function apply() {
+    if (problem()) return;
+    const t={i:index,p:owner,q:Number(qty.value),side,price:Number(price.value),date:day.value};
+    balances[index][owner]+=side==='sell'?-t.q:t.q;
+    log.push(t);
+    const msg=stocks[t.i].code+' · '+names[t.p]+' '+shares(t.q)+' '+(t.side==='sell'?'매도':'매수')+'를 모의 기록했습니다.';
+    const next=eligible(index)?index:stocks.findIndex((_,i)=>eligible(i));
+    if (next>=0) pick(next,false);
+    qty.value='';
+    app.dataset.screen='list';
+    announcement=msg;
+    draw();save();
+  }
+  function save() {
+    if (!window.openai?.setWidgetState) return;
+    const data={v:1,filter,shared,index,owner,side,screen:app.dataset.screen,showLog,logFilter,balances,log:log.slice(-50),
+      quantity:qty.value,price:price.value,day:day.value,details:get('details').open};
+    window.openai.setWidgetState({modelContent:{view:filter==='all'?'통합':names[filter],selected:stocks[index].code},privateContent:data}).catch(()=>{});
+  }
+  function restore(snapshot) {
+    const d=snapshot?.privateContent;
+    if (d?.v!==1 || !Array.isArray(d.balances) || d.balances.length!==stocks.length || !d.balances.every(b=>people.every(p=>Number.isSafeInteger(b?.[p]) && b[p]>=0))) return;
+    if (!Array.isArray(d.log) || !d.log.every(t=>t && stocks[t.i] && people.includes(t.p) && Number.isSafeInteger(t.q) && t.q>0 && Number.isFinite(t.price) && ['buy','sell'].includes(t.side) && typeof t.date==='string')) return;
+    balances=d.balances.map(b=>({w:b.w,y:b.y}));log=d.log.slice();
+    filter=['all',...people].includes(d.filter)?d.filter:'all';shared=!!d.shared;
+    index=Number.isInteger(d.index)&&stocks[d.index]?d.index:0;side=d.side==='buy'?'buy':'sell';
+    owner=people.includes(d.owner)?d.owner:'';showLog=!!d.showLog;logFilter=people.includes(d.logFilter)?d.logFilter:'all';app.dataset.screen=d.screen==='edit'?'edit':'list';
+    qty.value=typeof d.quantity==='string'?d.quantity:'';
+    price.value=typeof d.price==='string'?d.price:String(stocks[index].price);
+    if (typeof d.day==='string') day.value=d.day;
+    get('details').open=!!d.details;draw();
+  }
+  root.addEventListener('click',e=>{
+    const el=e.target.closest('button');if(!el || el.disabled)return;
+    if (el.dataset.logfilter) {logFilter=el.dataset.logfilter;renderHistory();save();return;}
+    if (el.dataset.filter) {filter=el.dataset.filter;filterChanged();return;}
+    if (el.dataset.i!==undefined) {pick(Number(el.dataset.i),true);draw();save();return;}
+    if (el.dataset.side) {side=el.dataset.side;if(side==='sell'&&owner&&!balances[index][owner])owner=suggested(index);renderEditor();save();return;}
+    if (el.dataset.owner) {owner=el.dataset.owner;renderEditor();save();return;}
+    if (el===get('max')) {qty.value=String(balances[index][owner]);renderAmounts();return;}
+    if (el===get('apply')) {apply();return;}
+    if (el===get('back')) {app.dataset.screen='list';save();return;}
+    if (el===get('viewlog')) {showLog=!showLog;if(showLog)logFilter=filter;app.dataset.screen='list';announcement='';draw();save();}
+  });
+  get('joint').addEventListener('change',e=>{shared=e.target.checked;filterChanged();});
+  [qty,price,day].forEach(el=>el.addEventListener('input',renderAmounts));
+  draw();
+  restore(window.openai?.widgetState);
+  window.addEventListener('openai:set_globals',e=>{if(e.detail?.globals?.widgetState)restore(e.detail.globals.widgetState);});
+  if(globalThis.Tweak){
+    const tweak=new Tweak({container:app,onChange:()=>app.classList.toggle('phone',phone.on)});
+    tweak.addToggle(phone,'on',{label:'모바일 카드로 보기'});
+  }
+})();
+</script>
