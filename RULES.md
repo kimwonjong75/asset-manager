@@ -116,9 +116,11 @@
 
 ### 보유자별 통합 리스트
 
+- 거래소·티커가 누락된 구형 잔고는 빈 시장으로 판정해 기존 카테고리 단위 또는 '단위'를 표시한다.
+
 - 공동 보유 행을 펼친 실제 보유분은 `HoldingTradeButtons({asset,onBuy,onSell})`로 보유분의 원통화 평단·원화 평가액·손익을 보여주고 매수·매도를 고정 보유자로 바로 연다. 일반 행의 관리 메뉴·차트·선택 동작도 동일한 실ID를 사용한다.
 
-- 새 회귀 `tests/portfolioOwnerGroupsParity.ts`가 공동·단독·미확정·상이한 거래소, 합산 수량 정렬·원가 가중 수익률·소수 단위를 검증한다. 배지는 원종 primary와 유선 계정 식별 토큰을 사용한다.
+- 새 회귀 `tests/portfolioOwnerGroupsParity.ts`가 공동·단독·미확정·상이한 거래소, 합산 수량 정렬·원가 가중 수익률·소수 단위를 검증한다. 테마 상장 증권·금현물·코인·현금/RP와 신규 매수·매도 기록의 단위도 합성 상품으로 확인한다. 배지는 원종 primary와 유선 계정 식별 토큰을 사용한다.
 
 - 통합 현재가는 실제 보유분의 `priceOriginal`이 일치하고 유한한 양수일 때만 원통화로 표시한다. 별도 보유분들의 시세가 다르면 상세에서 각각 확인한다.
 
@@ -133,7 +135,7 @@
 - `utils/portfolioOwnerGroups.ts`의 `sharedPortfolioHoldingIds(assets)`는 확인된 양수 잔고에서 두 소유자가 모두 있는 종목을 찾는다. `buildPortfolioOwnerGroups(visible, view, sort)`는 필터가 통과시킨 실보유분만 합산하고 같은 종목 두 사람의 평가손익·원금을 더해 수익률을 계산한다. `commonHoldingValue(holdings, get)`은 일치하는 값만 반환하며 상이한 값은 null이다. 원가 0의 통합 수익률과 개인별로 다른 날짜·시세는 미표시하고 합산 정렬 시 뒤에 둔다.
 
 - `types/portfolioOwnerGroup.ts`의 `PortfolioOwnerGroup`은 실제 보유분 배열과 수량·원화 평가액·원가·손익 합계를 담는 읽기 모델이다. `types/ui.ts`의 `PortfolioTableProps.onBuy/onSell(asset, pickOwner?)`은 통합 종목 진입에서만 보유자를 선택한다.
-- `utils/ownerQuantity.ts`의 `getOwnerQuantityUnit(asset, categories?)`과 `formatOwnerQuantity(asset, quantity?, categories?)`는 소수 수량과 주·개·g·통화를 표시한다. 단위가 불명확하거나 현금/RP 단가가 1이 아니면 '단위'를 사용한다.
+- `utils/ownerQuantity.ts`의 `getOwnerQuantityUnit(asset, categories?)`과 `formatOwnerQuantity(asset, quantity?, categories?)`는 현금/RP의 단가 1 여부를 먼저 검사한다. 그 외에는 정규화한 거래소·티커로 KRX 금현물(g), 실제 코인 거래소(개), 국내·미국·일본·중국·홍콩 증권시장(주)을 식별한 다음 카테고리로 폴백한다. 금·가상자산 테마의 상장 ETF나 주식도 주 단위다. 불명확한 단위나 비액면 현금/RP는 '단위'로 표시한다. 이 함수는 잔고 표시와 신규 `buildBuyRecord/buildSellMutation`의 거래단위 스냅샷에 함께 적용하며 과거 거래 저장값은 유지한다.
 
 ### hooks/ (커스텀 훅)
 | 파일 | 책임 | 의존 | 수정 시 확인 |
