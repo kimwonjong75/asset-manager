@@ -3,6 +3,7 @@ import { HOLDING_POLICY_LABELS } from '../../types/holdingPolicyUi';
 import { getOwnerLabel } from '../../types/owner';
 import { getHoldingPrincipalKRW } from '../../utils/holdingPolicy';
 import { holdingPolicySuggestion } from '../../utils/holdingPolicyEdit';
+import HoldingPolicyAmounts from './HoldingPolicyAmounts';
 
 export default function HoldingPolicyControl({ asset, row, onOpen }: HoldingPolicyControlProps) {
   const label = asset.holdingPolicy ? HOLDING_POLICY_LABELS[asset.holdingPolicy.mode] : '운용 방침 선택';
@@ -14,6 +15,7 @@ export default function HoldingPolicyControl({ asset, row, onOpen }: HoldingPoli
       {asset.holdingPolicy ? <p className={row?.status === 'unavailable' ? 'text-warning' : 'text-gray-300'}>
         {row?.reasonText ?? '종가 확인 대기'}
       </p> : <p className="text-gray-400">{holdingPolicySuggestion(getHoldingPrincipalKRW(asset))}</p>}
+      {asset.holdingPolicy && <HoldingPolicyAmounts holdingPolicyEvaluation={row?.holdingPolicyEvaluation} />}
     </div>
   );
 }

@@ -15,6 +15,7 @@ import {
 import { describeHoldingsRule } from '../../utils/turtleVerificationNotes';
 import { resolveHoldingsSettings } from '../../utils/turtleHoldings';
 import { formatKRW } from '../portfolio-table/utils';
+import HoldingPolicyAmounts from '../portfolio-table/HoldingPolicyAmounts';
 import Badge from '../common/Badge';
 import ManualHelpLink from '../common/ManualHelpLink';
 import Button from '../common/Button';
@@ -65,9 +66,7 @@ const RowLine: React.FC<RowLineProps> = ({ row, text, subText, target, expanded,
         <span className="text-xs text-gray-500">{row.ticker}</span>
       </div>
       <p className="mt-1 text-xs text-gray-300 leading-relaxed">{text}</p>
-      {row.holdingPolicyEvaluation?.netProceedsKRW != null && row.holdingPolicyEvaluation.remainingPrincipalKRW != null && (
-        <p className="mt-1 text-xs text-gray-400">예상 순매도대금 {formatKRW(row.holdingPolicyEvaluation.netProceedsKRW)} · 잔여 원금 {formatKRW(row.holdingPolicyEvaluation.remainingPrincipalKRW)}</p>
-      )}
+      <HoldingPolicyAmounts holdingPolicyEvaluation={row.holdingPolicyEvaluation} />
       {expanded && subText && <p className="mt-1 text-xs text-gray-400 leading-relaxed">{subText} · {REENTRY_BASELINE_CAPTION}</p>}
     </>
   );

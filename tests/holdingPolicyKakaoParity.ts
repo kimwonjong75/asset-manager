@@ -128,6 +128,9 @@ function screenRow(asset: Asset, now = new Date(time())) {
     fetchFailed: false, now, settings, policyFx: history('USD/KRW') });
   const html = renderToStaticMarkup(createElement(HoldingPolicyControl, { asset: enriched, row, onOpen: () => {} }));
   assert.ok(html.includes(row.reasonText), '모바일 카드에 홈과 같은 종목 사유 표시');
+  if (row.holdingPolicyEvaluation?.phase === 'exit-ready' && asset.id === 'one') {
+    assert.ok(html.includes('예상 순매도대금 1,010원 · 잔여 원금 1,000원'), '모바일 카드에 발송 본문과 같은 순매도대금·원금 표시');
+  }
   return row;
 }
 function screenHeadline(assets: Asset[]) {
