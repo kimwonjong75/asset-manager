@@ -1,5 +1,11 @@
 import { Currency } from '../types';
 
+/** Markets served by the KRW crypto quote and history endpoints. */
+export function isCryptoExchange(exchange: string | undefined): boolean {
+  const name = (exchange ?? '').trim().toLowerCase();
+  return ['upbit', 'bithumb', '주요 거래소 (종합)'].some(label => name.includes(label));
+}
+
 /**
  * 거래소 문자열만으로 통화를 확정할 수 있는 시장을 판정한다.
  * HKEX처럼 Currency enum이 지원하지 않는 시장은 임의 통화로 치환하지 않는다.
@@ -11,8 +17,7 @@ export function inferCurrencyFromExchange(exchange: string | undefined): Currenc
   if (
     normalized.includes('KRX')
     || normalized.includes('KONEX')
-    || normalized === 'UPBIT'
-    || normalized === 'BITHUMB'
+    || isCryptoExchange(exchange)
     || normalized.includes('거래소 (종합)')
   ) return Currency.KRW;
 

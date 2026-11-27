@@ -4,10 +4,8 @@
 // 2026-09-26 승인 P2). 옛 CleanupView 코드는 보존한다(App.tsx의 'cleanup' 탭 렌더만 이 화면으로 교체 —
 // 메뉴 이름 정리는 P3).
 //
-// 범위: 청산선 아래(터틀 '팔 때') 종목만 다룬다.
-//   · 작은 종목(총자산 1% 미만) — 체크해서 한꺼번에 [팔았음 기록]
-//   · 큰 종목 — 개별 [팔았음 기록](매도 모달, 체결가·날짜 직접 입력) / [보류(사유)]
-//   · 연속 보류 경고, 해외주식 세금 참고 패널(cleanupPlan.ts 재사용 — 참고용, 세무조언 아님)
+// 매도 기준에 닿은 모든 종목은 보유자별 체결 입력 또는 보류를 선택한다.
+// 실제 체결가·날짜·수량을 현재 시세로 대체하지 않는다.
 // 계산은 hooks/useTurtleHoldings + utils/turtleHoldingsView·cleanupPlan, 이 컴포넌트는 표시 + 액션 호출만.
 
 import React, { useMemo, useState } from 'react';
@@ -22,6 +20,7 @@ import { mergeSellRecords } from '../../utils/sellRecords';
 import { computeAssetMetrics } from '../../utils/portfolioMetrics';
 import { EnrichedAsset } from '../../types/ui';
 import { Currency } from '../../types';
+import { getOwnerLabel } from '../../types/owner';
 import { formatKRW } from '../portfolio-table/utils';
 import Button from '../common/Button';
 import Badge from '../common/Badge';
@@ -42,11 +41,9 @@ interface CandidateRow {
 const TurtleCleanupView: React.FC = () => {
   const { data, derived, actions } = usePortfolio();
   const holdings = useTurtleHoldings();
-  const [selectedSmallIds, setSelectedSmallIds] = useState<Set<string>>(new Set());
   const [holdDrafts, setHoldDrafts] = useState<Record<string, string>>({});
   const [openHoldFor, setOpenHoldFor] = useState<string | null>(null);
   const [taxOpen, setTaxOpen] = useState(false);
-  const [isBulkSelling, setIsBulkSelling] = useState(false);
 
   const enrichedById = useMemo(() => {
     const m = new Map<string, EnrichedAsset>();
@@ -67,36 +64,6 @@ const TurtleCleanupView: React.FC = () => {
     }
     return out.sort((a, b) => a.asset.metrics.returnPercentage - b.asset.metrics.returnPercentage);
   }, [holdings.rows, enrichedById]);
-
-  const smallCandidates = candidates.filter(c => c.isSmall);
-  const largeCandidates = candidates.filter(c => !c.isSmall);
-
-  const toggleSmall = (id: string) => {
-    setSelectedSmallIds(prev => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id); else next.add(id);
-      return next;
-    });
-  };
-  const toggleSelectAllSmall = () => {
-    setSelectedSmallIds(prev => (prev.size === smallCandidates.length ? new Set() : new Set(smallCandidates.map(c => c.asset.id))));
-  };
-
-  const handleBulkSellSmall = async () => {
-    if (selectedSmallIds.size === 0 || isBulkSelling) return;
-    setIsBulkSelling(true);
-    const today = new Date().toISOString().slice(0, 10);
-    // 순차 실행 — recordTurtleSell 내부 getSnapshot()이 이전 건의 커밋을 보게 한다(같은 틱 stale 방지).
-    for (const c of smallCandidates) {
-      if (!selectedSmallIds.has(c.asset.id)) continue;
-      await actions.recordTurtleSell({
-        assetId: c.asset.id, sellQuantity: c.asset.quantity, sellPrice: c.asset.priceOriginal,
-        sellDate: today, settlementCurrency: c.asset.currency, addToWatchlist: true,
-      });
-    }
-    setSelectedSmallIds(new Set());
-    setIsBulkSelling(false);
-  };
 
   const handleHoldSubmit = (assetId: string) => {
     const reason = (holdDrafts[assetId] ?? '').trim();
@@ -179,93 +146,50 @@ const TurtleCleanupView: React.FC = () => {
           {holdings.isLoading ? '확인 중입니다…' : '현재 매도 기준 도달로 확인된 종목이 없습니다.'}
         </div>
       ) : (
-        <>
-          {smallCandidates.length > 0 && (
-            <section className="mb-5">
-              <div className="flex items-center justify-between gap-2 mb-2">
-                <h2 className="text-sm font-semibold text-gray-200">작은 종목(총자산 1% 미만) — 일괄 처리</h2>
-                <button type="button" onClick={toggleSelectAllSmall} className="text-xs text-primary hover:underline">
-                  {selectedSmallIds.size === smallCandidates.length ? '전체 해제' : '전체 선택'}
-                </button>
+        <ul className="space-y-2.5">
+          {candidates.map(c => (
+            <li key={c.asset.id} className="bg-gray-800 border border-gray-700 rounded-lg p-3">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-white font-semibold truncate">{c.asset.customName?.trim() || c.asset.name}</span>
+                    <span className="text-xs text-gray-500">{getOwnerLabel(c.asset.owner)} · {c.asset.ticker}</span>
+                    {c.consecutiveHolds >= 2 && <Badge tone="warning">최근 {c.consecutiveHolds}번 보류</Badge>}
+                  </div>
+                  <div className="flex items-center gap-3 text-xs text-gray-400 mt-1">
+                    <span className={c.asset.metrics.returnPercentage < 0 ? 'text-down' : 'text-up'}>{pct(c.asset.metrics.returnPercentage)}</span>
+                    <span>평가 {formatKRW(c.asset.metrics.currentValueKRW)}</span>
+                    <span>비중 {c.asset.metrics.allocation.toFixed(2)}%</span>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">{c.row.reasonText}</p>
+                  {c.row.reentryBaseline && (
+                    <p className="text-xs text-gray-400 mt-1">{describeReentryBaseline(c.row)}</p>
+                  )}
+                </div>
               </div>
-              <ul className="space-y-2 mb-2">
-                {smallCandidates.map(c => {
-                  const baselineText = describeReentryBaseline(c.row);
-                  return (
-                    <li key={c.asset.id} className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2">
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="checkbox" checked={selectedSmallIds.has(c.asset.id)} onChange={() => toggleSmall(c.asset.id)}
-                          className="accent-primary"
-                        />
-                        <span className="text-white text-sm font-medium truncate">{c.asset.customName?.trim() || c.asset.name}</span>
-                        <span className="text-xs text-gray-500">{c.asset.ticker}</span>
-                        <span className={`ml-auto text-xs ${c.asset.metrics.returnPercentage < 0 ? 'text-down' : 'text-up'}`}>{pct(c.asset.metrics.returnPercentage)}</span>
-                        <span className="text-xs text-gray-500">{formatKRW(c.asset.metrics.currentValueKRW)}</span>
-                      </div>
-                      <p className="text-xs text-gray-500 mt-1 pl-6">{c.row.reasonText}</p>
-                      {baselineText && <p className="text-xs text-gray-400 mt-1 pl-6">{baselineText}</p>}
-                    </li>
-                  );
-                })}
-              </ul>
-              <Button variant="primary" onClick={handleBulkSellSmall} disabled={selectedSmallIds.size === 0} loading={isBulkSelling}>
-                선택 {selectedSmallIds.size}건 [팔았음 기록]
-              </Button>
-              <p className="text-xs text-gray-500 mt-1">체결가는 현재가로 기록됩니다. 실제 체결가와 다르면 나중에 매도 기록에서 수정할 수 있습니다.</p>
-            </section>
-          )}
-
-          {largeCandidates.length > 0 && (
-            <section>
-              <h2 className="text-sm font-semibold text-gray-200 mb-2">큰 종목 — 개별 결정</h2>
-              <ul className="space-y-2.5">
-                {largeCandidates.map(c => (
-                  <li key={c.asset.id} className="bg-gray-800 border border-gray-700 rounded-lg p-3">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-white font-semibold truncate">{c.asset.customName?.trim() || c.asset.name}</span>
-                          <span className="text-xs text-gray-500">{c.asset.ticker}</span>
-                          {c.consecutiveHolds >= 2 && <Badge tone="warning">규칙과 다르게 {c.consecutiveHolds}번 보류</Badge>}
-                        </div>
-                        <div className="flex items-center gap-3 text-xs text-gray-400 mt-1">
-                          <span className={c.asset.metrics.returnPercentage < 0 ? 'text-down' : 'text-up'}>{pct(c.asset.metrics.returnPercentage)}</span>
-                          <span>평가 {formatKRW(c.asset.metrics.currentValueKRW)}</span>
-                          <span>비중 {c.asset.metrics.allocation.toFixed(2)}%</span>
-                        </div>
-                        <p className="text-xs text-gray-500 mt-1">{c.row.reasonText}</p>
-                        {c.row.reentryBaseline && (
-                          <p className="text-xs text-gray-400 mt-1">{describeReentryBaseline(c.row)}</p>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex flex-wrap gap-1.5 mt-2.5">
-                      <Button variant="primary" size="md" onClick={() => actions.openSellModal(c.asset)}>팔았음 기록</Button>
-                      <Button variant="secondary" size="md" onClick={() => setOpenHoldFor(v => (v === c.asset.id ? null : c.asset.id))}>
-                        이번엔 보류
-                      </Button>
-                    </div>
-                    {openHoldFor === c.asset.id && (
-                      <div className="mt-2 flex gap-2">
-                        <input
-                          type="text"
-                          value={holdDrafts[c.asset.id] ?? ''}
-                          onChange={e => setHoldDrafts(prev => ({ ...prev, [c.asset.id]: e.target.value }))}
-                          placeholder="보류 사유(필수)"
-                          className="flex-1 text-sm bg-gray-900 border border-gray-600 rounded-md px-2.5 py-1.5 text-gray-100 focus:outline-none focus:border-primary"
-                        />
-                        <Button variant="secondary" size="md" onClick={() => handleHoldSubmit(c.asset.id)} disabled={!(holdDrafts[c.asset.id] ?? '').trim()}>
-                          기록
-                        </Button>
-                      </div>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            </section>
-          )}
-        </>
+              <div className="flex flex-wrap gap-1.5 mt-2.5">
+                <Button variant="primary" size="md" onClick={() => actions.openSellModal(c.asset)}>팔았음 기록</Button>
+                <Button variant="secondary" size="md" onClick={() => setOpenHoldFor(v => (v === c.asset.id ? null : c.asset.id))}>
+                  이번엔 보류
+                </Button>
+              </div>
+              {openHoldFor === c.asset.id && (
+                <div className="mt-2 flex gap-2">
+                  <input
+                    type="text"
+                    value={holdDrafts[c.asset.id] ?? ''}
+                    onChange={e => setHoldDrafts(prev => ({ ...prev, [c.asset.id]: e.target.value }))}
+                    placeholder="보류 사유(필수)"
+                    className="flex-1 text-sm bg-gray-900 border border-gray-600 rounded-md px-2.5 py-1.5 text-gray-100 focus:outline-none focus:border-primary"
+                  />
+                  <Button variant="secondary" size="md" onClick={() => handleHoldSubmit(c.asset.id)} disabled={!(holdDrafts[c.asset.id] ?? '').trim()}>
+                    기록
+                  </Button>
+                </div>
+              )}
+            </li>
+          ))}
+        </ul>
       )}
     </div>
   );

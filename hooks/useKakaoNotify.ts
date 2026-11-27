@@ -14,7 +14,7 @@
 // 외부(GAS)로 매니페스트를 보내는 것이므로 "보이지 않는 쓰기 금지" 규칙(Drive 자동저장 금지)과는
 // 다른 층이지만, 그래도 기본값은 OFF로 시작한다.
 
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import { createContext, useContext, useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { usePortfolio } from '../contexts/PortfolioContext';
 import { setItemSafe } from '../utils/safeStorage';
 import { createLogger } from '../utils/logger';
@@ -28,6 +28,8 @@ import {
   fetchStatus as fetchGasStatus,
   connectTelegram as connectGasTelegram,
   type GasStatusResponse,
+  type GasTestResponse,
+  type GasSyncResponse,
 } from '../services/notifySyncService';
 
 const log = createLogger('useKakaoNotify');
@@ -36,6 +38,7 @@ const SETTINGS_KEY = 'asset-manager-kakao-notify-v1';
 /** GAS가 텔레그램 도입 이전 코드일 때(응답에 channel/results가 없거나 알 수 없는 action) 보여 줄 안내. */
 const OLD_GAS_MESSAGE =
   'GAS 코드가 구버전이라 텔레그램을 모릅니다. npm run gas:push 후 Apps Script [배포 → 배포 관리 → 수정 → 새 버전]으로 갱신하세요.';
+const OLD_POLICY_MESSAGE = '카톡 발송기에 보유 방침 기능이 필요합니다. GAS를 새 버전으로 배포하고 다시 동기화하세요.';
 
 /** opt-in 자동 동기화 디바운스(계획서 §6.1: 명시적 opt-in이라도 즉시 발신하지 않는다). */
 const AUTO_SYNC_DEBOUNCE_MS = 5000;
@@ -113,16 +116,27 @@ export interface UseKakaoNotifyResult {
   setChannel: (channel: NotifyChannel) => Promise<void>;
   connectTelegram: () => Promise<void>;
   syncNow: () => Promise<void>;
-  testConnection: () => Promise<void>;
+  testConnection: (holdingPolicy?: boolean) => Promise<void>;
+  testReceipt: GasTestResponse | null;
   refreshStatus: () => Promise<void>;
 }
 
+export const KakaoNotifyContext = createContext<UseKakaoNotifyResult | null>(null);
+
 export function useKakaoNotify(): UseKakaoNotifyResult {
-  const { data } = usePortfolio();
+  const value = useContext(KakaoNotifyContext);
+  if (!value) throw new Error('KakaoNotifyProvider가 필요합니다.');
+  return value;
+}
+
+export function useKakaoNotifyState(): UseKakaoNotifyResult {
+  const { data, status, actions } = usePortfolio();
+  const armHoldingPolicies = actions.armHoldingPolicies;
   const [settings, setSettings] = useState<KakaoNotifySettings>(() => loadSettings());
   const [opStatus, setOpStatus] = useState<KakaoNotifyOpStatus>('idle');
   const [lastError, setLastError] = useState<string | null>(null);
   const [gasStatus, setGasStatus] = useState<GasStatusResponse | null>(null);
+  const [testReceipt, setTestReceipt] = useState<GasTestResponse | null>(null);
   const [telegramConnect, setTelegramConnect] = useState<TelegramConnectState | null>(null);
   const [channelError, setChannelError] = useState<string | null>(null);
 
@@ -155,21 +169,24 @@ export function useKakaoNotify(): UseKakaoNotifyResult {
    * GAS는 계속 카카오톡으로만 보냈다 — 해시만 믿지 말고 GAS가 알려 준 채널과도 대조한다.
    */
   const gasChannelMismatch = !!gasStatus?.ok && gasStatus.channel !== undefined && gasStatus.channel !== settings.channel;
-  const needsSync = currentHash !== settings.lastSyncHash || gasChannelMismatch;
+  const policyVersionMismatch = Boolean(manifest.turtle?.policies && gasStatus?.ok && gasStatus.holdingPolicyVersion !== 1);
+  const needsSync = currentHash !== settings.lastSyncHash || gasChannelMismatch || policyVersionMismatch;
 
   /**
    * sync 응답을 반영한다. 채널이 'kakao'가 아닌데 응답에 `channel`이 없으면(구버전 GAS — 채널을 저장하지 못함)
    * **lastSyncHash를 기록하지 않는다** — 기록하면 GAS를 갱신한 뒤에도 "동기화됨"으로 보여 채널이 영영 안 간다.
    * 반환값: GAS가 채널까지 받아들였는가.
    */
-  const applySyncResult = useCallback((res: { receivedAt?: string; channel?: NotifyChannel }, sent: NotifyManifest): boolean => {
-    const accepted = sent.channel === 'kakao' || res.channel !== undefined;
+  const applySyncResult = useCallback((res: GasSyncResponse, sent: NotifyManifest): string | null => {
+    const error = sent.turtle?.policies && res.holdingPolicyVersion !== 1 ? OLD_POLICY_MESSAGE
+      : sent.channel !== 'kakao' && res.channel === undefined ? OLD_GAS_MESSAGE : null;
     const lastSyncAt = res.receivedAt ?? new Date().toISOString();
-    update(accepted ? { lastSyncAt, lastSyncHash: manifestHash(sent) } : { lastSyncAt });
+    update(error ? { lastSyncAt } : { lastSyncAt, lastSyncHash: manifestHash(sent) });
+    if (res.activations?.length) armHoldingPolicies(res.activations);
     const gasChannel = res.channel;
-    if (gasChannel !== undefined) setGasStatus(prev => (prev ? { ...prev, channel: gasChannel } : prev));
-    return accepted;
-  }, [update]);
+    if (gasChannel !== undefined) setGasStatus(prev => (prev ? { ...prev, channel: gasChannel, holdingPolicyVersion: res.holdingPolicyVersion } : prev));
+    return error;
+  }, [update, armHoldingPolicies]);
 
   const syncNow = useCallback(async () => {
     if (!settings.gasUrl || !settings.secret) {
@@ -182,7 +199,7 @@ export function useKakaoNotify(): UseKakaoNotifyResult {
     try {
       const res = await syncManifest(settings.gasUrl, settings.secret, manifest);
       if (res.ok) {
-        if (!applySyncResult(res, manifest)) setLastError(OLD_GAS_MESSAGE);
+        setLastError(applySyncResult(res, manifest));
       } else {
         setLastError(res.error ?? '동기화에 실패했습니다.');
       }
@@ -191,18 +208,20 @@ export function useKakaoNotify(): UseKakaoNotifyResult {
     }
   }, [settings.gasUrl, settings.secret, manifest, applySyncResult]);
 
-  const testConnection = useCallback(async () => {
+  const testConnection = useCallback(async (holdingPolicy = false) => {
     if (!settings.gasUrl || !settings.secret) {
       setLastError('웹앱 URL과 공유 시크릿을 먼저 입력하세요.');
       return;
     }
     setOpStatus('testing');
+    setTestReceipt(null);
     setLastError(null);
     try {
-      const res = await testGasConnection(settings.gasUrl, settings.secret, settings.channel);
+      const res = await testGasConnection(settings.gasUrl, settings.secret, settings.channel, holdingPolicy);
       if (res.ok) {
         update({ lastTestAt: new Date().toISOString() });
-        if (settings.channel !== 'kakao' && res.results === undefined) setLastError(OLD_GAS_MESSAGE);
+        if (holdingPolicy && res.messageId && res.text) setTestReceipt(res);
+        if (!holdingPolicy && settings.channel !== 'kakao' && res.results === undefined) setLastError(OLD_GAS_MESSAGE);
       } else {
         setLastError(res.error ?? '연결 테스트에 실패했습니다.');
       }
@@ -221,11 +240,12 @@ export function useKakaoNotify(): UseKakaoNotifyResult {
     try {
       const res = await fetchGasStatus(settings.gasUrl, settings.secret);
       setGasStatus(res);
+      if (res.ok && res.activations?.length) armHoldingPolicies(res.activations);
       if (!res.ok && res.error) setLastError(res.error);
     } finally {
       setOpStatus('idle');
     }
-  }, [settings.gasUrl, settings.secret]);
+  }, [settings.gasUrl, settings.secret, armHoldingPolicies]);
 
   const setChannel = useCallback(async (channel: NotifyChannel) => {
     update({ channel });
@@ -238,7 +258,7 @@ export function useKakaoNotify(): UseKakaoNotifyResult {
     try {
       const res = await syncManifest(settings.gasUrl, settings.secret, next);
       if (res.ok) {
-        if (!applySyncResult(res, next)) setChannelError(OLD_GAS_MESSAGE);
+        setChannelError(applySyncResult(res, next));
       } else {
         setChannelError(res.error ?? '채널 변경 동기화에 실패했습니다.');
       }
@@ -262,7 +282,7 @@ export function useKakaoNotify(): UseKakaoNotifyResult {
         // (2026-11-10 실사용: 연결·테스트 메시지는 됐는데 GAS 채널이 카카오톡이라 이후 알림이 텔레그램으로 안 갔다).
         const syncRes = await syncManifest(settings.gasUrl, settings.secret, manifest);
         if (syncRes.ok) {
-          if (!applySyncResult(syncRes, manifest)) setChannelError(OLD_GAS_MESSAGE);
+          setChannelError(applySyncResult(syncRes, manifest));
         } else {
           setChannelError(syncRes.error ?? '발송 채널 동기화에 실패했습니다 — [지금 동기화]를 눌러 주세요.');
         }
@@ -278,12 +298,22 @@ export function useKakaoNotify(): UseKakaoNotifyResult {
     }
   }, [settings.gasUrl, settings.secret, manifest, applySyncResult, refreshStatus]);
 
+  // Drive 로드 전 빈 배열(마지막 실제 매도 이후에는 체결 이력이 남는다)로 발송기 목록을 지우지 않는다.
+  const portfolioReady = data.assets.length + data.watchlist.length + data.sellHistory.length + data.buyHistory.length > 0;
+  const readyForAutoSync = settings.autoSync && portfolioReady && status.isSignedIn && !status.isLoading && !status.needsReAuth;
+  const hasUnarmed = Boolean(manifest.turtle?.policies?.holdings.some(h => h.policy.mode === 'turtle-after-cost' && !h.policy.armedOn));
+  const checkedUrl = useRef('');
+  useEffect(() => {
+    if (!readyForAutoSync || !settings.gasUrl || !settings.secret || !hasUnarmed || checkedUrl.current === settings.gasUrl) return;
+    checkedUrl.current = settings.gasUrl;
+    void refreshStatus();
+  }, [readyForAutoSync, settings.gasUrl, settings.secret, hasUnarmed, refreshStatus]);
   // opt-in 자동 동기화: 명시적으로 켠 사용자에 한해, 5초 디바운스 후 조용히 동기화한다.
   useEffect(() => {
-    if (!settings.autoSync || !needsSync || !settings.gasUrl || !settings.secret) return;
+    if (!readyForAutoSync || !needsSync || !settings.gasUrl || !settings.secret) return;
     const timer = setTimeout(() => { void syncNow(); }, AUTO_SYNC_DEBOUNCE_MS);
     return () => clearTimeout(timer);
-  }, [settings.autoSync, needsSync, settings.gasUrl, settings.secret, syncNow]);
+  }, [readyForAutoSync, needsSync, settings.gasUrl, settings.secret, syncNow]);
 
   return {
     settings,
@@ -303,6 +333,7 @@ export function useKakaoNotify(): UseKakaoNotifyResult {
     connectTelegram,
     syncNow,
     testConnection,
+    testReceipt,
     refreshStatus,
   };
 }

@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react';
 import { Asset, Currency, ExchangeRates } from '../types';
 import type { PortfolioSavePatch, PortfolioSaveSnapshot } from '../types/portfolioSave';
-import { applyMarketQuotes } from '../utils/applyMarketQuotes';
+import { applyMarketQuotes, applyUpbitHoldingQuote } from '../utils/applyMarketQuotes';
 import { isBaseType } from '../types/category';
 // [수정] fetchAssetData import 복구 (단일 갱신 시 필요)
 import { fetchBatchAssetPrices as fetchBatchAssetPricesNew, fetchAssetData as fetchAssetDataNew, fetchExchangeRate, fetchExchangeRateJPY, fetchCurrentExchangeRate } from '../services/priceService';
@@ -85,11 +85,7 @@ async function patchMissingPrevClose(
     }
 }
 
-const shouldUseUpbitAPI = (exchange: string): boolean => {
-  const normalized = (exchange || '').toLowerCase().trim();
-  const upbitExchanges = ['upbit', 'bithumb', '주요 거래소 (종합)'];
-  return upbitExchanges.some(ex => normalized.includes(ex));
-};
+const shouldUseUpbitAPI = isCryptoExchange;
 
 export const useMarketData = ({
   getSnapshot,
@@ -198,10 +194,7 @@ export const useMarketData = ({
           if (shouldUseUpbitAPI(asset.exchange)) {
             const upbitData = upbitPriceMap.get(asset.ticker.toUpperCase()) || upbitPriceMap.get(`KRW-${asset.ticker.toUpperCase()}`);
             if (upbitData) {
-              const newCurrent = upbitData.trade_price;
-              const apiHigh = upbitData.highest_52_week_price || newCurrent;
-              const newHighest = Math.max(asset.highestPrice, apiHigh, newCurrent);
-              return { ...asset, previousClosePrice: upbitData.prev_closing_price, currentPrice: newCurrent, priceOriginal: newCurrent, currency: Currency.KRW, highestPrice: newHighest, changeRate: upbitData.signed_change_rate, quoteTradeAt: upbitData.quoteTradeAt };
+              return applyUpbitHoldingQuote(asset, upbitData);
             }
             failedTickers.push(asset.ticker); failedIds.push(asset.id); return asset;
           }
@@ -295,10 +288,7 @@ export const useMarketData = ({
             if (shouldUseUpbitAPI(asset.exchange)) {
                 const upbitData = upbitPriceMap.get(asset.ticker.toUpperCase()) || upbitPriceMap.get(`KRW-${asset.ticker.toUpperCase()}`);
                 if (upbitData) {
-                    const newCurrent = upbitData.trade_price;
-                    const apiHigh = upbitData.highest_52_week_price || newCurrent;
-                    const newHighest = Math.max(asset.highestPrice, apiHigh, newCurrent);
-                    return { ...asset, previousClosePrice: upbitData.prev_closing_price, currentPrice: newCurrent, priceOriginal: newCurrent, currency: Currency.KRW, highestPrice: newHighest, changeRate: upbitData.signed_change_rate, quoteTradeAt: upbitData.quoteTradeAt };
+                    return applyUpbitHoldingQuote(asset, upbitData);
                 }
                 return asset;
             }
@@ -331,11 +321,7 @@ export const useMarketData = ({
         const upbitPriceMap = await fetchUpbitPricesBatch([target.ticker]);
         const upbitData = upbitPriceMap.get(target.ticker.toUpperCase()) || upbitPriceMap.get(`KRW-${target.ticker.toUpperCase()}`);
         if (upbitData) {
-             const newCurrent = upbitData.trade_price;
-             const updated = applyMarketQuotes(getSnapshot().assets, [target], a => ({
-               ...a, previousClosePrice: upbitData.prev_closing_price, currentPrice: newCurrent, priceOriginal: newCurrent, currency: Currency.KRW,
-               highestPrice: Math.max(a.highestPrice, upbitData.highest_52_week_price || 0, newCurrent), changeRate: upbitData.signed_change_rate, quoteTradeAt: upbitData.quoteTradeAt,
-             }));
+             const updated = applyMarketQuotes(getSnapshot().assets, [target], a => applyUpbitHoldingQuote(a, upbitData));
              commitPortfolio({ assets: updated });
              setSuccessMessage('업데이트 완료');
         } else throw new Error('업비트 조회 실패');

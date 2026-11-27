@@ -96,7 +96,7 @@ function makeAsset(over: Partial<Asset> & { id: string }): Asset {
 // 4. applyBulkAssetPatch — 선택만 변경, 이미 같은 값이면 참조 보존, changedCount
 // ════════════════════════════════════════════════════════════════════════════
 {
-  const a1 = makeAsset({ id: 'b1', bucket: 'CORE' });
+  const a1 = makeAsset({ id: 'b1', bucket: 'CORE', holdingPolicy: { mode: 'turtle-after-cost', armedOn: '2026-11-10' } });
   const a2 = makeAsset({ id: 'b2', bucket: 'SATELLITE' });
   const a3 = makeAsset({ id: 'b3' }); // 미선택
 
@@ -104,6 +104,7 @@ function makeAsset(over: Partial<Asset> & { id: string }): Asset {
   const r1 = applyBulkAssetPatch([a1, a2, a3], new Set(['b1', 'b2']), { bucket: 'SATELLITE' });
   check('버킷 변경 changedCount', r1.changedCount, 1);
   check('a1 버킷 변경', r1.assets[0].bucket, 'SATELLITE');
+  check('버킷만 바꾸면 운용 방침 보존', r1.assets[0].holdingPolicy, a1.holdingPolicy);
   check('a2 참조 보존(이미 같은 값)', r1.assets[1] === a2, true);
   check('미선택 a3 참조 보존', r1.assets[2] === a3, true);
   check('원본 불변', a1.bucket, 'CORE');
@@ -112,6 +113,7 @@ function makeAsset(over: Partial<Asset> & { id: string }): Asset {
   const r2 = applyBulkAssetPatch([a1, a3], new Set(['b1', 'b3']), { owner: 'YUSEON' });
   check('계정 변경 changedCount', r2.changedCount, 2);
   check('a1 owner', r2.assets[0].owner, 'YUSEON');
+  check('보유자를 바꿀 때 이전 사람의 방침과 활성일 해제', r2.assets[0].holdingPolicy, undefined);
   check('a3 owner(미지정→YUSEON)', r2.assets[1].owner, 'YUSEON');
   check('계정 변경 시 버킷 불변', r2.assets[0].bucket, 'CORE');
 

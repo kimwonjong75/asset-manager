@@ -57,7 +57,7 @@ export function useTradePlanSignals({
     const list: TradePlanSignalRow[] = [];
     for (const asset of assets) {
       const plan = asset.tradePlan;
-      if (!plan || plan.status !== 'active') continue;
+      if (asset.holdingPolicy || !plan || plan.status !== 'active') continue;
       const enriched = enrichedMap.get(asset.ticker);
       const market = buildTradePlanMarket({
         priceOriginal: asset.priceOriginal,
@@ -85,7 +85,7 @@ export function useTradePlanSignals({
   const summary = useMemo(() => summarizeTradePlanSignals(rows), [rows]);
 
   const planlessSatellites = useMemo(
-    () => assets.filter(a => isEligibleForBulkPlan(a)),
+    () => assets.filter(a => !a.holdingPolicy && isEligibleForBulkPlan(a)),
     [assets],
   );
 

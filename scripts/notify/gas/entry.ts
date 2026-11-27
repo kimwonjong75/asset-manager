@@ -19,6 +19,7 @@
 // **portfolio.json은 절대 읽지도 쓰지도 않는다**(RULES.md §15).
 
 import { CLOUD_RUN_BASE_URL, APP_PUBLIC_URL } from '../../../constants/api';
+import { Currency } from '../../../types';
 import {
   evaluateTradePlan,
   computeExitLineValue,
@@ -48,11 +49,16 @@ import type {
   NotifyManifestTurtleWatch,
 } from '../../../utils/notifyManifest';
 import { resolveHoldingsSettings } from '../../../utils/turtleHoldings';
-import { extractBarsThroughSession, SESSION_BAR_SETTLE_MIN } from '../../../utils/todayTurtle';
+import { extractBarsThroughSession, resolveMarketTz, SESSION_BAR_SETTLE_MIN } from '../../../utils/todayTurtle';
 import type { DailyBar, RawSeries } from '../../../utils/todayTurtle';
+import type { HoldingPolicyActivation } from '../../../types/holdingPolicy';
+import type { PolicyNotifyHolding, PolicyNotifyWatch } from '../../../types/holdingPolicyNotify';
+import { evaluateHoldingPolicyHistory, holdingPolicyExpectedSession, holdingPolicyTurtleSettings } from '../../../utils/holdingPolicy';
+import { holdingPolicyFxTicker, holdingPolicyFxRate } from '../../../utils/holdingPolicyFx';
 import type { TurtleHoldingsSettings } from '../../../types/turtleHoldings';
 import {
   evaluateLegacyHoldingForNotify,
+  holdingPolicyNotification,
   evaluateReentryPositionForNotify,
   evaluateWatchItemForNotify,
   decideTurtleCloseProgress,
@@ -454,13 +460,13 @@ function setDailyCount(count: number, now: Date): void {
   setJsonProp('DAILY_COUNT_JSON', { date: kstDateStr(now), count });
 }
 
-interface PendingEntry { summary: string; at: string }
+interface PendingEntry { summary: string; at: string; signalKey?: string }
 function loadPending(): PendingEntry[] {
   return getJsonProp<PendingEntry[]>('PENDING_QUIET_JSON', []);
 }
-function queuePending(summary: string, now: Date): void {
+function queuePending(summary: string, now: Date, signalKey: string): void {
   const list = loadPending();
-  list.push({ summary, at: now.toISOString() });
+  list.push({ summary, at: now.toISOString(), signalKey });
   setJsonProp('PENDING_QUIET_JSON', list);
 }
 function clearPending(): void {
@@ -626,28 +632,33 @@ function postTelegram(token: string, body: TelegramSendBody): GasHttpResponse {
 }
 
 function sendTelegramMessage(text: string, linkUrl: string): boolean {
+  return postTelegramNotification(text, linkUrl) !== null;
+}
+
+function postTelegramNotification(text: string, linkUrl: string) {
   const token = getProp('TELEGRAM_BOT_TOKEN');
   const chatId = getProp('TELEGRAM_CHAT_ID');
   if (!token || !chatId) {
     console.error('TELEGRAM_BOT_TOKEN 또는 TELEGRAM_CHAT_ID 미설정 — 텔레그램 발송 취소');
-    return false;
+    return null;
   }
   try {
-    const body = buildTelegramSendBody(chatId, text, linkUrl);
+    let body = buildTelegramSendBody(chatId, text, linkUrl);
     let res = postTelegram(token, body);
     // 버튼 URL을 텔레그램이 거부하면(400) 버튼 없이 링크를 본문에 붙여 한 번만 다시 보낸다.
     if (res.getResponseCode() === 400 && body.reply_markup) {
       console.error('텔레그램 400 — 버튼 없이 재시도:', redactSecret(res.getContentText(), token));
-      res = postTelegram(token, buildTelegramPlainBody(chatId, text, linkUrl));
+      body = buildTelegramPlainBody(chatId, text, linkUrl);
+      res = postTelegram(token, body);
     }
     if (res.getResponseCode() !== 200) {
       console.error('텔레그램 발송 실패:', res.getResponseCode(), redactSecret(res.getContentText(), token));
-      return false;
+      return null;
     }
-    return true;
+    return { response: res, text: body.text };
   } catch (e) {
     console.error('텔레그램 발송 예외:', errText(e, token));
-    return false;
+    return null;
   }
 }
 
@@ -744,6 +755,7 @@ interface NotifyCandidate {
   summary: string;
   linkUrl: string;
   idempotencyKey: string;
+  retryMarket?: MarketId;
 }
 
 function buildCandidate(item: NotifyManifestItem, ev: TradePlanEvaluation, market: TradePlanMarket, now: Date): NotifyCandidate | null {
@@ -814,8 +826,21 @@ function fetchOhlcvBatch(tickers: string[], market: MarketId, startDate: string,
   return result;
 }
 
-type TurtleItemKind = 'legacy' | 'reentry' | 'watch';
+type TurtleItemKind = 'legacy' | 'reentry' | 'watch' | 'policy' | 'policy-watch';
 type TurtleNotifyItem = NotifyManifestTurtleHolding | NotifyManifestTurtleReentryPosition | NotifyManifestTurtleWatch;
+
+function policyMarket(item: PolicyNotifyHolding | PolicyNotifyWatch): MarketId | null {
+  const market = resolveMarketTz(item.exchange, item.isCrypto);
+  if (market === 'UNKNOWN') return null;
+  return market === 'JP' ? 'KR' : market;
+}
+
+/** 자산별 키에 현재 방침의 최초 활성일만 보관한다. 새 방침 주기는 옛 활성일을 상속하지 않는다. */
+function getPolicyActivation(item: PolicyNotifyHolding): HoldingPolicyActivation | null {
+  if (item.policy.mode !== 'turtle-after-cost' || !item.policy.cycleId) return null;
+  const saved = getJsonProp<HoldingPolicyActivation | null>('ARM_' + item.assetId, null);
+  return saved?.cycleId === item.policy.cycleId ? saved : null;
+}
 
 /**
  * 판정에 쓸 일봉의 범위 정책 — **날짜 경계는 호출부가 확정한 `sessionDate`로 명시**한다
@@ -842,20 +867,33 @@ function evaluateTurtleMarket(
   sessionDate: string,
   policy: TurtleBarsPolicy,
   onResult: (kind: TurtleItemKind, item: TurtleNotifyItem, candidate: TurtleNotifyCandidate) => void,
+  now: Date,
 ): TurtleMarketProgress {
   const settings = resolveHoldingsSettings(turtle.settings);
   const legacyItems = turtle.legacyHoldings.filter(it => classifyMarket(it.exchange) === market);
   const reentryItems = turtle.reentryPositions.filter(it => classifyMarket(it.exchange) === market);
   const watchItems = turtle.watchItems.filter(it => classifyMarket(it.exchange) === market);
-  const tickers = [...legacyItems, ...reentryItems, ...watchItems].map(it => it.ticker);
+  const policyItems = (turtle.policies?.holdings ?? []).filter(it => policyMarket(it) === market);
+  const policyWatches = (turtle.policies?.watchItems ?? []).filter(it => policyMarket(it) === market);
+  const allItems = [...legacyItems, ...reentryItems, ...watchItems, ...policyItems, ...policyWatches];
+  const historyKey = (it: TurtleNotifyItem) => it.exchange.includes('금시장') ? 'KRX-GOLD' : it.ticker.trim().toUpperCase();
+  const tickers = [...new Set(allItems.map(historyKey))];
   if (tickers.length === 0) return { total: 0, pending: 0 };
 
-  const lookbackDays = turtleOhlcvLookbackDays(settings);
-  const startDate = addDaysStr(sessionDate, -lookbackDays);
+  const policySettings = holdingPolicyTurtleSettings(settings);
+  const policyLookback = policyItems.length || policyWatches.length ? turtleOhlcvLookbackDays(policySettings) : 0;
+  let startDate = addDaysStr(sessionDate, -Math.max(turtleOhlcvLookbackDays(settings), policyLookback));
+  for (const item of policyItems) {
+    const start = item.policy.startedOn;
+    if (start && start < startDate && item.policy.mode === 'turtle-after-cost' && !item.policy.armedOn && !getPolicyActivation(item)) startDate = start;
+  }
   // 조회 끝 날짜는 sessionDate **다음 날**로 준다 — 백엔드 /history는 미국 종목에서 end_date를 제외형으로 처리한다
   // (2026-10-25 실측: end=10-23 → SPY·DIS 마지막 봉 10-22, KR·JP·KRX금·업비트는 10-23 포함). sessionDate로 주면
   // 미국은 세션 봉이 영영 안 와 전부 give-up된다. 범위 밖(다음 날) 봉은 extractBarsThroughSession이 잘라낸다.
-  const ohlcv = fetchOhlcvBatch(tickers, market, startDate, addDaysStr(sessionDate, 1));
+  const endDate = addDaysStr(sessionDate, 1);
+  const fxSymbols = [...new Set(policyItems.map(it => holdingPolicyFxTicker(it.currency)).filter((x): x is string => x !== null))];
+  const ohlcv = fetchOhlcvBatch(market === 'CRYPTO' ? tickers : [...tickers, ...fxSymbols], market, startDate, endDate);
+  const fxHistory = market === 'CRYPTO' && fxSymbols.length ? fetchOhlcvBatch(fxSymbols, 'KR', startDate, endDate) : ohlcv;
   let pending = 0;
 
   /** 종목 하나의 일봉을 뽑아 평가한다. 세션 봉이 필요한데 없으면 평가하지 않고 pending으로 센다. */
@@ -864,7 +902,7 @@ function evaluateTurtleMarket(
     it: T,
     evaluate: (item: T, bars: DailyBar[]) => TurtleNotifyCandidate | null,
   ): void => {
-    const r = extractBarsThroughSession(ohlcv.get(it.ticker.toUpperCase()), sessionDate, policy.includeSession);
+    const r = extractBarsThroughSession(ohlcv.get(historyKey(it)), sessionDate, policy.includeSession);
     if (policy.requireSessionBar && !r.sessionBarPresent) { pending++; return; }
     const c = policy.onlyNewSignal
       ? evaluateNewSignalForNotify(bars => evaluate(it, bars), r.bars)
@@ -876,6 +914,44 @@ function evaluateTurtleMarket(
   for (const it of reentryItems) evaluateItem('reentry', it, (item, bars) => evaluateReentryPositionForNotify(item, bars, settings));
   for (const it of watchItems) evaluateItem('watch', it, (item, bars) => evaluateWatchItemForNotify(item, bars, settings));
 
+  for (const item of policyItems) {
+    const expected = holdingPolicyExpectedSession(item.exchange, item.isCrypto, now);
+    if (!expected || (policy.requireSessionBar && expected !== sessionDate)) continue;
+    const { bars, sessionBarPresent } = extractBarsThroughSession(ohlcv.get(historyKey(item)), expected, true);
+    if (!sessionBarPresent) { pending++; continue; }
+    const cached = getPolicyActivation(item);
+    const armedOn = [item.policy.armedOn, cached?.armedOn].filter((s): s is string => !!s).sort()[0];
+    const fx = fxHistory.get(holdingPolicyFxTicker(item.currency) ?? '');
+    const evaluate = (series: readonly DailyBar[]) => evaluateHoldingPolicyHistory({
+      policy: { ...item.policy, armedOn }, remainingPrincipalKRW: item.remainingPrincipalKRW, quantity: item.quantity,
+      bars: series, expectedSession: series.at(-1)?.date ?? null, fxForDate: date => holdingPolicyFxRate(item.currency, date, fx),
+    });
+    const decision = evaluate(bars);
+    if (item.policy.cycleId && decision.armedOn && decision.armedOn !== cached?.armedOn) {
+      const activation: HoldingPolicyActivation = { assetId: item.assetId, cycleId: item.policy.cycleId, armedOn: decision.armedOn };
+      setJsonProp('ARM_' + item.assetId, activation);
+    }
+    if (decision.phase === 'unavailable' && holdingPolicyFxRate(item.currency, expected, fx) === null) pending++;
+    const candidate = holdingPolicyNotification(item, bars, settings, decision);
+    if (!candidate) continue;
+    if (policy.onlyNewSignal && bars.length > 1) {
+      const previousBars = bars.slice(0, -1);
+      const previous = holdingPolicyNotification(item, previousBars, settings, evaluate(previousBars));
+      if (previous?.signal === candidate.signal) continue;
+    }
+    onResult('policy', item, candidate);
+  }
+  for (const item of policyWatches) {
+    const expected = holdingPolicyExpectedSession(item.exchange, item.isCrypto, now);
+    if (!expected || expected <= item.soldAt || (policy.requireSessionBar && expected !== sessionDate)) continue;
+    const { bars, sessionBarPresent } = extractBarsThroughSession(ohlcv.get(historyKey(item)), expected, true);
+    if (!sessionBarPresent) { pending++; continue; }
+    const evaluate = (series: readonly DailyBar[]) => (series.at(-1)?.date ?? '') > item.soldAt
+      ? evaluateWatchItemForNotify(item, series, policySettings) : null;
+    const candidate = policy.onlyNewSignal ? evaluateNewSignalForNotify(evaluate, bars) : evaluate(bars);
+    if (candidate) onResult('policy-watch', item, candidate);
+  }
+
   return { total: tickers.length, pending };
 }
 
@@ -885,16 +961,16 @@ function evaluateTurtleMarket(
  * `decideTurtleCloseProgress`로 재시도/포기를 정한다.
  */
 function dispatchTurtleForMarket(
-  turtle: NotifyManifestTurtleSection, market: MarketId, sessionDate: string, candidates: NotifyCandidate[],
+  turtle: NotifyManifestTurtleSection, market: MarketId, sessionDate: string, candidates: NotifyCandidate[], now: Date,
 ): TurtleMarketProgress {
   return evaluateTurtleMarket(turtle, market, sessionDate, { includeSession: true, requireSessionBar: true, onlyNewSignal: true }, (kind, item, c) => {
-    const idBase = kind === 'watch' ? (item as NotifyManifestTurtleWatch).watchItemId
-      : (item as NotifyManifestTurtleHolding | NotifyManifestTurtleReentryPosition).assetId;
+    const idBase = 'watchItemId' in item ? item.watchItemId : item.assetId;
     const idempotencyKey = `turtle|${kind}|${idBase}|${c.signal}|${sessionDate}`;
     if (hasSent(idempotencyKey)) return;
-    const linkAssetId = kind === 'watch' ? null : (item as NotifyManifestTurtleHolding | NotifyManifestTurtleReentryPosition).assetId;
-    candidates.push({ text: c.text, summary: c.summary, linkUrl: buildDeepLink(linkAssetId), idempotencyKey });
-  });
+    const linkAssetId = 'watchItemId' in item ? null : item.assetId;
+    candidates.push({ text: c.text, summary: c.summary, linkUrl: buildDeepLink(linkAssetId), idempotencyKey,
+      retryMarket: kind === 'policy' || kind === 'policy-watch' ? market : undefined });
+  }, now);
 }
 
 /**
@@ -904,8 +980,9 @@ function dispatchTurtleForMarket(
  * 세션 봉 존재를 요구하지 않는다(휴장일에는 가진 최신 봉으로 평가).
  */
 function collectTurtleMorningSummary(turtle: NotifyManifestTurtleSection, now: Date): {
-  sellNames: string[]; reentryNames: string[]; pyramidNames: string[];
+  sellNames: string[]; reentryNames: string[]; pyramidNames: string[]; armedNames: string[];
 } {
+  const armedNames: string[] = [];
   const sellNames: string[] = [];
   const reentryNames: string[] = [];
   const pyramidNames: string[] = [];
@@ -913,12 +990,13 @@ function collectTurtleMorningSummary(turtle: NotifyManifestTurtleSection, now: D
     const sessionDate = lastSessionDate(market, now);
     const confirmed = now.getTime() >= new Date(closeConfirmTime(market, sessionDate)).getTime();
     evaluateTurtleMarket(turtle, market, sessionDate, { includeSession: confirmed, requireSessionBar: false }, (_kind, item, c) => {
-      if (c.signal === 'reentry-pyramid') pyramidNames.push(item.name);
+      if (c.signal === 'policy-armed') armedNames.push(item.name);
+      else if (c.signal === 'reentry-pyramid') pyramidNames.push(item.name);
       else if (c.signal === 'watch-reentry') reentryNames.push(item.name);
       else sellNames.push(item.name);
-    });
+    }, now);
   }
-  return { sellNames, reentryNames, pyramidNames };
+  return { sellNames, reentryNames, pyramidNames, armedNames };
 }
 
 function clipText(s: string, max = 200): string {
@@ -942,7 +1020,7 @@ function dispatchNotifications(candidates: NotifyCandidate[], now: Date): number
 
   if (isQuietHours(now)) {
     for (const c of candidates) {
-      queuePending(c.summary, now);
+      queuePending(c.summary, now, c.idempotencyKey);
       markSent(c.idempotencyKey, now);
     }
     return 0;
@@ -1131,7 +1209,7 @@ function runTurtleCloseForMarket(
   if (getProp(doneKey) === sessionDate) return false; // 이미 이번 세션 닫음
 
   try {
-    const { pending } = dispatchTurtleForMarket(turtle, market, sessionDate, candidates);
+    const { pending } = dispatchTurtleForMarket(turtle, market, sessionDate, candidates, now);
     const progress = decideTurtleCloseProgress({
       pendingCount: pending, nowMs: now.getTime(), confirmAtMs: confirmMs, maxWaitHours: TURTLE_MAX_WAIT_HOURS,
     });
@@ -1203,6 +1281,11 @@ function closeCheck(): void {
 
     saveMaCache(maCache);
     const sent = dispatchNotifications(candidates, now);
+    for (const candidate of candidates) {
+      if (candidate.retryMarket && !hasSent(candidate.idempotencyKey)) {
+        PropertiesService.getScriptProperties().deleteProperty('TURTLE_DONE_' + candidate.retryMarket);
+      }
+    }
     if (krRan) maybeSendDailyDigest(manifest, maCache, now);
 
     recordLastRun('ok', `closeCheck 완료 · 발송 ${sent}${turtleNotes.length > 0 ? ` · ${turtleNotes.join(' · ')}` : ''}${failureNote()}`);
@@ -1231,8 +1314,7 @@ function buildTurtleMorningText(manifest: NotifyManifest, now: Date): string | n
   if (!manifest.turtle) return null;
   const todayKst = kstDateStr(now);
   if (getProp('LAST_TURTLE_DIGEST_DATE') === todayKst) return null;
-  const { sellNames, reentryNames, pyramidNames } = collectTurtleMorningSummary(manifest.turtle, now);
-  return formatTurtleMorningDigest({ sellNames, reentryNames, pyramidNames });
+  return formatTurtleMorningDigest(collectTurtleMorningSummary(manifest.turtle, now));
 }
 
 function morningDigest(): void {
@@ -1384,6 +1466,49 @@ function constantTimeEqual(a: string, b: string): boolean {
   return diff === 0;
 }
 
+function policyAck(manifest: NotifyManifest | null) {
+  const activations = (manifest?.turtle?.policies?.holdings ?? [])
+    .map(getPolicyActivation).filter((a): a is HoldingPolicyActivation => a !== null);
+  return { holdingPolicyVersion: 1, activations };
+}
+
+/** 보류 중 실제 매도·방침 변경·재진입이 일어난 과거 알림을 다음 아침에 보내지 않는다. */
+function pendingSubject(manifest: NotifyManifest | null, signalKey: string): unknown {
+  if (!manifest) return null;
+  const [prefix, kind, id] = signalKey.split('|');
+  if (prefix !== 'turtle') return manifest.items.find(a => a.assetId === prefix);
+  const turtle = manifest.turtle;
+  if (kind === 'watch') return turtle?.watchItems.find(w => w.watchItemId === id);
+  if (kind === 'legacy') return turtle?.legacyHoldings.find(a => a.assetId === id);
+  if (kind === 'reentry') return turtle?.reentryPositions.find(p => p.assetId === id);
+  if (kind === 'policy-watch') return turtle?.policies?.watchItems.find(w => w.watchItemId === id);
+  const a = turtle?.policies?.holdings.find(h => h.assetId === id);
+  if (!a) return undefined;
+  return { ...a, policy: { ...a.policy, armedOn: undefined } };
+}
+
+function syncPolicyManifest(manifest: NotifyManifest): GasTextOutput {
+  const prior = loadManifest();
+  if (prior && Date.parse(prior.updatedAt) > Date.parse(manifest.updatedAt)) {
+    return jsonOutput({ ok: false, error: 'GAS에 더 최근에 작성한 설정이 있습니다. 최신 포트폴리오를 다시 불러오세요.' });
+  }
+  saveManifest(manifest);
+  const pending = loadPending();
+  const stillValid = pending.filter(p => {
+    if (!p.signalKey) return !manifest.turtle?.policies;
+    const next = pendingSubject(manifest, p.signalKey);
+    return !!next && JSON.stringify(next) === JSON.stringify(pendingSubject(prior, p.signalKey));
+  });
+  if (pending.length !== stillValid.length) setJsonProp('PENDING_QUIET_JSON', stillValid);
+  if (JSON.stringify(prior?.turtle?.policies) !== JSON.stringify(manifest.turtle?.policies)) {
+    for (const market of MARKET_IDS) PropertiesService.getScriptProperties().deleteProperty('TURTLE_DONE_' + market);
+  }
+  if (manifest.channel !== undefined) setProp('NOTIFY_CHANNEL', normalizeNotifyChannel(manifest.channel));
+  return jsonOutput({
+    ok: true, receivedAt: new Date().toISOString(), itemCount: manifest.items.length, channel: storedChannel(), ...policyAck(manifest),
+  });
+}
+
 function buildStatusResponse(): unknown {
   const lastRun = getJsonProp<LastRun | null>('LAST_RUN_JSON', null);
   const manifest = loadManifest();
@@ -1396,7 +1521,59 @@ function buildStatusResponse(): unknown {
     telegramConnected: !!getProp('TELEGRAM_BOT_TOKEN') && !!getProp('TELEGRAM_CHAT_ID'),
     manifestItemCount: manifest ? manifest.items.length : 0,
     manifestUpdatedAt: manifest ? manifest.updatedAt : null,
+    ...policyAck(manifest),
   };
+}
+
+// 고정된 합성 보유분. 실제 감시 명단, 체결 원장, 예약 트리거를 읽거나 바꾸지 않는다.
+function sendHoldingPolicySmokeTest_() {
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(15_000)) return { ok: false, error: '발송기 사용 중입니다.' };
+  try {
+    if (storedChannel() !== 'telegram') return { ok: false, error: '연결된 발송 채널이 텔레그램 단독인지 확인해 주세요.' };
+    const now = new Date();
+    const session = holdingPolicyExpectedSession('KRX', false, now);
+    if (!session) return { ok: false, error: '마감일 확인 필요' };
+    const item: PolicyNotifyHolding = { assetId: 'deployment-smoke', ticker: '999991', name: '배포점검 (원종)',
+      currency: Currency.KRW, exchange: 'KRX', isCrypto: false, quantity: 10, remainingPrincipalKRW: 100_000,
+      policy: { mode: 'exit-at-cost', startedOn: session, sellCostPct: 1 } };
+    const bars = [{ date: session, open: 10_000, high: 11_000, low: 10_000, close: 11_000 }];
+    const decision = evaluateHoldingPolicyHistory({ ...item, bars, expectedSession: session, fxForDate: () => 1 });
+    const candidate = holdingPolicyNotification(item, bars, resolveHoldingsSettings(undefined), decision);
+    if (candidate?.signal !== 'policy-exit') return { ok: false, error: '테스트 종목 본전 판정 불일치' };
+    const text = '[배포 테스트 · 999991]\n' + candidate.text;
+    const date = kstDateStr(now);
+    const property = 'TELEGRAM_POLICY_SMOKE_RECEIPT';
+    const last = getJsonProp<{ date: string; messageId?: number; text?: string; botUsername?: string } | null>(property, null);
+    if (last?.date === date) return last.messageId ? { ok: true, duplicate: true, messageId: last.messageId, text: last.text, botUsername: last.botUsername }
+      : { ok: false, error: '오늘 이미 발송을 시도했습니다. 연결된 텔레그램 대화에서 확인해 주세요.' };
+    const chatId = getProp('TELEGRAM_CHAT_ID');
+    const token = getProp('TELEGRAM_BOT_TOKEN');
+    if (!chatId || !token) return { ok: false, error: '텔레그램 연결이 필요합니다.' };
+    const info = UrlFetchApp.fetch(`${TELEGRAM_API_BASE}${token}/getChat`, {
+      method: 'post', contentType: 'application/json', payload: JSON.stringify({ chat_id: chatId }), muteHttpExceptions: true,
+    });
+    const chat = JSON.parse(info.getContentText()) as { ok?: boolean; result?: { id?: number; type?: string } };
+    if (!chat.ok || chat.result?.type !== 'private' || String(chat.result.id) !== chatId)
+      return { ok: false, error: '연결된 1:1 텔레그램 대화를 확인할 수 없습니다.' };
+    // 수신은 성공했지만 응답이 끊긴 경우에도 같은 날 중복 발송하지 않는다.
+    setJsonProp(property, { date });
+    const delivery = postTelegramNotification(text, buildDeepLink(null));
+    const ack = delivery && JSON.parse(delivery.response.getContentText()) as {
+      ok?: boolean; result?: { chat?: { type?: string; id?: number }; message_id?: number; text?: string; from?: { username?: string } };
+    };
+    const sent = ack?.result;
+    if (!ack?.ok || !sent?.message_id || sent.message_id <= 0 || sent.chat?.type !== 'private' ||
+        String(sent.chat.id) !== chatId || sent.text !== delivery?.text)
+      return { ok: false, error: '텔레그램 대화의 메시지 생성 응답을 확인하지 못했습니다.' };
+    const receipt = { messageId: sent.message_id, text: sent.text, botUsername: sent.from?.username };
+    setJsonProp(property, { date, ...receipt });
+    return { ok: true, ...receipt };
+  } catch {
+    return { ok: false, error: '텔레그램 대화 확인 또는 시험 발송에 실패했습니다.' };
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 function doPost(e: GasDoPostEvent): GasTextOutput {
@@ -1411,11 +1588,9 @@ function doPost(e: GasDoPostEvent): GasTextOutput {
     }
     if (body.action === 'sync') {
       if (!body.manifest) return jsonOutput({ ok: false, error: 'manifest 없음' });
-      saveManifest(body.manifest);
-      if (body.manifest.channel !== undefined) setProp('NOTIFY_CHANNEL', normalizeNotifyChannel(body.manifest.channel));
-      return jsonOutput({
-        ok: true, receivedAt: new Date().toISOString(), itemCount: body.manifest.items.length, channel: storedChannel(),
-      });
+      const syncLock = LockService.getScriptLock();
+      if (!syncLock.tryLock(15_000)) return jsonOutput({ ok: false, error: '알림 처리 중입니다. 잠시 뒤 다시 동기화하세요.' });
+      try { return syncPolicyManifest(body.manifest); } finally { syncLock.releaseLock(); }
     }
     if (body.action === 'test') {
       const channel: NotifyChannel = body.channel === 'kakao' || body.channel === 'telegram' || body.channel === 'both'
@@ -1430,6 +1605,7 @@ function doPost(e: GasDoPostEvent): GasTextOutput {
         ? { ok, results }
         : { ok, results, error: `${failed.map(t => (t === 'telegram' ? '텔레그램' : '카카오톡')).join('·')} 발송 실패` });
     }
+    if (body.action === 'test-holding-policy') return jsonOutput(sendHoldingPolicySmokeTest_());
     if (body.action === 'telegram-connect') {
       return jsonOutput(connectTelegram());
     }
@@ -1447,4 +1623,14 @@ function doPost(e: GasDoPostEvent): GasTextOutput {
 // 내보내기 — build-gas.mjs가 이 export들을 전역 `TradePlanNotify` 객체로 묶는다
 // ═══════════════════════════════════════════════════════════════════════════
 
-export { doGet, doPost, hourlyCheck, closeCheck, morningDigest, installTriggers, sendTestMessage, telegramConnect };
+function lockedCheck(check: () => void): () => void {
+  return () => {
+    const lock = LockService.getScriptLock();
+    if (!lock.tryLock(15_000)) return;
+    try { check(); } finally { lock.releaseLock(); }
+  };
+}
+const hourly = lockedCheck(hourlyCheck);
+const close = lockedCheck(closeCheck);
+const morning = lockedCheck(morningDigest);
+export { doGet, doPost, hourly as hourlyCheck, close as closeCheck, morning as morningDigest, installTriggers, sendTestMessage, telegramConnect, sendHoldingPolicySmokeTest_ };

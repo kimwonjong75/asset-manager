@@ -15,16 +15,19 @@
 import { createLogger } from '../utils/logger';
 import type { NotifyManifest } from '../utils/notifyManifest';
 import type { NotifyChannel, NotifyChannelTarget } from '../types/notifyChannel';
+import type { HoldingPolicyActivation } from '../types/holdingPolicy';
 
 const log = createLogger('notifySyncService');
 
 export interface GasSyncRequest { action: 'sync'; secret: string; manifest: NotifyManifest }
-export interface GasTestRequest { action: 'test'; secret: string; channel?: NotifyChannel }
+export interface GasTestRequest { action: 'test' | 'test-holding-policy'; secret: string; channel?: NotifyChannel }
 export interface GasStatusRequest { action: 'status'; secret: string }
 export interface GasTelegramConnectRequest { action: 'telegram-connect'; secret: string }
 export type GasRequestBody = GasSyncRequest | GasTestRequest | GasStatusRequest | GasTelegramConnectRequest;
 
 export interface GasSyncResponse {
+  holdingPolicyVersion?: number;
+  activations?: HoldingPolicyActivation[];
   ok: boolean;
   receivedAt?: string;
   itemCount?: number;
@@ -35,6 +38,9 @@ export interface GasSyncResponse {
 
 export interface GasTestResponse {
   ok: boolean;
+  messageId?: number;
+  text?: string;
+  duplicate?: boolean;
   /** 채널별 발송 성공 여부. */
   results?: Partial<Record<NotifyChannelTarget, boolean>>;
   error?: string;
@@ -53,6 +59,8 @@ export interface GasLastRun {
 }
 
 export interface GasStatusResponse {
+  holdingPolicyVersion?: number;
+  activations?: HoldingPolicyActivation[];
   ok: boolean;
   lastRun?: GasLastRun | null;
   dailyCount?: number;
@@ -100,9 +108,9 @@ export async function syncManifest(
   }
 }
 
-export async function testConnection(gasUrl: string, secret: string, channel?: NotifyChannel): Promise<GasTestResponse> {
+export async function testConnection(gasUrl: string, secret: string, channel?: NotifyChannel, holdingPolicy = false): Promise<GasTestResponse> {
   try {
-    return await postToGas<GasTestResponse>(gasUrl, { action: 'test', secret, channel });
+    return await postToGas<GasTestResponse>(gasUrl, { action: holdingPolicy ? 'test-holding-policy' : 'test', secret, channel });
   } catch (e) {
     log.error('연결 테스트 실패:', e);
     return { ok: false, error: e instanceof Error ? e.message : '연결 테스트에 실패했습니다.' };

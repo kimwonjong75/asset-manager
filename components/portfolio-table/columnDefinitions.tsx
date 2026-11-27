@@ -437,7 +437,7 @@ export const COLUMN_DEFINITIONS: Record<ColumnKey, ColumnDefinition> = {
     renderCell: ({ turtleHoldingsRow, getTdStyle }) => {
       return (
         <td className="px-4 py-4 text-center overflow-hidden" style={getTdStyle?.('turtleStatus')}>
-          {turtleHoldingsRow
+          {turtleHoldingsRow?.holdingPolicyEvaluation ? <span>{turtleHoldingsRow.reasonText}</span> : turtleHoldingsRow
             ? <TurtleStatusDetails status={turtleHoldingsRow.status} reasonText={turtleHoldingsRow.reasonText} />
             : <span className="text-gray-500">—</span>}
         </td>

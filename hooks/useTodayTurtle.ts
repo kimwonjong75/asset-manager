@@ -253,6 +253,7 @@ export function useTodayTurtle(): TodayTurtleModel {
         continue;
       }
       const a = asset!;
+      if (a.holdingPolicy) continue;
       const key = todayInstrumentKey(a.ticker, a.exchange, normalizeExchange);
       if (seen.has(key)) continue;
       seen.add(key);
@@ -268,7 +269,7 @@ export function useTodayTurtle(): TodayTurtleModel {
 
     // ── 2) 기존 투더문 보유분 (bucket === 'SATELLITE', 포지션 없음) ──
     for (const a of viewAssets) {
-      if (getAssetBucket(a) !== 'SATELLITE') continue;
+      if (a.holdingPolicy || getAssetBucket(a) !== 'SATELLITE') continue;
       if (positionAssetIds.has(a.id)) continue;
       const key = todayInstrumentKey(a.ticker, a.exchange, normalizeExchange);
       if (seen.has(key)) continue;
@@ -284,6 +285,7 @@ export function useTodayTurtle(): TodayTurtleModel {
     // ── 3) 관심종목 전체 (isTurtleCandidate 무관). 단, **이미 보유한 종목은 제외** ──
     const heldKeys = new Set(viewAssets.map(a => todayInstrumentKey(a.ticker, a.exchange, normalizeExchange)));
     for (const w of watchlist) {
+      if (w.holdingPolicy || !matchesOwnerFilter(w, ui.accountView)) continue;
       const key = todayInstrumentKey(w.ticker, w.exchange, normalizeExchange);
       if (heldKeys.has(key) || seen.has(key)) continue; // 보유 중 → 신규진입 후보 아님
       seen.add(key);
@@ -295,7 +297,7 @@ export function useTodayTurtle(): TodayTurtleModel {
       });
     }
     return out;
-  }, [assets, inView, viewAssets, watchlist, turtlePositions]);
+  }, [assets, inView, viewAssets, watchlist, turtlePositions, ui.accountView]);
 
   // 조회 기준일 — 날짜가 바뀌면 requestKey 가 바뀌어 재평가된다
   const asOfDate = new Date().toISOString().slice(0, 10);

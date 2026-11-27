@@ -52,7 +52,7 @@ const CHIP_CLASS =
   'inline-flex items-center gap-1 min-h-9 px-3 rounded-full border border-border-subtle bg-surface-muted text-xs sm:text-sm text-gray-200 hover:bg-gray-700 transition-colors';
 
 const TodayActionCenter: React.FC = () => {
-  const { data, derived, actions, ui } = usePortfolio();
+  const { derived, actions, ui } = usePortfolio();
   const turtle = useTodayTurtle();
 
   // 첫 화면에서부터 "매매 계획이란?"을 보여준다(계획 0건일 때만).
@@ -73,7 +73,7 @@ const TodayActionCenter: React.FC = () => {
   );
   const tiers = useMemo(() => groupRowsByTier(derived.tradePlanRows), [derived.tradePlanRows]);
   const needsCheck = useMemo(() => needsCheckRows(derived.tradePlanRows), [derived.tradePlanRows]);
-  const pendingCounts = useMemo(() => pendingOrderCounts(data.actionQueue), [data.actionQueue]);
+  const pendingCounts = useMemo(() => pendingOrderCounts(derived.visibleActionQueue), [derived.visibleActionQueue]);
   const counts = useMemo(
     () => observeCounts({
       alertResults: derived.alertResults,

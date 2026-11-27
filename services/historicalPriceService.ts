@@ -208,8 +208,4 @@ export function convertTickerForAPI(
 /**
  * 암호화폐 거래소인지 확인
  */
-export function isCryptoExchange(exchange: string): boolean {
-  const normalized = (exchange || '').toLowerCase().trim();
-  const cryptoExchanges = ['upbit', 'bithumb', '주요 거래소 (종합)'];
-  return cryptoExchanges.some(ex => normalized.includes(ex));
-}
+export { isCryptoExchange } from '../utils/marketCurrency';

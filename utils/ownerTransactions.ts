@@ -63,6 +63,7 @@ export function splitOwnerHolding(
       name: withoutJointLabel(source.name) || source.ticker || source.name,
       customName: source.customName ? withoutJointLabel(source.customName) || undefined : undefined,
       ownerAllocation: { sourceId: source.id, date }, sellTransactions: undefined,
+      holdingPolicy: undefined,
       tradePlan: retainsPlan ? source.tradePlan : undefined, turtleDecisions: retainsPlan ? source.turtleDecisions : undefined,
     });
   }

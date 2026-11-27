@@ -34,7 +34,7 @@ const KakaoNotifySection: React.FC = () => {
   const {
     settings, manifest, needsSync, opStatus, lastError, gasStatus, telegramConnect, channelError, gasChannelMismatch,
     setGasUrl, setSecret, setAutoSync, setPyramidAlerts, setChannel, connectTelegram,
-    syncNow, testConnection, refreshStatus,
+    syncNow, testConnection, testReceipt, refreshStatus,
   } = useKakaoNotify();
 
   const [showSecret, setShowSecret] = useState(false);
@@ -51,8 +51,9 @@ const KakaoNotifySection: React.FC = () => {
   const targets = channelTargets(settings.channel);
   const usesKakao = targets.includes('kakao');
   const usesTelegram = targets.includes('telegram');
-  const turtleHoldingCount = (manifest.turtle?.legacyHoldings.length ?? 0) + (manifest.turtle?.reentryPositions.length ?? 0);
-  const turtleWatchCount = manifest.turtle?.watchItems.length ?? 0;
+  const turtleHoldingCount = (manifest.turtle?.legacyHoldings.length ?? 0) + (manifest.turtle?.reentryPositions.length ?? 0)
+    + (manifest.turtle?.policies?.holdings.length ?? 0);
+  const turtleWatchCount = (manifest.turtle?.watchItems.length ?? 0) + (manifest.turtle?.policies?.watchItems.length ?? 0);
 
   return (
     <div className="bg-gray-800 rounded-lg">
@@ -65,7 +66,7 @@ const KakaoNotifySection: React.FC = () => {
           매매 계획의 손절선·익절선·불타기선은 개장 중 매시간, 추세선 이탈은 마감 확정 종가로 1회 카카오톡("나에게 보내기") 또는 텔레그램으로 알려드립니다.
         </p>
         <p className="text-gray-400 text-xs mt-1">
-          터틀 알림 포함 — 보유 {turtleHoldingCount}종목 · 감시 {turtleWatchCount}종목의 팔 때·다시 살 때·추가 매수·손절 이탈을 마감 후 1회 + 아침 요약으로 알려드립니다.
+          마감 알림 대상은 보유 {turtleHoldingCount}종목, 재진입 감시 {turtleWatchCount}종목입니다. 보유 방침을 정한 종목은 본전 도달·감시 시작·매매 검토를 방침에 맞춰 알려드립니다.
         </p>
       </div>
 
@@ -193,6 +194,12 @@ const KakaoNotifySection: React.FC = () => {
             >
               {opStatus === 'testing' ? '테스트 중...' : '연결 테스트'}
             </button>
+              {settings.channel === 'telegram' && <button type="button" onClick={() => { void testConnection(true); }}
+                disabled={busy || !settings.gasUrl || !settings.secret}
+                title="하루 한 번, 합성 종목 배포점검의 본전 알림을 연결된 텔레그램 1:1 대화로 보냅니다."
+                className="text-sm px-3 py-2 rounded bg-gray-700 text-white hover:bg-gray-600 transition disabled:opacity-40">
+                텔레그램에 테스트 종목 보내기
+              </button>}
             <button
               type="button"
               onClick={() => { void syncNow(); }}
@@ -210,12 +217,16 @@ const KakaoNotifySection: React.FC = () => {
               {opStatus === 'checking' ? '조회 중...' : '상태 새로고침'}
             </button>
             {needsSync ? (
-              <Badge tone="warning" size="md">동기화 필요 · 계획 {manifest.items.length}건</Badge>
+              <Badge tone="warning" size="md">동기화 필요</Badge>
             ) : (
               <Badge tone="ok" size="md">최신 상태</Badge>
             )}
           </div>
 
+          {testReceipt && <div role="status" className="text-sm">
+            <p>텔레그램 메시지 #{testReceipt.messageId}{testReceipt.duplicate ? ' · 오늘 보낸 메시지' : ' · 발송 완료'}</p>
+            <p className="whitespace-pre-line">{testReceipt.text}</p>
+          </div>}
           {lastError && <p className="flex items-center gap-1 text-xs text-danger" role="alert"><CircleAlert className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />{lastError}</p>}
 
           <div className="grid grid-cols-2 gap-3 pt-1 text-xs text-gray-400">
@@ -250,7 +261,7 @@ const KakaoNotifySection: React.FC = () => {
           <div className="flex items-center justify-between">
             <div>
               <span className="text-white font-medium text-sm">자동 동기화</span>
-              <p className="text-gray-500 text-xs mt-0.5">계획이 바뀌면 5초 뒤 자동으로 동기화합니다(꺼져 있으면 [지금 동기화]를 직접 눌러야 합니다).</p>
+              <p className="text-gray-500 text-xs mt-0.5">보유 방침·체결·계획 변경을 5초 뒤 발송기에 반영합니다. 꺼져 있으면 변경 후 [지금 동기화]를 누르세요.</p>
             </div>
             <Toggle checked={settings.autoSync} onChange={setAutoSync} />
           </div>

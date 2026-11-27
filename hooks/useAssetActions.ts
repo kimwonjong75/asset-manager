@@ -1,6 +1,11 @@
 import { useCallback, useRef, useState } from 'react';
 import { Asset, AssetCategory, BulkUploadResult, Currency, ExchangeRates, NewAssetForm, SellRecord, WatchlistItem, normalizeExchange } from '../types';
 import type { PortfolioSaveSnapshot } from '../types/portfolioSave';
+import type { LinkTurtleBuy } from '../types/turtleHoldingsActions';
+import { afterFullHoldingSale } from '../utils/turtleHoldingsState';
+import { holdingPolicyStartDate } from '../utils/holdingPolicyEdit';
+import { hasDifferentTurtleFillCurrency } from '../utils/holdingTradeCurrency';
+import { localDateString } from '../utils/localDate';
 import { isBaseType, DEFAULT_CATEGORIES, getCategoryIdByName } from '../types/category';
 import { fetchAssetData as fetchAssetDataNew, fetchExchangeRate, fetchExchangeRateJPY, fetchHistoricalExchangeRate, fetchCurrentExchangeRate } from '../services/priceService';
 import { createLogger } from '../utils/logger';
@@ -18,6 +23,12 @@ const log = createLogger('AssetActions');
 
 function isPositive(value: number): boolean {
   return Number.isFinite(value) && value > 0;
+}
+
+function validFillDate(value: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value) || value > localDateString()) return false;
+  const utc = new Date(value + 'T00:00:00Z');
+  return Number.isFinite(utc.getTime()) && utc.toISOString().slice(0, 10) === value;
 }
 
 function conflictsWithHolding(existing: Asset, candidate: Asset): boolean {
@@ -52,7 +63,7 @@ export const useAssetActions = ({
   const activeTrades = useRef(new Set<string>());
 
   // 자산 추가 - [수정] name 파라미터 추가
-  const handleAddAsset = useCallback(async (newAssetData: NewAssetForm & { name?: string }, sourceAssetId?: string): Promise<AddAssetResult> => {
+  const handleAddAsset = useCallback(async (newAssetData: NewAssetForm & { name?: string }, sourceAssetId?: string, linkTurtle?: LinkTurtleBuy): Promise<AddAssetResult> => {
     if (!isSignedIn) {
       setError('Google Drive 로그인 후 자산을 추가할 수 있습니다.');
       setTimeout(() => setError(null), 3000);
@@ -61,7 +72,7 @@ export const useAssetActions = ({
     setIsLoading(true);
     setError(null);
     try {
-      if (!isPositive(newAssetData.quantity) || !isPositive(newAssetData.purchasePrice) || !newAssetData.purchaseDate) {
+      if (!isPositive(newAssetData.quantity) || !isPositive(newAssetData.purchasePrice) || !validFillDate(newAssetData.purchaseDate)) {
         setError('매수일과 0보다 큰 수량·단가를 입력해 주세요.');
         return { ok: false, reason: 'invalid-fill' };
       }
@@ -119,7 +130,7 @@ export const useAssetActions = ({
           indicators: d.indicators,
           highestPrice: currentPrice,
           purchaseExchangeRate,
-          currency: d.currency || newAssetData.currency,
+          currency: hasDifferentTurtleFillCurrency(newAssetData.exchange, newAssetData.currency) ? newAssetData.currency : d.currency || newAssetData.currency,
         };
       }
       
@@ -141,11 +152,13 @@ export const useAssetActions = ({
         return { ok: false, reason: 'conflicting-holding' };
       }
       const nextAssets = [...snapshot.assets, finalNewAsset];
+      const linked = linkTurtle?.(snapshot, finalNewAsset);
+      if (linked && !linked.ok) return linked;
       const buyRecord = buildBuyRecord(finalNewAsset, {
         id: crypto.randomUUID(), buyDate: finalNewAsset.purchaseDate, buyPrice: finalNewAsset.purchasePrice,
         buyQuantity: finalNewAsset.quantity, buyExchangeRate: finalNewAsset.purchaseExchangeRate ?? 1,
       });
-      commitPortfolioPatch({ assets: nextAssets, buyHistory: [...snapshot.buyHistory, buyRecord] });
+      commitPortfolioPatch({ assets: nextAssets, buyHistory: [...snapshot.buyHistory, buyRecord], turtlePositions: linked?.positions });
       setSuccessMessage(`${finalNewAsset.name} 자산이 추가되었습니다.`);
       return { ok: true, assetId: finalNewAsset.id, asset: finalNewAsset, nextAssets };
     } catch (e) {
@@ -230,7 +243,7 @@ export const useAssetActions = ({
               quoteDate: d.quoteDate,
               quoteTradeAt: d.quoteTradeAt,
               indicators: d.indicators,
-              currency: d.currency || finalAsset.currency,
+              currency: hasDifferentTurtleFillCurrency(finalAsset.exchange, finalAsset.currency) ? finalAsset.currency : d.currency || finalAsset.currency,
               highestPrice: Math.max(finalAsset.highestPrice, newCurrentPrice),
             };
           }
@@ -251,6 +264,16 @@ export const useAssetActions = ({
         setError('같은 보유자의 동일 종목 잔고가 이미 있습니다. 보유자를 확인해 주세요.');
         return;
       }
+      // A delayed edit must preserve a newly saved/armed strategy, and never copy it to another owner or ticker.
+      const identityChanged = getAssetOwner(live) !== getAssetOwner(finalAsset) ||
+        live.ticker !== finalAsset.ticker || live.exchange !== finalAsset.exchange || live.currency !== finalAsset.currency;
+      finalAsset.holdingPolicy = identityChanged ? undefined : live.holdingPolicy;
+      if (finalAsset.holdingPolicy && (live.purchasePrice !== finalAsset.purchasePrice ||
+          live.purchaseDate !== finalAsset.purchaseDate || live.purchaseExchangeRate !== finalAsset.purchaseExchangeRate)) {
+        finalAsset.holdingPolicy = { ...finalAsset.holdingPolicy, confirmedUnitCostKRW: undefined,
+          cycleId: crypto.randomUUID(), startedOn: holdingPolicyStartDate(finalAsset.exchange, new Date()),
+          requiresCostConfirmation: finalAsset.currency !== Currency.KRW };
+      }
       commitPortfolioPatch({ assets: latest.map(a => (a.id === finalAsset.id ? finalAsset : a)) });
       setSuccessMessage(`${finalAsset.name} 자산이 수정되었습니다.`);
     } catch (e) {
@@ -269,7 +292,8 @@ export const useAssetActions = ({
     sellQuantity: number,
     sellPrice: number,
     sellDate: string,
-    settlementCurrency?: Currency
+    settlementCurrency?: Currency,
+    legacyWatch = false,
   ): Promise<SellResult> => {
     if (!isSignedIn) {
       setError('Google Drive 로그인 후 매도를 기록할 수 있습니다.');
@@ -288,7 +312,7 @@ export const useAssetActions = ({
       setError('보유자별 수량을 먼저 확정하거나 진행 중인 거래가 끝난 후 기록해 주세요.');
       return { ok: false, reason: 'holding-unavailable' };
     }
-    if (!isPositive(sellQuantity) || !isPositive(sellPrice) || !sellDate) {
+    if (!isPositive(sellQuantity) || !isPositive(sellPrice) || !validFillDate(sellDate)) {
       setError('매도일과 0보다 큰 수량·단가를 입력해 주세요.');
       return { ok: false, reason: 'invalid-fill' };
     }
@@ -328,9 +352,15 @@ export const useAssetActions = ({
         settlementCurrency: finalSettlementCurrency,
         transactionId: crypto.randomUUID(),
       });
-      commitPortfolioPatch({ assets: mut.nextAssets, sellHistory: mut.nextSellHistory });
+      const holdingSale = mut.assetClosed ? afterFullHoldingSale(live, sellDate, mut.sellRecord.sellPriceOriginal ?? 0,
+        legacyWatch, snapshot.watchlist, snapshot.turtlePositions, () => crypto.randomUUID()) : undefined;
+      commitPortfolioPatch({
+        assets: mut.nextAssets, sellHistory: mut.nextSellHistory,
+        watchlist: holdingSale?.watchlist, turtlePositions: holdingSale?.turtlePositions,
+      });
 
-      setSuccessMessage(`${OWNER_LABELS[getAssetOwner(live)]} · ${live.name} ${formatOwnerQuantity(live, sellQuantity)} 매도가 기록되었습니다.`);
+      const watchMessage = holdingSale?.watchItemId ? ' 재매수 감시를 시작합니다.' : '';
+      setSuccessMessage(`${OWNER_LABELS[getAssetOwner(live)]} · ${live.name} ${formatOwnerQuantity(live, sellQuantity)} 매도가 기록되었습니다.${watchMessage}`);
       return {
         ok: true,
         sellRecordId: mut.sellRecord.id,
@@ -339,6 +369,7 @@ export const useAssetActions = ({
         updatedAsset: mut.assetClosed ? undefined : mut.nextAssets.find(a => a.id === asset.id),
         nextAssets: mut.nextAssets,
         nextSellHistory: mut.nextSellHistory,
+        holdingSale,
       };
     } catch (e) {
       log.error(e);
@@ -502,7 +533,8 @@ export const useAssetActions = ({
     assetId: string,
     buyQuantity: number,
     buyPrice: number,
-    buyDate: string
+    buyDate: string,
+    linkTurtle?: LinkTurtleBuy,
   ): Promise<BuyMoreResult> => {
     if (!isSignedIn) {
       setError('Google Drive 로그인 후 추가매수를 기록할 수 있습니다.');
@@ -521,7 +553,7 @@ export const useAssetActions = ({
       setError('보유자별 수량을 먼저 확정하거나 진행 중인 거래가 끝난 후 기록해 주세요.');
       return { ok: false, reason: 'holding-unavailable' };
     }
-    if (!isPositive(buyQuantity) || !isPositive(buyPrice) || !buyDate) {
+    if (!isPositive(buyQuantity) || !isPositive(buyPrice) || !validFillDate(buyDate)) {
       setError('매수일과 0보다 큰 수량·단가를 입력해 주세요.');
       return { ok: false, reason: 'invalid-fill' };
     }
@@ -545,7 +577,9 @@ export const useAssetActions = ({
       }
       const mut = buildBuyMoreMutation({ asset: live, assets: snapshot.assets, buyExchangeRate, buyPrice, buyQuantity, buyDate });
       const buyRecord = buildBuyRecord(live, { id: crypto.randomUUID(), buyExchangeRate, buyPrice, buyQuantity, buyDate });
-      commitPortfolioPatch({ assets: mut.nextAssets, buyHistory: [...snapshot.buyHistory, buyRecord] });
+      const linked = linkTurtle?.(snapshot, live);
+      if (linked && !linked.ok) return linked;
+      commitPortfolioPatch({ assets: mut.nextAssets, buyHistory: [...snapshot.buyHistory, buyRecord], turtlePositions: linked?.positions });
 
       setSuccessMessage(`${OWNER_LABELS[getAssetOwner(live)]} · ${live.customName?.trim() || live.name} ${formatOwnerQuantity(live, buyQuantity)} 추가매수가 기록되었습니다.`);
       return { ok: true, assetId, updatedAsset: mut.updatedAsset, nextAssets: mut.nextAssets };

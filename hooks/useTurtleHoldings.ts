@@ -2,8 +2,7 @@
 // ---------------------------------------------------------------------------
 // "보유종목 터틀" 데이터 훅 (계획서 PLAN_터틀중심_앱재정비_260925 §6 P2 2-1).
 //
-// 읽기 전용 보장 — hooks/useTodayTurtle.ts 와 동일한 계약:
-//   · 저장 함수를 주입받지 않는다(자동 저장 금지 — "보이지 않는 쓰기 금지").
+// 사용자가 선택한 터틀 방침의 최초 본전 활성일만 저장한다. 체결·주문을 만들지 않는다.
 //   · 순수 계산은 utils/turtleHoldingsView 에 위임 — 여기는 fetch + 배선만.
 //   · 일부 종목 실패가 전체 실패로 번지지 않는다(해당 행만 '확인 불가').
 //   · 모듈 캐시(utils/todayTurtleCache 재사용, 별도 네임스페이스) — fresh 캐시 재사용·in-flight 공유·
@@ -22,10 +21,15 @@ import {
   convertTickerForAPI,
   HistoricalPriceResult,
 } from '../services/historicalPriceService';
-import { Currency, normalizeExchange } from '../types';
+import { Currency } from '../types';
+import { instrumentMarket } from '../utils/ownerHoldings';
 import { TurtlePosition } from '../types/turtle';
 import { EnrichedAsset } from '../types/ui';
-import { resolveHoldingsSettings, isInHoldingsScope } from '../utils/turtleHoldings';
+import { getAssetOwner, hasUnresolvedOwners } from '../types/owner';
+import { isBaseType } from '../types/category';
+import { holdingPolicyFxTicker } from '../utils/holdingPolicyFx';
+import { holdingPolicyTurtleSettings, isPolicyReentryWatch } from '../utils/holdingPolicy';
+import { resolveHoldingsSettings } from '../utils/turtleHoldings';
 import {
   buildTurtleHoldingsLegacyRow,
   buildTurtleHoldingsReentryRow,
@@ -54,7 +58,7 @@ function isoDaysAgo(days: number, now: Date): string {
 
 interface Target {
   key: string;
-  kind: 'legacy' | 'reentry' | 'watch';
+  kind: 'legacy' | 'reentry' | 'watch' | 'fx';
   ticker: string;
   fetchTicker: string;
   isCrypto: boolean;
@@ -75,8 +79,8 @@ function peekFreshEntry(requestKey: string, now: Date): CacheEntry | null {
 }
 
 async function fetchTurtleHoldingsSeries(targets: Target[], startDate: string, endDate: string): Promise<FetchOutcome> {
-  const cryptoTickers = targets.filter(t => t.isCrypto).map(t => t.fetchTicker);
-  const stockTickers = targets.filter(t => !t.isCrypto).map(t => t.fetchTicker);
+  const cryptoTickers = [...new Set(targets.filter(t => t.isCrypto).map(t => t.fetchTicker))];
+  const stockTickers = [...new Set(targets.filter(t => !t.isCrypto).map(t => t.fetchTicker))];
   const empty: Record<string, HistoricalPriceResult> = {};
   const [cryptoRes, stockRes] = await Promise.all([
     cryptoTickers.length
@@ -148,7 +152,7 @@ export interface TurtleHoldingsModel {
 const EMPTY_MODEL_SUMMARY: TurtleHoldingsCounts = { sellCount: 0, reentryCount: 0, pyramidCount: 0, stopCheckCount: 0 };
 
 export function useTurtleHoldings(): TurtleHoldingsModel {
-  const { data, derived } = usePortfolio();
+  const { data, derived, actions } = usePortfolio();
   const { watchlist, turtlePositions, turtleSettings, exchangeRates } = data;
   const settings = useMemo(() => resolveHoldingsSettings(turtleSettings.holdings), [turtleSettings.holdings]);
 
@@ -181,13 +185,15 @@ export function useTurtleHoldings(): TurtleHoldingsModel {
     const s = new Set<string>();
     for (const a of enrichedAssets) {
       if (a.quantity <= 0) continue;
-      if (!isInHoldingsScope(a, settings)) continue;
-      s.add(todayInstrumentKey(a.ticker, a.exchange, normalizeExchange));
+      if (isBaseType(a.categoryId, 'CASH')) continue;
+      const key = todayInstrumentKey(a.ticker, a.exchange, instrumentMarket);
+      if (hasUnresolvedOwners(a)) s.add(key);
+      else s.add(getAssetOwner(a) + '|' + key);
     }
     return s;
-  }, [enrichedAssets, settings]);
+  }, [enrichedAssets]);
 
-  const watchCandidates = useMemo(() => watchlist.filter(w => w.isTurtleCandidate), [watchlist]);
+  const watchCandidates = useMemo(() => watchlist.filter(w => w.isTurtleCandidate && (!w.holdingPolicy || isPolicyReentryWatch(w))), [watchlist]);
 
   const targets = useMemo<Target[]>(() => {
     const out: Target[] = [];
@@ -202,6 +208,11 @@ export function useTurtleHoldings(): TurtleHoldingsModel {
         ticker: a.ticker, isCrypto: isCryptoExchange(a.exchange),
         fetchTicker: convertTickerForAPI(a.ticker, a.exchange),
       });
+      const fxTicker = a.holdingPolicy && a.holdingPolicy.mode !== 'hold' && !isCryptoExchange(a.exchange) ? holdingPolicyFxTicker(a.currency) : null;
+      if (fxTicker && !seen.has('fx|' + fxTicker)) {
+        seen.add('fx|' + fxTicker);
+        out.push({ key: 'fx|' + fxTicker, kind: 'fx', ticker: fxTicker, fetchTicker: fxTicker, isCrypto: false });
+      }
     }
     for (const w of watchCandidates) {
       const key = `watch|${w.id}`;
@@ -215,12 +226,29 @@ export function useTurtleHoldings(): TurtleHoldingsModel {
     return out;
   }, [enrichedAssets, openReentryByAssetId, watchCandidates]);
 
-  const asOfDate = new Date().toISOString().slice(0, 10);
-  const lookbackDays = turtleHoldingsLookbackCalendarDays(settings);
+  const [refreshSlot, setRefreshSlot] = useState(() => Math.floor(Date.now() / TODAY_TURTLE_CACHE_TTL_MS));
+  useEffect(() => {
+    const refresh = () => setRefreshSlot(Math.floor(Date.now() / TODAY_TURTLE_CACHE_TTL_MS));
+    const timer = window.setInterval(refresh, 60_000);
+    document.addEventListener('visibilitychange', refresh);
+    return () => { window.clearInterval(timer); document.removeEventListener('visibilitychange', refresh); };
+  }, []);
+  const now = new Date();
+  const asOfDate = now.toISOString().slice(0, 10);
+  const signature = marketDaySignature(now);
+  const lookbackDays = useMemo(() => {
+    let days = Math.max(turtleHoldingsLookbackCalendarDays(settings), turtleHoldingsLookbackCalendarDays(holdingPolicyTurtleSettings(settings)));
+    for (const { holdingPolicy } of enrichedAssets) {
+      if (holdingPolicy?.mode !== 'turtle-after-cost' || holdingPolicy.armedOn || !holdingPolicy.startedOn) continue;
+      const age = (Date.parse(asOfDate) - Date.parse(holdingPolicy.startedOn)) / 86_400_000;
+      if (Number.isFinite(age)) days = Math.max(days, age + 2);
+    }
+    return days;
+  }, [asOfDate, enrichedAssets, settings]);
   const requestKey = useMemo(() => {
     const parts = targets.map(t => `${t.kind}:${t.key}:${t.fetchTicker}`).sort();
-    return `${asOfDate}|${lookbackDays}|${parts.join(',')}`;
-  }, [targets, asOfDate, lookbackDays]);
+    return `${asOfDate}|${signature}|${refreshSlot}|${lookbackDays}|${parts.join(',')}`;
+  }, [targets, asOfDate, signature, refreshSlot, lookbackDays]);
 
   const hasTargets = targets.length > 0;
   const peek = useMemo(
@@ -246,7 +274,7 @@ export function useTurtleHoldings(): TurtleHoldingsModel {
   const failedKeys = display.failedKeys;
   const isLoading = display.isLoading;
 
-  return useMemo<TurtleHoldingsModel>(() => {
+  const model = useMemo<TurtleHoldingsModel>(() => {
     const now = new Date();
     const { holdingsValueKRW, parkedCashKRW, managedEquityKRW } = computeManagedEquity(enrichedAssets, settings);
     const { equityKRW: effectiveManagedEquityKRW, drawdownApplied } = resolveEffectiveManagedEquity(
@@ -256,12 +284,13 @@ export function useTurtleHoldings(): TurtleHoldingsModel {
 
     const rows: TurtleHoldingsRow[] = [];
     for (const t of targets) {
+      if (t.kind === 'fx') continue;
       const raw = rawByKey?.get(t.key);
       const fetchFailed = rawByKey != null && failedKeys.has(t.key);
       if (t.kind === 'watch') {
         const w = watchCandidates.find(x => `watch|${x.id}` === t.key);
         if (!w) continue;
-        const fxRate = resolvePositionFxRate(w.currency ?? Currency.KRW, exchangeRates);
+        const fxRate = w.holdingPolicy && t.isCrypto ? 1 : resolvePositionFxRate(w.currency ?? Currency.KRW, exchangeRates);
         rows.push(buildTurtleHoldingsWatchRow({
           watchItem: w, raw, isCrypto: t.isCrypto, fetchFailed, now, settings, fxRate,
           effectiveManagedEquityKRW, heldTickerKeys,
@@ -270,16 +299,17 @@ export function useTurtleHoldings(): TurtleHoldingsModel {
         const assetId = t.key.split('|')[1];
         const asset = enrichedById.get(assetId);
         if (!asset) continue;
-        const fxRate = resolvePositionFxRate(asset.currency, exchangeRates);
+        const fxRate = asset.holdingPolicy && t.isCrypto ? 1 : resolvePositionFxRate(asset.currency, exchangeRates);
+        const policyFx = rawByKey?.get('fx|' + holdingPolicyFxTicker(asset.currency));
         if (t.kind === 'reentry') {
           const position = openReentryByAssetId.get(assetId);
           if (!position) continue;
           rows.push(buildTurtleHoldingsReentryRow({
-            position, asset, raw, isCrypto: t.isCrypto, fetchFailed, now, settings, fxRate,
+            position, asset, raw, isCrypto: t.isCrypto, fetchFailed, now, settings, fxRate, policyFx,
             effectiveManagedEquityKRW,
           }));
         } else {
-          rows.push(buildTurtleHoldingsLegacyRow({ asset, raw, isCrypto: t.isCrypto, fetchFailed, now, settings }));
+          rows.push(buildTurtleHoldingsLegacyRow({ asset, raw, policyFx, isCrypto: t.isCrypto, fetchFailed, now, settings }));
         }
       }
     }
@@ -300,4 +330,14 @@ export function useTurtleHoldings(): TurtleHoldingsModel {
       partialFailure: failedKeys.size > 0,
     };
   }, [targets, rawByKey, failedKeys, isLoading, enrichedAssets, enrichedById, openReentryByAssetId, watchCandidates, exchangeRates, settings, heldTickerKeys]);
+  useEffect(() => {
+    const activations = model.rows.flatMap(row => {
+      const policy = row.assetId ? enrichedById.get(row.assetId)?.holdingPolicy : undefined;
+      const armedOn = row.holdingPolicyEvaluation?.armedOn;
+      return row.assetId && policy?.cycleId && armedOn && (!policy.armedOn || armedOn < policy.armedOn)
+        ? [{ assetId: row.assetId, cycleId: policy.cycleId, armedOn }] : [];
+    });
+    if (activations.length) actions.armHoldingPolicies(activations);
+  }, [actions, enrichedById, model.rows]);
+  return model;
 }

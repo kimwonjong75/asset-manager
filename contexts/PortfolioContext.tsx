@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useMemo, useEffect, useCallback } from 'react';
+import { applyHoldingPolicyActivations } from '../utils/holdingPolicy';
 import {
   Asset,
   Currency,
@@ -43,6 +44,8 @@ import { OWNER_FILTER_OPTIONS, type OwnerFilter } from '../types/owner';
 import { buildCleanupCommit } from '../utils/cleanupPlan';
 import type { CleanupDecision } from '../types/cleanup';
 import { compactResolvedActions, ACTION_QUEUE_RETENTION_DAYS } from '../utils/actionQueueCompaction';
+import { allowsLegacyOrder } from '../utils/holdingPolicyOrders';
+import { hasDifferentTurtleFillCurrency } from '../utils/holdingTradeCurrency';
 import { localDateString } from '../utils/localDate';
 import { splitOwnerHolding } from '../utils/ownerTransactions';
 import { describeFreshness, LAST_PRICE_REFRESH_AT_KEY } from '../utils/priceFreshness';
@@ -57,8 +60,9 @@ import type { TradePlan, PlanDecision, PlanFill, PyramidFillResult, SellOutcome 
 import { PYRAMID_FILL_ERROR_LABELS } from '../types/tradePlan';
 import { beginPriceRefreshPriority, endPriceRefreshPriority } from '../utils/fetchPriority';
 import { resolveHoldingsSettings } from '../utils/turtleHoldings';
+import { editedHoldingPolicyAssets } from '../utils/holdingPolicyEdit';
 import type { TurtleHoldingsSettings } from '../types/turtleHoldings';
-import { recordTurtleExit, recordTurtleReentry, recordTurtlePyramid, recordTurtleHold as recordTurtleHoldPure } from '../utils/turtleHoldingsState';
+import { recordTurtleReentry, recordTurtlePyramid, recordTurtleHold as recordTurtleHoldPure } from '../utils/turtleHoldingsState';
 import type { TurtleHoldingsRow } from '../utils/turtleHoldingsView';
 import type {
   RecordTurtleSellInput, RecordTurtleSellOutcome,
@@ -523,6 +527,10 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     assets, enrichedMap, priceDataAsOf,
   });
 
+  const visibleActionQueue = useMemo(() => actionQueue.filter(item => allowsLegacyOrder(item,
+    { assets, watchlist, sellHistory, turtlePositions, allocationTargets })),
+  [actionQueue, assets, watchlist, sellHistory, turtlePositions, allocationTargets]);
+
   // 실행 큐 저장 액션 — 자동 검토 훅(자동 생성 opt-in)과 value.actions.updateActionQueue가 공유
   const updateActionQueueAction = useCallback((queue: ActionItem[]) => {
     commitPortfolio({ actionQueue: queue }); // setState + 저장을 한 경로로
@@ -536,7 +544,7 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     exchangeRates,
     turtlePositions,
     turtleSettings,
-    actionQueue,
+    actionQueue, visibleActionQueue,
     hasAutoUpdated,
     isMarketLoading,
     updateActionQueue: updateActionQueueAction,
@@ -806,7 +814,7 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       guruSignalChartTargets,
       guruSignalCaveats,
       autoPopupDiagnosis,
-      actionQueueSummary,
+      actionQueueSummary, visibleActionQueue,
       compactableActions,
       showAlertPopup,
       backupList: backup.backupList,
@@ -1009,6 +1017,11 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       updateValuationSettings: (settings: ValuationSettings) => {
         commitPortfolio({ valuationSettings: settings });
       },
+      armHoldingPolicies: activations => {
+        const latest = getSnapshot().assets;
+        const next = applyHoldingPolicyActivations(latest, activations);
+        if (next !== latest) commitPortfolio({ assets: next });
+      },
       commitPortfolioPatch,
       // 대청소 일괄 분류 저장 (Phase 3b/3c-2) — 순수 빌더로 assets+watchlist+actionQueue 계산 후 단일 원자 커밋.
       // turtle→관심종목 등록, liquidate→CLEANUP_SELL 생성(이번 저장 변경분만·dedup). 실행은 3d.
@@ -1029,93 +1042,71 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       // handleConfirmSell/handleAddAsset/handleConfirmBuyMore의 커밋 직후 같은 틱에 이어질 수 있어
       // 렌더 클로저(watchlist/turtlePositions)가 stale일 수 있다(§8 stale 규약).
       recordTurtleSell: async (input: RecordTurtleSellInput): Promise<RecordTurtleSellOutcome> => {
-        const asset = getSnapshot().assets.find(a => a.id === input.assetId);
-        if (!asset) return { ok: false, reason: 'asset-not-found' };
-
-        const sellResult = await handleConfirmSell(input.assetId, input.sellQuantity, input.sellPrice, input.sellDate, input.settlementCurrency);
-        if (!sellResult.ok) return sellResult;
-
-        // 일부 매도는 터틀 청산이 아니다 — 전량 매도(assetClosed)일 때만 감시 등록·포지션 종료(Advisor 보정 2026-09-26)
-        if (!input.addToWatchlist || !sellResult.assetClosed) {
-          return {
-            ok: true, sellRecordId: sellResult.sellRecordId, assetClosed: sellResult.assetClosed,
-            updatedAsset: sellResult.updatedAsset, watchItemId: null, isNewWatchItem: false, closedPositionId: null,
-          };
-        }
-
-        const snap = getSnapshot();
-        const position = snap.turtlePositions.find(
-          p => p.assetId === input.assetId && p.status === 'open' && p.origin === 'holdings-reentry',
-        ) ?? null;
-        const exitResult = recordTurtleExit({
-          asset: {
-            ticker: asset.ticker, exchange: asset.exchange, name: asset.customName?.trim() || asset.name,
-            categoryId: asset.categoryId, currency: asset.currency,
-          },
-          soldAt: sellResult.sellRecord.sellDate,
-          soldPriceOriginal: sellResult.sellRecord.sellPriceOriginal ?? 0,
-          source: 'turtle-exit',
-          watchlist: snap.watchlist,
-          position,
-          makeWatchId: () => `tw-${Date.now()}`,
-        });
-        if (!exitResult.ok) return { ok: false, reason: exitResult.reason };
-
-        commitPortfolio({
-          watchlist: exitResult.watchlist,
-          turtlePositions: exitResult.closedPosition
-            ? snap.turtlePositions.map(p => (p.id === exitResult.closedPosition!.id ? exitResult.closedPosition! : p))
-            : snap.turtlePositions,
-        });
-        setSuccessMessage('매도를 기록했습니다. "다시 살 때" 감시 명단에 추가했습니다.');
+        const result = await handleConfirmSell(input.assetId, input.sellQuantity, input.sellPrice,
+          input.sellDate, input.settlementCurrency, input.addToWatchlist);
+        if (!result.ok) return result;
         return {
-          ok: true, sellRecordId: sellResult.sellRecordId, assetClosed: sellResult.assetClosed,
-          updatedAsset: sellResult.updatedAsset, watchItemId: exitResult.watchItemId,
-          isNewWatchItem: exitResult.isNewWatchItem, closedPositionId: exitResult.closedPosition?.id ?? null,
+          ok: true, sellRecordId: result.sellRecordId, assetClosed: result.assetClosed, updatedAsset: result.updatedAsset,
+          watchItemId: result.holdingSale?.watchItemId ?? null,
+          isNewWatchItem: result.holdingSale?.isNewWatchItem ?? false,
+          closedPositionId: result.holdingSale?.closedPositionId ?? null,
         };
       },
       recordTurtleBuy: async (input: RecordTurtleBuyInput): Promise<RecordTurtleBuyOutcome> => {
-        const settings = resolveHoldingsSettings(getSnapshot().turtleSettings.holdings);
-
         if (input.mode === 'reentry') {
+          const watch = getSnapshot().watchlist.find(w => w.id === input.watchItemId);
+          if (!watch?.isTurtleCandidate) return { ok: false, reason: 'watch-changed' };
+          if (hasDifferentTurtleFillCurrency(watch.exchange, watch.currency)) return { ok: false, reason: 'fill-currency-mismatch' };
+          const policy = watch.holdingPolicy;
+          if (policy && (policy.mode !== 'turtle-after-cost' || !policy.armedOn || !watch.turtleWatch ||
+            input.fillDate <= watch.turtleWatch.soldAt)) return { ok: false, reason: 'watch-changed' };
+          const positionId = crypto.randomUUID();
+          const inherited = policy && { ...policy };
+          if (inherited) delete inherited.confirmedUnitCostKRW;
           const form = {
-            ticker: input.ticker, exchange: input.exchange, name: input.name, categoryId: input.categoryId,
-            currency: input.currency, quantity: input.quantity, purchasePrice: input.fillPrice, purchaseDate: input.fillDate,
-          } as unknown as Parameters<typeof handleAddAsset>[0];
-          const addResult = await handleAddAsset(form);
-          if (!addResult.ok) return addResult;
-
-          const reentryResult = recordTurtleReentry({
-            id: `tp-${Date.now()}`, ticker: input.ticker, name: input.name, assetId: addResult.assetId,
-            fillDate: input.fillDate, fillPrice: input.fillPrice, quantity: input.quantity, nAtFill: input.nAtFill,
-            fxRate: input.fxRate, donchianHigh: input.donchianHigh, settings,
+            ticker: watch.ticker, exchange: watch.exchange, name: watch.name, categoryId: watch.categoryId,
+            owner: watch.owner, holdingPolicy: inherited, currency: watch.currency ?? input.currency,
+            quantity: input.quantity, purchasePrice: input.fillPrice, purchaseDate: input.fillDate,
+          };
+          const added = await handleAddAsset(form, undefined, (snapshot, asset) => {
+            const current = snapshot.watchlist.find(w => w.id === watch.id);
+            if (asset.currency !== form.currency) return { ok: false, reason: 'fill-currency-mismatch' };
+            if (!current?.isTurtleCandidate || current.ticker !== watch.ticker || current.exchange !== watch.exchange ||
+              current.owner !== watch.owner || current.currency !== watch.currency || current.holdingPolicy !== policy || current.turtleWatch?.soldAt !== watch.turtleWatch?.soldAt) {
+              return { ok: false, reason: 'watch-changed' };
+            }
+            const result = recordTurtleReentry({
+              id: positionId, assetId: asset.id, ticker: asset.ticker, name: asset.name,
+              fillDate: input.fillDate, fillPrice: input.fillPrice, quantity: input.quantity, nAtFill: input.nAtFill,
+              fxRate: asset.purchaseExchangeRate, donchianHigh: input.donchianHigh,
+              settings: resolveHoldingsSettings(snapshot.turtleSettings.holdings),
+            });
+            return result.ok ? { ok: true, positions: [...snapshot.turtlePositions, result.position] } : result;
           });
-          if (!reentryResult.ok) return { ok: false, reason: reentryResult.reason };
-
-          commitPortfolio({ turtlePositions: [...getSnapshot().turtlePositions, reentryResult.position] });
-          setSuccessMessage(`${input.name} 재매수를 기록했습니다.`);
-          return { ok: true, assetId: addResult.assetId, positionId: reentryResult.position.id };
+          if (!added.ok) return added;
+          return { ok: true, assetId: added.assetId, positionId };
         }
 
-        // mode === 'pyramid'
-        const buyResult = await handleConfirmBuyMore(input.assetId, input.quantity, input.fillPrice, input.fillDate);
-        if (!buyResult.ok) return buyResult;
-
-        const snap = getSnapshot();
-        const position = snap.turtlePositions.find(p => p.id === input.positionId);
-        if (!position) return { ok: false, reason: 'position-missing' };
-        const pyramidResult = recordTurtlePyramid(
-          position,
-          { fillDate: input.fillDate, fillPrice: input.fillPrice, quantity: input.quantity, nAtFill: input.nAtFill, fxRate: input.fxRate },
-          settings,
-        );
-        if (!pyramidResult.ok) return { ok: false, reason: pyramidResult.reason };
-
-        commitPortfolio({
-          turtlePositions: snap.turtlePositions.map(p => (p.id === position.id ? pyramidResult.position : p)),
-        });
-        setSuccessMessage(`${position.name} 추가 매수(불타기)를 기록했습니다.`);
-        return { ok: true, assetId: input.assetId, positionId: position.id };
+        const bought = await handleConfirmBuyMore(input.assetId, input.quantity, input.fillPrice, input.fillDate,
+          (snapshot, asset) => {
+            if (hasDifferentTurtleFillCurrency(asset.exchange, asset.currency)) return { ok: false, reason: 'fill-currency-mismatch' };
+            const policy = asset.holdingPolicy;
+            if (policy && (policy.mode !== 'turtle-after-cost' || !policy.armedOn ||
+              input.fillDate <= policy.armedOn || policy.pyramidingEnabled !== true)) {
+              return { ok: false, reason: 'policy-blocked' };
+            }
+            const position = snapshot.turtlePositions.find(p => p.id === input.positionId &&
+              p.assetId === asset.id && p.status === 'open' && p.origin === 'holdings-reentry');
+            if (!position) return { ok: false, reason: 'position-missing' };
+            const result = recordTurtlePyramid(position, { fillDate: input.fillDate, fillPrice: input.fillPrice,
+              quantity: input.quantity, nAtFill: input.nAtFill, fxRate: input.fxRate },
+              resolveHoldingsSettings(snapshot.turtleSettings.holdings));
+            return result.ok
+              ? { ok: true, positions: snapshot.turtlePositions.map(p => p.id === position.id ? result.position : p) }
+              : result;
+          });
+        if (!bought.ok) return bought;
+        return { ok: true, assetId: bought.assetId, positionId: input.positionId };
       },
       recordTurtleHold: (assetId: string, reason: string): RecordTurtleHoldOutcome => {
         const snap = getSnapshot();
@@ -1152,6 +1143,16 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       // 매매 계획 (P2a) — 전부 commitPortfolio(단일 커밋) 경유. now/date는 여기서 생성(utils는 순수 유지).
       // ⚠ 렌더 클로저의 assets/watchlist 대신 getSnapshot()을 읽는다 — 자산 추가/추가매수 커밋 직후 같은 틱에
       //   호출되면 클로저가 stale이라 방금 커밋한 변경을 덮어쓴다(saveQueue last-write-wins).
+      saveHoldingPolicy: edit => {
+        const snap = getSnapshot();
+        const changed = editedHoldingPolicyAssets(snap, edit, new Date(), crypto.randomUUID());
+        if (typeof changed === 'string') return changed;
+        if (changed !== snap.assets) {
+          commitPortfolio({ assets: changed });
+          setSuccessMessage('보유분 운용 방침을 저장했습니다.');
+        }
+        return null;
+      },
       saveTradePlan: (assetId: string, plan: TradePlan) => {
         const nextAssets = getSnapshot().assets.map(a => (a.id === assetId ? { ...a, tradePlan: plan } : a));
         commitPortfolio({ assets: nextAssets });

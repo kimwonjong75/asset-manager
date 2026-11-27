@@ -70,11 +70,6 @@
       "count": 1
     }
   },
-  "components/PortfolioTable.tsx": {
-    "react-hooks/preserve-manual-memoization": {
-      "count": 1
-    }
-  },
   "components/SellAnalyticsPage.tsx": {
     "react-hooks/exhaustive-deps": {
       "count": 1

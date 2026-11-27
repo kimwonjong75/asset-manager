@@ -6,7 +6,7 @@ import { getOwnerQuantityUnit } from './ownerQuantity';
 
 export { hasUnresolvedOwners } from '../types/owner';
 
-function instrumentMarket(exchange: string): string {
+export function instrumentMarket(exchange: string): string {
   const market = normalizeExchange(exchange).toUpperCase();
   return market === 'KRX (코스피/코스닥)' ? 'KRX' : market;
 }

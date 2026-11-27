@@ -65,6 +65,7 @@ export function buildSellMutation(input: SellMutationInput): SellMutationResult 
     originalPurchasePrice: asset.purchasePrice,
     originalPurchaseExchangeRate: asset.purchaseExchangeRate,
     originalCurrency: asset.currency,
+    ...(sellQuantity === asset.quantity ? { closedHolding: { exchange: asset.exchange, policy: asset.holdingPolicy } } : {}),
   };
 
   const newQuantity = asset.quantity - sellQuantity;
@@ -131,6 +132,17 @@ export function buildBuyMoreMutation(input: BuyMoreMutationInput): BuyMoreMutati
 
   const updatedAsset: Asset = {
     ...asset,
+    ...(asset.holdingPolicy && { holdingPolicy: {
+      ...asset.holdingPolicy,
+      // An API historical FX quote for this fill cannot certify the broker's new KRW basis.
+      confirmedUnitCostKRW: asset.currency === Currency.KRW && asset.holdingPolicy.confirmedUnitCostKRW != null
+        ? (asset.holdingPolicy.confirmedUnitCostKRW * oldQuantity + buyPrice * buyQuantity) / newTotalQuantity : undefined,
+      requiresCostConfirmation: asset.currency !== Currency.KRW,
+      cycleId: asset.holdingPolicy.armedOn || !asset.holdingPolicy.cycleId ? asset.holdingPolicy.cycleId
+        : [asset.holdingPolicy.cycleId, buyDate, newTotalQuantity].join('/'),
+      startedOn: asset.holdingPolicy.armedOn ? asset.holdingPolicy.startedOn
+        : [asset.holdingPolicy.startedOn ?? '', buyDate].sort()[1],
+    } }),
     quantity: newTotalQuantity,
     purchasePrice: newAvgPrice,
     purchaseExchangeRate: newExchangeRate,

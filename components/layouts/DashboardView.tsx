@@ -82,7 +82,7 @@ const DashboardView: React.FC = () => {
 
   // 조치 필요(전체 계정 계획 행, 자산 단위 합집합) / 대기 리밸런싱 주문 수 — 순수 유틸
   const actionNeeded = useMemo(() => actionNeededCount(derived.tradePlanRows), [derived.tradePlanRows]);
-  const pendingRebalanceCount = useMemo(() => pendingOrderCounts(data.actionQueue).rebalance, [data.actionQueue]);
+  const pendingRebalanceCount = useMemo(() => pendingOrderCounts(derived.visibleActionQueue).rebalance, [derived.visibleActionQueue]);
 
   // sellHistory + 인라인 sellTransactions 병합 (수익통계·대청소와 동일한 단일 유틸)
   const allSellRecords = useMemo(() => mergeSellRecords(sellHistory, assets), [sellHistory, assets]);

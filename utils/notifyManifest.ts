@@ -10,13 +10,17 @@
 // 대상 필터: tradePlan.status==='active' && CASH 아님 && owner!=='YUSEON'(옵션으로 포함 가능).
 // 통화 규약(D6): 가격은 TradePlan 내부에 이미 원통화로 저장돼 있다 — 여기서 환산하지 않는다.
 
-import { Currency, normalizeExchange } from '../types';
+import { Currency } from '../types';
+import { instrumentMarket } from './ownerHoldings';
 import type { Asset, WatchlistItem } from '../types';
 import { isBaseType } from '../types/category';
 import type { TradePlan } from '../types/tradePlan';
 import type { TurtlePosition } from '../types/turtle';
 import type { TurtleHoldingsSettings } from '../types/turtleHoldings';
 import type { NotifyChannel } from '../types/notifyChannel';
+import type { PolicyNotifyHolding, PolicyNotifySection, PolicyNotifyWatch } from '../types/holdingPolicyNotify';
+import { getAssetOwner, getOwnerLabel, hasUnresolvedOwners } from '../types/owner';
+import { getHoldingPrincipalKRW, isPolicyReentryWatch } from './holdingPolicy';
 import { isEligibleForBulkPlan } from './tradePlan';
 import { resolveHoldingsSettings, isInHoldingsScope } from './turtleHoldings';
 import { todayInstrumentKey } from './todayTurtle';
@@ -97,6 +101,7 @@ export interface NotifyManifestTurtleSection {
   legacyHoldings: NotifyManifestTurtleHolding[];
   reentryPositions: NotifyManifestTurtleReentryPosition[];
   watchItems: NotifyManifestTurtleWatch[];
+  policies?: PolicyNotifySection;
 }
 
 export interface NotifyManifest {
@@ -164,6 +169,7 @@ function buildTurtleSection(input: BuildNotifyManifestInput): NotifyManifestTurt
   );
 
   const legacyHoldings: NotifyManifestTurtleHolding[] = input.assets
+    .filter(a => !a.holdingPolicy)
     .filter(a => !isBaseType(a.categoryId, 'CASH'))
     .filter(a => a.quantity > 0)
     .filter(a => !reentryAssetIds.has(a.id))
@@ -179,11 +185,12 @@ function buildTurtleSection(input: BuildNotifyManifestInput): NotifyManifestTurt
     }));
 
   const reentryPositions: NotifyManifestTurtleReentryPosition[] = [];
+  const policyPositions = new Map<string, NotifyManifestTurtleReentryPosition>();
   for (const p of openReentryPositions) {
     const asset = p.assetId ? assetById.get(p.assetId) : undefined;
     if (!asset) continue; // 자산 연결이 끊긴 포지션 — 통화/거래소를 알 수 없어 판정 불가, 건너뜀
     if (!isInHoldingsScope(asset, settings)) continue;
-    reentryPositions.push({
+    const position = {
       positionId: p.id,
       assetId: asset.id,
       ticker: p.ticker,
@@ -196,33 +203,69 @@ function buildTurtleSection(input: BuildNotifyManifestInput): NotifyManifestTurt
       stopPrice: p.stopPrice,
       trailHighClose: p.trailHighClose ?? null,
       openedAt: p.openedAt,
-    });
+    };
+    if (asset.holdingPolicy) policyPositions.set(asset.id, position);
+    else reentryPositions.push(position);
   }
 
   // 이미 보유/재매수 중인 종목은 감시 후보에서 뺀다(중복 매수 방지 — turtleHoldingsView의
   // heldTickerKeys 관례와 동일).
-  const heldKeys = new Set<string>([
-    ...legacyHoldings.map(h => todayInstrumentKey(h.ticker, h.exchange, normalizeExchange)),
-    ...reentryPositions.map(h => todayInstrumentKey(h.ticker, h.exchange, normalizeExchange)),
-  ]);
+  const heldKey = (row: Pick<Asset, 'ticker' | 'exchange' | 'owner'>) =>
+    `${getAssetOwner(row)}|${todayInstrumentKey(row.ticker, row.exchange, instrumentMarket)}`;
+  const noncashHoldings = input.assets.filter(a => a.quantity > 0 && !isBaseType(a.categoryId, 'CASH'));
+  const heldKeys = new Set(noncashHoldings.map(heldKey));
+  const unresolvedKeys = new Set(noncashHoldings.filter(hasUnresolvedOwners)
+    .map(a => todayInstrumentKey(a.ticker, a.exchange, instrumentMarket)));
 
-  const watchItems: NotifyManifestTurtleWatch[] = watchlist
+  const eligibleWatches = watchlist
     .filter(w => w.isTurtleCandidate === true)
-    .filter(w => isInHoldingsScope({ id: w.id, categoryId: w.categoryId }, settings))
-    .filter(w => !heldKeys.has(todayInstrumentKey(w.ticker, w.exchange, normalizeExchange)))
-    .map(w => ({
-      watchItemId: w.id,
-      ticker: w.ticker,
-      exchange: w.exchange,
-      name: w.name,
-      currency: w.currency ?? Currency.KRW,
-      isCrypto: marketIdForExchange(w.exchange) === 'CRYPTO',
-    }));
+    .filter(w => isInHoldingsScope(w, settings))
+    .filter(w => !unresolvedKeys.has(todayInstrumentKey(w.ticker, w.exchange, instrumentMarket)))
+    .filter(w => !heldKeys.has(heldKey(w)));
+  const watchPayload = (w: WatchlistItem): NotifyManifestTurtleWatch => ({
+    watchItemId: w.id,
+    ticker: w.ticker,
+    exchange: w.exchange,
+    name: w.name,
+    currency: w.currency ?? Currency.KRW,
+    isCrypto: marketIdForExchange(w.exchange) === 'CRYPTO',
+  });
+  const watchItems = eligibleWatches.filter(w => !w.holdingPolicy).map(watchPayload);
+  const result: NotifyManifestTurtleSection = { settings, legacyHoldings, reentryPositions, watchItems };
+  if (input.assets.some(a => a.holdingPolicy) || watchlist.some(w => w.holdingPolicy)) {
+    const holdings: PolicyNotifyHolding[] = [];
+    for (const asset of input.assets) {
+      const policy = asset.holdingPolicy;
+      if (!policy || policy.mode === 'hold' || asset.quantity <= 0 || isBaseType(asset.categoryId, 'CASH')
+        || hasUnresolvedOwners(asset) || !isInHoldingsScope(asset, settings)) continue;
+      const position = policyPositions.get(asset.id);
+      const isCrypto = marketIdForExchange(asset.exchange) === 'CRYPTO';
+      // 구 재매수 포지션의 손절가·체결 N은 당시 저장 통화가 불명확해 원화 일봉과 비교할 수 없다.
+      if (policy.mode === 'turtle-after-cost' && position && isCrypto && asset.currency !== Currency.KRW) continue;
+      const currency = isCrypto ? Currency.KRW : asset.currency;
+      holdings.push({
+        assetId: asset.id, ticker: asset.ticker, exchange: asset.exchange, currency,
+        name: `${assetDisplayName(asset)} (${getOwnerLabel(asset.owner)})`, quantity: asset.quantity,
+        isCrypto, policy, remainingPrincipalKRW: getHoldingPrincipalKRW(asset),
+        ...(position && policy.mode === 'turtle-after-cost' ? { position: { ...position, currency } } : {}),
+      });
+    }
+    const policyWatches: PolicyNotifyWatch[] = [];
+    for (const w of eligibleWatches) {
+      if (isPolicyReentryWatch(w) && w.turtleWatch) {
+        const payload = watchPayload(w);
+        policyWatches.push({ ...payload, currency: payload.isCrypto ? Currency.KRW : payload.currency,
+          name: `${w.name} (${getOwnerLabel(w.owner)})`, soldAt: w.turtleWatch.soldAt });
+      }
+    }
+    result.policies = { holdings, watchItems: policyWatches };
+  }
 
-  return { settings, legacyHoldings, reentryPositions, watchItems };
+  return result;
 }
 
 function isEligibleForNotify(asset: Asset, includeYuseon: boolean): boolean {
+  if (asset.holdingPolicy) return false;
   if (!asset.tradePlan || asset.tradePlan.status !== 'active') return false;
   if (isBaseType(asset.categoryId, 'CASH')) return false;
   if (!includeYuseon && (asset.owner ?? 'WONJONG') === 'YUSEON') return false;
@@ -243,7 +286,7 @@ export function buildNotifyManifest(input: BuildNotifyManifestInput): NotifyMani
       quantity: a.quantity,
       plan: a.tradePlan as TradePlan,
     }));
-  const planlessCount = input.assets.filter(a => isEligibleForBulkPlan(a)).length;
+  const planlessCount = input.assets.filter(a => !a.holdingPolicy && isEligibleForBulkPlan(a)).length;
   const turtle = buildTurtleSection(input);
   return {
     version: NOTIFY_MANIFEST_VERSION,

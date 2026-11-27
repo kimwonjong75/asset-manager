@@ -6,7 +6,11 @@
 //
 // 실행: npx tsx tests/turtleHoldingsStateParity.ts
 
-import { WatchlistItem, Currency } from '../types';
+import { Asset, WatchlistItem, Currency } from '../types';
+import type { ActionItem } from '../types/actionQueue';
+import { afterFullHoldingSale } from '../utils/turtleHoldingsState';
+import { buildSellMutation } from '../utils/assetMutations';
+import { allowsLegacyOrder } from '../utils/holdingPolicyOrders';
 import { TurtlePosition, DEFAULT_TURTLE_SETTINGS } from '../types/turtle';
 import { DEFAULT_TURTLE_HOLDINGS_SETTINGS, TurtleHoldingsSettings } from '../types/turtleHoldings';
 import {
@@ -264,6 +268,52 @@ let pyramidedPosition: TurtlePosition;
   const holdingsDiag = diag.positions.find(p => p.positionId === 'tp-h1');
   checkTrue('7 진단에도 holdings-reentry 포지션 없음(오픈 포지션 평가 자체에서 제외)', holdingsDiag === undefined);
   check('7 진단 generatedCount는 buildTurtleActions 결과와 일치', diag.generatedCount, generated.length);
+}
+
+// 계정별 방침, 실제 부분/전량 체결, 구 큐가 소멸한 자산의 티커로 재매수를 제안하는 회귀.
+{
+  const asset: Asset = {
+    id: 'policy-asset', ticker: 'SYN', exchange: 'NASDAQ', name: '가상 A', categoryId: 5,
+    currency: Currency.USD, quantity: 5, purchaseDate: '2026-10-01', purchasePrice: 100, purchaseExchangeRate: 1200,
+    currentPrice: 82, priceOriginal: 82, highestPrice: 120, holdingPolicy: { mode: 'exit-at-cost', sellCostPct: 0 },
+  };
+  const primary: WatchlistItem = { id: 'primary', name: asset.name, ticker: 'syn', exchange: asset.exchange,
+    categoryId: 5, isTurtleCandidate: true, notes: '메모 보존', turtleWatch: { soldAt: '2025-01-01', soldPriceOriginal: 111, source: 'manual' } };
+  const other: WatchlistItem = { ...primary, id: 'family', owner: 'YUSEON' };
+  const list = [primary, other];
+  const pos = { ...reentryPosition, assetId: asset.id };
+  const trade = (quantity: number) => buildSellMutation({ asset, assets: [asset], sellHistory: [], sellExchangeRate: 1350,
+    sellPrice: 83.25, sellQuantity: quantity, sellDate: '2026-11-15', settlementCurrency: Currency.USD, transactionId: 'fill' });
+  const partial = trade(2);
+  check('부분 매도 실제 체결가', partial.sellRecord.sellPriceOriginal, 83.25);
+  check('부분 매도 잔여 수량', partial.nextAssets[0].quantity, 3);
+  check('부분 매도 방침 보존', partial.nextAssets[0].holdingPolicy, asset.holdingPolicy);
+  check('부분 매도는 종결 근거 없음', partial.sellRecord.closedHolding, undefined);
+  const filled = trade(5);
+  check('전량 완료 근거는 계정·거래소·방침별', [filled.sellRecord.owner, filled.sellRecord.closedHolding], ['WONJONG', { exchange: 'NASDAQ', policy: asset.holdingPolicy }]);
+  const ended = afterFullHoldingSale(asset, '2026-11-15', 83.25, true, list, [pos], () => 'unused');
+  check('정리 체결은 구 선택값이 켜져도 감시 종료', [ended.watchItemId, ended.watchlist[0].isTurtleCandidate, ended.watchlist[0].turtleWatch], [null, false, undefined]);
+  check('정리 뒤 관심 메모 보존', ended.watchlist[0].notes, primary.notes);
+  checkTrue('같은 티커 다른 보유자 표식 보존', ended.watchlist[1] === other);
+  check('기존 포지션 종료', ended.turtlePositions[0].status, 'closed');
+  check('입력 불변', [primary.isTurtleCandidate, pos.status], [true, 'open']);
+  const active: Asset = { ...asset, holdingPolicy: { mode: 'turtle-after-cost', armedOn: '2026-11-14' } };
+  const sell = (date: string, items = list) => afterFullHoldingSale(active, date, 82.5, false, items, [], () => 'new-watch');
+  check('활성 당일 재진입 등록 없음', sell('2026-11-14').watchItemId, null);
+  const armedSale = sell('2026-11-15', [other, primary, { ...primary, id: 'duplicate' }]);
+  check('체결 후 터틀 감시는 개인별 1개', armedSale.watchlist.filter(w => w.isTurtleCandidate && w.owner !== 'YUSEON').map(w => w.id), ['primary']);
+  check('재진입 감시가 실제 날짜·가격 보존', armedSale.watchlist[1].turtleWatch, { soldAt: '2026-11-15', soldPriceOriginal: 82.5, source: 'turtle-exit' });
+  check('계속 보유 전량은 신규 관심을 만들지 않음', afterFullHoldingSale({ ...asset, holdingPolicy: { mode: 'hold' } }, '2026-11-15', 82, true, [], [], () => 'unused').watchlist, []);
+  const order: ActionItem = { id: 'old', kind: 'REBALANCE_BUY', ticker: asset.ticker, name: asset.name,
+    quantity: 1, refPrice: 90, reasonText: '', ruleSnapshot: { categoryId: 5 }, createdDate: '2026-10-01', status: 'pending' };
+  const data = { assets: [], turtlePositions: [], watchlist: [], sellHistory: [filled.sellRecord], allocationTargets: { weights: {},
+    categoryInstruments: { '5': { categoryId: 5, ticker: asset.ticker, exchange: asset.exchange } } } };
+  check('감시 목록이 없어도 영구 정리한 동일 종목 구 주문 차단', allowsLegacyOrder(order, data), false);
+  check('체결 이력이 있는 구 주문은 보존', allowsLegacyOrder({ ...order, status: 'done' }, data), true);
+  check('다른 거래소의 대표종목은 허용', allowsLegacyOrder(order, { ...data, allocationTargets: { weights: {}, categoryInstruments: {
+    '5': { categoryId: 5, ticker: asset.ticker, exchange: 'TORONTO' } } } }), true);
+  check('다른 보유자가 정리한 이력은 원종 신규 주문에 적용하지 않음', allowsLegacyOrder(order, { ...data, sellHistory: [{ ...filled.sellRecord, owner: 'YUSEON' }] }), true);
+  check('방침 적용 중 옛 대청소 주문 미표시', allowsLegacyOrder({ ...order, assetId: asset.id, kind: 'CLEANUP_SELL' }, { ...data, assets: [asset] }), false);
 }
 
 // ── 결과 ──

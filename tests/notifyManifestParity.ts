@@ -308,6 +308,35 @@ function mkAsset(o: Partial<Asset> = {}): Asset {
 }
 
 // ── 결과 ──
+{
+  const joint = mkAsset({ name: '합성 원종·유선', holdingPolicy: { mode: 'hold' } });
+  const coin = mkAsset({ id: 'coin', name: '합성코인', ticker: 'COIN', exchange: 'upbit', currency: Currency.USD,
+    holdingPolicy: { mode: 'turtle-after-cost', sellCostPct: 0, confirmedUnitCostKRW: 100 } });
+  const watchBase: WatchlistItem = { id: 'w1', name: '합성 감시', categoryId: STOCK_CATEGORY_ID, ticker: joint.ticker,
+    exchange: joint.exchange, isTurtleCandidate: true, owner: 'YUSEON' };
+  const coinWatch: WatchlistItem = { ...watchBase, id: 'wc', owner: 'WONJONG', ticker: 'OTHER', exchange: 'upbit',
+    currency: Currency.USD, holdingPolicy: { mode: 'turtle-after-cost', armedOn: '2026-11-19' }, turtleWatch: { soldAt: '2026-11-20', soldPriceOriginal: 98, source: 'turtle-exit' } };
+  const result = buildNotifyManifest({ assets: [joint, coin], watchlist: [watchBase, coinWatch], pyramidAlerts: false,
+    now: '2026-11-23T00:00:00Z', appUrl: 'https://example.test', turtleHoldingsSettings: { excludeFamilyOwner: false } });
+  check('미분할 공동 보유는 가족 감시도 차단', result.turtle?.watchItems.length, 0);
+  check('거래소 원화 일봉으로 보유 판정', result.turtle?.policies?.holdings[0]?.currency, Currency.KRW);
+  check('거래소 원화 일봉으로 매도 후 감시', result.turtle?.policies?.watchItems[0]?.currency, Currency.KRW);
+  const startDate = '2026-11-20';
+  const existingPosition: TurtlePosition = { id: 'coin-position', assetId: coin.id, name: coin.name, ticker: coin.ticker,
+    status: 'open', openedAt: startDate, origin: 'holdings-reentry', entryDonchianHigh: 100,
+    units: [{ fillDate: startDate, fillPrice: 101, quantity: 1, nAtFill: 2 }], stopPrice: 97 };
+  function cryptoPositionPayload(assetCurrency: Currency, policyMode: 'turtle-after-cost' | 'exit-at-cost' = 'turtle-after-cost') {
+    return buildNotifyManifest({ assets: [{ ...coin, currency: assetCurrency, holdingPolicy: { ...coin.holdingPolicy, mode: policyMode } }], turtlePositions: [existingPosition],
+      now: '2026-11-23T00:00:00Z', appUrl: 'https://example.test', pyramidAlerts: false }).turtle!;
+  }
+  const ambiguous = cryptoPositionPayload(Currency.USD);
+  check('외화로 저장된 열린 코인 재매수 포지션은 방침과 구 발송 경로 모두 보류',
+    [ambiguous.policies?.holdings.length, ambiguous.reentryPositions.length, ambiguous.legacyHoldings.length], [0, 0, 0]);
+  check('원화로 저장된 열린 포지션은 기존 원화 손절가 유지', cryptoPositionPayload(Currency.KRW).policies?.holdings[0]?.position?.stopPrice, 97);
+  check('정리 방침은 단위 불명 손절선 대신 확인된 원금을 사용',
+    cryptoPositionPayload(Currency.USD, 'exit-at-cost').policies?.holdings[0]?.remainingPrincipalKRW, 10_000);
+}
+
 if (fails.length) {
   console.error(`\n❌ notifyManifest parity 실패 (${fails.length})`);
   fails.forEach(f => console.error('  ' + f));

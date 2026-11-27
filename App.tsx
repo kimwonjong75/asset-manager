@@ -20,6 +20,7 @@ import { TurtleSettingsDraftProvider } from './contexts/TurtleSettingsDraftConte
 
 // Hooks
 import { PortfolioProvider, usePortfolio } from './contexts/PortfolioContext';
+import { KakaoNotifyProvider } from './contexts/KakaoNotifyContext';
 import { useSymbolListPrefetch } from './hooks/useSymbolListPrefetch';
 import { csvExportScope } from './utils/portfolioCsv';
 import { OWNER_FILTER_OPTIONS, OWNER_FILTER_LABELS } from './types/owner';
@@ -523,7 +524,7 @@ const AppContent: React.FC = () => {
 
 const App: React.FC = () => (
   <PortfolioProvider>
-    <AppContent />
+    <KakaoNotifyProvider><AppContent /></KakaoNotifyProvider>
   </PortfolioProvider>
 );
 

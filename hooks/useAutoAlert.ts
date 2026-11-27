@@ -152,14 +152,14 @@ export const useAutoAlert = ({
 
   // 포트폴리오 + 관심종목 통합 알림 체크
   const runAlertCheck = useCallback(() => {
-    const portfolioResults = checkAlertRules(enrichedAssets, enrichedMap, alertSettings.rules);
+    const portfolioResults = checkAlertRules(enrichedAssets.filter(a => !a.holdingPolicy), enrichedMap, alertSettings.rules);
 
     // 관심종목 매수 기회 체크
     let merged: AlertResult[];
     if (watchlistItems && watchlistItems.length > 0) {
       const portfolioTickers = new Set(enrichedAssets.map(a => a.ticker));
       const watchlistBuyResults = checkBuyRulesForWatchlist(
-        watchlistItems, enrichedMap, alertSettings.rules, portfolioTickers
+        watchlistItems.filter(w => !w.holdingPolicy), enrichedMap, alertSettings.rules, portfolioTickers
       );
       merged = mergeWatchlistResults(portfolioResults, watchlistBuyResults);
     } else {
@@ -215,6 +215,7 @@ export const useAutoAlert = ({
     if (isEnrichedLoading || enrichedMap.size === 0) return [];
     const rows: RiskMatrixRow[] = [];
     for (const asset of enrichedAssets) {
+      if (asset.holdingPolicy) continue;
       const enriched = enrichedMap.get(asset.ticker);
       if (!enriched) continue;
       const assessment = computeRiskTier(enriched, asset.priceOriginal, DEFAULT_RISK_MATRIX_THRESHOLDS);
@@ -231,6 +232,7 @@ export const useAutoAlert = ({
     if (watchlistItems) {
       const portfolioTickers = new Set(enrichedAssets.map(a => a.ticker));
       for (const item of watchlistItems) {
+        if (item.holdingPolicy) continue;
         if (portfolioTickers.has(item.ticker)) continue;
         const enriched = enrichedMap.get(item.ticker);
         if (!enriched) continue;

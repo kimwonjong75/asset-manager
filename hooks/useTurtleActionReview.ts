@@ -60,6 +60,7 @@ interface UseTurtleActionReviewProps {
   turtlePositions: TurtlePosition[];
   turtleSettings: TurtleSettings;
   actionQueue: ActionItem[];
+  visibleActionQueue: ActionItem[];
   hasAutoUpdated: boolean;
   isMarketLoading: boolean;
   /** 자동 생성(opt-in) 저장 경로 — context의 updateActionQueue와 동일 함수 주입 */
@@ -72,7 +73,7 @@ export function useTurtleActionReview({
   exchangeRates,
   turtlePositions,
   turtleSettings,
-  actionQueue,
+  actionQueue, visibleActionQueue,
   hasAutoUpdated,
   isMarketLoading,
   updateActionQueue,
@@ -204,7 +205,7 @@ export function useTurtleActionReview({
 
   // ── 통합 요약 (배지·브리핑 소비) ──
   const summary = useMemo<TurtleReviewSummary>(() => buildTurtleReviewSummary({
-    queue: actionQueue,
+    queue: visibleActionQueue,
     today,
     diagnostics: reviewDiagnostics,
     turtleCandidateCount,
@@ -213,7 +214,7 @@ export function useTurtleActionReview({
     reviewPending: !reviewDone,
     reviewFailed,
     checkedAt,
-  }), [actionQueue, today, reviewDiagnostics, turtleCandidateCount, turtleSettings.satelliteBudgetKRW, isChecking, reviewDone, reviewFailed, checkedAt]);
+  }), [visibleActionQueue, today, reviewDiagnostics, turtleCandidateCount, turtleSettings.satelliteBudgetKRW, isChecking, reviewDone, reviewFailed, checkedAt]);
 
   return { summary, reviewDiagnostics };
 }

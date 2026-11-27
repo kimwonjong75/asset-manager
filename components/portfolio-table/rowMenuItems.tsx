@@ -5,10 +5,11 @@
 //   색 규약: 매수 text-up(빨강) / 매도 text-down(파랑). 나머지는 기본색.
 
 import React from 'react';
-import { ClipboardList, LineChart, Maximize2, Minus, Pencil, Plus, RefreshCw, SearchCheck } from 'lucide-react';
+import { ClipboardList, LineChart, Maximize2, Minus, Pencil, Plus, RefreshCw, SearchCheck, SlidersHorizontal } from 'lucide-react';
 import type { ActionMenuEntry, ActionMenuItem } from '../common/ActionMenu';
 
 export interface AssetRowMenuHandlers {
+  onEditPolicy?: () => void;
   onTradePlan: () => void;
   onStockReview: () => void;
   onBuy?: () => void;
@@ -32,6 +33,7 @@ export function buildAssetRowMenuItems(h: AssetRowMenuHandlers): ActionMenuEntry
     { label: '차트 확대', icon: <Maximize2 />, onClick: h.onFullscreen },
   ];
   return [
+    ...(h.onEditPolicy ? [{ label: '운용 방침', icon: <SlidersHorizontal />, onClick: h.onEditPolicy }] : []),
     { label: '매매 계획', icon: <ClipboardList />, onClick: h.onTradePlan },
     { label: '종목 검토', icon: <SearchCheck />, onClick: h.onStockReview },
     ...(trade.length > 0 ? [{ type: 'separator' } as const, ...trade] : []),

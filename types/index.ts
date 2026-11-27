@@ -141,6 +141,9 @@ import type { TurtleHoldingsWatchEntry, TurtleHoldDecision } from './turtleHoldi
 
 export interface WatchlistItem {
   id: string;
+  /** 매도 후 재진입 감시를 이어가는 실제 보유자. 이전 관심 종목은 원종으로 처리한다. */
+  owner?: OwnerId;
+  holdingPolicy?: import('./holdingPolicy').HoldingPolicy;
   ticker: string;
   exchange: string;
   name: string;
@@ -201,6 +204,8 @@ export interface SellTransaction {
 }
 
 export interface SellRecord extends SellTransaction {
+  /** 전량 체결 당시의 거래소와 방침. 잔고 삭제 후에도 이전 주문의 종목·소유자를 확인한다. */
+  closedHolding?: { exchange: string; policy?: import('./holdingPolicy').HoldingPolicy };
   assetId: string;
   ticker: string;
   name: string;
@@ -212,6 +217,7 @@ export interface SellRecord extends SellTransaction {
 }
 
 export interface Asset {
+  holdingPolicy?: import('./holdingPolicy').HoldingPolicy;
   id: string;
   categoryId: number;
   category?: AssetCategory; // deprecated: 마이그레이션 호환용

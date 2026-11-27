@@ -44,6 +44,7 @@ export function applyBulkAssetPatch(
       ...a,
       ...(patch.bucket !== undefined ? { bucket: patch.bucket } : {}),
       ...(patch.owner !== undefined ? { owner: patch.owner } : {}),
+      ...(ownerChanged && a.holdingPolicy ? { holdingPolicy: undefined } : {}),
     };
   });
   return { assets: next, changedCount };

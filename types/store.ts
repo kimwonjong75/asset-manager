@@ -20,6 +20,7 @@ import type { OwnerSplitInput } from './ownerTransactions';
 import type { AddAssetResult, SellResult, BuyMoreResult } from './assetActionResult';
 import type { CleanupDecision } from './cleanup';
 import type { PortfolioSavePatch } from './portfolioSave';
+import type { HoldingPolicyEdit } from './holdingPolicyUi';
 import type { TradePlan, PlanDecision, PlanFill, PyramidFillResult, SellOutcome } from './tradePlan';
 import type { TradePlanSignalRow } from '../hooks/useTradePlanSignals';
 import type { TradePlanSignalSummary } from '../utils/tradePlanMarket';
@@ -181,6 +182,7 @@ export interface DerivedState {
   /** 자동 브리핑 팝업 게이트 진단 (규칙 발화와 직교 — 알림 진단 패널이 표시) */
   autoPopupDiagnosis: PopupDeliveryDiagnosis;
   /** 터틀 실행 요약 (자동 검토 Phase A/B) — 상단 배지 '실행 M'·브리핑 실행 카드가 소비. 읽기 전용(저장 없음) */
+  visibleActionQueue: ActionItem[];
   actionQueueSummary: TurtleReviewSummary;
   /** 정리 가능한 완료 주문 요약 (Phase 5) — done/skipped 중 90일 경과분. 표시/버튼 게이팅용(저장 없음) */
   compactableActions: { count: number; cutoffDate: string };
@@ -330,6 +332,7 @@ export interface PortfolioActions {
   updateTurtleSettings: (settings: TurtleSettings) => void;
   /** "터틀 규칙" 설정 화면(P3, 계획서 §4.7) 저장 — turtleSettings.holdings만 교체 + 단일 커밋 + 성공 메시지 */
   saveTurtleHoldingsSettings: (settings: TurtleHoldingsSettings) => void;
+  armHoldingPolicies: (activations: import('./holdingPolicy').HoldingPolicyActivation[]) => void;
   /** 수익률 기준 전환 (표시 설정) — 상태 갱신 + Drive 자동 저장. 표·대시보드·알림 판정이 함께 바뀐다 */
   updateValuationSettings: (settings: ValuationSettings) => void;
   /** 교차도메인 원자 커밋 — 지정 도메인 set + 단일 autosave (터틀 실행의 저장 경합 방지) */
@@ -357,6 +360,8 @@ export interface PortfolioActions {
   updateBackupSettings: (settings: BackupSettings) => void;
 
   // 매매 계획 (P2a) — 전부 commitPortfolio(단일 커밋) 경유. now/date는 액션 내부에서 생성(utils는 순수 유지).
+  /** 최신 보유자별 잔고에 방침 저장. 성공하면 null, 실패하면 확인할 내용 반환. */
+  saveHoldingPolicy: (edit: HoldingPolicyEdit) => string | null;
   /** 자산에 계획 저장(신규 생성/수정 공용) — status active로 덮어쓴다 */
   saveTradePlan: (assetId: string, plan: TradePlan) => void;
   /** 계획 해제 — cancelPlan(status closed reason manual)로 기록은 보존, 삭제 아님 */

@@ -18,6 +18,9 @@
 import { KAKAO_EMOJI, clip } from './tradePlan';
 import type { DailyBar } from './todayTurtle';
 import type { TurtleHoldingsSettings } from '../types/turtleHoldings';
+import type { HoldingPolicyEvaluation } from '../types/holdingPolicy';
+import type { PolicyNotifyHolding } from '../types/holdingPolicyNotify';
+import { holdingPolicyTurtleSettings } from './holdingPolicy';
 import { lastSessionDate, type MarketId } from './marketHours';
 import {
   computeExitLine,
@@ -32,6 +35,8 @@ import {
 } from './turtleHoldings';
 
 export type TurtleNotifySignal =
+  | 'policy-exit'
+  | 'policy-armed'
   | 'legacy-sell'     // 원래 보유분 — 청산선 이탈
   | 'reentry-stop'    // 재매수분 — 손절 이탈
   | 'reentry-exit'    // 재매수분 — 청산선 이탈
@@ -76,7 +81,9 @@ export interface TurtleWatchItemLike {
 }
 
 function shortName(name: string): string {
-  return name.length > 14 ? name.slice(0, 13) + '…' : name;
+  if (name.length <= 14) return name;
+  const owner = / \((?:원종|유선)\)$/.exec(name)?.[0] ?? '';
+  return name.slice(0, 13 - owner.length) + '…' + owner;
 }
 function formatQty(q: number): string {
   return Number.isInteger(q) ? `${q}주` : `${q}`;
@@ -117,6 +124,7 @@ export function evaluateReentryPositionForNotify(
   item: TurtleReentryPositionLike,
   bars: readonly DailyBar[],
   settings: TurtleHoldingsSettings,
+  allowPyramiding = true,
 ): TurtleNotifyCandidate | null {
   if (bars.length === 0 || item.units.length === 0) return null;
   const lastClose = bars[bars.length - 1].close;
@@ -140,6 +148,7 @@ export function evaluateReentryPositionForNotify(
     return { signal: 'reentry-exit', text, summary: `${name} 팔 때` };
   }
 
+  if (!allowPyramiding) return null;
   const n = computeN(bars.map(b => b.high), bars.map(b => b.low), bars.map(b => b.close));
   if (n !== null && item.units.length < settings.maxUnitsPerPosition) {
     const triggerPrice = computePyramidTriggerPrice(lastUnit.fillPrice, n, settings);
@@ -153,6 +162,26 @@ export function evaluateReentryPositionForNotify(
     }
   }
   return null;
+}
+
+/** 공통 마감 판정의 발송 문구. 최초 활성일에는 안내만, 매도와 재진입은 실제 체결 기록으로 분리한다. */
+export function holdingPolicyNotification(
+  item: PolicyNotifyHolding, bars: readonly DailyBar[], settings: TurtleHoldingsSettings, decision: HoldingPolicyEvaluation,
+): TurtleNotifyCandidate | null {
+  const name = item.name;
+  if (decision.phase === 'exit-ready') {
+    const amount = (v: number | null) => Math.round(v ?? 0).toLocaleString('ko-KR') + '원';
+    const text = clip(`[본전에서 정리] ${name}\n예상 순매도대금 ${amount(decision.netProceedsKRW)} · 잔여 원금 ${amount(decision.remainingPrincipalKRW)}\n주문 전 가격을 다시 확인하고 실제 체결분만 기록하세요.`);
+    return { signal: 'policy-exit', text, summary: `${name} 본전 매도 검토` };
+  }
+  if (decision.phase === 'armed-today') {
+    return { signal: 'policy-armed', text: clip(`[터틀 감시 시작] ${name}\n${decision.reason}`), summary: `${name} 터틀 감시 시작` };
+  }
+  if (decision.phase !== 'active') return null;
+  const policySettings = holdingPolicyTurtleSettings(settings);
+  return item.position
+    ? evaluateReentryPositionForNotify({ ...item.position, name }, bars, policySettings, item.policy.pyramidingEnabled === true)
+    : evaluateLegacyHoldingForNotify(item, bars, policySettings);
 }
 
 /** 감시 관심종목 — entryLookback(기본 55)일 최고가 돌파 시 "다시 살 때". */
@@ -239,6 +268,7 @@ export function decideTurtleCloseProgress(input: TurtleCloseProgressInput): Turt
 // ═══════════════════════════════════════════════════════════════════════════
 
 export interface TurtleMorningDigestInput {
+  armedNames?: string[];
   /** "팔 때"로 묶는다 — legacy-sell·reentry-exit·reentry-stop 전부 포함(사용자 관점에서는 전부 매도 행동). */
   sellNames: string[];
   /** watch-reentry(다시 살 때). */
@@ -255,12 +285,13 @@ function summarizeNames(names: string[]): string {
 
 /** 전부 0건이면 null(스팸 방지 — 이미 있는 마감 후 개별 발송으로 충분). */
 export function formatTurtleMorningDigest(input: TurtleMorningDigestInput): string | null {
-  const { sellNames, reentryNames, pyramidNames } = input;
-  const total = sellNames.length + reentryNames.length + pyramidNames.length;
+  const { sellNames, reentryNames, pyramidNames, armedNames = [] } = input;
+  const total = sellNames.length + reentryNames.length + pyramidNames.length + armedNames.length;
   if (total === 0) return null;
   const parts: string[] = [];
   if (sellNames.length > 0) parts.push(`팔 때 ${summarizeNames(sellNames)}`);
   if (reentryNames.length > 0) parts.push(`다시 살 때 ${summarizeNames(reentryNames)}`);
   if (pyramidNames.length > 0) parts.push(`추가 매수 ${summarizeNames(pyramidNames)}`);
+  if (armedNames.length > 0) parts.push(`감시 시작 ${summarizeNames(armedNames)}`);
   return clip(`${KAKAO_EMOJI.digest} [터틀 오늘 할 일] ${parts.join(' · ')}`);
 }

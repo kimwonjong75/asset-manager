@@ -38,6 +38,7 @@ import { Currency, NewAssetForm, RebalanceInstrument } from '../types';
 import { filterStrategyAssets, isStrategyManaged } from '../types/owner';
 import { isTurtleOrderLocked, isActionExecutionLocked, TURTLE_LOCK_MESSAGE } from '../types/turtleLock';
 import type { AddAssetResult } from '../types/assetActionResult';
+import { allowsLegacyOrder } from '../utils/holdingPolicyOrders';
 import { createLogger } from '../utils/logger';
 
 const log = createLogger('ActionQueue');
@@ -47,10 +48,13 @@ function todayISO(): string {
 }
 
 export function useActionQueue() {
-  const { data, actions } = usePortfolio();
-  const { assets, watchlist, exchangeRates, turtlePositions, turtleSettings, actionQueue, allocationTargets, categoryStore } = data;
+  const { data, actions, derived } = usePortfolio();
+  const { assets, watchlist, sellHistory, exchangeRates, turtlePositions, turtleSettings, actionQueue, allocationTargets, categoryStore } = data;
   const { updateActionQueue, addAsset, confirmSell, confirmBuyMore, commitPortfolioPatch } = actions;
 
+  const allowsOrder = useCallback((item: ActionItem) => allowsLegacyOrder(item, {
+    assets, watchlist, sellHistory, turtlePositions, allocationTargets,
+  }), [assets, watchlist, sellHistory, turtlePositions, allocationTargets]);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [refreshError, setRefreshError] = useState<string | null>(null);
   const [isGeneratingRebalance, setIsGeneratingRebalance] = useState(false);
@@ -172,6 +176,7 @@ export function useActionQueue() {
    * 실패/취소({ok:false})면 커밋 없음 → action pending·position 무변경. 가격/N/stop 원통화(D6).
    */
   const executeTurtleAction = useCallback(async (action: ActionItem, fill: TurtleFill): Promise<{ ok: boolean; reason?: string }> => {
+    if (!allowsOrder(action)) return { ok: false, reason: 'policy-blocked' };
     const today = todayISO();
     const settings = turtleSettings;
     // **안전잠금(types/turtleLock)** — 화면 버튼과 무관하게 내부 경계에서 fail-closed.
@@ -226,7 +231,7 @@ export function useActionQueue() {
       log.error('터틀 실행 실패:', e);
       return { ok: false, reason: 'exception' };
     }
-  }, [assets, watchlist, exchangeRates, turtlePositions, turtleSettings, actionQueue, addAsset, confirmSell, confirmBuyMore, commitPortfolioPatch]);
+  }, [allowsOrder, assets, watchlist, exchangeRates, turtlePositions, turtleSettings, actionQueue, addAsset, confirmSell, confirmBuyMore, commitPortfolioPatch]);
 
   /**
    * 대청소 청산 실행 (Phase 3d) — CLEANUP_SELL 전용. CleanupExecuteModal이 실제 체결값(fill)으로 호출.
@@ -237,6 +242,7 @@ export function useActionQueue() {
    */
   const executeCleanupAction = useCallback(async (action: ActionItem, fill: TurtleFill): Promise<{ ok: boolean; reason?: string }> => {
     const today = todayISO();
+    if (!allowsOrder(action)) return { ok: false, reason: 'policy-blocked' };
     if (action.kind !== 'CLEANUP_SELL') return { ok: false, reason: 'unsupported-kind' };
     if (!action.assetId) return { ok: false, reason: 'asset-missing' };
     const asset = assets.find(a => a.id === action.assetId);
@@ -253,7 +259,7 @@ export function useActionQueue() {
       log.error('대청소 청산 실행 실패:', e);
       return { ok: false, reason: 'exception' };
     }
-  }, [assets, actionQueue, confirmSell, commitPortfolioPatch]);
+  }, [allowsOrder, assets, actionQueue, confirmSell, commitPortfolioPatch]);
 
   /**
    * 코어 리밸런싱 주문 생성 (Phase 4b-3b) — RebalancingTable "리밸런싱 주문 생성" 버튼이 명시적 호출.
@@ -312,17 +318,18 @@ export function useActionQueue() {
         existingQueue: actionQueue, today, makeId: (seq) => `rb-${today}-${Date.now().toString(36)}-${seq}`,
         marketByInstrument,
       });
-      if (result.actions.length > 0) {
-        updateActionQueue([...actionQueue, ...result.actions]); // append (dedup은 생성기가 categoryId로 완료)
+      const allowed = result.actions.filter(allowsOrder);
+      if (allowed.length > 0) {
+        updateActionQueue([...actionQueue, ...allowed]); // append (dedup은 생성기가 categoryId로 완료)
       }
-      return { generated: result.actions.length, diagnostics: result.diagnostics, bandCount: bands.length, targetsConfigured };
+      return { generated: allowed.length, diagnostics: result.diagnostics, bandCount: bands.length, targetsConfigured };
     } catch (e) {
       log.error('리밸런싱 주문 생성 실패:', e);
       return { generated: 0, diagnostics: [], bandCount: 0, targetsConfigured };
     } finally {
       setIsGeneratingRebalance(false);
     }
-  }, [assets, exchangeRates, categoryStore, allocationTargets, actionQueue, updateActionQueue]);
+  }, [allowsOrder, assets, exchangeRates, categoryStore, allocationTargets, actionQueue, updateActionQueue]);
 
   /**
    * 리밸런싱 주문 실행 (Phase 4c-1) — RebalanceExecuteModal(4c-2)이 실제 체결값(fill)으로 호출.
@@ -335,6 +342,7 @@ export function useActionQueue() {
    */
   const executeRebalanceAction = useCallback(async (action: ActionItem, fill: TurtleFill): Promise<{ ok: boolean; reason?: string }> => {
     const today = todayISO();
+    if (!allowsOrder(action)) return { ok: false, reason: 'policy-blocked' };
     if (action.kind !== 'REBALANCE_BUY' && action.kind !== 'REBALANCE_SELL') return { ok: false, reason: 'unsupported-kind' };
     if (!(fill.fillPrice > 0)) return { ok: false, reason: 'invalid-price' };
     if (!(fill.quantity > 0)) return { ok: false, reason: 'invalid-qty' };
@@ -390,7 +398,7 @@ export function useActionQueue() {
       log.error('리밸런싱 실행 실패:', e);
       return { ok: false, reason: 'exception' };
     }
-  }, [assets, allocationTargets, actionQueue, addAsset, confirmBuyMore, confirmSell, commitPortfolioPatch]);
+  }, [allowsOrder, assets, allocationTargets, actionQueue, addAsset, confirmBuyMore, confirmSell, commitPortfolioPatch]);
 
-  return { actionQueue, refreshActionQueue, refreshRebalanceActions, markDone, markSkipped, snoozeAction, executeTurtleAction, executeCleanupAction, executeRebalanceAction, isRefreshing, isGeneratingRebalance, refreshError };
+  return { actionQueue: derived.visibleActionQueue, refreshActionQueue, refreshRebalanceActions, markDone, markSkipped, snoozeAction, executeTurtleAction, executeCleanupAction, executeRebalanceAction, isRefreshing, isGeneratingRebalance, refreshError };
 }

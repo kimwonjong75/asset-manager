@@ -29,6 +29,7 @@ import { AssetMetrics, EnrichedAsset } from '../types/ui';
 import type { PLBasis } from '../types/valuation';
 import { resolveRate } from './exchangeRateCache';
 import { splitRealizedPL } from './soldPLBreakdown';
+import { isCryptoExchange } from './marketCurrency';
 
 /**
  * 통화별 "이보다 크면 환율이 오염된 것" 상한. FX API가 간헐적으로 손상값을 돌려준 사례에서 나온 안전선.
@@ -114,8 +115,7 @@ const computeDailyChange = (
  * **판정식을 다른 파일에서 다시 쓰지 말고 이 함수를 import 할 것** — 사본이 갈라지면
  * 화면(metrics)과 이력 스냅샷이 서로 다른 자산을 "외화"로 보게 된다.
  */
-export const isKRWExchange = (exchange: string | undefined): boolean =>
-  exchange === 'Upbit' || exchange === 'Bithumb';
+export const isKRWExchange = isCryptoExchange;
 
 /** 자산 1건의 표시용 메트릭 전체. `totalPortfolioValue`가 0이면 `allocation`은 0. */
 export const computeAssetMetrics = (
@@ -432,7 +432,7 @@ export const deriveSnapshotPurchaseValue = (snapshotAsset: AssetSnapshot, plBasi
 /** 최고가 대비 하락률이 임계(자산별 > 전역)를 넘은 자산 수. 환율 무관(원통화 비율). */
 export const computeAlertCount = (assets: Asset[], globalSellAlertDropRate: number): number =>
   assets.filter(asset => {
-    if (asset.highestPrice === 0) return false;
+    if (asset.holdingPolicy || asset.highestPrice === 0) return false;
     const dropFromHigh = ((asset.currentPrice - asset.highestPrice) / asset.highestPrice) * 100;
     const alertRate = asset.sellAlertDropRate ?? globalSellAlertDropRate;
     return dropFromHigh <= -alertRate;

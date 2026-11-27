@@ -93,6 +93,7 @@ export default tseslint.config(
       '.wrangler/**',
       'DB/**', // 로컬 전용 지식 인제스트 데이터 (gitignore)
       'tmp/**/report-app/**', // 별도 패키지의 보고서 원본·빌드 도구
+      'tmp/owner-pages-run-*/index-*.js', // GitHub Pages에서 내려받은 배포 번들. 동일 폴더의 테스트 fixture는 검사한다.
       'tmp/**/*.{mjs,cjs}', // 외부 자료 처리용 임시 실행 스크립트. TS/TSX 앱 프리뷰는 계속 검사한다.
       'public/**',
       'scripts/backtest/**/cache/**',

@@ -6,6 +6,7 @@ import { Currency, CURRENCY_SYMBOLS } from '../types';
 import type { OwnerTradeTarget } from '../types/ownerTrade';
 import type { Asset } from '../types';
 import { localDateString } from '../utils/localDate';
+import { hasDifferentTurtleFillCurrency } from '../utils/holdingTradeCurrency';
 import { formatOwnerQuantity } from '../utils/ownerQuantity';
 import OwnerTradeDialog, { OwnerTradeBalance } from './OwnerTradeDialog';
 import { usePortfolio } from '../contexts/PortfolioContext';
@@ -35,22 +36,23 @@ const SellAssetModal: React.FC = () => {
 function SellForm(target: OwnerTradeTarget & { position: Asset }) {
   const { data, modal, actions, derived } = usePortfolio();
   const asset = target.position;
-  const nativeQuote = asset.priceOriginal || (asset.currency === Currency.KRW ? asset.currentPrice : 0);
+  const differentCurrency = hasDifferentTurtleFillCurrency(asset.exchange, asset.currency);
+  const quoteCurrency = differentCurrency ? Currency.KRW : asset.currency;
+  const nativeQuote = differentCurrency ? asset.currentPrice : asset.priceOriginal || (asset.currency === Currency.KRW ? asset.currentPrice : 0);
   const onClose = actions.closeSellModal;
-  const activePlan = asset.tradePlan?.status === 'active' ? asset.tradePlan : null;
+  const activePlan = !asset.holdingPolicy && asset.tradePlan?.status === 'active' ? asset.tradePlan : null;
   const [initial] = useState(() => {
     const row = derived.tradePlanRows.find(r => r.asset.id === asset.id);
     const outcome = activePlan ? modal.sellPrefill?.outcome ?? defaultSellOutcome(row?.evaluation ?? null) : 'none';
     const planDefaults = activePlan ? sellPrefillFor(activePlan, asset, outcome) : null;
     return {
       outcome,
-      price: modal.sellPrefill?.price ?? planDefaults?.priceOriginal ?? nativeQuote,
-      quantity: modal.sellPrefill?.quantity ?? planDefaults?.quantity ?? asset.quantity,
+      quantity: modal.sellPrefill?.quantity ?? planDefaults?.quantity,
     };
   });
   const [sellDate, setSellDate] = useState(() => localDateString());
-  const [sellPrice, setSellPrice] = useState(initial.price > 0 ? String(initial.price) : '');
-  const [sellQuantity, setSellQuantity] = useState(String(initial.quantity));
+  const [sellPrice, setSellPrice] = useState('');
+  const [sellQuantity, setSellQuantity] = useState(initial.quantity ? String(initial.quantity) : '');
   const [sellOutcome, setSellOutcome] = useState<SellOutcome>(initial.outcome);
   // "보유종목 터틀" 감시 명단 추가(계획서 §4.2) — 범위 내 자산만 체크박스 노출, 기본 켬(사용자 동작 동반).
   const holdingsSettings = resolveHoldingsSettings(data.turtleSettings.holdings);
@@ -61,13 +63,12 @@ function SellForm(target: OwnerTradeTarget & { position: Asset }) {
   // 폼 오류 문구 id — 조기 return 앞에서 호출(훅 순서 고정). 오류 필드의 aria-describedby 대상.
   const formErrorId = useId();
 
-  /** 효과를 바꾸면 수량·가격도 그 효과의 기본값으로 다시 채운다(사용자는 이후 자유 수정). */
+  /** 계획 수량만 제안한다. 증권사 체결가는 직접 입력한다. */
   const handleOutcomeChange = (outcome: SellOutcome) => {
     setSellOutcome(outcome);
     if (!activePlan) return;
     const prefill = sellPrefillFor(activePlan, asset, outcome);
     setSellQuantity(String(prefill.quantity));
-    setSellPrice(String(prefill.priceOriginal));
   };
 
   const parsedSellQty = parseFloat(sellQuantity);
@@ -99,8 +100,7 @@ function SellForm(target: OwnerTradeTarget & { position: Asset }) {
     const quantity = parseFloat(sellQuantity);
     const price = parseFloat(sellPrice);
 
-    // 자산의 원래 통화로 매도 처리 — recordTurtleSell이 confirmSell을 감싸 돈 기록 성공 후에만
-    // (범위 내 + 체크됐을 때) "다시 살 때 감시" 등록까지 한 번에 처리한다(계획서 §4.2, §5-2).
+    // 방침 또는 체크박스가 정한 전량 체결의 감시 전환은 원장과 함께 저장한다.
     const result = await actions.recordTurtleSell({
       assetId: asset.id,
       sellQuantity: quantity,
@@ -162,13 +162,13 @@ function SellForm(target: OwnerTradeTarget & { position: Asset }) {
               <div>
                 <div className="text-gray-400">현재가</div>
                 <div className="text-white font-semibold">
-                  {nativeQuote > 0 ? formatCurrency(nativeQuote, asset.currency) : '—'}
+                  {nativeQuote > 0 ? formatCurrency(nativeQuote, quoteCurrency) : '—'}
                 </div>
               </div>
               <div>
                 <div className="text-gray-400">평가금액</div>
                 <div className="text-white font-semibold">
-                  {nativeQuote > 0 ? formatCurrency(nativeQuote * asset.quantity, asset.currency) : '—'}
+                  {nativeQuote > 0 ? formatCurrency(nativeQuote * asset.quantity, quoteCurrency) : '—'}
                 </div>
               </div>
             </div>
@@ -200,7 +200,7 @@ function SellForm(target: OwnerTradeTarget & { position: Asset }) {
               </span>
             </div>
             <p className="text-xs text-gray-500 mt-1">
-              * 매수 통화와 동일한 통화로만 매도할 수 있습니다.
+              {differentCurrency ? `현재가는 원화입니다. 실제 ${asset.currency} 체결가를 입력하세요. 원화로 체결했다면 종목 수정에서 매수 통화와 매입 단가를 먼저 확인하세요.` : '매수 통화와 동일한 통화로 매도를 기록합니다.'}
             </p>
           </div>
 
@@ -211,6 +211,7 @@ function SellForm(target: OwnerTradeTarget & { position: Asset }) {
               id="sellDate"
               type="date"
               value={sellDate}
+              max={localDateString()}
               onChange={(e) => setSellDate(e.target.value)}
               className={inputClasses}
               required
@@ -222,7 +223,7 @@ function SellForm(target: OwnerTradeTarget & { position: Asset }) {
           {/* 매도가 */}
           <div>
             <label htmlFor="sellPrice" className={labelClasses}>
-              매도가 ({currencySymbol})
+              실제 체결가 ({currencySymbol})
             </label>
             <div className="relative">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
@@ -289,7 +290,14 @@ function SellForm(target: OwnerTradeTarget & { position: Asset }) {
           )}
 
           {/* "보유종목 터틀" 감시 명단 추가(계획서 §4.2) — 범위 내 자산만, 기본 켬 */}
-          {inHoldingsScope && (
+          {asset.holdingPolicy && (
+            <p className="text-sm text-gray-300">
+              {asset.holdingPolicy.mode === 'turtle-after-cost' && asset.holdingPolicy.armedOn && sellDate > asset.holdingPolicy.armedOn
+                ? '전량 체결을 기록하면 55일 최고가 돌파를 감시합니다. 일부만 팔면 남은 수량을 계속 관리합니다.'
+                : '전량 체결을 기록하면 이 보유자의 재매수 감시가 종료됩니다.'}
+            </p>
+          )}
+          {!asset.holdingPolicy && inHoldingsScope && (
             <div className="bg-gray-700/50 p-3 rounded-md">
               <label className="flex items-start gap-2 cursor-pointer">
                 <input

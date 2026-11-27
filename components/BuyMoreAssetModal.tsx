@@ -6,6 +6,7 @@ import { Currency, CURRENCY_SYMBOLS } from '../types';
 import type { OwnerTradeTarget } from '../types/ownerTrade';
 import { useRecordOwnerBuy } from '../hooks/useOwnerTrade';
 import { localDateString } from '../utils/localDate';
+import { hasDifferentTurtleFillCurrency } from '../utils/holdingTradeCurrency';
 import { formatOwnerQuantity } from '../utils/ownerQuantity';
 import OwnerTradeDialog, { OwnerTradeBalance } from './OwnerTradeDialog';
 import { isBaseType } from '../types/category';
@@ -31,21 +32,23 @@ function BuyForm(target: OwnerTradeTarget) {
   const { actions, data, derived } = usePortfolio();
   const { position, source } = target;
   const asset = position ?? source;
-  const nativeQuote = asset.priceOriginal || (asset.currency === Currency.KRW ? asset.currentPrice : 0);
+  const differentCurrency = hasDifferentTurtleFillCurrency(asset.exchange, asset.currency);
+  const quoteCurrency = differentCurrency ? Currency.KRW : asset.currency;
+  const nativeQuote = differentCurrency ? asset.currentPrice : asset.priceOriginal || (asset.currency === Currency.KRW ? asset.currentPrice : 0);
   const existingQuantity = position?.quantity ?? 0;
   const existingCost = position?.purchasePrice ?? 0;
   const record = useRecordOwnerBuy(target);
   const [buyDate, setBuyDate] = useState(() => localDateString());
-  const [buyPrice, setBuyPrice] = useState(() => nativeQuote > 0 ? String(nativeQuote) : '');
+  const [buyPrice, setBuyPrice] = useState(() => !differentCurrency && nativeQuote > 0 ? String(nativeQuote) : '');
   const [buyQuantity, setBuyQuantity] = useState<string>('');
 
   // 매매 계획으로 저장(P2a) — 활성 계획이 **없는** 종목에서만 제안. 활성 계획이 있으면 불타기 경로(P2b).
-  const [saveTradePlanOnBuy, setSaveTradePlanOnBuy] = useState(!!position);
+  const [saveTradePlanOnBuy, setSaveTradePlanOnBuy] = useState(!!position && !position.holdingPolicy);
   const [showTradePlanDetail, setShowTradePlanDetail] = useState(false);
   const tradePlanEditorRef = useRef<TradePlanEditorHandle>(null);
 
   // 이 추가매수를 불타기 체결로 기록할지 (P2b)
-  const activePlan = position?.tradePlan?.status === 'active' ? position.tradePlan : null;
+  const activePlan = !position?.holdingPolicy && position?.tradePlan?.status === 'active' ? position.tradePlan : null;
   const pyramidStep = activePlan?.pyramid.enabled ? nextPyramidStep(activePlan) : null;
   const [pyramidChecked, setPyramidChecked] = useState(() => {
     const signal = derived.tradePlanRows.find(row => row.asset.id === position?.id)?.evaluation.signal;
@@ -108,7 +111,7 @@ function BuyForm(target: OwnerTradeTarget) {
 
     // 매매 계획 저장 — 활성 계획이 없던 종목에서만, 추가매수 성공 후 별도 커밋(P2a).
     // 이미 활성 계획이 있으면 새 계획을 만들지 않는다(그 경로는 위의 불타기 체결 기록).
-    if (result.ok && !hasActivePlan && saveTradePlanOnBuy) {
+    if (result.ok && !position?.holdingPolicy && !hasActivePlan && saveTradePlanOnBuy) {
       let plan: TradePlan | null = null;
       if (showTradePlanDetail && tradePlanEditorRef.current) {
         const r = tradePlanEditorRef.current.getResult();
@@ -180,7 +183,7 @@ function BuyForm(target: OwnerTradeTarget) {
               <div>
                 <div className="text-gray-400">현재가</div>
                 <div className="text-white font-semibold">
-                  {nativeQuote > 0 ? formatCurrency(nativeQuote, asset.currency) : '—'}
+                  {nativeQuote > 0 ? formatCurrency(nativeQuote, quoteCurrency) : '—'}
                 </div>
               </div>
             </div>
@@ -194,6 +197,8 @@ function BuyForm(target: OwnerTradeTarget) {
                 {currencyLabel}
               </span>
             </div>
+            {differentCurrency && <p className="mt-1 text-xs text-warning">현재가는 원화입니다. 실제 {asset.currency} 체결가를 입력하세요.
+              원화로 체결했다면 종목 수정에서 매수 통화와 매입 단가를 먼저 확인하세요.</p>}
           </div>
 
           {/* 매수일자 */}
@@ -300,7 +305,7 @@ function BuyForm(target: OwnerTradeTarget) {
                   : '불타기 단계를 모두 사용했습니다 — 추가매수는 계획에 반영되지 않고 기록만 됩니다.'}
               </p>
             )
-          ) : position && (
+          ) : position && !position.holdingPolicy && (
             <div className="bg-gray-700/40 p-3 rounded-md space-y-2">
               <label className="flex items-center gap-2 text-sm text-gray-200 cursor-pointer">
                 <input

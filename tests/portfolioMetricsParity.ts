@@ -173,6 +173,8 @@ const NO_RATES: ExchangeRates = { USD: 0, JPY: 0 };
   const uk = computeAssetMetrics(upbit, RATES, 0, KRW).metrics;
   check('업비트 자산 — 두 모드 metrics deep-equal', un, uk);
   checkClose('업비트 currentPriceKRW = 시세 그대로', un.currentPriceKRW, 50_000_000);
+  checkClose('국내 코인 종합 거래소도 보유 평가액에 USD 환율을 중복 적용하지 않음',
+    computeAssetMetrics({ ...upbit, exchange: '주요 거래소 (종합)' }, RATES, 0, NATIVE).metrics.currentValueKRW, 5_000_000);
   checkClose('업비트 purchasePriceKRW = 매수환율 적용(특이 동작 보존)', un.purchasePriceKRW, 140_000);
 }
 

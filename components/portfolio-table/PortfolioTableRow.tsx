@@ -17,6 +17,7 @@ import type { TurtleHoldingsRow } from '../../utils/turtleHoldingsView';
 import { PIN_STAR } from '../../constants/stateColorLadders';
 import OwnerPositionBadge from './OwnerPositionBadge';
 import HoldingTradeButtons from './HoldingTradeButtons';
+import HoldingPolicyControl from './HoldingPolicyControl';
 
 interface PortfolioTableRowProps {
   showTradeButtons?: boolean;
@@ -33,6 +34,7 @@ interface PortfolioTableRowProps {
   onRefreshOne?: (id: string) => void | Promise<void>;
   onTogglePin?: (id: string) => void;
   onMemoEdit?: (asset: Asset) => void;
+  onEditPolicy?: () => void;
   /** 골든크로스 신호 (`golden-cross` 알림 룰의 MA 페어 기준 — 양수만 전달, 그 외 null) */
   gcCrossDays?: number | null;
   /** 데드크로스 신호 (`dead-cross` 알림 룰의 MA 페어 기준 — 음수만 전달, 그 외 null) */
@@ -62,6 +64,7 @@ const PortfolioTableRow: React.FC<PortfolioTableRowProps> = ({
   exchangeRates,
   onTogglePin,
   onMemoEdit,
+  onEditPolicy,
   gcCrossDays,
   dcCrossDays,
   getTdStyle,
@@ -135,6 +138,7 @@ const PortfolioTableRow: React.FC<PortfolioTableRowProps> = ({
   const totalColSpan = 3 + visibleColumns.filter(c => c.visible).length;
 
   const menuItems = buildAssetRowMenuItems({
+    onEditPolicy,
     onTradePlan: openTradePlan,
     onStockReview: openStockReview,
     onBuy: onBuy ? () => onBuy(asset) : undefined,
@@ -202,6 +206,7 @@ const PortfolioTableRow: React.FC<PortfolioTableRowProps> = ({
               )}
               <OwnerPositionBadge asset={asset} />
             </div>
+            {onEditPolicy && <HoldingPolicyControl asset={asset} row={turtleHoldingsRow} onOpen={onEditPolicy} />}
             {showTradeButtons && <HoldingTradeButtons asset={asset} onBuy={onBuy} onSell={onSell} />}
           </div>
         </td>

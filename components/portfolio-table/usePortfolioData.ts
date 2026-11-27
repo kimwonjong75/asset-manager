@@ -67,7 +67,7 @@ export const usePortfolioData = ({
     if (filterAlerts) {
       enriched = enriched.filter(asset => {
         const alertRate = asset.sellAlertDropRate ?? sellAlertDropRate;
-        return asset.metrics.dropFromHigh <= -alertRate;
+        return !asset.holdingPolicy && asset.metrics.dropFromHigh <= -alertRate;
       });
     }
 

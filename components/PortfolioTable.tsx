@@ -8,6 +8,9 @@ import { usePortfolioData } from './portfolio-table/usePortfolioData';
 import PortfolioTableRow from './portfolio-table/PortfolioTableRow';
 import PortfolioMobileCard from './portfolio-table/PortfolioMobileCard';
 import PortfolioOwnerGroupRow from './portfolio-table/PortfolioOwnerGroupRow';
+import HoldingPolicyEditor from './portfolio-table/HoldingPolicyEditor';
+import { isCashCategory } from '../types/category';
+import { isInHoldingsScope, resolveHoldingsSettings } from '../utils/turtleHoldings';
 import OwnerTradeHistory from './portfolio-table/OwnerTradeHistory';
 import ColumnResizeHandle from './portfolio-table/ColumnResizeHandle';
 import MemoEditPopup from './common/MemoEditPopup';
@@ -94,6 +97,7 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
   const [showPinnedOnly, setShowPinnedOnly] = useState(false);
   const [showSharedOnly, setShowSharedOnly] = useState(false);
   const [memoEditAsset, setMemoEditAsset] = useState<Asset | null>(null);
+  const [policyAssetId, setPolicyAssetId] = useState<string | null>(null);
   const [bulkMenuOpen, setBulkMenuOpen] = useState(false);
   const bulkMenuRef = useRef<HTMLButtonElement>(null);
   const [viewMenuOpen, setViewMenuOpen] = useState(false);
@@ -215,6 +219,8 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
   // "보유종목 터틀"(P2) 화면 컬럼(청산선까지/터틀 상태) — 모듈 캐시 공유(hooks/useTurtleHoldings)라
   // 홈 카드가 이미 조회했으면 재조회 없이 재사용된다.
   const turtleHoldingsRowsByAssetId = useTurtleHoldings().rowsByAssetId;
+  const holdingsSettings = useMemo(() => resolveHoldingsSettings(data.turtleSettings.holdings), [data.turtleSettings.holdings]);
+  const policyAsset = policyAssetId ? data.assets.find(asset => asset.id === policyAssetId) : undefined;
 
   // 현재 가시 컬럼 (Context의 columnConfig 사용)
   const visibleColumns = ui.columnConfig;
@@ -490,12 +496,15 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
     const gc = badgePairs.gcEnabled ? crosses?.[badgePairs.gcShort]?.[badgePairs.gcLong] : null;
     const dc = badgePairs.dcEnabled ? crosses?.[badgePairs.dcShort]?.[badgePairs.dcLong] : null;
     const canTrade = !hasUnresolvedOwners(asset);
+    const canEditPolicy = canTrade && (asset.holdingPolicy ||
+      (!isCashCategory(asset.categoryId, data.categoryStore.categories) && isInHoldingsScope(asset, holdingsSettings)));
     const pickOwner = ui.accountView === 'ALL' && !groupDetail;
     const props = {
       asset, history, onEdit, onRefreshOne, exchangeRates, onSelect: handleSelect, showTradeButtons: groupDetail,
       onBuy: canTrade && onBuy ? (holding: Asset) => onBuy(holding, pickOwner) : undefined,
       onSell: canTrade && onSell ? (holding: Asset) => onSell(holding, pickOwner) : undefined,
       onTogglePin: actions.togglePinAsset, onMemoEdit: setMemoEditAsset,
+      onEditPolicy: canEditPolicy ? () => setPolicyAssetId(asset.id) : undefined,
       gcCrossDays: gc != null && gc >= 0 ? gc : null,
       dcCrossDays: dc != null && dc < 0 ? dc : null,
       turtle: turtleViews.get(asset.id), turtleHoldingsRow: turtleHoldingsRowsByAssetId.get(asset.id),
@@ -789,6 +798,9 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
       </div>
 
       {/* 메모 편집 팝업 */}
+      {policyAsset && <HoldingPolicyEditor key={policyAsset.id} asset={policyAsset}
+        row={turtleHoldingsRowsByAssetId.get(policyAsset.id)}
+        onSave={actions.saveHoldingPolicy} onClose={() => setPolicyAssetId(null)} />}
       {memoEditAsset && (
         <MemoEditPopup
           title={memoEditAsset.customName?.trim() || memoEditAsset.name}

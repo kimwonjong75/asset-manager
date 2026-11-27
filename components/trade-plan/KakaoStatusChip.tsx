@@ -34,7 +34,7 @@ export interface KakaoStatusChipProps {
 
 const KakaoStatusChip: React.FC<KakaoStatusChipProps> = ({ className = '' }) => {
   const { actions } = usePortfolio();
-  const { settings, manifest, needsSync } = useKakaoNotify();
+  const { settings, needsSync } = useKakaoNotify();
 
   if (!settings.gasUrl || !settings.secret) {
     return (
@@ -51,16 +51,16 @@ const KakaoStatusChip: React.FC<KakaoStatusChipProps> = ({ className = '' }) => 
   }
 
   return (
-    <span
-      className={`inline-flex items-center gap-1.5 text-xs px-2 py-1 rounded-full bg-surface-muted border border-border-subtle ${className}`}
+    <button type="button" onClick={() => openSettingsTab(actions.setActiveTab, 'alerts')}
+      className={`inline-flex items-center gap-1.5 text-xs px-2 py-1 rounded-full bg-surface-muted border border-border-subtle focus-ring ${className}`}
       title="알림 동기화 상태"
     >
       <span className="text-gray-400">{CHIP_LABELS[settings.channel]}</span>
       <span className="text-gray-300">마지막 동기화 {formatTime(settings.lastSyncAt)}</span>
       {needsSync && (
-        <span className="text-warning">· 동기화 필요 {manifest.items.length}건</span>
+        <span className="text-warning">· 동기화 필요</span>
       )}
-    </span>
+    </button>
   );
 };
 

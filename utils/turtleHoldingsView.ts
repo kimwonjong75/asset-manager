@@ -18,6 +18,11 @@
 
 import { Currency, WatchlistItem, normalizeExchange } from '../types';
 import { EnrichedAsset } from '../types/ui';
+import type { HoldingPolicyEvaluation } from '../types/holdingPolicy';
+import { getAssetOwner, getOwnerLabel, hasUnresolvedOwners } from '../types/owner';
+import { evaluateHoldingPolicyHistory, getHoldingPrincipalKRW, holdingPolicyExpectedSession, holdingPolicyTurtleSettings, isPolicyReentryWatch } from './holdingPolicy';
+import { instrumentMarket } from './ownerHoldings';
+import { holdingPolicyFxRate } from './holdingPolicyFx';
 import { TurtlePosition } from '../types/turtle';
 import { isBaseType } from '../types/category';
 import { applyDrawdownScaling } from './turtleEngine';
@@ -161,6 +166,7 @@ export interface TurtleHoldingsReentryBaseline {
 }
 
 export interface TurtleHoldingsRow {
+  holdingPolicyEvaluation?: HoldingPolicyEvaluation;
   kind: TurtleHoldingsRowKind;
   assetId?: string;
   watchItemId?: string;
@@ -241,19 +247,22 @@ export const REENTRY_BASELINE_CAPTION =
 
 /** raw 시계열 → 완료봉 + 1차 데이터 이슈 판정 공통 로직(legacy/reentry/watch 공용). */
 function resolveCompletedBars(
-  raw: RawSeries | undefined, exchange: string, isCrypto: boolean, now: Date, fetchFailed: boolean,
+  raw: RawSeries | undefined, exchange: string, isCrypto: boolean, now: Date, fetchFailed: boolean, policySelected = false,
 ): { bars: DailyBar[]; issue: TurtleHoldingsDataIssue | null } {
   if (fetchFailed) return { bars: [], issue: 'fetch-failed' };
   const marketTz = resolveMarketTz(exchange, isCrypto);
   const r = extractCompletedBars(raw, marketTz, now);
   if (!r.hasHighLow) return { bars: [], issue: 'no-high-low' };
-  if (r.bars.length === 0) return { bars: [], issue: 'no-completed-bar' };
-  return { bars: r.bars, issue: null };
+  const settled = isCrypto && policySelected ? holdingPolicyExpectedSession(exchange, true, now) : null;
+  const bars = settled ? r.bars.filter(bar => bar.date <= settled) : r.bars;
+  if (bars.length === 0) return { bars: [], issue: 'no-completed-bar' };
+  return { bars, issue: null };
 }
 
 // ── 1. 원래 보유분(legacy-holding) ───────────────────────────────────────────
 
 export interface LegacyHoldingRowInput {
+  policyFx?: RawSeries;
   asset: EnrichedAsset;
   raw: RawSeries | undefined;
   isCrypto: boolean;
@@ -262,14 +271,35 @@ export interface LegacyHoldingRowInput {
   settings: TurtleHoldingsSettings;
 }
 
+function policyEvaluation(input: LegacyHoldingRowInput, bars: readonly DailyBar[]) {
+  const { asset, isCrypto, now, policyFx } = input;
+  if (!asset.holdingPolicy) return undefined;
+  return evaluateHoldingPolicyHistory({
+    policy: asset.holdingPolicy, remainingPrincipalKRW: getHoldingPrincipalKRW(asset), quantity: asset.quantity,
+    bars, expectedSession: holdingPolicyExpectedSession(asset.exchange, isCrypto, now),
+    fxForDate: date => holdingPolicyFxRate(isCrypto ? Currency.KRW : asset.currency, date, policyFx),
+  });
+}
+
+function policyRow(base: Pick<TurtleHoldingsRow, 'assetId' | 'kind' | 'ticker' | 'name' | 'currency'>,
+  result: HoldingPolicyEvaluation, bars: readonly DailyBar[]): TurtleHoldingsRow {
+  const last = bars.at(-1);
+  return { ...base, holdingPolicyEvaluation: result, reasonText: result.reason,
+    status: result.phase === 'exit-ready' ? 'sell' : result.phase === 'unavailable' ? 'unavailable' : 'hold',
+    lastClose: last?.close ?? null, asOfDate: last?.date ?? null, dataIssue: null,
+    n: null, volatilityLabel: null, exitLine: null, exitGapPct: null, reentryLine: null, reentryBaseline: null,
+    unitsCount: null, maxUnits: null, rebuy: null, stopCheckText: null };
+}
+
 export function buildTurtleHoldingsLegacyRow(input: LegacyHoldingRowInput): TurtleHoldingsRow {
-  const { asset, raw, isCrypto, fetchFailed, now, settings } = input;
+  const { asset, raw, isCrypto, fetchFailed, now } = input;
+  const settings = asset.holdingPolicy ? holdingPolicyTurtleSettings(input.settings) : input.settings;
   const base = {
     kind: 'legacy-holding' as const, assetId: asset.id, ticker: asset.ticker,
-    name: asset.customName?.trim() || asset.name, currency: asset.currency,
+    name: policyHoldingName(asset), currency: asset.holdingPolicy && isCrypto ? Currency.KRW : asset.currency,
     reentryLine: null, reentryBaseline: null, unitsCount: null, maxUnits: null, rebuy: null, stopCheckText: null,
   };
-  const exclusion = holdingsExclusionReason(asset, settings);
+  const exclusion = policyScopeExclusion(asset, settings);
   if (exclusion) {
     return {
       ...base, status: 'out-of-scope', lastClose: null, exitLine: null, exitGapPct: null,
@@ -277,7 +307,9 @@ export function buildTurtleHoldingsLegacyRow(input: LegacyHoldingRowInput): Turt
       dataIssue: null, asOfDate: null,
     };
   }
-  const { bars, issue } = resolveCompletedBars(raw, asset.exchange, isCrypto, now, fetchFailed);
+  const { bars, issue } = resolveCompletedBars(raw, asset.exchange, isCrypto, now, fetchFailed, !!asset.holdingPolicy);
+  const evaluation = policyEvaluation(input, bars);
+  if (evaluation && evaluation.phase !== 'active') return policyRow(base, evaluation, bars);
   if (issue) {
     return {
       ...base, status: 'unavailable', lastClose: null, exitLine: null, exitGapPct: null,
@@ -297,18 +329,30 @@ export function buildTurtleHoldingsLegacyRow(input: LegacyHoldingRowInput): Turt
   const dataIssue: TurtleHoldingsDataIssue | null = status !== 'unavailable' ? null
     : settings.exitMethod === 'atrTrail' ? 'missing-trail-start' : 'insufficient-bars';
   const reasonText = status === 'sell' && exitLine != null
-    ? describeExitLineExplanation({ exitLookback: settings.exitLookback, exitMethod: settings.exitMethod, maPeriod: settings.maPeriod, atrTrailMultiple: settings.atrTrailMultiple, exitLine, lastClose, currency: asset.currency })
+    ? describeExitLineExplanation({ exitLookback: settings.exitLookback, exitMethod: settings.exitMethod, maPeriod: settings.maPeriod, atrTrailMultiple: settings.atrTrailMultiple, exitLine, lastClose, currency: base.currency })
     : status === 'hold'
-      ? `청산선 ${exitLine != null ? formatMoney(exitLine, asset.currency) : '—'} 위에서 마감했습니다(종가 ${formatMoney(lastClose, asset.currency)}). 규칙상 보유를 유지합니다.`
+      ? `청산선 ${exitLine != null ? formatMoney(exitLine, base.currency) : '—'} 위에서 마감했습니다(종가 ${formatMoney(lastClose, base.currency)}). 규칙상 보유를 유지합니다.`
       : dataIssueText(dataIssue ?? 'insufficient-bars');
   // 표시 전용 — '팔 때'일 때만 "지금 재진입 기준선"을 붙인다(판정·알림·저장에는 쓰지 않음).
   const reentryBaseline = status === 'sell' ? buildReentryBaseline(bars, settings, lastClose, asOfDate) : null;
-  return { ...base, status, lastClose, exitLine, exitGapPct, n, volatilityLabel, reasonText, dataIssue, asOfDate, reentryBaseline };
+  return { ...base, holdingPolicyEvaluation: evaluation, status, lastClose, exitLine, exitGapPct, n, volatilityLabel, reasonText, dataIssue, asOfDate, reentryBaseline };
+}
+
+function policyScopeExclusion(asset: EnrichedAsset, settings: TurtleHoldingsSettings): string | null {
+  if (asset.holdingPolicy && hasUnresolvedOwners(asset)) return '공동 보유분은 소유자별 잔고를 먼저 확인하세요.';
+  if (asset.holdingPolicy && isBaseType(asset.categoryId, 'CASH')) return '대기자금은 운용 방침 감시에서 제외합니다.';
+  return holdingsExclusionReason(asset, settings);
+}
+
+function policyHoldingName(asset: EnrichedAsset): string {
+  const name = asset.customName?.trim() || asset.name;
+  return asset.holdingPolicy ? `${name} (${getOwnerLabel(asset.owner)})` : name;
 }
 
 // ── 2. 재매수분(reentry-position) ───────────────────────────────────────────
 
 export interface ReentryPositionRowInput {
+  policyFx?: RawSeries;
   /** origin==='holdings-reentry' && status==='open' 인 포지션만 넘길 것(호출부 필터). */
   position: TurtlePosition;
   asset: EnrichedAsset;
@@ -322,15 +366,17 @@ export interface ReentryPositionRowInput {
 }
 
 export function buildTurtleHoldingsReentryRow(input: ReentryPositionRowInput): TurtleHoldingsRow {
-  const { position, asset, raw, isCrypto, fetchFailed, now, settings, fxRate } = input;
+  const { position, asset, raw, isCrypto, fetchFailed, now, fxRate } = input;
+  const settings = asset.holdingPolicy ? holdingPolicyTurtleSettings(input.settings) : input.settings;
+  const allowPyramid = !asset.holdingPolicy || asset.holdingPolicy.pyramidingEnabled === true;
   const unitsCount = position.units.length;
   const maxUnits = settings.maxUnitsPerPosition;
   const base = {
     kind: 'reentry-position' as const, assetId: asset.id, positionId: position.id,
-    ticker: position.ticker, name: asset.customName?.trim() || asset.name, currency: asset.currency,
+    ticker: position.ticker, name: policyHoldingName(asset), currency: asset.holdingPolicy && isCrypto ? Currency.KRW : asset.currency,
     reentryLine: null, reentryBaseline: null, unitsCount, maxUnits, stopCheckText: null,
   };
-  const exclusion = holdingsExclusionReason(asset, settings);
+  const exclusion = policyScopeExclusion(asset, settings);
   if (exclusion) {
     return {
       ...base, status: 'out-of-scope', lastClose: null, exitLine: null, exitGapPct: null,
@@ -338,7 +384,13 @@ export function buildTurtleHoldingsReentryRow(input: ReentryPositionRowInput): T
       dataIssue: null, asOfDate: null,
     };
   }
-  const { bars, issue } = resolveCompletedBars(raw, asset.exchange, isCrypto, now, fetchFailed);
+  const { bars, issue } = resolveCompletedBars(raw, asset.exchange, isCrypto, now, fetchFailed, !!asset.holdingPolicy);
+  if (asset.holdingPolicy?.mode === 'turtle-after-cost' && isCrypto && asset.currency !== Currency.KRW) {
+    return policyRow(base, { phase: 'unavailable', remainingPrincipalKRW: getHoldingPrincipalKRW(asset),
+      netProceedsKRW: null, reason: '확인 필요 · 기존 재매수 체결과 손절가의 통화를 원화 일봉과 대조하세요.' }, bars);
+  }
+  const evaluation = policyEvaluation(input, bars);
+  if (evaluation && evaluation.phase !== 'active') return policyRow(base, evaluation, bars);
   if (issue) {
     return {
       ...base, status: 'unavailable', lastClose: null, exitLine: null, exitGapPct: null,
@@ -364,21 +416,21 @@ export function buildTurtleHoldingsReentryRow(input: ReentryPositionRowInput): T
 
   if (lastClose <= stopPrice) {
     status = 'sell';
-    reasonText = `${describeStopHitExplanation({ stopPrice, lastClose, currency: asset.currency })} 손절 매도 후 [팔았음 기록]하세요.`;
+    reasonText = `${describeStopHitExplanation({ stopPrice, lastClose, currency: base.currency })} 손절 매도 후 [팔았음 기록]하세요.`;
   } else if (exitLine != null && lastClose <= exitLine) {
     status = 'sell';
-    reasonText = describeExitLineExplanation({ exitLookback: settings.exitLookback, exitMethod: settings.exitMethod, maPeriod: settings.maPeriod, atrTrailMultiple: settings.atrTrailMultiple, exitLine, lastClose, currency: asset.currency });
+    reasonText = describeExitLineExplanation({ exitLookback: settings.exitLookback, exitMethod: settings.exitMethod, maPeriod: settings.maPeriod, atrTrailMultiple: settings.atrTrailMultiple, exitLine, lastClose, currency: base.currency });
   } else {
-    const canPyramid = unitsCount < maxUnits && n != null;
+    const canPyramid = allowPyramid && unitsCount < maxUnits && n != null;
     const triggerPrice = canPyramid ? computePyramidTriggerPrice(lastUnit.fillPrice, n as number, settings) : null;
     if (canPyramid && triggerPrice != null && lastClose >= triggerPrice) {
       status = 'pyramid';
-      reasonText = describePyramidHitExplanation({ lastFillPrice: lastUnit.fillPrice, triggerPrice, currency: asset.currency });
+      reasonText = describePyramidHitExplanation({ lastFillPrice: lastUnit.fillPrice, triggerPrice, currency: base.currency });
     } else {
       status = 'hold';
       reasonText = exitLine != null
-        ? `손절가 ${formatMoney(stopPrice, asset.currency)}, 청산선 ${formatMoney(exitLine, asset.currency)} 어디에도 닿지 않았습니다. 규칙상 보유를 유지합니다.`
-        : `손절가 ${formatMoney(stopPrice, asset.currency)} 위에 있습니다. 규칙상 보유를 유지합니다.`;
+        ? `손절가 ${formatMoney(stopPrice, base.currency)}, 청산선 ${formatMoney(exitLine, base.currency)} 어디에도 닿지 않았습니다. 규칙상 보유를 유지합니다.`
+        : `손절가 ${formatMoney(stopPrice, base.currency)} 위에 있습니다. 규칙상 보유를 유지합니다.`;
       if (exitLine == null) dataIssue = 'insufficient-bars';
     }
   }
@@ -386,12 +438,12 @@ export function buildTurtleHoldingsReentryRow(input: ReentryPositionRowInput): T
   // "손절선 확인" 칸 전용 문구(증권사 손절 예약주문 점검) — '보유 유지'/'추가 매수'에서만.
   // reasonText(판정 사유)와 다른 문장이어야 칸 의미가 혼동되지 않는다(§4.1 Advisor 지적 2026-09-26).
   const stopCheckText = status === 'hold' || status === 'pyramid'
-    ? describeStopOrderCheckText({ stopPrice, exitLine, currency: asset.currency })
+    ? describeStopOrderCheckText({ stopPrice, exitLine, currency: base.currency })
     : null;
 
   // 불타기 사이징 미리보기 — 손절('sell') 상태에서는 매수 미리보기를 만들지 않는다.
   let rebuy: TurtleHoldingsRebuy | null = null;
-  if ((status === 'hold' || status === 'pyramid') && unitsCount < maxUnits) {
+  if (allowPyramid && (status === 'hold' || status === 'pyramid') && unitsCount < maxUnits) {
     if (n == null) {
       rebuy = { qty: 0, positionValueKRW: 0, stopPriceOriginal: null, nextPyramidPriceOriginal: null, skipReason: 'no-n' };
     } else {
@@ -410,7 +462,7 @@ export function buildTurtleHoldingsReentryRow(input: ReentryPositionRowInput): T
   // 표시 전용 — 손절 이탈·청산선 이탈 둘 다 status='sell'이므로 '팔 때'일 때만 기준선을 붙인다.
   const reentryBaseline = status === 'sell' ? buildReentryBaseline(bars, settings, lastClose, asOfDate) : null;
 
-  return { ...base, status, lastClose, exitLine, exitGapPct, n, volatilityLabel, rebuy, reasonText, stopCheckText, dataIssue, asOfDate, reentryBaseline };
+  return { ...base, holdingPolicyEvaluation: evaluation, status, lastClose, exitLine, exitGapPct, n, volatilityLabel, rebuy, reasonText, stopCheckText, dataIssue, asOfDate, reentryBaseline };
 }
 
 // ── 3. 관심종목 감시(watch) ──────────────────────────────────────────────────
@@ -433,16 +485,18 @@ export interface WatchRowInput {
 }
 
 export function buildTurtleHoldingsWatchRow(input: WatchRowInput): TurtleHoldingsRow {
-  const { watchItem, raw, isCrypto, fetchFailed, now, settings, fxRate, effectiveManagedEquityKRW, heldTickerKeys } = input;
-  const scopeAsset: ScopeCheckAsset = { id: watchItem.id, categoryId: watchItem.categoryId };
+  const { watchItem, raw, isCrypto, fetchFailed, now, fxRate, effectiveManagedEquityKRW, heldTickerKeys } = input;
+  const settings = watchItem.holdingPolicy ? holdingPolicyTurtleSettings(input.settings) : input.settings;
+  const scopeAsset: ScopeCheckAsset = { id: watchItem.id, categoryId: watchItem.categoryId, owner: watchItem.owner };
   const base = {
     kind: 'watch' as const, watchItemId: watchItem.id, ticker: watchItem.ticker,
-    name: watchItem.name, currency: watchItem.currency ?? Currency.KRW,
+    name: watchItem.holdingPolicy ? `${watchItem.name} (${getOwnerLabel(watchItem.owner)})` : watchItem.name, currency: watchItem.holdingPolicy && isCrypto ? Currency.KRW : watchItem.currency ?? Currency.KRW,
     exitLine: null, exitGapPct: null, unitsCount: null, maxUnits: null, stopCheckText: null,
     reentryBaseline: null, // 감시 행은 reentryLine 자체가 재진입선 — 팔 때 행 전용 표시값은 쓰지 않는다
   };
-  const watchKey = todayInstrumentKey(watchItem.ticker, watchItem.exchange, normalizeExchange);
-  if (heldTickerKeys.has(watchKey)) {
+  const watchKey = todayInstrumentKey(watchItem.ticker, watchItem.exchange, instrumentMarket);
+  if (heldTickerKeys.has(watchKey) || heldTickerKeys.has(todayInstrumentKey(watchItem.ticker, watchItem.exchange, normalizeExchange)) ||
+      heldTickerKeys.has(getAssetOwner(watchItem) + '|' + watchKey) || (watchItem.holdingPolicy && !isPolicyReentryWatch(watchItem))) {
     return {
       ...base, status: 'out-of-scope', lastClose: null, reentryLine: null, n: null,
       volatilityLabel: null, rebuy: null,
@@ -458,7 +512,7 @@ export function buildTurtleHoldingsWatchRow(input: WatchRowInput): TurtleHolding
       dataIssue: null, asOfDate: null,
     };
   }
-  const { bars, issue } = resolveCompletedBars(raw, watchItem.exchange, isCrypto, now, fetchFailed);
+  const { bars, issue } = resolveCompletedBars(raw, watchItem.exchange, isCrypto, now, fetchFailed, !!watchItem.holdingPolicy);
   if (issue) {
     return {
       ...base, status: 'unavailable', lastClose: null, reentryLine: null, n: null,
@@ -468,6 +522,13 @@ export function buildTurtleHoldingsWatchRow(input: WatchRowInput): TurtleHolding
   const lastClose = bars[bars.length - 1].close;
   const asOfDate = bars[bars.length - 1].date;
   const reentryLine = computeReentryLine(bars, settings);
+  if (watchItem.holdingPolicy && (asOfDate !== holdingPolicyExpectedSession(watchItem.exchange, isCrypto, now) ||
+      !watchItem.turtleWatch || asOfDate <= watchItem.turtleWatch.soldAt)) {
+    const stale = asOfDate !== holdingPolicyExpectedSession(watchItem.exchange, isCrypto, now);
+    return { ...base, status: stale ? 'unavailable' : 'watching', lastClose, reentryLine, n: null,
+      volatilityLabel: null, rebuy: null, reasonText: stale ? '확인 필요 · 해당 거래일의 확정 종가를 기다립니다.'
+        : '전량 매도 체결일 이후의 확정 종가부터 재매수를 감시합니다.', dataIssue: null, asOfDate };
+  }
   const n = computeN(bars.map(b => b.high), bars.map(b => b.low), bars.map(b => b.close));
   const volatilityLabel = n != null && lastClose > 0 ? classifyVolatility((n / lastClose) * 100) : null;
 
@@ -480,11 +541,11 @@ export function buildTurtleHoldingsWatchRow(input: WatchRowInput): TurtleHolding
     reasonText = dataIssueText('insufficient-bars');
   } else if (lastClose >= reentryLine) {
     status = 'reentry';
-    reasonText = describeReentryLineExplanation({ entryLookback: settings.entryLookback, reentryLine, lastClose, currency: watchItem.currency ?? Currency.KRW });
+    reasonText = describeReentryLineExplanation({ entryLookback: settings.entryLookback, reentryLine, lastClose, currency: base.currency });
   } else {
     status = 'watching';
     const gapPct = ((reentryLine - lastClose) / lastClose) * 100;
-    reasonText = `${settings.entryLookback}일 최고가 ${formatMoney(reentryLine, watchItem.currency ?? Currency.KRW)}까지 ${gapPct.toFixed(1)}% 남았습니다.`;
+    reasonText = `${settings.entryLookback}일 최고가 ${formatMoney(reentryLine, base.currency)}까지 ${gapPct.toFixed(1)}% 남았습니다.`;
   }
 
   let rebuy: TurtleHoldingsRebuy | null = null;
@@ -494,7 +555,7 @@ export function buildTurtleHoldingsWatchRow(input: WatchRowInput): TurtleHolding
     } else {
       const sizing = computeFirstUnitSize(effectiveManagedEquityKRW, n, lastClose, fxRate, settings, isCrypto);
       const stopPriceOriginal = sizing.qty > 0 ? computeCommonStopPrice(lastClose, n, settings) : null;
-      const nextPyramidPriceOriginal = sizing.qty > 0 && settings.maxUnitsPerPosition > 1
+      const nextPyramidPriceOriginal = sizing.qty > 0 && settings.maxUnitsPerPosition > 1 && (!watchItem.holdingPolicy || watchItem.holdingPolicy.pyramidingEnabled === true)
         ? computePyramidTriggerPrice(lastClose, n, settings) : null;
       rebuy = { qty: sizing.qty, positionValueKRW: sizing.positionValueKRW, stopPriceOriginal, nextPyramidPriceOriginal, skipReason: sizing.skipReason };
     }
@@ -520,8 +581,13 @@ export function describeHoldingsCoverage(rows: readonly TurtleHoldingsRow[], cou
   const completed = rows.filter(row => row.status !== 'out-of-scope' && row.status !== 'unavailable');
   const checked = completed.length;
   const watchCount = rows.filter(row => row.kind === 'watch' && row.status !== 'out-of-scope').length;
+  const exits = rows.filter(row => row.holdingPolicyEvaluation?.phase === 'exit-ready').length;
+  const armed = rows.filter(row => row.holdingPolicyEvaluation?.phase === 'armed-today').length;
+  const turtleSells = counts.sellCount - exits;
   const signals = [
-    counts.sellCount && `터틀 매도 기준에 닿은 종목 ${counts.sellCount}개`,
+    exits && `본전 매도 검토 ${exits}개`,
+    armed && `터틀 감시 시작 ${armed}개`,
+    turtleSells && `터틀 매도 기준에 닿은 종목 ${turtleSells}개`,
     counts.reentryCount && `재매수 기준 도달 ${counts.reentryCount}개`,
     counts.pyramidCount && `추가 매수 기준 도달 ${counts.pyramidCount}개`,
   ].filter(Boolean);
@@ -538,7 +604,7 @@ export function summarizeTurtleHoldingsRows(rows: readonly TurtleHoldingsRow[]):
     if (row.status === 'sell') sellCount++;
     else if (row.status === 'reentry') reentryCount++;
     else if (row.status === 'pyramid') pyramidCount++;
-    if (row.kind === 'reentry-position' && (row.status === 'hold' || row.status === 'pyramid')) stopCheckCount++;
+    if (row.kind === 'reentry-position' && (!row.holdingPolicyEvaluation || row.holdingPolicyEvaluation.phase === 'active') && (row.status === 'hold' || row.status === 'pyramid')) stopCheckCount++;
   }
   return { sellCount, reentryCount, pyramidCount, stopCheckCount };
 }

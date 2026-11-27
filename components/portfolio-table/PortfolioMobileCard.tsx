@@ -18,6 +18,7 @@ import { PriceIndicators, TurtleStatusDetails, UpbitTradeTime } from './columnDe
 import { PIN_STAR } from '../../constants/stateColorLadders';
 import OwnerPositionBadge from './OwnerPositionBadge';
 import HoldingTradeButtons from './HoldingTradeButtons';
+import HoldingPolicyControl from './HoldingPolicyControl';
 import { usePortfolio } from '../../contexts/PortfolioContext';
 
 
@@ -32,6 +33,7 @@ interface PortfolioMobileCardProps {
   exchangeRates?: ExchangeRates;
   onTogglePin?: (id: string) => void;
   onMemoEdit?: (asset: Asset) => void;
+  onEditPolicy?: () => void;
   /** 골든크로스 신호 (`golden-cross` 알림 룰의 MA 페어 기준 — 양수만, 그 외 null) */
   gcCrossDays?: number | null;
   /** 데드크로스 신호 (`dead-cross` 알림 룰의 MA 페어 기준 — 음수만, 그 외 null) */
@@ -57,6 +59,7 @@ const PortfolioMobileCard: React.FC<PortfolioMobileCardProps> = ({
   exchangeRates,
   onTogglePin,
   onMemoEdit,
+  onEditPolicy,
   gcCrossDays,
   dcCrossDays,
   turtle,
@@ -174,6 +177,7 @@ const PortfolioMobileCard: React.FC<PortfolioMobileCardProps> = ({
             <CrossDaysBadge crossDays={dcCrossDays} />
           </div>
 
+          {onEditPolicy && <HoldingPolicyControl asset={asset} row={turtleHoldingsRow} onOpen={onEditPolicy} />}
           {/* Price + Return row */}
           <div className="flex items-baseline gap-3 mt-2">
             <span className="text-white font-semibold text-sm">
@@ -209,6 +213,7 @@ const PortfolioMobileCard: React.FC<PortfolioMobileCardProps> = ({
           label={`${displayName} 관리 메뉴`}
           header={displayName}
           items={buildAssetRowMenuItems({
+            onEditPolicy,
             onTradePlan: openTradePlan,
             onStockReview: openStockReview,
             onBuy: onBuy ? () => onBuy(asset) : undefined,
@@ -225,7 +230,7 @@ const PortfolioMobileCard: React.FC<PortfolioMobileCardProps> = ({
       {showTradeButtons && <div className="px-4 pb-1"><HoldingTradeButtons asset={asset} onBuy={onBuy} onSell={onSell} /></div>}
       {turtleHoldingsRow && (
         <div className="px-4 pb-2 text-xs">
-          <TurtleStatusDetails status={turtleHoldingsRow.status} reasonText={turtleHoldingsRow.reasonText} />
+          {!asset.holdingPolicy && <TurtleStatusDetails status={turtleHoldingsRow.status} reasonText={turtleHoldingsRow.reasonText} />}
           {typeof turtleHoldingsRow.exitGapPct === 'number' && (
             <span className={turtleHoldingsRow.exitGapPct < 0 ? 'text-down' : 'text-gray-400'}>
               청산선까지 {turtleHoldingsRow.exitGapPct.toFixed(1)}%

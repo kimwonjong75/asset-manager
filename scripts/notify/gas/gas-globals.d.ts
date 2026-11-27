@@ -13,6 +13,10 @@ interface GasProperties {
   getProperties(): Record<string, string>;
 }
 
+declare const LockService: {
+  getScriptLock(): { tryLock(timeoutInMillis: number): boolean; releaseLock(): void };
+};
+
 declare const PropertiesService: {
   getScriptProperties(): GasProperties;
 };

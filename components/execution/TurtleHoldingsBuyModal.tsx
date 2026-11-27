@@ -3,7 +3,7 @@
 // "보유종목 터틀" 재매수 계산기 모달 (계획서 PLAN_터틀중심_앱재정비_260925 §4.3, 2026-09-26 승인 P2).
 //
 // 대상 행(TurtleHoldingsRow) = kind='watch'(신규/재진입) 또는 kind='reentry-position'(불타기).
-// 폼 기본값 = 계산된 값(수량·체결가). 체결가를 바꾸면 손절가·다음 불타기가는 **같은 N으로 재계산**해
+// 증권사 실제 수량·체결가를 빈칸에 입력한다. 체결가를 바꾸면 손절가·다음 불타기가는 **같은 N으로 재계산**해
 // 보여준다(라이브 재조회 없음 — 계산 근거는 모달을 연 시점의 N에 고정, TurtleExecuteModal과 동일 관례).
 // [샀음 기록] → actions.recordTurtleBuy. 성공하면 닫힘, 실패하면 사유 표시 + pending 유지(커밋 없음).
 
@@ -15,12 +15,14 @@ import {
 } from '../../utils/turtleHoldings';
 import { resolvePositionFxRate } from '../../utils/turtleHoldingsView';
 import { VOLATILITY_LABELS } from '../../types/turtleHoldings';
+import { localDateString } from '../../utils/localDate';
+import { hasDifferentTurtleFillCurrency } from '../../utils/holdingTradeCurrency';
 import Modal from '../common/Modal';
 import Button from '../common/Button';
 import ManualHelpLink from '../common/ManualHelpLink';
 import { CircleAlert } from 'lucide-react';
 
-const todayISO = (): string => new Date().toISOString().slice(0, 10);
+const todayISO = localDateString;
 // 원통화 표기(KRW 정수+원, USD $소수2 — utils/turtleHoldings.formatMoney 재사용). currency 없으면 '—'.
 const fmt = (n: number | null | undefined, currency?: string): string =>
   typeof n === 'number' && Number.isFinite(n) ? formatMoney(n, currency) : '—';
@@ -34,6 +36,9 @@ const SKIP_REASON_LABEL: Record<string, string> = {
 };
 
 const BUY_REASON_LABEL: Record<string, string> = {
+  'fill-currency-mismatch': '일봉과 체결 통화가 다릅니다. 종목의 거래 통화를 확인해 주세요.',
+  'watch-changed': '재진입 감시 종목이나 방침이 바뀌었습니다. 감시 목록을 다시 확인해 주세요.',
+  'policy-blocked': '현재 운용 방침에서는 이 추가 매수를 기록할 수 없습니다.',
   'asset-not-found': '자산 정보를 찾을 수 없습니다.',
   'position-missing': '연결된 포지션을 찾을 수 없습니다. 이미 종료됐을 수 있습니다.',
   'invalid-fill': '체결가·수량을 확인해 주세요(0보다 커야 합니다).',
@@ -60,8 +65,8 @@ const TurtleHoldingsBuyModal: React.FC = () => {
   if (rowKey !== resetKey) {
     setResetKey(rowKey);
     setFillDate(todayISO());
-    setFillPrice(String(row?.lastClose ?? ''));
-    setQuantity(String(row?.rebuy?.qty ?? ''));
+    setFillPrice('');
+    setQuantity('');
     setIsSubmitting(false);
     setError(null);
   }
@@ -77,6 +82,15 @@ const TurtleHoldingsBuyModal: React.FC = () => {
 
   if (!row) return null;
 
+  const instrument = watchItem ?? data.assets.find(a => a.id === row.assetId);
+  const differentCurrency = instrument && hasDifferentTurtleFillCurrency(instrument.exchange, instrument.currency);
+  if (differentCurrency) return (
+    <Modal open onClose={onClose} title="체결 통화 확인" size="md">
+      <p className="text-sm text-gray-200">{row.name}의 일봉은 원화이고 저장된 통화는 {instrument.currency ?? '미확인'}입니다.
+        {watchItem ? ' 관심종목에서 원화 마켓의 시세를 갱신한 뒤 다시 열어 주세요.'
+          : ' 종목 수정에서 실제 매수 통화와 단가를 확인한 뒤 다시 열어 주세요.'}</p>
+    </Modal>
+  );
   const priceNum = parseFloat(fillPrice);
   const qtyNum = parseFloat(quantity);
   const inputValid = !!fillDate && priceNum > 0 && qtyNum > 0;
@@ -86,7 +100,9 @@ const TurtleHoldingsBuyModal: React.FC = () => {
   // 손절가·다음 불타기가 — 편집된 체결가 기준, 같은 N(모달을 연 시점 값)으로 재계산.
   const n = row.n;
   const projectedStop = n != null && priceNum > 0 ? computeCommonStopPrice(priceNum, n, settings) : null;
-  const projectedNextTrigger = n != null && priceNum > 0 && settings.maxUnitsPerPosition > 1
+  const policy = instrument?.holdingPolicy;
+  const allowPyramid = !policy || policy.pyramidingEnabled === true;
+  const projectedNextTrigger = allowPyramid && n != null && priceNum > 0 && settings.maxUnitsPerPosition > 1
     ? computePyramidTriggerPrice(priceNum, n, settings) : null;
   // "왜 이 손절가인지" 설명 — 계획서 §4.3, 체결가를 바꾸면 같이 갱신된다(같은 N 고정).
   const stopExplanation = n != null && priceNum > 0 && projectedStop != null
@@ -107,7 +123,7 @@ const TurtleHoldingsBuyModal: React.FC = () => {
       if (!watchItem) { setIsSubmitting(false); return; }
       const fxRate = resolvePositionFxRate(watchItem.currency ?? row.currency, data.exchangeRates) ?? undefined;
       const res = await actions.recordTurtleBuy({
-        mode: 'reentry',
+        mode: 'reentry', watchItemId: watchItem.id,
         ticker: watchItem.ticker, exchange: watchItem.exchange, name: watchItem.name,
         categoryId: watchItem.categoryId, currency: watchItem.currency ?? row.currency,
         fillDate, fillPrice: priceNum, quantity: qtyNum, nAtFill: n ?? 0, fxRate,
@@ -166,11 +182,12 @@ const TurtleHoldingsBuyModal: React.FC = () => {
             <span className="text-gray-400">손절 예약가(증권사)</span>
             <span className="text-gray-100 font-medium">{fmt(projectedStop, row.currency)}</span>
           </div>
-          <div className="flex items-center justify-between gap-2">
+          {allowPyramid && <div className="flex items-center justify-between gap-2">
             <span className="text-gray-400">다음 불타기가</span>
             <span className="text-gray-100 font-medium">{fmt(projectedNextTrigger, row.currency)}</span>
-          </div>
+          </div>}
         </div>
+        {row.rebuy && row.rebuy.qty > 0 && <p className="mt-2 text-xs text-gray-300">계산 수량 {row.rebuy.qty.toLocaleString('ko-KR')} · 아래에는 실제 체결 수량을 입력하세요.</p>}
         {stopExplanation && <p className="mt-2.5 text-xs text-gray-400">{stopExplanation}</p>}
         {row.rebuy?.skipReason && (
           <p className="mt-2 text-xs text-warning">{SKIP_REASON_LABEL[row.rebuy.skipReason] ?? row.rebuy.skipReason}</p>

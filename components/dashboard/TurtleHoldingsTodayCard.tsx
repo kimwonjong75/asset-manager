@@ -65,6 +65,9 @@ const RowLine: React.FC<RowLineProps> = ({ row, text, subText, target, expanded,
         <span className="text-xs text-gray-500">{row.ticker}</span>
       </div>
       <p className="mt-1 text-xs text-gray-300 leading-relaxed">{text}</p>
+      {row.holdingPolicyEvaluation?.netProceedsKRW != null && row.holdingPolicyEvaluation.remainingPrincipalKRW != null && (
+        <p className="mt-1 text-xs text-gray-400">예상 순매도대금 {formatKRW(row.holdingPolicyEvaluation.netProceedsKRW)} · 잔여 원금 {formatKRW(row.holdingPolicyEvaluation.remainingPrincipalKRW)}</p>
+      )}
       {expanded && subText && <p className="mt-1 text-xs text-gray-400 leading-relaxed">{subText} · {REENTRY_BASELINE_CAPTION}</p>}
     </>
   );
@@ -173,11 +176,15 @@ const TurtleHoldingsTodayCard: React.FC = () => {
     && shouldPromptDrawdownReferenceRefresh(holdingsSettings.drawdownReferenceSetAt, new Date());
 
   const buckets = useMemo<Bucket[]>(() => {
-    const sell = model.rows.filter(r => r.status === 'sell');
+    const sell = model.rows.filter(r => r.status === 'sell' && r.holdingPolicyEvaluation?.phase !== 'exit-ready');
+    const atCost = model.rows.filter(r => r.holdingPolicyEvaluation?.phase === 'exit-ready');
+    const armed = model.rows.filter(r => r.holdingPolicyEvaluation?.phase === 'armed-today');
     const reentry = model.rows.filter(r => r.status === 'reentry');
     const pyramid = model.rows.filter(r => r.status === 'pyramid');
-    const stopCheck = model.rows.filter(r => r.kind === 'reentry-position' && (r.status === 'hold' || r.status === 'pyramid'));
+    const stopCheck = model.rows.filter(r => r.kind === 'reentry-position' && (!r.holdingPolicyEvaluation || r.holdingPolicyEvaluation.phase === 'active') && (r.status === 'hold' || r.status === 'pyramid'));
     return [
+      { key: 'at-cost', title: '본전 매도 검토', rows: atCost, clickable: false },
+      { key: 'armed', title: '터틀 감시 시작', rows: armed, clickable: false },
       { key: 'sell', title: '팔 때', rows: sell, clickable: false, showReentryBaseline: true },
       { key: 'reentry', title: '다시 살 때', rows: reentry, clickable: true },
       { key: 'pyramid', title: '추가 매수', rows: pyramid, clickable: true },
@@ -206,10 +213,10 @@ const TurtleHoldingsTodayCard: React.FC = () => {
   };
 
   return (
-    <div className="rounded-card border border-primary/40 bg-primary/5 p-4 sm:p-5" aria-label="터틀 오늘 할 일">
+    <div className="rounded-card border border-primary/40 bg-primary/5 p-4 sm:p-5" aria-label="보유종목 오늘 할 일">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <h3 className="text-sm sm:text-base font-semibold text-white">터틀 오늘 할 일</h3>
+          <h3 className="text-sm sm:text-base font-semibold text-white">보유종목 오늘 할 일</h3>
           <ManualHelpLink anchor="today" />
         </div>
         <div className="flex items-center gap-2">

@@ -17,7 +17,10 @@
 //   · 손절가는 항상 **상향만**(래칫) — `recordTurtlePyramid`가 `Math.max(기존 손절가, 새로 계산된 손절가)`로
 //     하향을 방지한다(입력 오류로 새 체결가가 이전보다 낮게 들어와도 손절선이 후퇴하지 않는다).
 
-import { WatchlistItem, Asset, normalizeExchange } from '../types';
+import { WatchlistItem, Asset } from '../types';
+import { instrumentMarket } from './ownerHoldings';
+import { getAssetOwner } from '../types/owner';
+import type { HoldingSaleTransition } from '../types/turtleHoldingsActions';
 import { TurtlePosition, TurtleUnit, TurtleExitReason } from '../types/turtle';
 import {
   TurtleHoldingsSettings,
@@ -36,6 +39,8 @@ function isPosNum(v: unknown): v is number {
 
 /** 감시 등록에 필요한 자산 메타(신규 관심종목 생성 시 채워짐). */
 export interface TurtleExitAssetRef {
+  owner?: Asset['owner'];
+  holdingPolicy?: Asset['holdingPolicy'];
   ticker: string;
   exchange: string;
   name: string;
@@ -91,10 +96,7 @@ export function recordTurtleExit(
     source,
   };
 
-  const idx = input.watchlist.findIndex(
-    w => w.ticker.toUpperCase() === asset.ticker.toUpperCase()
-      && normalizeExchange(w.exchange) === normalizeExchange(asset.exchange),
-  );
+  const idx = input.watchlist.findIndex(w => sameWatchHolding(w, asset));
 
   let watchlist: WatchlistItem[];
   let watchItemId: string;
@@ -102,9 +104,15 @@ export function recordTurtleExit(
   if (idx >= 0) {
     watchItemId = input.watchlist[idx].id;
     isNewWatchItem = false;
-    watchlist = input.watchlist.map((w, i) => (
-      i === idx ? { ...w, isTurtleCandidate: true, turtleWatch: watchEntry } : w
-    ));
+    watchlist = input.watchlist.map((w, i) => {
+      if (i === idx) return { ...w, owner: getAssetOwner(asset), holdingPolicy: asset.holdingPolicy, isTurtleCandidate: true, turtleWatch: watchEntry };
+      if (asset.holdingPolicy && sameWatchHolding(w, asset)) {
+        const next = { ...w, isTurtleCandidate: false, holdingPolicy: asset.holdingPolicy };
+        delete next.turtleWatch;
+        return next;
+      }
+      return w;
+    });
   } else {
     watchItemId = input.makeWatchId();
     isNewWatchItem = true;
@@ -115,6 +123,8 @@ export function recordTurtleExit(
       name: asset.name,
       categoryId: asset.categoryId,
       currency: asset.currency,
+      owner: getAssetOwner(asset),
+      holdingPolicy: asset.holdingPolicy,
       isTurtleCandidate: true,
       turtleWatch: watchEntry,
     };
@@ -126,6 +136,44 @@ export function recordTurtleExit(
     : null;
 
   return { ok: true, watchlist, watchItemId, isNewWatchItem, closedPosition };
+}
+
+function sameWatchHolding(w: WatchlistItem, asset: TurtleExitAssetRef): boolean {
+  return getAssetOwner(w) === getAssetOwner(asset)
+    && w.ticker.trim().toUpperCase() === asset.ticker.trim().toUpperCase()
+    && instrumentMarket(w.exchange) === instrumentMarket(asset.exchange);
+}
+
+/** 실제 전량 체결 하나로 잔고와 함께 저장할 감시·포지션 상태. 부분 체결은 호출하지 않는다. */
+export function afterFullHoldingSale(
+  asset: Asset, soldAt: string, soldPriceOriginal: number, legacyWatch: boolean,
+  watchlist: WatchlistItem[], positions: TurtlePosition[], makeWatchId: () => string,
+): HoldingSaleTransition {
+  const policy = asset.holdingPolicy;
+  const position = positions.find(p => p.assetId === asset.id && p.status === 'open' &&
+    (p.origin === 'holdings-reentry' || !!policy));
+  const shouldWatch = policy ? policy.mode === 'turtle-after-cost' && !!policy.armedOn && soldAt > policy.armedOn : legacyWatch;
+  const tracked = shouldWatch ? recordTurtleExit({
+    asset: { ...asset, name: asset.customName?.trim() || asset.name }, soldAt, soldPriceOriginal,
+    watchlist, makeWatchId,
+  }) : null;
+  let nextWatchlist = watchlist;
+  if (tracked?.ok) nextWatchlist = tracked.watchlist;
+  else if (policy) {
+    nextWatchlist = watchlist.map(w => {
+      if (!sameWatchHolding(w, asset)) return w;
+      const next = { ...w, isTurtleCandidate: false, holdingPolicy: policy };
+      delete next.turtleWatch;
+      return next;
+    });
+  }
+  return {
+    watchlist: nextWatchlist,
+    turtlePositions: position ? positions.map(p => p.id === position.id
+      ? { ...p, status: 'closed', closedAt: soldAt, exitReason: shouldWatch ? 'channel-exit' : 'manual' } : p) : positions,
+    watchItemId: tracked?.ok ? tracked.watchItemId : null, isNewWatchItem: tracked?.ok ? tracked.isNewWatchItem : false,
+    closedPositionId: position?.id ?? null,
+  };
 }
 
 // ════════════════════════════════════════════════════════════════════════════
