@@ -122,6 +122,13 @@ const TurtleHoldingsSettingsSection: React.FC = () => {
       )}
 
       <div className="px-6 py-4">
+        <FieldRow label="운용 방침 기본 매도 비용률 (%)" note="초기 추정값은 0.25%입니다. 계좌 수수료·세금에 맞춰 조정하세요. 종목별로 저장한 비용률은 유지됩니다.">
+          <input type="number" aria-label="기본 매도 비용률 (%)" min={0} step="any"
+            value={draft.defaultSellCostPct} onChange={e => {
+              const value = e.currentTarget.valueAsNumber;
+              if (value >= 0 && value < 100) patch({ defaultSellCostPct: value });
+            }} className={numInput} />
+        </FieldRow>
         {/* 진입(재진입) */}
         <FieldRow label="다시 살 때(재진입) — 직전 N일 최고가" badge={turtleFieldBadge('entryLookback', draft.entryLookback)}>
           <input

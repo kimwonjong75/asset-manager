@@ -98,7 +98,7 @@
 
 - 재매수 감시에 실제 등록한 경우에만 매도 성공 상태에 감시 시작을 덧붙인다.
 
-- `tests/holdingPolicyFillParity.ts`는 실제 `useAssetActions`를 KRW 합성 잔고에 연결하여 부분/전량·중복 재시도·불타기 거부·감시 전환과 원장 커밋 횟수를 검사한다. 외부 연결 없이 실행한다.
+- `tests/holdingPolicyFillParity.ts`는 기본 감시 범위에서 유선 방침을 저장해도 원종의 같은 종목이 보존되는지 확인한다. 실제 `useAssetActions`를 KRW 합성 잔고에 연결하여 부분/전량·중복 재시도·불타기 거부·감시 전환과 원장 커밋 횟수를 검사한다. 외부 연결 없이 실행한다.
 
 - `tests/turtleHoldingsStateParity.ts`는 개인별 부분·전량 체결, 활성 당일 예외, 중복 감시 정리, 원장에 남은 구 큐 차단, 가족·다른 거래소의 보존을 합성 데이터로 검증한다.
 
@@ -148,8 +148,8 @@
 
 ### 보유자별 통합 리스트
 - 미지정 보유분의 데스크톱 표·모바일 카드와 편집기는 `holdingPolicySuggestion(principalKRW)`로 1천만원 미만/이상 제안을 표시한다. 원가가 미확인이면 확인 후 분류하도록 안내하며 저장은 선택한 사람의 명시적 조작으로만 실행한다. 지정 후 목록에는 제안 대신 해당 방침의 판정이 나온다.
-- `PortfolioTable`은 실제 보유분 ID로 `HoldingPolicyEditor`를 하나만 열고 `PortfolioTableRow`·`PortfolioMobileCard`의 직접 버튼과 공용 `rowMenuItems`의 ‘운용 방침’ 메뉴가 같은 편집기를 사용한다. 공동 미분리·현금·전략 제외는 신규 선택에서 제외한다. `columnDefinitions`의 선택형 터틀 상태 열도 방침이 있으면 같은 판정 사유를 쓴다.
-- `HoldingPolicyControl`은 보유자별 방침 버튼과 공통 판정 사유를 표시한다. 홈과 보유종목 카드는 `HoldingPolicyAmounts`로 예상 순매도대금과 잔여 원금을 발송 본문과 같은 형식으로 표시한다. 두 값 중 하나라도 없으면 금액 줄을 생략한다. `HoldingPolicyEditor`는 방침·원금·비용률 칸에 접근성 이름을 붙이며 1천만원 기준은 안내로만 사용한다. 외화 잔고는 실제 매수 당시 환율로 집계한 증권사 원화 매입원금을 입력한다. 비용 미확인은 빈 값, 비용 없음은 명시적 0이다.
+- `PortfolioTable`은 실제 보유분 ID로 `HoldingPolicyEditor`를 하나만 열고 `PortfolioTableRow`·`PortfolioMobileCard`의 직접 버튼과 공용 `rowMenuItems`의 ‘운용 방침’ 메뉴가 같은 편집기를 사용한다. 운용 방침은 보유자가 확정된 모든 비현금 종목에서 선택·저장할 수 있다. 편집기는 monitoringExclusion으로 터틀 감시 제외 사유를 표시한다. editedHoldingPolicyAssets는 현금의 신규 방침과 보유자·수량 충돌을 막고, OwnerPositionBadge는 공동 미분리 잔고에 분할 후 선택 안내를 표시한다. `columnDefinitions`의 선택형 터틀 상태 열도 방침이 있으면 같은 판정 사유를 쓴다.
+- `HoldingPolicyControl`은 보유자별 방침 버튼과 공통 판정 사유를 표시한다. 홈과 보유종목 카드는 `HoldingPolicyAmounts`로 예상 순매도대금과 잔여 원금을 발송 본문과 같은 형식으로 표시한다. 두 값 중 하나라도 없으면 금액 줄을 생략한다. `HoldingPolicyEditor`는 방침·원금·비용률 칸에 접근성 이름을 붙이며 1천만원 기준은 안내로만 사용한다. HoldingPolicyEditor의 defaultSellCostPct는 PortfolioTable이 터틀 설정에서 전달한다. 비용은 종목 저장값(0 포함), 설정값 순으로 미리 채우며 접힌 변경란에서 수정한다. 잔여 원금은 자동 표시하며 매입 정보가 부족할 때만 직접 입력한다.
 - 보유분 터틀 방침은 종가가 직전 20거래일 최저가와 같아도 청산 검토 대상이다. ‘재매수 후 불타기 알림’은 처음에 꺼져 있고 이 선택만 바꾸면 방침 세대·감시 시작일·활성일과 재진입 유닛 한도를 보존한다.
 
 - 거래소·티커가 누락된 구형 잔고는 빈 시장으로 판정해 기존 카테고리 단위 또는 '단위'를 표시한다.
@@ -913,7 +913,7 @@ interface SellRecord {
 
 - `holdingPolicyStartDate(exchange, now)`는 방침을 처음 설정하거나 매입정보를 정정할 때 거래소 기준일을 사용한다. 이미 터틀 감시가 시작된 경우 비용을 다시 입력해도 기존 활성일부터 감시를 이어간다.
 
-- 앱 `docs/터틀_사용설명서.md`의 요약·오늘 할 일 표는 보유자별 운용 방침, 예상 비용/실제 원금 입력과 실제 체결 후 감시 전환을 설명한다.
+- 앱 `docs/터틀_사용설명서.md`의 요약·오늘 할 일 표는 보유자별 운용 방침, 예상 비용 기본값·보유 원금 자동 계산과 실제 체결 후 감시 전환을 설명한다.
 
 - 저장 통화가 외화인 기존 코인 재매수 포지션은 과거 손절가·N과 원화 봉의 단위를 확정할 수 없어 알림을 보류한다. 관심 종목의 55일 돌파와 일반 보유분의 증권사 확인 원금 판정은 별도 경로다.
 
@@ -927,9 +927,9 @@ interface SellRecord {
 
 - `turtleHoldingsView`의 legacy/reentry 행 빌더는 선택적 `policyFx`로 보유자별 방침을 우선 판정해 `holdingPolicyEvaluation`과 공통 문구를 제공한다. 자료 부족 또는 장기보유/대기/활성 당일은 이전 매도·불타기선을 표시하지 않는다. 재진입 행은 보유자·종목 중복, 실제 전량 매도일 및 최신 세션을 확인한다. KR/JP/US 마감과 코인 정착 유예는 앱·GAS 공용 시장 시계를 따른다.
 
-- 정책 종목의 불타기는 `pyramidingEnabled === true`에서만 켠다. `maxUnitsPerPosition`은 주문 크기 산정에 그대로 사용한다. `assetMutations.buildBuyMoreMutation`은 원화 확인 단위원가에 실제 추가 매수 금액을 합산한다. 외화 추가매수는 해당 잔고의 증권사 원가 재확인을 요청한다.
+- 정책 종목의 불타기는 `pyramidingEnabled === true`에서만 켠다. `maxUnitsPerPosition`은 주문 크기 산정에 그대로 사용한다. `assetMutations.buildBuyMoreMutation`은 원화 확인 단위원가에 실제 추가 매수 금액을 합산한다. 외화 추가매수 후 기존 확인 단위원가가 해제되면 갱신된 평단과 등록 매입환율로 추산한다.
 
-- `utils/holdingPolicy.ts`의 `getHoldingPrincipalKRW(asset)`는 보유자별 잔여 수량과 원화 단위원가를 곱한다. 외화의 과거 조회 환율이나 여러 체결의 수량가중 평균 환율을 실제 개인 원가로 간주하지 않는다. 외화 본전 알림에는 증권사에서 확인한 원화 원금이 필요하다. `evaluateHoldingPolicyHistory`는 선택일 이후의 확정 종가와 같은 날 환율만으로 최초 활성일을 복원한다. `evaluateHoldingPolicy`는 시세일 불일치·원가/비용 누락 시 매도 신호를 내지 않는다. 활성 후에는 원금과 무관하게 다음 완료봉부터 20일 저가로 감시하며 55일 재진입의 첫 수량 설정을 보존한다.
+- `utils/holdingPolicy.ts`의 `getHoldingPrincipalKRW(asset)`는 보유자별 잔여 수량과 원화 단위원가를 곱한다. 확인 단위원가가 있으면 우선 사용하고 그 외에는 등록 매입단가와 매입환율로 추산한다. 현재 환율로 대체하지 않으며 미분리·수량/매입정보 부족은 null이다. `evaluateHoldingPolicyHistory`는 선택일 이후의 확정 종가와 같은 날 환율만으로 최초 활성일을 복원한다. `evaluateHoldingPolicy`는 시세일 불일치·원가/비용 누락 시 매도 신호를 내지 않는다. 활성 후에는 원금과 무관하게 다음 완료봉부터 20일 저가로 감시하며 55일 재진입의 첫 수량 설정을 보존한다.
 - `useAssetActions`의 일반 수정은 최신 방침·활성일을 보존하고, 종목·계정 교체나 공동 잔고 분할 시 다른 보유분에 방침을 복제하지 않는다. 과거 매입정보를 수정하면 원가를 다시 계산한다. 고점 하락률 경보 숫자와 표의 경보 필터는 별도 방침 종목을 제외한다.
 
 ### 암호화폐 분기 판단 (`shouldUseUpbitAPI`)
@@ -1396,6 +1396,7 @@ log.error('시세 조회 실패:', error);
 
 ### 데이터 무결성
 - `utils/bulkAssetOps.applyBulkAssetPatch`는 보유자 변경 때 이전 사람의 운용 방침·활성일·확인 단가를 해제하고, 버킷만 바뀌면 방침을 유지한다. `tests/ownerBulkParity.ts`가 두 경우를 검증한다.
+- `TurtleHoldingsSettingsSection`에서 기본 매도 비용률(defaultSellCostPct)을 저장하고 `resolveHoldingsSettings`는 구형·잘못된 값에 초기 추정값 0.25%를 적용한다. 범위는 0 이상 100 미만이다.
 - `tests/holdingPolicyEditParity.ts`는 시장 현지 날짜·0%와 미확인 비용·잔여 원금·계정/수량/세대 충돌·활성 후 불타기 토글 및 비용 변경·공동 잔고를 검증한다.
 - `editedHoldingPolicyAssets(snapshot, edit, now, cycleId)`는 현금·관리 범위 검증 후 변경된 보유분만 교체하거나 오류 문구를 반환한다. 원금 확인 표시를 임의로 해제하지 않는다. `PortfolioContext`와 `tmp/turtle-preview/mockPortfolio.ts`가 같은 저장 함수를 쓴다.
 - `types/holdingPolicyUi.ts`는 보유분 편집 입력·모달 Props·선택 라벨을 정의한다. `utils/holdingPolicyEdit.buildHoldingPolicyChange(asset, edit, now, newCycleId)`는 실ID·보유자·수량·방침 세대가 일치할 때만 변경한다. 직접 확인한 증권사 원금은 주당 원화로 보관하고 유효한 비용률(명시적 0 포함)만 받는다. 같은 터틀 모드에서 비용을 바꿔도 기존 활성일은 유지한다. 모드나 원가 조건이 바뀌면 세대와 시작일을 갱신하고 미지정 해제 시 필드가 비워진다.

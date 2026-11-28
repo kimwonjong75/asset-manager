@@ -3,7 +3,6 @@ import { isCashCategory } from '../types/category';
 import { getAssetOwner, hasUnresolvedOwners } from '../types/owner';
 import type { HoldingPolicyChange, HoldingPolicyEdit } from '../types/holdingPolicyUi';
 import type { PortfolioSaveSnapshot } from '../types/portfolioSave';
-import { isInHoldingsScope, resolveHoldingsSettings } from './turtleHoldings';
 import { marketLocalDate, resolveMarketTz } from './todayTurtle';
 import { isCryptoExchange } from './marketCurrency';
 
@@ -52,8 +51,7 @@ export function holdingPolicyStartDate(exchange: string, now: Date): string {
 /** Commit only the matching holding, preserving every other balance from the current snapshot. */
 export function editedHoldingPolicyAssets(snap: PortfolioSaveSnapshot, edit: HoldingPolicyEdit, now: Date, cycleId: string): Asset[] | string {
   const asset = snap.assets.find(a => a.id === edit.assetId);
-  if (asset && edit.mode && (isCashCategory(asset.categoryId, snap.categoryStore.categories) ||
-      !isInHoldingsScope(asset, resolveHoldingsSettings(snap.turtleSettings.holdings)))) {
+  if (asset && edit.mode && isCashCategory(asset.categoryId, snap.categoryStore.categories)) {
     return '이 보유분은 운용 대상에서 제외되어 있습니다.';
   }
   const result = buildHoldingPolicyChange(asset, edit, now, cycleId);

@@ -10,7 +10,7 @@ export default function OwnerPositionBadge({ asset, quantity = asset.quantity }:
   const { data } = usePortfolio();
   if (hasUnresolvedOwners(asset)) {
     return <span className="inline-flex flex-wrap items-center gap-1 text-xs text-warning" onClick={e => e.stopPropagation()} onKeyDown={e => e.stopPropagation()}>
-      <span>분할 확인 필요</span><OwnerSplitButton asset={asset} />
+      <span>분할 확인 필요 · 운용 방침은 분할 후 선택</span><OwnerSplitButton asset={asset} />
     </span>;
   }
   const owner = getAssetOwner(asset);

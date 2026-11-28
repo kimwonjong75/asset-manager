@@ -160,7 +160,7 @@ function roundTrip<T>(v: T): T {
     entryLookback: 55, exitMethod: 'donchian', exitLookback: 20, maPeriod: 50, atrTrailMultiple: 3,
     stopMultipleN: 2, riskPerUnitPct: 1, maxUnitsPerPosition: 4, pyramidSpacing: '2R', pyramidCustomN: 1,
     pyramidSizeMultiplier: 1, positionCapPct: 10, maxTotalRiskPct: 24, drawdownScalingEnabled: true,
-    minOrderKRW: 50_000, excludeFamilyOwner: true, excludedAssetIds: ['a1'], excludedCategoryIds: [9],
+    minOrderKRW: 50_000, defaultSellCostPct: 0.15, excludeFamilyOwner: true, excludedAssetIds: ['a1'], excludedCategoryIds: [9],
   };
   const settings: TurtleSettings = {
     satelliteBudgetKRW: 100_000_000, riskPerUnitPct: 0.5, maxUnitsPerPosition: 2, entryLookback: 55,
@@ -178,6 +178,9 @@ function roundTrip<T>(v: T): T {
   const loadedLegacy = roundTrip(legacySettings) as TurtleSettings & { holdings?: unknown };
   check('구 저장본은 holdings 키 없음(직렬화 생략)', 'holdings' in loadedLegacy, false);
   const resolvedLegacy = resolveHoldingsSettings(loadedLegacy.holdings as TurtleHoldingsSettings | undefined);
+  check('구형 설정의 기본 매도 비용률', resolvedLegacy.defaultSellCostPct, 0.25);
+  check('명시한 비용 0% 보존', resolveHoldingsSettings({ defaultSellCostPct: 0 }).defaultSellCostPct, 0);
+  check('잘못된 비용 복구', resolveHoldingsSettings({ defaultSellCostPct: 100 }).defaultSellCostPct, 0.25);
   check('구 저장본 → resolveHoldingsSettings 기본값(entryLookback=55)', resolvedLegacy.entryLookback, 55);
   check('구 저장본 → resolveHoldingsSettings 기본값(positionCapPct=10)', resolvedLegacy.positionCapPct, 10);
 

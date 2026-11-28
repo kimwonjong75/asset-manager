@@ -10,7 +10,7 @@ import PortfolioMobileCard from './portfolio-table/PortfolioMobileCard';
 import PortfolioOwnerGroupRow from './portfolio-table/PortfolioOwnerGroupRow';
 import HoldingPolicyEditor from './portfolio-table/HoldingPolicyEditor';
 import { isCashCategory } from '../types/category';
-import { isInHoldingsScope, resolveHoldingsSettings } from '../utils/turtleHoldings';
+import { holdingsExclusionReason, resolveHoldingsSettings } from '../utils/turtleHoldings';
 import OwnerTradeHistory from './portfolio-table/OwnerTradeHistory';
 import ColumnResizeHandle from './portfolio-table/ColumnResizeHandle';
 import MemoEditPopup from './common/MemoEditPopup';
@@ -496,8 +496,7 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
     const gc = badgePairs.gcEnabled ? crosses?.[badgePairs.gcShort]?.[badgePairs.gcLong] : null;
     const dc = badgePairs.dcEnabled ? crosses?.[badgePairs.dcShort]?.[badgePairs.dcLong] : null;
     const canTrade = !hasUnresolvedOwners(asset);
-    const canEditPolicy = canTrade && (asset.holdingPolicy ||
-      (!isCashCategory(asset.categoryId, data.categoryStore.categories) && isInHoldingsScope(asset, holdingsSettings)));
+    const canEditPolicy = canTrade && (asset.holdingPolicy || !isCashCategory(asset.categoryId, data.categoryStore.categories));
     const pickOwner = ui.accountView === 'ALL' && !groupDetail;
     const props = {
       asset, history, onEdit, onRefreshOne, exchangeRates, onSelect: handleSelect, showTradeButtons: groupDetail,
@@ -799,6 +798,8 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
 
       {/* 메모 편집 팝업 */}
       {policyAsset && <HoldingPolicyEditor key={policyAsset.id} asset={policyAsset}
+        defaultSellCostPct={holdingsSettings.defaultSellCostPct}
+        monitoringExclusion={holdingsExclusionReason(policyAsset, holdingsSettings)}
         row={turtleHoldingsRowsByAssetId.get(policyAsset.id)}
         onSave={actions.saveHoldingPolicy} onClose={() => setPolicyAssetId(null)} />}
       {memoEditAsset && (

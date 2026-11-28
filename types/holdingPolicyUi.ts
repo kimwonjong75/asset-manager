@@ -16,7 +16,9 @@ export interface HoldingPolicyEdit {
 }
 
 export interface HoldingPolicyEditorProps {
+  defaultSellCostPct: number;
   asset: Asset;
+  monitoringExclusion: string | null;
   row?: TurtleHoldingsRow;
   onSave: (edit: HoldingPolicyEdit) => string | null;
   onClose: () => void;

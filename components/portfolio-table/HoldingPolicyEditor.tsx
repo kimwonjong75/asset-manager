@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { Currency } from '../../types';
 import type { HoldingPolicy } from '../../types/holdingPolicy';
 import { HOLDING_POLICY_LABELS, type HoldingPolicyEditorProps } from '../../types/holdingPolicyUi';
 import { getAssetOwner, getOwnerLabel } from '../../types/owner';
@@ -16,11 +15,11 @@ const descriptions: Record<HoldingPolicy['mode'], string> = {
   'turtle-after-cost': '본전을 확인한 날부터 감시합니다. 이후 종가가 직전 20거래일 최저가 이하가 되면 매도를 알립니다.',
 };
 
-export default function HoldingPolicyEditor({ asset, row, onSave, onClose }: HoldingPolicyEditorProps) {
+export default function HoldingPolicyEditor({ asset, row, defaultSellCostPct, monitoringExclusion, onSave, onClose }: HoldingPolicyEditorProps) {
   const [initial] = useState(asset);
   const previous = initial.holdingPolicy;
   const [mode, setMode] = useState<HoldingPolicy['mode'] | null>(previous?.mode ?? null);
-  const [feeText, setFeeText] = useState(String(previous?.sellCostPct ?? ''));
+  const [feeText, setFeeText] = useState(String(previous?.sellCostPct ?? defaultSellCostPct));
   const [pyramidingEnabled, setPyramidingEnabled] = useState(previous?.pyramidingEnabled === true);
   const [principalText, setPrincipalText] = useState(previous?.confirmedUnitCostKRW === undefined
     ? '' : String(previous.confirmedUnitCostKRW * initial.quantity));
@@ -31,7 +30,7 @@ export default function HoldingPolicyEditor({ asset, row, onSave, onClose }: Hol
     const problem = onSave({
       assetId: initial.id, owner: getAssetOwner(initial), expectedQuantity: initial.quantity,
       expectedCycleId: previous?.cycleId, mode, pyramidingEnabled,
-      sellCostPct: feeText.trim() ? Number(feeText) : undefined,
+      sellCostPct: feeText.trim() ? Number(feeText) : defaultSellCostPct,
       confirmedPrincipalKRW: principalText.trim() ? Number(principalText) : undefined,
     });
     if (problem) setError(problem);
@@ -41,8 +40,10 @@ export default function HoldingPolicyEditor({ asset, row, onSave, onClose }: Hol
     description={`${getOwnerLabel(initial.owner)} · ${initial.customName?.trim() || initial.name} (${initial.ticker})`}
     footer={<><Button variant="secondary" onClick={onClose}>취소</Button><Button onClick={save}>방침 저장</Button></>}>
     <div className="space-y-4">
+      {monitoringExclusion && <p className="text-sm text-warning">터틀 감시 제외 · {monitoringExclusion} 방침은 저장할 수 있으며 현재 설정에서는 이 보유분의 터틀 알림이 꺼져 있습니다.</p>}
       <div className="text-sm text-gray-300">
-        <div>잔여 투자원금 <strong>{principal === null ? '확인 필요' : formatKRW(principal)}</strong></div>
+        <div>잔여 투자원금 <strong>{principal === null ? '원가 정보 부족' : formatKRW(principal)}</strong></div>
+        {principal !== null && <p className="text-xs text-gray-400">{previous?.confirmedUnitCostKRW != null ? '기존 확인 원금 기준' : '등록 매입단가·매입환율과 현재 수량 기준'}</p>}
         <p className="mt-1 text-xs text-gray-400">{holdingPolicySuggestion(principal)}</p>
       </div>
       <fieldset className="space-y-1">
@@ -59,21 +60,22 @@ export default function HoldingPolicyEditor({ asset, row, onSave, onClose }: Hol
         </label>
       </fieldset>
       {needsCost && <div className="space-y-3">
+        <details>
+          <summary className="cursor-pointer text-sm">예상 매도 비용률 {feeText || defaultSellCostPct}% · 변경</summary>
         <label className="block text-sm">
           예상 매도 비용률 (%)
           <input className="mt-1 block w-full rounded border border-gray-600 bg-gray-900 px-3 py-2" type="number"
             aria-label="예상 매도 비용률 (%)" min="0" step="any" inputMode="decimal" value={feeText} onChange={e => setFeeText(e.target.value)} />
-          <span className="mt-1 block text-xs text-gray-400">수수료·거래세·환전 비용 등을 합산하세요. 비용이 없으면 0을 입력하세요. 비워 두면 본전 알림을 보류합니다.</span>
+          <span className="mt-1 block text-xs text-gray-400">이 종목에 적용할 수수료·세금 등을 반영하세요. 빈칸은 설정값 {defaultSellCostPct}%, 비용 없음은 0%입니다.</span>
         </label>
-        <label className="block text-sm">
+        </details>
+        {principal === null && <label className="block text-sm">
           증권사에서 확인한 잔여 투자원금 (원)
           <input className="mt-1 block w-full rounded border border-gray-600 bg-gray-900 px-3 py-2"
             aria-label="증권사에서 확인한 잔여 투자원금 (원)" type="number" min="0" step="any" inputMode="decimal"
             value={principalText} onChange={e => setPrincipalText(e.target.value)} />
-          <span className="mt-1 block text-xs text-gray-400">{asset.currency === Currency.KRW
-            ? '원금 확인이 필요하거나 표시 금액이 다르면, 이 보유자에게 남은 수량의 매입원금을 입력하세요.'
-            : '증권사의 원화 매입원가를 확인해 이 보유자에게 남은 수량의 원금을 입력하세요. 외화 체결금액으로 계산할 때는 각 매수 당시 실제 환율을 적용하세요.'}</span>
-        </label>
+          <span className="mt-1 block text-xs text-gray-400">등록된 매입 정보로 계산할 수 없습니다. 잔여 원금을 입력하거나 종목의 매입 정보를 보완하세요.</span>
+        </label>}
       </div>}
       {mode === 'turtle-after-cost' && <label className="flex items-center gap-2 text-sm">
         <input type="checkbox" checked={pyramidingEnabled} onChange={e => setPyramidingEnabled(e.target.checked)} />

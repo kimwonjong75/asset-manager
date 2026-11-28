@@ -9,6 +9,7 @@ import { DEFAULT_TURTLE_SETTINGS } from '../types/turtle';
 import { DEFAULT_VALUATION_SETTINGS } from '../types/valuation';
 import { hasDifferentTurtleFillCurrency } from '../utils/holdingTradeCurrency';
 import { applyUpbitHoldingQuote } from '../utils/applyMarketQuotes';
+import { editedHoldingPolicyAssets } from '../utils/holdingPolicyEdit';
 
 // 실제 거래 훅의 잔고/원장/감시 커밋을 인메모리에서 관측한다. KRW이면 네트워크 요청이 필요 없다.
 const asset: Asset = { id: 'synth', name: '합성', ticker: 'SYNTH', categoryId: 1, exchange: 'KRX',
@@ -20,6 +21,14 @@ let snapshot: PortfolioSaveSnapshot = { assets: [asset, family], sellHistory: []
   sellAlertDropRate: 10, categoryStore: DEFAULT_CATEGORY_STORE, actionQueue: [], turtlePositions: [],
   knowledgeBase: { version: 2, sources: [], claims: [], rules: [], journal: [], lastUpdated: '2026-10-01' },
   turtleSettings: DEFAULT_TURTLE_SETTINGS, valuationSettings: DEFAULT_VALUATION_SETTINGS };
+const savedFamily = editedHoldingPolicyAssets(
+  { ...snapshot, assets: [asset, { ...family, holdingPolicy: undefined }] },
+  { assetId: family.id, owner: 'YUSEON', expectedQuantity: 5, mode: 'hold' },
+  new Date('2026-11-28T00:00:00Z'), 'family-cycle',
+);
+assert(Array.isArray(savedFamily));
+assert.equal(savedFamily[0], asset);
+assert.equal(savedFamily[1].holdingPolicy?.cycleId, 'family-cycle');
 let actions!: ReturnType<typeof useAssetActions>;
 let commits = 0;
 function CaptureActions() {

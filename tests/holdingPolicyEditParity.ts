@@ -51,7 +51,9 @@ const blank = changed({ sellCostPct: undefined, confirmedPrincipalKRW: undefined
 assert(blank.ok && blank.policy);
 assert.equal(blank.policy.sellCostPct, undefined);
 assert.equal(blank.policy.armedOn, undefined);
-assert.equal(getHoldingPrincipalKRW({ ...asset, purchaseExchangeRate: 1_550, holdingPolicy: blank.policy }), null);
+assert.equal(getHoldingPrincipalKRW({ ...asset, purchaseExchangeRate: 1_550, holdingPolicy: blank.policy }), 620_000);
+assert.equal(getHoldingPrincipalKRW({ ...asset, quantity: 2, purchaseExchangeRate: 1_550 }), 310_000);
+assert.equal(getHoldingPrincipalKRW({ ...asset, purchaseExchangeRate: 0 }), null);
 const cleared = changed({ mode: null });
 assert(cleared.ok && cleared.policy === undefined);
 const conflict = buildHoldingPolicyChange({ ...armed, memo: '원종&유선 공동' }, liveEdit, when, 'B');

@@ -7,12 +7,12 @@ import { closeConfirmTime, lastSessionDate } from './marketHours';
 
 const positive = (n: number | null | undefined): n is number => n != null && Number.isFinite(n) && n > 0;
 
-/** Foreign imported FX can be an estimate or an average across fills. Only broker-confirmed costs qualify. */
+/** Use the registered acquisition basis. A confirmed brokerage basis takes precedence. */
 export function getHoldingPrincipalKRW(asset: Asset): number | null {
   if (hasUnresolvedOwners(asset) || !positive(asset.quantity)) return null;
   const confirmed = asset.holdingPolicy?.confirmedUnitCostKRW;
-  if (confirmed == null && asset.holdingPolicy?.requiresCostConfirmation) return null;
-  const unit = confirmed ?? (asset.currency === Currency.KRW ? asset.purchasePrice : null);
+  const rate = asset.currency === Currency.KRW ? 1 : asset.purchaseExchangeRate;
+  const unit = confirmed ?? (positive(asset.purchasePrice) && positive(rate) ? asset.purchasePrice * rate : null);
   return positive(unit) && positive(unit * asset.quantity) ? unit * asset.quantity : null;
 }
 

@@ -76,6 +76,8 @@ export function resolveHoldingsSettings(saved?: Partial<TurtleHoldingsSettings> 
     maxTotalRiskPct: clamp(s.maxTotalRiskPct, 12, 24, D.maxTotalRiskPct),
     drawdownScalingEnabled: typeof s.drawdownScalingEnabled === 'boolean' ? s.drawdownScalingEnabled : D.drawdownScalingEnabled,
     minOrderKRW: typeof s.minOrderKRW === 'number' && Number.isFinite(s.minOrderKRW) && s.minOrderKRW >= 0 ? s.minOrderKRW : D.minOrderKRW,
+    defaultSellCostPct: typeof s.defaultSellCostPct === 'number' && s.defaultSellCostPct >= 0 && s.defaultSellCostPct < 100
+      ? s.defaultSellCostPct : D.defaultSellCostPct,
     excludeFamilyOwner: typeof s.excludeFamilyOwner === 'boolean' ? s.excludeFamilyOwner : D.excludeFamilyOwner,
     excludedAssetIds: Array.isArray(s.excludedAssetIds) ? s.excludedAssetIds.filter((x): x is string => typeof x === 'string') : [],
     excludedCategoryIds: Array.isArray(s.excludedCategoryIds) ? s.excludedCategoryIds.filter((x): x is number => typeof x === 'number') : [],

@@ -11,6 +11,8 @@ export type HoldingsExitMethod = 'donchian' | 'ma' | 'atrTrail';
 export type PyramidSpacingMode = '2R' | 'halfN' | 'custom';
 
 export interface TurtleHoldingsSettings {
+  /** 운용 방침을 새로 저장할 때 제안하는 편도 매도 비용률(%). */
+  defaultSellCostPct: number;
   /** 진입(재진입) 돌파 채널 — 55일. 20~100. */
   entryLookback: number;
   /** 청산 방식. 기본 donchian. */
@@ -59,6 +61,7 @@ export interface TurtleHoldingsSettings {
 }
 
 export const DEFAULT_TURTLE_HOLDINGS_SETTINGS: TurtleHoldingsSettings = {
+  defaultSellCostPct: 0.25,
   entryLookback: 55,
   exitMethod: 'donchian',
   exitLookback: 20,
